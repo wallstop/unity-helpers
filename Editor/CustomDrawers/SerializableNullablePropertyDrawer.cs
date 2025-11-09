@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 #if UNITY_EDITOR
     using UnityEditor;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 
     [CustomPropertyDrawer(typeof(SerializableNullable<>), true)]
@@ -62,7 +61,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float spacing = EditorGUIUtility.standardVerticalSpacing;
             float toggleY = position.y + (position.height - toggleHeight) * 0.5f;
 
-            Rect toggleRect = new Rect(fieldRect.x, toggleY, toggleWidth, toggleHeight);
+            Rect toggleRect = new(fieldRect.x, toggleY, toggleWidth, toggleHeight);
 
             EditorGUI.BeginChangeCheck();
             bool hasValue = hasValueProperty.boolValue;
@@ -75,7 +74,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (updatedHasValue)
             {
                 float valueWidth = Mathf.Max(0f, fieldRect.width - toggleWidth - spacing);
-                Rect valueRect = new Rect(
+                Rect valueRect = new(
                     toggleRect.xMax + spacing,
                     position.y,
                     valueWidth,

@@ -76,9 +76,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 force: true
             );
 
-            Assert.IsTrue(state.HasDuplicates);
-            CollectionAssert.AreEquivalent(new int[] { 0, 1 }, state.DuplicateIndices);
-            StringAssert.Contains("Value 2", state.Summary);
+            Assert.IsTrue(state.hasDuplicates);
+            CollectionAssert.AreEquivalent(new int[] { 0, 1 }, state.duplicateIndices);
+            StringAssert.Contains("Value 2", state.summary);
         }
 
         [Test]
@@ -165,7 +165,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(3, host.set.Count);
             SerializableSetPropertyDrawer.DuplicateState duplicateState =
                 drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
-            CollectionAssert.AreEquivalent(new int[] { 0, 1 }, duplicateState.DuplicateIndices);
+            CollectionAssert.AreEquivalent(new int[] { 0, 1 }, duplicateState.duplicateIndices);
         }
 
         [Test]
@@ -219,7 +219,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(3, host.set.Count);
             SerializableSetPropertyDrawer.DuplicateState duplicateState =
                 drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
-            CollectionAssert.AreEquivalent(new int[] { 0, 1 }, duplicateState.DuplicateIndices);
+            CollectionAssert.AreEquivalent(new int[] { 0, 1 }, duplicateState.duplicateIndices);
         }
 
         [Test]

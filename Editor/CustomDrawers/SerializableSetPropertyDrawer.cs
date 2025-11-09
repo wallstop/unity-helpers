@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Globalization;
     using System.Reflection;
     using System.Text;
     using UnityEditor;
@@ -20,20 +19,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float ButtonSpacing = 4f;
         private const float PaginationButtonWidth = 28f;
         private const int DefaultPageSize = 15;
-        internal const int MaxPageSize = 250;
         private const int MaxAutoAddAttempts = 256;
 
-        private static readonly GUIContent AddEntryContent = new GUIContent("Add");
-        private static readonly GUIContent ClearAllContent = new GUIContent("Clear All");
-        private static readonly GUIContent SortContent = new GUIContent("Sort");
-        private static readonly GUIContent FirstPageContent = new GUIContent("<<", "First Page");
-        private static readonly GUIContent PreviousPageContent = new GUIContent(
-            "<",
-            "Previous Page"
-        );
-        private static readonly GUIContent NextPageContent = new GUIContent(">", "Next Page");
-        private static readonly GUIContent LastPageContent = new GUIContent(">>", "Last Page");
-        private static readonly object NullComparable = new object();
+        private static readonly GUIContent AddEntryContent = new("Add");
+        private static readonly GUIContent ClearAllContent = new("Clear All");
+        private static readonly GUIContent SortContent = new("Sort");
+        private static readonly GUIContent FirstPageContent = new("<<", "First Page");
+        private static readonly GUIContent PreviousPageContent = new("<", "Previous Page");
+        private static readonly GUIContent NextPageContent = new(">", "Next Page");
+        private static readonly GUIContent LastPageContent = new(">>", "Last Page");
+        private static readonly object NullComparable = new();
 
         private static readonly GUIStyle AddButtonStyle = CreateSolidButtonStyle(
             new Color(0.22f, 0.62f, 0.29f)
@@ -47,18 +42,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIStyle RemoveButtonStyle = CreateSolidButtonStyle(
             new Color(0.86f, 0.23f, 0.23f)
         );
-        private static readonly Color DuplicatePrimaryColor = new Color(0.99f, 0.82f, 0.35f, 0.55f);
-        private static readonly Color DuplicateSecondaryColor = new Color(
-            0.96f,
-            0.45f,
-            0.45f,
-            0.65f
-        );
-        private static readonly Color DuplicateOutlineColor = new Color(0.65f, 0.18f, 0.18f, 0.9f);
-        private static readonly Color LightSelectionColor = new Color(0.33f, 0.62f, 0.95f, 0.65f);
-        private static readonly Color DarkSelectionColor = new Color(0.2f, 0.45f, 0.85f, 0.7f);
-        private static readonly Color LightRowColor = new Color(0.97f, 0.97f, 0.97f, 1f);
-        private static readonly Color DarkRowColor = new Color(0.16f, 0.16f, 0.16f, 0.45f);
+        private static readonly Color DuplicatePrimaryColor = new(0.99f, 0.82f, 0.35f, 0.55f);
+        private static readonly Color DuplicateSecondaryColor = new(0.96f, 0.45f, 0.45f, 0.65f);
+        private static readonly Color DuplicateOutlineColor = new(0.65f, 0.18f, 0.18f, 0.9f);
+        private static readonly Color LightSelectionColor = new(0.33f, 0.62f, 0.95f, 0.65f);
+        private static readonly Color DarkSelectionColor = new(0.2f, 0.45f, 0.85f, 0.7f);
+        private static readonly Color LightRowColor = new(0.97f, 0.97f, 0.97f, 1f);
+        private static readonly Color DarkRowColor = new(0.16f, 0.16f, 0.16f, 0.45f);
         private const float DuplicateShakeAmplitude = 2f;
         private const float DuplicateShakeFrequency = 7f;
         private const float DuplicateOutlineThickness = 1f;
@@ -75,30 +65,29 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         internal sealed class DuplicateState
         {
-            public bool HasDuplicates;
-            public readonly HashSet<int> DuplicateIndices = new HashSet<int>();
-            public string Summary = string.Empty;
-            public readonly Dictionary<int, double> AnimationStartTimes =
-                new Dictionary<int, double>();
-            public readonly Dictionary<int, bool> PrimaryFlags = new Dictionary<int, bool>();
+            public bool hasDuplicates;
+            public readonly HashSet<int> duplicateIndices = new();
+            public string summary = string.Empty;
+            public readonly Dictionary<int, double> animationStartTimes = new();
+            public readonly Dictionary<int, bool> primaryFlags = new();
         }
 
         private struct SetElementData
         {
-            public SerializedPropertyType PropertyType;
-            public object Comparable;
-            public object Value;
+            public SerializedPropertyType propertyType;
+            public object comparable;
+            public object value;
         }
 
         private sealed class RowRenderInfo
         {
-            public SerializedProperty Property;
-            public float Height;
-            public int Index;
-            public bool IsDuplicate;
-            public bool IsPrimaryDuplicate;
-            public bool IsSelected;
-            public float ShakeOffset;
+            public SerializedProperty property;
+            public float height;
+            public int index;
+            public bool isDuplicate;
+            public bool isPrimaryDuplicate;
+            public bool isSelected;
+            public float shakeOffset;
         }
 
         private static float GetToolbarHeight()
@@ -124,7 +113,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Color hoverColor = AdjustColorBrightness(baseColor, 0.12f);
             Color activeColor = AdjustColorBrightness(baseColor, -0.18f);
 
-            GUIStyle style = new GUIStyle(EditorStyles.miniButton);
+            GUIStyle style = new(EditorStyles.miniButton);
             Texture2D normalTexture = CreateSolidTexture(baseColor);
             Texture2D hoverTexture = CreateSolidTexture(hoverColor);
             Texture2D activeTexture = CreateSolidTexture(activeColor);
@@ -165,13 +154,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static Texture2D CreateSolidTexture(Color color)
         {
-            Texture2D texture = new Texture2D(1, 1)
+            Texture2D texture = new(1, 1)
             {
                 hideFlags = HideFlags.HideAndDontSave,
                 wrapMode = TextureWrapMode.Repeat,
                 filterMode = FilterMode.Point,
             };
-            Color opaque = new Color(color.r, color.g, color.b, 1f);
+            Color opaque = new(color.r, color.g, color.b, 1f);
             texture.SetPixel(0, 0, opaque);
             texture.Apply();
             return texture;
@@ -198,7 +187,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            bool hasItemsArray = itemsProperty != null && itemsProperty.isArray;
+            bool hasItemsArray = itemsProperty is { isArray: true };
             int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
 
             string propertyPath = property.propertyPath;
@@ -206,7 +195,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             EditorGUI.BeginProperty(position, label, property);
 
-            Rect foldoutRect = new Rect(
+            Rect foldoutRect = new(
                 position.x,
                 position.y,
                 position.width,
@@ -236,7 +225,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int previousIndentLevel = EditorGUI.indentLevel;
             EditorGUI.indentLevel = 0;
 
-            Rect toolbarRect = new Rect(position.x, y, position.width, GetToolbarHeight());
+            Rect toolbarRect = new(position.x, y, position.width, GetToolbarHeight());
             DrawToolbar(
                 toolbarRect,
                 ref property,
@@ -250,18 +239,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             itemsProperty = property.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
-            hasItemsArray = itemsProperty != null && itemsProperty.isArray;
+            hasItemsArray = itemsProperty is { isArray: true };
             totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
             EnsurePaginationBounds(pagination, totalCount);
             duplicateState = EvaluateDuplicateState(property, itemsProperty);
             bool drawHelpBox =
-                duplicateState.HasDuplicates && !string.IsNullOrEmpty(duplicateState.Summary);
+                duplicateState.hasDuplicates && !string.IsNullOrEmpty(duplicateState.summary);
 
             if (drawHelpBox)
             {
                 float helpHeight = EditorGUIUtility.singleLineHeight * 1.6f;
-                Rect helpRect = new Rect(position.x, y, position.width, helpHeight);
-                EditorGUI.HelpBox(helpRect, duplicateState.Summary, MessageType.Warning);
+                Rect helpRect = new(position.x, y, position.width, helpHeight);
+                EditorGUI.HelpBox(helpRect, duplicateState.summary, MessageType.Warning);
                 y = helpRect.yMax + SectionSpacing;
             }
 
@@ -270,18 +259,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 float blockPadding = 6f;
                 float messageHeight = EditorGUIUtility.singleLineHeight;
                 float blockHeight = blockPadding * 2f + messageHeight;
-                Rect blockRect = new Rect(position.x, y, position.width, blockHeight);
+                Rect blockRect = new(position.x, y, position.width, blockHeight);
                 GUI.Box(blockRect, GUIContent.none, EditorStyles.helpBox);
 
-                Rect messageRect = new Rect(
+                Rect messageRect = new(
                     blockRect.x + blockPadding,
                     blockRect.y + blockPadding,
                     blockRect.width - blockPadding * 2f,
                     messageHeight
                 );
                 EditorGUI.LabelField(messageRect, "Set is empty.", EditorStyles.miniLabel);
-
-                y = blockRect.yMax + SectionSpacing;
             }
             else
             {
@@ -297,7 +284,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
                 int tweenCycleLimit = UnityHelpersSettings.GetDuplicateRowTweenCycleLimit();
 
-                List<RowRenderInfo> rows = new List<RowRenderInfo>(endIndex - startIndex);
+                List<RowRenderInfo> rows = new(endIndex - startIndex);
                 float rowsHeight = 0f;
 
                 for (int index = startIndex; index < endIndex; index++)
@@ -309,15 +296,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         true
                     );
 
-                    bool isDuplicate = duplicateState.DuplicateIndices.Contains(index);
+                    bool isDuplicate = duplicateState.duplicateIndices.Contains(index);
                     if (
                         isDuplicate
                         && highlightDuplicates
                         && animateDuplicates
-                        && !duplicateState.AnimationStartTimes.ContainsKey(index)
+                        && !duplicateState.animationStartTimes.ContainsKey(index)
                     )
                     {
-                        duplicateState.AnimationStartTimes[index] =
+                        duplicateState.animationStartTimes[index] =
                             EditorApplication.timeSinceStartup;
                     }
 
@@ -326,20 +313,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             ? GetDuplicateShakeOffset(duplicateState, index, tweenCycleLimit)
                             : 0f;
 
-                    RowRenderInfo info = new RowRenderInfo
+                    RowRenderInfo info = new()
                     {
-                        Property = element.Copy(),
-                        Height = elementHeight,
-                        Index = index,
-                        IsDuplicate = isDuplicate,
-                        IsPrimaryDuplicate = duplicateState.PrimaryFlags.TryGetValue(
+                        property = element.Copy(),
+                        height = elementHeight,
+                        index = index,
+                        isDuplicate = isDuplicate,
+                        isPrimaryDuplicate = duplicateState.primaryFlags.GetValueOrDefault(
                             index,
-                            out bool primaryFlag
-                        )
-                            ? primaryFlag
-                            : false,
-                        IsSelected = pagination.selectedIndex == index,
-                        ShakeOffset = shakeOffset,
+                            false
+                        ),
+                        isSelected = pagination.selectedIndex == index,
+                        shakeOffset = shakeOffset,
                     };
 
                     rows.Add(info);
@@ -352,7 +337,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 float blockPadding = 6f;
                 float blockHeight = blockPadding * 2f + rowsHeight;
-                Rect blockRect = new Rect(position.x, y, position.width, blockHeight);
+                Rect blockRect = new(position.x, y, position.width, blockHeight);
                 GUI.Box(blockRect, GUIContent.none, EditorStyles.helpBox);
 
                 float contentY = blockRect.y + blockPadding;
@@ -363,7 +348,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     RowRenderInfo row = rows[rowIndex];
 
-                    Rect backgroundRect = new Rect(contentX, contentY, contentWidth, row.Height);
+                    Rect backgroundRect = new(contentX, contentY, contentWidth, row.height);
 
                     Color baseRowColor = EditorGUIUtility.isProSkin ? DarkRowColor : LightRowColor;
                     EditorGUI.DrawRect(backgroundRect, baseRowColor);
@@ -371,10 +356,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     Rect outlineRect = Rect.zero;
                     bool shouldDrawOutline = false;
 
-                    if (row.IsDuplicate && highlightDuplicates)
+                    if (row.isDuplicate && highlightDuplicates)
                     {
-                        Rect duplicateRect = new Rect(
-                            backgroundRect.x + row.ShakeOffset,
+                        Rect duplicateRect = new(
+                            backgroundRect.x + row.shakeOffset,
                             backgroundRect.y,
                             backgroundRect.width,
                             backgroundRect.height
@@ -384,7 +369,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         duplicateRect.yMin += 1f;
                         duplicateRect.yMax -= 1f;
 
-                        Color duplicateColor = row.IsPrimaryDuplicate
+                        Color duplicateColor = row.isPrimaryDuplicate
                             ? DuplicatePrimaryColor
                             : DuplicateSecondaryColor;
                         EditorGUI.DrawRect(duplicateRect, duplicateColor);
@@ -392,7 +377,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         shouldDrawOutline = true;
                     }
 
-                    if (row.IsSelected)
+                    if (row.isSelected)
                     {
                         Color selectionColor = EditorGUIUtility.isProSkin
                             ? DarkSelectionColor
@@ -400,16 +385,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         EditorGUI.DrawRect(backgroundRect, selectionColor);
                     }
 
-                    Rect contentRect = new Rect(
+                    Rect contentRect = new(
                         backgroundRect.x + 6f,
                         backgroundRect.y + 1f,
                         backgroundRect.width - 12f,
-                        row.Height - 2f
+                        row.height - 2f
                     );
-                    if (Mathf.Abs(row.ShakeOffset) > Mathf.Epsilon)
+                    if (Mathf.Abs(row.shakeOffset) > Mathf.Epsilon)
                     {
-                        contentRect.x += row.ShakeOffset;
-                        contentRect.width -= Mathf.Abs(row.ShakeOffset);
+                        contentRect.x += row.shakeOffset;
+                        contentRect.width -= Mathf.Abs(row.shakeOffset);
                     }
 
                     if (
@@ -417,17 +402,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         && backgroundRect.Contains(Event.current.mousePosition)
                     )
                     {
-                        pagination.selectedIndex = row.Index;
+                        pagination.selectedIndex = row.index;
                     }
 
-                    EditorGUI.PropertyField(contentRect, row.Property, GUIContent.none, true);
+                    EditorGUI.PropertyField(contentRect, row.property, GUIContent.none, true);
 
                     if (shouldDrawOutline && highlightDuplicates)
                     {
                         DrawDuplicateOutline(outlineRect);
                     }
 
-                    contentY += row.Height;
+                    contentY += row.height;
                     if (rowIndex < rows.Count - 1)
                     {
                         contentY += RowSpacing;
@@ -456,7 +441,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            bool hasItemsArray = itemsProperty != null && itemsProperty.isArray;
+            bool hasItemsArray = itemsProperty is { isArray: true };
             int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
 
             height += SectionSpacing + GetToolbarHeight() + SectionSpacing;
@@ -464,7 +449,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EnsurePaginationBounds(pagination, totalCount);
 
             DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
-            if (duplicateState.HasDuplicates && !string.IsNullOrEmpty(duplicateState.Summary))
+            if (duplicateState.hasDuplicates && !string.IsNullOrEmpty(duplicateState.summary))
             {
                 height += EditorGUIUtility.singleLineHeight * 1.6f + SectionSpacing;
             }
@@ -512,11 +497,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 _paginationStates[key] = state;
             }
 
-            int configuredPageSize = Mathf.Clamp(
-                UnityHelpersSettings.GetSerializableSetPageSize(),
-                UnityHelpersSettings.MinPageSize,
-                MaxPageSize
-            );
+            int configuredPageSize = UnityHelpersSettings.GetSerializableSetPageSize();
             if (state.pageSize != configuredPageSize)
             {
                 state.pageSize = configuredPageSize;
@@ -528,14 +509,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private void EnsurePaginationBounds(PaginationState state, int totalCount)
         {
-            int pageSize = Mathf.Clamp(
-                state.pageSize,
-                UnityHelpersSettings.MinPageSize,
-                MaxPageSize
-            );
-
-            state.pageSize = pageSize;
-
+            int pageSize = state.pageSize;
             if (totalCount <= 0)
             {
                 state.page = 0;
@@ -586,39 +560,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            SerializedObject serializedObject = property.serializedObject;
             float lineHeight = EditorGUIUtility.singleLineHeight;
 
-            Rect firstRowRect = new Rect(rect.x, rect.y, rect.width, lineHeight);
-            Rect secondRowRect = new Rect(
+            Rect firstRowRect = new(rect.x, rect.y, rect.width, lineHeight);
+            Rect secondRowRect = new(
                 rect.x,
                 firstRowRect.yMax + RowSpacing,
                 rect.width,
                 lineHeight
             );
 
-            int totalCount =
-                itemsProperty != null && itemsProperty.isArray ? itemsProperty.arraySize : 0;
+            int totalCount = itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0;
 
-            Rect addRect = new Rect(firstRowRect.x, firstRowRect.y, 60f, lineHeight);
+            Rect addRect = new(firstRowRect.x, firstRowRect.y, 60f, lineHeight);
             if (GUI.Button(addRect, AddEntryContent, AddButtonStyle))
             {
                 if (TryAddNewElement(ref property, propertyPath, ref itemsProperty, pagination))
                 {
-                    serializedObject = property.serializedObject;
                     itemsProperty = property.FindPropertyRelative(
                         SerializableHashSetSerializedPropertyNames.Items
                     );
-                    totalCount =
-                        itemsProperty != null && itemsProperty.isArray
-                            ? itemsProperty.arraySize
-                            : 0;
+                    totalCount = itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0;
                     EnsurePaginationBounds(pagination, totalCount);
                 }
             }
 
             float nextX = addRect.xMax + ButtonSpacing;
-            Rect clearRect = new Rect(nextX, firstRowRect.y, 80f, lineHeight);
+            Rect clearRect = new(nextX, firstRowRect.y, 80f, lineHeight);
             bool hasEntries = totalCount > 0;
             GUIStyle clearButtonStyle = hasEntries
                 ? ClearAllActiveButtonStyle
@@ -628,14 +596,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 if (TryClearSet(ref property, propertyPath, ref itemsProperty))
                 {
-                    serializedObject = property.serializedObject;
                     itemsProperty = property.FindPropertyRelative(
                         SerializableHashSetSerializedPropertyNames.Items
                     );
-                    totalCount =
-                        itemsProperty != null && itemsProperty.isArray
-                            ? itemsProperty.arraySize
-                            : 0;
+                    totalCount = itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0;
                     pagination.page = 0;
                     pagination.selectedIndex = -1;
                     EnsurePaginationBounds(pagination, totalCount);
@@ -645,29 +609,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             nextX = clearRect.xMax + ButtonSpacing;
             if (isSortedSet)
             {
-                Rect sortRect = new Rect(nextX, firstRowRect.y, 60f, lineHeight);
+                Rect sortRect = new(nextX, firstRowRect.y, 60f, lineHeight);
                 using (new EditorGUI.DisabledScope(!CanSortElements(itemsProperty)))
                 {
                     if (GUI.Button(sortRect, SortContent, EditorStyles.miniButton))
                     {
                         if (TrySortElements(ref property, propertyPath, itemsProperty))
                         {
-                            serializedObject = property.serializedObject;
                             itemsProperty = property.FindPropertyRelative(
                                 SerializableHashSetSerializedPropertyNames.Items
                             );
-                            totalCount =
-                                itemsProperty != null && itemsProperty.isArray
-                                    ? itemsProperty.arraySize
-                                    : 0;
+                            totalCount = itemsProperty is { isArray: true }
+                                ? itemsProperty.arraySize
+                                : 0;
                             EnsurePaginationBounds(pagination, totalCount);
                         }
                     }
                 }
             }
 
-            totalCount =
-                itemsProperty != null && itemsProperty.isArray ? itemsProperty.arraySize : 0;
+            totalCount = itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0;
             DrawToolbarSecondaryRow(
                 secondRowRect,
                 ref property,
@@ -699,7 +660,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float removeButtonWidth = Mathf.Max(18f, PaginationButtonWidth - 8f);
             if (hasSelection)
             {
-                Rect removeRect = new Rect(
+                Rect removeRect = new(
                     rightCursor - removeButtonWidth,
                     rect.y,
                     removeButtonWidth,
@@ -713,10 +674,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         ref itemsProperty,
                         pagination
                     );
-                    totalCount =
-                        itemsProperty != null && itemsProperty.isArray
-                            ? itemsProperty.arraySize
-                            : 0;
+                    totalCount = itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0;
                 }
 
                 rightCursor = removeRect.x - ButtonSpacing;
@@ -727,7 +685,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool showNavigation = availableWidth >= navigationWidth;
             if (showNavigation)
             {
-                Rect navigationRect = new Rect(
+                Rect navigationRect = new(
                     rightCursor - navigationWidth,
                     rect.y,
                     navigationWidth,
@@ -755,7 +713,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 pageInfoContent != GUIContent.none && availableWidth >= pageInfoWidth;
             if (showPageInfo)
             {
-                Rect pageInfoRect = new Rect(
+                Rect pageInfoRect = new(
                     rightCursor - pageInfoWidth,
                     rect.y,
                     pageInfoWidth,
@@ -766,11 +724,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 availableWidth = Mathf.Max(0f, rightCursor - rect.x);
             }
 
-            GUIContent entriesContent = new GUIContent($"Entries: {totalCount}");
+            GUIContent entriesContent = new($"Entries: {totalCount}");
             float entriesWidth = EditorStyles.miniLabel.CalcSize(entriesContent).x;
             if (entriesWidth <= availableWidth)
             {
-                Rect entriesRect = new Rect(rect.x, rect.y, entriesWidth, lineHeight);
+                Rect entriesRect = new(rect.x, rect.y, entriesWidth, lineHeight);
                 EditorGUI.LabelField(entriesRect, entriesContent, EditorStyles.miniLabel);
             }
         }
@@ -781,20 +739,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int pageCount = pageSize > 0 ? Mathf.Max(1, (totalCount + pageSize - 1) / pageSize) : 1;
             int currentPage = pagination.page;
 
-            Rect firstRect = new Rect(rect.x, rect.y, PaginationButtonWidth, rect.height);
-            Rect prevRect = new Rect(
+            Rect firstRect = new(rect.x, rect.y, PaginationButtonWidth, rect.height);
+            Rect prevRect = new(
                 firstRect.xMax + ButtonSpacing,
                 rect.y,
                 PaginationButtonWidth,
                 rect.height
             );
-            Rect nextRect = new Rect(
+            Rect nextRect = new(
                 prevRect.xMax + ButtonSpacing,
                 rect.y,
                 PaginationButtonWidth,
                 rect.height
             );
-            Rect lastRect = new Rect(
+            Rect lastRect = new(
                 nextRect.xMax + ButtonSpacing,
                 rect.y,
                 PaginationButtonWidth,
@@ -859,7 +817,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (
                 UnityHelpersSettings.GetDuplicateRowAnimationMode()
                     != UnityHelpersSettings.DuplicateRowAnimationMode.Tween
-                || !state.AnimationStartTimes.TryGetValue(index, out double startTime)
+                || !state.animationStartTimes.TryGetValue(index, out double startTime)
             )
             {
                 return 0f;
@@ -889,15 +847,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static void DrawDuplicateOutline(Rect rect)
         {
-            Rect top = new Rect(rect.x, rect.y, rect.width, DuplicateOutlineThickness);
-            Rect bottom = new Rect(
+            Rect top = new(rect.x, rect.y, rect.width, DuplicateOutlineThickness);
+            Rect bottom = new(
                 rect.x,
                 rect.yMax - DuplicateOutlineThickness,
                 rect.width,
                 DuplicateOutlineThickness
             );
-            Rect left = new Rect(rect.x, rect.y, DuplicateOutlineThickness, rect.height);
-            Rect right = new Rect(
+            Rect left = new(rect.x, rect.y, DuplicateOutlineThickness, rect.height);
+            Rect right = new(
                 rect.xMax - DuplicateOutlineThickness,
                 rect.y,
                 DuplicateOutlineThickness,
@@ -948,25 +906,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 _duplicateStates[key] = state;
             }
 
-            state.DuplicateIndices.Clear();
-            state.HasDuplicates = false;
-            state.Summary = string.Empty;
-            state.PrimaryFlags.Clear();
+            state.duplicateIndices.Clear();
+            state.hasDuplicates = false;
+            state.summary = string.Empty;
+            state.primaryFlags.Clear();
 
             if (itemsProperty == null || !itemsProperty.isArray || itemsProperty.arraySize <= 1)
             {
-                state.AnimationStartTimes.Clear();
+                state.animationStartTimes.Clear();
                 return state;
             }
 
-            Dictionary<object, List<int>> duplicates = new Dictionary<object, List<int>>();
+            Dictionary<object, List<int>> duplicates = new();
             int count = itemsProperty.arraySize;
 
             for (int index = 0; index < count; index++)
             {
                 SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
                 SetElementData data = ReadElementData(element);
-                object keyValue = data.Comparable ?? NullComparable;
+                object keyValue = data.comparable ?? NullComparable;
 
                 if (!duplicates.TryGetValue(keyValue, out List<int> indices))
                 {
@@ -977,7 +935,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 indices.Add(index);
             }
 
-            StringBuilder summaryBuilder = new StringBuilder();
+            StringBuilder summaryBuilder = new();
             int duplicateGroupCount = 0;
 
             foreach (KeyValuePair<object, List<int>> pair in duplicates)
@@ -988,12 +946,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 duplicateGroupCount++;
-                state.HasDuplicates = true;
+                state.hasDuplicates = true;
                 bool isPrimary = true;
                 foreach (int duplicateIndex in pair.Value)
                 {
-                    state.DuplicateIndices.Add(duplicateIndex);
-                    state.PrimaryFlags[duplicateIndex] = isPrimary;
+                    state.duplicateIndices.Add(duplicateIndex);
+                    state.primaryFlags[duplicateIndex] = isPrimary;
                     isPrimary = false;
                 }
 
@@ -1017,9 +975,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 summaryBuilder.Append("Additional duplicate groups omitted for brevity.");
             }
 
-            if (state.HasDuplicates)
+            if (state.hasDuplicates)
             {
-                state.Summary =
+                state.summary =
                     summaryBuilder.Length > 0
                         ? summaryBuilder.ToString()
                         : "Duplicate values detected.";
@@ -1030,38 +988,40 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool animateDuplicates =
                 animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
 
-            if (state.HasDuplicates && animateDuplicates)
+            if (state.hasDuplicates && animateDuplicates)
             {
                 double now = EditorApplication.timeSinceStartup;
-                foreach (int duplicateIndex in state.DuplicateIndices)
+                foreach (int duplicateIndex in state.duplicateIndices)
                 {
-                    if (force || !state.AnimationStartTimes.ContainsKey(duplicateIndex))
+                    if (force || !state.animationStartTimes.ContainsKey(duplicateIndex))
                     {
-                        state.AnimationStartTimes[duplicateIndex] = now;
+                        state.animationStartTimes[duplicateIndex] = now;
                     }
                 }
 
                 List<int> staleKeys = null;
-                foreach (int existingKey in state.AnimationStartTimes.Keys)
+                foreach (int existingKey in state.animationStartTimes.Keys)
                 {
-                    if (!state.DuplicateIndices.Contains(existingKey))
+                    if (!state.duplicateIndices.Contains(existingKey))
                     {
                         staleKeys ??= new List<int>();
                         staleKeys.Add(existingKey);
                     }
                 }
 
-                if (staleKeys != null)
+                if (staleKeys == null)
                 {
-                    for (int i = 0; i < staleKeys.Count; i++)
-                    {
-                        state.AnimationStartTimes.Remove(staleKeys[i]);
-                    }
+                    return state;
+                }
+
+                foreach (int staleKey in staleKeys)
+                {
+                    state.animationStartTimes.Remove(staleKey);
                 }
             }
             else
             {
-                state.AnimationStartTimes.Clear();
+                state.animationStartTimes.Clear();
             }
 
             return state;
@@ -1077,7 +1037,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return key switch
             {
                 UnityEngine.Object obj => obj != null ? obj.name : "null object",
-                _ => key.ToString() ?? "null",
+                _ => key.ToString(),
             };
         }
 
@@ -1191,10 +1151,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
-            int serializedCount =
-                itemsProperty != null && itemsProperty.isArray
-                    ? itemsProperty.arraySize
-                    : inspector.SerializedCount;
+            int serializedCount = itemsProperty is { isArray: true }
+                ? itemsProperty.arraySize
+                : inspector.SerializedCount;
             bool hasSerializedDuplicates = serializedCount > inspector.UniqueCount;
             Array serializedSnapshot = hasSerializedDuplicates
                 ? inspector.GetSerializedItemsSnapshot()
@@ -1231,8 +1190,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 itemsProperty = property?.FindPropertyRelative(
                     SerializableHashSetSerializedPropertyNames.Items
                 );
-                int totalCount =
-                    itemsProperty != null && itemsProperty.isArray ? itemsProperty.arraySize : 0;
+                int totalCount = itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0;
                 EnsurePaginationBounds(pagination, totalCount);
                 EvaluateDuplicateState(property, itemsProperty, force: true);
                 if (totalCount > 0)
@@ -1290,14 +1248,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             SerializedProperty element = itemsProperty.GetArrayElementAtIndex(targetIndex);
             SetElementData elementData = ReadElementData(element);
             RemoveEntry(itemsProperty, targetIndex);
-            RemoveValueFromSet(property, propertyPath, elementData.Value);
+            RemoveValueFromSet(property, propertyPath, elementData.value);
             property.serializedObject.ApplyModifiedProperties();
             property.serializedObject.Update();
             property = property.serializedObject.FindProperty(propertyPath);
             itemsProperty = property.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
-            bool hasItemsArray = itemsProperty != null && itemsProperty.isArray;
+            bool hasItemsArray = itemsProperty is { isArray: true };
             int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
             if (pagination.selectedIndex >= totalCount)
             {
@@ -1319,7 +1277,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             int count = itemsProperty.arraySize;
-            List<SetElementData> elements = new List<SetElementData>(count);
+            List<SetElementData> elements = new(count);
 
             for (int index = 0; index < count; index++)
             {
@@ -1330,15 +1288,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             elements.Sort(
                 (left, right) =>
                 {
-                    int comparison = CompareComparableValues(left.Comparable, right.Comparable);
+                    int comparison = CompareComparableValues(left.comparable, right.comparable);
                     if (comparison != 0)
                     {
                         return comparison;
                     }
 
-                    string leftFallback = left.Value != null ? left.Value.ToString() : string.Empty;
+                    string leftFallback = left.value != null ? left.value.ToString() : string.Empty;
                     string rightFallback =
-                        right.Value != null ? right.Value.ToString() : string.Empty;
+                        right.value != null ? right.value.ToString() : string.Empty;
                     return string.CompareOrdinal(leftFallback, rightFallback);
                 }
             );
@@ -1354,7 +1312,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 inspector.ClearElements();
                 foreach (SetElementData element in elements)
                 {
-                    inspector.TryAddElement(element.Value, out _);
+                    inspector.TryAddElement(element.value, out _);
                 }
 
                 inspector.SynchronizeSerializedState();
@@ -1542,7 +1500,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 for (int i = 0; i < MaxAutoAddAttempts; i++)
                 {
-                    Bounds bounds = new Bounds(new Vector3(i + 1f, 0f, 0f), Vector3.one);
+                    Bounds bounds = new(new Vector3(i + 1f, 0f, 0f), Vector3.one);
                     yield return bounds;
                 }
                 yield break;
@@ -1552,7 +1510,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 for (int i = 0; i < MaxAutoAddAttempts; i++)
                 {
-                    BoundsInt bounds = new BoundsInt(new Vector3Int(i + 1, 0, 0), Vector3Int.one);
+                    BoundsInt bounds = new(new Vector3Int(i + 1, 0, 0), Vector3Int.one);
                     yield return bounds;
                 }
                 yield break;
@@ -1702,15 +1660,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             IEnumerator enumerator = enumerable.GetEnumerator();
-            for (int i = 0; i <= index; i++)
+            try
             {
-                if (!enumerator.MoveNext())
+                for (int i = 0; i <= index; i++)
                 {
-                    return null;
+                    if (!enumerator.MoveNext())
+                    {
+                        return null;
+                    }
+                }
+
+                return enumerator.Current;
+            }
+            finally
+            {
+                if (enumerator is IDisposable disposable)
+                {
+                    disposable.Dispose();
                 }
             }
-
-            return enumerator.Current;
         }
 
         internal void SortElements(SerializedProperty property, SerializedProperty itemsProperty)
@@ -1745,18 +1713,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return -comparableRight.CompareTo(left);
             }
 
-            string leftString = left.ToString() ?? string.Empty;
-            string rightString = right.ToString() ?? string.Empty;
+            string leftString = left.ToString();
+            string rightString = right.ToString();
             return string.CompareOrdinal(leftString, rightString);
         }
 
         private static SetElementData ReadElementData(SerializedProperty property)
         {
-            SetElementData data = new SetElementData
+            SetElementData data = new()
             {
-                PropertyType = property.propertyType,
-                Comparable = null,
-                Value = null,
+                propertyType = property.propertyType,
+                comparable = null,
+                value = null,
             };
 
             switch (property.propertyType)
@@ -1767,114 +1735,114 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 case SerializedPropertyType.Character:
                 case SerializedPropertyType.ArraySize:
                     long longValue = property.longValue;
-                    data.Value = longValue;
-                    data.Comparable = longValue;
+                    data.value = longValue;
+                    data.comparable = longValue;
                     break;
                 case SerializedPropertyType.Boolean:
                     bool boolValue = property.boolValue;
-                    data.Value = boolValue;
-                    data.Comparable = boolValue ? 1 : 0;
+                    data.value = boolValue;
+                    data.comparable = boolValue ? 1 : 0;
                     break;
                 case SerializedPropertyType.Float:
                     double doubleValue = property.doubleValue;
-                    data.Value = doubleValue;
-                    data.Comparable = doubleValue;
+                    data.value = doubleValue;
+                    data.comparable = doubleValue;
                     break;
                 case SerializedPropertyType.String:
                     string stringValue = property.stringValue ?? string.Empty;
-                    data.Value = stringValue;
-                    data.Comparable = stringValue;
+                    data.value = stringValue;
+                    data.comparable = stringValue;
                     break;
                 case SerializedPropertyType.Color:
                     Color colorValue = property.colorValue;
-                    data.Value = colorValue;
-                    data.Comparable = colorValue;
+                    data.value = colorValue;
+                    data.comparable = colorValue;
                     break;
                 case SerializedPropertyType.Vector2:
                     Vector2 vector2Value = property.vector2Value;
-                    data.Value = vector2Value;
-                    data.Comparable = vector2Value;
+                    data.value = vector2Value;
+                    data.comparable = vector2Value;
                     break;
                 case SerializedPropertyType.Vector3:
                     Vector3 vector3Value = property.vector3Value;
-                    data.Value = vector3Value;
-                    data.Comparable = vector3Value;
+                    data.value = vector3Value;
+                    data.comparable = vector3Value;
                     break;
                 case SerializedPropertyType.Vector4:
                     Vector4 vector4Value = property.vector4Value;
-                    data.Value = vector4Value;
-                    data.Comparable = vector4Value;
+                    data.value = vector4Value;
+                    data.comparable = vector4Value;
                     break;
                 case SerializedPropertyType.Rect:
                     Rect rectValue = property.rectValue;
-                    data.Value = rectValue;
-                    data.Comparable = rectValue;
+                    data.value = rectValue;
+                    data.comparable = rectValue;
                     break;
                 case SerializedPropertyType.Bounds:
                     Bounds boundsValue = property.boundsValue;
-                    data.Value = boundsValue;
-                    data.Comparable = boundsValue;
+                    data.value = boundsValue;
+                    data.comparable = boundsValue;
                     break;
                 case SerializedPropertyType.Vector2Int:
                     Vector2Int vector2IntValue = property.vector2IntValue;
-                    data.Value = vector2IntValue;
-                    data.Comparable = vector2IntValue;
+                    data.value = vector2IntValue;
+                    data.comparable = vector2IntValue;
                     break;
                 case SerializedPropertyType.Vector3Int:
                     Vector3Int vector3IntValue = property.vector3IntValue;
-                    data.Value = vector3IntValue;
-                    data.Comparable = vector3IntValue;
+                    data.value = vector3IntValue;
+                    data.comparable = vector3IntValue;
                     break;
                 case SerializedPropertyType.RectInt:
                     RectInt rectIntValue = property.rectIntValue;
-                    data.Value = rectIntValue;
-                    data.Comparable = rectIntValue;
+                    data.value = rectIntValue;
+                    data.comparable = rectIntValue;
                     break;
                 case SerializedPropertyType.BoundsInt:
                     BoundsInt boundsIntValue = property.boundsIntValue;
-                    data.Value = boundsIntValue;
-                    data.Comparable = boundsIntValue;
+                    data.value = boundsIntValue;
+                    data.comparable = boundsIntValue;
                     break;
                 case SerializedPropertyType.Hash128:
                     Hash128 hashValue = property.hash128Value;
-                    data.Value = hashValue;
-                    data.Comparable = hashValue;
+                    data.value = hashValue;
+                    data.comparable = hashValue;
                     break;
                 case SerializedPropertyType.Quaternion:
                     Quaternion quaternionValue = property.quaternionValue;
-                    data.Value = quaternionValue;
-                    data.Comparable = quaternionValue;
+                    data.value = quaternionValue;
+                    data.comparable = quaternionValue;
                     break;
                 case SerializedPropertyType.ObjectReference:
                     UnityEngine.Object objectReferenceValue = property.objectReferenceValue;
-                    data.Value = objectReferenceValue;
-                    data.Comparable =
+                    data.value = objectReferenceValue;
+                    data.comparable =
                         objectReferenceValue != null
                             ? objectReferenceValue.GetInstanceID()
                             : NullComparable;
                     break;
                 case SerializedPropertyType.AnimationCurve:
                     AnimationCurve curveValue = property.animationCurveValue;
-                    data.Value = curveValue;
-                    data.Comparable = curveValue != null ? curveValue.length : 0;
+                    data.value = curveValue;
+                    data.comparable = curveValue?.length ?? 0;
                     break;
                 case SerializedPropertyType.ManagedReference:
                 case SerializedPropertyType.Generic:
                     try
                     {
                         object boxed = property.boxedValue;
-                        data.Value = boxed;
-                        data.Comparable = boxed ?? NullComparable;
+                        data.value = boxed;
+                        data.comparable = boxed ?? NullComparable;
                     }
                     catch (Exception)
                     {
-                        data.Value = property.propertyPath;
-                        data.Comparable = property.propertyPath;
+                        data.value = property.propertyPath;
+                        data.comparable = property.propertyPath;
                     }
                     break;
                 default:
-                    data.Value = property.propertyPath;
-                    data.Comparable = property.propertyPath;
+                    data.value = property.propertyPath;
+                    data.comparable = property.propertyPath;
                     break;
             }
 
@@ -1883,81 +1851,84 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static void WriteElementValue(SerializedProperty property, SetElementData data)
         {
-            switch (data.PropertyType)
+            switch (data.propertyType)
             {
                 case SerializedPropertyType.Integer:
                 case SerializedPropertyType.LayerMask:
                 case SerializedPropertyType.Enum:
                 case SerializedPropertyType.Character:
                 case SerializedPropertyType.ArraySize:
-                    property.longValue = Convert.ToInt64(data.Value);
+                    property.longValue = Convert.ToInt64(data.value);
                     break;
                 case SerializedPropertyType.Boolean:
-                    property.boolValue = Convert.ToBoolean(data.Value);
+                    property.boolValue = Convert.ToBoolean(data.value);
                     break;
                 case SerializedPropertyType.Float:
-                    property.doubleValue = Convert.ToDouble(data.Value);
+                    property.doubleValue = Convert.ToDouble(data.value);
                     break;
                 case SerializedPropertyType.String:
-                    property.stringValue = data.Value as string ?? string.Empty;
+                    property.stringValue = data.value as string ?? string.Empty;
                     break;
                 case SerializedPropertyType.Color:
-                    property.colorValue = data.Value is Color color ? color : Color.white;
+                    property.colorValue = data.value is Color color ? color : Color.white;
                     break;
                 case SerializedPropertyType.Vector2:
-                    property.vector2Value = data.Value is Vector2 vector2 ? vector2 : Vector2.zero;
+                    property.vector2Value = data.value is Vector2 vector2 ? vector2 : Vector2.zero;
                     break;
                 case SerializedPropertyType.Vector3:
-                    property.vector3Value = data.Value is Vector3 vector3 ? vector3 : Vector3.zero;
+                    property.vector3Value = data.value is Vector3 vector3 ? vector3 : Vector3.zero;
                     break;
                 case SerializedPropertyType.Vector4:
-                    property.vector4Value = data.Value is Vector4 vector4 ? vector4 : Vector4.zero;
+                    property.vector4Value = data.value is Vector4 vector4 ? vector4 : Vector4.zero;
                     break;
                 case SerializedPropertyType.Rect:
-                    property.rectValue = data.Value is Rect rect ? rect : default;
+                    property.rectValue = data.value is Rect rect ? rect : default;
                     break;
                 case SerializedPropertyType.Bounds:
-                    property.boundsValue = data.Value is Bounds bounds ? bounds : default;
+                    property.boundsValue = data.value is Bounds bounds ? bounds : default;
                     break;
                 case SerializedPropertyType.Vector2Int:
-                    property.vector2IntValue = data.Value is Vector2Int vector2Int
+                    property.vector2IntValue = data.value is Vector2Int vector2Int
                         ? vector2Int
                         : default;
                     break;
                 case SerializedPropertyType.Vector3Int:
-                    property.vector3IntValue = data.Value is Vector3Int vector3Int
+                    property.vector3IntValue = data.value is Vector3Int vector3Int
                         ? vector3Int
                         : default;
                     break;
                 case SerializedPropertyType.RectInt:
-                    property.rectIntValue = data.Value is RectInt rectInt ? rectInt : default;
+                    property.rectIntValue = data.value is RectInt rectInt ? rectInt : default;
                     break;
                 case SerializedPropertyType.BoundsInt:
-                    property.boundsIntValue = data.Value is BoundsInt boundsInt
+                    property.boundsIntValue = data.value is BoundsInt boundsInt
                         ? boundsInt
                         : default;
                     break;
                 case SerializedPropertyType.Quaternion:
-                    property.quaternionValue = data.Value is Quaternion quaternion
+                    property.quaternionValue = data.value is Quaternion quaternion
                         ? quaternion
                         : Quaternion.identity;
                     break;
                 case SerializedPropertyType.Hash128:
-                    property.hash128Value = data.Value is Hash128 hash ? hash : default;
+                    property.hash128Value = data.value is Hash128 hash ? hash : default;
                     break;
                 case SerializedPropertyType.ObjectReference:
-                    property.objectReferenceValue = data.Value as UnityEngine.Object;
+                    property.objectReferenceValue = data.value as UnityEngine.Object;
                     break;
                 case SerializedPropertyType.AnimationCurve:
-                    property.animationCurveValue = data.Value as AnimationCurve;
+                    property.animationCurveValue = data.value as AnimationCurve;
                     break;
                 case SerializedPropertyType.ManagedReference:
                 case SerializedPropertyType.Generic:
                     try
                     {
-                        property.boxedValue = data.Value;
+                        property.boxedValue = data.value;
                     }
-                    catch (Exception) { }
+                    catch (Exception)
+                    {
+                        // Swallow
+                    }
                     break;
             }
         }
@@ -1985,33 +1956,42 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static Type ResolveType(Type rootType, string[] path, int index)
         {
-            if (rootType == null || path == null || index >= path.Length)
+            while (true)
             {
-                return rootType;
-            }
+                if (rootType == null || path == null || index >= path.Length)
+                {
+                    return rootType;
+                }
 
-            string segment = path[index];
-            FieldInfo field = rootType.GetField(
-                segment,
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-            );
+                string segment = path[index];
+                FieldInfo field = rootType.GetField(
+                    segment,
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                );
 
-            if (field == null)
-            {
-                return rootType;
-            }
+                if (field == null)
+                {
+                    return rootType;
+                }
 
-            Type fieldType = field.FieldType;
+                Type fieldType = field.FieldType;
 
-            if (
-                segment == "Array"
-                && index + 1 < path.Length
-                && path[index + 1].StartsWith("data[", StringComparison.Ordinal)
-            )
-            {
+                if (
+                    segment != "Array"
+                    || index + 1 >= path.Length
+                    || !path[index + 1].StartsWith("data[", StringComparison.Ordinal)
+                )
+                {
+                    rootType = fieldType;
+                    index += 1;
+                    continue;
+                }
+
                 if (fieldType.IsArray)
                 {
-                    return ResolveType(fieldType.GetElementType(), path, index + 2);
+                    rootType = fieldType.GetElementType();
+                    index += 2;
+                    continue;
                 }
 
                 if (fieldType.IsGenericType)
@@ -2019,14 +1999,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     Type[] arguments = fieldType.GetGenericArguments();
                     if (arguments.Length == 1)
                     {
-                        return ResolveType(arguments[0], path, index + 2);
+                        rootType = arguments[0];
+                        index += 2;
+                        continue;
                     }
                 }
 
                 return fieldType;
             }
-
-            return ResolveType(fieldType, path, index + 1);
         }
     }
 }

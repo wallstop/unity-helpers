@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 {
 #if UNITY_EDITOR
     using System.Collections.Generic;
-    using System.Linq;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
@@ -209,7 +208,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         public static int GetSerializableSetPageSize()
         {
-            return instance.SerializableSetPageSize;
+            return Mathf.Clamp(instance.SerializableSetPageSize, MinPageSize, MaxPageSize);
         }
 
         public static DuplicateRowAnimationMode GetDuplicateRowAnimationMode()

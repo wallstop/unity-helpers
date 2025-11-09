@@ -42,22 +42,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private const float FoldoutIndent = 2.5f;
             private const float HeaderIndent = 2.5f;
 
-            private readonly SerializedObject serializedObject;
-            private readonly string propertyPath;
-            private readonly WInLineEditorAttribute settings;
-            private readonly Type referenceType;
-            private readonly bool allowSceneObjects;
-            private readonly string sessionKey;
+            private readonly SerializedObject _serializedObject;
+            private readonly string _propertyPath;
+            private readonly WInLineEditorAttribute _settings;
+            private readonly Type _referenceType;
+            private readonly bool _allowSceneObjects;
+            private readonly string _sessionKey;
 
-            private readonly Foldout foldout;
-            private readonly VisualElement headerRow;
-            private readonly Label headerLabel;
-            private readonly Button pingButton;
-            private readonly VisualElement inspectorRoot;
-            private readonly ScrollView scrollView;
+            private readonly Foldout _foldout;
+            private readonly VisualElement _headerRow;
+            private readonly Label _headerLabel;
+            private readonly Button _pingButton;
+            private readonly VisualElement _inspectorRoot;
+            private readonly ScrollView _scrollView;
 
-            private Editor cachedEditor;
-            private UnityEngine.Object currentTarget;
+            private Editor _cachedEditor;
+            private UnityEngine.Object _currentTarget;
 
             public InlineInspectorElement(
                 SerializedProperty property,
@@ -65,22 +65,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 FieldInfo drawerField
             )
             {
-                serializedObject = property.serializedObject;
-                propertyPath = property.propertyPath;
-                settings = inlineAttribute;
-                referenceType = ResolveObjectReferenceType(drawerField);
-                allowSceneObjects = ShouldAllowSceneObjects(referenceType);
-                sessionKey =
-                    $"WInLineEditor:{serializedObject.targetObject.GetInstanceID()}:{propertyPath}";
+                _serializedObject = property.serializedObject;
+                _propertyPath = property.propertyPath;
+                _settings = inlineAttribute;
+                _referenceType = ResolveObjectReferenceType(drawerField);
+                _allowSceneObjects = ShouldAllowSceneObjects(_referenceType);
+                _sessionKey =
+                    $"WInLineEditor:{_serializedObject.targetObject.GetInstanceID()}:{_propertyPath}";
 
                 style.flexDirection = FlexDirection.Column;
 
-                ObjectField objectField = settings.drawObjectField ? CreateObjectField() : null;
+                ObjectField objectField = _settings.drawObjectField ? CreateObjectField() : null;
 
                 VisualElement inlineParent = this;
-                if (settings.mode == WInLineEditorMode.AlwaysExpanded)
+                if (_settings.mode == WInLineEditorMode.AlwaysExpanded)
                 {
-                    foldout = null;
+                    _foldout = null;
                     if (objectField != null)
                     {
                         objectField.label = property.displayName;
@@ -103,23 +103,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
                 else
                 {
-                    bool defaultExpanded = settings.mode == WInLineEditorMode.FoldoutExpanded;
-                    bool savedState = SessionState.GetBool(sessionKey, defaultExpanded);
+                    bool defaultExpanded = _settings.mode == WInLineEditorMode.FoldoutExpanded;
+                    bool savedState = SessionState.GetBool(_sessionKey, defaultExpanded);
 
-                    foldout = new Foldout { text = property.displayName, value = savedState };
-                    foldout.style.marginTop = 2f;
-                    foldout.style.marginLeft = FoldoutIndent;
+                    _foldout = new Foldout { text = property.displayName, value = savedState };
+                    _foldout.style.marginTop = 2f;
+                    _foldout.style.marginLeft = FoldoutIndent;
 
-                    foldout.RegisterValueChangedCallback(evt =>
+                    _foldout.RegisterValueChangedCallback(evt =>
                     {
-                        SessionState.SetBool(sessionKey, evt.newValue);
+                        SessionState.SetBool(_sessionKey, evt.newValue);
                         UpdateInlineVisibility();
                     });
 
-                    Add(foldout);
-                    inlineParent = foldout.contentContainer;
+                    Add(_foldout);
+                    inlineParent = _foldout.contentContainer;
 
-                    Toggle toggle = foldout.Q<Toggle>();
+                    Toggle toggle = _foldout.Q<Toggle>();
                     toggle.style.flexDirection = FlexDirection.Row;
                     toggle.style.alignItems = Align.Center;
                     toggle.style.justifyContent = Justify.FlexStart;
@@ -167,9 +167,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
 
-                if (settings.drawHeader)
+                if (_settings.drawHeader)
                 {
-                    headerRow = new VisualElement
+                    _headerRow = new VisualElement
                     {
                         style =
                         {
@@ -179,32 +179,32 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             marginBottom = 2f,
                         },
                     };
-                    if (foldout != null)
+                    if (_foldout != null)
                     {
-                        headerRow.style.marginLeft = FoldoutIndent + HeaderIndent;
+                        _headerRow.style.marginLeft = FoldoutIndent + HeaderIndent;
                     }
 
-                    headerLabel = new Label
+                    _headerLabel = new Label
                     {
                         style = { unityFontStyleAndWeight = FontStyle.Bold, flexGrow = 1f },
                     };
-                    headerLabel.style.marginRight = 6f;
+                    _headerLabel.style.marginRight = 6f;
 
-                    pingButton = new Button(OnPingClicked) { text = "Ping" };
-                    pingButton.SetEnabled(false);
+                    _pingButton = new Button(OnPingClicked) { text = "Ping" };
+                    _pingButton.SetEnabled(false);
 
-                    headerRow.Add(headerLabel);
-                    headerRow.Add(pingButton);
-                    inlineParent.Add(headerRow);
+                    _headerRow.Add(_headerLabel);
+                    _headerRow.Add(_pingButton);
+                    inlineParent.Add(_headerRow);
                 }
                 else
                 {
-                    headerRow = null;
-                    headerLabel = null;
-                    pingButton = null;
+                    _headerRow = null;
+                    _headerLabel = null;
+                    _pingButton = null;
                 }
 
-                inspectorRoot = new VisualElement
+                _inspectorRoot = new VisualElement
                 {
                     style =
                     {
@@ -224,33 +224,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         marginTop = 2f,
                     },
                 };
-                if (foldout != null && headerRow == null)
+                if (_foldout != null && _headerRow == null)
                 {
-                    inspectorRoot.style.marginLeft = FoldoutIndent + HeaderIndent;
+                    _inspectorRoot.style.marginLeft = FoldoutIndent + HeaderIndent;
                 }
 
-                if (settings.enableScrolling)
+                if (_settings.enableScrolling)
                 {
-                    scrollView = new ScrollView(ScrollViewMode.Vertical)
+                    _scrollView = new ScrollView(ScrollViewMode.Vertical)
                     {
                         style = { flexGrow = 1f },
                     };
-                    if (settings.inspectorHeight > 0f)
+                    if (_settings.inspectorHeight > 0f)
                     {
-                        scrollView.style.maxHeight = settings.inspectorHeight;
+                        _scrollView.style.maxHeight = _settings.inspectorHeight;
                     }
-                    inspectorRoot.Add(scrollView);
+                    _inspectorRoot.Add(_scrollView);
                 }
                 else
                 {
-                    scrollView = null;
-                    if (settings.inspectorHeight > 0f)
+                    _scrollView = null;
+                    if (_settings.inspectorHeight > 0f)
                     {
-                        inspectorRoot.style.maxHeight = settings.inspectorHeight;
+                        _inspectorRoot.style.maxHeight = _settings.inspectorHeight;
                     }
                 }
 
-                inlineParent.Add(inspectorRoot);
+                inlineParent.Add(_inspectorRoot);
 
                 this.TrackPropertyValue(
                     property,
@@ -267,9 +267,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 ObjectField field = new()
                 {
-                    bindingPath = propertyPath,
-                    objectType = referenceType,
-                    allowSceneObjects = allowSceneObjects,
+                    bindingPath = _propertyPath,
+                    objectType = _referenceType,
+                    allowSceneObjects = _allowSceneObjects,
                 };
                 field.style.flexGrow = 1f;
                 field.style.flexShrink = 1f;
@@ -277,19 +277,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 field.RegisterValueChangedCallback(evt =>
                     OnPropertyValueChanged(evt.newValue as UnityEngine.Object)
                 );
-                field.Bind(serializedObject);
+                field.Bind(_serializedObject);
                 return field;
             }
 
             private void OnPropertyValueChanged(UnityEngine.Object newValue)
             {
-                if (currentTarget == newValue)
+                if (_currentTarget == newValue)
                 {
                     UpdateInlineVisibility();
                     return;
                 }
 
-                currentTarget = newValue;
+                _currentTarget = newValue;
                 RefreshHeader();
                 BuildInspector();
                 UpdateInlineVisibility();
@@ -297,25 +297,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private void RefreshHeader()
             {
-                if (headerRow == null)
+                if (_headerRow == null)
                 {
                     return;
                 }
 
-                if (currentTarget == null)
+                if (_currentTarget == null)
                 {
-                    headerRow.style.display = DisplayStyle.None;
-                    pingButton?.SetEnabled(false);
+                    _headerRow.style.display = DisplayStyle.None;
+                    _pingButton?.SetEnabled(false);
                     return;
                 }
 
                 GUIContent content = EditorGUIUtility.ObjectContent(
-                    currentTarget,
-                    currentTarget.GetType()
+                    _currentTarget,
+                    _currentTarget.GetType()
                 );
-                headerLabel.text = content?.text ?? currentTarget.name;
-                headerRow.style.display = DisplayStyle.Flex;
-                pingButton?.SetEnabled(true);
+                _headerLabel.text = content?.text ?? _currentTarget.name;
+                _headerRow.style.display = DisplayStyle.Flex;
+                _pingButton?.SetEnabled(true);
             }
 
             private void BuildInspector()
@@ -323,23 +323,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 ClearInspector();
                 DisposeEditor();
 
-                if (currentTarget == null)
+                if (_currentTarget == null)
                 {
-                    if (foldout != null)
+                    if (_foldout != null)
                     {
-                        foldout.SetEnabled(false);
+                        _foldout.SetEnabled(false);
                     }
                     return;
                 }
 
-                if (foldout != null)
+                if (_foldout != null)
                 {
-                    foldout.SetEnabled(true);
+                    _foldout.SetEnabled(true);
                 }
 
                 try
                 {
-                    cachedEditor = Editor.CreateEditor(currentTarget);
+                    _cachedEditor = Editor.CreateEditor(_currentTarget);
                 }
                 catch (Exception ex)
                 {
@@ -347,15 +347,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return;
                 }
 
-                if (cachedEditor == null)
+                if (_cachedEditor == null)
                 {
                     AddInspectorMessage("Inspector unavailable.");
                     return;
                 }
 
-                InspectorElement inspectorElement = new(cachedEditor) { style = { flexGrow = 1f } };
+                InspectorElement inspectorElement = new(_cachedEditor)
+                {
+                    style = { flexGrow = 1f },
+                };
 
-                if (!settings.drawPreview)
+                if (!_settings.drawPreview)
                 {
                     VisualElement preview = inspectorElement.Q(
                         className: "unity-inspector-preview"
@@ -365,38 +368,38 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         preview.style.display = DisplayStyle.None;
                     }
                 }
-                else if (settings.previewHeight > 0f)
+                else if (_settings.previewHeight > 0f)
                 {
                     VisualElement preview = inspectorElement.Q(
                         className: "unity-inspector-preview"
                     );
                     if (preview != null)
                     {
-                        preview.style.maxHeight = settings.previewHeight;
+                        preview.style.maxHeight = _settings.previewHeight;
                     }
                 }
 
-                if (scrollView != null)
+                if (_scrollView != null)
                 {
-                    scrollView.Clear();
-                    scrollView.Add(inspectorElement);
+                    _scrollView.Clear();
+                    _scrollView.Add(inspectorElement);
                 }
                 else
                 {
-                    inspectorRoot.Clear();
-                    inspectorRoot.Add(inspectorElement);
+                    _inspectorRoot.Clear();
+                    _inspectorRoot.Add(inspectorElement);
                 }
             }
 
             private void ClearInspector()
             {
-                if (scrollView != null)
+                if (_scrollView != null)
                 {
-                    scrollView.Clear();
+                    _scrollView.Clear();
                 }
                 else
                 {
-                    inspectorRoot.Clear();
+                    _inspectorRoot.Clear();
                 }
             }
 
@@ -411,56 +414,56 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     },
                 };
 
-                if (scrollView != null)
+                if (_scrollView != null)
                 {
-                    scrollView.Clear();
-                    scrollView.Add(label);
+                    _scrollView.Clear();
+                    _scrollView.Add(label);
                 }
                 else
                 {
-                    inspectorRoot.Clear();
-                    inspectorRoot.Add(label);
+                    _inspectorRoot.Clear();
+                    _inspectorRoot.Add(label);
                 }
             }
 
             private void UpdateInlineVisibility()
             {
-                if (foldout != null)
+                if (_foldout != null)
                 {
-                    foldout.SetEnabled(currentTarget != null);
+                    _foldout.SetEnabled(_currentTarget != null);
                 }
 
                 bool shouldShow =
-                    currentTarget != null
+                    _currentTarget != null
                     && (
-                        settings.mode == WInLineEditorMode.AlwaysExpanded
-                        || (foldout?.value ?? false)
+                        _settings.mode == WInLineEditorMode.AlwaysExpanded
+                        || (_foldout?.value ?? false)
                     );
 
-                inspectorRoot.style.display = shouldShow ? DisplayStyle.Flex : DisplayStyle.None;
-                if (headerRow != null)
+                _inspectorRoot.style.display = shouldShow ? DisplayStyle.Flex : DisplayStyle.None;
+                if (_headerRow != null)
                 {
-                    headerRow.style.display = shouldShow ? DisplayStyle.Flex : DisplayStyle.None;
+                    _headerRow.style.display = shouldShow ? DisplayStyle.Flex : DisplayStyle.None;
                 }
             }
 
             private void OnPingClicked()
             {
-                if (currentTarget == null)
+                if (_currentTarget == null)
                 {
                     return;
                 }
 
-                EditorGUIUtility.PingObject(currentTarget);
-                Selection.activeObject = currentTarget;
+                EditorGUIUtility.PingObject(_currentTarget);
+                Selection.activeObject = _currentTarget;
             }
 
             private void DisposeEditor()
             {
-                if (cachedEditor != null)
+                if (_cachedEditor != null)
                 {
-                    UnityEngine.Object.DestroyImmediate(cachedEditor);
-                    cachedEditor = null;
+                    UnityEngine.Object.DestroyImmediate(_cachedEditor);
+                    _cachedEditor = null;
                 }
             }
 

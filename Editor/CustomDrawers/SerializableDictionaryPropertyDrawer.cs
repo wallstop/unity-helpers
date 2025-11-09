@@ -2443,12 +2443,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 selectedKey = GetPropertyValue(selectedProperty, keyType);
             }
 
-            List<KeyValueSnapshot> entries = new List<KeyValueSnapshot>(count);
+            List<KeyValueSnapshot> entries = new(count);
             for (int index = 0; index < count; index++)
             {
                 SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
                 SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(index);
-                KeyValueSnapshot snapshot = new KeyValueSnapshot
+                KeyValueSnapshot snapshot = new()
                 {
                     key = GetPropertyValue(keyProperty, keyType),
                     value = GetPropertyValue(valueProperty, valueType),
@@ -2457,7 +2457,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 entries.Add(snapshot);
             }
 
-            KeyValueSnapshotComparer comparer = new KeyValueSnapshotComparer(comparison);
+            KeyValueSnapshotComparer comparer = new(comparison);
             entries.Sort(comparer);
 
             for (int index = 0; index < entries.Count; index++)

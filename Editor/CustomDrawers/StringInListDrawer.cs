@@ -37,12 +37,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (!IsSupportedSimpleProperty(property))
             {
-                PropertyField fallback = new PropertyField(property);
+                PropertyField fallback = new(property);
                 fallback.label = property.displayName;
                 return fallback;
             }
 
-            StringInListSelector selector = new StringInListSelector(options);
+            StringInListSelector selector = new(options);
             selector.BindProperty(property, property.displayName);
             return selector;
         }
@@ -67,32 +67,32 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private sealed class StringInListSelector : BaseField<string>
         {
-            private readonly string[] options;
-            private readonly VisualElement searchRow;
-            private readonly TextField searchField;
-            private readonly Button clearButton;
-            private readonly VisualElement paginationContainer;
-            private readonly Button previousButton;
-            private readonly Label pageLabel;
-            private readonly Button nextButton;
-            private readonly DropdownField dropdown;
-            private readonly Label noResultsLabel;
-            private readonly Label suggestionHintLabel;
-            private readonly VisualElement inputContainer;
-            private readonly List<int> filteredIndices = new List<int>();
-            private readonly List<int> pageOptionIndices = new List<int>();
-            private readonly List<string> pageChoices = new List<string>();
+            private readonly string[] _options;
+            private readonly VisualElement _searchRow;
+            private readonly TextField _searchField;
+            private readonly Button _clearButton;
+            private readonly VisualElement _paginationContainer;
+            private readonly Button _previousButton;
+            private readonly Label _pageLabel;
+            private readonly Button _nextButton;
+            private readonly DropdownField _dropdown;
+            private readonly Label _noResultsLabel;
+            private readonly Label _suggestionHintLabel;
+            private readonly VisualElement _inputContainer;
+            private readonly List<int> _filteredIndices = new();
+            private readonly List<int> _pageOptionIndices = new();
+            private readonly List<string> _pageChoices = new();
 
-            private SerializedObject boundObject;
-            private string propertyPath = string.Empty;
-            private bool isStringProperty;
-            private bool isIntegerProperty;
-            private string searchText = string.Empty;
-            private string suggestion = string.Empty;
-            private int pageIndex;
-            private int lastResolvedPageSize = -1;
-            private bool searchVisible;
-            private int suggestionOptionIndex = -1;
+            private SerializedObject _boundObject;
+            private string _propertyPath = string.Empty;
+            private bool _isStringProperty;
+            private bool _isIntegerProperty;
+            private string _searchText = string.Empty;
+            private string _suggestion = string.Empty;
+            private int _pageIndex;
+            private int _lastResolvedPageSize = -1;
+            private bool _searchVisible;
+            private int _suggestionOptionIndex = -1;
 
             private static VisualElement CreateInputElement(out VisualElement element)
             {
@@ -103,95 +103,95 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public StringInListSelector(string[] options)
                 : base(string.Empty, CreateInputElement(out VisualElement baseInput))
             {
-                this.options = options ?? Array.Empty<string>();
-                lastResolvedPageSize = Mathf.Max(
+                this._options = options ?? Array.Empty<string>();
+                _lastResolvedPageSize = Mathf.Max(
                     1,
                     UnityHelpersSettings.GetStringInListPageLimit()
                 );
-                suggestionOptionIndex = -1;
+                _suggestionOptionIndex = -1;
 
                 AddToClassList("unity-base-field");
                 AddToClassList("unity-base-field__aligned");
                 labelElement.AddToClassList("unity-base-field__label");
                 labelElement.AddToClassList("unity-label");
 
-                inputContainer = baseInput;
-                inputContainer.AddToClassList("unity-base-field__input");
-                inputContainer.style.flexGrow = 1f;
-                inputContainer.style.marginLeft = 0f;
-                inputContainer.style.paddingLeft = 0f;
-                inputContainer.style.flexDirection = FlexDirection.Column;
+                _inputContainer = baseInput;
+                _inputContainer.AddToClassList("unity-base-field__input");
+                _inputContainer.style.flexGrow = 1f;
+                _inputContainer.style.marginLeft = 0f;
+                _inputContainer.style.paddingLeft = 0f;
+                _inputContainer.style.flexDirection = FlexDirection.Column;
 
-                searchRow = new VisualElement();
-                searchRow.style.flexDirection = FlexDirection.Row;
-                searchRow.style.alignItems = Align.Center;
-                searchRow.style.marginBottom = 4f;
-                searchRow.style.marginLeft = 0f;
-                searchRow.style.paddingLeft = 0f;
+                _searchRow = new VisualElement();
+                _searchRow.style.flexDirection = FlexDirection.Row;
+                _searchRow.style.alignItems = Align.Center;
+                _searchRow.style.marginBottom = 4f;
+                _searchRow.style.marginLeft = 0f;
+                _searchRow.style.paddingLeft = 0f;
 
-                VisualElement searchWrapper = new VisualElement();
+                VisualElement searchWrapper = new();
                 searchWrapper.style.flexGrow = 1f;
                 searchWrapper.style.position = Position.Relative;
 
-                searchField = new TextField { name = "StringInListSearch" };
-                searchField.style.flexGrow = 1f;
-                searchField.RegisterValueChangedCallback(OnSearchChanged);
-                searchField.RegisterCallback<KeyDownEvent>(OnSearchKeyDown);
-                searchWrapper.Add(searchField);
+                _searchField = new TextField { name = "StringInListSearch" };
+                _searchField.style.flexGrow = 1f;
+                _searchField.RegisterValueChangedCallback(OnSearchChanged);
+                _searchField.RegisterCallback<KeyDownEvent>(OnSearchKeyDown);
+                searchWrapper.Add(_searchField);
 
-                clearButton = new Button(OnClearClicked) { text = "Clear" };
-                clearButton.style.marginLeft = 4f;
-                clearButton.SetEnabled(false);
+                _clearButton = new Button(OnClearClicked) { text = "Clear" };
+                _clearButton.style.marginLeft = 4f;
+                _clearButton.SetEnabled(false);
 
-                paginationContainer = new VisualElement();
-                paginationContainer.style.flexDirection = FlexDirection.Row;
-                paginationContainer.style.alignItems = Align.Center;
-                paginationContainer.style.marginLeft = 4f;
-                paginationContainer.style.display = DisplayStyle.None;
+                _paginationContainer = new VisualElement();
+                _paginationContainer.style.flexDirection = FlexDirection.Row;
+                _paginationContainer.style.alignItems = Align.Center;
+                _paginationContainer.style.marginLeft = 4f;
+                _paginationContainer.style.display = DisplayStyle.None;
 
-                previousButton = new Button(OnPreviousPage) { text = "<" };
-                previousButton.style.marginRight = 4f;
-                pageLabel = new Label();
-                pageLabel.style.minWidth = 80f;
-                pageLabel.style.unityTextAlign = TextAnchor.MiddleCenter;
-                pageLabel.style.marginRight = 4f;
-                nextButton = new Button(OnNextPage) { text = ">" };
+                _previousButton = new Button(OnPreviousPage) { text = "<" };
+                _previousButton.style.marginRight = 4f;
+                _pageLabel = new Label();
+                _pageLabel.style.minWidth = 80f;
+                _pageLabel.style.unityTextAlign = TextAnchor.MiddleCenter;
+                _pageLabel.style.marginRight = 4f;
+                _nextButton = new Button(OnNextPage) { text = ">" };
 
-                paginationContainer.Add(previousButton);
-                paginationContainer.Add(pageLabel);
-                paginationContainer.Add(nextButton);
+                _paginationContainer.Add(_previousButton);
+                _paginationContainer.Add(_pageLabel);
+                _paginationContainer.Add(_nextButton);
 
-                searchRow.Add(searchWrapper);
-                searchRow.Add(clearButton);
-                searchRow.Add(paginationContainer);
-                inputContainer.Add(searchRow);
+                _searchRow.Add(searchWrapper);
+                _searchRow.Add(_clearButton);
+                _searchRow.Add(_paginationContainer);
+                _inputContainer.Add(_searchRow);
 
-                suggestionHintLabel = new Label();
-                suggestionHintLabel.style.display = DisplayStyle.None;
-                suggestionHintLabel.style.marginLeft = 4f;
-                suggestionHintLabel.style.marginBottom = 2f;
-                suggestionHintLabel.style.color = new Color(0.7f, 0.85f, 1f, 0.75f);
-                suggestionHintLabel.style.unityFontStyleAndWeight = FontStyle.Italic;
-                suggestionHintLabel.style.fontSize = 11f;
-                suggestionHintLabel.pickingMode = PickingMode.Ignore;
-                inputContainer.Add(suggestionHintLabel);
+                _suggestionHintLabel = new Label();
+                _suggestionHintLabel.style.display = DisplayStyle.None;
+                _suggestionHintLabel.style.marginLeft = 4f;
+                _suggestionHintLabel.style.marginBottom = 2f;
+                _suggestionHintLabel.style.color = new Color(0.7f, 0.85f, 1f, 0.75f);
+                _suggestionHintLabel.style.unityFontStyleAndWeight = FontStyle.Italic;
+                _suggestionHintLabel.style.fontSize = 11f;
+                _suggestionHintLabel.pickingMode = PickingMode.Ignore;
+                _inputContainer.Add(_suggestionHintLabel);
 
-                dropdown = new DropdownField { choices = new List<string>() };
-                dropdown.style.flexGrow = 1f;
-                dropdown.style.marginLeft = 0f;
-                dropdown.style.paddingLeft = 0f;
-                dropdown.label = string.Empty;
-                dropdown.labelElement.style.display = DisplayStyle.None;
-                dropdown.RegisterValueChangedCallback(OnDropdownValueChanged);
-                inputContainer.Add(dropdown);
+                _dropdown = new DropdownField { choices = new List<string>() };
+                _dropdown.style.flexGrow = 1f;
+                _dropdown.style.marginLeft = 0f;
+                _dropdown.style.paddingLeft = 0f;
+                _dropdown.label = string.Empty;
+                _dropdown.labelElement.style.display = DisplayStyle.None;
+                _dropdown.RegisterValueChangedCallback(OnDropdownValueChanged);
+                _inputContainer.Add(_dropdown);
 
-                noResultsLabel = new Label("No results match the current search.");
-                noResultsLabel.style.display = DisplayStyle.None;
-                noResultsLabel.style.color = new StyleColor(new Color(1f, 0.4f, 0.4f));
-                noResultsLabel.style.marginLeft = 2f;
-                inputContainer.Add(noResultsLabel);
+                _noResultsLabel = new Label("No results match the current search.");
+                _noResultsLabel.style.display = DisplayStyle.None;
+                _noResultsLabel.style.color = new StyleColor(new Color(1f, 0.4f, 0.4f));
+                _noResultsLabel.style.marginLeft = 2f;
+                _inputContainer.Add(_noResultsLabel);
 
-                ApplySearchVisibility(ShouldShowSearch(lastResolvedPageSize));
+                ApplySearchVisibility(ShouldShowSearch(_lastResolvedPageSize));
 
                 RegisterCallback<AttachToPanelEvent>(_ => Undo.undoRedoPerformed += OnUndoRedo);
                 RegisterCallback<DetachFromPanelEvent>(_ => Undo.undoRedoPerformed -= OnUndoRedo);
@@ -199,17 +199,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             public void BindProperty(SerializedProperty property, string labelText)
             {
-                boundObject = property.serializedObject;
-                propertyPath = property.propertyPath;
-                isStringProperty = property.propertyType == SerializedPropertyType.String;
-                isIntegerProperty = property.propertyType == SerializedPropertyType.Integer;
+                _boundObject = property.serializedObject;
+                _propertyPath = property.propertyPath;
+                _isStringProperty = property.propertyType == SerializedPropertyType.String;
+                _isIntegerProperty = property.propertyType == SerializedPropertyType.Integer;
                 UpdateLabel(labelText, property.tooltip);
-                pageIndex = 0;
-                searchText = string.Empty;
-                suggestion = string.Empty;
+                _pageIndex = 0;
+                _searchText = string.Empty;
+                _suggestion = string.Empty;
 
-                searchField.SetValueWithoutNotify(string.Empty);
-                UpdateClearButton(searchVisible);
+                _searchField.SetValueWithoutNotify(string.Empty);
+                UpdateClearButton(_searchVisible);
                 UpdateSuggestionDisplay(string.Empty, -1, -1);
 
                 UpdateFromProperty();
@@ -217,8 +217,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             public void UnbindProperty()
             {
-                boundObject = null;
-                propertyPath = string.Empty;
+                _boundObject = null;
+                _propertyPath = string.Empty;
                 UpdateLabel(string.Empty, string.Empty);
             }
 
@@ -228,7 +228,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 label = hasLabel ? labelText : string.Empty;
                 labelElement.style.display = hasLabel ? DisplayStyle.Flex : DisplayStyle.None;
                 labelElement.tooltip = tooltip;
-                dropdown.tooltip = tooltip;
+                _dropdown.tooltip = tooltip;
             }
 
             private void OnUndoRedo()
@@ -238,20 +238,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private void OnSearchChanged(ChangeEvent<string> evt)
             {
-                if (!searchVisible)
+                if (!_searchVisible)
                 {
                     return;
                 }
 
-                searchText = evt.newValue ?? string.Empty;
-                pageIndex = 0;
-                UpdateClearButton(searchVisible);
+                _searchText = evt.newValue ?? string.Empty;
+                _pageIndex = 0;
+                UpdateClearButton(_searchVisible);
                 UpdateFromProperty();
             }
 
             private void OnSearchKeyDown(KeyDownEvent evt)
             {
-                if (!searchVisible)
+                if (!_searchVisible)
                 {
                     return;
                 }
@@ -261,7 +261,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         evt.keyCode == KeyCode.Tab
                         || evt.keyCode == KeyCode.Return
                         || evt.keyCode == KeyCode.KeypadEnter
-                    ) && !string.IsNullOrEmpty(suggestion)
+                    ) && !string.IsNullOrEmpty(_suggestion)
                 )
                 {
                     evt.PreventDefault();
@@ -274,41 +274,41 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private void OnClearClicked()
             {
-                if (!searchVisible || string.IsNullOrEmpty(searchText))
+                if (!_searchVisible || string.IsNullOrEmpty(_searchText))
                 {
                     return;
                 }
 
-                searchText = string.Empty;
-                searchField.SetValueWithoutNotify(string.Empty);
+                _searchText = string.Empty;
+                _searchField.SetValueWithoutNotify(string.Empty);
 
-                pageIndex = 0;
-                UpdateClearButton(searchVisible);
+                _pageIndex = 0;
+                UpdateClearButton(_searchVisible);
                 UpdateSuggestionDisplay(string.Empty, -1, -1);
                 UpdateFromProperty();
             }
 
             private void OnPreviousPage()
             {
-                if (pageIndex <= 0)
+                if (_pageIndex <= 0)
                 {
                     return;
                 }
 
-                pageIndex--;
+                _pageIndex--;
                 UpdateFromProperty();
             }
 
             private void OnNextPage()
             {
                 int pageSize = ResolvePageSize();
-                int pageCount = GetPageCount(pageSize, filteredIndices.Count);
-                if (pageIndex >= pageCount - 1)
+                int pageCount = GetPageCount(pageSize, _filteredIndices.Count);
+                if (_pageIndex >= pageCount - 1)
                 {
                     return;
                 }
 
-                pageIndex++;
+                _pageIndex++;
                 UpdateFromProperty();
             }
 
@@ -331,14 +331,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private void UpdateFromProperty()
             {
-                if (boundObject == null || string.IsNullOrEmpty(propertyPath))
+                if (_boundObject == null || string.IsNullOrEmpty(_propertyPath))
                 {
                     return;
                 }
 
-                boundObject.Update();
+                _boundObject.Update();
 
-                SerializedProperty property = boundObject.FindProperty(propertyPath);
+                SerializedProperty property = _boundObject.FindProperty(_propertyPath);
                 if (property == null)
                 {
                     return;
@@ -346,13 +346,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 if (property.propertyType == SerializedPropertyType.String)
                 {
-                    isStringProperty = true;
-                    isIntegerProperty = false;
+                    _isStringProperty = true;
+                    _isIntegerProperty = false;
                 }
                 else if (property.propertyType == SerializedPropertyType.Integer)
                 {
-                    isStringProperty = false;
-                    isIntegerProperty = true;
+                    _isStringProperty = false;
+                    _isIntegerProperty = true;
                 }
 
                 int pageSize = ResolvePageSize();
@@ -361,92 +361,94 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 int selectedOptionIndex = GetCurrentSelectionIndex(property);
 
-                filteredIndices.Clear();
-                string effectiveSearch = searchActive ? (searchText ?? string.Empty) : string.Empty;
+                _filteredIndices.Clear();
+                string effectiveSearch = searchActive
+                    ? (_searchText ?? string.Empty)
+                    : string.Empty;
                 bool hasSearch = searchActive && !string.IsNullOrWhiteSpace(effectiveSearch);
-                for (int i = 0; i < options.Length; i++)
+                for (int i = 0; i < _options.Length; i++)
                 {
-                    string option = options[i] ?? string.Empty;
+                    string option = _options[i] ?? string.Empty;
                     if (
                         !hasSearch
                         || option.StartsWith(effectiveSearch, StringComparison.OrdinalIgnoreCase)
                     )
                     {
-                        filteredIndices.Add(i);
+                        _filteredIndices.Add(i);
                     }
                 }
 
-                if (filteredIndices.Count == 0)
+                if (_filteredIndices.Count == 0)
                 {
-                    dropdown.choices = new List<string>();
-                    dropdown.SetValueWithoutNotify(string.Empty);
+                    _dropdown.choices = new List<string>();
+                    _dropdown.SetValueWithoutNotify(string.Empty);
                     SetValueWithoutNotify(string.Empty);
-                    dropdown.SetEnabled(false);
-                    noResultsLabel.style.display = DisplayStyle.Flex;
+                    _dropdown.SetEnabled(false);
+                    _noResultsLabel.style.display = DisplayStyle.Flex;
                     UpdatePagination(searchActive, 0, pageSize, 0);
                     UpdateSuggestionDisplay(string.Empty, -1, -1);
                     return;
                 }
 
-                noResultsLabel.style.display = DisplayStyle.None;
+                _noResultsLabel.style.display = DisplayStyle.None;
 
-                int pageCount = GetPageCount(pageSize, filteredIndices.Count);
+                int pageCount = GetPageCount(pageSize, _filteredIndices.Count);
                 if (selectedOptionIndex >= 0)
                 {
-                    int filteredIndex = filteredIndices.IndexOf(selectedOptionIndex);
+                    int filteredIndex = _filteredIndices.IndexOf(selectedOptionIndex);
                     if (filteredIndex >= 0)
                     {
-                        pageIndex = filteredIndex / pageSize;
+                        _pageIndex = filteredIndex / pageSize;
                     }
-                    else if (pageIndex >= pageCount)
+                    else if (_pageIndex >= pageCount)
                     {
-                        pageIndex = 0;
+                        _pageIndex = 0;
                     }
                 }
-                else if (pageIndex >= pageCount)
+                else if (_pageIndex >= pageCount)
                 {
-                    pageIndex = 0;
+                    _pageIndex = 0;
                 }
 
-                UpdatePagination(searchActive, pageCount, pageSize, filteredIndices.Count);
+                UpdatePagination(searchActive, pageCount, pageSize, _filteredIndices.Count);
 
-                bool paginate = searchActive && filteredIndices.Count > pageSize;
+                bool paginate = searchActive && _filteredIndices.Count > pageSize;
 
-                pageOptionIndices.Clear();
-                pageChoices.Clear();
+                _pageOptionIndices.Clear();
+                _pageChoices.Clear();
 
-                int startIndex = paginate ? pageIndex * pageSize : 0;
+                int startIndex = paginate ? _pageIndex * pageSize : 0;
                 int endIndex = paginate
-                    ? Math.Min(filteredIndices.Count, startIndex + pageSize)
-                    : filteredIndices.Count;
+                    ? Math.Min(_filteredIndices.Count, startIndex + pageSize)
+                    : _filteredIndices.Count;
 
                 for (int i = startIndex; i < endIndex; i++)
                 {
-                    int optionIndex = filteredIndices[i];
-                    pageOptionIndices.Add(optionIndex);
-                    pageChoices.Add(options[optionIndex] ?? string.Empty);
+                    int optionIndex = _filteredIndices[i];
+                    _pageOptionIndices.Add(optionIndex);
+                    _pageChoices.Add(_options[optionIndex] ?? string.Empty);
                 }
 
-                dropdown.choices = new List<string>(pageChoices);
+                _dropdown.choices = new List<string>(_pageChoices);
 
                 string dropdownValue = string.Empty;
                 if (selectedOptionIndex >= 0)
                 {
-                    int localIndex = pageOptionIndices.IndexOf(selectedOptionIndex);
+                    int localIndex = _pageOptionIndices.IndexOf(selectedOptionIndex);
                     if (localIndex >= 0)
                     {
-                        dropdownValue = options[selectedOptionIndex] ?? string.Empty;
+                        dropdownValue = _options[selectedOptionIndex] ?? string.Empty;
                     }
                 }
 
-                if (string.IsNullOrEmpty(dropdownValue) && pageChoices.Count > 0)
+                if (string.IsNullOrEmpty(dropdownValue) && _pageChoices.Count > 0)
                 {
-                    dropdownValue = pageChoices[0];
+                    dropdownValue = _pageChoices[0];
                 }
 
-                dropdown.SetValueWithoutNotify(dropdownValue);
+                _dropdown.SetValueWithoutNotify(dropdownValue);
                 SetValueWithoutNotify(dropdownValue);
-                dropdown.SetEnabled(pageChoices.Count > 0);
+                _dropdown.SetEnabled(_pageChoices.Count > 0);
 
                 UpdateSuggestion(searchActive);
             }
@@ -459,59 +461,59 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             )
             {
                 if (
-                    paginationContainer == null
-                    || previousButton == null
-                    || nextButton == null
-                    || pageLabel == null
+                    _paginationContainer == null
+                    || _previousButton == null
+                    || _nextButton == null
+                    || _pageLabel == null
                 )
                 {
                     return;
                 }
 
                 bool showPagination = searchActive && filteredCount > pageSize;
-                paginationContainer.style.display = showPagination
+                _paginationContainer.style.display = showPagination
                     ? DisplayStyle.Flex
                     : DisplayStyle.None;
 
                 if (!showPagination)
                 {
-                    pageLabel.text = string.Empty;
-                    previousButton.SetEnabled(false);
-                    nextButton.SetEnabled(false);
+                    _pageLabel.text = string.Empty;
+                    _previousButton.SetEnabled(false);
+                    _nextButton.SetEnabled(false);
                     return;
                 }
 
                 int clampedPageCount = Math.Max(1, pageCount);
-                pageIndex = Mathf.Clamp(pageIndex, 0, clampedPageCount - 1);
-                pageLabel.text = $"Page {pageIndex + 1}/{clampedPageCount}";
-                previousButton.SetEnabled(pageIndex > 0);
-                nextButton.SetEnabled(pageIndex < clampedPageCount - 1);
+                _pageIndex = Mathf.Clamp(_pageIndex, 0, clampedPageCount - 1);
+                _pageLabel.text = $"Page {_pageIndex + 1}/{clampedPageCount}";
+                _previousButton.SetEnabled(_pageIndex > 0);
+                _nextButton.SetEnabled(_pageIndex < clampedPageCount - 1);
             }
 
             private void UpdateClearButton(bool searchActive)
             {
-                if (clearButton == null)
+                if (_clearButton == null)
                 {
                     return;
                 }
 
-                clearButton.SetEnabled(searchActive && !string.IsNullOrEmpty(searchText));
+                _clearButton.SetEnabled(searchActive && !string.IsNullOrEmpty(_searchText));
             }
 
             private void UpdateSuggestion(bool searchActive)
             {
-                if (filteredIndices.Count == 0)
+                if (_filteredIndices.Count == 0)
                 {
                     UpdateSuggestionDisplay(string.Empty, -1, -1);
                     return;
                 }
 
-                bool hasSearch = searchActive && !string.IsNullOrEmpty(searchText);
-                int optionIndex = filteredIndices[0];
-                string optionValue = options[optionIndex] ?? string.Empty;
+                bool hasSearch = searchActive && !string.IsNullOrEmpty(_searchText);
+                int optionIndex = _filteredIndices[0];
+                string optionValue = _options[optionIndex] ?? string.Empty;
                 bool prefixMatch =
                     hasSearch
-                    && optionValue.StartsWith(searchText, StringComparison.OrdinalIgnoreCase);
+                    && optionValue.StartsWith(_searchText, StringComparison.OrdinalIgnoreCase);
 
                 UpdateSuggestionDisplay(optionValue, optionIndex, prefixMatch ? 0 : -1);
             }
@@ -522,55 +524,55 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 int matchPosition
             )
             {
-                suggestion = suggestionValue;
-                suggestionOptionIndex = optionIndex;
+                _suggestion = suggestionValue;
+                _suggestionOptionIndex = optionIndex;
                 bool visible =
-                    searchVisible
+                    _searchVisible
                     && !string.IsNullOrEmpty(suggestionValue)
                     && optionIndex >= 0
                     && matchPosition == 0;
 
-                if (suggestionHintLabel != null)
+                if (_suggestionHintLabel != null)
                 {
-                    suggestionHintLabel.text = visible
+                    _suggestionHintLabel.text = visible
                         ? $"↹ Tab selects: {suggestionValue}"
                         : string.Empty;
-                    suggestionHintLabel.style.display = visible
+                    _suggestionHintLabel.style.display = visible
                         ? DisplayStyle.Flex
                         : DisplayStyle.None;
                 }
 
                 if (!visible)
                 {
-                    suggestionOptionIndex = -1;
+                    _suggestionOptionIndex = -1;
                 }
             }
 
             private void AcceptSuggestion(bool commitSelection)
             {
                 if (
-                    !searchVisible
-                    || string.IsNullOrEmpty(suggestion)
-                    || searchField == null
-                    || suggestionOptionIndex < 0
+                    !_searchVisible
+                    || string.IsNullOrEmpty(_suggestion)
+                    || _searchField == null
+                    || _suggestionOptionIndex < 0
                 )
                 {
                     return;
                 }
 
-                string previous = searchText ?? string.Empty;
+                string previous = _searchText ?? string.Empty;
                 int originalLength = previous.Length;
-                int optionIndexToApply = commitSelection ? suggestionOptionIndex : -1;
+                int optionIndexToApply = commitSelection ? _suggestionOptionIndex : -1;
 
-                searchText = suggestion;
-                searchField.SetValueWithoutNotify(suggestion);
-                int selectionStart = Mathf.Clamp(originalLength, 0, suggestion.Length);
-                searchField.schedule.Execute(() =>
+                _searchText = _suggestion;
+                _searchField.SetValueWithoutNotify(_suggestion);
+                int selectionStart = Mathf.Clamp(originalLength, 0, _suggestion.Length);
+                _searchField.schedule.Execute(() =>
                 {
-                    searchField.Focus();
-                    searchField.SelectRange(selectionStart, suggestion.Length);
+                    _searchField.Focus();
+                    _searchField.SelectRange(selectionStart, _suggestion.Length);
                 });
-                UpdateClearButton(searchVisible);
+                UpdateClearButton(_searchVisible);
                 UpdateSuggestionDisplay(string.Empty, -1, -1);
                 UpdateFromProperty();
 
@@ -583,10 +585,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private int ResolvePageSize()
             {
                 int resolved = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
-                if (resolved != lastResolvedPageSize)
+                if (resolved != _lastResolvedPageSize)
                 {
-                    lastResolvedPageSize = resolved;
-                    pageIndex = 0;
+                    _lastResolvedPageSize = resolved;
+                    _pageIndex = 0;
                 }
 
                 return resolved;
@@ -594,82 +596,82 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private bool ShouldShowSearch(int pageSize)
             {
-                return options.Length > pageSize;
+                return _options.Length > pageSize;
             }
 
             private void ApplySearchVisibility(bool visible)
             {
-                if (searchRow == null)
+                if (_searchRow == null)
                 {
                     return;
                 }
 
-                searchVisible = visible;
-                searchRow.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+                _searchVisible = visible;
+                _searchRow.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
 
-                if (dropdown != null)
+                if (_dropdown != null)
                 {
-                    dropdown.style.marginTop = visible ? 2f : 0f;
+                    _dropdown.style.marginTop = visible ? 2f : 0f;
                 }
 
                 if (!visible)
                 {
-                    if (!string.IsNullOrEmpty(searchText))
+                    if (!string.IsNullOrEmpty(_searchText))
                     {
-                        searchText = string.Empty;
-                        searchField.SetValueWithoutNotify(string.Empty);
+                        _searchText = string.Empty;
+                        _searchField.SetValueWithoutNotify(string.Empty);
                     }
 
                     UpdateSuggestionDisplay(string.Empty, -1, -1);
-                    suggestionOptionIndex = -1;
+                    _suggestionOptionIndex = -1;
 
-                    if (paginationContainer != null)
+                    if (_paginationContainer != null)
                     {
-                        paginationContainer.style.display = DisplayStyle.None;
+                        _paginationContainer.style.display = DisplayStyle.None;
                     }
 
-                    if (previousButton != null)
+                    if (_previousButton != null)
                     {
-                        previousButton.SetEnabled(false);
+                        _previousButton.SetEnabled(false);
                     }
 
-                    if (nextButton != null)
+                    if (_nextButton != null)
                     {
-                        nextButton.SetEnabled(false);
+                        _nextButton.SetEnabled(false);
                     }
                 }
 
                 UpdateClearButton(visible);
-                if (!visible && suggestionHintLabel != null)
+                if (!visible && _suggestionHintLabel != null)
                 {
-                    suggestionHintLabel.text = string.Empty;
-                    suggestionHintLabel.style.display = DisplayStyle.None;
+                    _suggestionHintLabel.text = string.Empty;
+                    _suggestionHintLabel.style.display = DisplayStyle.None;
                 }
             }
 
             private int ResolveOptionIndex(string optionValue)
             {
-                int localIndex = pageChoices.IndexOf(optionValue);
-                if (localIndex >= 0 && localIndex < pageOptionIndices.Count)
+                int localIndex = _pageChoices.IndexOf(optionValue);
+                if (localIndex >= 0 && localIndex < _pageOptionIndices.Count)
                 {
-                    return pageOptionIndices[localIndex];
+                    return _pageOptionIndices[localIndex];
                 }
 
-                return Array.IndexOf(options, optionValue);
+                return Array.IndexOf(_options, optionValue);
             }
 
             private int GetCurrentSelectionIndex(SerializedProperty property)
             {
-                if (isStringProperty)
+                if (_isStringProperty)
                 {
                     string value = property.stringValue ?? string.Empty;
-                    return Array.IndexOf(options, value);
+                    return Array.IndexOf(_options, value);
                 }
 
-                if (isIntegerProperty)
+                if (_isIntegerProperty)
                 {
                     int index = property.intValue;
-                    if (index < 0 || index >= options.Length)
+                    if (index < 0 || index >= _options.Length)
                     {
                         return -1;
                     }
@@ -692,28 +694,28 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private void ApplySelection(int optionIndex)
             {
-                if (boundObject == null || string.IsNullOrEmpty(propertyPath))
+                if (_boundObject == null || string.IsNullOrEmpty(_propertyPath))
                 {
                     return;
                 }
 
-                SerializedObject serializedObject = boundObject;
+                SerializedObject serializedObject = _boundObject;
                 Undo.RecordObjects(serializedObject.targetObjects, "Change String In List");
                 serializedObject.Update();
 
-                SerializedProperty property = serializedObject.FindProperty(propertyPath);
+                SerializedProperty property = serializedObject.FindProperty(_propertyPath);
                 if (property == null)
                 {
                     return;
                 }
 
-                string selectedValue = options[optionIndex] ?? string.Empty;
+                string selectedValue = _options[optionIndex] ?? string.Empty;
 
-                if (isStringProperty)
+                if (_isStringProperty)
                 {
                     property.stringValue = selectedValue;
                 }
-                else if (isIntegerProperty)
+                else if (_isIntegerProperty)
                 {
                     property.intValue = optionIndex;
                 }
@@ -726,54 +728,54 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private sealed class StringInListArrayElement : VisualElement
         {
-            private readonly string[] options;
-            private readonly SerializedObject serializedObject;
-            private readonly string propertyPath;
-            private readonly List<int> indices = new List<int>();
-            private readonly ListView listView;
-            private readonly ToolbarButton addButton;
-            private readonly ToolbarButton removeButton;
+            private readonly string[] _options;
+            private readonly SerializedObject _serializedObject;
+            private readonly string _propertyPath;
+            private readonly List<int> _indices = new();
+            private readonly ListView _listView;
+            private readonly ToolbarButton _addButton;
+            private readonly ToolbarButton _removeButton;
 
             public StringInListArrayElement(SerializedProperty property, string[] options)
             {
-                this.options = options ?? Array.Empty<string>();
-                serializedObject = property.serializedObject;
-                propertyPath = property.propertyPath;
+                this._options = options ?? Array.Empty<string>();
+                _serializedObject = property.serializedObject;
+                _propertyPath = property.propertyPath;
 
                 AddToClassList("unity-base-field");
                 style.flexDirection = FlexDirection.Column;
 
-                Label header = new Label(property.displayName);
+                Label header = new(property.displayName);
                 header.AddToClassList("unity-base-field__label");
                 header.style.unityFontStyleAndWeight = FontStyle.Bold;
                 header.style.marginBottom = 2f;
                 Add(header);
 
-                Toolbar toolbar = new Toolbar();
+                Toolbar toolbar = new();
                 toolbar.style.marginLeft = -2f;
                 toolbar.style.marginBottom = 4f;
 
-                addButton = new ToolbarButton(AddItem) { text = "Add" };
-                removeButton = new ToolbarButton(RemoveSelected) { text = "Remove" };
-                removeButton.SetEnabled(false);
+                _addButton = new ToolbarButton(AddItem) { text = "Add" };
+                _removeButton = new ToolbarButton(RemoveSelected) { text = "Remove" };
+                _removeButton.SetEnabled(false);
 
-                toolbar.Add(addButton);
-                toolbar.Add(removeButton);
+                toolbar.Add(_addButton);
+                toolbar.Add(_removeButton);
                 Add(toolbar);
 
-                listView = new ListView(indices, -1f, MakeItem, BindItem);
-                listView.unbindItem = UnbindItem;
-                listView.name = "StringInListArray";
-                listView.showAlternatingRowBackgrounds = AlternatingRowBackground.All;
-                listView.selectionType = SelectionType.Single;
-                listView.reorderable = true;
-                listView.virtualizationMethod = CollectionVirtualizationMethod.DynamicHeight;
-                listView.style.flexGrow = 1f;
-                listView.itemIndexChanged += OnItemIndexChanged;
-                listView.itemsRemoved += OnItemsRemoved;
-                listView.selectionChanged += OnSelectionChanged;
-                listView.RegisterCallback<KeyDownEvent>(OnListKeyDown);
-                Add(listView);
+                _listView = new ListView(_indices, -1f, MakeItem, BindItem);
+                _listView.unbindItem = UnbindItem;
+                _listView.name = "StringInListArray";
+                _listView.showAlternatingRowBackgrounds = AlternatingRowBackground.All;
+                _listView.selectionType = SelectionType.Single;
+                _listView.reorderable = true;
+                _listView.virtualizationMethod = CollectionVirtualizationMethod.DynamicHeight;
+                _listView.style.flexGrow = 1f;
+                _listView.itemIndexChanged += OnItemIndexChanged;
+                _listView.itemsRemoved += OnItemsRemoved;
+                _listView.selectionChanged += OnSelectionChanged;
+                _listView.RegisterCallback<KeyDownEvent>(OnListKeyDown);
+                Add(_listView);
 
                 RegisterCallback<AttachToPanelEvent>(_ => Undo.undoRedoPerformed += OnUndoRedo);
                 RegisterCallback<DetachFromPanelEvent>(_ => Undo.undoRedoPerformed -= OnUndoRedo);
@@ -783,7 +785,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private VisualElement MakeItem()
             {
-                StringInListSelector selector = new StringInListSelector(options);
+                StringInListSelector selector = new(_options);
                 selector.style.marginBottom = 4f;
                 return selector;
             }
@@ -821,8 +823,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return;
                 }
 
-                Undo.RecordObjects(serializedObject.targetObjects, "Add String Entry");
-                serializedObject.Update();
+                Undo.RecordObjects(_serializedObject.targetObjects, "Add String Entry");
+                _serializedObject.Update();
 
                 int newIndex = arrayProperty.arraySize;
                 arrayProperty.arraySize++;
@@ -836,14 +838,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     newElement.intValue = 0;
                 }
 
-                serializedObject.ApplyModifiedProperties();
+                _serializedObject.ApplyModifiedProperties();
                 Refresh();
-                listView.selectedIndex = indices.Count - 1;
+                _listView.selectedIndex = _indices.Count - 1;
             }
 
             private void RemoveSelected()
             {
-                int selectedIndex = listView.selectedIndex;
+                int selectedIndex = _listView.selectedIndex;
                 if (selectedIndex < 0)
                 {
                     return;
@@ -855,15 +857,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return;
                 }
 
-                Undo.RecordObjects(serializedObject.targetObjects, "Remove String Entry");
-                serializedObject.Update();
+                Undo.RecordObjects(_serializedObject.targetObjects, "Remove String Entry");
+                _serializedObject.Update();
                 arrayProperty.DeleteArrayElementAtIndex(selectedIndex);
-                serializedObject.ApplyModifiedProperties();
+                _serializedObject.ApplyModifiedProperties();
                 Refresh();
 
-                if (indices.Count > 0)
+                if (_indices.Count > 0)
                 {
-                    listView.selectedIndex = Mathf.Clamp(selectedIndex, 0, indices.Count - 1);
+                    _listView.selectedIndex = Mathf.Clamp(selectedIndex, 0, _indices.Count - 1);
                 }
             }
 
@@ -880,12 +882,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return;
                 }
 
-                Undo.RecordObjects(serializedObject.targetObjects, "Reorder String Entries");
-                serializedObject.Update();
+                Undo.RecordObjects(_serializedObject.targetObjects, "Reorder String Entries");
+                _serializedObject.Update();
                 arrayProperty.MoveArrayElement(oldIndex, newIndex);
-                serializedObject.ApplyModifiedProperties();
+                _serializedObject.ApplyModifiedProperties();
                 Refresh();
-                listView.selectedIndex = newIndex;
+                _listView.selectedIndex = newIndex;
             }
 
             private void OnItemsRemoved(IEnumerable<int> removedIndices)
@@ -895,7 +897,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private void OnSelectionChanged(IEnumerable<object> _)
             {
-                removeButton.SetEnabled(listView.selectedIndex >= 0 && indices.Count > 0);
+                _removeButton.SetEnabled(_listView.selectedIndex >= 0 && _indices.Count > 0);
             }
 
             private void OnListKeyDown(KeyDownEvent evt)
@@ -914,26 +916,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private SerializedProperty GetArrayProperty()
             {
-                return serializedObject.FindProperty(propertyPath);
+                return _serializedObject.FindProperty(_propertyPath);
             }
 
             private void Refresh()
             {
-                serializedObject.Update();
+                _serializedObject.Update();
                 SerializedProperty arrayProperty = GetArrayProperty();
 
-                indices.Clear();
+                _indices.Clear();
                 if (arrayProperty != null)
                 {
                     int size = arrayProperty.arraySize;
                     for (int i = 0; i < size; i++)
                     {
-                        indices.Add(i);
+                        _indices.Add(i);
                     }
                 }
 
-                listView.RefreshItems();
-                removeButton.SetEnabled(listView.selectedIndex >= 0 && indices.Count > 0);
+                _listView.RefreshItems();
+                _removeButton.SetEnabled(_listView.selectedIndex >= 0 && _indices.Count > 0);
             }
         }
     }
