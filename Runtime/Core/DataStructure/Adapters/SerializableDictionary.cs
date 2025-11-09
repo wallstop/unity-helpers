@@ -119,14 +119,31 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
 
             _dictionary.Clear();
-            HashSet<TKey> observedKeys = new HashSet<TKey>();
+            HashSet<TKey> observedKeys = new();
             bool hasDuplicateKeys = false;
+            bool encounteredNullReference = false;
+            bool keySupportsNullCheck = TypeSupportsNullReferences(typeof(TKey));
+            bool valueSupportsNullCheck = TypeSupportsNullReferences(typeof(TValue));
             int length = _keys.Length;
 
             for (int index = 0; index < length; index++)
             {
                 TKey key = _keys[index];
                 TValue value = GetValue(_values, index);
+
+                if (keySupportsNullCheck && ReferenceEquals(key, null))
+                {
+                    encounteredNullReference = true;
+                    LogNullReferenceSkip("key", index);
+                    continue;
+                }
+
+                if (valueSupportsNullCheck && ReferenceEquals(value, null))
+                {
+                    encounteredNullReference = true;
+                    LogNullReferenceSkip("value", index);
+                    continue;
+                }
 
                 if (!hasDuplicateKeys && !observedKeys.Add(key))
                 {
@@ -136,13 +153,26 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 _dictionary[key] = value;
             }
 
-            _preserveSerializedEntries = hasDuplicateKeys;
+            _preserveSerializedEntries = hasDuplicateKeys || encounteredNullReference;
 
             if (!hasDuplicateKeys)
             {
                 _keys = null;
                 _values = null;
             }
+        }
+
+        private static bool TypeSupportsNullReferences(Type type)
+        {
+            return type != null
+                && (!type.IsValueType || typeof(UnityEngine.Object).IsAssignableFrom(type));
+        }
+
+        private static void LogNullReferenceSkip(string component, int index)
+        {
+            Debug.LogError(
+                $"SerializableDictionary<{typeof(TKey).FullName}, {typeof(TValue).FullName}> skipped serialized entry at index {index} because the {component} reference was null."
+            );
         }
 
         public void OnBeforeSerialize()
@@ -517,8 +547,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         protected override void SetValue(TValueCache[] cache, int index, TValue value)
         {
-            cache[index] = new TValueCache();
-            cache[index].Data = value;
+            cache[index] = new TValueCache { Data = value };
         }
     }
 }

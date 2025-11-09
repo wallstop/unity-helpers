@@ -511,15 +511,15 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                CapabilityKey<FieldInfo> expressionsKey = new CapabilityKey<FieldInfo>(
+                CapabilityKey<FieldInfo> expressionsKey = new(
                     field,
                     ReflectionDelegateStrategy.Expressions
                 );
-                CapabilityKey<FieldInfo> dynamicIlKey = new CapabilityKey<FieldInfo>(
+                CapabilityKey<FieldInfo> dynamicIlKey = new(
                     field,
                     ReflectionDelegateStrategy.DynamicIl
                 );
-                CapabilityKey<FieldInfo> reflectionKey = new CapabilityKey<FieldInfo>(
+                CapabilityKey<FieldInfo> reflectionKey = new(
                     field,
                     ReflectionDelegateStrategy.Reflection
                 );
@@ -572,15 +572,15 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                CapabilityKey<FieldInfo> expressionsKey = new CapabilityKey<FieldInfo>(
+                CapabilityKey<FieldInfo> expressionsKey = new(
                     field,
                     ReflectionDelegateStrategy.Expressions
                 );
-                CapabilityKey<FieldInfo> dynamicIlKey = new CapabilityKey<FieldInfo>(
+                CapabilityKey<FieldInfo> dynamicIlKey = new(
                     field,
                     ReflectionDelegateStrategy.DynamicIl
                 );
-                CapabilityKey<FieldInfo> reflectionKey = new CapabilityKey<FieldInfo>(
+                CapabilityKey<FieldInfo> reflectionKey = new(
                     field,
                     ReflectionDelegateStrategy.Reflection
                 );
@@ -629,15 +629,15 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                CapabilityKey<FieldInfo> expressionsKey = new CapabilityKey<FieldInfo>(
+                CapabilityKey<FieldInfo> expressionsKey = new(
                     field,
                     ReflectionDelegateStrategy.Expressions
                 );
-                CapabilityKey<FieldInfo> dynamicIlKey = new CapabilityKey<FieldInfo>(
+                CapabilityKey<FieldInfo> dynamicIlKey = new(
                     field,
                     ReflectionDelegateStrategy.DynamicIl
                 );
-                CapabilityKey<FieldInfo> reflectionKey = new CapabilityKey<FieldInfo>(
+                CapabilityKey<FieldInfo> reflectionKey = new(
                     field,
                     ReflectionDelegateStrategy.Reflection
                 );
@@ -690,15 +690,15 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return false;
                 }
 
-                CapabilityKey<FieldInfo> expressionsKey = new CapabilityKey<FieldInfo>(
+                CapabilityKey<FieldInfo> expressionsKey = new(
                     field,
                     ReflectionDelegateStrategy.Expressions
                 );
-                CapabilityKey<FieldInfo> dynamicIlKey = new CapabilityKey<FieldInfo>(
+                CapabilityKey<FieldInfo> dynamicIlKey = new(
                     field,
                     ReflectionDelegateStrategy.DynamicIl
                 );
-                CapabilityKey<FieldInfo> reflectionKey = new CapabilityKey<FieldInfo>(
+                CapabilityKey<FieldInfo> reflectionKey = new(
                     field,
                     ReflectionDelegateStrategy.Reflection
                 );
@@ -1522,7 +1522,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(field, strategy);
+                CapabilityKey<FieldInfo> key = new(field, strategy);
                 if (TryGetFieldGetterFromCache(key, out Func<object, object> cached))
                 {
                     getter = cached;
@@ -1549,10 +1549,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             private static Func<object, object> GetOrCreateReflectionFieldGetter(FieldInfo field)
             {
-                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(
-                    field,
-                    ReflectionDelegateStrategy.Reflection
-                );
+                CapabilityKey<FieldInfo> key = new(field, ReflectionDelegateStrategy.Reflection);
                 if (TryGetFieldGetterFromCache(key, out Func<object, object> cached))
                 {
                     return cached;
@@ -1621,7 +1618,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(field, strategy);
+                CapabilityKey<FieldInfo> key = new(field, strategy);
                 if (TryGetFieldSetterFromCache(key, out Action<object, object> cached))
                 {
                     setter = cached;
@@ -1648,10 +1645,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             private static Action<object, object> GetOrCreateReflectionFieldSetter(FieldInfo field)
             {
-                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(
-                    field,
-                    ReflectionDelegateStrategy.Reflection
-                );
+                CapabilityKey<FieldInfo> key = new(field, ReflectionDelegateStrategy.Reflection);
                 if (TryGetFieldSetterFromCache(key, out Action<object, object> cached))
                 {
                     return cached;
@@ -1720,7 +1714,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(field, strategy);
+                CapabilityKey<FieldInfo> key = new(field, strategy);
                 if (TryGetStaticFieldGetterFromCache(key, out Func<object> cached))
                 {
                     getter = cached;
@@ -1747,10 +1741,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             private static Func<object> GetOrCreateReflectionStaticFieldGetter(FieldInfo field)
             {
-                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(
-                    field,
-                    ReflectionDelegateStrategy.Reflection
-                );
+                CapabilityKey<FieldInfo> key = new(field, ReflectionDelegateStrategy.Reflection);
                 if (TryGetStaticFieldGetterFromCache(key, out Func<object> cached))
                 {
                     return cached;
@@ -1814,7 +1805,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(field, strategy);
+                CapabilityKey<FieldInfo> key = new(field, strategy);
                 if (TryGetStaticFieldSetterFromCache(key, out Action<object> cached))
                 {
                     setter = cached;
@@ -1841,10 +1832,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             private static Action<object> GetOrCreateReflectionStaticFieldSetter(FieldInfo field)
             {
-                CapabilityKey<FieldInfo> key = new CapabilityKey<FieldInfo>(
-                    field,
-                    ReflectionDelegateStrategy.Reflection
-                );
+                CapabilityKey<FieldInfo> key = new(field, ReflectionDelegateStrategy.Reflection);
                 if (TryGetStaticFieldSetterFromCache(key, out Action<object> cached))
                 {
                     return cached;
@@ -1908,11 +1896,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<(FieldInfo field, Type instance, Type value)> key =
-                    new CapabilityKey<(FieldInfo field, Type instance, Type value)>(
-                        (field, typeof(TInstance), typeof(TValue)),
-                        strategy
-                    );
+                CapabilityKey<(FieldInfo field, Type instance, Type value)> key = new(
+                    (field, typeof(TInstance), typeof(TValue)),
+                    strategy
+                );
                 if (TryGetTypedFieldGetterFromCache(key, out Delegate cached))
                 {
                     getter = (Func<TInstance, TValue>)cached;
@@ -1945,11 +1932,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 TValue
             >(FieldInfo field)
             {
-                CapabilityKey<(FieldInfo field, Type instance, Type value)> key =
-                    new CapabilityKey<(FieldInfo field, Type instance, Type value)>(
-                        (field, typeof(TInstance), typeof(TValue)),
-                        ReflectionDelegateStrategy.Reflection
-                    );
+                CapabilityKey<(FieldInfo field, Type instance, Type value)> key = new(
+                    (field, typeof(TInstance), typeof(TValue)),
+                    ReflectionDelegateStrategy.Reflection
+                );
                 if (TryGetTypedFieldGetterFromCache(key, out Delegate cached))
                 {
                     return (Func<TInstance, TValue>)cached;
@@ -2038,11 +2024,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<(FieldInfo field, Type instance, Type value)> key =
-                    new CapabilityKey<(FieldInfo field, Type instance, Type value)>(
-                        (field, typeof(TInstance), typeof(TValue)),
-                        strategy
-                    );
+                CapabilityKey<(FieldInfo field, Type instance, Type value)> key = new(
+                    (field, typeof(TInstance), typeof(TValue)),
+                    strategy
+                );
                 if (TryGetTypedFieldSetterFromCache(key, out Delegate cached))
                 {
                     setter = (FieldSetter<TInstance, TValue>)cached;
@@ -2075,11 +2060,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 TValue
             >(FieldInfo field)
             {
-                CapabilityKey<(FieldInfo field, Type instance, Type value)> key =
-                    new CapabilityKey<(FieldInfo field, Type instance, Type value)>(
-                        (field, typeof(TInstance), typeof(TValue)),
-                        ReflectionDelegateStrategy.Reflection
-                    );
+                CapabilityKey<(FieldInfo field, Type instance, Type value)> key = new(
+                    (field, typeof(TInstance), typeof(TValue)),
+                    ReflectionDelegateStrategy.Reflection
+                );
                 if (TryGetTypedFieldSetterFromCache(key, out Delegate cached))
                 {
                     return (FieldSetter<TInstance, TValue>)cached;
@@ -2178,10 +2162,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<(FieldInfo field, Type value)> key = new CapabilityKey<(
-                    FieldInfo field,
-                    Type value
-                )>((field, typeof(TValue)), strategy);
+                CapabilityKey<(FieldInfo field, Type value)> key = new(
+                    (field, typeof(TValue)),
+                    strategy
+                );
                 if (TryGetTypedStaticFieldGetterFromCache(key, out Delegate cached))
                 {
                     getter = (Func<TValue>)cached;
@@ -2210,10 +2194,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 FieldInfo field
             )
             {
-                CapabilityKey<(FieldInfo field, Type value)> key = new CapabilityKey<(
-                    FieldInfo field,
-                    Type value
-                )>((field, typeof(TValue)), ReflectionDelegateStrategy.Reflection);
+                CapabilityKey<(FieldInfo field, Type value)> key = new(
+                    (field, typeof(TValue)),
+                    ReflectionDelegateStrategy.Reflection
+                );
                 if (TryGetTypedStaticFieldGetterFromCache(key, out Delegate cached))
                 {
                     return (Func<TValue>)cached;
@@ -2286,10 +2270,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<(FieldInfo field, Type value)> key = new CapabilityKey<(
-                    FieldInfo field,
-                    Type value
-                )>((field, typeof(TValue)), strategy);
+                CapabilityKey<(FieldInfo field, Type value)> key = new(
+                    (field, typeof(TValue)),
+                    strategy
+                );
                 if (TryGetTypedStaticFieldSetterFromCache(key, out Delegate cached))
                 {
                     setter = (Action<TValue>)cached;
@@ -2318,10 +2302,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 FieldInfo field
             )
             {
-                CapabilityKey<(FieldInfo field, Type value)> key = new CapabilityKey<(
-                    FieldInfo field,
-                    Type value
-                )>((field, typeof(TValue)), ReflectionDelegateStrategy.Reflection);
+                CapabilityKey<(FieldInfo field, Type value)> key = new(
+                    (field, typeof(TValue)),
+                    ReflectionDelegateStrategy.Reflection
+                );
                 if (TryGetTypedStaticFieldSetterFromCache(key, out Delegate cached))
                 {
                     return (Action<TValue>)cached;
@@ -2394,10 +2378,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
-                    property,
-                    strategy
-                );
+                CapabilityKey<PropertyInfo> key = new(property, strategy);
                 if (TryGetPropertyGetterFromCache(key, out Func<object, object> cached))
                 {
                     getter = cached;
@@ -2426,7 +2407,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 PropertyInfo property
             )
             {
-                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
+                CapabilityKey<PropertyInfo> key = new(
                     property,
                     ReflectionDelegateStrategy.Reflection
                 );
@@ -2465,10 +2446,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
-                    property,
-                    strategy
-                );
+                CapabilityKey<PropertyInfo> key = new(property, strategy);
                 if (TryGetPropertySetterFromCache(key, out Action<object, object> cached))
                 {
                     setter = cached;
@@ -2517,10 +2495,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
-                    property,
-                    strategy
-                );
+                CapabilityKey<PropertyInfo> key = new(property, strategy);
                 if (TryGetIndexerGetterFromCache(key, out Func<object, object[], object> cached))
                 {
                     getter = cached;
@@ -2549,7 +2524,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 PropertyInfo property
             )
             {
-                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
+                CapabilityKey<PropertyInfo> key = new(
                     property,
                     ReflectionDelegateStrategy.Reflection
                 );
@@ -2593,10 +2568,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
-                    property,
-                    strategy
-                );
+                CapabilityKey<PropertyInfo> key = new(property, strategy);
                 if (TryGetIndexerSetterFromCache(key, out Action<object, object, object[]> cached))
                 {
                     setter = cached;
@@ -2628,7 +2600,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 PropertyInfo property
             )
             {
-                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
+                CapabilityKey<PropertyInfo> key = new(
                     property,
                     ReflectionDelegateStrategy.Reflection
                 );
@@ -2652,7 +2624,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 PropertyInfo property
             )
             {
-                CapabilityKey<PropertyInfo> key = new CapabilityKey<PropertyInfo>(
+                CapabilityKey<PropertyInfo> key = new(
                     property,
                     ReflectionDelegateStrategy.Reflection
                 );
@@ -2691,10 +2663,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<ConstructorInfo> key = new CapabilityKey<ConstructorInfo>(
-                    ctor,
-                    strategy
-                );
+                CapabilityKey<ConstructorInfo> key = new(ctor, strategy);
                 if (TryGetConstructorInvokerFromCache(key, out Func<object[], object> cached))
                 {
                     invoker = cached;
@@ -2723,7 +2692,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 ConstructorInfo ctor
             )
             {
-                CapabilityKey<ConstructorInfo> key = new CapabilityKey<ConstructorInfo>(
+                CapabilityKey<ConstructorInfo> key = new(
                     ctor,
                     ReflectionDelegateStrategy.Reflection
                 );
@@ -2765,10 +2734,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<ConstructorInfo> key = new CapabilityKey<ConstructorInfo>(
-                    ctor,
-                    strategy
-                );
+                CapabilityKey<ConstructorInfo> key = new(ctor, strategy);
                 if (TryGetParameterlessConstructorFromCache(key, out Func<object> cached))
                 {
                     creator = cached;
@@ -2797,7 +2763,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 ConstructorInfo ctor
             )
             {
-                CapabilityKey<ConstructorInfo> key = new CapabilityKey<ConstructorInfo>(
+                CapabilityKey<ConstructorInfo> key = new(
                     ctor,
                     ReflectionDelegateStrategy.Reflection
                 );
@@ -2837,10 +2803,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<(ConstructorInfo ctor, Type instance)> key = new CapabilityKey<(
-                    ConstructorInfo ctor,
-                    Type instance
-                )>((ctor, instanceType), strategy);
+                CapabilityKey<(ConstructorInfo ctor, Type instance)> key = new(
+                    (ctor, instanceType),
+                    strategy
+                );
                 if (TryGetTypedParameterlessConstructorFromCache(key, out Delegate cached))
                 {
                     creator = (Func<T>)cached;
@@ -2869,10 +2835,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 ConstructorInfo ctor
             )
             {
-                CapabilityKey<(ConstructorInfo ctor, Type instance)> key = new CapabilityKey<(
-                    ConstructorInfo ctor,
-                    Type instance
-                )>((ctor, typeof(T)), ReflectionDelegateStrategy.Reflection);
+                CapabilityKey<(ConstructorInfo ctor, Type instance)> key = new(
+                    (ctor, typeof(T)),
+                    ReflectionDelegateStrategy.Reflection
+                );
                 if (TryGetTypedParameterlessConstructorFromCache(key, out Delegate cached))
                 {
                     return (Func<T>)cached;
@@ -4204,7 +4170,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<MethodInfo> key = new CapabilityKey<MethodInfo>(method, strategy);
+                CapabilityKey<MethodInfo> key = new(method, strategy);
                 if (TryGetMethodInvokerFromCache(key, out Func<object, object[], object> cached))
                 {
                     invoker = cached;
@@ -4233,10 +4199,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 MethodInfo method
             )
             {
-                CapabilityKey<MethodInfo> key = new CapabilityKey<MethodInfo>(
-                    method,
-                    ReflectionDelegateStrategy.Reflection
-                );
+                CapabilityKey<MethodInfo> key = new(method, ReflectionDelegateStrategy.Reflection);
                 if (TryGetMethodInvokerFromCache(key, out Func<object, object[], object> cached))
                 {
                     return cached;
@@ -4277,7 +4240,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
 #endif
 
-                CapabilityKey<MethodInfo> key = new CapabilityKey<MethodInfo>(method, strategy);
+                CapabilityKey<MethodInfo> key = new(method, strategy);
                 if (TryGetStaticMethodInvokerFromCache(key, out Func<object[], object> cached))
                 {
                     invoker = cached;
@@ -4306,10 +4269,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 MethodInfo method
             )
             {
-                CapabilityKey<MethodInfo> key = new CapabilityKey<MethodInfo>(
-                    method,
-                    ReflectionDelegateStrategy.Reflection
-                );
+                CapabilityKey<MethodInfo> key = new(method, ReflectionDelegateStrategy.Reflection);
                 if (TryGetStaticMethodInvokerFromCache(key, out Func<object[], object> cached))
                 {
                     return cached;

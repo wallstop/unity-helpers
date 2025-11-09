@@ -95,7 +95,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
     public readonly struct RandomGeneratorMetadata
     {
-        public static readonly RandomGeneratorMetadata Empty = new RandomGeneratorMetadata(
+        public static readonly RandomGeneratorMetadata Empty = new(
             typeof(object),
             RandomQuality.Unknown,
             string.Empty,

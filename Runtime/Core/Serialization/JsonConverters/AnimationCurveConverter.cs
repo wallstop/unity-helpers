@@ -56,9 +56,11 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 {
                     AnimationCurve curve = new(
                         (keys == null) ? Array.Empty<Keyframe>() : keys.ToArray()
-                    );
-                    curve.preWrapMode = havePre ? pre : WrapMode.ClampForever;
-                    curve.postWrapMode = havePost ? post : WrapMode.ClampForever;
+                    )
+                    {
+                        preWrapMode = havePre ? pre : WrapMode.ClampForever,
+                        postWrapMode = havePost ? post : WrapMode.ClampForever,
+                    };
                     return curve;
                 }
 

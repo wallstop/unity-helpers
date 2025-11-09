@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using System.Collections.Generic;
     using System.Globalization;
     using System.Reflection;
+    using System.Text;
     using UnityEditor;
     using UnityEditor.AnimatedValues;
     using UnityEditorInternal;
@@ -23,6 +24,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private readonly Dictionary<string, ListPageCache> _pageCaches = new();
         private readonly Dictionary<string, KeyIndexCache> _keyIndexCaches = new();
         private readonly Dictionary<string, DuplicateKeyState> _duplicateStates = new();
+        private readonly Dictionary<string, NullKeyState> _nullKeyStates = new();
 
         private const float PendingSectionPadding = 6f;
         private const float PendingAddButtonWidth = 110f;
@@ -47,10 +49,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Color DuplicatePrimaryColor = new(0.99f, 0.82f, 0.35f, 0.55f);
         private static readonly Color DuplicateSecondaryColor = new(0.96f, 0.45f, 0.45f, 0.65f);
         private static readonly Color DuplicateOutlineColor = new(0.65f, 0.18f, 0.18f, 0.9f);
+        private static readonly Color NullKeyHighlightColor = new(0.84f, 0.2f, 0.2f, 0.6f);
         private static readonly Dictionary<string, GUIStyle> ButtonStyleCache = new();
         private static readonly Dictionary<Color, Texture2D> ColorTextureCache = new();
         private static readonly GUIContent DuplicateTooltipContent = new();
         private static readonly GUIContent DuplicateIconContentCache = new();
+        private static readonly GUIContent NullKeyTooltipContent = new();
+        private static readonly GUIContent NullKeyIconContentCache = new();
         private static readonly GUIContent DuplicateIconTemplate = EditorGUIUtility.IconContent(
             "console.warnicon.sml"
         );
@@ -95,6 +100,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 keysProperty,
                 keyType
             );
+            NullKeyState nullKeyState = RefreshNullKeyState(cacheKey, keysProperty, keyType);
 
             Rect foldoutRect = new(
                 position.x,
@@ -104,15 +110,55 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             );
             property.isExpanded = EditorGUI.Foldout(foldoutRect, property.isExpanded, label, true);
 
+            float iconSize = EditorGUIUtility.singleLineHeight;
+            float iconPadding = 4f;
+            float nextIconX = Mathf.Max(position.x, position.xMax - iconSize - iconPadding);
+
             if (duplicateState is { HasDuplicates: true })
             {
-                DrawDuplicateFoldoutBadge(position, foldoutRect, duplicateState.SummaryTooltip);
+                Rect iconRect = new(nextIconX, foldoutRect.y, iconSize, iconSize);
+                GUI.Label(iconRect, GetDuplicateIconContent(duplicateState.SummaryTooltip));
+                nextIconX -= iconSize + iconPadding;
+            }
+
+            if (nullKeyState is { HasNullKeys: true })
+            {
+                float clampedX = Mathf.Max(position.x, nextIconX);
+                Rect iconRect = new(clampedX, foldoutRect.y, iconSize, iconSize);
+                GUI.Label(iconRect, GetNullKeyIconContent(nullKeyState.WarningMessage));
             }
 
             float y = foldoutRect.yMax + EditorGUIUtility.standardVerticalSpacing;
 
             if (property.isExpanded)
             {
+                float warningHeight = GetWarningBarHeight();
+
+                if (nullKeyState is { HasNullKeys: true })
+                {
+                    Rect warningRect = new(position.x, y, position.width, warningHeight);
+                    EditorGUI.HelpBox(
+                        warningRect,
+                        nullKeyState.WarningMessage,
+                        MessageType.Warning
+                    );
+                    y = warningRect.yMax + EditorGUIUtility.standardVerticalSpacing;
+                }
+
+                if (
+                    duplicateState is { HasDuplicates: true }
+                    && !string.IsNullOrEmpty(duplicateState.SummaryTooltip)
+                )
+                {
+                    Rect warningRect = new(position.x, y, position.width, warningHeight);
+                    EditorGUI.HelpBox(
+                        warningRect,
+                        duplicateState.SummaryTooltip,
+                        MessageType.Warning
+                    );
+                    y = warningRect.yMax + EditorGUIUtility.standardVerticalSpacing;
+                }
+
                 ReorderableList list = GetOrCreateList(property, keysProperty, valuesProperty);
                 PaginationState pagination = GetOrCreatePaginationState(property);
                 PendingEntry pending = GetOrCreatePendingEntry(property, keyType, valueType);
@@ -159,14 +205,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return height;
             }
 
-            PendingEntry pending = null;
-            if (
-                TryResolveKeyValueTypes(fieldInfo, out Type keyType, out Type valueType, out bool _)
-            )
-            {
-                pending = GetOrCreatePendingEntry(property, keyType, valueType);
-            }
-
             SerializedProperty keysProperty = property.FindPropertyRelative(
                 SerializableDictionarySerializedPropertyNames.Keys
             );
@@ -174,13 +212,51 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 SerializableDictionarySerializedPropertyNames.Values
             );
             EnsureParallelArraySizes(keysProperty, valuesProperty);
-            ReorderableList list = GetOrCreateList(property, keysProperty, valuesProperty);
-
-            float listHeight = list.GetHeight();
             float spacing = EditorGUIUtility.standardVerticalSpacing;
-            float pendingHeight = GetPendingSectionHeight(pending);
 
-            height += spacing + pendingHeight + spacing + listHeight;
+            if (
+                !TryResolveKeyValueTypes(
+                    fieldInfo,
+                    out Type keyType,
+                    out Type valueType,
+                    out bool _
+                )
+            )
+            {
+                return height;
+            }
+
+            PendingEntry pending = GetOrCreatePendingEntry(property, keyType, valueType);
+            string cacheKey = GetListKey(property);
+            DuplicateKeyState duplicateState = RefreshDuplicateState(
+                cacheKey,
+                keysProperty,
+                keyType
+            );
+            NullKeyState nullKeyState = RefreshNullKeyState(cacheKey, keysProperty, keyType);
+
+            height += spacing;
+
+            float warningHeight = GetWarningBarHeight();
+            if (nullKeyState is { HasNullKeys: true })
+            {
+                height += warningHeight + spacing;
+            }
+
+            if (
+                duplicateState is { HasDuplicates: true }
+                && !string.IsNullOrEmpty(duplicateState.SummaryTooltip)
+            )
+            {
+                height += warningHeight + spacing;
+            }
+
+            float pendingHeight = GetPendingSectionHeight(pending);
+            height += pendingHeight + spacing;
+
+            ReorderableList list = GetOrCreateList(property, keysProperty, valuesProperty);
+            float listHeight = list.GetHeight();
+            height += listHeight;
             return height;
         }
 
@@ -271,6 +347,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     out DuplicateKeyInfo duplicateInfo,
                     out DuplicateKeyState duplicateState
                 );
+                bool hasNullKey = TryGetNullKeyInfo(
+                    key,
+                    globalIndex,
+                    out NullKeyInfo nullKeyInfo,
+                    out _
+                );
 
                 UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
                     UnityHelpersSettings.GetDuplicateRowAnimationMode();
@@ -293,8 +375,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     );
                 }
 
-                Rect highlightRect = backgroundRect;
-                highlightRect.x += shakeOffset;
+                Rect animatedRect = backgroundRect;
+                animatedRect.x += shakeOffset;
 
                 if (hasDuplicate)
                 {
@@ -303,11 +385,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         Color highlightColor = duplicateInfo.isPrimary
                             ? DuplicatePrimaryColor
                             : DuplicateSecondaryColor;
-                        EditorGUI.DrawRect(highlightRect, highlightColor);
-                        DrawDuplicateOutline(highlightRect);
+                        EditorGUI.DrawRect(animatedRect, highlightColor);
+                        DrawDuplicateOutline(animatedRect);
                     }
 
-                    DrawDuplicateTooltip(highlightRect, duplicateInfo.tooltip);
+                    DrawDuplicateTooltip(animatedRect, duplicateInfo.tooltip);
+                }
+
+                if (hasNullKey)
+                {
+                    EditorGUI.DrawRect(animatedRect, NullKeyHighlightColor);
+                    DrawDuplicateOutline(animatedRect);
+                    DrawNullTooltip(animatedRect, nullKeyInfo.tooltip);
                 }
 
                 if (list.index == index)
@@ -351,6 +440,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     out DuplicateKeyInfo duplicateInfo,
                     out DuplicateKeyState duplicateState
                 );
+                bool hasNullKey = TryGetNullKeyInfo(
+                    key,
+                    globalIndex,
+                    out NullKeyInfo nullKeyInfo,
+                    out _
+                );
 
                 UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
                     UnityHelpersSettings.GetDuplicateRowAnimationMode();
@@ -379,16 +474,31 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     EditorGUIUtility.singleLineHeight
                 );
 
+                float iconSize = EditorGUIUtility.singleLineHeight;
+                float iconSpacing = 3f;
+                float consumedWidth = 0f;
+
                 if (hasDuplicate)
                 {
-                    float iconSize = EditorGUIUtility.singleLineHeight;
-                    float iconSpacing = 3f;
-                    Rect iconRect = new(keyRect.x, keyRect.y, iconSize, iconSize);
+                    Rect iconRect = new(keyRect.x + consumedWidth, keyRect.y, iconSize, iconSize);
                     GUIContent iconContent = GetDuplicateIconContent(duplicateInfo.tooltip);
                     GUI.Label(iconRect, iconContent);
+                    consumedWidth += iconSize + iconSpacing;
+                }
 
-                    keyRect.x += iconSize + iconSpacing;
-                    keyRect.width -= iconSize + iconSpacing;
+                if (hasNullKey)
+                {
+                    Rect iconRect = new(keyRect.x + consumedWidth, keyRect.y, iconSize, iconSize);
+                    GUIContent iconContent = GetNullKeyIconContent(nullKeyInfo.tooltip);
+                    GUI.Label(iconRect, iconContent);
+                    consumedWidth += iconSize + iconSpacing;
+                }
+
+                if (consumedWidth > 0f)
+                {
+                    consumedWidth -= iconSpacing;
+                    keyRect.x += consumedWidth;
+                    keyRect.width -= consumedWidth;
                     if (keyRect.width < 0f)
                     {
                         keyRect.width = 0f;
@@ -541,6 +651,52 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return state;
         }
 
+        private NullKeyState RefreshNullKeyState(
+            string cacheKey,
+            SerializedProperty keysProperty,
+            Type keyType
+        )
+        {
+            if (string.IsNullOrEmpty(cacheKey))
+            {
+                return null;
+            }
+
+            if (!TypeSupportsNullReferences(keyType))
+            {
+                if (_nullKeyStates.Remove(cacheKey))
+                {
+                    MarkListCacheDirty(cacheKey);
+                    RequestRepaint();
+                }
+
+                return null;
+            }
+
+            NullKeyState state = _nullKeyStates.GetOrAdd(cacheKey);
+            bool changed = state.Refresh(keysProperty, keyType);
+
+            if (!state.HasNullKeys)
+            {
+                _nullKeyStates.Remove(cacheKey);
+                if (changed)
+                {
+                    MarkListCacheDirty(cacheKey);
+                    RequestRepaint();
+                }
+
+                return null;
+            }
+
+            if (changed)
+            {
+                MarkListCacheDirty(cacheKey);
+                RequestRepaint();
+            }
+
+            return state;
+        }
+
         private bool TryGetDuplicateInfo(
             string cacheKey,
             int arrayIndex,
@@ -556,6 +712,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return _duplicateStates.TryGetValue(cacheKey, out state)
+                && state.TryGetInfo(arrayIndex, out info);
+        }
+
+        private bool TryGetNullKeyInfo(
+            string cacheKey,
+            int arrayIndex,
+            out NullKeyInfo info,
+            out NullKeyState state
+        )
+        {
+            info = null;
+            state = null;
+            if (string.IsNullOrEmpty(cacheKey))
+            {
+                return false;
+            }
+
+            return _nullKeyStates.TryGetValue(cacheKey, out state)
                 && state.TryGetInfo(arrayIndex, out info);
         }
 
@@ -587,6 +761,36 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             DuplicateIconContentCache.tooltip = tooltip;
             return DuplicateIconContentCache;
+        }
+
+        private static void DrawNullTooltip(Rect rect, string tooltip)
+        {
+            if (string.IsNullOrEmpty(tooltip) || Event.current.type != EventType.Repaint)
+            {
+                return;
+            }
+
+            NullKeyTooltipContent.text = string.Empty;
+            NullKeyTooltipContent.image = null;
+            NullKeyTooltipContent.tooltip = tooltip;
+            GUI.Label(rect, NullKeyTooltipContent, GUIStyle.none);
+        }
+
+        private static GUIContent GetNullKeyIconContent(string tooltip)
+        {
+            if (DuplicateIconTemplate != null)
+            {
+                NullKeyIconContentCache.image = DuplicateIconTemplate.image;
+                NullKeyIconContentCache.text = string.Empty;
+            }
+            else
+            {
+                NullKeyIconContentCache.image = null;
+                NullKeyIconContentCache.text = "!";
+            }
+
+            NullKeyIconContentCache.tooltip = tooltip;
+            return NullKeyIconContentCache;
         }
 
         internal static float EvaluateDuplicateTweenOffset(
@@ -643,6 +847,72 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EditorGUI.DrawRect(bottom, DuplicateOutlineColor);
             EditorGUI.DrawRect(left, DuplicateOutlineColor);
             EditorGUI.DrawRect(right, DuplicateOutlineColor);
+        }
+
+        private static float GetWarningBarHeight()
+        {
+            return EditorGUIUtility.singleLineHeight * 1.6f;
+        }
+
+        private static bool TypeSupportsNullReferences(Type type)
+        {
+            return type != null
+                && (!type.IsValueType || typeof(UnityEngine.Object).IsAssignableFrom(type));
+        }
+
+        private static string BuildNullKeySummary(ICollection<int> indices)
+        {
+            if (indices == null || indices.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            List<int> sorted = new(indices);
+            sorted.Sort();
+
+            if (sorted.Count == 1)
+            {
+                return $"Null key detected at index {sorted[0]}. Entry will be ignored at runtime.";
+            }
+
+            const int maxDisplay = 5;
+            int displayCount = Math.Min(sorted.Count, maxDisplay);
+
+            StringBuilder summaryBuilder = new();
+            summaryBuilder.Append("Null keys detected at indices ");
+
+            for (int i = 0; i < displayCount; i++)
+            {
+                if (i > 0)
+                {
+                    summaryBuilder.Append(", ");
+                }
+
+                summaryBuilder.Append(sorted[i]);
+            }
+
+            if (sorted.Count > maxDisplay)
+            {
+                summaryBuilder.Append(", ... (");
+                summaryBuilder.Append(sorted.Count - maxDisplay);
+                summaryBuilder.Append(" more)");
+            }
+
+            summaryBuilder.Append(". Entries will be ignored at runtime.");
+            return summaryBuilder.ToString();
+        }
+
+        internal bool HasNullKeyAtIndex(string cacheKey, int arrayIndex)
+        {
+            return _nullKeyStates.TryGetValue(cacheKey, out NullKeyState state)
+                && state.ContainsIndex(arrayIndex);
+        }
+
+        internal string GetNullKeyWarningSummary(string cacheKey)
+        {
+            return _nullKeyStates.TryGetValue(cacheKey, out NullKeyState state)
+                ? state.WarningMessage
+                : string.Empty;
         }
 
         private static string FormatDuplicateKeyDisplay(object keyValue)
@@ -3201,6 +3471,104 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public object value;
             public bool isExpanded;
             public AnimBool foldoutAnim;
+        }
+
+        private sealed class NullKeyInfo
+        {
+            public string tooltip = string.Empty;
+        }
+
+        private sealed class NullKeyState
+        {
+            private readonly HashSet<int> _nullIndices = new();
+            private readonly Dictionary<int, NullKeyInfo> _nullLookup = new();
+            private readonly List<int> _scratch = new();
+
+            public bool HasNullKeys { get; private set; }
+            public string WarningMessage { get; private set; } = string.Empty;
+
+            public bool Refresh(SerializedProperty keysProperty, Type keyType)
+            {
+                _scratch.Clear();
+
+                if (keysProperty == null || keyType == null || !TypeSupportsNullReferences(keyType))
+                {
+                    bool changed = HasNullKeys || _nullLookup.Count > 0;
+                    if (changed)
+                    {
+                        _nullIndices.Clear();
+                        _nullLookup.Clear();
+                    }
+
+                    HasNullKeys = false;
+                    WarningMessage = string.Empty;
+                    return changed;
+                }
+
+                int count = keysProperty.arraySize;
+                for (int index = 0; index < count; index++)
+                {
+                    SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
+                    object keyValue =
+                        keyProperty != null ? GetPropertyValue(keyProperty, keyType) : null;
+                    if (ReferenceEquals(keyValue, null))
+                    {
+                        _scratch.Add(index);
+                    }
+                }
+
+                bool changedIndices = UpdateIndices();
+                HasNullKeys = _nullIndices.Count > 0;
+                WarningMessage = HasNullKeys ? BuildNullKeySummary(_nullIndices) : string.Empty;
+                return changedIndices;
+            }
+
+            private bool UpdateIndices()
+            {
+                bool changed = _scratch.Count != _nullIndices.Count;
+
+                if (!changed)
+                {
+                    foreach (int index in _scratch)
+                    {
+                        if (!_nullIndices.Contains(index))
+                        {
+                            changed = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!changed)
+                {
+                    return false;
+                }
+
+                _nullIndices.Clear();
+                _nullLookup.Clear();
+
+                foreach (int index in _scratch)
+                {
+                    _nullIndices.Add(index);
+                    _nullLookup[index] = new NullKeyInfo
+                    {
+                        tooltip =
+                            $"Null key detected at index {index}. Entry will be ignored at runtime.",
+                    };
+                }
+
+                return true;
+            }
+
+            public bool TryGetInfo(int arrayIndex, out NullKeyInfo info)
+            {
+                return _nullLookup.TryGetValue(arrayIndex, out info);
+            }
+
+            public bool ContainsIndex(int arrayIndex)
+            {
+                return _nullIndices.Contains(arrayIndex);
+            }
         }
 
         private sealed class DuplicateKeyInfo

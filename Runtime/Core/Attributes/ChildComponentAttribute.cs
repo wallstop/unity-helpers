@@ -89,10 +89,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         > FieldsByType = new();
 
 #if UNITY_EDITOR && UNITY_2020_2_OR_NEWER
-        private static readonly ProfilerMarker ChildFastPathMarker = new ProfilerMarker(
+        private static readonly ProfilerMarker ChildFastPathMarker = new(
             "RelationalComponents.Child.FastPath"
         );
-        private static readonly ProfilerMarker ChildFallbackMarker = new ProfilerMarker(
+        private static readonly ProfilerMarker ChildFallbackMarker = new(
             "RelationalComponents.Child.Fallback"
         );
 #endif

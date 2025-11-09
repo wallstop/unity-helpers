@@ -49,12 +49,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Color DarkSelectionColor = new(0.2f, 0.45f, 0.85f, 0.7f);
         private static readonly Color LightRowColor = new(0.97f, 0.97f, 0.97f, 1f);
         private static readonly Color DarkRowColor = new(0.16f, 0.16f, 0.16f, 0.45f);
+        private static readonly Color NullEntryHighlightColor = new(0.84f, 0.2f, 0.2f, 0.6f);
         private const float DuplicateShakeAmplitude = 2f;
         private const float DuplicateShakeFrequency = 7f;
         private const float DuplicateOutlineThickness = 1f;
+        private static readonly GUIContent NullEntryTooltipContent = new();
 
         private readonly Dictionary<string, PaginationState> _paginationStates = new();
         private readonly Dictionary<string, DuplicateState> _duplicateStates = new();
+        private readonly Dictionary<string, NullEntryState> _nullEntryStates = new();
 
         internal sealed class PaginationState
         {
@@ -70,6 +73,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public string summary = string.Empty;
             public readonly Dictionary<int, double> animationStartTimes = new();
             public readonly Dictionary<int, bool> primaryFlags = new();
+        }
+
+        internal sealed class NullEntryState
+        {
+            public bool hasNullEntries;
+            public readonly HashSet<int> nullIndices = new();
+            public readonly Dictionary<int, string> tooltips = new();
+            public string summary = string.Empty;
         }
 
         private struct SetElementData
@@ -88,6 +99,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public bool isPrimaryDuplicate;
             public bool isSelected;
             public float shakeOffset;
+            public bool hasNullValue;
+            public string nullTooltip;
         }
 
         private static float GetToolbarHeight()
@@ -242,12 +255,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
             EnsurePaginationBounds(pagination, totalCount);
             DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
-            bool drawHelpBox =
-                duplicateState.hasDuplicates && !string.IsNullOrEmpty(duplicateState.summary);
+            NullEntryState nullState = EvaluateNullEntryState(property, itemsProperty);
 
-            if (drawHelpBox)
+            if (nullState.hasNullEntries && !string.IsNullOrEmpty(nullState.summary))
             {
-                float helpHeight = EditorGUIUtility.singleLineHeight * 1.6f;
+                float helpHeight = GetWarningBarHeight();
+                Rect helpRect = new(position.x, y, position.width, helpHeight);
+                EditorGUI.HelpBox(helpRect, nullState.summary, MessageType.Warning);
+                y = helpRect.yMax + SectionSpacing;
+            }
+
+            if (duplicateState.hasDuplicates && !string.IsNullOrEmpty(duplicateState.summary))
+            {
+                float helpHeight = GetWarningBarHeight();
                 Rect helpRect = new(position.x, y, position.width, helpHeight);
                 EditorGUI.HelpBox(helpRect, duplicateState.summary, MessageType.Warning);
                 y = helpRect.yMax + SectionSpacing;
@@ -312,6 +332,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             ? GetDuplicateShakeOffset(duplicateState, index, tweenCycleLimit)
                             : 0f;
 
+                    bool hasNullValue =
+                        nullState.hasNullEntries && nullState.nullIndices.Contains(index);
+                    string nullTooltip = string.Empty;
+                    if (hasNullValue && !nullState.tooltips.TryGetValue(index, out nullTooltip))
+                    {
+                        nullTooltip = string.Empty;
+                    }
+
                     RowRenderInfo info = new()
                     {
                         property = element.Copy(),
@@ -324,6 +352,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         ),
                         isSelected = pagination.selectedIndex == index,
                         shakeOffset = shakeOffset,
+                        hasNullValue = hasNullValue,
+                        nullTooltip = nullTooltip,
                     };
 
                     rows.Add(info);
@@ -354,6 +384,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     Rect outlineRect = Rect.zero;
                     bool shouldDrawOutline = false;
+                    bool outlineForNull = false;
 
                     if (row.isDuplicate && highlightDuplicates)
                     {
@@ -374,6 +405,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         EditorGUI.DrawRect(duplicateRect, duplicateColor);
                         outlineRect = duplicateRect;
                         shouldDrawOutline = true;
+                    }
+
+                    if (row.hasNullValue)
+                    {
+                        Rect nullRect = new(
+                            backgroundRect.x + row.shakeOffset,
+                            backgroundRect.y,
+                            backgroundRect.width,
+                            row.height
+                        );
+                        nullRect.xMin += 1f;
+                        nullRect.xMax -= 1f;
+                        nullRect.yMin += 1f;
+                        nullRect.yMax -= 1f;
+
+                        EditorGUI.DrawRect(nullRect, NullEntryHighlightColor);
+                        outlineRect = nullRect;
+                        outlineForNull = true;
+                        DrawNullEntryTooltip(nullRect, row.nullTooltip);
                     }
 
                     if (row.isSelected)
@@ -406,7 +456,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     EditorGUI.PropertyField(contentRect, row.property, GUIContent.none, true);
 
-                    if (shouldDrawOutline && highlightDuplicates)
+                    if (outlineForNull)
+                    {
+                        DrawDuplicateOutline(outlineRect);
+                    }
+                    else if (shouldDrawOutline && highlightDuplicates)
                     {
                         DrawDuplicateOutline(outlineRect);
                     }
@@ -448,9 +502,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EnsurePaginationBounds(pagination, totalCount);
 
             DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
+            NullEntryState nullState = EvaluateNullEntryState(property, itemsProperty);
+
+            if (nullState.hasNullEntries && !string.IsNullOrEmpty(nullState.summary))
+            {
+                height += GetWarningBarHeight() + SectionSpacing;
+            }
+
             if (duplicateState.hasDuplicates && !string.IsNullOrEmpty(duplicateState.summary))
             {
-                height += EditorGUIUtility.singleLineHeight * 1.6f + SectionSpacing;
+                height += GetWarningBarHeight() + SectionSpacing;
             }
 
             if (!hasItemsArray || totalCount == 0)
@@ -867,6 +928,71 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EditorGUI.DrawRect(right, DuplicateOutlineColor);
         }
 
+        private static float GetWarningBarHeight()
+        {
+            return EditorGUIUtility.singleLineHeight * 1.6f;
+        }
+
+        private static void DrawNullEntryTooltip(Rect rect, string tooltip)
+        {
+            if (string.IsNullOrEmpty(tooltip) || Event.current.type != EventType.Repaint)
+            {
+                return;
+            }
+
+            NullEntryTooltipContent.text = string.Empty;
+            NullEntryTooltipContent.image = null;
+            NullEntryTooltipContent.tooltip = tooltip;
+            GUI.Label(rect, NullEntryTooltipContent, GUIStyle.none);
+        }
+
+        private static bool ElementTypeSupportsNull(Type type)
+        {
+            return type != null
+                && (!type.IsValueType || typeof(UnityEngine.Object).IsAssignableFrom(type));
+        }
+
+        private static string BuildNullEntrySummary(List<int> indices)
+        {
+            if (indices == null || indices.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            indices.Sort();
+
+            if (indices.Count == 1)
+            {
+                return $"Null entry detected at index {indices[0]}. Value will be ignored at runtime.";
+            }
+
+            const int maxDisplay = 5;
+            int displayCount = Math.Min(indices.Count, maxDisplay);
+
+            StringBuilder builder = new();
+            builder.Append("Null entries detected at indices ");
+
+            for (int i = 0; i < displayCount; i++)
+            {
+                if (i > 0)
+                {
+                    builder.Append(", ");
+                }
+
+                builder.Append(indices[i]);
+            }
+
+            if (indices.Count > maxDisplay)
+            {
+                builder.Append(", ... (");
+                builder.Append(indices.Count - maxDisplay);
+                builder.Append(" more)");
+            }
+
+            builder.Append(". Values will be ignored at runtime.");
+            return builder.ToString();
+        }
+
         private static void RemoveEntry(SerializedProperty itemsProperty, int index)
         {
             if (itemsProperty == null || !itemsProperty.isArray)
@@ -890,6 +1016,71 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 itemsProperty.DeleteArrayElementAtIndex(index);
             }
+        }
+
+        internal NullEntryState EvaluateNullEntryState(
+            SerializedProperty property,
+            SerializedProperty itemsProperty
+        )
+        {
+            string key = property.propertyPath;
+            if (!_nullEntryStates.TryGetValue(key, out NullEntryState state))
+            {
+                state = new NullEntryState();
+                _nullEntryStates[key] = state;
+            }
+
+            state.nullIndices.Clear();
+            state.tooltips.Clear();
+            state.summary = string.Empty;
+            state.hasNullEntries = false;
+
+            if (
+                itemsProperty == null
+                || !itemsProperty.isArray
+                || itemsProperty.arraySize == 0
+                || !TryGetSetInspector(
+                    property,
+                    property.propertyPath,
+                    out ISerializableSetInspector inspector
+                )
+            )
+            {
+                return state;
+            }
+
+            Type elementType = inspector.ElementType;
+            if (!ElementTypeSupportsNull(elementType))
+            {
+                return state;
+            }
+
+            List<int> nullIndices = new();
+            int count = itemsProperty.arraySize;
+            for (int index = 0; index < count; index++)
+            {
+                SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
+                SetElementData data = ReadElementData(element);
+                if (ReferenceEquals(data.value, null))
+                {
+                    state.nullIndices.Add(index);
+                    state.tooltips[index] =
+                        $"Null entry detected at index {index}. Value will be ignored at runtime.";
+                    nullIndices.Add(index);
+                }
+            }
+
+            if (state.nullIndices.Count > 0)
+            {
+                state.hasNullEntries = true;
+                state.summary = BuildNullEntrySummary(nullIndices);
+            }
+            else
+            {
+                _nullEntryStates.Remove(key);
+            }
+
+            return state;
         }
 
         internal DuplicateState EvaluateDuplicateState(

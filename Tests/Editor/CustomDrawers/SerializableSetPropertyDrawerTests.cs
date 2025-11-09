@@ -18,6 +18,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public SerializableHashSet<int> set = new SerializableHashSet<int>();
         }
 
+        private sealed class StringSetHost : ScriptableObject
+        {
+            public SerializableHashSet<string> set = new SerializableHashSet<string>();
+        }
+
         private sealed class SortedSetHost : ScriptableObject
         {
             public SerializableSortedSet<int> set = new SerializableSortedSet<int>();
@@ -79,6 +84,38 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.IsTrue(state.hasDuplicates);
             CollectionAssert.AreEquivalent(new int[] { 0, 1 }, state.duplicateIndices);
             StringAssert.Contains("Value 2", state.summary);
+        }
+
+        [Test]
+        public void NullEntriesProduceInspectorWarnings()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            ISerializableSetInspector inspector = (ISerializableSetInspector)host.set;
+            Array values = Array.CreateInstance(inspector.ElementType, 2);
+            values.SetValue(null, 0);
+            values.SetValue("valid", 1);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer.NullEntryState state = drawer.EvaluateNullEntryState(
+                setProperty,
+                itemsProperty
+            );
+
+            Assert.IsTrue(state.hasNullEntries);
+            CollectionAssert.AreEquivalent(new int[] { 0 }, state.nullIndices);
+            Assert.IsTrue(state.tooltips.ContainsKey(0));
+            StringAssert.Contains("Null entry", state.summary);
         }
 
         [Test]

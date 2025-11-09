@@ -95,9 +95,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         {
             if (comparer != null && comparer != _dictionary.Comparer)
             {
-                SortedDictionary<TKey, TValue> replacement = new SortedDictionary<TKey, TValue>(
-                    comparer
-                );
+                SortedDictionary<TKey, TValue> replacement = new(comparer);
                 foreach (KeyValuePair<TKey, TValue> pair in _dictionary)
                 {
                     replacement[pair.Key] = pair.Value;
@@ -523,8 +521,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         protected override void SetValue(TValueCache[] cache, int index, TValue value)
         {
-            cache[index] = new TValueCache();
-            cache[index].Data = value;
+            cache[index] = new TValueCache { Data = value };
         }
     }
 }

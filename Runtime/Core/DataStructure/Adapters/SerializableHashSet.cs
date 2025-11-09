@@ -325,21 +325,43 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
             _set.Clear();
             bool hasDuplicates = false;
+            bool encounteredNullReference = false;
+            bool supportsNullCheck = TypeSupportsNullReferences(typeof(T));
             for (int index = 0; index < _items.Length; index++)
             {
                 T value = _items[index];
+                if (supportsNullCheck && ReferenceEquals(value, null))
+                {
+                    encounteredNullReference = true;
+                    LogNullEntrySkip(index);
+                    continue;
+                }
+
                 if (!_set.Add(value) && !hasDuplicates)
                 {
                     hasDuplicates = true;
                 }
             }
 
-            _preserveSerializedEntries = hasDuplicates;
+            _preserveSerializedEntries = hasDuplicates || encounteredNullReference;
 
-            if (!hasDuplicates)
+            if (!hasDuplicates && !encounteredNullReference)
             {
                 _items = null;
             }
+        }
+
+        private static bool TypeSupportsNullReferences(Type type)
+        {
+            return type != null
+                && (!type.IsValueType || typeof(UnityEngine.Object).IsAssignableFrom(type));
+        }
+
+        private static void LogNullEntrySkip(int index)
+        {
+            Debug.LogError(
+                $"SerializableSet<{typeof(T).FullName}> skipped serialized entry at index {index} because the value reference was null."
+            );
         }
 
         [ProtoBeforeSerialization]

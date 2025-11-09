@@ -4,7 +4,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
+    using System.Text.RegularExpressions;
     using NUnit.Framework;
+    using UnityEngine;
+    using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
@@ -34,6 +37,47 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(2, values.Count);
             Assert.Contains("alpha", values);
             Assert.Contains("beta", values);
+        }
+
+        [Test]
+        public void NullEntriesAreSkippedDuringDeserialization()
+        {
+            SerializableHashSet<string> set = new SerializableHashSet<string>();
+            FieldInfo itemsField = typeof(SerializableHashSet<string>).GetField(
+                "_items",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            Type baseType = typeof(SerializableHashSet<string>).BaseType;
+            Assert.IsNotNull(baseType, "Base type lookup failed.");
+            FieldInfo preserveField = baseType.GetField(
+                "_preserveSerializedEntries",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+
+            Assert.IsNotNull(itemsField, "Unable to access serialized items field.");
+            Assert.IsNotNull(preserveField, "Unable to access preserve flag field.");
+
+            string[] source = new string[] { null, "valid" };
+            itemsField.SetValue(set, source);
+
+            LogAssert.Expect(
+                LogType.Error,
+                new Regex("index 0.+value reference was null", RegexOptions.IgnoreCase)
+            );
+
+            set.OnAfterDeserialize();
+
+            Assert.AreEqual(1, set.Count);
+            Assert.IsTrue(set.Contains("valid"));
+
+            string[] stored = (string[])itemsField.GetValue(set);
+            bool preserve = (bool)preserveField.GetValue(set);
+
+            Assert.IsNotNull(stored, "Serialized items should remain when null entries exist.");
+            CollectionAssert.AreEqual(source, stored);
+            Assert.IsTrue(preserve, "Null entries should preserve serialized cache.");
+
+            LogAssert.NoUnexpectedReceived();
         }
 
         [Test]

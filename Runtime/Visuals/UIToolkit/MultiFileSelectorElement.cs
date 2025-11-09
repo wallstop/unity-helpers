@@ -248,10 +248,10 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                     marginBottom = 5,
                     backgroundColor = Color.white * 0.15f,
                 },
+                makeItem = MakeRow,
+                bindItem = BindRow,
+                itemsSource = _items,
             };
-            _listView.makeItem = MakeRow;
-            _listView.bindItem = BindRow;
-            _listView.itemsSource = _items;
             contentBox.Add(_listView);
 
             VisualElement footerControls = new()

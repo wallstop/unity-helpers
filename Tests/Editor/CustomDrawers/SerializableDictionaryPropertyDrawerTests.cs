@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEditorInternal;
@@ -18,6 +19,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public IntStringDictionary dictionary = new();
         }
 
+        private sealed class StringDictionaryHost : ScriptableObject
+        {
+            public StringStringDictionary dictionary = new();
+        }
+
         private sealed class TestSortedDictionaryHost : ScriptableObject
         {
             public SerializableSortedDictionary<int, string> dictionary =
@@ -26,6 +32,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         [Serializable]
         private sealed class IntStringDictionary : SerializableDictionary<int, string> { }
+
+        [Serializable]
+        private sealed class StringStringDictionary : SerializableDictionary<string, string> { }
 
         [Test]
         public void PageSizeClampPreventsExcessiveCacheGrowth()
@@ -57,6 +66,49 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             drawer.GetOrCreateList(dictionaryProperty, keysProperty, valuesProperty);
 
             Assert.AreEqual(SerializableDictionaryPropertyDrawer.MaxPageSize, pagination.pageSize);
+        }
+
+        [Test]
+        public void NullKeysProduceInspectorWarnings()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            StringStringDictionary dictionary = host.dictionary;
+
+            Type baseType = typeof(StringStringDictionary).BaseType;
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            FieldInfo keysField = baseType.GetField("_keys", flags);
+            FieldInfo valuesField = baseType.GetField("_values", flags);
+            Assert.IsNotNull(keysField, "Failed to locate serialized keys field.");
+            Assert.IsNotNull(valuesField, "Failed to locate serialized values field.");
+
+            string[] keys = new string[] { null, "valid" };
+            string[] values = new string[] { "ignored", "retained" };
+            keysField.SetValue(dictionary, keys);
+            valuesField.SetValue(dictionary, values);
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializableDictionaryPropertyDrawer drawer = new();
+            drawer.GetPropertyHeight(dictionaryProperty, GUIContent.none);
+
+            string cacheKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
+
+            Assert.IsTrue(
+                drawer.HasNullKeyAtIndex(cacheKey, 0),
+                "Drawer should flag the null key entry."
+            );
+            Assert.IsFalse(
+                drawer.HasNullKeyAtIndex(cacheKey, 1),
+                "Drawer should not flag valid key entries."
+            );
+            StringAssert.Contains(
+                "Null key",
+                drawer.GetNullKeyWarningSummary(cacheKey),
+                "Warning summary should describe null key entries."
+            );
         }
 
         [Test]
