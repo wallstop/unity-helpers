@@ -23,6 +23,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const int MinPageSize = 5;
         public const int MaxPageSize = 500;
         public const int DefaultStringInListPageSize = 25;
+        public const int DefaultSerializableSetPageSize = 15;
         public const int DefaultDuplicateTweenCycles = 3;
 
         public enum DuplicateRowAnimationMode
@@ -39,6 +40,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [SerializeField]
         [Tooltip("Maximum number of entries shown per page for StringInList dropdowns.")]
         private int stringInListPageSize = DefaultStringInListPageSize;
+
+        [SerializeField]
+        [Tooltip(
+            "Maximum number of entries shown per page when drawing SerializableHashSet/SerializableSortedSet inspectors."
+        )]
+        private int serializableSetPageSize = DefaultSerializableSetPageSize;
 
         [SerializeField]
         [Tooltip(
@@ -101,6 +108,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 }
 
                 stringInListPageSize = clamped;
+                SaveSettings();
+            }
+        }
+
+        /// <summary>
+        /// Retrieves the configured page size for SerializableSet inspectors.
+        /// </summary>
+        public int SerializableSetPageSize
+        {
+            get => Mathf.Clamp(serializableSetPageSize, MinPageSize, MaxPageSize);
+            set
+            {
+                int clamped = Mathf.Clamp(value, MinPageSize, MaxPageSize);
+                if (clamped == serializableSetPageSize)
+                {
+                    return;
+                }
+
+                serializableSetPageSize = clamped;
                 SaveSettings();
             }
         }
@@ -181,6 +207,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return instance.StringInListPageSize;
         }
 
+        public static int GetSerializableSetPageSize()
+        {
+            return instance.SerializableSetPageSize;
+        }
+
         public static DuplicateRowAnimationMode GetDuplicateRowAnimationMode()
         {
             return instance.duplicateRowAnimationMode;
@@ -198,6 +229,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         {
             stringInListPageSize = Mathf.Clamp(
                 stringInListPageSize <= 0 ? DefaultStringInListPageSize : stringInListPageSize,
+                MinPageSize,
+                MaxPageSize
+            );
+            serializableSetPageSize = Mathf.Clamp(
+                serializableSetPageSize <= 0
+                    ? DefaultSerializableSetPageSize
+                    : serializableSetPageSize,
                 MinPageSize,
                 MaxPageSize
             );
@@ -373,6 +411,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     SerializedProperty pageSizeProperty = serializedSettings.FindProperty(
                         "stringInListPageSize"
                     );
+                    SerializedProperty setPageSizeProperty = serializedSettings.FindProperty(
+                        "serializableSetPageSize"
+                    );
                     SerializedProperty duplicateModeProperty = serializedSettings.FindProperty(
                         "duplicateRowAnimationMode"
                     );
@@ -395,6 +436,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         new GUIContent(
                             "StringInList Page Size",
                             "Number of options displayed per page in StringInList dropdowns."
+                        )
+                    );
+
+                    EditorGUILayout.IntSlider(
+                        setPageSizeProperty,
+                        MinPageSize,
+                        MaxPageSize,
+                        new GUIContent(
+                            "Serializable Set Page Size",
+                            "Number of entries displayed per page in SerializableHashSet and SerializableSortedSet inspectors."
                         )
                     );
 
@@ -429,6 +480,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 {
                     "StringInList",
                     "Pagination",
+                    "SerializableSet",
                     "UnityHelpers",
                     "Duplicate",
                     "SerializableType",

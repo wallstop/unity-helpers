@@ -18,9 +18,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float RowSpacing = 2f;
         private const float SectionSpacing = 4f;
         private const float ButtonSpacing = 4f;
-        private const float RemoveButtonWidth = 20f;
+        private const float RemoveButtonWidth = 18f;
         private const float PaginationButtonWidth = 28f;
-        private const float ToolbarHeight = 18f;
         private const int DefaultPageSize = 15;
         internal const int MaxPageSize = 250;
         private const int MaxAutoAddAttempts = 256;
@@ -28,7 +27,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIContent AddEntryContent = new GUIContent("Add");
         private static readonly GUIContent ClearAllContent = new GUIContent("Clear All");
         private static readonly GUIContent SortContent = new GUIContent("Sort");
-        private static readonly GUIContent PageSizeContent = new GUIContent("Page Size");
         private static readonly GUIContent FirstPageContent = new GUIContent("<<", "First Page");
         private static readonly GUIContent PreviousPageContent = new GUIContent(
             "<",
@@ -72,6 +70,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public object Value;
         }
 
+        private static float GetToolbarHeight()
+        {
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            return lineHeight * 2f + RowSpacing;
+        }
+
+        static SerializableSetPropertyDrawer()
+        {
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            ConfigureButtonStyle(AddButtonStyle, lineHeight);
+            ConfigureButtonStyle(ClearAllActiveButtonStyle, lineHeight);
+            ConfigureButtonStyle(RemoveButtonStyle, lineHeight);
+            RemoveButtonStyle.fixedWidth = RemoveButtonWidth;
+            RemoveButtonStyle.padding = new RectOffset(0, 0, 1, 1);
+        }
+
         private static GUIStyle CreateSolidButtonStyle(Color baseColor)
         {
             Color hoverColor = AdjustColorBrightness(baseColor, 0.12f);
@@ -102,6 +116,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             style.onFocused.textColor = Color.white;
 
             return style;
+        }
+
+        private static void ConfigureButtonStyle(GUIStyle style, float lineHeight)
+        {
+            if (style == null)
+            {
+                return;
+            }
+
+            style.fixedHeight = lineHeight;
+            style.margin = new RectOffset(1, 1, 1, 1);
+            style.padding = new RectOffset(6, 6, 2, 2);
         }
 
         private static Texture2D CreateSolidTexture(Color color)
@@ -143,9 +169,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
 
             string propertyPath = property.propertyPath;
-            object setInstanceForLabel = GetSetInstance(property, propertyPath);
-            int uniqueCount =
-                setInstanceForLabel != null ? CountSetElements(setInstanceForLabel) : totalCount;
+            ISerializableSetInspector inspectorForLabel;
+            int uniqueCount = TryGetSetInspector(property, propertyPath, out inspectorForLabel)
+                ? inspectorForLabel.UniqueCount
+                : totalCount;
             string foldoutLabel = BuildFoldoutLabel(label, uniqueCount);
 
             EditorGUI.BeginProperty(position, label, property);
@@ -177,9 +204,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool isSortedSet = IsSortedSet(property);
             DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
 
-            EditorGUI.indentLevel++;
+            int previousIndentLevel = EditorGUI.indentLevel;
+            EditorGUI.indentLevel = 0;
 
-            Rect toolbarRect = new Rect(position.x, y, position.width, ToolbarHeight);
+            Rect toolbarRect = new Rect(position.x, y, position.width, GetToolbarHeight());
             DrawToolbar(
                 toolbarRect,
                 ref property,
@@ -234,11 +262,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     );
 
                     Rect rowRect = new Rect(position.x, y, position.width, elementHeight);
-                    Rect indentedRect = EditorGUI.IndentedRect(rowRect);
                     Rect fieldRect = new Rect(
-                        indentedRect.x,
+                        rowRect.x,
                         rowRect.y,
-                        indentedRect.width - RemoveButtonWidth - ButtonSpacing,
+                        rowRect.width - RemoveButtonWidth - ButtonSpacing,
                         elementHeight
                     );
                     Rect removeRect = new Rect(
@@ -280,7 +307,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
                             EnsurePaginationBounds(pagination, totalCount);
                             EvaluateDuplicateState(property, itemsProperty, force: true);
-                            EditorGUI.indentLevel--;
+                            EditorGUI.indentLevel = previousIndentLevel;
                             EditorGUI.EndProperty();
                             return;
                         }
@@ -290,7 +317,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
-            EditorGUI.indentLevel--;
+            EditorGUI.indentLevel = previousIndentLevel;
             EditorGUI.EndProperty();
         }
 
@@ -310,7 +337,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool hasItemsArray = itemsProperty != null && itemsProperty.isArray;
             int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
 
-            height += SectionSpacing + ToolbarHeight + SectionSpacing;
+            height += SectionSpacing + GetToolbarHeight() + SectionSpacing;
 
             PaginationState pagination = GetOrCreatePaginationState(property);
             EnsurePaginationBounds(pagination, totalCount);
@@ -349,14 +376,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 _paginationStates[key] = state;
             }
 
-            if (state.pageSize < UnityHelpersSettings.MinPageSize)
+            int configuredPageSize = Mathf.Clamp(
+                UnityHelpersSettings.GetSerializableSetPageSize(),
+                UnityHelpersSettings.MinPageSize,
+                MaxPageSize
+            );
+            if (state.pageSize != configuredPageSize)
             {
-                state.pageSize = UnityHelpersSettings.MinPageSize;
-            }
-
-            if (state.pageSize > MaxPageSize)
-            {
-                state.pageSize = MaxPageSize;
+                state.pageSize = configuredPageSize;
+                state.page = 0;
             }
 
             return state;
@@ -394,15 +422,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool isSortedSet
         )
         {
+            if (!TryGetSetInspector(property, propertyPath, out _))
+            {
+                return;
+            }
+
             SerializedObject serializedObject = property.serializedObject;
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+
+            Rect firstRowRect = new Rect(rect.x, rect.y, rect.width, lineHeight);
+            Rect secondRowRect = new Rect(
+                rect.x,
+                firstRowRect.yMax + RowSpacing,
+                rect.width,
+                lineHeight
+            );
+
             int totalCount =
                 itemsProperty != null && itemsProperty.isArray ? itemsProperty.arraySize : 0;
 
-            float lineHeight = EditorGUIUtility.singleLineHeight;
-            Rect addRect = new Rect(rect.x, rect.y, 60f, lineHeight);
-            Rect clearRect = new Rect(addRect.xMax + ButtonSpacing, rect.y, 80f, lineHeight);
-            float nextX = clearRect.xMax + ButtonSpacing;
-
+            Rect addRect = new Rect(firstRowRect.x, firstRowRect.y, 60f, lineHeight);
             if (GUI.Button(addRect, AddEntryContent, AddButtonStyle))
             {
                 if (TryAddNewElement(ref property, propertyPath, ref itemsProperty, pagination))
@@ -419,9 +458,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
-            GUIStyle clearButtonStyle =
-                totalCount > 0 ? ClearAllActiveButtonStyle : EditorStyles.miniButton;
-            using (new EditorGUI.DisabledScope(totalCount == 0))
+            float nextX = addRect.xMax + ButtonSpacing;
+            Rect clearRect = new Rect(nextX, firstRowRect.y, 80f, lineHeight);
+            bool hasEntries = totalCount > 0;
+            GUIStyle clearButtonStyle = hasEntries
+                ? ClearAllActiveButtonStyle
+                : EditorStyles.miniButton;
+
+            using (new EditorGUI.DisabledScope(!hasEntries))
             {
                 if (GUI.Button(clearRect, ClearAllContent, clearButtonStyle))
                 {
@@ -441,10 +485,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
-            Rect sortRect = Rect.zero;
+            nextX = clearRect.xMax + ButtonSpacing;
             if (isSortedSet)
             {
-                sortRect = new Rect(nextX, rect.y, 60f, lineHeight);
+                Rect sortRect = new Rect(nextX, firstRowRect.y, 60f, lineHeight);
                 using (new EditorGUI.DisabledScope(!CanSortElements(itemsProperty)))
                 {
                     if (GUI.Button(sortRect, SortContent, EditorStyles.miniButton))
@@ -463,92 +507,84 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         }
                     }
                 }
-                nextX = sortRect.xMax + ButtonSpacing;
-            }
-            else
-            {
-                nextX = clearRect.xMax + ButtonSpacing;
             }
 
-            Rect entriesRect = new Rect(nextX, rect.y, 100f, lineHeight);
-            EditorGUI.LabelField(entriesRect, $"Entries: {totalCount}", EditorStyles.miniLabel);
-            nextX = entriesRect.xMax + ButtonSpacing;
+            totalCount =
+                itemsProperty != null && itemsProperty.isArray ? itemsProperty.arraySize : 0;
+            DrawToolbarSecondaryRow(secondRowRect, pagination, totalCount);
+        }
+
+        private void DrawToolbarSecondaryRow(Rect rect, PaginationState pagination, int totalCount)
+        {
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            float availableWidth = rect.width;
+            float rightCursor = rect.xMax;
 
             float navigationWidth = PaginationButtonWidth * 4f + ButtonSpacing * 3f;
-            float pageSizeWidth = Mathf.Max(
-                170f,
-                EditorStyles.miniLabel.CalcSize(PageSizeContent).x + 60f
-            );
-            float pageInfoWidth = totalCount > 0 ? 110f : 0f;
+            bool showNavigation = availableWidth >= navigationWidth;
+            if (showNavigation)
+            {
+                Rect navigationRect = new Rect(
+                    rightCursor - navigationWidth,
+                    rect.y,
+                    navigationWidth,
+                    lineHeight
+                );
+                DrawPaginationButtons(navigationRect, pagination, totalCount);
+                rightCursor = navigationRect.x - ButtonSpacing;
+                availableWidth = Mathf.Max(0f, rightCursor - rect.x);
+            }
 
-            Rect navigationRect = new Rect(
-                rect.xMax - navigationWidth,
-                rect.y,
-                navigationWidth,
-                lineHeight
-            );
-
-            Rect pageSizeRect = new Rect(
-                navigationRect.x - ButtonSpacing - pageSizeWidth,
-                rect.y,
-                pageSizeWidth,
-                lineHeight
-            );
-
-            Rect pageInfoRect =
-                totalCount > 0
-                    ? new Rect(
-                        pageSizeRect.x - ButtonSpacing - pageInfoWidth,
-                        rect.y,
-                        pageInfoWidth,
-                        lineHeight
-                    )
-                    : Rect.zero;
-
+            GUIContent pageInfoContent = GUIContent.none;
             if (totalCount > 0)
             {
                 int pageSize = Mathf.Max(1, pagination.pageSize);
                 int pageCount = Mathf.Max(1, (totalCount + pageSize - 1) / pageSize);
                 int currentPage = Mathf.Clamp(pagination.page + 1, 1, pageCount);
-                EditorGUI.LabelField(
-                    pageInfoRect,
-                    $"Page {currentPage}/{pageCount}",
-                    EditorStyles.miniLabel
-                );
-                DrawPageSizeField(pageSizeRect, pagination, totalCount);
-                DrawPaginationButtons(navigationRect, pagination, totalCount);
+                pageInfoContent = new GUIContent($"Page {currentPage}/{pageCount}");
             }
-            else
+
+            float pageInfoWidth =
+                pageInfoContent != GUIContent.none
+                    ? EditorStyles.miniLabel.CalcSize(pageInfoContent).x
+                    : 0f;
+            bool showPageInfo =
+                pageInfoContent != GUIContent.none && availableWidth >= pageInfoWidth;
+            if (showPageInfo)
             {
-                DrawPageSizeField(pageSizeRect, pagination, totalCount);
-                using (new EditorGUI.DisabledScope(true))
-                {
-                    DrawPaginationButtons(navigationRect, pagination, totalCount);
-                }
-            }
-        }
-
-        private void DrawPageSizeField(Rect rect, PaginationState pagination, int totalCount)
-        {
-            float padding = 4f;
-            float requiredLabelWidth = EditorStyles.miniLabel.CalcSize(PageSizeContent).x + padding;
-            float labelWidth = Mathf.Min(requiredLabelWidth, rect.width * 0.6f);
-            Rect labelRect = new Rect(rect.x, rect.y, labelWidth, rect.height);
-            float fieldWidth = Mathf.Max(0f, rect.width - labelWidth - padding);
-            Rect fieldRect = new Rect(labelRect.xMax + padding, rect.y, fieldWidth, rect.height);
-
-            EditorGUI.LabelField(labelRect, PageSizeContent, EditorStyles.miniLabel);
-
-            EditorGUI.BeginChangeCheck();
-            int newSize = EditorGUI.IntField(fieldRect, GUIContent.none, pagination.pageSize);
-            if (EditorGUI.EndChangeCheck())
-            {
-                pagination.pageSize = Mathf.Clamp(
-                    newSize,
-                    UnityHelpersSettings.MinPageSize,
-                    MaxPageSize
+                Rect pageInfoRect = new Rect(
+                    rightCursor - pageInfoWidth,
+                    rect.y,
+                    pageInfoWidth,
+                    lineHeight
                 );
-                pagination.page = 0;
+                EditorGUI.LabelField(pageInfoRect, pageInfoContent, EditorStyles.miniLabel);
+                rightCursor = pageInfoRect.x - ButtonSpacing;
+                availableWidth = Mathf.Max(0f, rightCursor - rect.x);
+            }
+
+            GUIContent pageSizeContent = new GUIContent($"Page Size: {pagination.pageSize}");
+            float pageSizeWidth = EditorStyles.miniLabel.CalcSize(pageSizeContent).x;
+            bool showPageSize = availableWidth >= pageSizeWidth;
+            if (showPageSize)
+            {
+                Rect pageSizeRect = new Rect(
+                    rightCursor - pageSizeWidth,
+                    rect.y,
+                    pageSizeWidth,
+                    lineHeight
+                );
+                EditorGUI.LabelField(pageSizeRect, pageSizeContent, EditorStyles.miniLabel);
+                rightCursor = pageSizeRect.x - ButtonSpacing;
+                availableWidth = Mathf.Max(0f, rightCursor - rect.x);
+            }
+
+            GUIContent entriesContent = new GUIContent($"Entries: {totalCount}");
+            float entriesWidth = EditorStyles.miniLabel.CalcSize(entriesContent).x;
+            if (entriesWidth <= availableWidth)
+            {
+                Rect entriesRect = new Rect(rect.x, rect.y, entriesWidth, lineHeight);
+                EditorGUI.LabelField(entriesRect, entriesContent, EditorStyles.miniLabel);
             }
         }
 
@@ -781,39 +817,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return false;
         }
 
-        private static Type GetElementType(SerializedProperty property)
-        {
-            Type managedType = property.GetManagedType();
-            if (managedType == null)
-            {
-                return null;
-            }
-
-            Type current = managedType;
-            while (current != null)
-            {
-                if (current.IsGenericType)
-                {
-                    Type definition = current.GetGenericTypeDefinition();
-                    if (
-                        definition == typeof(SerializableHashSet<>)
-                        || definition == typeof(SerializableSortedSet<>)
-                    )
-                    {
-                        Type[] arguments = current.GetGenericArguments();
-                        if (arguments.Length == 1)
-                        {
-                            return arguments[0];
-                        }
-                    }
-                }
-
-                current = current.BaseType;
-            }
-
-            return null;
-        }
-
         private static bool CanSortElements(SerializedProperty itemsProperty)
         {
             if (itemsProperty == null || !itemsProperty.isArray || itemsProperty.arraySize <= 1)
@@ -862,129 +865,63 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             PaginationState pagination
         )
         {
-            object setInstance = GetSetInstance(property, propertyPath);
-            if (setInstance == null)
+            if (
+                !TryGetSetInspector(property, propertyPath, out ISerializableSetInspector inspector)
+            )
             {
                 return false;
             }
 
-            Type setType = setInstance.GetType();
-            Type elementType = GetElementType(property);
-
+            Type elementType = inspector.ElementType;
             if (elementType == null)
             {
                 return false;
             }
 
-            MethodInfo addMethod = setType.GetMethod("Add", new[] { elementType });
-            MethodInfo containsMethod = setType.GetMethod("Contains", new[] { elementType });
-
-            if (addMethod == null || containsMethod == null)
-            {
-                return false;
-            }
-
-            FieldInfo itemsField = setType.GetField(
-                "_items",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            FieldInfo preserveField = setType.BaseType?.GetField(
-                "_preserveSerializedEntries",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-
-            Array existingItems = itemsField?.GetValue(setInstance) as Array;
-            int existingSerializedCount = existingItems?.Length ?? 0;
-            int serializedArrayCount =
+            int serializedCount =
                 itemsProperty != null && itemsProperty.isArray
                     ? itemsProperty.arraySize
-                    : existingSerializedCount;
-            int currentUniqueCount = CountSetElements(setInstance);
-            bool hasSerializedDuplicates = serializedArrayCount > currentUniqueCount;
+                    : inspector.SerializedCount;
+            bool hasSerializedDuplicates = serializedCount > inspector.UniqueCount;
+            Array serializedSnapshot = hasSerializedDuplicates
+                ? inspector.GetSerializedItemsSnapshot()
+                : null;
 
-            foreach (object candidate in GenerateCandidateValues(elementType, setInstance))
+            foreach (
+                object candidate in GenerateCandidateValues(elementType, inspector.UniqueCount)
+            )
             {
-                object boxed = candidate;
-                bool alreadyExists = (bool)
-                    containsMethod.Invoke(setInstance, new object[] { boxed });
-                if (alreadyExists)
+                if (inspector.ContainsElement(candidate))
                 {
                     continue;
                 }
 
-                bool added = (bool)addMethod.Invoke(setInstance, new object[] { boxed });
-                if (!added)
+                if (!inspector.TryAddElement(candidate, out object normalizedValue))
                 {
                     continue;
                 }
 
                 SerializedObject serializedObject = property.serializedObject;
 
-                if (hasSerializedDuplicates && itemsField != null)
+                if (hasSerializedDuplicates && serializedSnapshot != null)
                 {
-                    int copyCount = Math.Max(serializedArrayCount, existingSerializedCount);
+                    int copyCount = serializedSnapshot.Length;
                     Array expanded = Array.CreateInstance(elementType, copyCount + 1);
-
-                    if (itemsProperty != null && itemsProperty.isArray)
-                    {
-                        int propertyCount = itemsProperty.arraySize;
-                        for (int index = 0; index < propertyCount; index++)
-                        {
-                            SerializedProperty elementProperty =
-                                itemsProperty.GetArrayElementAtIndex(index);
-                            SetElementData elementData = ReadElementData(elementProperty);
-                            expanded.SetValue(
-                                ConvertValueForElementType(elementType, elementData.Value),
-                                index
-                            );
-                        }
-
-                        if (existingItems != null && existingSerializedCount > propertyCount)
-                        {
-                            Array.Copy(
-                                existingItems,
-                                propertyCount,
-                                expanded,
-                                propertyCount,
-                                existingSerializedCount - propertyCount
-                            );
-                        }
-                    }
-                    else if (existingItems != null)
-                    {
-                        Array.Copy(existingItems, expanded, existingSerializedCount);
-                    }
-
-                    expanded.SetValue(ConvertValueForElementType(elementType, boxed), copyCount);
-                    itemsField.SetValue(setInstance, expanded);
-                    if (preserveField != null)
-                    {
-                        preserveField.SetValue(setInstance, true);
-                    }
-
-                    serializedObject.Update();
-                    property = serializedObject.FindProperty(propertyPath);
-                    itemsProperty = property?.FindPropertyRelative(
-                        SerializableHashSetSerializedPropertyNames.Items
-                    );
-                    int totalCount =
-                        itemsProperty != null && itemsProperty.isArray
-                            ? itemsProperty.arraySize
-                            : copyCount + 1;
-                    EnsurePaginationBounds(pagination, totalCount);
-                    EvaluateDuplicateState(property, itemsProperty, force: true);
-                    return true;
+                    Array.Copy(serializedSnapshot, expanded, copyCount);
+                    expanded.SetValue(normalizedValue, copyCount);
+                    inspector.SetSerializedItemsSnapshot(expanded, preserveSerializedEntries: true);
                 }
 
-                InvokeOnBeforeSerialize(setType, setInstance);
+                inspector.SynchronizeSerializedState();
                 serializedObject.Update();
                 property = serializedObject.FindProperty(propertyPath);
                 itemsProperty = property?.FindPropertyRelative(
                     SerializableHashSetSerializedPropertyNames.Items
                 );
-                int refreshedCount =
+                int totalCount =
                     itemsProperty != null && itemsProperty.isArray ? itemsProperty.arraySize : 0;
-                EnsurePaginationBounds(pagination, refreshedCount);
+                EnsurePaginationBounds(pagination, totalCount);
+                EvaluateDuplicateState(property, itemsProperty, force: true);
                 return true;
             }
 
@@ -998,21 +935,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ref SerializedProperty itemsProperty
         )
         {
-            object setInstance = GetSetInstance(property, propertyPath);
-            if (setInstance == null)
+            if (
+                !TryGetSetInspector(property, propertyPath, out ISerializableSetInspector inspector)
+            )
             {
                 return false;
             }
 
-            Type setType = setInstance.GetType();
-            MethodInfo clearMethod = setType.GetMethod("Clear", Type.EmptyTypes);
-            if (clearMethod == null)
-            {
-                return false;
-            }
-
-            clearMethod.Invoke(setInstance, null);
-            InvokeOnBeforeSerialize(setType, setInstance);
+            inspector.ClearElements();
+            inspector.SynchronizeSerializedState();
             property.serializedObject.Update();
             property = property.serializedObject.FindProperty(propertyPath);
             itemsProperty = property?.FindPropertyRelative(
@@ -1063,23 +994,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 WriteElementValue(elementProperty, elements[index]);
             }
 
-            object setInstance = GetSetInstance(property, propertyPath);
-            Type elementType = GetElementType(property);
-            if (setInstance != null && elementType != null)
+            if (TryGetSetInspector(property, propertyPath, out ISerializableSetInspector inspector))
             {
-                Type setType = setInstance.GetType();
-                MethodInfo clearMethod = setType.GetMethod("Clear", Type.EmptyTypes);
-                MethodInfo addMethod = setType.GetMethod("Add", new[] { elementType });
-                if (clearMethod != null && addMethod != null)
+                inspector.ClearElements();
+                foreach (SetElementData element in elements)
                 {
-                    clearMethod.Invoke(setInstance, null);
-                    foreach (SetElementData element in elements)
-                    {
-                        addMethod.Invoke(setInstance, new[] { element.Value });
-                    }
+                    inspector.TryAddElement(element.Value, out _);
                 }
 
-                InvokeOnBeforeSerialize(setType, setInstance);
+                inspector.SynchronizeSerializedState();
             }
 
             property.serializedObject.Update();
@@ -1093,27 +1016,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             object value
         )
         {
-            object setInstance = GetSetInstance(property, propertyPath);
-            if (setInstance == null)
+            if (
+                !TryGetSetInspector(property, propertyPath, out ISerializableSetInspector inspector)
+            )
             {
                 return;
             }
 
-            Type setType = setInstance.GetType();
-            Type elementType = GetElementType(property);
-            if (elementType == null)
+            if (inspector.RemoveElement(value))
             {
-                return;
+                inspector.SynchronizeSerializedState();
             }
-
-            MethodInfo removeMethod = setType.GetMethod("Remove", new[] { elementType });
-            if (removeMethod == null)
-            {
-                return;
-            }
-
-            removeMethod.Invoke(setInstance, new[] { value });
-            InvokeOnBeforeSerialize(setType, setInstance);
         }
 
         private static object GetSetInstance(SerializedProperty property, string propertyPath)
@@ -1121,22 +1034,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return GetTargetObjectOfProperty(property.serializedObject.targetObject, propertyPath);
         }
 
-        private static void InvokeOnBeforeSerialize(Type setType, object setInstance)
+        private bool TryGetSetInspector(
+            SerializedProperty property,
+            string propertyPath,
+            out ISerializableSetInspector inspector
+        )
         {
-            MethodInfo method = setType.GetMethod(
-                "OnBeforeSerialize",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-            );
-            method?.Invoke(setInstance, null);
+            object setInstance = GetSetInstance(property, propertyPath);
+            inspector = setInstance as ISerializableSetInspector;
+            return inspector != null;
         }
 
         private static IEnumerable<object> GenerateCandidateValues(
             Type elementType,
-            object setInstance
+            int existingCount
         )
         {
-            int existingCount = CountSetElements(setInstance);
-
             if (elementType == typeof(string))
             {
                 yield return "New Entry";
@@ -1358,64 +1271,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 || type == typeof(ulong)
                 || type == typeof(ushort)
                 || type == typeof(byte);
-        }
-
-        private static int CountSetElements(object setInstance)
-        {
-            if (setInstance is not IEnumerable enumerable)
-            {
-                return 0;
-            }
-
-            int count = 0;
-            foreach (object _ in enumerable)
-            {
-                count++;
-            }
-
-            return count;
-        }
-
-        private static object ConvertValueForElementType(Type elementType, object value)
-        {
-            if (elementType == null)
-            {
-                return value;
-            }
-
-            if (value == null)
-            {
-                return elementType.IsValueType ? Activator.CreateInstance(elementType) : null;
-            }
-
-            if (elementType.IsInstanceOfType(value))
-            {
-                return value;
-            }
-
-            try
-            {
-                if (elementType.IsEnum)
-                {
-                    if (value is string stringValue)
-                    {
-                        return Enum.Parse(elementType, stringValue);
-                    }
-
-                    return Enum.ToObject(elementType, value);
-                }
-
-                if (value is IConvertible)
-                {
-                    return Convert.ChangeType(value, elementType, CultureInfo.InvariantCulture);
-                }
-            }
-            catch
-            {
-                // Fallback handled below.
-            }
-
-            return elementType.IsValueType ? Activator.CreateInstance(elementType) : null;
         }
 
         private static object GetTargetObjectOfProperty(object target, string propertyPath)

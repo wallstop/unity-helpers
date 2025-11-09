@@ -3,11 +3,35 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using ProtoBuf;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
+
+    internal interface ISerializableSetInspector
+    {
+        Type ElementType { get; }
+
+        int UniqueCount { get; }
+
+        int SerializedCount { get; }
+
+        bool TryAddElement(object value, out object normalizedValue);
+
+        bool ContainsElement(object value);
+
+        bool RemoveElement(object value);
+
+        void ClearElements();
+
+        Array GetSerializedItemsSnapshot();
+
+        void SetSerializedItemsSnapshot(Array values, bool preserveSerializedEntries);
+
+        void SynchronizeSerializedState();
+    }
 
     /// <summary>
     /// Shared infrastructure for Unity-friendly serialized sets.
@@ -22,7 +46,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             IReadOnlyCollection<T>,
             ISerializationCallbackReceiver,
             IDeserializationCallback,
-            ISerializable
+            ISerializable,
+            ISerializableSetInspector
         where TSet : class, ISet<T>
     {
         [SerializeField]
@@ -345,6 +370,189 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         public override string ToString()
         {
             return this.ToJson();
+        }
+
+        Type ISerializableSetInspector.ElementType => typeof(T);
+
+        int ISerializableSetInspector.UniqueCount => _set.Count;
+
+        int ISerializableSetInspector.SerializedCount => _items?.Length ?? _set.Count;
+
+        bool ISerializableSetInspector.TryAddElement(object value, out object normalizedValue)
+        {
+            if (!TryConvertToElement(value, out T converted))
+            {
+                normalizedValue = default(T);
+                return false;
+            }
+
+            bool added = _set.Add(converted);
+            if (added)
+            {
+                MarkSerializationCacheDirty();
+            }
+
+            normalizedValue = converted;
+            return added;
+        }
+
+        bool ISerializableSetInspector.ContainsElement(object value)
+        {
+            if (!TryConvertToElement(value, out T converted))
+            {
+                return false;
+            }
+
+            return _set.Contains(converted);
+        }
+
+        bool ISerializableSetInspector.RemoveElement(object value)
+        {
+            if (!TryConvertToElement(value, out T converted))
+            {
+                return false;
+            }
+
+            bool removed = _set.Remove(converted);
+            if (removed)
+            {
+                MarkSerializationCacheDirty();
+            }
+
+            return removed;
+        }
+
+        void ISerializableSetInspector.ClearElements()
+        {
+            if (_set.Count == 0 && (_items == null || _items.Length == 0))
+            {
+                return;
+            }
+
+            _set.Clear();
+            _items = null;
+            _preserveSerializedEntries = false;
+        }
+
+        Array ISerializableSetInspector.GetSerializedItemsSnapshot()
+        {
+            if (_items != null && _items.Length > 0)
+            {
+                return (T[])_items.Clone();
+            }
+
+            if (_set.Count == 0)
+            {
+                return Array.CreateInstance(typeof(T), 0);
+            }
+
+            T[] snapshot = new T[_set.Count];
+            _set.CopyTo(snapshot, 0);
+            return snapshot;
+        }
+
+        void ISerializableSetInspector.SetSerializedItemsSnapshot(
+            Array values,
+            bool preserveSerializedEntries
+        )
+        {
+            if (values == null || values.Length == 0)
+            {
+                _items = null;
+                _preserveSerializedEntries = false;
+                _set.Clear();
+                return;
+            }
+
+            int length = values.Length;
+            T[] convertedItems = new T[length];
+            for (int index = 0; index < length; index++)
+            {
+                object raw = values.GetValue(index);
+                if (!TryConvertToElement(raw, out T converted))
+                {
+                    converted = default;
+                }
+
+                convertedItems[index] = converted;
+            }
+
+            _items = convertedItems;
+            _preserveSerializedEntries = preserveSerializedEntries;
+
+            _set.Clear();
+            for (int index = 0; index < convertedItems.Length; index++)
+            {
+                _set.Add(convertedItems[index]);
+            }
+        }
+
+        void ISerializableSetInspector.SynchronizeSerializedState()
+        {
+            OnBeforeSerialize();
+        }
+
+        private bool TryConvertToElement(object value, out T result)
+        {
+            if (value is T typedValue)
+            {
+                result = typedValue;
+                return true;
+            }
+
+            if (value == null)
+            {
+                if (default(T) == null)
+                {
+                    result = default;
+                    return true;
+                }
+
+                result = default;
+                return false;
+            }
+
+            Type elementType = typeof(T);
+
+            if (elementType.IsInstanceOfType(value))
+            {
+                result = (T)value;
+                return true;
+            }
+
+            try
+            {
+                if (elementType.IsEnum)
+                {
+                    if (value is string enumName)
+                    {
+                        result = (T)Enum.Parse(elementType, enumName);
+                        return true;
+                    }
+
+                    object enumValue = Enum.ToObject(elementType, value);
+                    result = (T)enumValue;
+                    return true;
+                }
+
+                if (value is IConvertible)
+                {
+                    object converted = Convert.ChangeType(
+                        value,
+                        elementType,
+                        CultureInfo.InvariantCulture
+                    );
+                    result = (T)converted;
+                    return true;
+                }
+            }
+            catch
+            {
+                // Fallback handled below.
+            }
+
+            result = default;
+            return false;
         }
 
         public struct Enumerator : IEnumerator<T>

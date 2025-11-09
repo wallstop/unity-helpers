@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
+    using System;
     using System.Linq;
     using System.Reflection;
     using NUnit.Framework;
@@ -7,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
+    using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class SerializableSetPropertyDrawerTests : CommonTestBase
@@ -42,9 +44,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             drawer.GetPropertyHeight(setProperty, GUIContent.none);
 
             Assert.AreEqual(
-                SerializableSetPropertyDrawer.MaxPageSize,
+                UnityHelpersSettings.GetSerializableSetPageSize(),
                 pagination.pageSize,
-                "Page size should clamp to drawer maximum."
+                "Page size should track the configured Unity Helpers setting."
             );
         }
 
@@ -52,14 +54,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void EvaluateDuplicateStateDetectsDuplicateEntries()
         {
             HashSetHost host = CreateScriptableObject<HashSetHost>();
-            FieldInfo itemsField = typeof(SerializableHashSet<int>).GetField(
-                "_items",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(itemsField);
-
-            itemsField.SetValue(host.set, new int[] { 2, 2, 4 });
-            host.set.OnAfterDeserialize();
+            ISerializableSetInspector inspector = (ISerializableSetInspector)host.set;
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 3);
+            duplicates.SetValue(2, 0);
+            duplicates.SetValue(2, 1);
+            duplicates.SetValue(4, 2);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
@@ -119,14 +120,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void TryAddNewElementPreservesSerializedDuplicates()
         {
             HashSetHost host = CreateScriptableObject<HashSetHost>();
-            FieldInfo itemsField = typeof(SerializableHashSet<int>).GetField(
-                "_items",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(itemsField);
-
-            itemsField.SetValue(host.set, new int[] { 1, 1, 2 });
-            host.set.OnAfterDeserialize();
+            ISerializableSetInspector inspector = (ISerializableSetInspector)host.set;
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 3);
+            duplicates.SetValue(1, 0);
+            duplicates.SetValue(1, 1);
+            duplicates.SetValue(2, 2);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
@@ -172,14 +172,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void TryAddNewElementPreservesSerializedDuplicatesForSortedSet()
         {
             SortedSetHost host = CreateScriptableObject<SortedSetHost>();
-            FieldInfo itemsField = typeof(SerializableSortedSet<int>).GetField(
-                "_items",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(itemsField);
-
-            itemsField.SetValue(host.set, new int[] { 3, 3, 5 });
-            host.set.OnAfterDeserialize();
+            ISerializableSetInspector inspector = (ISerializableSetInspector)host.set;
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 3);
+            duplicates.SetValue(3, 0);
+            duplicates.SetValue(3, 1);
+            duplicates.SetValue(5, 2);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
