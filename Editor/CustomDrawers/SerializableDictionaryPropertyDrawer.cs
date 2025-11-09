@@ -664,7 +664,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return state;
         }
 
-        private NullKeyState RefreshNullKeyState(
+        internal NullKeyState RefreshNullKeyState(
             string cacheKey,
             SerializedProperty keysProperty,
             Type keyType
@@ -3508,12 +3508,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public AnimBool foldoutAnim;
         }
 
-        private sealed class NullKeyInfo
+        public sealed class NullKeyInfo
         {
             public string tooltip = string.Empty;
         }
 
-        private sealed class NullKeyState
+        internal sealed class NullKeyState
         {
             private readonly HashSet<int> _nullIndices = new();
             private readonly Dictionary<int, NullKeyInfo> _nullLookup = new();

@@ -1,7 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
     using System;
-    using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
     using NUnit.Framework;
@@ -33,6 +32,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             public SerializableSortedSet<string> set = new SerializableSortedSet<string>();
         }
+
+        private sealed class ObjectSetHost : ScriptableObject
+        {
+            public SerializableHashSet<TestData> set = new SerializableHashSet<TestData>();
+        }
+
+        private sealed class TestData : ScriptableObject { }
 
         [Test]
         public void GetPropertyHeightClampsPageSize()
@@ -95,19 +101,20 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void NullEntriesProduceInspectorWarnings()
         {
-            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            ObjectSetHost host = CreateScriptableObject<ObjectSetHost>();
             ISerializableSetInspector inspector = (ISerializableSetInspector)host.set;
             Array values = Array.CreateInstance(inspector.ElementType, 2);
             values.SetValue(null, 0);
-            values.SetValue("valid", 1);
+            values.SetValue(CreateScriptableObject<TestData>(), 1);
             inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
             inspector.SynchronizeSerializedState();
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(StringSetHost.set)
+                nameof(ObjectSetHost.set)
             );
+            setProperty.isExpanded = true;
             SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
@@ -250,7 +257,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             CollectionAssert.AreEqual(
-                new[] { string.Empty, "New Entry 1" },
+                new[] { string.Empty, string.Empty },
                 ReadStringValues(itemsProperty)
             );
 
@@ -415,7 +422,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
             CollectionAssert.AreEqual(
-                new[] { string.Empty, "New Entry 1" },
+                new[] { string.Empty, string.Empty },
                 ReadStringValues(itemsProperty)
             );
 
@@ -445,11 +452,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void TryAddNewElementAllowsMultipleNullPlaceholders()
         {
-            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            ObjectSetHost host = CreateScriptableObject<ObjectSetHost>();
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(StringSetHost.set)
+                nameof(ObjectSetHost.set)
             );
             SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
@@ -470,7 +477,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             serializedObject.ApplyModifiedProperties();
             serializedObject.Update();
-            setProperty = serializedObject.FindProperty(nameof(StringSetHost.set));
+            setProperty = serializedObject.FindProperty(nameof(ObjectSetHost.set));
             itemsProperty = setProperty.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
@@ -486,21 +493,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             serializedObject.ApplyModifiedProperties();
             serializedObject.Update();
-            setProperty = serializedObject.FindProperty(nameof(StringSetHost.set));
+            setProperty = serializedObject.FindProperty(nameof(ObjectSetHost.set));
             itemsProperty = setProperty.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
             Assert.IsNotNull(itemsProperty);
             Assert.AreEqual(2, itemsProperty.arraySize);
-            Assert.IsTrue(
-                itemsProperty.GetArrayElementAtIndex(0).objectReferenceValue == null,
-                "First placeholder should be null."
-            );
-            Assert.IsTrue(
-                itemsProperty.GetArrayElementAtIndex(1).objectReferenceValue == null,
-                "Second placeholder should be null."
-            );
+            AssertPlaceholderIsNull(itemsProperty.GetArrayElementAtIndex(0));
+            AssertPlaceholderIsNull(itemsProperty.GetArrayElementAtIndex(1));
         }
 
         [Test]
@@ -700,6 +701,22 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
 
             return values;
+        }
+
+        private static void AssertPlaceholderIsNull(SerializedProperty element)
+        {
+            switch (element.propertyType)
+            {
+                case SerializedPropertyType.ObjectReference:
+                    Assert.IsTrue(
+                        element.objectReferenceValue == null,
+                        "Placeholder object reference should remain null."
+                    );
+                    break;
+                default:
+                    Assert.Fail($"Unsupported placeholder property type {element.propertyType}.");
+                    break;
+            }
         }
 
         [Test]

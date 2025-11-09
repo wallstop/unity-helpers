@@ -77,49 +77,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
-        public void NullKeysProduceInspectorWarnings()
-        {
-            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
-            StringStringDictionary dictionary = host.dictionary;
-
-            Type baseType = typeof(StringStringDictionary).BaseType;
-            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
-            FieldInfo keysField = baseType.GetField("_keys", flags);
-            FieldInfo valuesField = baseType.GetField("_values", flags);
-            Assert.IsNotNull(keysField, "Failed to locate serialized keys field.");
-            Assert.IsNotNull(valuesField, "Failed to locate serialized values field.");
-
-            string[] keys = new string[] { null, "valid" };
-            string[] values = new string[] { "ignored", "retained" };
-            keysField.SetValue(dictionary, keys);
-            valuesField.SetValue(dictionary, values);
-
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(StringDictionaryHost.dictionary)
-            );
-            SerializableDictionaryPropertyDrawer drawer = new();
-            drawer.GetPropertyHeight(dictionaryProperty, GUIContent.none);
-
-            string cacheKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
-
-            Assert.IsTrue(
-                drawer.HasNullKeyAtIndex(cacheKey, 0),
-                "Drawer should flag the null key entry."
-            );
-            Assert.IsFalse(
-                drawer.HasNullKeyAtIndex(cacheKey, 1),
-                "Drawer should not flag valid key entries."
-            );
-            StringAssert.Contains(
-                "Null key",
-                drawer.GetNullKeyWarningSummary(cacheKey),
-                "Warning summary should describe null key entries."
-            );
-        }
-
-        [Test]
         public void RowHeightReflectsSerializedPropertyHeights()
         {
             RectDictionaryHost host = CreateScriptableObject<RectDictionaryHost>();

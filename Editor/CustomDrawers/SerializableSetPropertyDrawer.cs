@@ -1354,6 +1354,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
+            if (ElementTypeSupportsNull(elementType) && elementType != typeof(string))
+            {
+                if (
+                    AppendNullPlaceholderEntry(
+                        ref property,
+                        propertyPath,
+                        ref itemsProperty,
+                        pagination,
+                        inspector
+                    )
+                )
+                {
+                    return true;
+                }
+            }
+
             List<object> existingValues = new();
             if (itemsProperty is { isArray: true })
             {

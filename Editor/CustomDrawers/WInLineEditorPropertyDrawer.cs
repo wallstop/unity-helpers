@@ -475,6 +475,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 if (_currentTarget == newValue)
                 {
+                    if (_foldout != null && newValue == null)
+                    {
+                        _foldout.SetValueWithoutNotify(false);
+                    }
+
                     UpdateInlineVisibility();
                     return;
                 }

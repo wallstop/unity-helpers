@@ -98,6 +98,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedHolder.FindProperty(
                 nameof(TestHolder.collapsedData)
             );
+            SessionState.EraseBool(GetSessionKey(property));
             property.objectReferenceValue = null;
             serializedHolder.ApplyModifiedProperties();
             serializedHolder.Update();
@@ -114,7 +115,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Foldout foldout = root.Q<Foldout>();
             Assert.That(foldout, Is.Not.Null);
-            foldout.value = true;
+            Toggle toggle = foldout.Q<Toggle>();
+            Assert.That(toggle, Is.Not.Null);
+            toggle.value = true;
             Assert.That(foldout.value, Is.False);
         }
 
