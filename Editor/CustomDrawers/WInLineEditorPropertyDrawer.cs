@@ -269,6 +269,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     toggle.style.flexShrink = 1f;
                     toggle.style.minWidth = 0f;
 
+                    VisualElement toggleInput = toggle.Q<VisualElement>(
+                        className: "unity-toggle__input"
+                    );
+                    if (toggleInput != null)
+                    {
+                        toggleInput.style.flexGrow = 0f;
+                        toggleInput.style.marginRight = 3f;
+                        toggleInput.style.paddingRight = 0f;
+                    }
+
+                    VisualElement foldoutInput = toggle.Q<VisualElement>(
+                        className: "unity-foldout__input"
+                    );
+                    if (foldoutInput != null)
+                    {
+                        foldoutInput.style.flexGrow = 0f;
+                        foldoutInput.style.marginRight = 6f;
+                        foldoutInput.style.paddingRight = 0f;
+                    }
+
                     Label toggleLabel = toggle.Q<Label>();
                     if (toggleLabel != null)
                     {
