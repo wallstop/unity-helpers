@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.Reflection;
     using System.Text;
     using UnityEditor;
@@ -1480,24 +1481,50 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         internal static void SyncRuntimeSet(SerializedProperty setProperty)
         {
-            SerializedObject serializedObject = setProperty.serializedObject;
-            UnityEngine.Object[] targets = serializedObject.targetObjects;
+            if (setProperty == null)
+            {
+                return;
+            }
+
+            SerializedObject sharedSerializedObject = setProperty.serializedObject;
+            UnityEngine.Object[] targets = sharedSerializedObject.targetObjects;
+            string propertyPath = setProperty.propertyPath;
 
             foreach (UnityEngine.Object target in targets)
             {
-                object setInstance = GetTargetObjectOfProperty(target, setProperty.propertyPath);
+                using SerializedObject targetSerializedObject = new(target);
+                targetSerializedObject.UpdateIfRequiredOrScript();
+                SerializedProperty targetSetProperty = targetSerializedObject.FindProperty(
+                    propertyPath
+                );
+                if (targetSetProperty == null)
+                {
+                    continue;
+                }
+
+                SerializedProperty targetItemsProperty = targetSetProperty.FindPropertyRelative(
+                    SerializableHashSetSerializedPropertyNames.Items
+                );
+
+                object setInstance = GetTargetObjectOfProperty(target, propertyPath);
+                if (setInstance is not ISerializableSetInspector inspector)
+                {
+                    continue;
+                }
+
+                Array snapshot = BuildSnapshotArray(targetItemsProperty, inspector.ElementType);
+                inspector.SetSerializedItemsSnapshot(snapshot, preserveSerializedEntries: true);
+
                 if (setInstance is ISerializableSetEditorSync editorSync)
                 {
                     editorSync.EditorAfterDeserialize();
-                    if (setInstance is ISerializableSetInspector inspector)
-                    {
-                        inspector.SynchronizeSerializedState();
-                    }
-                    EditorUtility.SetDirty(target);
                 }
+
+                inspector.SynchronizeSerializedState();
+                EditorUtility.SetDirty(target);
             }
 
-            serializedObject.UpdateIfRequiredOrScript();
+            sharedSerializedObject.UpdateIfRequiredOrScript();
         }
 
         private bool TryClearSet(
@@ -2146,6 +2173,85 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return data;
+        }
+
+        private static Array BuildSnapshotArray(SerializedProperty itemsProperty, Type elementType)
+        {
+            elementType ??= typeof(object);
+
+            if (itemsProperty == null || !itemsProperty.isArray)
+            {
+                return Array.CreateInstance(elementType, 0);
+            }
+
+            int count = itemsProperty.arraySize;
+            Array snapshot = Array.CreateInstance(elementType, count);
+
+            for (int index = 0; index < count; index++)
+            {
+                SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
+                SetElementData elementData = ReadElementData(element);
+                object value = ConvertSnapshotValue(elementType, elementData.value);
+                snapshot.SetValue(value, index);
+            }
+
+            return snapshot;
+        }
+
+        private static object ConvertSnapshotValue(Type elementType, object value)
+        {
+            if (value == null)
+            {
+                return null;
+            }
+
+            if (elementType == null)
+            {
+                return value;
+            }
+
+            Type nullableUnderlying = Nullable.GetUnderlyingType(elementType);
+            if (nullableUnderlying != null)
+            {
+                object innerValue = ConvertSnapshotValue(nullableUnderlying, value);
+                if (innerValue == null)
+                {
+                    return null;
+                }
+
+                return Activator.CreateInstance(elementType, innerValue);
+            }
+
+            if (elementType.IsInstanceOfType(value))
+            {
+                return value;
+            }
+
+            Type targetType = elementType;
+
+            try
+            {
+                if (targetType.IsEnum)
+                {
+                    if (value is string enumName)
+                    {
+                        return Enum.Parse(targetType, enumName, ignoreCase: true);
+                    }
+
+                    return Enum.ToObject(targetType, value);
+                }
+
+                if (value is IConvertible && typeof(IConvertible).IsAssignableFrom(targetType))
+                {
+                    return Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
+                }
+            }
+            catch (Exception)
+            {
+                return value;
+            }
+
+            return value;
         }
 
         private static void WriteElementValue(SerializedProperty property, SetElementData data)
