@@ -462,6 +462,9 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **Weighted Random** - Weighted random selection
 → [README - Random Generators](../README.md#random-number-generators)
 
+**WInLineEditor** - Inline inspector for object references
+→ [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#winlineeditor-property-drawer) | [README - Relational Components](../README.md#relational-components)
+
 **WShowIf** - Conditional field display attribute
 → [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#wshowif-property-drawer) | [README - API Index](../README.md#api-index)
 

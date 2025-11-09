@@ -51,6 +51,7 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 
 ### Enhance Inspector Workflows
 
+- Inline inspector for object references → [WInLineEditor](#winlineeditor-property-drawer)
 - Conditional field display → [WShowIf Property Drawer](#wshowif-property-drawer)
 - Dropdown for strings/ints → [StringInList](#stringinlist-property-drawer) | [IntDropdown](#intdropdown-property-drawer)
 - Read-only inspector fields → [DxReadOnly Property Drawer](#dxreadonly-property-drawer)
@@ -1145,6 +1146,67 @@ These custom inspectors enhance Unity components with additional functionality a
 ## Property Drawers & Attributes
 
 Custom property drawers enhance the inspector with conditional display, validation, and specialized input fields.
+
+<a id="winlineeditor-property-drawer"></a>
+
+### WInLineEditor Property Drawer
+
+**Attribute:** `[WInLineEditor]`
+
+**Purpose:** Embed the inspector for object references (ScriptableObjects, Materials, Components, Textures, etc.) directly below the field so you can edit configuration without losing context.
+
+**Modes (`WInLineEditorMode`):**
+
+- `AlwaysExpanded` — always draws the inline inspector.
+- `FoldoutExpanded` — shows a foldout that starts expanded.
+- `FoldoutCollapsed` — shows a foldout that starts collapsed.
+
+**Options:** tune the presentation with constructor parameters:
+
+- `inspectorHeight` (default 200) — vertical space reserved for the inspector body.
+- `drawObjectField` — hide or show the object picker next to the label.
+- `drawHeader` — draw a bold header with a ping button.
+- `drawPreview` & `previewHeight` — render the preview area when the target editor exposes one.
+- `enableScrolling` — wrap the inspector body in a scroll view for long inspectors.
+
+**Examples:**
+
+```csharp
+public class AbilityConfig : ScriptableObject
+{
+    public string displayName;
+    public float cooldown;
+}
+
+public class AbilityDatabase : ScriptableObject
+{
+    [WInLineEditor] public AbilityConfig defaultConfig;
+
+    [WInLineEditor(
+        WInLineEditorMode.FoldoutCollapsed,
+        inspectorHeight: 180f,
+        drawPreview: true,
+        previewHeight: 64f)]
+    public Texture2D abilityIcon;
+
+    [WInLineEditor(
+        WInLineEditorMode.AlwaysExpanded,
+        inspectorHeight: 220f,
+        drawObjectField: false,
+        enableScrolling: false)]
+    public AbilityConfig sharedTemplate;
+}
+```
+
+**Features:**
+
+- Bespoke implementation (no Odin dependency) tailored to the most common inline editing workflows.
+- Reuses Unity’s native editors, respecting custom inspectors, validation, and undo.
+- Optional scroll view keeps large inspectors usable without stealing space from the parent inspector.
+- Preview support for assets that implement `HasPreviewGUI`.
+- Header includes a quick “Ping” button so you can jump to the asset when needed.
+
+---
 
 ### WShowIf Property Drawer
 
