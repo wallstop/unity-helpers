@@ -114,6 +114,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ConfigureButtonStyle(ClearAllActiveButtonStyle, lineHeight);
             ConfigureButtonStyle(ClearAllInactiveButtonStyle, lineHeight);
             ConfigureButtonStyle(RemoveButtonStyle, lineHeight);
+            RemoveButtonStyle.fixedWidth = 0f;
+            RemoveButtonStyle.padding = new RectOffset(3, 3, 1, 1);
+            RemoveButtonStyle.margin = new RectOffset(0, 0, 1, 1);
         }
 
         private static GUIStyle CreateSolidButtonStyle(Color baseColor)
@@ -286,6 +289,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 int endIndex = Mathf.Min(startIndex + pagination.pageSize, totalCount);
                 UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
                     UnityHelpersSettings.GetDuplicateRowAnimationMode();
+                bool highlightDuplicates =
+                    animationMode != UnityHelpersSettings.DuplicateRowAnimationMode.None;
                 bool animateDuplicates =
                     animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
                 int tweenCycleLimit = UnityHelpersSettings.GetDuplicateRowTweenCycleLimit();
@@ -305,6 +310,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     bool isDuplicate = duplicateState.DuplicateIndices.Contains(index);
                     if (
                         isDuplicate
+                        && highlightDuplicates
                         && animateDuplicates
                         && !duplicateState.AnimationStartTimes.ContainsKey(index)
                     )
@@ -314,7 +320,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
 
                     float shakeOffset =
-                        isDuplicate && animateDuplicates
+                        isDuplicate && highlightDuplicates && animateDuplicates
                             ? GetDuplicateShakeOffset(duplicateState, index, tweenCycleLimit)
                             : 0f;
 
@@ -363,7 +369,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     Rect outlineRect = Rect.zero;
                     bool shouldDrawOutline = false;
 
-                    if (row.IsDuplicate)
+                    if (row.IsDuplicate && highlightDuplicates)
                     {
                         Rect duplicateRect = new Rect(
                             backgroundRect.x + row.ShakeOffset,
@@ -414,7 +420,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     EditorGUI.PropertyField(contentRect, row.Property, GUIContent.none, true);
 
-                    if (shouldDrawOutline)
+                    if (shouldDrawOutline && highlightDuplicates)
                     {
                         DrawDuplicateOutline(outlineRect);
                     }
@@ -687,7 +693,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 && pagination.selectedIndex >= 0
                 && pagination.selectedIndex < totalCount;
 
-            float removeButtonWidth = PaginationButtonWidth;
+            float removeButtonWidth = Mathf.Max(18f, PaginationButtonWidth - 8f);
             if (hasSelection)
             {
                 Rect removeRect = new Rect(
@@ -871,7 +877,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 double cycles = elapsed * DuplicateShakeFrequency / (2d * Math.PI);
                 if (cycles >= cycleLimit)
                 {
-                    state.AnimationStartTimes.Remove(index);
                     return 0f;
                 }
             }
@@ -940,7 +945,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 _duplicateStates[key] = state;
             }
 
-            bool previousHadDuplicates = state.HasDuplicates;
             state.DuplicateIndices.Clear();
             state.HasDuplicates = false;
             state.Summary = string.Empty;
@@ -1018,16 +1022,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         : "Duplicate values detected.";
             }
 
-            if (state.HasDuplicates)
+            UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
+                UnityHelpersSettings.GetDuplicateRowAnimationMode();
+            bool animateDuplicates =
+                animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
+
+            if (state.HasDuplicates && animateDuplicates)
             {
                 double now = EditorApplication.timeSinceStartup;
                 foreach (int duplicateIndex in state.DuplicateIndices)
                 {
-                    if (
-                        force
-                        || !state.AnimationStartTimes.ContainsKey(duplicateIndex)
-                        || !previousHadDuplicates
-                    )
+                    if (force || !state.AnimationStartTimes.ContainsKey(duplicateIndex))
                     {
                         state.AnimationStartTimes[duplicateIndex] = now;
                     }
