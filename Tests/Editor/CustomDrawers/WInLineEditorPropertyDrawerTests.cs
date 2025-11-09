@@ -93,6 +93,32 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        public void NullReferenceKeepsFieldEnabledAndFoldoutCollapsed()
+        {
+            SerializedProperty property = serializedHolder.FindProperty(
+                nameof(TestHolder.collapsedData)
+            );
+            property.objectReferenceValue = null;
+            serializedHolder.ApplyModifiedProperties();
+            serializedHolder.Update();
+
+            WInLineEditorPropertyDrawer drawer = new();
+            VisualElement root = drawer.CreatePropertyGUI(property);
+            root.Bind(serializedHolder);
+
+            ObjectField field = root.Query<ObjectField>()
+                .Where(x => x.bindingPath == property.propertyPath)
+                .First();
+            Assert.That(field, Is.Not.Null);
+            Assert.That(field.enabledInHierarchy, Is.True);
+
+            Foldout foldout = root.Q<Foldout>();
+            Assert.That(foldout, Is.Not.Null);
+            foldout.value = true;
+            Assert.That(foldout.value, Is.False);
+        }
+
+        [Test]
         public void CreatePropertyGUIDrawObjectFieldDisabledHasNoObjectField()
         {
             SerializedProperty property = serializedHolder.FindProperty(

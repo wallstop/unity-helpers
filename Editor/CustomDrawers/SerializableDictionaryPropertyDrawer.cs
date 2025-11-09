@@ -269,7 +269,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string key = GetListKey(dictionaryProperty);
             PaginationState pagination = GetOrCreatePaginationState(dictionaryProperty);
             ClampPaginationState(pagination, keysProperty.arraySize);
-            float rowHeight =
+            float defaultRowHeight =
                 EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing * 2f;
             float emptyHeight = Mathf.Max(
                 EditorGUIUtility.standardVerticalSpacing * 2f,
@@ -281,11 +281,40 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             ListPageCache cache = cacheProvider();
 
+            float ResolveRowHeight(int elementIndex)
+            {
+                ListPageCache currentCache = cacheProvider();
+                if (!RelativeIndexIsValid(currentCache, elementIndex))
+                {
+                    return defaultRowHeight;
+                }
+
+                int globalIndex = currentCache.entries[elementIndex].arrayIndex;
+                if (
+                    globalIndex < 0
+                    || globalIndex >= keysProperty.arraySize
+                    || globalIndex >= valuesProperty.arraySize
+                )
+                {
+                    return defaultRowHeight;
+                }
+
+                SerializedProperty rowKeyProperty = keysProperty.GetArrayElementAtIndex(
+                    globalIndex
+                );
+                SerializedProperty rowValueProperty = valuesProperty.GetArrayElementAtIndex(
+                    globalIndex
+                );
+
+                return CalculateDictionaryRowHeight(rowKeyProperty, rowValueProperty);
+            }
+
             if (_lists.TryGetValue(key, out ReorderableList cached))
             {
                 SyncListSelectionWithPagination(cached, pagination, cache);
                 cached.drawNoneElementCallback = _ => { };
-                cached.elementHeight = keysProperty.arraySize == 0 ? emptyHeight : rowHeight;
+                cached.elementHeight = keysProperty.arraySize == 0 ? emptyHeight : defaultRowHeight;
+                cached.elementHeightCallback = ResolveRowHeight;
                 return cached;
             }
 
@@ -296,7 +325,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 displayHeader: true,
                 displayAddButton: false,
                 displayRemoveButton: false
-            );
+            )
+            {
+                elementHeight = defaultRowHeight,
+            };
 
             list.drawHeaderCallback = rect =>
             {
@@ -305,7 +337,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 DrawListHeader(rect, keysProperty, list, pagination, cacheProvider);
             };
 
-            list.elementHeightCallback = _ => rowHeight;
+            list.elementHeightCallback = ResolveRowHeight;
             list.drawNoneElementCallback = _ => { };
 
             list.drawElementBackgroundCallback = (rect, index, _, _) =>
@@ -331,13 +363,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return;
                 }
 
-                float spacing = EditorGUIUtility.standardVerticalSpacing;
-                Rect backgroundRect = new(
-                    rect.x,
-                    rect.y,
-                    rect.width,
-                    EditorGUIUtility.singleLineHeight + spacing * 2f
+                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(globalIndex);
+                SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(
+                    globalIndex
                 );
+
+                float rowHeight = CalculateDictionaryRowHeight(keyProperty, valueProperty);
+                Rect backgroundRect = new(rect.x, rect.y, rect.width, rowHeight);
                 Color rowColor = EditorGUIUtility.isProSkin ? DarkRowColor : LightRowColor;
                 EditorGUI.DrawRect(backgroundRect, rowColor);
 
@@ -370,8 +402,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     );
                 }
 
-                Rect animatedRect = backgroundRect;
+                Rect highlightRect = ExpandDictionaryRowRect(backgroundRect);
+                Rect animatedRect = highlightRect;
                 animatedRect.x += shakeOffset;
+
+                Rect insetHighlightRect = animatedRect;
+                insetHighlightRect.xMin += 1f;
+                insetHighlightRect.xMax -= 1f;
+                insetHighlightRect.yMin += 1f;
+                insetHighlightRect.yMax -= 1f;
+                insetHighlightRect.height = Mathf.Max(0f, insetHighlightRect.height);
 
                 if (hasDuplicate)
                 {
@@ -380,23 +420,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         Color highlightColor = duplicateInfo.isPrimary
                             ? DuplicatePrimaryColor
                             : DuplicateSecondaryColor;
-                        EditorGUI.DrawRect(animatedRect, highlightColor);
-                        DrawDuplicateOutline(animatedRect);
+                        EditorGUI.DrawRect(insetHighlightRect, highlightColor);
+                        DrawDuplicateOutline(insetHighlightRect);
                     }
 
-                    DrawDuplicateTooltip(animatedRect, duplicateInfo.tooltip);
+                    DrawDuplicateTooltip(insetHighlightRect, duplicateInfo.tooltip);
                 }
 
                 if (hasNullKey)
                 {
-                    EditorGUI.DrawRect(animatedRect, NullKeyHighlightColor);
-                    DrawDuplicateOutline(animatedRect);
-                    DrawNullTooltip(animatedRect, nullKeyInfo.tooltip);
+                    EditorGUI.DrawRect(insetHighlightRect, NullKeyHighlightColor);
+                    DrawDuplicateOutline(insetHighlightRect);
+                    DrawNullTooltip(insetHighlightRect, nullKeyInfo.tooltip);
                 }
 
                 if (list.index == index)
                 {
-                    Rect selectionRect = backgroundRect;
+                    Rect selectionRect = highlightRect;
                     selectionRect.x += shakeOffset;
                     Color selectionColor = EditorGUIUtility.isProSkin
                         ? DarkSelectionColor
@@ -428,7 +468,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     globalIndex
                 );
 
-                rect.y += EditorGUIUtility.standardVerticalSpacing;
+                float spacing = EditorGUIUtility.standardVerticalSpacing;
+                float keyHeight = EditorGUI.GetPropertyHeight(keyProperty, GUIContent.none, true);
+                float valueHeight = EditorGUI.GetPropertyHeight(
+                    valueProperty,
+                    GUIContent.none,
+                    true
+                );
+                float contentY = rect.y + spacing;
                 bool hasDuplicate = TryGetDuplicateInfo(
                     key,
                     globalIndex,
@@ -456,13 +503,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 float gap = 6f;
                 float halfWidth = (rect.width - gap) * 0.5f;
 
-                Rect keyRect = new(rect.x, rect.y, halfWidth, EditorGUIUtility.singleLineHeight);
-                Rect valueRect = new(
-                    rect.x + halfWidth + gap,
-                    rect.y,
-                    halfWidth,
-                    EditorGUIUtility.singleLineHeight
-                );
+                Rect keyRect = new(rect.x, contentY, halfWidth, keyHeight);
+                Rect valueRect = new(rect.x + halfWidth + gap, contentY, halfWidth, valueHeight);
 
                 float iconSize = EditorGUIUtility.singleLineHeight;
                 float iconSpacing = 3f;
@@ -581,7 +623,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             };
 
             SyncListSelectionWithPagination(list, pagination, cache);
-            list.elementHeight = keysProperty.arraySize == 0 ? emptyHeight : rowHeight;
+            list.elementHeight = keysProperty.arraySize == 0 ? emptyHeight : defaultRowHeight;
 
             _lists[key] = list;
             return list;
@@ -739,6 +781,34 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             NullKeyTooltipContent.image = null;
             NullKeyTooltipContent.tooltip = tooltip;
             GUI.Label(rect, NullKeyTooltipContent, GUIStyle.none);
+        }
+
+        private static float CalculateDictionaryRowHeight(
+            SerializedProperty keyProperty,
+            SerializedProperty valueProperty
+        )
+        {
+            float spacing = EditorGUIUtility.standardVerticalSpacing;
+            float keyHeight =
+                keyProperty != null
+                    ? EditorGUI.GetPropertyHeight(keyProperty, GUIContent.none, true)
+                    : EditorGUIUtility.singleLineHeight;
+            float valueHeight =
+                valueProperty != null
+                    ? EditorGUI.GetPropertyHeight(valueProperty, GUIContent.none, true)
+                    : EditorGUIUtility.singleLineHeight;
+            float contentHeight = Mathf.Max(
+                EditorGUIUtility.singleLineHeight,
+                Mathf.Max(keyHeight, valueHeight)
+            );
+            return contentHeight + spacing * 2f;
+        }
+
+        private static Rect ExpandDictionaryRowRect(Rect rect)
+        {
+            rect.yMin -= 1f;
+            rect.yMax += 1f;
+            return rect;
         }
 
         private static GUIContent GetNullKeyIconContent(string tooltip)

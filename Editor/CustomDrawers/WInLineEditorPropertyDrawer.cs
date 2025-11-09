@@ -17,7 +17,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             if (property == null)
             {
-                return new PropertyField(property);
+                return new PropertyField(null);
             }
 
             FieldInfo resolvedFieldInfo = fieldInfo ?? ResolveFieldInfo(property);
@@ -66,10 +66,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             Type currentType = target.GetType();
-            if (currentType == null)
-            {
-                return null;
-            }
 
             string propertyPath = property.propertyPath;
             if (string.IsNullOrEmpty(propertyPath))
@@ -193,6 +189,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private Editor _cachedEditor;
             private UnityEngine.Object _currentTarget;
+            private bool _lastFoldoutExpanded;
 
             public InlineInspectorElement(
                 SerializedProperty property,
@@ -240,6 +237,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     bool defaultExpanded = _settings.mode == WInLineEditorMode.FoldoutExpanded;
                     bool savedState = SessionState.GetBool(sessionKey, defaultExpanded);
+                    _lastFoldoutExpanded = savedState;
 
                     _foldout = new Foldout
                     {
@@ -250,7 +248,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     _foldout.RegisterValueChangedCallback(evt =>
                     {
+                        if (_currentTarget == null)
+                        {
+                            _foldout.SetValueWithoutNotify(false);
+                            UpdateInlineVisibility();
+                            return;
+                        }
+
                         SessionState.SetBool(sessionKey, evt.newValue);
+                        _lastFoldoutExpanded = evt.newValue;
                         UpdateInlineVisibility();
                     });
 
@@ -473,7 +479,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return;
                 }
 
+                if (_foldout != null && _currentTarget != null)
+                {
+                    _lastFoldoutExpanded = _foldout.value;
+                }
+
                 _currentTarget = newValue;
+
+                if (_foldout != null)
+                {
+                    if (_currentTarget == null)
+                    {
+                        _foldout.SetValueWithoutNotify(false);
+                    }
+                    else
+                    {
+                        _foldout.SetValueWithoutNotify(_lastFoldoutExpanded);
+                    }
+                }
+
                 RefreshHeader();
                 BuildInspector();
                 UpdateInlineVisibility();
@@ -509,16 +533,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 if (_currentTarget == null)
                 {
-                    if (_foldout != null)
-                    {
-                        _foldout.SetEnabled(false);
-                    }
                     return;
-                }
-
-                if (_foldout != null)
-                {
-                    _foldout.SetEnabled(true);
                 }
 
                 try
@@ -612,11 +627,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private void UpdateInlineVisibility()
             {
-                if (_foldout != null)
-                {
-                    _foldout.SetEnabled(_currentTarget != null);
-                }
-
                 bool shouldShow =
                     _currentTarget != null
                     && (

@@ -30,11 +30,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 new SerializableSortedDictionary<int, string>();
         }
 
+        private sealed class RectDictionaryHost : ScriptableObject
+        {
+            public RectIntDictionary dictionary = new RectIntDictionary();
+        }
+
         [Serializable]
         private sealed class IntStringDictionary : SerializableDictionary<int, string> { }
 
         [Serializable]
         private sealed class StringStringDictionary : SerializableDictionary<string, string> { }
+
+        [Serializable]
+        private sealed class RectIntDictionary : SerializableDictionary<Rect, int> { }
 
         [Test]
         public void PageSizeClampPreventsExcessiveCacheGrowth()
@@ -109,6 +117,69 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 drawer.GetNullKeyWarningSummary(cacheKey),
                 "Warning summary should describe null key entries."
             );
+        }
+
+        [Test]
+        public void RowHeightReflectsSerializedPropertyHeights()
+        {
+            RectDictionaryHost host = CreateScriptableObject<RectDictionaryHost>();
+            host.dictionary.Add(new Rect(1f, 2f, 3f, 4f), 42);
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(RectDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            ReorderableList list = drawer.GetOrCreateList(
+                dictionaryProperty,
+                keysProperty,
+                valuesProperty
+            );
+
+            Assert.IsNotNull(
+                list.elementHeightCallback,
+                "Expected dynamic element height callback."
+            );
+            float resolvedHeight = list.elementHeightCallback.Invoke(0);
+
+            SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(0);
+            SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(0);
+
+            MethodInfo heightMethod = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
+                "CalculateDictionaryRowHeight",
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
+            Assert.IsNotNull(heightMethod, "Row height helper should be discoverable.");
+
+            float expectedHeight = (float)
+                heightMethod.Invoke(null, new object[] { keyProperty, valueProperty });
+
+            Assert.That(resolvedHeight, Is.EqualTo(expectedHeight));
+        }
+
+        [Test]
+        public void ExpandDictionaryRowRectExtendsSelectionArea()
+        {
+            MethodInfo method = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
+                "ExpandDictionaryRowRect",
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
+            Assert.IsNotNull(method, "Expected ExpandDictionaryRowRect helper to exist.");
+
+            Rect baseRect = new Rect(2f, 6f, 40f, 18f);
+            Rect expanded = (Rect)method.Invoke(null, new object[] { baseRect });
+
+            Assert.That(expanded.yMin, Is.LessThan(baseRect.yMin));
+            Assert.That(expanded.yMax, Is.GreaterThan(baseRect.yMax));
+            Assert.That(expanded.width, Is.EqualTo(baseRect.width));
         }
 
         [Test]

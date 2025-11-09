@@ -28,6 +28,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public SerializableSortedSet<int> set = new SerializableSortedSet<int>();
         }
 
+        private sealed class SortedStringSetHost : ScriptableObject
+        {
+            public SerializableSortedSet<string> set = new SerializableSortedSet<string>();
+        }
+
         [Test]
         public void GetPropertyHeightClampsPageSize()
         {
@@ -116,6 +121,62 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             CollectionAssert.AreEquivalent(new int[] { 0 }, state.nullIndices);
             Assert.IsTrue(state.tooltips.ContainsKey(0));
             StringAssert.Contains("Null entry", state.summary);
+        }
+
+        [Test]
+        public void SortedSetEditingPreservesSerializedEntry()
+        {
+            SortedStringSetHost host = CreateScriptableObject<SortedStringSetHost>();
+            ISerializableSetInspector inspector = (ISerializableSetInspector)host.set;
+            Array values = Array.CreateInstance(inspector.ElementType, 1);
+            values.SetValue(string.Empty, 0);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(SortedStringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            itemsProperty.GetArrayElementAtIndex(0).stringValue = "delta";
+            Assert.IsTrue(serializedObject.ApplyModifiedProperties());
+
+            MethodInfo syncMethod = typeof(SerializableSetPropertyDrawer).GetMethod(
+                "SyncRuntimeSet",
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
+            Assert.IsNotNull(syncMethod, "Expected to locate SyncRuntimeSet via reflection.");
+            syncMethod.Invoke(null, new object[] { setProperty });
+
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(SortedStringSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.AreEqual(1, itemsProperty.arraySize, "Entry should remain serialized.");
+            Assert.AreEqual("delta", itemsProperty.GetArrayElementAtIndex(0).stringValue);
+        }
+
+        [Test]
+        public void ExpandRowRectVerticallyExtendsSelectionBounds()
+        {
+            MethodInfo method = typeof(SerializableSetPropertyDrawer).GetMethod(
+                "ExpandRowRectVertically",
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
+            Assert.IsNotNull(method, "Expected ExpandRowRectVertically to exist.");
+
+            Rect baseRect = new Rect(5f, 10f, 25f, 16f);
+            Rect expanded = (Rect)method.Invoke(null, new object[] { baseRect });
+
+            Assert.That(expanded.yMin, Is.LessThan(baseRect.yMin));
+            Assert.That(expanded.yMax, Is.GreaterThan(baseRect.yMax));
+            Assert.That(expanded.width, Is.EqualTo(baseRect.width));
         }
 
         [Test]

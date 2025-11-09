@@ -391,16 +391,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     if (row.isDuplicate && highlightDuplicates)
                     {
-                        Rect duplicateRect = new(
-                            backgroundRect.x + row.shakeOffset,
-                            backgroundRect.y,
-                            backgroundRect.width,
-                            backgroundRect.height
-                        );
+                        Rect duplicateRect = ExpandRowRectVertically(backgroundRect);
+                        duplicateRect.x += row.shakeOffset;
                         duplicateRect.xMin += 1f;
                         duplicateRect.xMax -= 1f;
                         duplicateRect.yMin += 1f;
                         duplicateRect.yMax -= 1f;
+                        duplicateRect.height = Mathf.Max(0f, duplicateRect.height);
 
                         Color duplicateColor = row.isPrimaryDuplicate
                             ? DuplicatePrimaryColor
@@ -412,16 +409,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     if (row.hasNullValue)
                     {
-                        Rect nullRect = new(
-                            backgroundRect.x + row.shakeOffset,
-                            backgroundRect.y,
-                            backgroundRect.width,
-                            row.height
-                        );
+                        Rect nullRect = ExpandRowRectVertically(backgroundRect);
+                        nullRect.x += row.shakeOffset;
                         nullRect.xMin += 1f;
                         nullRect.xMax -= 1f;
                         nullRect.yMin += 1f;
                         nullRect.yMax -= 1f;
+                        nullRect.height = Mathf.Max(0f, nullRect.height);
 
                         EditorGUI.DrawRect(nullRect, NullEntryHighlightColor);
                         outlineRect = nullRect;
@@ -431,22 +425,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     if (row.isSelected)
                     {
+                        Rect selectionRect = ExpandRowRectVertically(backgroundRect);
                         Color selectionColor = EditorGUIUtility.isProSkin
                             ? DarkSelectionColor
                             : LightSelectionColor;
-                        EditorGUI.DrawRect(backgroundRect, selectionColor);
+                        EditorGUI.DrawRect(selectionRect, selectionColor);
                     }
 
                     Rect contentRect = new(
                         backgroundRect.x + 6f,
-                        backgroundRect.y + 1f,
+                        backgroundRect.y,
                         backgroundRect.width - 12f,
-                        row.height - 2f
+                        row.height
                     );
                     if (Mathf.Abs(row.shakeOffset) > Mathf.Epsilon)
                     {
                         contentRect.x += row.shakeOffset;
-                        contentRect.width -= Mathf.Abs(row.shakeOffset);
+                        contentRect.width = Mathf.Max(
+                            0f,
+                            contentRect.width - Mathf.Abs(row.shakeOffset)
+                        );
                     }
 
                     if (
@@ -910,6 +908,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return offset;
+        }
+
+        private static Rect ExpandRowRectVertically(Rect rect)
+        {
+            rect.yMin -= 1f;
+            rect.yMax += 1f;
+            return rect;
         }
 
         private static void DrawDuplicateOutline(Rect rect)
@@ -1484,6 +1489,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 if (setInstance is ISerializableSetEditorSync editorSync)
                 {
                     editorSync.EditorAfterDeserialize();
+                    if (setInstance is ISerializableSetInspector inspector)
+                    {
+                        Array snapshot = inspector.GetSerializedItemsSnapshot();
+                        inspector.SetSerializedItemsSnapshot(
+                            snapshot,
+                            preserveSerializedEntries: true
+                        );
+                        inspector.SynchronizeSerializedState();
+                    }
                     EditorUtility.SetDirty(target);
                 }
             }
