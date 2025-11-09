@@ -196,6 +196,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
+            SerializedObject serializedObject = property.serializedObject;
+            serializedObject.UpdateIfRequiredOrScript();
+
             SerializedProperty itemsProperty = property.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
@@ -477,6 +480,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             EditorGUI.indentLevel = previousIndentLevel;
             EditorGUI.EndProperty();
+
+            bool applied = serializedObject.ApplyModifiedProperties();
+            if (applied)
+            {
+                SyncRuntimeSet(property);
+            }
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
@@ -1383,6 +1392,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 int totalCount = itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0;
                 EnsurePaginationBounds(pagination, totalCount);
                 EvaluateDuplicateState(property, itemsProperty, force: true);
+                SyncRuntimeSet(property);
                 if (totalCount > 0)
                 {
                     pagination.selectedIndex = totalCount - 1;
@@ -1456,12 +1466,31 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EnsurePaginationBounds(pagination, totalCount);
             EvaluateDuplicateState(property, itemsProperty, force: true);
             EvaluateNullEntryState(property, itemsProperty);
+            SyncRuntimeSet(property);
             if (totalCount > 0)
             {
                 pagination.selectedIndex = totalCount - 1;
             }
 
             return true;
+        }
+
+        private static void SyncRuntimeSet(SerializedProperty setProperty)
+        {
+            SerializedObject serializedObject = setProperty.serializedObject;
+            UnityEngine.Object[] targets = serializedObject.targetObjects;
+
+            foreach (UnityEngine.Object target in targets)
+            {
+                object setInstance = GetTargetObjectOfProperty(target, setProperty.propertyPath);
+                if (setInstance is ISerializableSetEditorSync editorSync)
+                {
+                    editorSync.EditorAfterDeserialize();
+                    EditorUtility.SetDirty(target);
+                }
+            }
+
+            serializedObject.UpdateIfRequiredOrScript();
         }
 
         private bool TryClearSet(
@@ -1484,6 +1513,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             itemsProperty = property?.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
+            SyncRuntimeSet(property);
             return true;
         }
 
@@ -1510,6 +1540,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             RemoveEntry(itemsProperty, targetIndex);
             RemoveValueFromSet(property, propertyPath, elementData.value);
             property.serializedObject.ApplyModifiedProperties();
+            SyncRuntimeSet(property);
             property.serializedObject.Update();
             property = property.serializedObject.FindProperty(propertyPath);
             itemsProperty = property.FindPropertyRelative(
@@ -1580,6 +1611,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             property.serializedObject.Update();
             property = property.serializedObject.FindProperty(propertyPath);
+            SyncRuntimeSet(property);
             return true;
         }
 

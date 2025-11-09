@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
-    using System.Text.RegularExpressions;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
@@ -59,11 +58,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             string[] source = new string[] { null, "valid" };
             itemsField.SetValue(set, source);
-
-            LogAssert.Expect(
-                LogType.Error,
-                new Regex("index 0.+value reference was null", RegexOptions.IgnoreCase)
-            );
 
             set.OnAfterDeserialize();
 

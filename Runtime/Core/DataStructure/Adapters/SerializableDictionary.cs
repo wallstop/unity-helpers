@@ -11,6 +11,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using ProtoBuf;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
 
     /// <summary>
     /// Provides the shared infrastructure for serializable dictionary implementations.
@@ -188,10 +191,31 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         private static void LogNullReferenceSkip(string component, int index)
         {
+#if UNITY_EDITOR
+            if (!EditorShouldLog())
+            {
+                return;
+            }
+#endif
+
             Debug.LogError(
                 $"SerializableDictionary<{typeof(TKey).FullName}, {typeof(TValue).FullName}> skipped serialized entry at index {index} because the {component} reference was null."
             );
         }
+
+#if UNITY_EDITOR
+        private static bool EditorShouldLog()
+        {
+            try
+            {
+                return EditorApplication.isPlayingOrWillChangePlaymode;
+            }
+            catch (UnityException)
+            {
+                return false;
+            }
+        }
+#endif
 
         public void OnBeforeSerialize()
         {

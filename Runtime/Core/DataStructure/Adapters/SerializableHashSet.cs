@@ -9,6 +9,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using ProtoBuf;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
 
     internal interface ISerializableSetInspector
     {
@@ -33,6 +36,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         void SynchronizeSerializedState();
     }
 
+    internal interface ISerializableSetEditorSync
+    {
+        void EditorAfterDeserialize();
+    }
+
     /// <summary>
     /// Shared infrastructure for Unity-friendly serialized sets.
     /// </summary>
@@ -44,7 +52,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             ISerializationCallbackReceiver,
             IDeserializationCallback,
             ISerializable,
-            ISerializableSetInspector
+            ISerializableSetInspector,
+            ISerializableSetEditorSync
         where TSet : class, ISet<T>
     {
         [SerializeField]
@@ -316,6 +325,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public void OnAfterDeserialize()
         {
+            OnAfterDeserializeInternal(suppressWarnings: false);
+        }
+
+        void ISerializableSetEditorSync.EditorAfterDeserialize()
+        {
+            OnAfterDeserializeInternal(suppressWarnings: true);
+        }
+
+        private void OnAfterDeserializeInternal(bool suppressWarnings)
+        {
             if (_items == null)
             {
                 _preserveSerializedEntries = false;
@@ -333,7 +352,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 if (supportsNullCheck && ReferenceEquals(value, null))
                 {
                     encounteredNullReference = true;
-                    LogNullEntrySkip(index);
+                    if (!suppressWarnings)
+                    {
+                        LogNullEntrySkip(index);
+                    }
                     continue;
                 }
 
@@ -359,10 +381,30 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         private static void LogNullEntrySkip(int index)
         {
+#if UNITY_EDITOR
+            if (!EditorShouldLog())
+            {
+                return;
+            }
+#endif
             Debug.LogError(
                 $"SerializableSet<{typeof(T).FullName}> skipped serialized entry at index {index} because the value reference was null."
             );
         }
+
+#if UNITY_EDITOR
+        private static bool EditorShouldLog()
+        {
+            try
+            {
+                return EditorApplication.isPlayingOrWillChangePlaymode;
+            }
+            catch (UnityException)
+            {
+                return false;
+            }
+        }
+#endif
 
         [ProtoBeforeSerialization]
         private void OnProtoBeforeSerialization()

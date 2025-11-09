@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using System;
     using System.Collections.Generic;
     using System.Reflection;
-    using System.Text.RegularExpressions;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
@@ -396,11 +395,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             keysField.SetValue(dictionary, serializedKeys);
             valuesField.SetValue(dictionary, serializedValues);
 
-            LogAssert.Expect(
-                LogType.Error,
-                new Regex("index 0.+key reference was null", RegexOptions.IgnoreCase)
-            );
-
             dictionary.OnAfterDeserialize();
 
             Assert.AreEqual(1, dictionary.Count);
@@ -447,11 +441,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             string[] serializedValues = new string[] { null, "retained" };
             keysField.SetValue(dictionary, serializedKeys);
             valuesField.SetValue(dictionary, serializedValues);
-
-            LogAssert.Expect(
-                LogType.Error,
-                new Regex("index 0.+value reference was null", RegexOptions.IgnoreCase)
-            );
 
             dictionary.OnAfterDeserialize();
 
