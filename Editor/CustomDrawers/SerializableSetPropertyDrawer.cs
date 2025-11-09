@@ -474,8 +474,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         contentY += RowSpacing;
                     }
                 }
-
-                y = blockRect.yMax + SectionSpacing;
             }
 
             EditorGUI.indentLevel = previousIndentLevel;
@@ -1435,7 +1433,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int existingCount = snapshot?.Length ?? inspector.SerializedCount;
             Array expanded = Array.CreateInstance(elementType, existingCount + 1);
 
-            if (snapshot != null && snapshot.Length > 0)
+            if (snapshot is { Length: > 0 })
             {
                 Array.Copy(snapshot, expanded, snapshot.Length);
             }

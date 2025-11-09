@@ -347,12 +347,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     out DuplicateKeyInfo duplicateInfo,
                     out DuplicateKeyState duplicateState
                 );
-                bool hasNullKey = TryGetNullKeyInfo(
-                    key,
-                    globalIndex,
-                    out NullKeyInfo nullKeyInfo,
-                    out _
-                );
+                bool hasNullKey = TryGetNullKeyInfo(key, globalIndex, out NullKeyInfo nullKeyInfo);
 
                 UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
                     UnityHelpersSettings.GetDuplicateRowAnimationMode();
@@ -440,12 +435,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     out DuplicateKeyInfo duplicateInfo,
                     out DuplicateKeyState duplicateState
                 );
-                bool hasNullKey = TryGetNullKeyInfo(
-                    key,
-                    globalIndex,
-                    out NullKeyInfo nullKeyInfo,
-                    out _
-                );
+                bool hasNullKey = TryGetNullKeyInfo(key, globalIndex, out NullKeyInfo nullKeyInfo);
 
                 UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
                     UnityHelpersSettings.GetDuplicateRowAnimationMode();
@@ -597,25 +587,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return list;
         }
 
-        private void DrawDuplicateFoldoutBadge(Rect positionRect, Rect foldoutRect, string tooltip)
-        {
-            float iconSize = EditorGUIUtility.singleLineHeight;
-            float padding = 4f;
-            Rect iconRect = new(
-                Mathf.Max(positionRect.x, positionRect.xMax - iconSize - padding),
-                foldoutRect.y,
-                iconSize,
-                iconSize
-            );
-
-            GUIContent iconContent = GetDuplicateIconContent(
-                string.IsNullOrEmpty(tooltip)
-                    ? "Duplicate keys detected. Resolve conflicts to prevent silent overwrites. The last entry wins at runtime."
-                    : tooltip
-            );
-            GUI.Label(iconRect, iconContent);
-        }
-
         private DuplicateKeyState RefreshDuplicateState(
             string cacheKey,
             SerializedProperty keysProperty,
@@ -715,21 +686,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 && state.TryGetInfo(arrayIndex, out info);
         }
 
-        private bool TryGetNullKeyInfo(
-            string cacheKey,
-            int arrayIndex,
-            out NullKeyInfo info,
-            out NullKeyState state
-        )
+        private bool TryGetNullKeyInfo(string cacheKey, int arrayIndex, out NullKeyInfo info)
         {
             info = null;
-            state = null;
             if (string.IsNullOrEmpty(cacheKey))
             {
                 return false;
             }
 
-            return _nullKeyStates.TryGetValue(cacheKey, out state)
+            return _nullKeyStates.TryGetValue(cacheKey, out NullKeyState state)
                 && state.TryGetInfo(arrayIndex, out info);
         }
 
