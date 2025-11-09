@@ -264,16 +264,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     toggle.style.paddingLeft = 0f;
                     toggle.style.paddingRight = 0f;
                     toggle.style.marginLeft = 0f;
-                    toggle.style.flexGrow = 1f;
+                    toggle.style.marginRight = 0f;
+                    toggle.style.flexGrow = 0f;
+                    toggle.style.flexShrink = 1f;
+                    toggle.style.minWidth = 0f;
 
                     Label toggleLabel = toggle.Q<Label>();
                     if (toggleLabel != null)
                     {
-                        toggleLabel.style.flexGrow = 0f;
-                        toggleLabel.style.flexShrink = 0f;
-                        toggleLabel.style.marginLeft = 3f;
-                        toggleLabel.style.marginRight = 4f;
+                        toggleLabel.style.marginLeft = -4f;
+                        toggleLabel.style.marginRight = 0f;
                         toggleLabel.style.paddingLeft = 0f;
+                        toggleLabel.style.paddingRight = 0f;
                     }
 
                     if (objectField != null)
@@ -281,10 +283,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         objectField.label = string.Empty;
                         objectField.style.flexGrow = 1f;
                         objectField.style.flexShrink = 1f;
+                        objectField.style.flexBasis = 100f;
+                        objectField.style.paddingRight = 0f;
+                        objectField.style.paddingLeft = 0f;
                         objectField.style.flexBasis = 0f;
                         objectField.style.minWidth = 0f;
                         objectField.style.marginLeft = 0f;
-                        objectField.style.marginRight = 0f;
+                        objectField.style.marginRight = 2.5f;
+                        objectField.style.width = StyleKeyword.Auto;
+                        objectField.style.maxWidth = StyleKeyword.None;
 
                         if (objectField.labelElement != null)
                         {
@@ -301,6 +308,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         {
                             display.style.flexGrow = 1f;
                             display.style.minWidth = 0f;
+                            display.style.flexBasis = 0f;
                             display.style.marginLeft = 0f;
                             display.style.alignItems = Align.Center;
                         }
