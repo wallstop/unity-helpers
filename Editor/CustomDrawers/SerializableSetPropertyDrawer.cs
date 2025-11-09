@@ -290,7 +290,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
                     UnityHelpersSettings.GetDuplicateRowAnimationMode();
                 bool highlightDuplicates =
+#pragma warning disable CS0618 // Type or member is obsolete
                     animationMode != UnityHelpersSettings.DuplicateRowAnimationMode.None;
+#pragma warning restore CS0618 // Type or member is obsolete
                 bool animateDuplicates =
                     animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
                 int tweenCycleLimit = UnityHelpersSettings.GetDuplicateRowTweenCycleLimit();
