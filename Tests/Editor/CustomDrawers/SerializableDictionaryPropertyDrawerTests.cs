@@ -153,14 +153,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(0);
             SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(0);
 
-            MethodInfo heightMethod = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                "CalculateDictionaryRowHeight",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.IsNotNull(heightMethod, "Row height helper should be discoverable.");
-
-            float expectedHeight = (float)
-                heightMethod.Invoke(null, new object[] { keyProperty, valueProperty });
+            float expectedHeight =
+                SerializableDictionaryPropertyDrawer.CalculateDictionaryRowHeight(
+                    keyProperty,
+                    valueProperty
+                );
 
             Assert.That(resolvedHeight, Is.EqualTo(expectedHeight));
         }
@@ -168,14 +165,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void ExpandDictionaryRowRectExtendsSelectionArea()
         {
-            MethodInfo method = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                "ExpandDictionaryRowRect",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.IsNotNull(method, "Expected ExpandDictionaryRowRect helper to exist.");
-
             Rect baseRect = new Rect(2f, 6f, 40f, 18f);
-            Rect expanded = (Rect)method.Invoke(null, new object[] { baseRect });
+            Rect expanded = SerializableDictionaryPropertyDrawer.ExpandDictionaryRowRect(baseRect);
 
             Assert.That(expanded.yMin, Is.LessThan(baseRect.yMin));
             Assert.That(expanded.yMax, Is.GreaterThan(baseRect.yMax));

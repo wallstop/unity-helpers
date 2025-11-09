@@ -145,12 +145,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             itemsProperty.GetArrayElementAtIndex(0).stringValue = "delta";
             Assert.IsTrue(serializedObject.ApplyModifiedProperties());
 
-            MethodInfo syncMethod = typeof(SerializableSetPropertyDrawer).GetMethod(
-                "SyncRuntimeSet",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.IsNotNull(syncMethod, "Expected to locate SyncRuntimeSet via reflection.");
-            syncMethod.Invoke(null, new object[] { setProperty });
+            SerializableSetPropertyDrawer.SyncRuntimeSet(setProperty);
 
             serializedObject.Update();
             setProperty = serializedObject.FindProperty(nameof(SortedStringSetHost.set));
@@ -163,16 +158,110 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        public void SortedSetStringEditingRetainsEntryWhenAddedThroughDrawer()
+        {
+            SortedStringSetHost host = CreateScriptableObject<SortedStringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(SortedStringSetHost.set)
+            );
+            string propertyPath = setProperty.propertyPath;
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.IsTrue(
+                drawer.TryAddNewElement(
+                    ref setProperty,
+                    propertyPath,
+                    ref itemsProperty,
+                    pagination
+                ),
+                "Drawer failed to add string entry."
+            );
+
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(propertyPath);
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            Assert.AreEqual(1, itemsProperty.arraySize);
+
+            itemsProperty.GetArrayElementAtIndex(0).stringValue = "delta";
+            Assert.IsTrue(serializedObject.ApplyModifiedProperties());
+
+            SerializableSetPropertyDrawer.SyncRuntimeSet(setProperty);
+            serializedObject.Update();
+
+            setProperty = serializedObject.FindProperty(propertyPath);
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.AreEqual(1, itemsProperty.arraySize);
+            Assert.AreEqual("delta", itemsProperty.GetArrayElementAtIndex(0).stringValue);
+        }
+
+        [Test]
+        public void HashSetStringEditingRetainsEntryWhenAddedThroughDrawer()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            string propertyPath = setProperty.propertyPath;
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.IsTrue(
+                drawer.TryAddNewElement(
+                    ref setProperty,
+                    propertyPath,
+                    ref itemsProperty,
+                    pagination
+                ),
+                "Drawer failed to add string entry."
+            );
+
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(propertyPath);
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            Assert.AreEqual(1, itemsProperty.arraySize);
+
+            itemsProperty.GetArrayElementAtIndex(0).stringValue = "gamma";
+            Assert.IsTrue(serializedObject.ApplyModifiedProperties());
+
+            SerializableSetPropertyDrawer.SyncRuntimeSet(setProperty);
+            serializedObject.Update();
+
+            setProperty = serializedObject.FindProperty(propertyPath);
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.AreEqual(1, itemsProperty.arraySize);
+            Assert.AreEqual("gamma", itemsProperty.GetArrayElementAtIndex(0).stringValue);
+        }
+
+        [Test]
         public void ExpandRowRectVerticallyExtendsSelectionBounds()
         {
-            MethodInfo method = typeof(SerializableSetPropertyDrawer).GetMethod(
-                "ExpandRowRectVertically",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.IsNotNull(method, "Expected ExpandRowRectVertically to exist.");
-
             Rect baseRect = new Rect(5f, 10f, 25f, 16f);
-            Rect expanded = (Rect)method.Invoke(null, new object[] { baseRect });
+            Rect expanded = SerializableSetPropertyDrawer.ExpandRowRectVertically(baseRect);
 
             Assert.That(expanded.yMin, Is.LessThan(baseRect.yMin));
             Assert.That(expanded.yMax, Is.GreaterThan(baseRect.yMax));

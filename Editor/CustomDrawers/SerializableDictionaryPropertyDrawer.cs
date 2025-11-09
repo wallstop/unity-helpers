@@ -783,7 +783,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             GUI.Label(rect, NullKeyTooltipContent, GUIStyle.none);
         }
 
-        private static float CalculateDictionaryRowHeight(
+        internal static float CalculateDictionaryRowHeight(
             SerializedProperty keyProperty,
             SerializedProperty valueProperty
         )
@@ -804,7 +804,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return contentHeight + spacing * 2f;
         }
 
-        private static Rect ExpandDictionaryRowRect(Rect rect)
+        internal static Rect ExpandDictionaryRowRect(Rect rect)
         {
             rect.yMin -= 1f;
             rect.yMax += 1f;

@@ -910,7 +910,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return offset;
         }
 
-        private static Rect ExpandRowRectVertically(Rect rect)
+        internal static Rect ExpandRowRectVertically(Rect rect)
         {
             rect.yMin -= 1f;
             rect.yMax += 1f;
@@ -1478,7 +1478,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return true;
         }
 
-        private static void SyncRuntimeSet(SerializedProperty setProperty)
+        internal static void SyncRuntimeSet(SerializedProperty setProperty)
         {
             SerializedObject serializedObject = setProperty.serializedObject;
             UnityEngine.Object[] targets = serializedObject.targetObjects;
@@ -1491,11 +1491,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     editorSync.EditorAfterDeserialize();
                     if (setInstance is ISerializableSetInspector inspector)
                     {
-                        Array snapshot = inspector.GetSerializedItemsSnapshot();
-                        inspector.SetSerializedItemsSnapshot(
-                            snapshot,
-                            preserveSerializedEntries: true
-                        );
                         inspector.SynchronizeSerializedState();
                     }
                     EditorUtility.SetDirty(target);
