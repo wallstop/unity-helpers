@@ -3825,7 +3825,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     target,
                     dictionaryProperty.propertyPath
                 );
-                if (dictionaryInstance is ISerializationCallbackReceiver receiver)
+                if (dictionaryInstance is SerializableDictionaryBase baseDictionary)
+                {
+                    baseDictionary.EditorAfterDeserialize();
+                    EditorUtility.SetDirty(target);
+                }
+                else if (dictionaryInstance is ISerializationCallbackReceiver receiver)
                 {
                     receiver.OnAfterDeserialize();
                     EditorUtility.SetDirty(target);

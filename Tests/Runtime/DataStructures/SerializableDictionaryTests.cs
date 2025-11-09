@@ -476,6 +476,38 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void EditorAfterDeserializeSuppressesWarnings()
+        {
+            SerializableDictionary<string, string> dictionary = new();
+
+            Type baseType = typeof(SerializableDictionary<string, string>).BaseType;
+            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            FieldInfo keysField = baseType.GetField("_keys", flags);
+            FieldInfo valuesField = baseType.GetField("_values", flags);
+            Assert.IsNotNull(keysField);
+            Assert.IsNotNull(valuesField);
+
+            string[] keys = new string[] { null, "valid" };
+            string[] values = new string[] { "ignored", "retained" };
+            keysField.SetValue(dictionary, keys);
+            valuesField.SetValue(dictionary, values);
+
+            SerializableDictionaryBase editorSync = dictionary;
+            editorSync.EditorAfterDeserialize();
+
+            Assert.AreEqual(1, dictionary.Count);
+            Assert.IsTrue(dictionary.ContainsKey("valid"));
+            Assert.AreEqual("retained", dictionary["valid"]);
+
+            string[] storedKeys = (string[])keysField.GetValue(dictionary);
+            string[] storedValues = (string[])valuesField.GetValue(dictionary);
+            CollectionAssert.AreEqual(keys, storedKeys);
+            CollectionAssert.AreEqual(values, storedValues);
+
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
         public void DictionaryMutationsClearPreservedSerializedEntries()
         {
             SerializableDictionary<int, string> dictionary = new();

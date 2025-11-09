@@ -40,6 +40,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         {
             return this.ToJson();
         }
+
+        internal abstract void EditorAfterDeserialize();
     }
 
     /// <summary>
@@ -106,6 +108,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public void OnAfterDeserialize()
         {
+            OnAfterDeserializeInternal(suppressWarnings: false);
+        }
+
+        internal override void EditorAfterDeserialize()
+        {
+            OnAfterDeserializeInternal(suppressWarnings: true);
+        }
+
+        private void OnAfterDeserializeInternal(bool suppressWarnings)
+        {
             bool keysAndValuesPresent =
                 _keys != null && _values != null && _keys.Length == _values.Length;
 
@@ -134,14 +146,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 if (keySupportsNullCheck && ReferenceEquals(key, null))
                 {
                     encounteredNullReference = true;
-                    LogNullReferenceSkip("key", index);
+                    if (!suppressWarnings)
+                    {
+                        LogNullReferenceSkip("key", index);
+                    }
                     continue;
                 }
 
                 if (valueSupportsNullCheck && ReferenceEquals(value, null))
                 {
                     encounteredNullReference = true;
-                    LogNullReferenceSkip("value", index);
+                    if (!suppressWarnings)
+                    {
+                        LogNullReferenceSkip("value", index);
+                    }
                     continue;
                 }
 
@@ -155,7 +173,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
             _preserveSerializedEntries = hasDuplicateKeys || encounteredNullReference;
 
-            if (!hasDuplicateKeys)
+            if (!hasDuplicateKeys && !encounteredNullReference)
             {
                 _keys = null;
                 _values = null;
