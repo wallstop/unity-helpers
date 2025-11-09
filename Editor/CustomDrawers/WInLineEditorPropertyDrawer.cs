@@ -1,519 +1,460 @@
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
 #if UNITY_EDITOR
-    using System.Collections.Generic;
+    using System;
+    using System.Reflection;
     using UnityEditor;
+    using UnityEditor.UIElements;
     using UnityEngine;
+    using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
     [CustomPropertyDrawer(typeof(WInLineEditorAttribute))]
     public sealed class WInLineEditorPropertyDrawer : PropertyDrawer
     {
-        private const float ContainerPadding = 6f;
-        private const float HeaderButtonWidth = 48f;
-        private const float MinimumInspectorHeight = 32f;
-        private const float ScrollbarWidth = 16f;
-
-        private static readonly Dictionary<string, InlineEditorCache> CacheByProperty = new();
-
-        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+        public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
+            if (attribute is not WInLineEditorAttribute inlineAttribute)
+            {
+                return new PropertyField(property);
+            }
+
             if (property.propertyType != SerializedPropertyType.ObjectReference)
             {
-                return EditorGUIUtility.singleLineHeight;
+                return new PropertyField(property);
             }
 
-            WInLineEditorAttribute inlineAttribute = attribute as WInLineEditorAttribute;
-            if (inlineAttribute == null)
-            {
-                return EditorGUIUtility.singleLineHeight;
-            }
-
-            InlineEditorCache cache = GetCache(property);
-            EnsureFoldoutInitialization(property, inlineAttribute, cache);
-
-            float height = inlineAttribute.drawObjectField
-                ? EditorGUI.GetPropertyHeight(property, label, includeChildren: false)
-                : EditorGUIUtility.singleLineHeight;
-
-            float spacing = EditorGUIUtility.standardVerticalSpacing;
-
-            UnityEngine.Object reference = property.objectReferenceValue;
-            EnsureEditor(cache, reference, inlineAttribute);
-
-            bool drawInline = ShouldDrawInline(property, inlineAttribute, cache);
-            if (drawInline)
-            {
-                if (height > 0f)
-                {
-                    height += spacing;
-                }
-
-                float inlineHeight = CalculateInlineHeight(inlineAttribute, cache);
-                height += inlineHeight;
-            }
-
-            return height;
+            return new InlineInspectorElement(property, inlineAttribute, fieldInfo);
         }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            if (property.propertyType != SerializedPropertyType.ObjectReference)
-            {
-                EditorGUI.HelpBox(
-                    position,
-                    "WInLineEditor can only be used on object reference fields.",
-                    MessageType.Warning
-                );
-                return;
-            }
-
-            WInLineEditorAttribute inlineAttribute = attribute as WInLineEditorAttribute;
-            if (inlineAttribute == null)
-            {
-                EditorGUI.PropertyField(position, property, label, true);
-                return;
-            }
-
-            InlineEditorCache cache = GetCache(property);
-            EnsureFoldoutInitialization(property, inlineAttribute, cache);
-
-            float fieldHeight = inlineAttribute.drawObjectField
-                ? EditorGUI.GetPropertyHeight(property, label, includeChildren: false)
-                : EditorGUIUtility.singleLineHeight;
-
-            Rect fieldRect = new Rect(position.x, position.y, position.width, fieldHeight);
-
-            EditorGUI.BeginProperty(position, label, property);
-
-            DrawObjectField(fieldRect, property, label, inlineAttribute);
-
-            UnityEngine.Object reference = property.objectReferenceValue;
-            EnsureEditor(cache, reference, inlineAttribute);
-
-            float spacing = EditorGUIUtility.standardVerticalSpacing;
-            float currentY = fieldRect.yMax;
-
-            bool drawInline = ShouldDrawInline(property, inlineAttribute, cache);
-            if (drawInline)
-            {
-                currentY += spacing;
-                float inlineHeight = CalculateInlineHeight(inlineAttribute, cache);
-                Rect inlineRect = new Rect(position.x, currentY, position.width, inlineHeight);
-                DrawInlineArea(inlineRect, property, inlineAttribute, cache, reference);
-            }
-
-            EditorGUI.EndProperty();
+            EditorGUI.PropertyField(position, property, label, true);
         }
 
-        private static InlineEditorCache GetCache(SerializedProperty property)
+        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
-            string key = GetPropertyKey(property);
-            InlineEditorCache cache;
-            if (!CacheByProperty.TryGetValue(key, out cache))
-            {
-                cache = new InlineEditorCache();
-                CacheByProperty[key] = cache;
-            }
-            return cache;
+            return EditorGUI.GetPropertyHeight(property, label, true);
         }
 
-        private static string GetPropertyKey(SerializedProperty property)
+        private static Type ResolveObjectReferenceType(FieldInfo drawerField)
         {
-            UnityEngine.Object target =
-                property.serializedObject != null ? property.serializedObject.targetObject : null;
-            int targetId = target != null ? target.GetInstanceID() : 0;
-            return targetId.ToString() + ":" + property.propertyPath;
+            if (drawerField == null)
+            {
+                return typeof(UnityEngine.Object);
+            }
+
+            Type fieldType = drawerField.FieldType;
+            if (fieldType.IsArray)
+            {
+                return fieldType.GetElementType();
+            }
+
+            if (fieldType.IsGenericType)
+            {
+                Type[] arguments = fieldType.GetGenericArguments();
+                if (
+                    arguments.Length == 1
+                    && typeof(UnityEngine.Object).IsAssignableFrom(arguments[0])
+                )
+                {
+                    return arguments[0];
+                }
+            }
+
+            return typeof(UnityEngine.Object).IsAssignableFrom(fieldType)
+                ? fieldType
+                : typeof(UnityEngine.Object);
         }
 
-        private static void EnsureFoldoutInitialization(
-            SerializedProperty property,
-            WInLineEditorAttribute inlineAttribute,
-            InlineEditorCache cache
-        )
+        private static bool ShouldAllowSceneObjects(Type referenceType)
         {
-            if (inlineAttribute.mode == WInLineEditorMode.AlwaysExpanded)
-            {
-                property.isExpanded = true;
-                cache.foldoutInitialized = true;
-                return;
-            }
-
-            if (cache.foldoutInitialized)
-            {
-                return;
-            }
-
-            property.isExpanded = inlineAttribute.mode == WInLineEditorMode.FoldoutExpanded;
-            cache.foldoutInitialized = true;
-        }
-
-        private static bool ShouldDrawInline(
-            SerializedProperty property,
-            WInLineEditorAttribute inlineAttribute,
-            InlineEditorCache cache
-        )
-        {
-            if (property.objectReferenceValue == null)
-            {
-                cache.Dispose();
-                return false;
-            }
-
-            if (inlineAttribute.mode == WInLineEditorMode.AlwaysExpanded)
+            if (referenceType == null)
             {
                 return true;
             }
 
-            return property.isExpanded;
+            if (typeof(ScriptableObject).IsAssignableFrom(referenceType))
+            {
+                return false;
+            }
+
+            if (
+                typeof(Component).IsAssignableFrom(referenceType)
+                || typeof(GameObject).IsAssignableFrom(referenceType)
+            )
+            {
+                return true;
+            }
+
+            return referenceType == typeof(UnityEngine.Object);
         }
 
-        private static float CalculateInlineHeight(
-            WInLineEditorAttribute inlineAttribute,
-            InlineEditorCache cache
-        )
+        private sealed class InlineInspectorElement : VisualElement
         {
-            float spacing = EditorGUIUtility.standardVerticalSpacing;
-            bool hasHeader = inlineAttribute.drawHeader;
-            bool hasPreview = inlineAttribute.drawPreview && cache.hasPreview;
-            bool hasInspector = inlineAttribute.inspectorHeight > 0f;
+            private readonly SerializedObject serializedObject;
+            private readonly string propertyPath;
+            private readonly WInLineEditorAttribute settings;
+            private readonly Type referenceType;
+            private readonly bool allowSceneObjects;
+            private readonly string sessionKey;
 
-            float height = ContainerPadding * 2f;
+            private readonly ObjectField objectField;
+            private readonly Foldout foldout;
+            private readonly VisualElement headerRow;
+            private readonly Label headerLabel;
+            private readonly Button pingButton;
+            private readonly VisualElement inspectorRoot;
+            private readonly ScrollView scrollView;
 
-            if (hasHeader)
+            private Editor cachedEditor;
+            private UnityEngine.Object currentTarget;
+
+            public InlineInspectorElement(
+                SerializedProperty property,
+                WInLineEditorAttribute inlineAttribute,
+                FieldInfo drawerField
+            )
             {
-                height += EditorGUIUtility.singleLineHeight;
-            }
+                serializedObject = property.serializedObject;
+                propertyPath = property.propertyPath;
+                settings = inlineAttribute;
+                referenceType = ResolveObjectReferenceType(drawerField);
+                allowSceneObjects = ShouldAllowSceneObjects(referenceType);
+                sessionKey =
+                    $"WInLineEditor:{serializedObject.targetObject.GetInstanceID()}:{propertyPath}";
 
-            if (hasInspector)
-            {
-                height += inlineAttribute.inspectorHeight;
-            }
+                style.flexDirection = FlexDirection.Column;
 
-            if (hasPreview)
-            {
-                height += inlineAttribute.previewHeight;
-            }
-
-            int breakCount = 0;
-            if (hasHeader && (hasInspector || hasPreview))
-            {
-                breakCount++;
-            }
-            if (hasInspector && hasPreview)
-            {
-                breakCount++;
-            }
-
-            height += breakCount * spacing;
-            return height;
-        }
-
-        private static void DrawObjectField(
-            Rect position,
-            SerializedProperty property,
-            GUIContent label,
-            WInLineEditorAttribute inlineAttribute
-        )
-        {
-            if (!inlineAttribute.drawObjectField)
-            {
-                DrawHeaderFoldout(position, property, label, inlineAttribute);
-                return;
-            }
-
-            if (inlineAttribute.mode == WInLineEditorMode.AlwaysExpanded)
-            {
-                EditorGUI.PropertyField(position, property, label, includeChildren: false);
-                return;
-            }
-
-            int originalIndent = EditorGUI.indentLevel;
-            EditorGUI.indentLevel = 0;
-
-            float labelWidth = EditorGUIUtility.labelWidth;
-            Rect foldoutRect = new Rect(
-                position.x,
-                position.y,
-                labelWidth,
-                EditorGUIUtility.singleLineHeight
-            );
-            bool expanded = EditorGUI.Foldout(foldoutRect, property.isExpanded, label, true);
-            if (expanded != property.isExpanded)
-            {
-                property.isExpanded = expanded;
-            }
-
-            Rect objectFieldRect = new Rect(
-                position.x + labelWidth,
-                position.y,
-                position.width - labelWidth,
-                position.height
-            );
-            EditorGUI.PropertyField(
-                objectFieldRect,
-                property,
-                GUIContent.none,
-                includeChildren: false
-            );
-
-            EditorGUI.indentLevel = originalIndent;
-        }
-
-        private static void DrawHeaderFoldout(
-            Rect position,
-            SerializedProperty property,
-            GUIContent label,
-            WInLineEditorAttribute inlineAttribute
-        )
-        {
-            if (inlineAttribute.mode == WInLineEditorMode.AlwaysExpanded)
-            {
-                string displayName =
-                    property.objectReferenceValue != null
-                        ? property.objectReferenceValue.name
-                        : "None";
-                EditorGUI.LabelField(position, label, new GUIContent(displayName));
-                return;
-            }
-
-            bool expanded = EditorGUI.Foldout(position, property.isExpanded, label, true);
-            if (expanded != property.isExpanded)
-            {
-                property.isExpanded = expanded;
-            }
-        }
-
-        private static void DrawInlineArea(
-            Rect position,
-            SerializedProperty property,
-            WInLineEditorAttribute inlineAttribute,
-            InlineEditorCache cache,
-            UnityEngine.Object reference
-        )
-        {
-            GUI.Box(position, GUIContent.none, EditorStyles.helpBox);
-
-            Rect contentRect = new Rect(
-                position.x + ContainerPadding,
-                position.y + ContainerPadding,
-                position.width - (ContainerPadding * 2f),
-                position.height - (ContainerPadding * 2f)
-            );
-
-            float spacing = EditorGUIUtility.standardVerticalSpacing;
-            float currentY = contentRect.y;
-
-            bool hasHeader = inlineAttribute.drawHeader;
-            bool hasPreview = inlineAttribute.drawPreview && cache.hasPreview;
-            bool hasInspector = inlineAttribute.inspectorHeight > 0f;
-
-            if (hasHeader)
-            {
-                Rect headerRect = new Rect(
-                    contentRect.x,
-                    currentY,
-                    contentRect.width,
-                    EditorGUIUtility.singleLineHeight
-                );
-                DrawInlineHeader(headerRect, property, reference);
-                currentY += EditorGUIUtility.singleLineHeight;
-            }
-
-            if (hasHeader && (hasInspector || hasPreview))
-            {
-                currentY += spacing;
-            }
-
-            if (hasInspector)
-            {
-                Rect inspectorRect = new Rect(
-                    contentRect.x,
-                    currentY,
-                    contentRect.width,
-                    inlineAttribute.inspectorHeight
-                );
-                DrawInspector(inspectorRect, cache, inlineAttribute);
-                currentY += inlineAttribute.inspectorHeight;
-            }
-
-            if (hasInspector && hasPreview)
-            {
-                currentY += spacing;
-            }
-
-            if (hasPreview)
-            {
-                Rect previewRect = new Rect(
-                    contentRect.x,
-                    currentY,
-                    contentRect.width,
-                    inlineAttribute.previewHeight
-                );
-                DrawPreview(previewRect, cache);
-            }
-        }
-
-        private static void DrawInlineHeader(
-            Rect position,
-            SerializedProperty property,
-            UnityEngine.Object reference
-        )
-        {
-            GUIContent displayContent =
-                reference != null ? new GUIContent(reference.name) : new GUIContent("None");
-
-            if (reference == null)
-            {
-                EditorGUI.LabelField(position, displayContent, EditorStyles.boldLabel);
-                return;
-            }
-
-            float labelWidth = position.width - HeaderButtonWidth - 2f;
-            if (labelWidth < 0f)
-            {
-                labelWidth = 0f;
-            }
-
-            Rect labelRect = new Rect(position.x, position.y, labelWidth, position.height);
-            EditorGUI.LabelField(labelRect, displayContent, EditorStyles.boldLabel);
-
-            Rect buttonRect = new Rect(
-                position.x + labelWidth + 2f,
-                position.y,
-                HeaderButtonWidth,
-                position.height
-            );
-
-            if (GUI.Button(buttonRect, "Ping"))
-            {
-                EditorGUIUtility.PingObject(reference);
-                Selection.activeObject = reference;
-            }
-        }
-
-        private static void DrawInspector(
-            Rect position,
-            InlineEditorCache cache,
-            WInLineEditorAttribute inlineAttribute
-        )
-        {
-            if (cache.cachedEditor == null)
-            {
-                EditorGUI.LabelField(position, "Inspector unavailable.");
-                return;
-            }
-
-            float effectiveHeight =
-                cache.inspectorContentHeight > 0f
-                    ? cache.inspectorContentHeight
-                    : inlineAttribute.inspectorHeight;
-
-            if (!inlineAttribute.enableScrolling)
-            {
-                GUILayout.BeginArea(position);
-                EditorGUILayout.BeginVertical(EditorStyles.inspectorFullWidthMargins);
-                cache.cachedEditor.OnInspectorGUI();
-                EditorGUILayout.EndVertical();
-                GUILayout.EndArea();
-                return;
-            }
-
-            float viewWidth = position.width - ScrollbarWidth;
-            if (viewWidth < 0f)
-            {
-                viewWidth = position.width;
-            }
-
-            Rect viewRect = new Rect(
-                0f,
-                0f,
-                viewWidth,
-                Mathf.Max(effectiveHeight, MinimumInspectorHeight)
-            );
-
-            cache.scrollPosition = GUI.BeginScrollView(position, cache.scrollPosition, viewRect);
-
-            Rect areaRect = new Rect(0f, 0f, viewRect.width, viewRect.height);
-
-            GUILayout.BeginArea(areaRect);
-            EditorGUILayout.BeginVertical(EditorStyles.inspectorFullWidthMargins);
-            cache.cachedEditor.OnInspectorGUI();
-            EditorGUILayout.EndVertical();
-            if (Event.current.type == EventType.Repaint)
-            {
-                Rect lastRect = GUILayoutUtility.GetLastRect();
-                float calculatedHeight = lastRect.yMax + EditorGUIUtility.standardVerticalSpacing;
-                if (calculatedHeight > 0f)
+                // Object field ------------------------------------------------
+                if (settings.drawObjectField)
                 {
-                    cache.inspectorContentHeight = calculatedHeight;
+                    objectField = new ObjectField(property.displayName)
+                    {
+                        bindingPath = propertyPath,
+                        objectType = referenceType,
+                        allowSceneObjects = allowSceneObjects,
+                    };
+                    objectField.RegisterValueChangedCallback(evt =>
+                    {
+                        OnPropertyValueChanged(evt.newValue as UnityEngine.Object);
+                    });
+                    objectField.Bind(serializedObject);
+                    Add(objectField);
+                }
+                else
+                {
+                    objectField = null;
+                    Label label = new(property.displayName)
+                    {
+                        style = { unityFontStyleAndWeight = FontStyle.Bold, marginBottom = 2f },
+                    };
+                    Add(label);
+                }
+
+                // Foldout -----------------------------------------------------
+                VisualElement inlineParent = this;
+                if (settings.mode == WInLineEditorMode.AlwaysExpanded)
+                {
+                    foldout = null;
+                }
+                else
+                {
+                    bool defaultExpanded = settings.mode == WInLineEditorMode.FoldoutExpanded;
+                    bool savedState = SessionState.GetBool(sessionKey, defaultExpanded);
+
+                    foldout = new Foldout
+                    {
+                        text = settings.drawObjectField ? "Details" : property.displayName,
+                        value = savedState,
+                    };
+                    foldout.style.marginTop = 2f;
+
+                    foldout.RegisterValueChangedCallback(evt =>
+                    {
+                        SessionState.SetBool(sessionKey, evt.newValue);
+                        UpdateInlineVisibility();
+                    });
+
+                    Add(foldout);
+                    inlineParent = foldout.contentContainer;
+                }
+
+                // Header row --------------------------------------------------
+                if (settings.drawHeader)
+                {
+                    headerRow = new VisualElement
+                    {
+                        style =
+                        {
+                            flexDirection = FlexDirection.Row,
+                            alignItems = Align.Center,
+                            marginBottom = 2f,
+                            display = DisplayStyle.None,
+                        },
+                    };
+
+                    headerLabel = new Label
+                    {
+                        style = { flexGrow = 1f, unityFontStyleAndWeight = FontStyle.Bold },
+                    };
+                    headerLabel.style.marginRight = 6f;
+
+                    pingButton = new Button(OnPingClicked) { text = "Ping" };
+                    pingButton.SetEnabled(false);
+
+                    headerRow.Add(headerLabel);
+                    headerRow.Add(pingButton);
+                    inlineParent.Add(headerRow);
+                }
+                else
+                {
+                    headerRow = null;
+                    headerLabel = null;
+                    pingButton = null;
+                }
+
+                // Inspector host ----------------------------------------------
+                inspectorRoot = new VisualElement
+                {
+                    style =
+                    {
+                        display = DisplayStyle.None,
+                        borderLeftWidth = 1f,
+                        borderRightWidth = 1f,
+                        borderTopWidth = 1f,
+                        borderBottomWidth = 1f,
+                        borderLeftColor = new Color(0.25f, 0.25f, 0.25f),
+                        borderRightColor = new Color(0.25f, 0.25f, 0.25f),
+                        borderTopColor = new Color(0.25f, 0.25f, 0.25f),
+                        borderBottomColor = new Color(0.25f, 0.25f, 0.25f),
+                        paddingLeft = 6f,
+                        paddingRight = 6f,
+                        paddingTop = 6f,
+                        paddingBottom = 6f,
+                        marginTop = 2f,
+                    },
+                };
+
+                if (settings.enableScrolling)
+                {
+                    scrollView = new ScrollView(ScrollViewMode.Vertical)
+                    {
+                        style = { flexGrow = 1f },
+                    };
+
+                    if (settings.inspectorHeight > 0f)
+                    {
+                        scrollView.style.maxHeight = settings.inspectorHeight;
+                    }
+
+                    inspectorRoot.Add(scrollView);
+                }
+                else
+                {
+                    scrollView = null;
+                    if (settings.inspectorHeight > 0f)
+                    {
+                        inspectorRoot.style.maxHeight = settings.inspectorHeight;
+                    }
+                }
+
+                inlineParent.Add(inspectorRoot);
+
+                // Monitor property changes -----------------------------------
+                this.TrackPropertyValue(
+                    property,
+                    changedProperty => OnPropertyValueChanged(changedProperty.objectReferenceValue)
+                );
+
+                RegisterCallback<DetachFromPanelEvent>(_ => DisposeEditor());
+
+                // Initial state -----------------------------------------------
+                OnPropertyValueChanged(property.objectReferenceValue);
+                UpdateInlineVisibility();
+            }
+
+            private void OnPropertyValueChanged(UnityEngine.Object newValue)
+            {
+                if (currentTarget == newValue)
+                {
+                    UpdateInlineVisibility();
+                    return;
+                }
+
+                currentTarget = newValue;
+                RefreshHeader();
+                BuildInspector();
+                UpdateInlineVisibility();
+            }
+
+            private void RefreshHeader()
+            {
+                if (headerRow == null)
+                {
+                    return;
+                }
+
+                if (currentTarget == null)
+                {
+                    headerRow.style.display = DisplayStyle.None;
+                    pingButton?.SetEnabled(false);
+                    return;
+                }
+
+                GUIContent content = EditorGUIUtility.ObjectContent(
+                    currentTarget,
+                    currentTarget.GetType()
+                );
+                headerLabel.text = content?.text ?? currentTarget.name;
+                headerRow.style.display = DisplayStyle.Flex;
+                pingButton?.SetEnabled(true);
+            }
+
+            private void BuildInspector()
+            {
+                ClearInspector();
+                DisposeEditor();
+
+                if (currentTarget == null)
+                {
+                    if (foldout != null)
+                    {
+                        foldout.SetEnabled(false);
+                    }
+                    return;
+                }
+
+                if (foldout != null)
+                {
+                    foldout.SetEnabled(true);
+                }
+
+                try
+                {
+                    cachedEditor = Editor.CreateEditor(currentTarget);
+                }
+                catch (Exception ex)
+                {
+                    AddInspectorMessage($"Inspector unavailable: {ex.Message}");
+                    return;
+                }
+
+                if (cachedEditor == null)
+                {
+                    AddInspectorMessage("Inspector unavailable.");
+                    return;
+                }
+
+                InspectorElement inspectorElement = new(cachedEditor) { style = { flexGrow = 1f } };
+
+                if (!settings.drawPreview)
+                {
+                    VisualElement preview = inspectorElement.Q(
+                        className: "unity-inspector-preview"
+                    );
+                    if (preview != null)
+                    {
+                        preview.style.display = DisplayStyle.None;
+                    }
+                }
+                else if (settings.previewHeight > 0f)
+                {
+                    VisualElement preview = inspectorElement.Q(
+                        className: "unity-inspector-preview"
+                    );
+                    if (preview != null)
+                    {
+                        preview.style.maxHeight = settings.previewHeight;
+                    }
+                }
+
+                if (scrollView != null)
+                {
+                    scrollView.Clear();
+                    scrollView.Add(inspectorElement);
+                }
+                else
+                {
+                    inspectorRoot.Clear();
+                    inspectorRoot.Add(inspectorElement);
                 }
             }
-            GUILayout.EndArea();
 
-            GUI.EndScrollView();
-        }
-
-        private static void DrawPreview(Rect position, InlineEditorCache cache)
-        {
-            if (cache.cachedEditor == null || !cache.hasPreview)
+            private void ClearInspector()
             {
-                EditorGUI.LabelField(position, "Preview unavailable.");
-                return;
+                if (scrollView != null)
+                {
+                    scrollView.Clear();
+                }
+                else
+                {
+                    inspectorRoot.Clear();
+                }
             }
 
-            cache.cachedEditor.OnPreviewGUI(position, GUIStyle.none);
-        }
-
-        private static void EnsureEditor(
-            InlineEditorCache cache,
-            UnityEngine.Object reference,
-            WInLineEditorAttribute inlineAttribute
-        )
-        {
-            if (reference == null)
+            private void AddInspectorMessage(string message)
             {
-                cache.Dispose();
-                return;
+                Label label = new(message)
+                {
+                    style =
+                    {
+                        unityTextAlign = TextAnchor.MiddleCenter,
+                        whiteSpace = WhiteSpace.Normal,
+                    },
+                };
+
+                if (scrollView != null)
+                {
+                    scrollView.Clear();
+                    scrollView.Add(label);
+                }
+                else
+                {
+                    inspectorRoot.Clear();
+                    inspectorRoot.Add(label);
+                }
             }
 
-            int instanceId = reference.GetInstanceID();
-            if (cache.cachedEditor == null || cache.cachedTargetId != instanceId)
+            private void UpdateInlineVisibility()
             {
-                cache.Dispose();
-                cache.cachedEditor = Editor.CreateEditor(reference);
-                cache.cachedTargetId = instanceId;
-                cache.inspectorContentHeight = Mathf.Max(
-                    cache.inspectorContentHeight,
-                    Mathf.Max(inlineAttribute.inspectorHeight, MinimumInspectorHeight)
-                );
+                if (foldout != null)
+                {
+                    foldout.SetEnabled(currentTarget != null);
+                }
+
+                bool shouldShow =
+                    currentTarget != null
+                    && (
+                        settings.mode == WInLineEditorMode.AlwaysExpanded
+                        || (foldout?.value ?? false)
+                    );
+
+                inspectorRoot.style.display = shouldShow ? DisplayStyle.Flex : DisplayStyle.None;
+                if (headerRow != null)
+                {
+                    headerRow.style.display = shouldShow ? DisplayStyle.Flex : DisplayStyle.None;
+                }
             }
 
-            cache.hasPreview = cache.cachedEditor != null && cache.cachedEditor.HasPreviewGUI();
-        }
+            private void OnPingClicked()
+            {
+                if (currentTarget == null)
+                {
+                    return;
+                }
 
-        private sealed class InlineEditorCache
-        {
-            public Editor cachedEditor;
-            public int cachedTargetId;
-            public Vector2 scrollPosition;
-            public float inspectorContentHeight;
-            public bool hasPreview;
-            public bool foldoutInitialized;
+                EditorGUIUtility.PingObject(currentTarget);
+                Selection.activeObject = currentTarget;
+            }
 
-            public void Dispose()
+            private void DisposeEditor()
             {
                 if (cachedEditor != null)
                 {
-                    Object.DestroyImmediate(cachedEditor);
+                    UnityEngine.Object.DestroyImmediate(cachedEditor);
                     cachedEditor = null;
                 }
-
-                cachedTargetId = 0;
-                scrollPosition = Vector2.zero;
-                inspectorContentHeight = 0f;
-                hasPreview = false;
-                foldoutInitialized = false;
             }
         }
     }
