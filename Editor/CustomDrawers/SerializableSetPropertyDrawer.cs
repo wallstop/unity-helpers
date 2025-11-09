@@ -18,7 +18,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float RowSpacing = 2f;
         private const float SectionSpacing = 4f;
         private const float ButtonSpacing = 4f;
-        private const float RemoveButtonWidth = 18f;
         private const float PaginationButtonWidth = 28f;
         private const int DefaultPageSize = 15;
         internal const int MaxPageSize = 250;
@@ -46,6 +45,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIStyle RemoveButtonStyle = CreateSolidButtonStyle(
             new Color(0.86f, 0.23f, 0.23f)
         );
+        private static readonly Color DuplicatePrimaryColor = new Color(0.99f, 0.82f, 0.35f, 0.55f);
+        private static readonly Color DuplicateSecondaryColor = new Color(
+            0.96f,
+            0.45f,
+            0.45f,
+            0.65f
+        );
+        private static readonly Color DuplicateOutlineColor = new Color(0.65f, 0.18f, 0.18f, 0.9f);
+        private static readonly Color LightSelectionColor = new Color(0.33f, 0.62f, 0.95f, 0.65f);
+        private static readonly Color DarkSelectionColor = new Color(0.2f, 0.45f, 0.85f, 0.7f);
+        private static readonly Color LightRowColor = new Color(0.97f, 0.97f, 0.97f, 1f);
+        private static readonly Color DarkRowColor = new Color(0.16f, 0.16f, 0.16f, 0.45f);
+        private const float DuplicateShakeAmplitude = 2f;
+        private const float DuplicateShakeFrequency = 7f;
+        private const float DuplicateOutlineThickness = 1f;
 
         private readonly Dictionary<string, PaginationState> _paginationStates = new();
         private readonly Dictionary<string, DuplicateState> _duplicateStates = new();
@@ -54,6 +68,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             public int page;
             public int pageSize = DefaultPageSize;
+            public int selectedIndex = -1;
         }
 
         internal sealed class DuplicateState
@@ -61,6 +76,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public bool HasDuplicates;
             public readonly HashSet<int> DuplicateIndices = new HashSet<int>();
             public string Summary = string.Empty;
+            public readonly Dictionary<int, double> AnimationStartTimes =
+                new Dictionary<int, double>();
+            public readonly Dictionary<int, bool> PrimaryFlags = new Dictionary<int, bool>();
         }
 
         private struct SetElementData
@@ -82,8 +100,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ConfigureButtonStyle(AddButtonStyle, lineHeight);
             ConfigureButtonStyle(ClearAllActiveButtonStyle, lineHeight);
             ConfigureButtonStyle(RemoveButtonStyle, lineHeight);
-            RemoveButtonStyle.fixedWidth = RemoveButtonWidth;
-            RemoveButtonStyle.padding = new RectOffset(0, 0, 1, 1);
         }
 
         private static GUIStyle CreateSolidButtonStyle(Color baseColor)
@@ -251,6 +267,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 int startIndex = pagination.page * pagination.pageSize;
                 int endIndex = Mathf.Min(startIndex + pagination.pageSize, totalCount);
+                UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
+                    UnityHelpersSettings.GetDuplicateRowAnimationMode();
+                bool animateDuplicates =
+                    animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
+                int tweenCycleLimit = UnityHelpersSettings.GetDuplicateRowTweenCycleLimit();
 
                 for (int index = startIndex; index < endIndex; index++)
                 {
@@ -262,58 +283,95 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     );
 
                     Rect rowRect = new Rect(position.x, y, position.width, elementHeight);
-                    Rect fieldRect = new Rect(
+                    Rect backgroundRect = new Rect(
                         rowRect.x,
                         rowRect.y,
-                        rowRect.width - RemoveButtonWidth - ButtonSpacing,
+                        rowRect.width,
                         elementHeight
                     );
-                    Rect removeRect = new Rect(
-                        fieldRect.xMax + ButtonSpacing,
-                        rowRect.y,
-                        RemoveButtonWidth,
-                        EditorGUIUtility.singleLineHeight
-                    );
 
-                    if (duplicateState.DuplicateIndices.Contains(index))
+                    bool isSelected = pagination.selectedIndex == index;
+                    bool isDuplicate = duplicateState.DuplicateIndices.Contains(index);
+
+                    Color baseRowColor = EditorGUIUtility.isProSkin ? DarkRowColor : LightRowColor;
+                    EditorGUI.DrawRect(backgroundRect, baseRowColor);
+
+                    float shakeOffset = 0f;
+                    if (isDuplicate && animateDuplicates)
                     {
-                        Rect highlightRect = new Rect(
-                            rowRect.x,
-                            rowRect.y,
-                            rowRect.width,
-                            elementHeight
+                        shakeOffset = GetDuplicateShakeOffset(
+                            duplicateState,
+                            index,
+                            tweenCycleLimit
                         );
-                        EditorGUI.DrawRect(highlightRect, DuplicateHighlightColor);
                     }
 
-                    EditorGUI.PropertyField(fieldRect, element, GUIContent.none, true);
+                    Rect outlineRect = Rect.zero;
+                    bool shouldDrawOutline = false;
 
-                    using (new EditorGUI.DisabledScope(totalCount == 0))
+                    if (isDuplicate)
                     {
-                        GUIStyle removeButtonStyle =
-                            totalCount > 0 ? RemoveButtonStyle : EditorStyles.miniButton;
-                        if (GUI.Button(removeRect, "-", removeButtonStyle))
-                        {
-                            SetElementData elementData = ReadElementData(element);
-                            RemoveEntry(itemsProperty, index);
-                            RemoveValueFromSet(property, propertyPath, elementData.Value);
-                            property.serializedObject.ApplyModifiedProperties();
-                            property.serializedObject.Update();
-                            property = property.serializedObject.FindProperty(propertyPath);
-                            itemsProperty = property.FindPropertyRelative(
-                                SerializableHashSetSerializedPropertyNames.Items
-                            );
-                            hasItemsArray = itemsProperty != null && itemsProperty.isArray;
-                            totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
-                            EnsurePaginationBounds(pagination, totalCount);
-                            EvaluateDuplicateState(property, itemsProperty, force: true);
-                            EditorGUI.indentLevel = previousIndentLevel;
-                            EditorGUI.EndProperty();
-                            return;
-                        }
+                        Rect duplicateRect = new Rect(
+                            backgroundRect.x + shakeOffset,
+                            backgroundRect.y,
+                            backgroundRect.width,
+                            backgroundRect.height
+                        );
+                        duplicateRect.xMin += 1f;
+                        duplicateRect.xMax -= 1f;
+                        duplicateRect.yMin += 1f;
+                        duplicateRect.yMax -= 1f;
+
+                        bool isPrimary = duplicateState.PrimaryFlags.TryGetValue(
+                            index,
+                            out bool primaryFlag
+                        )
+                            ? primaryFlag
+                            : false;
+                        Color duplicateColor = isPrimary
+                            ? DuplicatePrimaryColor
+                            : DuplicateSecondaryColor;
+                        EditorGUI.DrawRect(duplicateRect, duplicateColor);
+                        outlineRect = duplicateRect;
+                        shouldDrawOutline = true;
                     }
 
-                    y = fieldRect.yMax + RowSpacing;
+                    if (isSelected)
+                    {
+                        Color selectionColor = EditorGUIUtility.isProSkin
+                            ? DarkSelectionColor
+                            : LightSelectionColor;
+                        EditorGUI.DrawRect(backgroundRect, selectionColor);
+                    }
+
+                    Rect contentRect = new Rect(
+                        backgroundRect.x + 6f,
+                        backgroundRect.y + 1f,
+                        backgroundRect.width - 12f,
+                        elementHeight - 2f
+                    );
+                    if (Mathf.Abs(shakeOffset) > Mathf.Epsilon)
+                    {
+                        contentRect.x += shakeOffset;
+                        contentRect.width -= Mathf.Abs(shakeOffset);
+                    }
+
+                    if (
+                        Event.current.type == EventType.MouseDown
+                        && backgroundRect.Contains(Event.current.mousePosition)
+                    )
+                    {
+                        pagination.selectedIndex = index;
+                    }
+
+                    EditorGUI.PropertyField(contentRect, element, GUIContent.none, true);
+
+                    if (shouldDrawOutline)
+                    {
+                        DrawDuplicateOutline(outlineRect);
+                    }
+
+                    y = backgroundRect.yMax + RowSpacing;
                 }
             }
 
@@ -400,6 +458,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             state.pageSize = pageSize;
 
+            if (totalCount <= 0)
+            {
+                state.page = 0;
+                state.selectedIndex = -1;
+                return;
+            }
+
+            if (state.selectedIndex >= totalCount)
+            {
+                state.selectedIndex = totalCount - 1;
+            }
+
+            if (state.selectedIndex < 0)
+            {
+                state.selectedIndex = -1;
+            }
+
             int pageCount = pageSize > 0 ? Mathf.Max(1, (totalCount + pageSize - 1) / pageSize) : 1;
 
             if (state.page >= pageCount)
@@ -410,6 +485,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (state.page < 0)
             {
                 state.page = 0;
+            }
+
+            if (state.selectedIndex >= 0)
+            {
+                int selectedPage = Mathf.Clamp(state.selectedIndex / pageSize, 0, pageCount - 1);
+                state.page = selectedPage;
             }
         }
 
@@ -480,6 +561,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                                 ? itemsProperty.arraySize
                                 : 0;
                         pagination.page = 0;
+                        pagination.selectedIndex = -1;
                         EnsurePaginationBounds(pagination, totalCount);
                     }
                 }
@@ -511,14 +593,60 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             totalCount =
                 itemsProperty != null && itemsProperty.isArray ? itemsProperty.arraySize : 0;
-            DrawToolbarSecondaryRow(secondRowRect, pagination, totalCount);
+            DrawToolbarSecondaryRow(
+                secondRowRect,
+                ref property,
+                propertyPath,
+                ref itemsProperty,
+                pagination,
+                totalCount
+            );
         }
 
-        private void DrawToolbarSecondaryRow(Rect rect, PaginationState pagination, int totalCount)
+        private void DrawToolbarSecondaryRow(
+            Rect rect,
+            ref SerializedProperty property,
+            string propertyPath,
+            ref SerializedProperty itemsProperty,
+            PaginationState pagination,
+            int totalCount
+        )
         {
             float lineHeight = EditorGUIUtility.singleLineHeight;
-            float availableWidth = rect.width;
             float rightCursor = rect.xMax;
+            float availableWidth = rect.width;
+
+            bool hasSelection =
+                totalCount > 0
+                && pagination.selectedIndex >= 0
+                && pagination.selectedIndex < totalCount;
+
+            float removeButtonWidth = 32f;
+            if (hasSelection)
+            {
+                Rect removeRect = new Rect(
+                    rightCursor - removeButtonWidth,
+                    rect.y,
+                    removeButtonWidth,
+                    lineHeight
+                );
+                if (GUI.Button(removeRect, "-", RemoveButtonStyle))
+                {
+                    TryRemoveSelectedEntry(
+                        ref property,
+                        propertyPath,
+                        ref itemsProperty,
+                        pagination
+                    );
+                    totalCount =
+                        itemsProperty != null && itemsProperty.isArray
+                            ? itemsProperty.arraySize
+                            : 0;
+                }
+
+                rightCursor = removeRect.x - ButtonSpacing;
+                availableWidth = Mathf.Max(0f, rightCursor - rect.x);
+            }
 
             float navigationWidth = PaginationButtonWidth * 4f + ButtonSpacing * 3f;
             bool showNavigation = availableWidth >= navigationWidth;
@@ -641,6 +769,67 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
+        private static float GetDuplicateShakeOffset(
+            DuplicateState state,
+            int index,
+            int cycleLimit
+        )
+        {
+            if (
+                UnityHelpersSettings.GetDuplicateRowAnimationMode()
+                    != UnityHelpersSettings.DuplicateRowAnimationMode.Tween
+                || !state.AnimationStartTimes.TryGetValue(index, out double startTime)
+            )
+            {
+                return 0f;
+            }
+
+            double elapsed = EditorApplication.timeSinceStartup - startTime;
+            if (elapsed <= 0d)
+            {
+                return 0f;
+            }
+
+            float offset = (float)(
+                Math.Sin(elapsed * DuplicateShakeFrequency) * DuplicateShakeAmplitude
+            );
+
+            if (cycleLimit >= 0)
+            {
+                double cycles = elapsed * DuplicateShakeFrequency / (2d * Math.PI);
+                if (cycles >= cycleLimit)
+                {
+                    state.AnimationStartTimes.Remove(index);
+                    return 0f;
+                }
+            }
+
+            return offset;
+        }
+
+        private static void DrawDuplicateOutline(Rect rect)
+        {
+            Rect top = new Rect(rect.x, rect.y, rect.width, DuplicateOutlineThickness);
+            Rect bottom = new Rect(
+                rect.x,
+                rect.yMax - DuplicateOutlineThickness,
+                rect.width,
+                DuplicateOutlineThickness
+            );
+            Rect left = new Rect(rect.x, rect.y, DuplicateOutlineThickness, rect.height);
+            Rect right = new Rect(
+                rect.xMax - DuplicateOutlineThickness,
+                rect.y,
+                DuplicateOutlineThickness,
+                rect.height
+            );
+
+            EditorGUI.DrawRect(top, DuplicateOutlineColor);
+            EditorGUI.DrawRect(bottom, DuplicateOutlineColor);
+            EditorGUI.DrawRect(left, DuplicateOutlineColor);
+            EditorGUI.DrawRect(right, DuplicateOutlineColor);
+        }
+
         private static void RemoveEntry(SerializedProperty itemsProperty, int index)
         {
             if (itemsProperty == null || !itemsProperty.isArray)
@@ -679,12 +868,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 _duplicateStates[key] = state;
             }
 
+            bool previousHadDuplicates = state.HasDuplicates;
             state.DuplicateIndices.Clear();
             state.HasDuplicates = false;
             state.Summary = string.Empty;
+            state.PrimaryFlags.Clear();
 
             if (itemsProperty == null || !itemsProperty.isArray || itemsProperty.arraySize <= 1)
             {
+                state.AnimationStartTimes.Clear();
                 return state;
             }
 
@@ -718,9 +910,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 duplicateGroupCount++;
                 state.HasDuplicates = true;
+                bool isPrimary = true;
                 foreach (int duplicateIndex in pair.Value)
                 {
                     state.DuplicateIndices.Add(duplicateIndex);
+                    state.PrimaryFlags[duplicateIndex] = isPrimary;
+                    isPrimary = false;
                 }
 
                 if (summaryBuilder.Length > 0)
@@ -749,6 +944,44 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     summaryBuilder.Length > 0
                         ? summaryBuilder.ToString()
                         : "Duplicate values detected.";
+            }
+
+            if (state.HasDuplicates)
+            {
+                double now = EditorApplication.timeSinceStartup;
+                foreach (int duplicateIndex in state.DuplicateIndices)
+                {
+                    if (
+                        force
+                        || !state.AnimationStartTimes.ContainsKey(duplicateIndex)
+                        || !previousHadDuplicates
+                    )
+                    {
+                        state.AnimationStartTimes[duplicateIndex] = now;
+                    }
+                }
+
+                List<int> staleKeys = null;
+                foreach (int existingKey in state.AnimationStartTimes.Keys)
+                {
+                    if (!state.DuplicateIndices.Contains(existingKey))
+                    {
+                        staleKeys ??= new List<int>();
+                        staleKeys.Add(existingKey);
+                    }
+                }
+
+                if (staleKeys != null)
+                {
+                    for (int i = 0; i < staleKeys.Count; i++)
+                    {
+                        state.AnimationStartTimes.Remove(staleKeys[i]);
+                    }
+                }
+            }
+            else
+            {
+                state.AnimationStartTimes.Clear();
             }
 
             return state;
@@ -922,6 +1155,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     itemsProperty != null && itemsProperty.isArray ? itemsProperty.arraySize : 0;
                 EnsurePaginationBounds(pagination, totalCount);
                 EvaluateDuplicateState(property, itemsProperty, force: true);
+                if (totalCount > 0)
+                {
+                    pagination.selectedIndex = totalCount - 1;
+                }
                 return true;
             }
 
@@ -950,6 +1187,44 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
             return true;
+        }
+
+        private void TryRemoveSelectedEntry(
+            ref SerializedProperty property,
+            string propertyPath,
+            ref SerializedProperty itemsProperty,
+            PaginationState pagination
+        )
+        {
+            if (itemsProperty == null || !itemsProperty.isArray)
+            {
+                return;
+            }
+
+            int targetIndex = pagination.selectedIndex;
+            if (targetIndex < 0 || targetIndex >= itemsProperty.arraySize)
+            {
+                return;
+            }
+
+            SerializedProperty element = itemsProperty.GetArrayElementAtIndex(targetIndex);
+            SetElementData elementData = ReadElementData(element);
+            RemoveEntry(itemsProperty, targetIndex);
+            RemoveValueFromSet(property, propertyPath, elementData.Value);
+            property.serializedObject.ApplyModifiedProperties();
+            property.serializedObject.Update();
+            property = property.serializedObject.FindProperty(propertyPath);
+            itemsProperty = property.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            bool hasItemsArray = itemsProperty != null && itemsProperty.isArray;
+            int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
+            if (pagination.selectedIndex >= totalCount)
+            {
+                pagination.selectedIndex = totalCount - 1;
+            }
+            EnsurePaginationBounds(pagination, totalCount);
+            EvaluateDuplicateState(property, itemsProperty, force: true);
         }
 
         private bool TrySortElements(
