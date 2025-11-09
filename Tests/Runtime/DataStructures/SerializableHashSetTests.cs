@@ -463,6 +463,36 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(set.Contains(2));
         }
 
+        [Test]
+        public void UnityDeserializationRestoresSortOrderFromUnsortedSerializedItems()
+        {
+            SerializableSortedSet<string> set = new SerializableSortedSet<string>();
+            FieldInfo itemsField = typeof(SerializableSortedSet<string>).GetField(
+                "_items",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            Assert.IsNotNull(itemsField, "Unable to access serialized items backing field.");
+
+            string[] unsorted = new[] { "delta", "alpha", "charlie" };
+            itemsField.SetValue(set, unsorted);
+
+            set.OnAfterDeserialize();
+
+            string[] enumeration = set.ToArray();
+            CollectionAssert.AreEqual(
+                new[] { "alpha", "charlie", "delta" },
+                enumeration,
+                "SortedSet enumeration should follow comparer order after deserialization."
+            );
+
+            string[] preservedItems = (string[])itemsField.GetValue(set);
+            CollectionAssert.AreEqual(
+                unsorted,
+                preservedItems,
+                "Serialized cache should retain the inspector ordering."
+            );
+        }
+
         private sealed class SortedSample
         {
             public SortedSample(string token)
