@@ -37,61 +37,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return EditorGUI.GetPropertyHeight(property, label, true);
         }
 
-        private static Type ResolveObjectReferenceType(FieldInfo drawerField)
-        {
-            if (drawerField == null)
-            {
-                return typeof(UnityEngine.Object);
-            }
-
-            Type fieldType = drawerField.FieldType;
-            if (fieldType.IsArray)
-            {
-                return fieldType.GetElementType();
-            }
-
-            if (fieldType.IsGenericType)
-            {
-                Type[] arguments = fieldType.GetGenericArguments();
-                if (
-                    arguments.Length == 1
-                    && typeof(UnityEngine.Object).IsAssignableFrom(arguments[0])
-                )
-                {
-                    return arguments[0];
-                }
-            }
-
-            return typeof(UnityEngine.Object).IsAssignableFrom(fieldType)
-                ? fieldType
-                : typeof(UnityEngine.Object);
-        }
-
-        private static bool ShouldAllowSceneObjects(Type referenceType)
-        {
-            if (referenceType == null)
-            {
-                return true;
-            }
-
-            if (typeof(ScriptableObject).IsAssignableFrom(referenceType))
-            {
-                return false;
-            }
-
-            if (
-                typeof(Component).IsAssignableFrom(referenceType)
-                || typeof(GameObject).IsAssignableFrom(referenceType)
-            )
-            {
-                return true;
-            }
-
-            return referenceType == typeof(UnityEngine.Object);
-        }
-
         private sealed class InlineInspectorElement : VisualElement
         {
+            private const float FoldoutIndent = 2.5f;
+            private const float HeaderIndent = 0f;
+
             private readonly SerializedObject serializedObject;
             private readonly string propertyPath;
             private readonly WInLineEditorAttribute settings;
@@ -99,7 +49,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly bool allowSceneObjects;
             private readonly string sessionKey;
 
-            private readonly ObjectField objectField;
             private readonly Foldout foldout;
             private readonly VisualElement headerRow;
             private readonly Label headerLabel;
@@ -126,49 +75,43 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 style.flexDirection = FlexDirection.Column;
 
-                // Object field ------------------------------------------------
-                if (settings.drawObjectField)
-                {
-                    objectField = new ObjectField(property.displayName)
-                    {
-                        bindingPath = propertyPath,
-                        objectType = referenceType,
-                        allowSceneObjects = allowSceneObjects,
-                    };
-                    objectField.RegisterValueChangedCallback(evt =>
-                    {
-                        OnPropertyValueChanged(evt.newValue as UnityEngine.Object);
-                    });
-                    objectField.Bind(serializedObject);
-                    Add(objectField);
-                }
-                else
-                {
-                    objectField = null;
-                    Label label = new(property.displayName)
-                    {
-                        style = { unityFontStyleAndWeight = FontStyle.Bold, marginBottom = 2f },
-                    };
-                    Add(label);
-                }
+                ObjectField objectField = settings.drawObjectField
+                    ? CreateObjectField(property.displayName)
+                    : null;
 
-                // Foldout -----------------------------------------------------
                 VisualElement inlineParent = this;
                 if (settings.mode == WInLineEditorMode.AlwaysExpanded)
                 {
                     foldout = null;
+                    if (objectField != null)
+                    {
+                        // For always-expanded mode show label on object field
+                        objectField.label = property.displayName;
+                        objectField.style.marginBottom = 2f;
+                        Add(objectField);
+                    }
+                    else
+                    {
+                        Add(
+                            new Label(property.displayName)
+                            {
+                                style =
+                                {
+                                    unityFontStyleAndWeight = FontStyle.Bold,
+                                    marginBottom = 2f,
+                                },
+                            }
+                        );
+                    }
                 }
                 else
                 {
                     bool defaultExpanded = settings.mode == WInLineEditorMode.FoldoutExpanded;
                     bool savedState = SessionState.GetBool(sessionKey, defaultExpanded);
 
-                    foldout = new Foldout
-                    {
-                        text = settings.drawObjectField ? "Details" : property.displayName,
-                        value = savedState,
-                    };
+                    foldout = new Foldout { text = property.displayName, value = savedState };
                     foldout.style.marginTop = 2f;
+                    foldout.style.marginLeft = FoldoutIndent;
 
                     foldout.RegisterValueChangedCallback(evt =>
                     {
@@ -178,9 +121,53 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     Add(foldout);
                     inlineParent = foldout.contentContainer;
+
+                    Toggle toggle = foldout.Q<Toggle>();
+                    toggle.style.flexDirection = FlexDirection.Row;
+                    toggle.style.alignItems = Align.Center;
+                    toggle.style.paddingLeft = 0f;
+                    toggle.style.paddingRight = 0f;
+                    toggle.style.marginLeft = 0f;
+                    toggle.style.justifyContent = Justify.FlexStart;
+
+                    Label toggleLabel = toggle.Q<Label>();
+                    if (toggleLabel != null)
+                    {
+                        toggleLabel.style.flexGrow = 0f;
+                        toggleLabel.style.flexShrink = 0f;
+                        toggleLabel.style.marginRight = 6f;
+                    }
+
+                    // Compose label row manually so preview icon & text align nicely.
+                    VisualElement labelRow = new VisualElement
+                    {
+                        style =
+                        {
+                            flexDirection = FlexDirection.Row,
+                            alignItems = Align.Center,
+                            flexGrow = 1f,
+                        },
+                    };
+
+                    Label nameLabel = new Label(property.displayName)
+                    {
+                        style = { flexShrink = 0f, marginRight = 6f },
+                    };
+                    labelRow.Add(nameLabel);
+
+                    if (objectField != null)
+                    {
+                        objectField.label = string.Empty;
+                        objectField.style.flexGrow = 1f;
+                        objectField.style.flexShrink = 1f;
+                        objectField.style.minWidth = 0f;
+                        objectField.style.marginLeft = 0f;
+                        labelRow.Add(objectField);
+                    }
+
+                    toggle.Add(labelRow);
                 }
 
-                // Header row --------------------------------------------------
                 if (settings.drawHeader)
                 {
                     headerRow = new VisualElement
@@ -189,14 +176,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         {
                             flexDirection = FlexDirection.Row,
                             alignItems = Align.Center,
-                            marginBottom = 2f,
                             display = DisplayStyle.None,
+                            marginBottom = 2f,
                         },
                     };
+                    if (foldout != null)
+                    {
+                        headerRow.style.marginLeft = FoldoutIndent + HeaderIndent;
+                    }
 
                     headerLabel = new Label
                     {
-                        style = { flexGrow = 1f, unityFontStyleAndWeight = FontStyle.Bold },
+                        style = { unityFontStyleAndWeight = FontStyle.Bold, flexGrow = 1f },
                     };
                     headerLabel.style.marginRight = 6f;
 
@@ -214,7 +205,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     pingButton = null;
                 }
 
-                // Inspector host ----------------------------------------------
                 inspectorRoot = new VisualElement
                 {
                     style =
@@ -235,6 +225,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         marginTop = 2f,
                     },
                 };
+                if (foldout != null && headerRow == null)
+                {
+                    inspectorRoot.style.marginLeft = FoldoutIndent + HeaderIndent;
+                }
 
                 if (settings.enableScrolling)
                 {
@@ -242,12 +236,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     {
                         style = { flexGrow = 1f },
                     };
-
                     if (settings.inspectorHeight > 0f)
                     {
                         scrollView.style.maxHeight = settings.inspectorHeight;
                     }
-
                     inspectorRoot.Add(scrollView);
                 }
                 else
@@ -261,17 +253,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 inlineParent.Add(inspectorRoot);
 
-                // Monitor property changes -----------------------------------
                 this.TrackPropertyValue(
                     property,
-                    changedProperty => OnPropertyValueChanged(changedProperty.objectReferenceValue)
+                    p => OnPropertyValueChanged(p.objectReferenceValue)
                 );
 
                 RegisterCallback<DetachFromPanelEvent>(_ => DisposeEditor());
 
-                // Initial state -----------------------------------------------
                 OnPropertyValueChanged(property.objectReferenceValue);
                 UpdateInlineVisibility();
+            }
+
+            private ObjectField CreateObjectField(string label)
+            {
+                ObjectField field = new(label)
+                {
+                    bindingPath = propertyPath,
+                    objectType = referenceType,
+                    allowSceneObjects = allowSceneObjects,
+                };
+                field.style.flexGrow = 1f;
+                field.style.flexShrink = 1f;
+                field.style.minWidth = 0f;
+                field.RegisterValueChangedCallback(evt =>
+                    OnPropertyValueChanged(evt.newValue as UnityEngine.Object)
+                );
+                field.Bind(serializedObject);
+                return field;
             }
 
             private void OnPropertyValueChanged(UnityEngine.Object newValue)
@@ -456,6 +464,112 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     cachedEditor = null;
                 }
             }
+
+            private static Type ResolveObjectReferenceType(FieldInfo drawerField)
+            {
+                if (drawerField == null)
+                {
+                    return typeof(UnityEngine.Object);
+                }
+
+                Type fieldType = drawerField.FieldType;
+                if (fieldType.IsArray)
+                {
+                    return fieldType.GetElementType();
+                }
+
+                if (fieldType.IsGenericType)
+                {
+                    Type[] arguments = fieldType.GetGenericArguments();
+                    if (
+                        arguments.Length == 1
+                        && typeof(UnityEngine.Object).IsAssignableFrom(arguments[0])
+                    )
+                    {
+                        return arguments[0];
+                    }
+                }
+
+                return typeof(UnityEngine.Object).IsAssignableFrom(fieldType)
+                    ? fieldType
+                    : typeof(UnityEngine.Object);
+            }
+
+            private static bool ShouldAllowSceneObjects(Type referenceType)
+            {
+                if (referenceType == null)
+                {
+                    return true;
+                }
+
+                if (typeof(ScriptableObject).IsAssignableFrom(referenceType))
+                {
+                    return false;
+                }
+
+                if (
+                    typeof(Component).IsAssignableFrom(referenceType)
+                    || typeof(GameObject).IsAssignableFrom(referenceType)
+                )
+                {
+                    return true;
+                }
+
+                return referenceType == typeof(UnityEngine.Object);
+            }
+        }
+
+        private static Type ResolveObjectReferenceType(FieldInfo drawerField)
+        {
+            if (drawerField == null)
+            {
+                return typeof(UnityEngine.Object);
+            }
+
+            Type fieldType = drawerField.FieldType;
+            if (fieldType.IsArray)
+            {
+                return fieldType.GetElementType();
+            }
+
+            if (fieldType.IsGenericType)
+            {
+                Type[] arguments = fieldType.GetGenericArguments();
+                if (
+                    arguments.Length == 1
+                    && typeof(UnityEngine.Object).IsAssignableFrom(arguments[0])
+                )
+                {
+                    return arguments[0];
+                }
+            }
+
+            return typeof(UnityEngine.Object).IsAssignableFrom(fieldType)
+                ? fieldType
+                : typeof(UnityEngine.Object);
+        }
+
+        private static bool ShouldAllowSceneObjects(Type referenceType)
+        {
+            if (referenceType == null)
+            {
+                return true;
+            }
+
+            if (typeof(ScriptableObject).IsAssignableFrom(referenceType))
+            {
+                return false;
+            }
+
+            if (
+                typeof(Component).IsAssignableFrom(referenceType)
+                || typeof(GameObject).IsAssignableFrom(referenceType)
+            )
+            {
+                return true;
+            }
+
+            return referenceType == typeof(UnityEngine.Object);
         }
     }
 #endif
