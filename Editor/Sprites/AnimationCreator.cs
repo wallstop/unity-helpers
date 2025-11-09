@@ -628,7 +628,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 for (int i = 0; i < animationData.Count; i++)
                 {
                     List<Sprite> fr = animationData[i]?.frames;
-                    if (fr != null && fr.Count > 0)
+                    if (fr is { Count: > 0 })
                     {
                         anyFrames = true;
                         break;
@@ -718,7 +718,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 for (int i = 0; i < animationData.Count; i++)
                 {
                     List<Sprite> fr = animationData[i]?.frames;
-                    if (fr != null && fr.Count > 0)
+                    if (fr is { Count: > 0 })
                     {
                         anyFrames = true;
                         break;

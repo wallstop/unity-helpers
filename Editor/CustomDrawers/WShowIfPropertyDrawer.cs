@@ -93,8 +93,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
             object fieldValue = accessor(enclosingObject);
             return !TryEvaluateCondition(fieldValue, showIf, out bool reflectedResult)
-                ? true
-                : reflectedResult;
+                || reflectedResult;
         }
 
         private static bool TryEvaluateCondition(
@@ -140,9 +139,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             bool match = false;
-            for (int i = 0; i < expectedValues.Length; ++i)
+            foreach (object expectedValue in expectedValues)
             {
-                if (ValuesEqual(conditionValue, expectedValues[i]))
+                if (ValuesEqual(conditionValue, expectedValue))
                 {
                     match = true;
                     break;
@@ -187,21 +186,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
-            if (actual is IConvertible && expected is IConvertible)
+            if (actual is not IConvertible || expected is not IConvertible)
             {
-                try
-                {
-                    double actualValue = Convert.ToDouble(actual);
-                    double expectedValue = Convert.ToDouble(expected);
-                    return Math.Abs(actualValue - expectedValue) < double.Epsilon;
-                }
-                catch
-                {
-                    return false;
-                }
+                return false;
             }
 
-            return false;
+            try
+            {
+                double actualValue = Convert.ToDouble(actual);
+                double expectedValue = Convert.ToDouble(expected);
+                return Math.Abs(actualValue - expectedValue) < double.Epsilon;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 #endif

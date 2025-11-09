@@ -40,9 +40,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             Assert.IsFalse(string.IsNullOrWhiteSpace(json), json);
             Assert.AreNotEqual("{}", json);
 
-            using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(json);
-            System.Text.Json.JsonElement root = doc.RootElement;
-            Assert.AreEqual(System.Text.Json.JsonValueKind.Object, root.ValueKind);
+            using JsonDocument doc = JsonDocument.Parse(json);
+            JsonElement root = doc.RootElement;
+            Assert.AreEqual(JsonValueKind.Object, root.ValueKind);
             Assert.True(root.TryGetProperty("name", out JsonElement name));
             Assert.True(root.TryGetProperty("type", out JsonElement type));
             Assert.True(root.TryGetProperty("instanceId", out JsonElement id));

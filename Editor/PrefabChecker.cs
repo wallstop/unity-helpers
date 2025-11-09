@@ -569,30 +569,6 @@ namespace WallstopStudios.UnityHelpers.Editor
                         out List<PooledResource<HashSet<Type>>> createdSets
                     );
 
-                HashSet<Type> GetOrBuildTypeSet(GameObject go)
-                {
-                    if (typeMap.TryGetValue(go, out HashSet<Type> cached))
-                    {
-                        return cached;
-                    }
-                    PooledResource<HashSet<Type>> setLease = Buffers<Type>.HashSet.Get(
-                        out HashSet<Type> set
-                    );
-                    createdSets.Add(setLease);
-                    go.GetComponents(comps);
-                    for (int ci = 0; ci < comps.Count; ci++)
-                    {
-                        Component c = comps[ci];
-                        if (c != null)
-                        {
-                            set.Add(c.GetType());
-                        }
-                    }
-                    comps.Clear();
-                    typeMap[go] = set;
-                    return set;
-                }
-
                 foreach (MonoBehaviour script in componentBuffer)
                 {
                     if (_checkMissingScripts && !script)
@@ -699,6 +675,31 @@ namespace WallstopStudios.UnityHelpers.Editor
                     setLease.Dispose();
                 }
                 createdSets.Clear();
+                continue;
+
+                HashSet<Type> GetOrBuildTypeSet(GameObject go)
+                {
+                    if (typeMap.TryGetValue(go, out HashSet<Type> cached))
+                    {
+                        return cached;
+                    }
+                    PooledResource<HashSet<Type>> setLease = Buffers<Type>.HashSet.Get(
+                        out HashSet<Type> set
+                    );
+                    createdSets.Add(setLease);
+                    go.GetComponents(comps);
+                    for (int ci = 0; ci < comps.Count; ci++)
+                    {
+                        Component c = comps[ci];
+                        if (c != null)
+                        {
+                            set.Add(c.GetType());
+                        }
+                    }
+                    comps.Clear();
+                    typeMap[go] = set;
+                    return set;
+                }
             }
 
             if (totalIssuesFound > 0)
@@ -1302,10 +1303,9 @@ namespace WallstopStudios.UnityHelpers.Editor
 
             public void Add(string path, List<string> messages)
             {
-                string[] arr =
-                    messages != null && messages.Count > 0
-                        ? messages.ToArray()
-                        : Array.Empty<string>();
+                string[] arr = messages is { Count: > 0 }
+                    ? messages.ToArray()
+                    : Array.Empty<string>();
                 items.Add(new Item { path = path, messages = arr });
             }
         }

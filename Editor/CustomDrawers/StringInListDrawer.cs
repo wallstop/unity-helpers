@@ -37,8 +37,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (!IsSupportedSimpleProperty(property))
             {
-                PropertyField fallback = new(property);
-                fallback.label = property.displayName;
+                PropertyField fallback = new(property) { label = property.displayName };
                 return fallback;
             }
 
@@ -78,7 +77,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly DropdownField _dropdown;
             private readonly Label _noResultsLabel;
             private readonly Label _suggestionHintLabel;
-            private readonly VisualElement _inputContainer;
             private readonly List<int> _filteredIndices = new();
             private readonly List<int> _pageOptionIndices = new();
             private readonly List<string> _pageChoices = new();
@@ -90,9 +88,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private string _searchText = string.Empty;
             private string _suggestion = string.Empty;
             private int _pageIndex;
-            private int _lastResolvedPageSize = -1;
+            private int _lastResolvedPageSize;
             private bool _searchVisible;
-            private int _suggestionOptionIndex = -1;
+            private int _suggestionOptionIndex;
 
             private static VisualElement CreateInputElement(out VisualElement element)
             {
@@ -103,7 +101,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public StringInListSelector(string[] options)
                 : base(string.Empty, CreateInputElement(out VisualElement baseInput))
             {
-                this._options = options ?? Array.Empty<string>();
+                _options = options ?? Array.Empty<string>();
                 _lastResolvedPageSize = Mathf.Max(
                     1,
                     UnityHelpersSettings.GetStringInListPageLimit()
@@ -115,46 +113,70 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 labelElement.AddToClassList("unity-base-field__label");
                 labelElement.AddToClassList("unity-label");
 
-                _inputContainer = baseInput;
-                _inputContainer.AddToClassList("unity-base-field__input");
-                _inputContainer.style.flexGrow = 1f;
-                _inputContainer.style.marginLeft = 0f;
-                _inputContainer.style.paddingLeft = 0f;
-                _inputContainer.style.flexDirection = FlexDirection.Column;
+                baseInput.AddToClassList("unity-base-field__input");
+                baseInput.style.flexGrow = 1f;
+                baseInput.style.marginLeft = 0f;
+                baseInput.style.paddingLeft = 0f;
+                baseInput.style.flexDirection = FlexDirection.Column;
 
-                _searchRow = new VisualElement();
-                _searchRow.style.flexDirection = FlexDirection.Row;
-                _searchRow.style.alignItems = Align.Center;
-                _searchRow.style.marginBottom = 4f;
-                _searchRow.style.marginLeft = 0f;
-                _searchRow.style.paddingLeft = 0f;
+                _searchRow = new VisualElement
+                {
+                    style =
+                    {
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.Center,
+                        marginBottom = 4f,
+                        marginLeft = 0f,
+                        paddingLeft = 0f,
+                    },
+                };
 
-                VisualElement searchWrapper = new();
-                searchWrapper.style.flexGrow = 1f;
-                searchWrapper.style.position = Position.Relative;
+                VisualElement searchWrapper = new()
+                {
+                    style = { flexGrow = 1f, position = Position.Relative },
+                };
 
-                _searchField = new TextField { name = "StringInListSearch" };
-                _searchField.style.flexGrow = 1f;
+                _searchField = new TextField
+                {
+                    name = "StringInListSearch",
+                    style = { flexGrow = 1f },
+                };
                 _searchField.RegisterValueChangedCallback(OnSearchChanged);
                 _searchField.RegisterCallback<KeyDownEvent>(OnSearchKeyDown);
                 searchWrapper.Add(_searchField);
 
-                _clearButton = new Button(OnClearClicked) { text = "Clear" };
-                _clearButton.style.marginLeft = 4f;
+                _clearButton = new Button(OnClearClicked)
+                {
+                    text = "Clear",
+                    style = { marginLeft = 4f },
+                };
                 _clearButton.SetEnabled(false);
 
-                _paginationContainer = new VisualElement();
-                _paginationContainer.style.flexDirection = FlexDirection.Row;
-                _paginationContainer.style.alignItems = Align.Center;
-                _paginationContainer.style.marginLeft = 4f;
-                _paginationContainer.style.display = DisplayStyle.None;
+                _paginationContainer = new VisualElement
+                {
+                    style =
+                    {
+                        flexDirection = FlexDirection.Row,
+                        alignItems = Align.Center,
+                        marginLeft = 4f,
+                        display = DisplayStyle.None,
+                    },
+                };
 
-                _previousButton = new Button(OnPreviousPage) { text = "<" };
-                _previousButton.style.marginRight = 4f;
-                _pageLabel = new Label();
-                _pageLabel.style.minWidth = 80f;
-                _pageLabel.style.unityTextAlign = TextAnchor.MiddleCenter;
-                _pageLabel.style.marginRight = 4f;
+                _previousButton = new Button(OnPreviousPage)
+                {
+                    text = "<",
+                    style = { marginRight = 4f },
+                };
+                _pageLabel = new Label
+                {
+                    style =
+                    {
+                        minWidth = 80f,
+                        unityTextAlign = TextAnchor.MiddleCenter,
+                        marginRight = 4f,
+                    },
+                };
                 _nextButton = new Button(OnNextPage) { text = ">" };
 
                 _paginationContainer.Add(_previousButton);
@@ -164,32 +186,48 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 _searchRow.Add(searchWrapper);
                 _searchRow.Add(_clearButton);
                 _searchRow.Add(_paginationContainer);
-                _inputContainer.Add(_searchRow);
+                baseInput.Add(_searchRow);
 
-                _suggestionHintLabel = new Label();
-                _suggestionHintLabel.style.display = DisplayStyle.None;
-                _suggestionHintLabel.style.marginLeft = 4f;
-                _suggestionHintLabel.style.marginBottom = 2f;
-                _suggestionHintLabel.style.color = new Color(0.7f, 0.85f, 1f, 0.75f);
-                _suggestionHintLabel.style.unityFontStyleAndWeight = FontStyle.Italic;
-                _suggestionHintLabel.style.fontSize = 11f;
-                _suggestionHintLabel.pickingMode = PickingMode.Ignore;
-                _inputContainer.Add(_suggestionHintLabel);
+                _suggestionHintLabel = new Label
+                {
+                    style =
+                    {
+                        display = DisplayStyle.None,
+                        marginLeft = 4f,
+                        marginBottom = 2f,
+                        color = new Color(0.7f, 0.85f, 1f, 0.75f),
+                        unityFontStyleAndWeight = FontStyle.Italic,
+                        fontSize = 11f,
+                    },
+                    pickingMode = PickingMode.Ignore,
+                };
+                baseInput.Add(_suggestionHintLabel);
 
-                _dropdown = new DropdownField { choices = new List<string>() };
-                _dropdown.style.flexGrow = 1f;
-                _dropdown.style.marginLeft = 0f;
-                _dropdown.style.paddingLeft = 0f;
-                _dropdown.label = string.Empty;
+                _dropdown = new DropdownField
+                {
+                    choices = new List<string>(),
+                    style =
+                    {
+                        flexGrow = 1f,
+                        marginLeft = 0f,
+                        paddingLeft = 0f,
+                    },
+                    label = string.Empty,
+                };
                 _dropdown.labelElement.style.display = DisplayStyle.None;
                 _dropdown.RegisterValueChangedCallback(OnDropdownValueChanged);
-                _inputContainer.Add(_dropdown);
+                baseInput.Add(_dropdown);
 
-                _noResultsLabel = new Label("No results match the current search.");
-                _noResultsLabel.style.display = DisplayStyle.None;
-                _noResultsLabel.style.color = new StyleColor(new Color(1f, 0.4f, 0.4f));
-                _noResultsLabel.style.marginLeft = 2f;
-                _inputContainer.Add(_noResultsLabel);
+                _noResultsLabel = new Label("No results match the current search.")
+                {
+                    style =
+                    {
+                        display = DisplayStyle.None,
+                        color = new StyleColor(new Color(1f, 0.4f, 0.4f)),
+                        marginLeft = 2f,
+                    },
+                };
+                baseInput.Add(_noResultsLabel);
 
                 ApplySearchVisibility(ShouldShowSearch(_lastResolvedPageSize));
 
@@ -222,13 +260,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 UpdateLabel(string.Empty, string.Empty);
             }
 
-            private void UpdateLabel(string labelText, string tooltip)
+            private void UpdateLabel(string labelText, string labelTooltip)
             {
                 bool hasLabel = !string.IsNullOrWhiteSpace(labelText);
                 label = hasLabel ? labelText : string.Empty;
                 labelElement.style.display = hasLabel ? DisplayStyle.Flex : DisplayStyle.None;
-                labelElement.tooltip = tooltip;
-                _dropdown.tooltip = tooltip;
+                labelElement.tooltip = labelTooltip;
+                _dropdown.tooltip = labelTooltip;
             }
 
             private void OnUndoRedo()
@@ -526,7 +564,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 _suggestion = suggestionValue;
                 _suggestionOptionIndex = optionIndex;
-                bool visible =
+                bool suggestionsVisible =
                     _searchVisible
                     && !string.IsNullOrEmpty(suggestionValue)
                     && optionIndex >= 0
@@ -534,15 +572,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 if (_suggestionHintLabel != null)
                 {
-                    _suggestionHintLabel.text = visible
+                    _suggestionHintLabel.text = suggestionsVisible
                         ? $"↹ Tab selects: {suggestionValue}"
                         : string.Empty;
-                    _suggestionHintLabel.style.display = visible
+                    _suggestionHintLabel.style.display = suggestionsVisible
                         ? DisplayStyle.Flex
                         : DisplayStyle.None;
                 }
 
-                if (!visible)
+                if (!suggestionsVisible)
                 {
                     _suggestionOptionIndex = -1;
                 }
@@ -599,22 +637,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return _options.Length > pageSize;
             }
 
-            private void ApplySearchVisibility(bool visible)
+            private void ApplySearchVisibility(bool searchVisible)
             {
                 if (_searchRow == null)
                 {
                     return;
                 }
 
-                _searchVisible = visible;
-                _searchRow.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+                _searchVisible = searchVisible;
+                _searchRow.style.display = searchVisible ? DisplayStyle.Flex : DisplayStyle.None;
 
                 if (_dropdown != null)
                 {
-                    _dropdown.style.marginTop = visible ? 2f : 0f;
+                    _dropdown.style.marginTop = searchVisible ? 2f : 0f;
                 }
 
-                if (!visible)
+                if (!searchVisible)
                 {
                     if (!string.IsNullOrEmpty(_searchText))
                     {
@@ -641,8 +679,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
 
-                UpdateClearButton(visible);
-                if (!visible && _suggestionHintLabel != null)
+                UpdateClearButton(searchVisible);
+                if (!searchVisible && _suggestionHintLabel != null)
                 {
                     _suggestionHintLabel.text = string.Empty;
                     _suggestionHintLabel.style.display = DisplayStyle.None;
@@ -664,8 +702,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 if (_isStringProperty)
                 {
-                    string value = property.stringValue ?? string.Empty;
-                    return Array.IndexOf(_options, value);
+                    string selectionValue = property.stringValue ?? string.Empty;
+                    return Array.IndexOf(_options, selectionValue);
                 }
 
                 if (_isIntegerProperty)
@@ -733,12 +771,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly string _propertyPath;
             private readonly List<int> _indices = new();
             private readonly ListView _listView;
-            private readonly ToolbarButton _addButton;
             private readonly ToolbarButton _removeButton;
 
             public StringInListArrayElement(SerializedProperty property, string[] options)
             {
-                this._options = options ?? Array.Empty<string>();
+                _options = options ?? Array.Empty<string>();
                 _serializedObject = property.serializedObject;
                 _propertyPath = property.propertyPath;
 
@@ -751,26 +788,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 header.style.marginBottom = 2f;
                 Add(header);
 
-                Toolbar toolbar = new();
-                toolbar.style.marginLeft = -2f;
-                toolbar.style.marginBottom = 4f;
+                Toolbar toolbar = new() { style = { marginLeft = -2f, marginBottom = 4f } };
 
-                _addButton = new ToolbarButton(AddItem) { text = "Add" };
+                ToolbarButton addButton = new(AddItem) { text = "Add" };
                 _removeButton = new ToolbarButton(RemoveSelected) { text = "Remove" };
                 _removeButton.SetEnabled(false);
 
-                toolbar.Add(_addButton);
+                toolbar.Add(addButton);
                 toolbar.Add(_removeButton);
                 Add(toolbar);
 
-                _listView = new ListView(_indices, -1f, MakeItem, BindItem);
-                _listView.unbindItem = UnbindItem;
-                _listView.name = "StringInListArray";
-                _listView.showAlternatingRowBackgrounds = AlternatingRowBackground.All;
-                _listView.selectionType = SelectionType.Single;
-                _listView.reorderable = true;
-                _listView.virtualizationMethod = CollectionVirtualizationMethod.DynamicHeight;
-                _listView.style.flexGrow = 1f;
+                _listView = new ListView(_indices, -1f, MakeItem, BindItem)
+                {
+                    unbindItem = UnbindItem,
+                    name = "StringInListArray",
+                    showAlternatingRowBackgrounds = AlternatingRowBackground.All,
+                    selectionType = SelectionType.Single,
+                    reorderable = true,
+                    virtualizationMethod = CollectionVirtualizationMethod.DynamicHeight,
+                    style = { flexGrow = 1f },
+                };
                 _listView.itemIndexChanged += OnItemIndexChanged;
                 _listView.itemsRemoved += OnItemsRemoved;
                 _listView.selectionChanged += OnSelectionChanged;
@@ -785,8 +822,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private VisualElement MakeItem()
             {
-                StringInListSelector selector = new(_options);
-                selector.style.marginBottom = 4f;
+                StringInListSelector selector = new(_options) { style = { marginBottom = 4f } };
                 return selector;
             }
 

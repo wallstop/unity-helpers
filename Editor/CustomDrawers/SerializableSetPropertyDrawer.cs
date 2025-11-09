@@ -220,7 +220,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EnsurePaginationBounds(pagination, totalCount);
 
             bool isSortedSet = IsSortedSet(property);
-            DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
 
             int previousIndentLevel = EditorGUI.indentLevel;
             EditorGUI.indentLevel = 0;
@@ -242,7 +241,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             hasItemsArray = itemsProperty is { isArray: true };
             totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
             EnsurePaginationBounds(pagination, totalCount);
-            duplicateState = EvaluateDuplicateState(property, itemsProperty);
+            DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
             bool drawHelpBox =
                 duplicateState.hasDuplicates && !string.IsNullOrEmpty(duplicateState.summary);
 

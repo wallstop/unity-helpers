@@ -335,8 +335,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 typeof(string),
                 comparison,
                 pagination,
-                list,
-                cacheProvider
+                list
             );
 
             serializedObject.Update();

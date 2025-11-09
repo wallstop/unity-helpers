@@ -129,7 +129,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 List<MethodInfo> methods = AnimationEventHelpers.GetPossibleAnimatorEventsForType(
                     type
                 );
-                if (methods != null && methods.Count > 0)
+                if (methods is { Count: > 0 })
                 {
                     typesToMethods[type] = methods;
                 }

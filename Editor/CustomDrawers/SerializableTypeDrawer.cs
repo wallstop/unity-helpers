@@ -56,9 +56,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Rect searchRowIndented = EditorGUI.IndentedRect(searchRow);
             Rect popupRowIndented = EditorGUI.IndentedRect(popupRow);
 
-            float buttonSpacing = spacing;
-            float controlsWidth =
-                ClearWidth + ButtonWidth * 2f + PageLabelWidth + buttonSpacing * 3f;
+            float controlsWidth = ClearWidth + ButtonWidth * 2f + PageLabelWidth + spacing * 3f;
 
             bool showSearchLabel = searchRowIndented.width - controlsWidth > 60f;
             float searchLabelWidth = showSearchLabel
@@ -85,28 +83,28 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             );
 
             Rect clearRect = new(
-                searchFieldRect.xMax + buttonSpacing,
+                searchFieldRect.xMax + spacing,
                 searchRowIndented.y,
                 ClearWidth,
                 lineHeight
             );
 
             Rect prevRect = new(
-                clearRect.xMax + buttonSpacing,
+                clearRect.xMax + spacing,
                 searchRowIndented.y,
                 ButtonWidth,
                 lineHeight
             );
 
             Rect pageInfoRect = new(
-                prevRect.xMax + buttonSpacing,
+                prevRect.xMax + spacing,
                 searchRowIndented.y,
                 PageLabelWidth,
                 lineHeight
             );
 
             Rect nextRect = new(
-                pageInfoRect.xMax + buttonSpacing,
+                pageInfoRect.xMax + spacing,
                 searchRowIndented.y,
                 ButtonWidth,
                 lineHeight
@@ -325,10 +323,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 localIndex = 0;
             }
 
-            Rect popupRect = popupRowIndented;
             EditorGUI.BeginChangeCheck();
             int selectedIndex = EditorGUI.Popup(
-                popupRect,
+                popupRowIndented,
                 propertyLabel,
                 localIndex,
                 optionContents

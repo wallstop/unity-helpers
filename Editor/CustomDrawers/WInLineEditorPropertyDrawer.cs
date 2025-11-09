@@ -47,7 +47,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly WInLineEditorAttribute _settings;
             private readonly Type _referenceType;
             private readonly bool _allowSceneObjects;
-            private readonly string _sessionKey;
 
             private readonly Foldout _foldout;
             private readonly VisualElement _headerRow;
@@ -70,7 +69,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 _settings = inlineAttribute;
                 _referenceType = ResolveObjectReferenceType(drawerField);
                 _allowSceneObjects = ShouldAllowSceneObjects(_referenceType);
-                _sessionKey =
+                string sessionKey =
                     $"WInLineEditor:{_serializedObject.targetObject.GetInstanceID()}:{_propertyPath}";
 
                 style.flexDirection = FlexDirection.Column;
@@ -104,15 +103,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 else
                 {
                     bool defaultExpanded = _settings.mode == WInLineEditorMode.FoldoutExpanded;
-                    bool savedState = SessionState.GetBool(_sessionKey, defaultExpanded);
+                    bool savedState = SessionState.GetBool(sessionKey, defaultExpanded);
 
-                    _foldout = new Foldout { text = property.displayName, value = savedState };
-                    _foldout.style.marginTop = 2f;
-                    _foldout.style.marginLeft = FoldoutIndent;
+                    _foldout = new Foldout
+                    {
+                        text = property.displayName,
+                        value = savedState,
+                        style = { marginTop = 2f, marginLeft = FoldoutIndent },
+                    };
 
                     _foldout.RegisterValueChangedCallback(evt =>
                     {
-                        SessionState.SetBool(_sessionKey, evt.newValue);
+                        SessionState.SetBool(sessionKey, evt.newValue);
                         UpdateInlineVisibility();
                     });
 
@@ -186,9 +188,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     _headerLabel = new Label
                     {
-                        style = { unityFontStyleAndWeight = FontStyle.Bold, flexGrow = 1f },
+                        style =
+                        {
+                            unityFontStyleAndWeight = FontStyle.Bold,
+                            flexGrow = 1f,
+                            marginRight = 6f,
+                        },
                     };
-                    _headerLabel.style.marginRight = 6f;
 
                     _pingButton = new Button(OnPingClicked) { text = "Ping" };
                     _pingButton.SetEnabled(false);
@@ -270,13 +276,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     bindingPath = _propertyPath,
                     objectType = _referenceType,
                     allowSceneObjects = _allowSceneObjects,
+                    style =
+                    {
+                        flexGrow = 1f,
+                        flexShrink = 1f,
+                        minWidth = 0f,
+                    },
                 };
-                field.style.flexGrow = 1f;
-                field.style.flexShrink = 1f;
-                field.style.minWidth = 0f;
-                field.RegisterValueChangedCallback(evt =>
-                    OnPropertyValueChanged(evt.newValue as UnityEngine.Object)
-                );
+                field.RegisterValueChangedCallback(evt => OnPropertyValueChanged(evt.newValue));
                 field.Bind(_serializedObject);
                 return field;
             }

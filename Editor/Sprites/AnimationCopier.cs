@@ -966,7 +966,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             for (int i = 0; i < _unchangedAnimations.Count; i++)
             {
                 AnimationFileInfo a = _unchangedAnimations[i];
-                if (a != null && a.Selected)
+                if (a is { Selected: true })
                 {
                     animationsToDelete.Add(a);
                 }
@@ -1329,7 +1329,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         for (int i = 0; i < items.Count; i++)
                         {
                             AnimationFileInfo it = items[i];
-                            if (it != null && it.FileName != null && rx.IsMatch(it.FileName))
+                            if (it is { FileName: not null } && rx.IsMatch(it.FileName))
                             {
                                 filtered.Add(it);
                             }
@@ -1346,8 +1346,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     {
                         AnimationFileInfo it = items[i];
                         if (
-                            it != null
-                            && it.FileName != null
+                            it is { FileName: not null }
                             && it.FileName.IndexOf(_filterText, StringComparison.OrdinalIgnoreCase)
                                 >= 0
                         )
@@ -1385,7 +1384,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             for (int i = 0; i < _destinationOrphans.Count; i++)
             {
                 AnimationFileInfo a = _destinationOrphans[i];
-                if (a != null && a.Selected)
+                if (a is { Selected: true })
                 {
                     toDelete.Add(a);
                 }

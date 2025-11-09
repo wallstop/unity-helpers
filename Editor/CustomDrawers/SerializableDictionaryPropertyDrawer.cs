@@ -555,12 +555,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
-            if (!_duplicateStates.TryGetValue(cacheKey, out state))
-            {
-                return false;
-            }
-
-            return state.TryGetInfo(arrayIndex, out info);
+            return _duplicateStates.TryGetValue(cacheKey, out state)
+                && state.TryGetInfo(arrayIndex, out info);
         }
 
         private static void DrawDuplicateTooltip(Rect rect, string tooltip)
@@ -829,14 +825,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         internal void MarkListCacheDirty(string cacheKey)
         {
-            if (_pageCaches.TryGetValue(cacheKey, out ListPageCache cache))
+            if (!_pageCaches.TryGetValue(cacheKey, out ListPageCache cache))
             {
-                cache.entries.Clear();
-                cache.dirty = true;
-                cache.pageIndex = -1;
-                cache.pageSize = -1;
-                cache.itemCount = -1;
+                return;
             }
+
+            cache.entries.Clear();
+            cache.dirty = true;
+            cache.pageIndex = -1;
+            cache.pageSize = -1;
+            cache.itemCount = -1;
         }
 
         private static int GetRelativeIndex(ListPageCache cache, int globalIndex)
@@ -897,25 +895,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ListPageCache cache = cacheProvider();
             SyncListSelectionWithPagination(list, pagination, cache);
 
-            float spacing = PaginationControlSpacing;
-            float buttonWidth = PaginationButtonWidth;
-            float navWidthFull = (buttonWidth * 4f) + (spacing * 3f);
-            float navWidthPrevNext = (buttonWidth * 2f) + spacing;
-
-            float ComputeControlsWidth(float navWidth, bool includePageLabel)
-            {
-                float width = navWidth;
-                if (includePageLabel)
-                {
-                    width += PaginationLabelWidth;
-                    if (navWidth > 0f)
-                    {
-                        width += spacing;
-                    }
-                }
-
-                return width;
-            }
+            float navWidthFull = (PaginationButtonWidth * 4f) + (PaginationControlSpacing * 3f);
+            float navWidthPrevNext = (PaginationButtonWidth * 2f) + PaginationControlSpacing;
 
             PaginationControlLayout layout = PaginationControlLayout.Full;
             bool showPageLabel = true;
@@ -964,7 +945,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
                 string pageLabel = $"Page {pagination.pageIndex + 1}/{totalPages}";
                 EditorGUI.LabelField(pageLabelRect, pageLabel, EditorStyles.miniLabel);
-                navStartX = pageLabelRect.xMax + (navWidth > 0f ? spacing : 0f);
+                navStartX = pageLabelRect.xMax + (navWidth > 0f ? PaginationControlSpacing : 0f);
             }
 
             if (layout == PaginationControlLayout.None)
@@ -990,25 +971,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     Rect firstRect = new(
                         navStartX,
                         controlsRect.y,
-                        buttonWidth,
+                        PaginationButtonWidth,
                         controlsRect.height
                     );
                     Rect prevRect = new(
-                        firstRect.xMax + spacing,
+                        firstRect.xMax + PaginationControlSpacing,
                         controlsRect.y,
-                        buttonWidth,
+                        PaginationButtonWidth,
                         controlsRect.height
                     );
                     Rect nextRect = new(
-                        prevRect.xMax + spacing,
+                        prevRect.xMax + PaginationControlSpacing,
                         controlsRect.y,
-                        buttonWidth,
+                        PaginationButtonWidth,
                         controlsRect.height
                     );
                     Rect lastRect = new(
-                        nextRect.xMax + spacing,
+                        nextRect.xMax + PaginationControlSpacing,
                         controlsRect.y,
-                        buttonWidth,
+                        PaginationButtonWidth,
                         controlsRect.height
                     );
 
@@ -1067,13 +1048,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     Rect prevOnlyRect = new(
                         navStartX,
                         controlsRect.y,
-                        buttonWidth,
+                        PaginationButtonWidth,
                         controlsRect.height
                     );
                     Rect nextOnlyRect = new(
-                        prevOnlyRect.xMax + spacing,
+                        prevOnlyRect.xMax + PaginationControlSpacing,
                         controlsRect.y,
-                        buttonWidth,
+                        PaginationButtonWidth,
                         controlsRect.height
                     );
 
@@ -1109,6 +1090,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     break;
             }
+
+            return;
+
+            float ComputeControlsWidth(float navigationWidth, bool includePageLabel)
+            {
+                float width = navigationWidth;
+                if (includePageLabel)
+                {
+                    width += PaginationLabelWidth;
+                    if (navigationWidth > 0f)
+                    {
+                        width += PaginationControlSpacing;
+                    }
+                }
+
+                return width;
+            }
         }
 
         private void DrawListFooter(
@@ -1138,7 +1136,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float verticalCenter = rect.y + Mathf.Max(0f, (rect.height - lineHeight) * 0.5f);
             float labelHeight = lineHeight + 4f;
             float labelY = rect.y + Mathf.Max(0f, (rect.height - labelHeight) * 0.5f);
-            float buttonSpacing = PaginationControlSpacing;
             float clearWidth = 80f;
             float sortWidth = 60f;
 
@@ -1157,42 +1154,28 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 && selectedGlobalIndex < keysProperty.arraySize;
             bool canClear = itemCount > 0;
 
-            Type keyType = null;
-            Type valueType = null;
-            bool isSortedDictionary = false;
             bool resolvedTypes = TryResolveKeyValueTypes(
                 fieldInfo,
-                out keyType,
-                out valueType,
-                out isSortedDictionary
+                out Type keyType,
+                out Type valueType,
+                out bool isSortedDictionary
             );
 
-            object dictionaryInstance = null;
+            object dictionaryInstance;
             if (!resolvedTypes || keyType == null || valueType == null)
             {
                 dictionaryInstance = GetDictionaryInstance(dictionaryProperty);
-                Type runtimeKeyType;
-                Type runtimeValueType;
-                bool runtimeSorted;
                 if (
                     TryResolveKeyValueTypesFromInstance(
                         dictionaryInstance,
-                        out runtimeKeyType,
-                        out runtimeValueType,
-                        out runtimeSorted
+                        out Type runtimeKeyType,
+                        out Type runtimeValueType,
+                        out bool runtimeSorted
                     )
                 )
                 {
-                    if (keyType == null)
-                    {
-                        keyType = runtimeKeyType;
-                    }
-
-                    if (valueType == null)
-                    {
-                        valueType = runtimeValueType;
-                    }
-
+                    keyType ??= runtimeKeyType;
+                    valueType ??= runtimeValueType;
                     isSortedDictionary = runtimeSorted;
                 }
             }
@@ -1202,7 +1185,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             Func<object, object, int> comparison = null;
-            bool canSort = false;
             bool sortEnabled = false;
             if (isSortedDictionary && keyType != null && valueType != null)
             {
@@ -1214,7 +1196,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 comparison = CreateComparisonDelegate(comparerInstance, keyType);
                 if (comparison != null)
                 {
-                    canSort = itemCount > 1;
+                    bool canSort = itemCount > 1;
                     bool alreadySorted = KeysAreSorted(keysProperty, keyType, comparison);
                     sortEnabled = canSort && !alreadySorted;
                 }
@@ -1235,55 +1217,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool showSort = isSortedDictionary && comparison != null;
             bool showRemove = true;
 
-            float requiredWidth = float.PositiveInfinity;
-
-            float CalculateRequiredWidth(
-                bool includeRange,
-                bool includeClear,
-                bool includeSort,
-                bool includeRemove
-            )
-            {
-                float width = padding + padding;
-
-                if (includeRange)
-                {
-                    width += rangeSize.x;
-                }
-
-                bool hasRightControls = includeClear || includeSort || includeRemove;
-                if (includeRange && hasRightControls)
-                {
-                    width += buttonSpacing;
-                }
-
-                float rightWidth = 0f;
-                if (includeRemove)
-                {
-                    rightWidth += buttonWidth;
-                }
-                if (includeClear)
-                {
-                    if (rightWidth > 0f)
-                    {
-                        rightWidth += buttonSpacing;
-                    }
-                    rightWidth += clearWidth;
-                }
-                if (includeSort)
-                {
-                    if (rightWidth > 0f)
-                    {
-                        rightWidth += buttonSpacing;
-                    }
-                    rightWidth += sortWidth;
-                }
-
-                width += rightWidth;
-                return width;
-            }
-
-            requiredWidth = CalculateRequiredWidth(showRange, showClear, showSort, showRemove);
+            float requiredWidth = CalculateRequiredWidth(
+                showRange,
+                showClear,
+                showSort,
+                showRemove
+            );
             if (requiredWidth > rect.width && showRange)
             {
                 showRange = false;
@@ -1324,7 +1263,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 removeRect = new Rect(currentX, verticalCenter, buttonWidth, lineHeight);
                 if (showClear || showSort || showRange)
                 {
-                    currentX -= buttonSpacing;
+                    currentX -= PaginationControlSpacing;
                 }
             }
 
@@ -1334,7 +1273,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 clearRect = new Rect(currentX, verticalCenter, clearWidth, lineHeight);
                 if (showSort || showRange)
                 {
-                    currentX -= buttonSpacing;
+                    currentX -= PaginationControlSpacing;
                 }
             }
 
@@ -1344,7 +1283,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 sortRect = new Rect(currentX, verticalCenter, sortWidth, lineHeight);
                 if (showRange)
                 {
-                    currentX -= buttonSpacing;
+                    currentX -= PaginationControlSpacing;
                 }
             }
 
@@ -1378,8 +1317,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             valueType,
                             comparison,
                             pagination,
-                            list,
-                            cacheProvider
+                            list
                         );
                     }
                 );
@@ -1433,6 +1371,54 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         );
                     }
                 );
+            }
+
+            return;
+
+            float CalculateRequiredWidth(
+                bool includeRange,
+                bool includeClear,
+                bool includeSort,
+                bool includeRemove
+            )
+            {
+                float width = padding + padding;
+
+                if (includeRange)
+                {
+                    width += rangeSize.x;
+                }
+
+                bool hasRightControls = includeClear || includeSort || includeRemove;
+                if (includeRange && hasRightControls)
+                {
+                    width += PaginationControlSpacing;
+                }
+
+                float rightWidth = 0f;
+                if (includeRemove)
+                {
+                    rightWidth += buttonWidth;
+                }
+                if (includeClear)
+                {
+                    if (rightWidth > 0f)
+                    {
+                        rightWidth += PaginationControlSpacing;
+                    }
+                    rightWidth += clearWidth;
+                }
+                if (includeSort)
+                {
+                    if (rightWidth > 0f)
+                    {
+                        rightWidth += PaginationControlSpacing;
+                    }
+                    rightWidth += sortWidth;
+                }
+
+                width += rightWidth;
+                return width;
             }
         }
 
@@ -1672,11 +1658,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             GUI.BeginGroup(containerRect);
 
-            float innerX = PendingSectionPadding;
             float innerWidth = Mathf.Max(0f, containerRect.width - PendingSectionPadding * 2f);
             float innerY = PendingSectionPadding;
 
-            Rect headerRect = new(innerX, innerY, innerWidth, rowHeight);
+            Rect headerRect = new(PendingSectionPadding, innerY, innerWidth, rowHeight);
             EditorGUI.BeginChangeCheck();
             FontStyle originalFoldoutFontStyle = EditorStyles.foldout.fontStyle;
             EditorStyles.foldout.fontStyle = FontStyle.Bold;
@@ -1730,11 +1715,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
             }
 
-            Rect keyRect = new(innerX, innerY, innerWidth, rowHeight);
+            Rect keyRect = new(PendingSectionPadding, innerY, innerWidth, rowHeight);
             pending.key = DrawFieldForType(keyRect, "Key", pending.key, keyType);
             innerY += rowHeight + spacing;
 
-            Rect valueRect = new(innerX, innerY, innerWidth, rowHeight);
+            Rect valueRect = new(PendingSectionPadding, innerY, innerWidth, rowHeight);
             pending.value = DrawFieldForType(valueRect, "Value", pending.value, valueType);
             innerY += rowHeight + spacing;
 
@@ -1768,7 +1753,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 canCommit = false;
             }
 
-            Rect buttonsRect = new(innerX, innerY, innerWidth, rowHeight);
+            Rect buttonsRect = new(PendingSectionPadding, innerY, innerWidth, rowHeight);
             float resetWidth = 70f;
             Rect addRect = new(buttonsRect.x, buttonsRect.y, PendingAddButtonWidth, rowHeight);
             Rect resetRect = new(addRect.xMax + spacing, buttonsRect.y, resetWidth, rowHeight);
@@ -2411,8 +2396,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Type valueType,
             Func<object, object, int> comparison,
             PaginationState pagination,
-            ReorderableList list,
-            Func<ListPageCache> cacheProvider
+            ReorderableList list
         )
         {
             if (comparison == null)
@@ -2548,7 +2532,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 if (x == null)
                 {
-                    return y == null ? 0 : -1;
+                    return -1;
                 }
 
                 if (y == null)
@@ -2810,7 +2794,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (type == typeof(bool))
             {
-                return EditorGUI.Toggle(rect, content, current is bool b && b);
+                return EditorGUI.Toggle(rect, content, current is true);
             }
 
             if (type == typeof(Vector2))
@@ -2937,7 +2921,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     property.longValue = Convert.ToInt64(value);
                     break;
                 case SerializedPropertyType.Boolean:
-                    property.boolValue = value is bool b && b;
+                    property.boolValue = value is true;
                     break;
                 case SerializedPropertyType.Float:
                     property.floatValue = Convert.ToSingle(value);
@@ -3342,10 +3326,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 foreach (int index in _duplicateLookup.Keys)
                 {
-                    if (!_duplicateAnimationStartTimes.ContainsKey(index))
-                    {
-                        _duplicateAnimationStartTimes[index] = now;
-                    }
+                    _duplicateAnimationStartTimes.TryAdd(index, now);
                 }
 
                 if (_duplicateAnimationStartTimes.Count == 0)
@@ -3363,9 +3344,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
 
-                for (int i = 0; i < _animationKeysScratch.Count; i++)
+                foreach (int animationStartTime in _animationKeysScratch)
                 {
-                    _duplicateAnimationStartTimes.Remove(_animationKeysScratch[i]);
+                    _duplicateAnimationStartTimes.Remove(animationStartTime);
                 }
             }
         }
