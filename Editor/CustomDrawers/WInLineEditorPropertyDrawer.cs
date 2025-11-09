@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
 #if UNITY_EDITOR
     using System;
+    using System.Collections;
     using System.Reflection;
     using UnityEditor;
     using UnityEditor.UIElements;
@@ -14,17 +15,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     {
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
-            if (attribute is not WInLineEditorAttribute inlineAttribute)
+            if (property == null)
             {
                 return new PropertyField(property);
             }
 
-            if (property.propertyType != SerializedPropertyType.ObjectReference)
+            FieldInfo resolvedFieldInfo = fieldInfo ?? ResolveFieldInfo(property);
+            WInLineEditorAttribute inlineAttribute =
+                attribute as WInLineEditorAttribute
+                ?? resolvedFieldInfo?.GetCustomAttribute<WInLineEditorAttribute>();
+
+            if (
+                inlineAttribute == null
+                || property.propertyType != SerializedPropertyType.ObjectReference
+            )
             {
                 return new PropertyField(property);
             }
 
-            return new InlineInspectorElement(property, inlineAttribute, fieldInfo);
+            return new InlineInspectorElement(property, inlineAttribute, resolvedFieldInfo);
         }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -35,6 +44,133 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
             return EditorGUI.GetPropertyHeight(property, label, true);
+        }
+
+        private static FieldInfo ResolveFieldInfo(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return null;
+            }
+
+            SerializedObject owner = property.serializedObject;
+            if (owner == null)
+            {
+                return null;
+            }
+
+            UnityEngine.Object target = owner.targetObject;
+            if (target == null)
+            {
+                return null;
+            }
+
+            Type currentType = target.GetType();
+            if (currentType == null)
+            {
+                return null;
+            }
+
+            string propertyPath = property.propertyPath;
+            if (string.IsNullOrEmpty(propertyPath))
+            {
+                return null;
+            }
+
+            string normalizedPath = propertyPath.Replace(".Array.data[", ".[");
+            string[] elements = normalizedPath.Split('.');
+
+            FieldInfo resolvedField = null;
+
+            foreach (string rawElement in elements)
+            {
+                if (string.IsNullOrEmpty(rawElement))
+                {
+                    continue;
+                }
+
+                if (rawElement[0] == '[')
+                {
+                    currentType = GetElementType(currentType);
+                    if (currentType == null)
+                    {
+                        return null;
+                    }
+
+                    continue;
+                }
+
+                string memberName = rawElement;
+                int bracketIndex = memberName.IndexOf('[');
+                if (bracketIndex >= 0)
+                {
+                    memberName = memberName.Substring(0, bracketIndex);
+                }
+
+                FieldInfo field = GetFieldFromHierarchy(currentType, memberName);
+                if (field == null)
+                {
+                    return null;
+                }
+
+                resolvedField = field;
+                currentType = field.FieldType;
+            }
+
+            return resolvedField;
+        }
+
+        private static FieldInfo GetFieldFromHierarchy(Type type, string fieldName)
+        {
+            const BindingFlags Flags =
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+            Type searchType = type;
+            while (searchType != null)
+            {
+                FieldInfo field = searchType.GetField(fieldName, Flags);
+                if (field != null)
+                {
+                    return field;
+                }
+
+                searchType = searchType.BaseType;
+            }
+
+            return null;
+        }
+
+        private static Type GetElementType(Type collectionType)
+        {
+            if (collectionType == null)
+            {
+                return null;
+            }
+
+            if (collectionType.IsArray)
+            {
+                return collectionType.GetElementType();
+            }
+
+            if (
+                typeof(IList).IsAssignableFrom(collectionType)
+                && collectionType.IsGenericType
+                && collectionType.GetGenericArguments().Length == 1
+            )
+            {
+                return collectionType.GetGenericArguments()[0];
+            }
+
+            if (
+                typeof(IEnumerable).IsAssignableFrom(collectionType)
+                && collectionType.IsGenericType
+                && collectionType.GetGenericArguments().Length == 1
+            )
+            {
+                return collectionType.GetGenericArguments()[0];
+            }
+
+            return null;
         }
 
         private sealed class InlineInspectorElement : VisualElement
@@ -135,8 +271,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     {
                         toggleLabel.style.flexGrow = 0f;
                         toggleLabel.style.flexShrink = 0f;
-                        toggleLabel.style.marginLeft = 1f;
-                        toggleLabel.style.marginRight = 6f;
+                        toggleLabel.style.marginLeft = 3f;
+                        toggleLabel.style.marginRight = 4f;
+                        toggleLabel.style.paddingLeft = 0f;
                     }
 
                     if (objectField != null)
@@ -144,8 +281,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         objectField.label = string.Empty;
                         objectField.style.flexGrow = 1f;
                         objectField.style.flexShrink = 1f;
+                        objectField.style.flexBasis = 0f;
                         objectField.style.minWidth = 0f;
                         objectField.style.marginLeft = 0f;
+                        objectField.style.marginRight = 0f;
+
+                        if (objectField.labelElement != null)
+                        {
+                            objectField.labelElement.style.display = DisplayStyle.None;
+                            objectField.labelElement.style.marginLeft = 0f;
+                            objectField.labelElement.style.width = 0f;
+                            objectField.labelElement.style.minWidth = 0f;
+                        }
 
                         VisualElement display = objectField.Q<VisualElement>(
                             className: "unity-object-field-display"
@@ -158,10 +305,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             display.style.alignItems = Align.Center;
                         }
 
-                        Label valueLabel = objectField.Q<Label>();
+                        Label valueLabel = objectField.Q<Label>(
+                            className: "unity-object-field-display__label"
+                        );
                         if (valueLabel != null)
                         {
-                            valueLabel.style.marginLeft = 6f;
+                            valueLabel.style.marginLeft = 4f;
                             valueLabel.style.flexShrink = 1f;
                         }
 

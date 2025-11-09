@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Attributes
+namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
     using NUnit.Framework;
     using UnityEditor;
@@ -61,20 +61,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void CreatePropertyGUI_DrawObjectFieldEnabled_AddsObjectField()
+        public void CreatePropertyGUIDrawObjectFieldEnabledAddsObjectField()
         {
             WInLineEditorPropertyDrawer drawer = new();
 
             VisualElement root = drawer.CreatePropertyGUI(inlineProperty);
             root.Bind(serializedHolder);
 
-            ObjectField field = root.Q<ObjectField>();
+            ObjectField field = root.Query<ObjectField>()
+                .Where(x => x.bindingPath == inlineProperty.propertyPath)
+                .First();
             Assert.That(field, Is.Not.Null);
             Assert.That(field.objectType, Is.EqualTo(typeof(TestData)));
         }
 
         [Test]
-        public void CreatePropertyGUI_ModeFoldoutCollapsed_StartsCollapsed()
+        public void CreatePropertyGUIModeFoldoutCollapsedStartsCollapsed()
         {
             SerializedProperty property = serializedHolder.FindProperty(
                 nameof(TestHolder.collapsedData)
@@ -91,7 +93,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void CreatePropertyGUI_DrawObjectFieldDisabled_HasNoObjectField()
+        public void CreatePropertyGUIDrawObjectFieldDisabledHasNoObjectField()
         {
             SerializedProperty property = serializedHolder.FindProperty(
                 nameof(TestHolder.headerOnlyData)
@@ -101,12 +103,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             VisualElement root = drawer.CreatePropertyGUI(property);
             root.Bind(serializedHolder);
 
-            ObjectField field = root.Q<ObjectField>();
+            ObjectField field = root.Query<ObjectField>()
+                .Where(x => x.bindingPath == property.propertyPath)
+                .First();
             Assert.That(field, Is.Null);
         }
 
         [Test]
-        public void GetPropertyHeight_ReturnsDefaultHeight()
+        public void GetPropertyHeightReturnsDefaultHeight()
         {
             WInLineEditorPropertyDrawer drawer = new();
             float expected = EditorGUI.GetPropertyHeight(inlineProperty, true);
