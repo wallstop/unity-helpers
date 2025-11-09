@@ -342,6 +342,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 return;
             }
 
+            bool preserveExistingOrder = _preserveSerializedEntries;
             _set.Clear();
             bool hasDuplicates = false;
             bool encounteredNullReference = false;
@@ -365,9 +366,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 }
             }
 
-            _preserveSerializedEntries = hasDuplicates || encounteredNullReference;
+            _preserveSerializedEntries =
+                preserveExistingOrder || hasDuplicates || encounteredNullReference;
 
-            if (!hasDuplicates && !encounteredNullReference)
+            if (!_preserveSerializedEntries)
             {
                 _items = null;
             }

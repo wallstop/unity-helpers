@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
     using NUnit.Framework;
@@ -208,6 +209,123 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        public void SortedSetEditingMaintainsElementOrder()
+        {
+            SortedStringSetHost host = CreateScriptableObject<SortedStringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(SortedStringSetHost.set)
+            );
+            string propertyPath = setProperty.propertyPath;
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.IsTrue(
+                drawer.TryAddNewElement(
+                    ref setProperty,
+                    propertyPath,
+                    ref itemsProperty,
+                    pagination
+                )
+            );
+            Assert.IsTrue(
+                drawer.TryAddNewElement(
+                    ref setProperty,
+                    propertyPath,
+                    ref itemsProperty,
+                    pagination
+                )
+            );
+
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(propertyPath);
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { string.Empty, "New Entry 1" },
+                ReadStringValues(itemsProperty)
+            );
+
+            itemsProperty.GetArrayElementAtIndex(0).stringValue = "delta";
+            itemsProperty.GetArrayElementAtIndex(1).stringValue = "alpha";
+            Assert.IsTrue(serializedObject.ApplyModifiedProperties());
+
+            SerializableSetPropertyDrawer.SyncRuntimeSet(setProperty);
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            CollectionAssert.AreEqual(new[] { "delta", "alpha" }, ReadStringValues(itemsProperty));
+        }
+
+        [Test]
+        public void SortedSetSortButtonReordersEntries()
+        {
+            SortedStringSetHost host = CreateScriptableObject<SortedStringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(SortedStringSetHost.set)
+            );
+            string propertyPath = setProperty.propertyPath;
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.IsTrue(
+                drawer.TryAddNewElement(
+                    ref setProperty,
+                    propertyPath,
+                    ref itemsProperty,
+                    pagination
+                )
+            );
+            Assert.IsTrue(
+                drawer.TryAddNewElement(
+                    ref setProperty,
+                    propertyPath,
+                    ref itemsProperty,
+                    pagination
+                )
+            );
+
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            itemsProperty.GetArrayElementAtIndex(0).stringValue = "zeta";
+            itemsProperty.GetArrayElementAtIndex(1).stringValue = "beta";
+            Assert.IsTrue(serializedObject.ApplyModifiedProperties());
+
+            SerializableSetPropertyDrawer.SyncRuntimeSet(setProperty);
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            CollectionAssert.AreEqual(new[] { "zeta", "beta" }, ReadStringValues(itemsProperty));
+
+            drawer.SortElements(setProperty, itemsProperty);
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            CollectionAssert.AreEqual(new[] { "beta", "zeta" }, ReadStringValues(itemsProperty));
+        }
+
+        [Test]
         public void HashSetStringEditingRetainsEntryWhenAddedThroughDrawer()
         {
             StringSetHost host = CreateScriptableObject<StringSetHost>();
@@ -255,6 +373,62 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Assert.AreEqual(1, itemsProperty.arraySize);
             Assert.AreEqual("gamma", itemsProperty.GetArrayElementAtIndex(0).stringValue);
+        }
+
+        [Test]
+        public void HashSetEditingMaintainsElementOrder()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            string propertyPath = setProperty.propertyPath;
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.IsTrue(
+                drawer.TryAddNewElement(
+                    ref setProperty,
+                    propertyPath,
+                    ref itemsProperty,
+                    pagination
+                )
+            );
+            Assert.IsTrue(
+                drawer.TryAddNewElement(
+                    ref setProperty,
+                    propertyPath,
+                    ref itemsProperty,
+                    pagination
+                )
+            );
+
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            CollectionAssert.AreEqual(
+                new[] { string.Empty, "New Entry 1" },
+                ReadStringValues(itemsProperty)
+            );
+
+            itemsProperty.GetArrayElementAtIndex(0).stringValue = "delta";
+            itemsProperty.GetArrayElementAtIndex(1).stringValue = "alpha";
+            Assert.IsTrue(serializedObject.ApplyModifiedProperties());
+
+            SerializableSetPropertyDrawer.SyncRuntimeSet(setProperty);
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            CollectionAssert.AreEqual(new[] { "delta", "alpha" }, ReadStringValues(itemsProperty));
         }
 
         [Test]
@@ -510,6 +684,22 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             CollectionAssert.AreEqual(new int[] { 1, 3, 5 }, serialized);
             CollectionAssert.AreEqual(new int[] { 1, 3, 5 }, host.set.ToArray());
+        }
+
+        private static string[] ReadStringValues(SerializedProperty itemsProperty)
+        {
+            if (itemsProperty == null || !itemsProperty.isArray)
+            {
+                return Array.Empty<string>();
+            }
+
+            string[] values = new string[itemsProperty.arraySize];
+            for (int index = 0; index < itemsProperty.arraySize; index++)
+            {
+                values[index] = itemsProperty.GetArrayElementAtIndex(index).stringValue;
+            }
+
+            return values;
         }
 
         [Test]

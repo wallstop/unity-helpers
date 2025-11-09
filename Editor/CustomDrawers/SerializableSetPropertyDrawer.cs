@@ -1354,13 +1354,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
-            int serializedCount = itemsProperty is { isArray: true }
-                ? itemsProperty.arraySize
-                : inspector.SerializedCount;
-            bool hasSerializedDuplicates = serializedCount > inspector.UniqueCount;
-            Array serializedSnapshot = hasSerializedDuplicates
-                ? inspector.GetSerializedItemsSnapshot()
-                : null;
+            List<object> existingValues = new();
+            if (itemsProperty is { isArray: true })
+            {
+                for (int index = 0; index < itemsProperty.arraySize; index++)
+                {
+                    SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
+                    existingValues.Add(ReadElementData(element).value);
+                }
+            }
+            else
+            {
+                Array snapshot = inspector.GetSerializedItemsSnapshot();
+                if (snapshot is { Length: > 0 })
+                {
+                    foreach (object value in snapshot)
+                    {
+                        existingValues.Add(value);
+                    }
+                }
+            }
 
             foreach (
                 object candidate in GenerateCandidateValues(elementType, inspector.UniqueCount)
@@ -1377,17 +1390,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 SerializedObject serializedObject = property.serializedObject;
+                existingValues.Add(normalizedValue);
 
-                if (hasSerializedDuplicates && serializedSnapshot != null)
+                Array updated = Array.CreateInstance(elementType, existingValues.Count);
+                for (int index = 0; index < existingValues.Count; index++)
                 {
-                    int copyCount = serializedSnapshot.Length;
-                    Array expanded = Array.CreateInstance(elementType, copyCount + 1);
-                    Array.Copy(serializedSnapshot, expanded, copyCount);
-                    expanded.SetValue(normalizedValue, copyCount);
-                    inspector.SetSerializedItemsSnapshot(expanded, preserveSerializedEntries: true);
+                    object coerced = ConvertSnapshotValue(elementType, existingValues[index]);
+                    updated.SetValue(coerced, index);
                 }
 
+                inspector.SetSerializedItemsSnapshot(updated, preserveSerializedEntries: true);
                 inspector.SynchronizeSerializedState();
+
                 serializedObject.Update();
                 property = serializedObject.FindProperty(propertyPath);
                 itemsProperty = property?.FindPropertyRelative(
@@ -1396,6 +1410,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 int totalCount = itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0;
                 EnsurePaginationBounds(pagination, totalCount);
                 EvaluateDuplicateState(property, itemsProperty, force: true);
+                EvaluateNullEntryState(property, itemsProperty);
                 SyncRuntimeSet(property);
                 if (totalCount > 0)
                 {
@@ -1452,7 +1467,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 )
                 {
                     SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
-                    expanded.SetValue(ReadElementData(element).value, index);
+                    object value = ReadElementData(element).value;
+                    expanded.SetValue(ConvertSnapshotValue(elementType, value), index);
                 }
             }
 
@@ -2213,13 +2229,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Type nullableUnderlying = Nullable.GetUnderlyingType(elementType);
             if (nullableUnderlying != null)
             {
-                object innerValue = ConvertSnapshotValue(nullableUnderlying, value);
-                if (innerValue == null)
-                {
-                    return null;
-                }
-
-                return Activator.CreateInstance(elementType, innerValue);
+                return ConvertSnapshotValue(nullableUnderlying, value);
             }
 
             if (elementType.IsInstanceOfType(value))
