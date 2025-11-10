@@ -112,6 +112,71 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        public void DuplicateStateDoesNotReportDistinctValuesAsDuplicates()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array values = Array.CreateInstance(inspector.ElementType, 2);
+            values.SetValue(3, 0);
+            values.SetValue(1, 1);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+
+            SerializableSetPropertyDrawer.DuplicateState firstPass = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+            Assert.IsFalse(firstPass.hasDuplicates);
+
+            SerializableSetPropertyDrawer.DuplicateState secondPass = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+            Assert.IsFalse(secondPass.hasDuplicates);
+        }
+
+        [Test]
+        public void DuplicateStateReportsDuplicatesAfterCacheReuse()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array values = Array.CreateInstance(inspector.ElementType, 2);
+            values.SetValue(5, 0);
+            values.SetValue(5, 1);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(state.hasDuplicates);
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, state.duplicateIndices);
+            StringAssert.Contains("Value 5", state.summary);
+        }
+
+        [Test]
         public void NullEntriesProduceInspectorWarnings()
         {
             ObjectSetHost host = CreateScriptableObject<ObjectSetHost>();

@@ -1156,7 +1156,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     existing.Value.Clear();
                     state.listPool.Push(existing.Value);
                 }
-
                 state.grouping.Clear();
             }
 
@@ -1243,14 +1242,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (state.animationStartTimes.Count > 0)
             {
                 state.animationKeysScratch.Clear();
-                state.animationKeysScratch.AddRange(state.animationStartTimes.Keys);
+                foreach (int keyIndex in state.animationStartTimes.Keys)
+                {
+                    if (!state.duplicateIndices.Contains(keyIndex) || !animateDuplicates)
+                    {
+                        state.animationKeysScratch.Add(keyIndex);
+                    }
+                }
                 for (int i = 0; i < state.animationKeysScratch.Count; i++)
                 {
-                    int trackedIndex = state.animationKeysScratch[i];
-                    if (!state.duplicateIndices.Contains(trackedIndex) || !animateDuplicates)
-                    {
-                        state.animationStartTimes.Remove(trackedIndex);
-                    }
+                    state.animationStartTimes.Remove(state.animationKeysScratch[i]);
                 }
                 state.animationKeysScratch.Clear();
             }
@@ -1270,6 +1271,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             else
             {
                 state.summary = string.Empty;
+            }
+
+            if (state.grouping.Count > 0)
+            {
+                foreach (KeyValuePair<object, List<int>> entry in state.grouping)
+                {
+                    entry.Value.Clear();
+                    state.listPool.Push(entry.Value);
+                }
+
+                state.grouping.Clear();
             }
 
             return state;
