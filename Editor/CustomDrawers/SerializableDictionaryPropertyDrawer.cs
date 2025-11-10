@@ -284,6 +284,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string key = GetListKey(dictionaryProperty);
             _valueTypes.TryGetValue(key, out Type resolvedValueType);
             PaginationState pagination = GetOrCreatePaginationState(dictionaryProperty);
+            SerializedProperty ResolveKeysProperty()
+            {
+                return dictionaryProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Keys
+                );
+            }
+
+            SerializedProperty ResolveValuesProperty()
+            {
+                return dictionaryProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Values
+                );
+            }
+
+            keysProperty = ResolveKeysProperty();
+            valuesProperty = ResolveValuesProperty();
             ClampPaginationState(pagination, keysProperty.arraySize);
             float defaultRowHeight =
                 EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing * 2f;
@@ -293,7 +309,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             );
 
             Func<ListPageCache> cacheProvider = () =>
-                EnsurePageCache(key, keysProperty, pagination);
+                EnsurePageCache(key, ResolveKeysProperty(), pagination);
 
             ListPageCache cache = cacheProvider();
 
@@ -305,20 +321,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return defaultRowHeight;
                 }
 
+                SerializedProperty currentKeys = ResolveKeysProperty();
+                SerializedProperty currentValues = ResolveValuesProperty();
+
                 int globalIndex = currentCache.entries[elementIndex].arrayIndex;
                 if (
                     globalIndex < 0
-                    || globalIndex >= keysProperty.arraySize
-                    || globalIndex >= valuesProperty.arraySize
+                    || globalIndex >= currentKeys.arraySize
+                    || globalIndex >= currentValues.arraySize
                 )
                 {
                     return defaultRowHeight;
                 }
 
-                SerializedProperty rowKeyProperty = keysProperty.GetArrayElementAtIndex(
-                    globalIndex
-                );
-                SerializedProperty rowValueProperty = valuesProperty.GetArrayElementAtIndex(
+                SerializedProperty rowKeyProperty = currentKeys.GetArrayElementAtIndex(globalIndex);
+                SerializedProperty rowValueProperty = currentValues.GetArrayElementAtIndex(
                     globalIndex
                 );
 
@@ -329,7 +346,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 SyncListSelectionWithPagination(cached, pagination, cache);
                 cached.drawNoneElementCallback = _ => { };
-                cached.elementHeight = keysProperty.arraySize == 0 ? emptyHeight : defaultRowHeight;
+                cached.elementHeight =
+                    ResolveKeysProperty().arraySize == 0 ? emptyHeight : defaultRowHeight;
                 cached.elementHeightCallback = ResolveRowHeight;
                 cached.list = cache.entries;
                 return cached;
@@ -344,14 +362,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 displayRemoveButton: false
             )
             {
-                elementHeight = defaultRowHeight,
+                elementHeight =
+                    ResolveKeysProperty().arraySize == 0 ? emptyHeight : defaultRowHeight,
             };
 
             list.drawHeaderCallback = rect =>
             {
                 ListPageCache currentCache = cacheProvider();
                 SyncListSelectionWithPagination(list, pagination, currentCache);
-                DrawListHeader(rect, keysProperty, list, pagination, cacheProvider);
+                DrawListHeader(rect, ResolveKeysProperty(), list, pagination, cacheProvider);
             };
 
             list.elementHeightCallback = ResolveRowHeight;
@@ -370,18 +389,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return;
                 }
 
+                SerializedProperty currentKeys = ResolveKeysProperty();
+                SerializedProperty currentValues = ResolveValuesProperty();
+
                 int globalIndex = currentCache.entries[index].arrayIndex;
                 if (
                     globalIndex < 0
-                    || globalIndex >= keysProperty.arraySize
-                    || globalIndex >= valuesProperty.arraySize
+                    || globalIndex >= currentKeys.arraySize
+                    || globalIndex >= currentValues.arraySize
                 )
                 {
                     return;
                 }
 
-                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(globalIndex);
-                SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(
+                SerializedProperty keyProperty = currentKeys.GetArrayElementAtIndex(globalIndex);
+                SerializedProperty valueProperty = currentValues.GetArrayElementAtIndex(
                     globalIndex
                 );
 
@@ -470,18 +492,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return;
                 }
 
+                SerializedProperty currentKeys = ResolveKeysProperty();
+                SerializedProperty currentValues = ResolveValuesProperty();
+
                 int globalIndex = currentCache.entries[index].arrayIndex;
                 if (
                     globalIndex < 0
-                    || globalIndex >= keysProperty.arraySize
-                    || globalIndex >= valuesProperty.arraySize
+                    || globalIndex >= currentKeys.arraySize
+                    || globalIndex >= currentValues.arraySize
                 )
                 {
                     return;
                 }
 
-                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(globalIndex);
-                SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(
+                SerializedProperty keyProperty = currentKeys.GetArrayElementAtIndex(globalIndex);
+                SerializedProperty valueProperty = currentValues.GetArrayElementAtIndex(
                     globalIndex
                 );
 
@@ -1180,6 +1205,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         internal void MarkListCacheDirty(string cacheKey)
         {
+            _lists.Remove(cacheKey);
+
             if (!_pageCaches.TryGetValue(cacheKey, out ListPageCache cache))
             {
                 return;
