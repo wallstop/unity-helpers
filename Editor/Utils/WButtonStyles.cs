@@ -113,7 +113,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
         }
 
         internal const float FoldoutContentSpacing = 4f;
-        internal const float FoldoutIconOffset = 12f;
+        internal const float FoldoutIconOffset = 4f;
 
         internal static GUIContent TopGroupLabel
         {
