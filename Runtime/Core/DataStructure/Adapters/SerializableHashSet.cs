@@ -67,6 +67,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         [NonSerialized]
         private bool _preserveSerializedEntries;
 
+        internal bool PreserveSerializedEntries => _preserveSerializedEntries;
+
         protected SerializableSetBase(TSet set)
         {
             _set = set ?? throw new ArgumentNullException(nameof(set));

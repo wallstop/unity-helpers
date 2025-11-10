@@ -42,30 +42,21 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void NullEntriesAreSkippedDuringDeserialization()
         {
             SerializableHashSet<string> set = new SerializableHashSet<string>();
-            FieldInfo itemsField = typeof(SerializableHashSet<string>).GetField(
-                "_items",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Type baseType = typeof(SerializableHashSet<string>).BaseType;
-            Assert.IsNotNull(baseType, "Base type lookup failed.");
-            FieldInfo preserveField = baseType.GetField(
-                "_preserveSerializedEntries",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-
-            Assert.IsNotNull(itemsField, "Unable to access serialized items field.");
-            Assert.IsNotNull(preserveField, "Unable to access preserve flag field.");
-
             string[] source = new string[] { null, "valid" };
-            itemsField.SetValue(set, source);
+            set._items = source;
+
+            LogAssert.Expect(
+                LogType.Error,
+                "SerializableSet<System.String> skipped serialized entry at index 0 because the value reference was null."
+            );
 
             set.OnAfterDeserialize();
 
             Assert.AreEqual(1, set.Count);
             Assert.IsTrue(set.Contains("valid"));
 
-            string[] stored = (string[])itemsField.GetValue(set);
-            bool preserve = (bool)preserveField.GetValue(set);
+            string[] stored = set._items;
+            bool preserve = set.PreserveSerializedEntries;
 
             Assert.IsNotNull(stored, "Serialized items should remain when null entries exist.");
             CollectionAssert.AreEqual(source, stored);
@@ -78,18 +69,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void UnitySerializationPreservesDuplicateEntriesInBackingArray()
         {
             SerializableHashSet<int> set = new SerializableHashSet<int>();
-            FieldInfo itemsField = typeof(SerializableHashSet<int>).GetField(
-                "_items",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(itemsField, "Unable to access serialized items field.");
-
             int[] duplicateSource = new int[] { 1, 1, 2 };
-            itemsField.SetValue(set, duplicateSource);
+            set._items = duplicateSource;
 
             set.OnAfterDeserialize();
 
-            object preservedItems = itemsField.GetValue(set);
+            object preservedItems = set._items;
             Assert.IsNotNull(preservedItems, "Duplicate entries should keep serialized cache.");
             Assert.AreSame(
                 duplicateSource,
@@ -105,29 +90,23 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void UnitySerializationClearsCacheAfterMutation()
         {
             SerializableHashSet<int> set = new SerializableHashSet<int>();
-            FieldInfo itemsField = typeof(SerializableHashSet<int>).GetField(
-                "_items",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(itemsField, "Unable to access serialized items field.");
-
             set.Add(5);
             set.Add(10);
             set.OnBeforeSerialize();
 
-            int[] serializedBefore = (int[])itemsField.GetValue(set);
+            int[] serializedBefore = set._items;
             Assert.IsNotNull(serializedBefore);
             CollectionAssert.AreEquivalent(new int[] { 5, 10 }, serializedBefore);
 
             set.OnAfterDeserialize();
-            object cachedAfterDeserialize = itemsField.GetValue(set);
+            object cachedAfterDeserialize = set._items;
             Assert.IsNull(cachedAfterDeserialize, "No duplicates should clear serialized cache.");
 
             bool addedNew = set.Add(20);
             Assert.IsTrue(addedNew);
 
             set.OnBeforeSerialize();
-            int[] serializedAfterMutation = (int[])itemsField.GetValue(set);
+            int[] serializedAfterMutation = set._items;
             Assert.IsNotNull(serializedAfterMutation);
             CollectionAssert.AreEquivalent(new int[] { 5, 10, 20 }, serializedAfterMutation);
         }
@@ -136,15 +115,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void ProtoSerializationRoundTripsValues()
         {
             SerializableHashSet<int> original = new SerializableHashSet<int>(new int[] { 1, 3, 5 });
-            FieldInfo itemsField = typeof(SerializableHashSet<int>).GetField(
-                "_items",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(itemsField);
-
             byte[] payload = Serializer.ProtoSerialize(original);
 
-            object cachedItems = itemsField.GetValue(original);
+            object cachedItems = original._items;
             Assert.IsNull(
                 cachedItems,
                 "Proto serialization should release cached arrays when no duplicates exist."
@@ -464,6 +437,40 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void SortedSetNullEntriesAreSkippedDuringDeserialization()
+        {
+            SerializableSortedSet<ScriptableSample> set =
+                new SerializableSortedSet<ScriptableSample>();
+            FieldInfo itemsField = typeof(SerializableSortedSet<ScriptableSample>).GetField(
+                "_items",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            Assert.IsNotNull(itemsField);
+
+            ScriptableSample valid = ScriptableObject.CreateInstance<ScriptableSample>();
+            itemsField.SetValue(set, new ScriptableSample[] { null, valid });
+
+            LogAssert.Expect(
+                LogType.Error,
+                "SerializableSortedSet<WallstopStudios.UnityHelpers.Tests.DataStructures.SerializableHashSetTests+ScriptableSample> skipped serialized entry at index 0 because the value reference was null."
+            );
+
+            set.OnAfterDeserialize();
+
+            Assert.AreEqual(1, set.Count);
+            Assert.IsTrue(set.Contains(valid));
+
+            object cached = itemsField.GetValue(set);
+            Assert.IsNotNull(cached, "Serialized cache should be preserved for inspector review.");
+            ScriptableSample[] cachedValues = (ScriptableSample[])cached;
+            CollectionAssert.AreEqual(new ScriptableSample[] { null, valid }, cachedValues);
+
+            LogAssert.NoUnexpectedReceived();
+
+            ScriptableObject.DestroyImmediate(valid);
+        }
+
+        [Test]
         public void UnityDeserializationRestoresSortOrderFromUnsortedSerializedItems()
         {
             SerializableSortedSet<string> set = new SerializableSortedSet<string>();
@@ -545,6 +552,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 return string.Compare(x.Token, y.Token, StringComparison.Ordinal);
             }
         }
+
+        private sealed class ScriptableSample : ScriptableObject { }
 
         [Test]
         public void EnumeratorIsValueTypeAndMaintainsSortOrder()

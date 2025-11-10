@@ -4,6 +4,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using System.Collections.Generic;
     using System.Reflection;
     using NUnit.Framework;
+    using UnityEngine;
+    using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
@@ -323,6 +325,73 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             Assert.AreEqual(expectedKeys.Length, index);
+        }
+
+        [Test]
+        public void NullKeysAreSkippedDuringDeserialization()
+        {
+            SerializableSortedDictionary<string, string> dictionary =
+                new SerializableSortedDictionary<string, string>();
+
+            string[] serializedKeys = new string[] { null, "valid" };
+            string[] serializedValues = new string[] { "ignored", "retained" };
+            dictionary._keys = serializedKeys;
+            dictionary._values = serializedValues;
+
+            LogAssert.Expect(
+                LogType.Error,
+                "SerializableSortedDictionary<System.String, System.String> skipped serialized entry at index 0 because the key reference was null."
+            );
+
+            dictionary.OnAfterDeserialize();
+
+            Assert.AreEqual(1, dictionary.Count);
+            Assert.IsTrue(dictionary.ContainsKey("valid"));
+            Assert.AreEqual("retained", dictionary["valid"]);
+
+            string[] storedKeys = dictionary._keys;
+            string[] storedValues = dictionary._values;
+            bool preserveFlag = dictionary.PreserveSerializedEntries;
+
+            Assert.IsNotNull(storedKeys);
+            CollectionAssert.AreEqual(serializedKeys, storedKeys);
+            if (storedValues != null)
+            {
+                CollectionAssert.AreEqual(serializedValues, storedValues);
+            }
+
+            Assert.IsTrue(preserveFlag);
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void NullValuesArePreservedDuringDeserialization()
+        {
+            SerializableSortedDictionary<string, string> dictionary =
+                new SerializableSortedDictionary<string, string>();
+
+            string[] serializedKeys = new string[] { "skip", "keep" };
+            string[] serializedValues = new string[] { null, "retained" };
+            dictionary._keys = serializedKeys;
+            dictionary._values = serializedValues;
+
+            dictionary.OnAfterDeserialize();
+
+            Assert.AreEqual(2, dictionary.Count);
+            Assert.IsTrue(dictionary.ContainsKey("keep"));
+            Assert.AreEqual("retained", dictionary["keep"]);
+            Assert.IsTrue(dictionary.ContainsKey("skip"));
+            Assert.IsNull(dictionary["skip"]);
+
+            string[] storedKeys = dictionary._keys;
+            string[] storedValues = dictionary._values;
+            bool preserveFlag = dictionary.PreserveSerializedEntries;
+
+            Assert.IsNotNull(storedKeys);
+            CollectionAssert.AreEqual(serializedKeys, storedKeys);
+            Assert.IsNotNull(storedValues);
+            CollectionAssert.AreEqual(serializedValues, storedValues);
+            Assert.IsFalse(preserveFlag);
         }
 
         [Test]

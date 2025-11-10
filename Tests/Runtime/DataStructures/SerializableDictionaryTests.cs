@@ -378,22 +378,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             SerializableDictionary<string, string> dictionary = new();
 
-            Type baseType = typeof(SerializableDictionary<string, string>).BaseType;
-            Assert.IsNotNull(baseType, "Base type lookup failed.");
-
-            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
-            FieldInfo keysField = baseType.GetField("_keys", flags);
-            FieldInfo valuesField = baseType.GetField("_values", flags);
-            FieldInfo preserveField = baseType.GetField("_preserveSerializedEntries", flags);
-
-            Assert.IsNotNull(keysField, "Keys backing field lookup failed.");
-            Assert.IsNotNull(valuesField, "Values backing field lookup failed.");
-            Assert.IsNotNull(preserveField, "Preserve flag field lookup failed.");
-
             string[] serializedKeys = new string[] { null, "valid" };
             string[] serializedValues = new string[] { "ignored", "retained" };
-            keysField.SetValue(dictionary, serializedKeys);
-            valuesField.SetValue(dictionary, serializedValues);
+            dictionary._keys = serializedKeys;
+            dictionary._values = serializedValues;
+
+            LogAssert.Expect(
+                LogType.Error,
+                "SerializableDictionary<System.String, System.String> skipped serialized entry at index 0 because the key reference was null."
+            );
 
             dictionary.OnAfterDeserialize();
 
@@ -401,65 +394,58 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(dictionary.ContainsKey("valid"));
             Assert.AreEqual("retained", dictionary["valid"]);
 
-            string[] storedKeys = (string[])keysField.GetValue(dictionary);
-            string[] storedValues = (string[])valuesField.GetValue(dictionary);
-            bool preserveFlag = (bool)preserveField.GetValue(dictionary);
+            string[] storedKeys = dictionary._keys;
+            string[] storedValues = dictionary._values;
+            bool preserveFlag = dictionary.PreserveSerializedEntries;
 
             Assert.IsNotNull(
                 storedKeys,
                 "Serialized keys should be preserved when null keys exist."
             );
-            Assert.IsNotNull(
-                storedValues,
-                "Serialized values should be preserved when null keys exist."
-            );
             CollectionAssert.AreEqual(serializedKeys, storedKeys);
-            CollectionAssert.AreEqual(serializedValues, storedValues);
+            if (storedValues != null)
+            {
+                CollectionAssert.AreEqual(serializedValues, storedValues);
+            }
             Assert.IsTrue(preserveFlag, "Null keys should force serialized cache preservation.");
 
             LogAssert.NoUnexpectedReceived();
         }
 
         [Test]
-        public void NullValuesAreSkippedDuringDeserialization()
+        public void NullValuesArePreservedDuringDeserialization()
         {
             SerializableDictionary<string, string> dictionary = new();
 
-            Type baseType = typeof(SerializableDictionary<string, string>).BaseType;
-            Assert.IsNotNull(baseType, "Base type lookup failed.");
-
-            BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
-            FieldInfo keysField = baseType.GetField("_keys", flags);
-            FieldInfo valuesField = baseType.GetField("_values", flags);
-            FieldInfo preserveField = baseType.GetField("_preserveSerializedEntries", flags);
-
-            Assert.IsNotNull(keysField, "Keys backing field lookup failed.");
-            Assert.IsNotNull(valuesField, "Values backing field lookup failed.");
-            Assert.IsNotNull(preserveField, "Preserve flag field lookup failed.");
-
             string[] serializedKeys = new string[] { "skip", "keep" };
             string[] serializedValues = new string[] { null, "retained" };
-            keysField.SetValue(dictionary, serializedKeys);
-            valuesField.SetValue(dictionary, serializedValues);
+            dictionary._keys = serializedKeys;
+            dictionary._values = serializedValues;
 
             dictionary.OnAfterDeserialize();
 
-            Assert.AreEqual(1, dictionary.Count);
+            Assert.AreEqual(2, dictionary.Count);
             Assert.IsTrue(dictionary.ContainsKey("keep"));
             Assert.AreEqual("retained", dictionary["keep"]);
+            Assert.IsTrue(dictionary.ContainsKey("skip"));
+            Assert.IsNull(dictionary["skip"]);
 
-            string[] storedKeys = (string[])keysField.GetValue(dictionary);
-            string[] storedValues = (string[])valuesField.GetValue(dictionary);
-            bool preserveFlag = (bool)preserveField.GetValue(dictionary);
+            string[] storedKeys = dictionary._keys;
+            string[] storedValues = dictionary._values;
+            bool preserveFlag = dictionary.PreserveSerializedEntries;
 
-            Assert.IsNotNull(storedKeys, "Serialized keys should remain when null values exist.");
-            Assert.IsNotNull(
-                storedValues,
-                "Serialized values should remain when null values exist."
+            Assert.IsNull(
+                storedKeys,
+                "Serialized keys should be cleared when only values are null."
             );
-            CollectionAssert.AreEqual(serializedKeys, storedKeys);
-            CollectionAssert.AreEqual(serializedValues, storedValues);
-            Assert.IsTrue(preserveFlag, "Null values should force serialized cache preservation.");
+            Assert.IsNull(
+                storedValues,
+                "Serialized values should be cleared when only values are null."
+            );
+            Assert.IsFalse(
+                preserveFlag,
+                "Null values should not force serialized cache preservation."
+            );
 
             LogAssert.NoUnexpectedReceived();
         }

@@ -79,6 +79,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         [NonSerialized]
         private bool _preserveSerializedEntries;
 
+        internal bool PreserveSerializedEntries => _preserveSerializedEntries;
+
         protected SerializableDictionaryBase()
         {
             _dictionary = new Dictionary<TKey, TValue>();
@@ -152,16 +154,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                     if (!suppressWarnings)
                     {
                         LogNullReferenceSkip("key", index);
-                    }
-                    continue;
-                }
-
-                if (valueSupportsNullCheck && ReferenceEquals(value, null))
-                {
-                    encounteredNullReference = true;
-                    if (!suppressWarnings)
-                    {
-                        LogNullReferenceSkip("value", index);
                     }
                     continue;
                 }

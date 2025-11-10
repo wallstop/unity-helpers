@@ -43,6 +43,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         [NonSerialized]
         private bool _arraysDirty = true;
 
+        internal bool PreserveSerializedEntries => _preserveSerializedEntries;
+
         protected SerializableSortedDictionaryBase()
             : this((IComparer<TKey>)null) { }
 
