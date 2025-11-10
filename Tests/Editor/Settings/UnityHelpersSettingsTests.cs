@@ -147,6 +147,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 Is.EqualTo(UnityHelpersSettings.WButtonFoldoutBehavior.StartExpanded)
             );
         }
+
+        [Test]
+        public void FoldoutSpeedDefaultsMatchConstants()
+        {
+            Assert.That(
+                UnityHelpersSettings.GetWButtonFoldoutSpeed(),
+                Is.EqualTo(UnityHelpersSettings.DefaultFoldoutSpeed)
+            );
+            Assert.That(
+                UnityHelpersSettings.GetSerializableDictionaryFoldoutSpeed(),
+                Is.EqualTo(UnityHelpersSettings.DefaultFoldoutSpeed)
+            );
+            Assert.That(
+                UnityHelpersSettings.GetSerializableSortedDictionaryFoldoutSpeed(),
+                Is.EqualTo(UnityHelpersSettings.DefaultFoldoutSpeed)
+            );
+        }
     }
 }
 #endif

@@ -30,6 +30,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const int MaxWButtonHistorySize = 10;
         public const string DefaultWButtonPriority = "Default";
         public const int DefaultDuplicateTweenCycles = 3;
+        public const float DefaultFoldoutSpeed = 2f;
+        public const float MinFoldoutSpeed = 0.05f;
+        public const float MaxFoldoutSpeed = 8f;
         private static readonly Color DefaultPriorityButtonColor = new(0.243f, 0.525f, 0.988f, 1f);
 
         public enum WButtonActionsPlacement
@@ -97,6 +100,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         )]
         private WButtonFoldoutBehavior wbuttonFoldoutBehavior =
             WButtonFoldoutBehavior.StartExpanded;
+
+        [SerializeField]
+        [Tooltip("Animation speed used when toggling WButton action foldouts.")]
+        private float wbuttonFoldoutSpeed = DefaultFoldoutSpeed;
+
+        [SerializeField]
+        [Tooltip(
+            "Animation speed used when toggling SerializableDictionary pending entry foldouts."
+        )]
+        private float serializableDictionaryFoldoutSpeed = DefaultFoldoutSpeed;
+
+        [SerializeField]
+        [Tooltip(
+            "Animation speed used when toggling SerializableSortedDictionary pending entry foldouts."
+        )]
+        private float serializableSortedDictionaryFoldoutSpeed = DefaultFoldoutSpeed;
 
         [SerializeField]
         [Tooltip(
@@ -377,6 +396,29 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return instance.wbuttonFoldoutBehavior;
         }
 
+        public static float GetWButtonFoldoutSpeed()
+        {
+            return Mathf.Clamp(instance.wbuttonFoldoutSpeed, MinFoldoutSpeed, MaxFoldoutSpeed);
+        }
+
+        public static float GetSerializableDictionaryFoldoutSpeed()
+        {
+            return Mathf.Clamp(
+                instance.serializableDictionaryFoldoutSpeed,
+                MinFoldoutSpeed,
+                MaxFoldoutSpeed
+            );
+        }
+
+        public static float GetSerializableSortedDictionaryFoldoutSpeed()
+        {
+            return Mathf.Clamp(
+                instance.serializableSortedDictionaryFoldoutSpeed,
+                MinFoldoutSpeed,
+                MaxFoldoutSpeed
+            );
+        }
+
         public static DuplicateRowAnimationMode GetDuplicateRowAnimationMode()
         {
             return instance.duplicateRowAnimationMode;
@@ -423,6 +465,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             {
                 wbuttonFoldoutBehavior = WButtonFoldoutBehavior.StartExpanded;
             }
+            wbuttonFoldoutSpeed = Mathf.Clamp(
+                wbuttonFoldoutSpeed <= 0f ? DefaultFoldoutSpeed : wbuttonFoldoutSpeed,
+                MinFoldoutSpeed,
+                MaxFoldoutSpeed
+            );
+            serializableDictionaryFoldoutSpeed = Mathf.Clamp(
+                serializableDictionaryFoldoutSpeed <= 0f
+                    ? DefaultFoldoutSpeed
+                    : serializableDictionaryFoldoutSpeed,
+                MinFoldoutSpeed,
+                MaxFoldoutSpeed
+            );
+            serializableSortedDictionaryFoldoutSpeed = Mathf.Clamp(
+                serializableSortedDictionaryFoldoutSpeed <= 0f
+                    ? DefaultFoldoutSpeed
+                    : serializableSortedDictionaryFoldoutSpeed,
+                MinFoldoutSpeed,
+                MaxFoldoutSpeed
+            );
             if (EnsureWButtonPriorityDefaults())
             {
                 SaveSettings();
@@ -816,6 +877,33 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             "Determines whether WButton action groups are always visible, start expanded, or start collapsed when first drawn."
                         )
                     );
+                    EditorGUILayout.Slider(
+                        serializedSettings.FindProperty("wbuttonFoldoutSpeed"),
+                        MinFoldoutSpeed,
+                        MaxFoldoutSpeed,
+                        new GUIContent(
+                            "WButton Foldout Speed",
+                            "Animation speed used when expanding or collapsing WButton action groups."
+                        )
+                    );
+                    EditorGUILayout.Slider(
+                        serializedSettings.FindProperty("serializableDictionaryFoldoutSpeed"),
+                        MinFoldoutSpeed,
+                        MaxFoldoutSpeed,
+                        new GUIContent(
+                            "Dictionary Foldout Speed",
+                            "Animation speed used when expanding or collapsing SerializableDictionary pending entries."
+                        )
+                    );
+                    EditorGUILayout.Slider(
+                        serializedSettings.FindProperty("serializableSortedDictionaryFoldoutSpeed"),
+                        MinFoldoutSpeed,
+                        MaxFoldoutSpeed,
+                        new GUIContent(
+                            "Sorted Dictionary Foldout Speed",
+                            "Animation speed used when expanding or collapsing SerializableSortedDictionary pending entries."
+                        )
+                    );
 
                     EditorGUILayout.PropertyField(
                         duplicateModeProperty,
@@ -858,6 +946,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     "Duplicate",
                     "SerializableType",
                     "Regex",
+                    "Speed",
+                    "Animation",
                 },
             };
         }

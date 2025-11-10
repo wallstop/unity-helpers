@@ -113,6 +113,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
         }
 
         internal const float FoldoutContentSpacing = 4f;
+        internal const float FoldoutIconOffset = 12f;
 
         internal static GUIContent TopGroupLabel
         {
@@ -190,9 +191,12 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
         private static GUIStyle CreateFoldoutContainerStyle(bool expanded)
         {
+            RectOffset padding = expanded
+                ? new RectOffset(12, 12, 10, 10)
+                : new RectOffset(12, 12, 10, 8);
             GUIStyle style = new GUIStyle(EditorStyles.helpBox)
             {
-                padding = expanded ? new RectOffset(12, 12, 8, 10) : new RectOffset(12, 12, 6, 8),
+                padding = padding,
                 margin = new RectOffset(4, 4, 6, 6),
             };
             return style;

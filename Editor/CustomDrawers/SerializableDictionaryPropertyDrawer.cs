@@ -28,7 +28,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private const float PendingSectionPadding = 6f;
         private const float PendingAddButtonWidth = 110f;
-        private const float PendingFoldoutAnimationSpeed = 2f;
         private const int DefaultPageSize = 15;
         internal const int MaxPageSize = 250;
         private const float PaginationButtonWidth = 28f;
@@ -85,7 +84,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     fieldInfo,
                     out Type keyType,
                     out Type valueType,
-                    out bool _
+                    out bool isSortedDictionary
                 )
             )
             {
@@ -161,7 +160,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 ReorderableList list = GetOrCreateList(property, keysProperty, valuesProperty);
                 PaginationState pagination = GetOrCreatePaginationState(property);
-                PendingEntry pending = GetOrCreatePendingEntry(property, keyType, valueType);
+                PendingEntry pending = GetOrCreatePendingEntry(
+                    property,
+                    keyType,
+                    valueType,
+                    isSortedDictionary
+                );
 
                 float pendingY = y;
                 DrawPendingEntryUI(
@@ -219,14 +223,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     fieldInfo,
                     out Type keyType,
                     out Type valueType,
-                    out bool _
+                    out bool isSortedDictionary
                 )
             )
             {
                 return height;
             }
 
-            PendingEntry pending = GetOrCreatePendingEntry(property, keyType, valueType);
+            PendingEntry pending = GetOrCreatePendingEntry(
+                property,
+                keyType,
+                valueType,
+                isSortedDictionary
+            );
             string cacheKey = GetListKey(property);
             DuplicateKeyState duplicateState = RefreshDuplicateState(
                 cacheKey,
@@ -1013,12 +1022,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private PendingEntry GetOrCreatePendingEntry(
             SerializedProperty property,
             Type keyType,
-            Type valueType
+            Type valueType,
+            bool isSortedDictionary
         )
         {
             string key = GetListKey(property);
             if (_pendingEntries.TryGetValue(key, out PendingEntry entry))
             {
+                entry.isSorted = isSortedDictionary;
                 EnsurePendingFoldoutAnim(entry);
                 return entry;
             }
@@ -1028,8 +1039,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 key = GetDefaultValue(keyType),
                 value = GetDefaultValue(valueType),
                 isExpanded = false,
+                isSorted = isSortedDictionary,
             };
-            entry.foldoutAnim = CreatePendingFoldoutAnim(entry.isExpanded);
+            entry.foldoutAnim = CreatePendingFoldoutAnim(entry.isExpanded, isSortedDictionary);
             _pendingEntries[key] = entry;
             return entry;
         }
@@ -2999,9 +3011,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             MarkListCacheDirty(cacheKey);
         }
 
-        private static AnimBool CreatePendingFoldoutAnim(bool initialValue)
+        private static float GetPendingFoldoutAnimationSpeed(bool isSortedDictionary)
         {
-            AnimBool anim = new(initialValue) { speed = PendingFoldoutAnimationSpeed };
+            return isSortedDictionary
+                ? UnityHelpersSettings.GetSerializableSortedDictionaryFoldoutSpeed()
+                : UnityHelpersSettings.GetSerializableDictionaryFoldoutSpeed();
+        }
+
+        private static AnimBool CreatePendingFoldoutAnim(bool initialValue, bool isSortedDictionary)
+        {
+            AnimBool anim = new(initialValue)
+            {
+                speed = GetPendingFoldoutAnimationSpeed(isSortedDictionary),
+            };
             anim.valueChanged.AddListener(RequestRepaint);
             return anim;
         }
@@ -3015,11 +3037,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (pending.foldoutAnim == null)
             {
-                pending.foldoutAnim = CreatePendingFoldoutAnim(pending.isExpanded);
+                pending.foldoutAnim = CreatePendingFoldoutAnim(
+                    pending.isExpanded,
+                    pending.isSorted
+                );
             }
             else
             {
-                pending.foldoutAnim.speed = PendingFoldoutAnimationSpeed;
+                pending.foldoutAnim.speed = GetPendingFoldoutAnimationSpeed(pending.isSorted);
             }
 
             return pending.foldoutAnim;
@@ -3512,6 +3537,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public object value;
             public bool isExpanded;
             public AnimBool foldoutAnim;
+            public bool isSorted;
         }
 
         public sealed class NullKeyInfo

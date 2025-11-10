@@ -4,6 +4,8 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
     using System;
     using System.Collections.Generic;
     using UnityEditor;
+    using UnityEditor.AnimatedValues;
+    using UnityEditorInternal;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Editor.Settings;
@@ -17,6 +19,8 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
     internal static class WButtonGUI
     {
         private static readonly Dictionary<int, int> GroupCounts = new Dictionary<int, int>();
+        private static readonly Dictionary<int, AnimBool> FoldoutAnimations =
+            new Dictionary<int, AnimBool>();
 
         internal static bool DrawButtons(
             Editor editor,
@@ -158,6 +162,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 foldoutBehavior == UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen;
             bool expanded =
                 alwaysOpen || GetFoldoutState(foldoutStates, drawOrder, foldoutBehavior);
+            AnimBool foldoutAnim = alwaysOpen ? null : GetFoldoutAnim(drawOrder, expanded);
 
             Color previousBackground = GUI.backgroundColor;
             GUI.backgroundColor = WButtonStyles.GetFoldoutBackgroundColor(expanded || alwaysOpen);
@@ -174,6 +179,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             {
                 GUILayout.Label(header, WButtonStyles.HeaderStyle);
                 EditorGUILayout.Space(WButtonStyles.FoldoutContentSpacing);
+                DrawGroupContent(drawOrder, contexts, paginationStates, triggeredContexts);
             }
             else
             {
@@ -182,6 +188,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                     WButtonStyles.FoldoutHeaderStyle,
                     GUILayout.ExpandWidth(true)
                 );
+                headerRect.xMin += WButtonStyles.FoldoutIconOffset;
 
                 EditorGUI.indentLevel++;
                 bool newExpanded = EditorGUI.Foldout(
@@ -198,16 +205,44 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                     foldoutStates[drawOrder] = newExpanded;
                 }
 
-                if (!newExpanded)
+                if (foldoutAnim != null)
                 {
-                    GUILayout.EndVertical();
-                    EditorGUILayout.Space();
-                    return;
+                    foldoutAnim.speed = UnityHelpersSettings.GetWButtonFoldoutSpeed();
+                    foldoutAnim.target = newExpanded;
                 }
 
                 EditorGUILayout.Space(WButtonStyles.FoldoutContentSpacing);
+
+                float fade = foldoutAnim?.faded ?? (newExpanded ? 1f : 0f);
+                if (foldoutAnim == null)
+                {
+                    if (newExpanded)
+                    {
+                        DrawGroupContent(drawOrder, contexts, paginationStates, triggeredContexts);
+                    }
+                }
+                else
+                {
+                    bool visible = EditorGUILayout.BeginFadeGroup(fade);
+                    if (visible)
+                    {
+                        DrawGroupContent(drawOrder, contexts, paginationStates, triggeredContexts);
+                    }
+                    EditorGUILayout.EndFadeGroup();
+                }
             }
 
+            GUILayout.EndVertical();
+            EditorGUILayout.Space();
+        }
+
+        private static void DrawGroupContent(
+            int drawOrder,
+            List<WButtonMethodContext> contexts,
+            IDictionary<int, WButtonPaginationState> paginationStates,
+            List<WButtonMethodContext> triggeredContexts
+        )
+        {
             int pageSize = UnityHelpersSettings.GetWButtonPageSize();
             WButtonPaginationState state = GetPaginationState(
                 paginationStates,
@@ -229,9 +264,6 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                     EditorGUILayout.Space(6f);
                 }
             }
-
-            GUILayout.EndVertical();
-            EditorGUILayout.Space();
         }
 
         private static void DrawPaginationControls(
@@ -307,6 +339,26 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
             foldoutStates[drawOrder] = defaultExpanded;
             return defaultExpanded;
+        }
+
+        private static AnimBool GetFoldoutAnim(int drawOrder, bool expanded)
+        {
+            float speed = UnityHelpersSettings.GetWButtonFoldoutSpeed();
+            if (!FoldoutAnimations.TryGetValue(drawOrder, out AnimBool anim) || anim == null)
+            {
+                anim = new AnimBool(expanded) { speed = speed };
+                anim.valueChanged.AddListener(RequestRepaint);
+                FoldoutAnimations[drawOrder] = anim;
+            }
+
+            anim.speed = speed;
+            anim.target = expanded;
+            return anim;
+        }
+
+        private static void RequestRepaint()
+        {
+            InternalEditorUtility.RepaintAllViews();
         }
 
         private static GUIContent BuildGroupHeader(int drawOrder)
