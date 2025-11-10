@@ -1966,7 +1966,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float innerWidth = Mathf.Max(0f, containerRect.width - PendingSectionPadding * 2f);
             float innerY = PendingSectionPadding;
 
-            Rect headerRect = new(PendingSectionPadding, innerY, innerWidth, rowHeight);
+            const float FoldoutOffset = 10f;
+            Rect headerRect = new(
+                PendingSectionPadding + FoldoutOffset,
+                innerY,
+                innerWidth - FoldoutOffset,
+                rowHeight
+            );
             EditorGUI.BeginChangeCheck();
             FontStyle originalFoldoutFontStyle = EditorStyles.foldout.fontStyle;
             EditorStyles.foldout.fontStyle = FontStyle.Bold;

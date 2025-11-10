@@ -17,6 +17,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
         {
             List<WButtonMethodContext> triggeredContexts = new List<WButtonMethodContext>();
 
+            serializedObject.UpdateIfRequiredOrScript();
+
+            SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
+            string scriptPath = null;
+            if (scriptProperty != null)
+            {
+                scriptPath = scriptProperty.propertyPath;
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.PropertyField(scriptProperty, true);
+                }
+                EditorGUILayout.Space();
+            }
+
             bool topDrawn = WButtonGUI.DrawButtons(
                 this,
                 WButtonPlacement.Top,
@@ -28,7 +42,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 EditorGUILayout.Space();
             }
 
-            DrawDefaultInspector();
+            SerializedProperty iterator = serializedObject.GetIterator();
+            bool enterChildren = true;
+            while (iterator.NextVisible(enterChildren))
+            {
+                enterChildren = false;
+                if (!string.IsNullOrEmpty(scriptPath) && iterator.propertyPath == scriptPath)
+                {
+                    continue;
+                }
+
+                EditorGUILayout.PropertyField(iterator, true);
+            }
+
+            serializedObject.ApplyModifiedProperties();
 
             bool bottomDrawn = WButtonGUI.DrawButtons(
                 this,

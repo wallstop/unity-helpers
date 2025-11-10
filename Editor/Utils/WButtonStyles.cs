@@ -20,7 +20,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             new ColorComparer()
         );
 
-        internal const float ButtonHeight = 28f;
+        internal const float ButtonHeight = 18f;
 
         internal static GUIStyle GroupStyle
         {
