@@ -3296,7 +3296,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool isValueField
         )
         {
-            if (pending == null || !TypeSupportsComplexEditing(type))
+            if (
+                pending == null
+                || !TypeSupportsComplexEditing(type)
+                || (type.IsValueType && !typeof(UnityEngine.Object).IsAssignableFrom(type))
+                || type == typeof(string)
+            )
             {
                 return false;
             }
@@ -3313,12 +3318,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 context.Wrapper.SetValue(CloneComplexValue(targetValue, type));
                 context.Serialized.Update();
+                context.Serialized.ApplyModifiedPropertiesWithoutUndo();
             }
 
             if (type.IsClass && context.Wrapper.GetValue() == null)
             {
                 context.Wrapper.SetValue(GetDefaultValue(type));
                 context.Serialized.Update();
+                context.Serialized.ApplyModifiedPropertiesWithoutUndo();
             }
 
             EditorGUI.BeginChangeCheck();
@@ -3326,6 +3333,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (EditorGUI.EndChangeCheck())
             {
                 context.Serialized.ApplyModifiedProperties();
+                context.Serialized.Update();
                 object updated = context.Wrapper.GetValue();
                 current = CloneComplexValue(updated, type);
             }
@@ -3393,12 +3401,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool isValueField
         )
         {
-            if (pending == null)
+            if (pending == null || type == null)
             {
                 return PendingWrapperContext.Empty;
             }
 
-            ScriptableObject wrapper = isValueField ? pending.valueWrapper : pending.keyWrapper;
+            PendingValueWrapper wrapper = isValueField ? pending.valueWrapper : pending.keyWrapper;
             SerializedObject serialized = isValueField
                 ? pending.valueWrapperSerialized
                 : pending.keyWrapperSerialized;
@@ -3406,24 +3414,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 ? pending.valueWrapperProperty
                 : pending.keyWrapperProperty;
 
-            Type wrapperType = typeof(PendingValueWrapper<>).MakeGenericType(type);
-            if (wrapper == null || wrapper.GetType() != wrapperType)
+            if (wrapper == null)
             {
-                if (wrapper != null)
-                {
-                    ScriptableObject.DestroyImmediate(wrapper);
-                }
-
-                wrapper = ScriptableObject.CreateInstance(wrapperType);
+                wrapper = ScriptableObject.CreateInstance<PendingValueWrapper>();
+                wrapper.hideFlags = HideFlags.HideAndDontSave;
                 serialized = null;
                 property = null;
             }
 
-            PendingValueWrapper baseWrapper = (PendingValueWrapper)wrapper;
             if (serialized == null)
             {
                 serialized = new SerializedObject(wrapper);
-                property = baseWrapper.FindValueProperty(serialized);
+                property = wrapper.FindValueProperty(serialized);
+            }
+
+            if (property == null)
+            {
+                ReleasePendingWrapper(pending, isValueField);
+                return PendingWrapperContext.Empty;
             }
 
             if (isValueField)
@@ -3439,7 +3447,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 pending.keyWrapperProperty = property;
             }
 
-            return new PendingWrapperContext(baseWrapper, serialized, property);
+            serialized.Update();
+
+            return new PendingWrapperContext(wrapper, serialized, property);
         }
 
         private static void ReleasePendingWrapper(PendingEntry pending, bool isValueField)
@@ -3512,38 +3522,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private abstract class PendingValueWrapper : ScriptableObject
+        private sealed class PendingValueWrapper : ScriptableObject
         {
-            public abstract object GetValue();
+            internal const string PropertyName = "boxedValue";
 
-            public abstract void SetValue(object value);
+            [SerializeReference]
+            private object boxedValue;
 
-            public abstract SerializedProperty FindValueProperty(SerializedObject serializedObject);
-        }
-
-        private sealed class PendingValueWrapper<T> : PendingValueWrapper
-        {
-            public T value;
-
-            public override object GetValue()
+            public object GetValue()
             {
-                return value;
+                return boxedValue;
             }
 
-            public override void SetValue(object incoming)
+            public void SetValue(object incoming)
             {
-                if (incoming is T typed)
-                {
-                    value = typed;
-                    return;
-                }
-
-                value = default;
+                boxedValue = incoming;
             }
 
-            public override SerializedProperty FindValueProperty(SerializedObject serializedObject)
+            public SerializedProperty FindValueProperty(SerializedObject serializedObject)
             {
-                return serializedObject.FindProperty(nameof(value));
+                return serializedObject.FindProperty(PropertyName);
             }
         }
 
@@ -3816,6 +3814,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
+            if (property.propertyType == SerializedPropertyType.ManagedReference)
+            {
+                property.managedReferenceValue = null;
+                return;
+            }
+
+            if (property.propertyType != SerializedPropertyType.Generic)
+            {
+                return;
+            }
+
             foreach (FieldInfo field in GetSerializableFields(type))
             {
                 SerializedProperty child = property.FindPropertyRelative(field.Name);
@@ -4022,10 +4031,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public bool isExpanded;
             public AnimBool foldoutAnim;
             public bool isSorted;
-            public ScriptableObject keyWrapper;
+            public PendingValueWrapper keyWrapper;
             public SerializedObject keyWrapperSerialized;
             public SerializedProperty keyWrapperProperty;
-            public ScriptableObject valueWrapper;
+            public PendingValueWrapper valueWrapper;
             public SerializedObject valueWrapperSerialized;
             public SerializedProperty valueWrapperProperty;
         }
