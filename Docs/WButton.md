@@ -36,11 +36,11 @@ public sealed class ExampleBehaviour : MonoBehaviour
 - Unsupported types fall back to a JSON text box; the inspector attempts to deserialize input before invocation.
 - Parameters of type `CancellationToken` are auto-injected and hidden from the UI. They enable the cancel button during long-running invocations.
 
-## Priority Palette & Colours
+## Custom Colour Palette
 
-- Every button can declare a `priority` string. The inspector resolves that key against the **WButton Priority Colors** palette in _Project Settings → Wallstop Studios → Unity Helpers_.
-- Palette entries now store both the button background colour and the text colour. New priorities auto-pick a complimentary hue and a readable text colour, but you can tailor either value to match your branding.
-- When a button does not specify a priority (or when the key is missing), the drawer falls back to the `Default` palette entry. Colours are applied directly to the button surface, not the surrounding container, so the priority scheme remains distinct.
+- Every button can declare a custom colour key. The inspector resolves that key against the **WButton Custom Colors** dictionary in _Project Settings → Wallstop Studios → Unity Helpers_.
+- Entries store both the button background colour and the text colour. New keys auto-pick a complimentary hue and a readable text colour, but you can tailor either value to match your branding.
+- When a button does not specify a colour key (or when the key is missing), the drawer falls back to the `Default` palette entry. Colours are applied directly to the button surface, not the surrounding container, so the scheme remains distinct.
 
 ## Layout & Foldouts
 

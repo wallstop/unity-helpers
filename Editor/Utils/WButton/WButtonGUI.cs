@@ -412,7 +412,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             DrawInvocationStatus(context);
 
             UnityHelpersSettings.WButtonPaletteEntry palette =
-                UnityHelpersSettings.ResolveWButtonPalette(metadata.Priority);
+                UnityHelpersSettings.ResolveWButtonPalette(metadata.ColorKey);
             GUIStyle buttonStyle = WButtonStyles.GetColoredButtonStyle(
                 palette.ButtonColor,
                 palette.TextColor

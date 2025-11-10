@@ -20,7 +20,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             DisplayName = string.IsNullOrWhiteSpace(displayName) ? null : displayName.Trim();
             DrawOrder = drawOrder;
             HistoryCapacity = historyCapacity < 0 ? UseGlobalHistory : historyCapacity;
-            Priority = string.IsNullOrWhiteSpace(priority) ? null : priority.Trim();
+            ColorKey = string.IsNullOrWhiteSpace(priority) ? null : priority.Trim();
         }
 
         /// <summary>
@@ -39,8 +39,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         public int HistoryCapacity { get; }
 
         /// <summary>
-        /// Optional priority key used to resolve palette-based styling.
+        /// Optional custom color key used to resolve palette-based styling.
         /// </summary>
-        public string Priority { get; }
+        public string ColorKey { get; }
+
+        /// <summary>
+        /// Legacy alias for <see cref="ColorKey"/> to maintain backwards compatibility.
+        /// </summary>
+        [System.Obsolete("Use ColorKey instead.")]
+        public string Priority => ColorKey;
     }
 }

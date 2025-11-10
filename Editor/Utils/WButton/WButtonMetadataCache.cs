@@ -105,7 +105,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             Type asyncResultType,
             bool returnsVoid,
             int cancellationTokenIndex,
-            string priority
+            string colorKey
         )
         {
             DeclaringType = declaringType;
@@ -122,7 +122,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 : attribute.DisplayName;
             DrawOrder = attribute.DrawOrder;
             HistoryCapacity = attribute.HistoryCapacity;
-            Priority = string.IsNullOrEmpty(priority) ? null : priority;
+            ColorKey = string.IsNullOrEmpty(colorKey) ? null : colorKey;
         }
 
         internal Type DeclaringType { get; }
@@ -137,7 +137,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
         internal int HistoryCapacity { get; }
 
-        internal string Priority { get; }
+        internal string ColorKey { get; }
+
+        [System.Obsolete("Use ColorKey instead.")]
+        internal string Priority => ColorKey;
 
         internal WButtonParameterMetadata[] Parameters { get; }
 
@@ -236,7 +239,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                         classification._asyncResultType,
                         classification._returnsVoid,
                         cancellationTokenIndex,
-                        attribute.Priority
+                        attribute.ColorKey
                     );
                     entries.Add(metadata);
                     processedBases.Add(baseDefinition);

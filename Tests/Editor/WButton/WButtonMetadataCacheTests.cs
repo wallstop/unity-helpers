@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
 
@@ -45,7 +46,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         }
 
         [Test]
-        public void MetadataCapturesPriority()
+        public void MetadataCapturesColorKey()
         {
             IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
                 typeof(SampleTarget)
@@ -53,7 +54,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             WButtonMethodMetadata method = metadata.First(m =>
                 m.Method.Name == nameof(SampleTarget.PriorityMethod)
             );
+            Assert.That(method.ColorKey, Is.EqualTo("Critical"));
+#pragma warning disable CS0618
             Assert.That(method.Priority, Is.EqualTo("Critical"));
+#pragma warning restore CS0618
         }
 
         [Test]
@@ -110,77 +114,69 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         }
 
         [Test]
-        public void ResolvePriorityColorReturnsDefaultsAndCustomOverrides()
+        public void ResolveCustomColorReturnsDefaultsAndOverrides()
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
             SerializedObject serialized = new(settings);
-            SerializedProperty palette = serialized.FindProperty("wbuttonPriorityColors");
-            List<(string Priority, Color ButtonColor, Color TextColor)> originalEntries = new();
-            for (int index = 0; index < palette.arraySize; index++)
+            SerializedProperty palette = serialized.FindProperty("wbuttonCustomColors");
+            SerializedProperty keys = palette.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty values = palette.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            serialized.Update();
+
+            List<(string Key, Color ButtonColor, Color TextColor)> originalEntries = new(
+                keys.arraySize
+            );
+            for (int index = 0; index < keys.arraySize; index++)
             {
-                SerializedProperty element = palette.GetArrayElementAtIndex(index);
-                SerializedProperty priority = element.FindPropertyRelative("priority");
-                SerializedProperty buttonColorProperty = element.FindPropertyRelative(
+                SerializedProperty keyProperty = keys.GetArrayElementAtIndex(index);
+                SerializedProperty valueProperty = values.GetArrayElementAtIndex(index);
+                SerializedProperty buttonColorProperty = valueProperty.FindPropertyRelative(
                     "buttonColor"
                 );
-                SerializedProperty textColorProperty = element.FindPropertyRelative("textColor");
+                SerializedProperty textColorProperty = valueProperty.FindPropertyRelative(
+                    "textColor"
+                );
                 originalEntries.Add(
                     (
-                        priority.stringValue,
+                        keyProperty.stringValue,
                         buttonColorProperty.colorValue,
                         textColorProperty.colorValue
                     )
                 );
             }
 
-            string priorityKey = "Critical";
+            string colorKey = "Critical";
             Color expectedColor = new(0.85f, 0.2f, 0.2f);
             Color expectedTextColor = WButtonColorUtility.GetReadableTextColor(expectedColor);
 
             try
             {
-                bool found = false;
-                for (int index = 0; index < palette.arraySize; index++)
+                int entryIndex = FindDictionaryKeyIndex(keys, colorKey);
+                if (entryIndex < 0)
                 {
-                    SerializedProperty element = palette.GetArrayElementAtIndex(index);
-                    SerializedProperty priority = element.FindPropertyRelative("priority");
-                    if (
-                        string.Equals(
-                            priority.stringValue,
-                            priorityKey,
-                            StringComparison.OrdinalIgnoreCase
-                        )
-                    )
-                    {
-                        SerializedProperty buttonColorProperty = element.FindPropertyRelative(
-                            "buttonColor"
-                        );
-                        buttonColorProperty.colorValue = expectedColor;
-                        SerializedProperty textColorProperty = element.FindPropertyRelative(
-                            "textColor"
-                        );
-                        textColorProperty.colorValue = expectedTextColor;
-                        found = true;
-                        break;
-                    }
+                    int newIndex = keys.arraySize;
+                    keys.InsertArrayElementAtIndex(newIndex);
+                    values.InsertArrayElementAtIndex(newIndex);
+                    entryIndex = newIndex;
                 }
 
-                if (!found)
-                {
-                    palette.InsertArrayElementAtIndex(palette.arraySize);
-                    SerializedProperty element = palette.GetArrayElementAtIndex(
-                        palette.arraySize - 1
-                    );
-                    element.FindPropertyRelative("priority").stringValue = priorityKey;
-                    element.FindPropertyRelative("buttonColor").colorValue = expectedColor;
-                    element.FindPropertyRelative("textColor").colorValue = expectedTextColor;
-                }
+                SerializedProperty keyProperty = keys.GetArrayElementAtIndex(entryIndex);
+                keyProperty.stringValue = colorKey;
+
+                SerializedProperty valueProperty = values.GetArrayElementAtIndex(entryIndex);
+                valueProperty.FindPropertyRelative("buttonColor").colorValue = expectedColor;
+                valueProperty.FindPropertyRelative("textColor").colorValue = expectedTextColor;
 
                 serialized.ApplyModifiedPropertiesWithoutUndo();
                 settings.SaveSettings();
 
                 UnityHelpersSettings.WButtonPaletteEntry resolvedCustom =
-                    UnityHelpersSettings.ResolveWButtonPalette(priorityKey);
+                    UnityHelpersSettings.ResolveWButtonPalette(colorKey);
                 Assert.That(resolvedCustom.ButtonColor, Is.EqualTo(expectedColor));
                 Assert.That(resolvedCustom.TextColor, Is.EqualTo(expectedTextColor));
 
@@ -192,24 +188,37 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             finally
             {
                 serialized.Update();
-                palette.arraySize = 0;
+                keys.arraySize = originalEntries.Count;
+                values.arraySize = originalEntries.Count;
                 for (int index = 0; index < originalEntries.Count; index++)
                 {
-                    palette.InsertArrayElementAtIndex(index);
-                    SerializedProperty element = palette.GetArrayElementAtIndex(index);
-                    element.FindPropertyRelative("priority").stringValue = originalEntries[
+                    (string Key, Color ButtonColor, Color TextColor) original = originalEntries[
                         index
-                    ].Priority;
-                    element.FindPropertyRelative("buttonColor").colorValue = originalEntries[
-                        index
-                    ].ButtonColor;
-                    element.FindPropertyRelative("textColor").colorValue = originalEntries[
-                        index
-                    ].TextColor;
+                    ];
+                    SerializedProperty keyProperty = keys.GetArrayElementAtIndex(index);
+                    keyProperty.stringValue = original.Key;
+                    SerializedProperty valueProperty = values.GetArrayElementAtIndex(index);
+                    valueProperty.FindPropertyRelative("buttonColor").colorValue =
+                        original.ButtonColor;
+                    valueProperty.FindPropertyRelative("textColor").colorValue = original.TextColor;
                 }
                 serialized.ApplyModifiedPropertiesWithoutUndo();
                 settings.SaveSettings();
             }
+        }
+
+        private static int FindDictionaryKeyIndex(SerializedProperty keysProperty, string key)
+        {
+            for (int index = 0; index < keysProperty.arraySize; index++)
+            {
+                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
+                if (string.Equals(keyProperty.stringValue, key, StringComparison.OrdinalIgnoreCase))
+                {
+                    return index;
+                }
+            }
+
+            return -1;
         }
 
         private sealed class SampleTarget : ScriptableObject
