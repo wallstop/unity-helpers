@@ -230,7 +230,6 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
         {
             WButtonMethodMetadata metadata = context.Metadata;
             GUILayout.BeginVertical(EditorStyles.helpBox);
-            GUILayout.Label(metadata.DisplayName, EditorStyles.label);
 
             WButtonMethodState[] states = context.States;
             if (states.Length > 0 && states[0].Parameters.Length > 0)

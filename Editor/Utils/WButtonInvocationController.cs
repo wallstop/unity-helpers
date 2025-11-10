@@ -21,10 +21,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             IncludeFields = true,
         };
 
-        internal static void ProcessTriggeredMethods(
-            Editor editor,
-            List<WButtonMethodContext> triggeredContexts
-        )
+        internal static void ProcessTriggeredMethods(List<WButtonMethodContext> triggeredContexts)
         {
             if (triggeredContexts == null || triggeredContexts.Count == 0)
             {
@@ -33,7 +30,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
             foreach (WButtonMethodContext context in triggeredContexts)
             {
-                ExecuteContext(editor, context);
+                ExecuteContext(context);
                 context.ResetTrigger();
             }
         }
@@ -52,7 +49,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             }
         }
 
-        private static void ExecuteContext(Editor editor, WButtonMethodContext context)
+        private static void ExecuteContext(WButtonMethodContext context)
         {
             WButtonMethodMetadata metadata = context.Metadata;
             int historyCapacity =
@@ -106,7 +103,6 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
                     case WButtonExecutionKind.Task:
                         ExecuteTaskBasedInvocation(
-                            editor,
                             metadata,
                             target,
                             state,
@@ -118,7 +114,6 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
                     case WButtonExecutionKind.ValueTask:
                         ExecuteValueTaskInvocation(
-                            editor,
                             metadata,
                             target,
                             state,
@@ -193,7 +188,6 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
         }
 
         private static void ExecuteTaskBasedInvocation(
-            Editor editor,
             WButtonMethodMetadata metadata,
             UnityEngine.Object target,
             WButtonMethodState state,
@@ -249,7 +243,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             task.ContinueWith(
                 t =>
                 {
-                    UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
+                    EnqueueOnMainThread(() =>
                     {
                         FinalizeTaskInvocation(metadata, state, handle, t, historyCapacity);
                     });
@@ -261,7 +255,6 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
         }
 
         private static void ExecuteValueTaskInvocation(
-            Editor editor,
             WButtonMethodMetadata metadata,
             UnityEngine.Object target,
             WButtonMethodState state,
@@ -335,7 +328,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             task.ContinueWith(
                 t =>
                 {
-                    UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
+                    EnqueueOnMainThread(() =>
                     {
                         FinalizeTaskInvocation(metadata, state, handle, t, historyCapacity);
                     });
@@ -778,6 +771,26 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
         private static void RequestRepaint()
         {
             InternalEditorUtility.RepaintAllViews();
+        }
+
+        private static void EnqueueOnMainThread(Action action)
+        {
+            if (action == null)
+            {
+                return;
+            }
+
+            EditorApplication.delayCall += () =>
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogException(ex);
+                }
+            };
         }
     }
 #endif

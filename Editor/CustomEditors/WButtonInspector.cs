@@ -43,7 +43,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
             if (triggeredContexts.Count > 0)
             {
-                WButtonInvocationController.ProcessTriggeredMethods(this, triggeredContexts);
+                WButtonInvocationController.ProcessTriggeredMethods(triggeredContexts);
             }
         }
     }

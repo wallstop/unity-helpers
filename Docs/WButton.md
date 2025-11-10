@@ -66,7 +66,7 @@ public override void OnInspectorGUI()
     WButtonGUI.DrawButtons(this, WButtonPlacement.Top, pagination);
     // editor UI...
     WButtonGUI.DrawButtons(this, WButtonPlacement.Bottom, pagination);
-    WButtonInvocationController.ProcessTriggeredMethods(this, triggered); // optional manual handling
+    WButtonInvocationController.ProcessTriggeredMethods(triggered); // optional manual handling
 }
 ```
 
