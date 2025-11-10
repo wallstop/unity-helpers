@@ -13,12 +13,12 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
         private static GUIStyle _arrayHeaderStyle;
         private static GUIContent _topHeaderContent;
         private static GUIContent _bottomHeaderContent;
-        private static readonly Dictionary<ButtonStyleKey, GUIStyle> ColoredButtonStyles =
-            new Dictionary<ButtonStyleKey, GUIStyle>(new ButtonStyleKeyComparer());
-        private static readonly Dictionary<Color, Texture2D> SolidColorTextures = new Dictionary<
-            Color,
-            Texture2D
-        >(new ColorComparer());
+        private static readonly Dictionary<ButtonStyleKey, GUIStyle> ColoredButtonStyles = new(
+            new ButtonStyleKeyComparer()
+        );
+        private static readonly Dictionary<Color, Texture2D> SolidColorTextures = new(
+            new ColorComparer()
+        );
 
         internal const float ButtonHeight = 28f;
 
@@ -101,7 +101,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 return cached;
             }
 
-            GUIStyle style = new GUIStyle(baseStyle) { fixedHeight = ButtonHeight };
+            GUIStyle style = new(baseStyle) { fixedHeight = ButtonHeight };
             style.normal.textColor = textColor;
             style.focused.textColor = textColor;
             style.active.textColor = textColor;
@@ -137,7 +137,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 return cached;
             }
 
-            Texture2D texture = new Texture2D(1, 1)
+            Texture2D texture = new(1, 1)
             {
                 hideFlags = HideFlags.HideAndDontSave,
                 filterMode = FilterMode.Point,

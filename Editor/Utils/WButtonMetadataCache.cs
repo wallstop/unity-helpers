@@ -160,8 +160,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
     internal static class WButtonMetadataCache
     {
-        private static readonly Dictionary<Type, WButtonMethodMetadata[]> Cache =
-            new Dictionary<Type, WButtonMethodMetadata[]>();
+        private static readonly Dictionary<Type, WButtonMethodMetadata[]> Cache = new();
 
         internal static IReadOnlyList<WButtonMethodMetadata> GetMetadata(Type inspectedType)
         {
@@ -182,8 +181,8 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
         private static WButtonMethodMetadata[] BuildMetadata(Type inspectedType)
         {
-            List<WButtonMethodMetadata> entries = new List<WButtonMethodMetadata>();
-            HashSet<MethodInfo> processedBases = new HashSet<MethodInfo>();
+            List<WButtonMethodMetadata> entries = new();
+            HashSet<MethodInfo> processedBases = new();
 
             Type currentType = inspectedType;
             while (currentType != null && currentType != typeof(object))
@@ -235,7 +234,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
                     Type returnType = method.ReturnType ?? typeof(void);
                     Classification classification = ClassifyReturnType(returnType);
-                    WButtonMethodMetadata metadata = new WButtonMethodMetadata(
+                    WButtonMethodMetadata metadata = new(
                         method.DeclaringType ?? inspectedType,
                         method,
                         attribute,
@@ -312,7 +311,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                     return null;
                 }
 
-                WButtonParameterMetadata metadata = new WButtonParameterMetadata(parameter, index);
+                WButtonParameterMetadata metadata = new(parameter, index);
                 parameters[index] = metadata;
                 if (metadata.IsCancellationToken && cancellationTokenIndex == -1)
                 {
@@ -358,7 +357,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 }
             }
 
-            Classification classification = new Classification
+            Classification classification = new()
             {
                 ExecutionKind = executionKind,
                 ReturnType = returnType,

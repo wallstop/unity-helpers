@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
     using System.Collections.Generic;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Editor.Settings;
 
     internal enum WButtonPlacement
@@ -15,6 +16,8 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
     internal static class WButtonGUI
     {
+        private static readonly Dictionary<int, int> GroupCounts = new Dictionary<int, int>();
+
         internal static bool DrawButtons(
             Editor editor,
             WButtonPlacement placement,
@@ -51,6 +54,12 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             SortedDictionary<int, List<WButtonMethodContext>> groups = GroupByDrawOrder(contexts);
 
             bool anyDrawn = false;
+            GroupCounts.Clear();
+            foreach (KeyValuePair<int, List<WButtonMethodContext>> entry in groups)
+            {
+                GroupCounts[entry.Key] = entry.Value?.Count ?? 0;
+            }
+
             foreach (KeyValuePair<int, List<WButtonMethodContext>> entry in groups)
             {
                 int drawOrder = entry.Key;
@@ -73,7 +82,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             UnityEngine.Object[] targets
         )
         {
-            List<WButtonMethodContext> contexts = new List<WButtonMethodContext>();
+            List<WButtonMethodContext> contexts = new();
             for (int index = 0; index < metadataList.Count; index++)
             {
                 WButtonMethodMetadata metadata = metadataList[index];
@@ -109,18 +118,12 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             List<WButtonMethodContext> contexts
         )
         {
-            SortedDictionary<int, List<WButtonMethodContext>> groups =
-                new SortedDictionary<int, List<WButtonMethodContext>>();
+            SortedDictionary<int, List<WButtonMethodContext>> groups = new();
 
-            for (int index = 0; index < contexts.Count; index++)
+            foreach (WButtonMethodContext context in contexts)
             {
-                WButtonMethodContext context = contexts[index];
                 int drawOrder = context.Metadata.DrawOrder;
-                if (!groups.TryGetValue(drawOrder, out List<WButtonMethodContext> group))
-                {
-                    group = new List<WButtonMethodContext>();
-                    groups.Add(drawOrder, group);
-                }
+                List<WButtonMethodContext> group = groups.GetOrAdd(drawOrder);
                 group.Add(context);
             }
 
@@ -139,8 +142,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 return;
             }
 
-            GUIContent header =
-                drawOrder >= -1 ? WButtonStyles.TopGroupLabel : WButtonStyles.BottomGroupLabel;
+            GUIContent header = BuildGroupHeader(drawOrder);
             GUILayout.BeginVertical(WButtonStyles.GroupStyle);
             GUILayout.Label(header, WButtonStyles.HeaderStyle);
 
@@ -153,7 +155,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
             DrawPaginationControls(state, contexts.Count, pageSize);
 
-            int startIndex = state.PageIndex * pageSize;
+            int startIndex = state._pageIndex * pageSize;
             int endIndex = Mathf.Min(startIndex + pageSize, contexts.Count);
 
             for (int index = startIndex; index < endIndex; index++)
@@ -178,49 +180,67 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
         {
             if (totalItems <= pageSize)
             {
-                state.PageIndex = 0;
+                state._pageIndex = 0;
                 return;
             }
 
             int totalPages = Mathf.Max(1, Mathf.CeilToInt((float)totalItems / pageSize));
-            if (state.PageIndex >= totalPages)
+            if (state._pageIndex >= totalPages)
             {
-                state.PageIndex = totalPages - 1;
+                state._pageIndex = totalPages - 1;
             }
 
             using (new EditorGUILayout.HorizontalScope())
             {
                 GUILayout.FlexibleSpace();
                 EditorGUILayout.LabelField(
-                    $"Page {state.PageIndex + 1} / {totalPages}",
+                    $"Page {state._pageIndex + 1} / {totalPages}",
                     GUILayout.Width(90f)
                 );
 
-                using (new EditorGUI.DisabledScope(state.PageIndex == 0))
+                using (new EditorGUI.DisabledScope(state._pageIndex == 0))
                 {
                     if (GUILayout.Button("Prev", GUILayout.Width(50f)))
                     {
-                        state.PageIndex--;
-                        if (state.PageIndex < 0)
+                        state._pageIndex--;
+                        if (state._pageIndex < 0)
                         {
-                            state.PageIndex = 0;
+                            state._pageIndex = 0;
                         }
                     }
                 }
 
-                using (new EditorGUI.DisabledScope(state.PageIndex >= totalPages - 1))
+                using (new EditorGUI.DisabledScope(state._pageIndex >= totalPages - 1))
                 {
                     if (GUILayout.Button("Next", GUILayout.Width(50f)))
                     {
-                        state.PageIndex++;
-                        if (state.PageIndex >= totalPages)
+                        state._pageIndex++;
+                        if (state._pageIndex >= totalPages)
                         {
-                            state.PageIndex = totalPages - 1;
+                            state._pageIndex = totalPages - 1;
                         }
                     }
                 }
             }
             EditorGUILayout.Space(4f);
+        }
+
+        private static GUIContent BuildGroupHeader(int drawOrder)
+        {
+            GUIContent baseLabel =
+                drawOrder >= -1 ? WButtonStyles.TopGroupLabel : WButtonStyles.BottomGroupLabel;
+            if (GroupCounts.Count <= 1)
+            {
+                return baseLabel;
+            }
+
+            if (!GroupCounts.TryGetValue(drawOrder, out int count) || count <= 0)
+            {
+                return baseLabel;
+            }
+
+            string textWithOrder = $"{baseLabel.text} ({drawOrder})";
+            return new GUIContent(textWithOrder, baseLabel.tooltip);
         }
 
         private static void DrawMethod(
@@ -277,9 +297,9 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
             int runningCount = 0;
             bool cancellable = false;
-            for (int index = 0; index < states.Length; index++)
+            foreach (WButtonMethodState state in states)
             {
-                WButtonInvocationHandle handle = states[index].ActiveInvocation;
+                WButtonInvocationHandle handle = state.ActiveInvocation;
                 if (handle == null)
                 {
                     continue;
@@ -396,14 +416,14 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
             int pageSize = UnityHelpersSettings.GetWButtonPageSize();
             int pageCount = Mathf.Max(1, Mathf.CeilToInt((float)itemCount / pageSize));
-            if (state.PageIndex >= pageCount)
+            if (state._pageIndex >= pageCount)
             {
-                state.PageIndex = pageCount - 1;
+                state._pageIndex = pageCount - 1;
             }
 
-            if (state.PageIndex < 0)
+            if (state._pageIndex < 0)
             {
-                state.PageIndex = 0;
+                state._pageIndex = 0;
             }
 
             return state;
@@ -412,7 +432,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
     internal sealed class WButtonPaginationState
     {
-        internal int PageIndex;
+        internal int _pageIndex;
     }
 
     internal sealed class WButtonMethodContext

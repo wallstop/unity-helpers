@@ -71,7 +71,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             if (isNullable)
             {
                 bool isNull = currentValue == null;
-                GUIContent nullLabel = new GUIContent($"{label.text} (Null)", label.tooltip);
+                GUIContent nullLabel = new($"{label.text} (Null)", label.tooltip);
                 bool newIsNull = EditorGUILayout.Toggle(nullLabel, isNull);
                 if (newIsNull)
                 {
@@ -219,9 +219,9 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 Quaternion value = currentValue is Quaternion quaternion
                     ? quaternion
                     : Quaternion.identity;
-                Vector4 vector = new Vector4(value.x, value.y, value.z, value.w);
+                Vector4 vector = new(value.x, value.y, value.z, value.w);
                 Vector4 updated = EditorGUILayout.Vector4Field(label.text, vector);
-                Quaternion converted = new Quaternion(updated.x, updated.y, updated.z, updated.w);
+                Quaternion converted = new(updated.x, updated.y, updated.z, updated.w);
                 return converted.normalized;
             }
 
@@ -275,7 +275,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 for (int elementIndex = 0; elementIndex < value.Length; elementIndex++)
                 {
                     object elementValue = value.GetValue(elementIndex);
-                    GUIContent elementLabel = new GUIContent($"Element {elementIndex}");
+                    GUIContent elementLabel = new($"Element {elementIndex}");
                     EditorGUI.BeginChangeCheck();
                     object updatedElement = DrawElementField(
                         elementLabel,

@@ -15,7 +15,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
     internal static class WButtonInvocationController
     {
-        private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
+        private static readonly JsonSerializerOptions JsonOptions = new()
         {
             WriteIndented = false,
             IncludeFields = true,
@@ -232,7 +232,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 return;
             }
 
-            WButtonInvocationHandle handle = new WButtonInvocationHandle(
+            WButtonInvocationHandle handle = new(
                 state,
                 target,
                 metadata.ExecutionKind,
@@ -317,7 +317,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             }
 
             Task task = (Task)asTaskMethod.Invoke(returnedValueTask, Array.Empty<object>());
-            WButtonInvocationHandle handle = new WButtonInvocationHandle(
+            WButtonInvocationHandle handle = new(
                 state,
                 target,
                 metadata.ExecutionKind,
@@ -384,7 +384,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 return;
             }
 
-            WButtonInvocationHandle handle = new WButtonInvocationHandle(
+            WButtonInvocationHandle handle = new(
                 state,
                 target,
                 metadata.ExecutionKind,

@@ -16,7 +16,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             AnimationCurve curve = value as AnimationCurve;
             if (curve != null)
             {
-                AnimationCurve clone = new AnimationCurve(curve.keys)
+                AnimationCurve clone = new(curve.keys)
                 {
                     preWrapMode = curve.preWrapMode,
                     postWrapMode = curve.postWrapMode,

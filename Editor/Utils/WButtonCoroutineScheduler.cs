@@ -36,14 +36,14 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             return Id.GetHashCode();
         }
 
-        public static readonly WButtonCoroutineTicket None = new WButtonCoroutineTicket(Guid.Empty);
+        public static readonly WButtonCoroutineTicket None = new(Guid.Empty);
     }
 
     internal static class WButtonCoroutineScheduler
     {
         private sealed class CoroutineInstance
         {
-            private readonly Stack<IEnumerator<object>> _stack = new Stack<IEnumerator<object>>();
+            private readonly Stack<IEnumerator<object>> _stack = new();
             private readonly CancellationTokenSource _cancellationSource;
             private readonly Action _onCompleted;
             private readonly Action<Exception> _onFaulted;
@@ -149,7 +149,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             }
         }
 
-        private static readonly List<CoroutineInstance> Instances = new List<CoroutineInstance>();
+        private static readonly List<CoroutineInstance> Instances = new();
         private static bool _isSubscribed;
 
         internal static WButtonCoroutineTicket Schedule(
@@ -166,7 +166,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             }
 
             IEnumerator<object> wrapped = WrapLegacyEnumerator(routine);
-            CoroutineInstance instance = new CoroutineInstance(
+            CoroutineInstance instance = new(
                 wrapped,
                 cancellationSource,
                 onCompleted,

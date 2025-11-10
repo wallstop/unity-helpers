@@ -13,7 +13,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
         private static readonly ConditionalWeakTable<
             UnityEngine.Object,
             WButtonTargetState
-        > TargetStates = new ConditionalWeakTable<UnityEngine.Object, WButtonTargetState>();
+        > TargetStates = new();
 
         internal static WButtonTargetState GetOrCreate(UnityEngine.Object target)
         {
@@ -34,8 +34,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
     internal sealed class WButtonTargetState
     {
-        private readonly Dictionary<MethodKey, WButtonMethodState> _methodStates =
-            new Dictionary<MethodKey, WButtonMethodState>();
+        private readonly Dictionary<MethodKey, WButtonMethodState> _methodStates = new();
 
         internal WButtonTargetState(Type targetType)
         {
@@ -51,7 +50,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 throw new ArgumentNullException(nameof(metadata));
             }
 
-            MethodKey key = new MethodKey(metadata.Method);
+            MethodKey key = new(metadata.Method);
             if (_methodStates.TryGetValue(key, out WButtonMethodState state))
             {
                 return state;
@@ -93,7 +92,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
         internal WButtonInvocationHandle ActiveInvocation { get; set; }
 
-        internal List<WButtonResultEntry> History { get; } = new List<WButtonResultEntry>();
+        internal List<WButtonResultEntry> History { get; } = new();
 
         internal void AddResult(WButtonResultEntry entry, int historyCapacity)
         {
