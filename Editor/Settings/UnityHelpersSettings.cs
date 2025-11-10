@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
     /// Project-wide configuration surface for Unity Helpers editor tooling.
     /// </summary>
     /// <remarks>
-    /// Currently exposes pagination defaults for <see cref="CustomDrawers.StringInListDrawer"/>.
+    /// Currently exposes pagination defaults for <see cref="CustomDrawers.StringInListDrawer"/> and companion editor tooling (SerializableSet, WButton trays, duplicate highlighting).
     /// </remarks>
     [FilePath(
         "ProjectSettings/UnityHelpersSettings.asset",
@@ -23,6 +23,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const int MaxPageSize = 500;
         public const int DefaultStringInListPageSize = 25;
         public const int DefaultSerializableSetPageSize = 15;
+        public const int DefaultWButtonPageSize = 6;
+        public const int DefaultWButtonHistorySize = 5;
+        public const int MinWButtonHistorySize = 1;
+        public const int MaxWButtonHistorySize = 10;
+        public const string DefaultWButtonPriority = "Default";
         public const int DefaultDuplicateTweenCycles = 3;
 
         public enum DuplicateRowAnimationMode
@@ -47,6 +52,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private int serializableSetPageSize = DefaultSerializableSetPageSize;
 
         [SerializeField]
+        [Tooltip("Maximum number of WButton actions displayed per page in inspector trays.")]
+        private int wbuttonPageSize = DefaultWButtonPageSize;
+
+        [SerializeField]
+        [Tooltip("Number of recent invocation results retained per WButton method.")]
+        private int wbuttonHistorySize = DefaultWButtonHistorySize;
+
+        [SerializeField]
         [Tooltip(
             "Controls how duplicate entries are emphasized inside SerializableDictionary inspectors."
         )]
@@ -68,6 +81,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             "Regular expressions evaluated against type names to exclude them from SerializableType pickers."
         )]
         private List<SerializableTypeIgnorePattern> serializableTypeIgnorePatterns = new();
+
+        [SerializeField]
+        [Tooltip("Named color palette applied to WButton priorities.")]
+        private List<WButtonPriorityColor> wbuttonPriorityColors = new();
 
         [SerializeField]
         private bool serializableTypePatternsInitialized;
@@ -126,6 +143,78 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 }
 
                 serializableSetPageSize = clamped;
+                SaveSettings();
+            }
+        }
+
+        [System.Serializable]
+        private sealed class WButtonPriorityColor
+        {
+            [SerializeField]
+            private string priority = DefaultWButtonPriority;
+
+            [SerializeField]
+            private Color color = Color.white;
+
+            public WButtonPriorityColor() { }
+
+            public WButtonPriorityColor(string priority, Color color)
+            {
+                Priority = priority;
+                Color = color;
+            }
+
+            public string Priority
+            {
+                get =>
+                    string.IsNullOrWhiteSpace(priority) ? DefaultWButtonPriority : priority.Trim();
+                set =>
+                    priority = string.IsNullOrWhiteSpace(value)
+                        ? DefaultWButtonPriority
+                        : value.Trim();
+            }
+
+            public Color Color
+            {
+                get => color;
+                set => color = value;
+            }
+        }
+
+        /// <summary>
+        /// Retrieves the configured page size for WButton groups.
+        /// </summary>
+        public int WButtonPageSize
+        {
+            get => Mathf.Clamp(wbuttonPageSize, MinPageSize, MaxPageSize);
+            set
+            {
+                int clamped = Mathf.Clamp(value, MinPageSize, MaxPageSize);
+                if (clamped == wbuttonPageSize)
+                {
+                    return;
+                }
+
+                wbuttonPageSize = clamped;
+                SaveSettings();
+            }
+        }
+
+        /// <summary>
+        /// Retrieves the number of results retained per WButton method.
+        /// </summary>
+        public int WButtonHistorySize
+        {
+            get => Mathf.Clamp(wbuttonHistorySize, MinWButtonHistorySize, MaxWButtonHistorySize);
+            set
+            {
+                int clamped = Mathf.Clamp(value, MinWButtonHistorySize, MaxWButtonHistorySize);
+                if (clamped == wbuttonHistorySize)
+                {
+                    return;
+                }
+
+                wbuttonHistorySize = clamped;
                 SaveSettings();
             }
         }
@@ -211,6 +300,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return Mathf.Clamp(instance.SerializableSetPageSize, MinPageSize, MaxPageSize);
         }
 
+        public static int GetWButtonPageSize()
+        {
+            return Mathf.Clamp(instance.WButtonPageSize, MinPageSize, MaxPageSize);
+        }
+
+        public static int GetWButtonHistorySize()
+        {
+            return Mathf.Clamp(
+                instance.WButtonHistorySize,
+                MinWButtonHistorySize,
+                MaxWButtonHistorySize
+            );
+        }
+
+        public static Color ResolveWButtonColor(string priority)
+        {
+            return instance.GetWButtonPriorityColor(priority);
+        }
+
         public static DuplicateRowAnimationMode GetDuplicateRowAnimationMode()
         {
             return instance.duplicateRowAnimationMode;
@@ -238,6 +346,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 MinPageSize,
                 MaxPageSize
             );
+            wbuttonPageSize = Mathf.Clamp(
+                wbuttonPageSize <= 0 ? DefaultWButtonPageSize : wbuttonPageSize,
+                MinPageSize,
+                MaxPageSize
+            );
+            wbuttonHistorySize = Mathf.Clamp(
+                wbuttonHistorySize <= 0 ? DefaultWButtonHistorySize : wbuttonHistorySize,
+                MinWButtonHistorySize,
+                MaxWButtonHistorySize
+            );
+            if (EnsureWButtonPriorityDefaults())
+            {
+                SaveSettings();
+            }
             if (EnsureSerializableTypePatternDefaults())
             {
                 SaveSettings();
@@ -287,6 +409,110 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             bool changed = !serializableTypePatternsInitialized;
             serializableTypePatternsInitialized = true;
             return changed;
+        }
+
+        private bool EnsureWButtonPriorityDefaults()
+        {
+            wbuttonPriorityColors ??= new List<WButtonPriorityColor>();
+
+            bool changed = false;
+            RemoveNullPaletteEntries();
+
+            if (!ContainsPriority(DefaultWButtonPriority))
+            {
+                wbuttonPriorityColors.Add(
+                    new WButtonPriorityColor(
+                        DefaultWButtonPriority,
+                        new Color(0.243f, 0.525f, 0.988f)
+                    )
+                );
+                changed = true;
+            }
+
+            return changed;
+        }
+
+        private void RemoveNullPaletteEntries()
+        {
+            for (int index = wbuttonPriorityColors.Count - 1; index >= 0; index--)
+            {
+                if (wbuttonPriorityColors[index] == null)
+                {
+                    wbuttonPriorityColors.RemoveAt(index);
+                }
+            }
+        }
+
+        private bool ContainsPriority(string priority)
+        {
+            if (wbuttonPriorityColors == null || wbuttonPriorityColors.Count == 0)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < wbuttonPriorityColors.Count; index++)
+            {
+                WButtonPriorityColor entry = wbuttonPriorityColors[index];
+                if (entry == null)
+                {
+                    continue;
+                }
+
+                if (
+                    string.Equals(
+                        entry.Priority,
+                        priority,
+                        System.StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public Color GetWButtonPriorityColor(string priority)
+        {
+            string key = string.IsNullOrWhiteSpace(priority)
+                ? DefaultWButtonPriority
+                : priority.Trim();
+            if (wbuttonPriorityColors != null)
+            {
+                for (int index = 0; index < wbuttonPriorityColors.Count; index++)
+                {
+                    WButtonPriorityColor entry = wbuttonPriorityColors[index];
+                    if (entry == null)
+                    {
+                        continue;
+                    }
+
+                    if (
+                        string.Equals(
+                            entry.Priority,
+                            key,
+                            System.StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                    {
+                        return entry.Color;
+                    }
+                }
+            }
+
+            if (
+                !string.Equals(
+                    key,
+                    DefaultWButtonPriority,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                return GetWButtonPriorityColor(DefaultWButtonPriority);
+            }
+
+            return Color.white;
         }
 
         private static void DrawSerializableTypeIgnorePatterns(
@@ -413,6 +639,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     SerializedProperty setPageSizeProperty = serializedSettings.FindProperty(
                         "serializableSetPageSize"
                     );
+                    SerializedProperty buttonPageSizeProperty = serializedSettings.FindProperty(
+                        "wbuttonPageSize"
+                    );
+                    SerializedProperty buttonHistoryProperty = serializedSettings.FindProperty(
+                        "wbuttonHistorySize"
+                    );
                     SerializedProperty duplicateModeProperty = serializedSettings.FindProperty(
                         "duplicateRowAnimationMode"
                     );
@@ -423,6 +655,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     );
                     SerializedProperty patternsInitializedProperty =
                         serializedSettings.FindProperty("serializableTypePatternsInitialized");
+                    SerializedProperty wbuttonPaletteProperty = serializedSettings.FindProperty(
+                        "wbuttonPriorityColors"
+                    );
 
                     serializedSettings.Update();
 
@@ -448,6 +683,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         )
                     );
 
+                    EditorGUILayout.IntSlider(
+                        buttonPageSizeProperty,
+                        MinPageSize,
+                        MaxPageSize,
+                        new GUIContent(
+                            "WButton Page Size",
+                            "Number of WButton actions displayed per page when grouped by draw order."
+                        )
+                    );
+
+                    EditorGUILayout.IntSlider(
+                        buttonHistoryProperty,
+                        MinWButtonHistorySize,
+                        MaxWButtonHistorySize,
+                        new GUIContent(
+                            "WButton History Size",
+                            "Number of recent results remembered per WButton method for each inspected object."
+                        )
+                    );
+
                     EditorGUILayout.PropertyField(
                         duplicateModeProperty,
                         new GUIContent(
@@ -468,6 +723,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         patternsProperty,
                         patternsInitializedProperty
                     );
+                    DrawWButtonPriorityColors(wbuttonPaletteProperty);
 
                     if (EditorGUI.EndChangeCheck())
                     {
@@ -480,12 +736,88 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     "StringInList",
                     "Pagination",
                     "SerializableSet",
+                    "WButton",
+                    "Buttons",
                     "UnityHelpers",
                     "Duplicate",
                     "SerializableType",
                     "Regex",
                 },
             };
+        }
+
+        private static void DrawWButtonPriorityColors(SerializedProperty paletteProperty)
+        {
+            if (paletteProperty == null)
+            {
+                return;
+            }
+
+            GUIContent label = new GUIContent(
+                "WButton Priority Colors",
+                "Configure named colors applied to WButton priorities. Buttons referencing a priority key will render using the associated color."
+            );
+
+            paletteProperty.isExpanded = EditorGUILayout.Foldout(
+                paletteProperty.isExpanded,
+                label,
+                true
+            );
+            if (!paletteProperty.isExpanded)
+            {
+                return;
+            }
+
+            EditorGUI.indentLevel++;
+
+            for (int index = 0; index < paletteProperty.arraySize; index++)
+            {
+                SerializedProperty element = paletteProperty.GetArrayElementAtIndex(index);
+                SerializedProperty priorityProperty = element.FindPropertyRelative("priority");
+                SerializedProperty colorProperty = element.FindPropertyRelative("color");
+
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    EditorGUILayout.PropertyField(priorityProperty, GUIContent.none);
+                    EditorGUILayout.PropertyField(colorProperty, GUIContent.none);
+
+                    if (GUILayout.Button("Remove", GUILayout.Width(80f)))
+                    {
+                        paletteProperty.DeleteArrayElementAtIndex(index);
+                        break;
+                    }
+                }
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Add Priority", GUILayout.Width(110f)))
+                {
+                    int newIndex = paletteProperty.arraySize;
+                    paletteProperty.InsertArrayElementAtIndex(newIndex);
+                    SerializedProperty element = paletteProperty.GetArrayElementAtIndex(newIndex);
+                    element.FindPropertyRelative("priority").stringValue = DefaultWButtonPriority;
+                    element.FindPropertyRelative("color").colorValue = Color.white;
+                }
+
+                if (GUILayout.Button("Reset Palette", GUILayout.Width(120f)))
+                {
+                    paletteProperty.ClearArray();
+                    paletteProperty.InsertArrayElementAtIndex(0);
+                    SerializedProperty defaultElement = paletteProperty.GetArrayElementAtIndex(0);
+                    defaultElement.FindPropertyRelative("priority").stringValue =
+                        DefaultWButtonPriority;
+                    defaultElement.FindPropertyRelative("color").colorValue = new Color(
+                        0.243f,
+                        0.525f,
+                        0.988f
+                    );
+                }
+
+                GUILayout.FlexibleSpace();
+            }
+
+            EditorGUI.indentLevel--;
         }
     }
 #endif

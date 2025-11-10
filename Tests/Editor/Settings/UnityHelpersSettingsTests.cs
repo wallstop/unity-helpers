@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
     using System.Linq;
     using NUnit.Framework;
     using UnityEditor;
+    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.Settings;
 
@@ -74,6 +75,56 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     wasConfigured ? backup : null
                 );
             }
+        }
+
+        [Test]
+        public void WButtonSettingsClampToBounds()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            int originalPageSize = settings.WButtonPageSize;
+            int originalHistorySize = settings.WButtonHistorySize;
+            try
+            {
+                settings.WButtonPageSize = UnityHelpersSettings.MinPageSize - 100;
+                settings.WButtonHistorySize = UnityHelpersSettings.MinWButtonHistorySize - 5;
+
+                Assert.That(
+                    UnityHelpersSettings.GetWButtonPageSize(),
+                    Is.EqualTo(UnityHelpersSettings.MinPageSize)
+                );
+                Assert.That(
+                    UnityHelpersSettings.GetWButtonHistorySize(),
+                    Is.EqualTo(UnityHelpersSettings.MinWButtonHistorySize)
+                );
+
+                settings.WButtonPageSize = UnityHelpersSettings.MaxPageSize + 250;
+                settings.WButtonHistorySize = UnityHelpersSettings.MaxWButtonHistorySize + 25;
+
+                Assert.That(
+                    UnityHelpersSettings.GetWButtonPageSize(),
+                    Is.EqualTo(UnityHelpersSettings.MaxPageSize)
+                );
+                Assert.That(
+                    UnityHelpersSettings.GetWButtonHistorySize(),
+                    Is.EqualTo(UnityHelpersSettings.MaxWButtonHistorySize)
+                );
+            }
+            finally
+            {
+                settings.WButtonPageSize = originalPageSize;
+                settings.WButtonHistorySize = originalHistorySize;
+            }
+        }
+
+        [Test]
+        public void ResolveWButtonColorFallsBackToDefault()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            Color defaultColor = UnityHelpersSettings.ResolveWButtonColor(
+                UnityHelpersSettings.DefaultWButtonPriority
+            );
+            Color missingColor = UnityHelpersSettings.ResolveWButtonColor("NonExistentPriority");
+            Assert.That(missingColor, Is.EqualTo(defaultColor));
         }
     }
 }

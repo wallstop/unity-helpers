@@ -1,0 +1,784 @@
+namespace WallstopStudios.UnityHelpers.Editor.WButton
+{
+#if UNITY_EDITOR
+    using System;
+    using System.Collections.Generic;
+    using System.Reflection;
+    using System.Text.Json;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using UnityEditor;
+    using UnityEditorInternal;
+    using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Settings;
+
+    internal static class WButtonInvocationController
+    {
+        private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
+        {
+            WriteIndented = false,
+            IncludeFields = true,
+        };
+
+        internal static void ProcessTriggeredMethods(
+            Editor editor,
+            List<WButtonMethodContext> triggeredContexts
+        )
+        {
+            if (triggeredContexts == null || triggeredContexts.Count == 0)
+            {
+                return;
+            }
+
+            foreach (WButtonMethodContext context in triggeredContexts)
+            {
+                ExecuteContext(editor, context);
+                context.ResetTrigger();
+            }
+        }
+
+        internal static void CancelActiveInvocations(WButtonMethodContext context)
+        {
+            if (context == null)
+            {
+                return;
+            }
+
+            WButtonMethodState[] states = context.States;
+            for (int index = 0; index < states.Length; index++)
+            {
+                CancelInvocation(states[index]);
+            }
+        }
+
+        private static void ExecuteContext(Editor editor, WButtonMethodContext context)
+        {
+            WButtonMethodMetadata metadata = context.Metadata;
+            int historyCapacity =
+                metadata.HistoryCapacity >= 0
+                    ? metadata.HistoryCapacity
+                    : UnityHelpersSettings.GetWButtonHistorySize();
+
+            WButtonMethodState[] states = context.States;
+            UnityEngine.Object[] targets = context.Targets;
+
+            for (int index = 0; index < states.Length; index++)
+            {
+                WButtonMethodState state = states[index];
+                UnityEngine.Object target = targets[index];
+                if (target == null)
+                {
+                    continue;
+                }
+
+                CancelInvocation(state);
+
+                if (
+                    !TryBuildArguments(
+                        state,
+                        metadata,
+                        out object[] arguments,
+                        out CancellationTokenSource cancellationSource,
+                        out string argumentError
+                    )
+                )
+                {
+                    state.AddResult(
+                        new WButtonResultEntry(
+                            WButtonResultKind.Error,
+                            DateTime.UtcNow,
+                            null,
+                            argumentError,
+                            null
+                        ),
+                        historyCapacity
+                    );
+                    continue;
+                }
+
+                switch (metadata.ExecutionKind)
+                {
+                    case WButtonExecutionKind.Synchronous:
+                        ExecuteSynchronous(metadata, target, state, arguments, historyCapacity);
+                        cancellationSource?.Dispose();
+                        break;
+
+                    case WButtonExecutionKind.Task:
+                        ExecuteTaskBasedInvocation(
+                            editor,
+                            metadata,
+                            target,
+                            state,
+                            arguments,
+                            historyCapacity,
+                            cancellationSource
+                        );
+                        break;
+
+                    case WButtonExecutionKind.ValueTask:
+                        ExecuteValueTaskInvocation(
+                            editor,
+                            metadata,
+                            target,
+                            state,
+                            arguments,
+                            historyCapacity,
+                            cancellationSource
+                        );
+                        break;
+
+                    case WButtonExecutionKind.Enumerator:
+                        ExecuteEnumeratorInvocation(
+                            metadata,
+                            target,
+                            state,
+                            arguments,
+                            historyCapacity,
+                            cancellationSource
+                        );
+                        break;
+                }
+            }
+
+            RequestRepaint();
+        }
+
+        private static void ExecuteSynchronous(
+            WButtonMethodMetadata metadata,
+            UnityEngine.Object target,
+            WButtonMethodState state,
+            object[] arguments,
+            int historyCapacity
+        )
+        {
+            try
+            {
+                object result = metadata.Method.IsStatic
+                    ? ReflectionHelpers.InvokeStaticMethod(metadata.Method, arguments)
+                    : ReflectionHelpers.InvokeMethod(metadata.Method, target, arguments);
+
+                if (!metadata.ReturnsVoid)
+                {
+                    WButtonResultEntry entry = CreateResultEntry(
+                        WButtonResultKind.Success,
+                        metadata.ReturnType,
+                        result,
+                        null
+                    );
+                    state.AddResult(entry, historyCapacity);
+                }
+                else
+                {
+                    state.AddResult(
+                        new WButtonResultEntry(
+                            WButtonResultKind.Success,
+                            DateTime.UtcNow,
+                            null,
+                            "Completed successfully.",
+                            null
+                        ),
+                        historyCapacity
+                    );
+                }
+            }
+            catch (TargetInvocationException tie)
+            {
+                HandleSynchronousException(state, historyCapacity, tie.InnerException ?? tie);
+            }
+            catch (Exception ex)
+            {
+                HandleSynchronousException(state, historyCapacity, ex);
+            }
+        }
+
+        private static void ExecuteTaskBasedInvocation(
+            Editor editor,
+            WButtonMethodMetadata metadata,
+            UnityEngine.Object target,
+            WButtonMethodState state,
+            object[] arguments,
+            int historyCapacity,
+            CancellationTokenSource cancellationSource
+        )
+        {
+            Task task;
+            try
+            {
+                object taskObject = metadata.Method.IsStatic
+                    ? ReflectionHelpers.InvokeStaticMethod(metadata.Method, arguments)
+                    : ReflectionHelpers.InvokeMethod(metadata.Method, target, arguments);
+                task = taskObject as Task;
+                if (task == null)
+                {
+                    state.AddResult(
+                        new WButtonResultEntry(
+                            WButtonResultKind.Error,
+                            DateTime.UtcNow,
+                            null,
+                            "Method did not return a Task instance.",
+                            null
+                        ),
+                        historyCapacity
+                    );
+                    cancellationSource?.Dispose();
+                    return;
+                }
+            }
+            catch (TargetInvocationException tie)
+            {
+                HandleSynchronousException(state, historyCapacity, tie.InnerException ?? tie);
+                cancellationSource?.Dispose();
+                return;
+            }
+            catch (Exception ex)
+            {
+                HandleSynchronousException(state, historyCapacity, ex);
+                cancellationSource?.Dispose();
+                return;
+            }
+
+            WButtonInvocationHandle handle = new WButtonInvocationHandle(
+                state,
+                target,
+                metadata.ExecutionKind,
+                cancellationSource
+            );
+            state.ActiveInvocation = handle;
+
+            task.ContinueWith(
+                t =>
+                {
+                    UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
+                    {
+                        FinalizeTaskInvocation(metadata, state, handle, t, historyCapacity);
+                    });
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.None,
+                TaskScheduler.Default
+            );
+        }
+
+        private static void ExecuteValueTaskInvocation(
+            Editor editor,
+            WButtonMethodMetadata metadata,
+            UnityEngine.Object target,
+            WButtonMethodState state,
+            object[] arguments,
+            int historyCapacity,
+            CancellationTokenSource cancellationSource
+        )
+        {
+            object returnedValueTask;
+            try
+            {
+                returnedValueTask = metadata.Method.IsStatic
+                    ? ReflectionHelpers.InvokeStaticMethod(metadata.Method, arguments)
+                    : ReflectionHelpers.InvokeMethod(metadata.Method, target, arguments);
+            }
+            catch (TargetInvocationException tie)
+            {
+                HandleSynchronousException(state, historyCapacity, tie.InnerException ?? tie);
+                cancellationSource?.Dispose();
+                return;
+            }
+            catch (Exception ex)
+            {
+                HandleSynchronousException(state, historyCapacity, ex);
+                cancellationSource?.Dispose();
+                return;
+            }
+
+            if (returnedValueTask == null)
+            {
+                state.AddResult(
+                    new WButtonResultEntry(
+                        WButtonResultKind.Error,
+                        DateTime.UtcNow,
+                        null,
+                        "Method returned null instead of a ValueTask.",
+                        null
+                    ),
+                    historyCapacity
+                );
+                cancellationSource?.Dispose();
+                return;
+            }
+
+            MethodInfo asTaskMethod = metadata.ReturnType.GetMethod("AsTask", Type.EmptyTypes);
+            if (asTaskMethod == null)
+            {
+                state.AddResult(
+                    new WButtonResultEntry(
+                        WButtonResultKind.Error,
+                        DateTime.UtcNow,
+                        null,
+                        "Unable to access ValueTask.AsTask().",
+                        null
+                    ),
+                    historyCapacity
+                );
+                cancellationSource?.Dispose();
+                return;
+            }
+
+            Task task = (Task)asTaskMethod.Invoke(returnedValueTask, Array.Empty<object>());
+            WButtonInvocationHandle handle = new WButtonInvocationHandle(
+                state,
+                target,
+                metadata.ExecutionKind,
+                cancellationSource
+            );
+            state.ActiveInvocation = handle;
+
+            task.ContinueWith(
+                t =>
+                {
+                    UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
+                    {
+                        FinalizeTaskInvocation(metadata, state, handle, t, historyCapacity);
+                    });
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.None,
+                TaskScheduler.Default
+            );
+        }
+
+        private static void ExecuteEnumeratorInvocation(
+            WButtonMethodMetadata metadata,
+            UnityEngine.Object target,
+            WButtonMethodState state,
+            object[] arguments,
+            int historyCapacity,
+            CancellationTokenSource cancellationSource
+        )
+        {
+            System.Collections.IEnumerator enumerator;
+            try
+            {
+                object result = metadata.Method.IsStatic
+                    ? ReflectionHelpers.InvokeStaticMethod(metadata.Method, arguments)
+                    : ReflectionHelpers.InvokeMethod(metadata.Method, target, arguments);
+                enumerator = result as System.Collections.IEnumerator;
+                if (enumerator == null)
+                {
+                    state.AddResult(
+                        new WButtonResultEntry(
+                            WButtonResultKind.Error,
+                            DateTime.UtcNow,
+                            null,
+                            "Method did not return an IEnumerator.",
+                            null
+                        ),
+                        historyCapacity
+                    );
+                    cancellationSource?.Dispose();
+                    return;
+                }
+            }
+            catch (TargetInvocationException tie)
+            {
+                HandleSynchronousException(state, historyCapacity, tie.InnerException ?? tie);
+                cancellationSource?.Dispose();
+                return;
+            }
+            catch (Exception ex)
+            {
+                HandleSynchronousException(state, historyCapacity, ex);
+                cancellationSource?.Dispose();
+                return;
+            }
+
+            WButtonInvocationHandle handle = new WButtonInvocationHandle(
+                state,
+                target,
+                metadata.ExecutionKind,
+                cancellationSource
+            );
+            state.ActiveInvocation = handle;
+
+            handle.CoroutineTicket = WButtonCoroutineScheduler.Schedule(
+                enumerator,
+                cancellationSource,
+                () =>
+                {
+                    state.ActiveInvocation = null;
+                    handle.MarkCompleted(null);
+                    state.AddResult(
+                        new WButtonResultEntry(
+                            WButtonResultKind.Success,
+                            DateTime.UtcNow,
+                            null,
+                            "Enumerator completed.",
+                            null
+                        ),
+                        historyCapacity
+                    );
+                    RequestRepaint();
+                },
+                exception =>
+                {
+                    state.ActiveInvocation = null;
+                    handle.MarkFaulted(exception);
+                    state.AddResult(
+                        new WButtonResultEntry(
+                            WButtonResultKind.Error,
+                            DateTime.UtcNow,
+                            null,
+                            exception.Message,
+                            null,
+                            exception
+                        ),
+                        historyCapacity
+                    );
+                    Debug.LogException(exception, target);
+                    RequestRepaint();
+                },
+                () =>
+                {
+                    state.ActiveInvocation = null;
+                    handle.MarkCancelled();
+                    state.AddResult(
+                        new WButtonResultEntry(
+                            WButtonResultKind.Cancelled,
+                            DateTime.UtcNow,
+                            null,
+                            "Enumerator cancelled.",
+                            null
+                        ),
+                        historyCapacity
+                    );
+                    RequestRepaint();
+                }
+            );
+        }
+
+        private static void FinalizeTaskInvocation(
+            WButtonMethodMetadata metadata,
+            WButtonMethodState state,
+            WButtonInvocationHandle handle,
+            Task task,
+            int historyCapacity
+        )
+        {
+            state.ActiveInvocation = null;
+            handle.CancellationTokenSource?.Dispose();
+
+            if (task.IsCanceled || handle.Status == WButtonInvocationStatus.CancelRequested)
+            {
+                handle.MarkCancelled();
+                state.AddResult(
+                    new WButtonResultEntry(
+                        WButtonResultKind.Cancelled,
+                        DateTime.UtcNow,
+                        null,
+                        "Operation cancelled.",
+                        null
+                    ),
+                    historyCapacity
+                );
+                RequestRepaint();
+                return;
+            }
+
+            if (task.IsFaulted)
+            {
+                Exception exception = task.Exception?.GetBaseException() ?? task.Exception;
+                handle.MarkFaulted(exception);
+                state.AddResult(
+                    new WButtonResultEntry(
+                        WButtonResultKind.Error,
+                        DateTime.UtcNow,
+                        null,
+                        exception?.Message ?? "Task faulted.",
+                        null,
+                        exception
+                    ),
+                    historyCapacity
+                );
+                if (exception != null)
+                {
+                    Debug.LogException(exception);
+                }
+                RequestRepaint();
+                return;
+            }
+
+            object asyncResult = null;
+            if (metadata.AsyncResultType != null)
+            {
+                asyncResult = ExtractTaskResult(task);
+            }
+
+            handle.MarkCompleted(asyncResult);
+            WButtonResultEntry entry =
+                metadata.AsyncResultType != null
+                    ? CreateResultEntry(
+                        WButtonResultKind.Success,
+                        metadata.AsyncResultType,
+                        asyncResult,
+                        null
+                    )
+                    : new WButtonResultEntry(
+                        WButtonResultKind.Success,
+                        DateTime.UtcNow,
+                        null,
+                        "Completed successfully.",
+                        null
+                    );
+            state.AddResult(entry, historyCapacity);
+            RequestRepaint();
+        }
+
+        private static void HandleSynchronousException(
+            WButtonMethodState state,
+            int historyCapacity,
+            Exception exception
+        )
+        {
+            state.AddResult(
+                new WButtonResultEntry(
+                    WButtonResultKind.Error,
+                    DateTime.UtcNow,
+                    null,
+                    exception.Message,
+                    null,
+                    exception
+                ),
+                historyCapacity
+            );
+            Debug.LogException(exception);
+        }
+
+        private static void CancelInvocation(WButtonMethodState state)
+        {
+            if (state == null)
+            {
+                return;
+            }
+
+            WButtonInvocationHandle handle = state.ActiveInvocation;
+            if (handle == null)
+            {
+                return;
+            }
+
+            if (handle.ExecutionKind == WButtonExecutionKind.Enumerator)
+            {
+                WButtonCoroutineScheduler.Cancel(handle.CoroutineTicket);
+            }
+
+            handle.Cancel();
+        }
+
+        private static bool TryBuildArguments(
+            WButtonMethodState state,
+            WButtonMethodMetadata metadata,
+            out object[] arguments,
+            out CancellationTokenSource cancellationSource,
+            out string error
+        )
+        {
+            WButtonParameterMetadata[] parameters = metadata.Parameters;
+            if (parameters == null || parameters.Length == 0)
+            {
+                arguments = Array.Empty<object>();
+                cancellationSource = null;
+                error = null;
+                return true;
+            }
+
+            arguments = new object[parameters.Length];
+            cancellationSource = null;
+
+            for (int index = 0; index < parameters.Length; index++)
+            {
+                WButtonParameterMetadata parameter = parameters[index];
+                WButtonParameterState parameterState = state.Parameters[index];
+
+                if (parameter.IsCancellationToken)
+                {
+                    cancellationSource = new CancellationTokenSource();
+                    arguments[index] = cancellationSource.Token;
+                    continue;
+                }
+
+                object value = parameterState.CurrentValue;
+                if (value == null && !string.IsNullOrWhiteSpace(parameterState.JsonFallback))
+                {
+                    if (
+                        !TryDeserializeFromJson(
+                            parameter.ParameterType,
+                            parameterState.JsonFallback,
+                            out value,
+                            out string jsonError
+                        )
+                    )
+                    {
+                        arguments = null;
+                        cancellationSource?.Dispose();
+                        cancellationSource = null;
+                        error = $"Failed to deserialize '{parameter.Name}': {jsonError}";
+                        return false;
+                    }
+                }
+
+                if (value == null)
+                {
+                    if (parameter.ParameterType.IsValueType && !parameter.IsOptional)
+                    {
+                        value = Activator.CreateInstance(parameter.ParameterType);
+                    }
+                    else if (parameter.IsParamsArray)
+                    {
+                        Type elementType =
+                            parameter.ParameterType.GetElementType() ?? typeof(object);
+                        value = Array.CreateInstance(elementType, 0);
+                    }
+                }
+
+                arguments[index] = WButtonValueUtility.CloneValue(value);
+            }
+
+            error = null;
+            return true;
+        }
+
+        private static bool TryDeserializeFromJson(
+            Type targetType,
+            string json,
+            out object value,
+            out string error
+        )
+        {
+            try
+            {
+                value = JsonSerializer.Deserialize(json, targetType, JsonOptions);
+                error = null;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                value = null;
+                error = ex.Message;
+                return false;
+            }
+        }
+
+        private static object ExtractTaskResult(Task task)
+        {
+            try
+            {
+                Type taskType = task.GetType();
+                PropertyInfo resultProperty = taskType.GetProperty("Result");
+                return resultProperty?.GetValue(task);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static WButtonResultEntry CreateResultEntry(
+            WButtonResultKind kind,
+            Type valueType,
+            object value,
+            Exception exception
+        )
+        {
+            UnityEngine.Object objectReference = value as UnityEngine.Object;
+            string summary = BuildSummary(kind, valueType, value, exception, out bool logged);
+
+            if (logged && exception != null)
+            {
+                Debug.LogException(exception);
+            }
+
+            return new WButtonResultEntry(
+                kind,
+                DateTime.UtcNow,
+                value,
+                summary,
+                objectReference,
+                exception
+            );
+        }
+
+        private static string BuildSummary(
+            WButtonResultKind kind,
+            Type valueType,
+            object value,
+            Exception exception,
+            out bool logged
+        )
+        {
+            logged = false;
+            switch (kind)
+            {
+                case WButtonResultKind.Cancelled:
+                    return "Cancelled.";
+
+                case WButtonResultKind.Error:
+                    logged = true;
+                    return exception?.Message ?? "Error.";
+
+                default:
+                    if (value == null)
+                    {
+                        return "Completed.";
+                    }
+
+                    if (value is UnityEngine.Object unityObject)
+                    {
+                        return unityObject != null ? unityObject.name : "None";
+                    }
+
+                    if (value is string str)
+                    {
+                        return str;
+                    }
+
+                    if (value is float or double or decimal)
+                    {
+                        return Convert.ToString(
+                            value,
+                            System.Globalization.CultureInfo.InvariantCulture
+                        );
+                    }
+
+                    if (value is IFormattable formattable)
+                    {
+                        return formattable.ToString(
+                            null,
+                            System.Globalization.CultureInfo.InvariantCulture
+                        );
+                    }
+
+                    try
+                    {
+                        return JsonSerializer.Serialize(
+                            value,
+                            valueType ?? value.GetType(),
+                            JsonOptions
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        logged = true;
+                        Debug.LogWarning(
+                            $"[WButton] Failed to serialize result of type {(valueType ?? value.GetType()).Name}: {ex.Message}"
+                        );
+                        return "(see console)";
+                    }
+            }
+        }
+
+        private static void RequestRepaint()
+        {
+            InternalEditorUtility.RepaintAllViews();
+        }
+    }
+#endif
+}
