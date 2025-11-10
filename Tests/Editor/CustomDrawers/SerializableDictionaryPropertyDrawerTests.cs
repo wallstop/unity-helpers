@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEditorInternal;
@@ -26,13 +25,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         private sealed class TestSortedDictionaryHost : ScriptableObject
         {
-            public SerializableSortedDictionary<int, string> dictionary =
-                new SerializableSortedDictionary<int, string>();
+            public SerializableSortedDictionary<int, string> dictionary = new();
         }
 
         private sealed class RectDictionaryHost : ScriptableObject
         {
-            public RectIntDictionary dictionary = new RectIntDictionary();
+            public RectIntDictionary dictionary = new();
         }
 
         [Serializable]
@@ -122,7 +120,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void ExpandDictionaryRowRectExtendsSelectionArea()
         {
-            Rect baseRect = new Rect(2f, 6f, 40f, 18f);
+            Rect baseRect = new(2f, 6f, 40f, 18f);
             Rect expanded = SerializableDictionaryPropertyDrawer.ExpandDictionaryRowRect(baseRect);
 
             Assert.That(expanded.yMin, Is.LessThan(baseRect.yMin));
@@ -377,8 +375,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             valuesProperty.GetArrayElementAtIndex(2).stringValue = "three";
             serializedObject.ApplyModifiedProperties();
 
-            SerializableDictionaryPropertyDrawer drawer =
-                new SerializableDictionaryPropertyDrawer();
+            SerializableDictionaryPropertyDrawer drawer = new();
             SerializableDictionaryPropertyDrawer.PaginationState pagination =
                 drawer.GetOrCreatePaginationState(dictionaryProperty);
             pagination.selectedIndex = 0;
@@ -418,7 +415,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(5, keysProperty.GetArrayElementAtIndex(2).intValue);
             Assert.AreEqual("five", valuesProperty.GetArrayElementAtIndex(2).stringValue);
 
-            int[] expectedKeys = new int[] { 1, 3, 5 };
+            int[] expectedKeys = { 1, 3, 5 };
             int index = 0;
             foreach (KeyValuePair<int, string> pair in host.dictionary)
             {

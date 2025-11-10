@@ -42,7 +42,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void NullEntriesAreSkippedDuringDeserialization()
         {
             SerializableHashSet<string> set = new SerializableHashSet<string>();
-            string[] source = new string[] { null, "valid" };
+            string[] source = { null, "valid" };
             set._items = source;
 
             LogAssert.Expect(
@@ -69,7 +69,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void UnitySerializationPreservesDuplicateEntriesInBackingArray()
         {
             SerializableHashSet<int> set = new SerializableHashSet<int>();
-            int[] duplicateSource = new int[] { 1, 1, 2 };
+            int[] duplicateSource = { 1, 1, 2 };
             set._items = duplicateSource;
 
             set.OnAfterDeserialize();
@@ -163,7 +163,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             set.UnionWith(new int[] { 3, 5, 7, 9 });
 
             Assert.AreEqual(5, set.Count);
-            int[] expected = new int[] { 1, 3, 5, 7, 9 };
+            int[] expected = { 1, 3, 5, 7, 9 };
             foreach (int value in expected)
             {
                 Assert.IsTrue(set.Contains(value), $"Expected value {value} to be present.");
@@ -273,19 +273,19 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             );
             HashSet<int> baseline = new HashSet<int>(new int[] { 1, 3, 5, 7 });
 
-            int[] unionSource = new int[] { 5, 6, 9 };
+            int[] unionSource = { 5, 6, 9 };
             serializable.UnionWith(unionSource);
             baseline.UnionWith(unionSource);
 
-            int[] exceptSource = new int[] { 1, 9 };
+            int[] exceptSource = { 1, 9 };
             serializable.ExceptWith(exceptSource);
             baseline.ExceptWith(exceptSource);
 
-            int[] symmetricSource = new int[] { 3, 4, 6 };
+            int[] symmetricSource = { 3, 4, 6 };
             serializable.SymmetricExceptWith(symmetricSource);
             baseline.SymmetricExceptWith(symmetricSource);
 
-            int[] intersectSource = new int[] { 4, 5, 6 };
+            int[] intersectSource = { 4, 5, 6 };
             serializable.IntersectWith(intersectSource);
             baseline.IntersectWith(intersectSource);
 
@@ -348,7 +348,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             set.Add(1);
             set.Add(3);
 
-            int[] expected = new int[] { 1, 3, 5 };
+            int[] expected = { 1, 3, 5 };
             int index = 0;
             foreach (int value in set)
             {
@@ -468,7 +468,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void UnityDeserializationRestoresSortOrderFromUnsortedSerializedItems()
         {
             SerializableSortedSet<string> set = new SerializableSortedSet<string>();
-            string[] unsorted = new[] { "delta", "alpha", "charlie" };
+            string[] unsorted = { "delta", "alpha", "charlie" };
             set._items = unsorted;
 
             set.OnAfterDeserialize();
@@ -670,7 +670,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(original.Contains(7));
             Assert.IsFalse(roundTrip.Contains(7));
 
-            int[] expectedOrder = new int[] { 1, 3, 5 };
+            int[] expectedOrder = { 1, 3, 5 };
             CollectionAssert.AreEqual(expectedOrder, roundTrip.ToArray());
         }
 
@@ -694,7 +694,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(original.Contains("delta"));
             Assert.IsFalse(roundTrip.Contains("delta"));
 
-            string[] expected = new string[] { "alpha", "bravo", "charlie" };
+            string[] expected = { "alpha", "bravo", "charlie" };
             CollectionAssert.AreEqual(expected, roundTrip.ToArray());
         }
     }

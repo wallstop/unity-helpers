@@ -33,7 +33,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             dictionary.Add(1, "one");
             dictionary.Add(2, "two");
 
-            int[] expectedKeys = new int[] { 1, 2, 3 };
+            int[] expectedKeys = { 1, 2, 3 };
             int index = 0;
             foreach (KeyValuePair<int, string> pair in dictionary)
             {
@@ -59,7 +59,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             dictionary.CopyFrom(source);
 
-            int[] expectedKeys = new int[] { 4, 5, 7 };
+            int[] expectedKeys = { 4, 5, 7 };
             int index = 0;
             foreach (KeyValuePair<int, string> pair in dictionary)
             {
@@ -251,7 +251,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 SerializableSortedDictionary<int, string>
             >(payload);
 
-            int[] expectedKeys = new int[] { 1, 3 };
+            int[] expectedKeys = { 1, 3 };
             int index = 0;
             foreach (KeyValuePair<int, string> pair in roundTripped)
             {
@@ -285,8 +285,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             int[] serializedKeys = (int[])keysField.GetValue(dictionary);
             string[] serializedValues = (string[])valuesField.GetValue(dictionary);
 
-            int[] expectedKeys = new int[] { 2, 7, 10 };
-            string[] expectedValues = new string[] { "two", "seven", "ten" };
+            int[] expectedKeys = { 2, 7, 10 };
+            string[] expectedValues = { "two", "seven", "ten" };
 
             CollectionAssert.AreEqual(expectedKeys, serializedKeys);
             CollectionAssert.AreEqual(expectedValues, serializedValues);
@@ -305,15 +305,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsNotNull(keysField);
             Assert.IsNotNull(valuesField);
 
-            int[] unsortedKeys = new int[] { 5, 1, 3 };
-            string[] unsortedValues = new string[] { "five", "one", "three" };
+            int[] unsortedKeys = { 5, 1, 3 };
+            string[] unsortedValues = { "five", "one", "three" };
             keysField.SetValue(dictionary, unsortedKeys);
             valuesField.SetValue(dictionary, unsortedValues);
 
             dictionary.OnAfterDeserialize();
 
-            int[] expectedKeys = new int[] { 1, 3, 5 };
-            string[] expectedValues = new string[] { "one", "three", "five" };
+            int[] expectedKeys = { 1, 3, 5 };
+            string[] expectedValues = { "one", "three", "five" };
 
             int index = 0;
             foreach (KeyValuePair<int, string> pair in dictionary)
@@ -333,8 +333,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             SerializableSortedDictionary<string, string> dictionary =
                 new SerializableSortedDictionary<string, string>();
 
-            string[] serializedKeys = new string[] { null, "valid" };
-            string[] serializedValues = new string[] { "ignored", "retained" };
+            string[] serializedKeys = { null, "valid" };
+            string[] serializedValues = { "ignored", "retained" };
             dictionary._keys = serializedKeys;
             dictionary._values = serializedValues;
 
@@ -370,8 +370,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             SerializableSortedDictionary<string, string> dictionary =
                 new SerializableSortedDictionary<string, string>();
 
-            string[] serializedKeys = new string[] { "skip", "keep" };
-            string[] serializedValues = new string[] { null, "retained" };
+            string[] serializedKeys = { "skip", "keep" };
+            string[] serializedValues = { null, "retained" };
             dictionary._keys = serializedKeys;
             dictionary._values = serializedValues;
 
@@ -406,7 +406,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 SerializableSortedDictionary<int, string>
             >(data);
 
-            int[] expectedKeys = new int[] { 2, 4, 9 };
+            int[] expectedKeys = { 2, 4, 9 };
             int index = 0;
             foreach (KeyValuePair<int, string> pair in deserialized)
             {
@@ -431,7 +431,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.IsInstanceOf<DescendingComparer>(dictionary.Comparer);
 
-            int[] expectedKeys = new int[] { 3, 2, 1 };
+            int[] expectedKeys = { 3, 2, 1 };
             int index = 0;
             foreach (KeyValuePair<int, string> pair in dictionary)
             {

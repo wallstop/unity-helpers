@@ -103,12 +103,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         {
             private sealed class NameHolder : SerializableDictionary<TKey, TValue>
             {
-                public static readonly string KeysName = nameof(_keys);
-                public static readonly string ValuesName = nameof(_values);
+                public const string KeysName = nameof(_keys);
+                public const string ValuesName = nameof(_values);
             }
 
-            internal static readonly string KeysName = NameHolder.KeysName;
-            internal static readonly string ValuesName = NameHolder.ValuesName;
+            internal const string KeysNameInternal = NameHolder.KeysName;
+            internal const string ValuesNameInternal = NameHolder.ValuesName;
         }
 
         public void OnAfterDeserialize()
@@ -140,7 +140,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             bool hasDuplicateKeys = false;
             bool encounteredNullReference = false;
             bool keySupportsNullCheck = TypeSupportsNullReferences(typeof(TKey));
-            bool valueSupportsNullCheck = TypeSupportsNullReferences(typeof(TValue));
             int length = _keys.Length;
 
             for (int index = 0; index < length; index++)
@@ -543,12 +542,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
     internal static class SerializableDictionarySerializedPropertyNames
     {
-        internal static readonly string Keys = SerializableDictionary<int, int>
+        internal const string Keys = SerializableDictionary<int, int>
             .SerializedPropertyNames
-            .KeysName;
-        internal static readonly string Values = SerializableDictionary<int, int>
+            .KeysNameInternal;
+
+        internal const string Values = SerializableDictionary<int, int>
             .SerializedPropertyNames
-            .ValuesName;
+            .ValuesNameInternal;
     }
 
     /// <summary>

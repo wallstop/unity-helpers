@@ -11,52 +11,52 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     [TestFixture]
     public sealed class WInLineEditorPropertyDrawerTests
     {
-        private TestHolder holder;
-        private TestData data;
-        private SerializedObject serializedHolder;
-        private SerializedProperty inlineProperty;
+        private TestHolder _holder;
+        private TestData _data;
+        private SerializedObject _serializedHolder;
+        private SerializedProperty _inlineProperty;
 
         [SetUp]
         public void SetUp()
         {
-            holder = ScriptableObject.CreateInstance<TestHolder>();
-            data = ScriptableObject.CreateInstance<TestData>();
+            _holder = ScriptableObject.CreateInstance<TestHolder>();
+            _data = ScriptableObject.CreateInstance<TestData>();
 
-            holder.inlineData = data;
-            holder.collapsedData = data;
-            holder.headerOnlyData = data;
+            _holder.inlineData = _data;
+            _holder.collapsedData = _data;
+            _holder.headerOnlyData = _data;
 
-            serializedHolder = new SerializedObject(holder);
-            inlineProperty = serializedHolder.FindProperty(nameof(TestHolder.inlineData));
+            _serializedHolder = new SerializedObject(_holder);
+            _inlineProperty = _serializedHolder.FindProperty(nameof(TestHolder.inlineData));
         }
 
         [TearDown]
         public void TearDown()
         {
-            if (serializedHolder != null)
+            if (_serializedHolder != null)
             {
                 SessionState.EraseBool(
-                    GetSessionKey(serializedHolder.FindProperty(nameof(TestHolder.inlineData)))
+                    GetSessionKey(_serializedHolder.FindProperty(nameof(TestHolder.inlineData)))
                 );
                 SessionState.EraseBool(
-                    GetSessionKey(serializedHolder.FindProperty(nameof(TestHolder.collapsedData)))
+                    GetSessionKey(_serializedHolder.FindProperty(nameof(TestHolder.collapsedData)))
                 );
                 SessionState.EraseBool(
-                    GetSessionKey(serializedHolder.FindProperty(nameof(TestHolder.headerOnlyData)))
+                    GetSessionKey(_serializedHolder.FindProperty(nameof(TestHolder.headerOnlyData)))
                 );
-                serializedHolder = null;
+                _serializedHolder = null;
             }
 
-            if (holder != null)
+            if (_holder != null)
             {
-                ScriptableObject.DestroyImmediate(holder);
-                holder = null;
+                Object.DestroyImmediate(_holder);
+                _holder = null;
             }
 
-            if (data != null)
+            if (_data != null)
             {
-                ScriptableObject.DestroyImmediate(data);
-                data = null;
+                Object.DestroyImmediate(_data);
+                _data = null;
             }
         }
 
@@ -65,11 +65,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             WInLineEditorPropertyDrawer drawer = new();
 
-            VisualElement root = drawer.CreatePropertyGUI(inlineProperty);
-            root.Bind(serializedHolder);
+            VisualElement root = drawer.CreatePropertyGUI(_inlineProperty);
+            root.Bind(_serializedHolder);
 
             ObjectField field = root.Query<ObjectField>()
-                .Where(x => x.bindingPath == inlineProperty.propertyPath)
+                .Where(x => x.bindingPath == _inlineProperty.propertyPath)
                 .First();
             Assert.That(field, Is.Not.Null);
             Assert.That(field.objectType, Is.EqualTo(typeof(TestData)));
@@ -78,14 +78,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void CreatePropertyGUIModeFoldoutCollapsedStartsCollapsed()
         {
-            SerializedProperty property = serializedHolder.FindProperty(
+            SerializedProperty property = _serializedHolder.FindProperty(
                 nameof(TestHolder.collapsedData)
             );
             SessionState.EraseBool(GetSessionKey(property));
 
             WInLineEditorPropertyDrawer drawer = new();
             VisualElement root = drawer.CreatePropertyGUI(property);
-            root.Bind(serializedHolder);
+            root.Bind(_serializedHolder);
 
             Foldout foldout = root.Q<Foldout>();
             Assert.That(foldout, Is.Not.Null);
@@ -95,17 +95,17 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void NullReferenceKeepsFieldEnabledAndFoldoutCollapsed()
         {
-            SerializedProperty property = serializedHolder.FindProperty(
+            SerializedProperty property = _serializedHolder.FindProperty(
                 nameof(TestHolder.collapsedData)
             );
             SessionState.EraseBool(GetSessionKey(property));
             property.objectReferenceValue = null;
-            serializedHolder.ApplyModifiedProperties();
-            serializedHolder.Update();
+            _serializedHolder.ApplyModifiedProperties();
+            _serializedHolder.Update();
 
             WInLineEditorPropertyDrawer drawer = new();
             VisualElement root = drawer.CreatePropertyGUI(property);
-            root.Bind(serializedHolder);
+            root.Bind(_serializedHolder);
 
             ObjectField field = root.Query<ObjectField>()
                 .Where(x => x.bindingPath == property.propertyPath)
@@ -124,13 +124,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void CreatePropertyGUIDrawObjectFieldDisabledHasNoObjectField()
         {
-            SerializedProperty property = serializedHolder.FindProperty(
+            SerializedProperty property = _serializedHolder.FindProperty(
                 nameof(TestHolder.headerOnlyData)
             );
 
             WInLineEditorPropertyDrawer drawer = new();
             VisualElement root = drawer.CreatePropertyGUI(property);
-            root.Bind(serializedHolder);
+            root.Bind(_serializedHolder);
 
             ObjectField field = root.Query<ObjectField>()
                 .Where(x => x.bindingPath == property.propertyPath)
@@ -142,9 +142,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void GetPropertyHeightReturnsDefaultHeight()
         {
             WInLineEditorPropertyDrawer drawer = new();
-            float expected = EditorGUI.GetPropertyHeight(inlineProperty, true);
+            float expected = EditorGUI.GetPropertyHeight(_inlineProperty, true);
             Assert.That(
-                drawer.GetPropertyHeight(inlineProperty, GUIContent.none),
+                drawer.GetPropertyHeight(_inlineProperty, GUIContent.none),
                 Is.EqualTo(expected)
             );
         }

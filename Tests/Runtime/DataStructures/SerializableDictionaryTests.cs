@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
@@ -335,8 +334,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsNotNull(valuesField, "Values backing field lookup failed.");
             Assert.IsNotNull(preserveField, "Preserve flag field lookup failed.");
 
-            int[] serializedKeys = new int[] { 1, 1 };
-            string[] serializedValues = new string[] { "first", "second" };
+            int[] serializedKeys = { 1, 1 };
+            string[] serializedValues = { "first", "second" };
             keysField.SetValue(dictionary, serializedKeys);
             valuesField.SetValue(dictionary, serializedValues);
 
@@ -378,8 +377,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             SerializableDictionary<string, string> dictionary = new();
 
-            string[] serializedKeys = new string[] { null, "valid" };
-            string[] serializedValues = new string[] { "ignored", "retained" };
+            string[] serializedKeys = { null, "valid" };
+            string[] serializedValues = { "ignored", "retained" };
             dictionary._keys = serializedKeys;
             dictionary._values = serializedValues;
 
@@ -417,8 +416,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             SerializableDictionary<string, string> dictionary = new();
 
-            string[] serializedKeys = new string[] { "skip", "keep" };
-            string[] serializedValues = new string[] { null, "retained" };
+            string[] serializedKeys = { "skip", "keep" };
+            string[] serializedValues = { null, "retained" };
             dictionary._keys = serializedKeys;
             dictionary._values = serializedValues;
 
@@ -462,8 +461,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsNotNull(keysField);
             Assert.IsNotNull(valuesField);
 
-            string[] keys = new string[] { null, "valid" };
-            string[] values = new string[] { "ignored", "retained" };
+            string[] keys = { null, "valid" };
+            string[] values = { "ignored", "retained" };
             keysField.SetValue(dictionary, keys);
             valuesField.SetValue(dictionary, values);
 
@@ -499,8 +498,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsNotNull(valuesField, "Values backing field lookup failed.");
             Assert.IsNotNull(preserveField, "Preserve flag field lookup failed.");
 
-            int[] serializedKeys = new int[] { 3, 3 };
-            string[] serializedValues = new string[] { "old", "new" };
+            int[] serializedKeys = { 3, 3 };
+            string[] serializedValues = { "old", "new" };
             keysField.SetValue(dictionary, serializedKeys);
             valuesField.SetValue(dictionary, serializedValues);
 

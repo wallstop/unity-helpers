@@ -15,27 +15,27 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     {
         private sealed class HashSetHost : ScriptableObject
         {
-            public SerializableHashSet<int> set = new SerializableHashSet<int>();
+            public SerializableHashSet<int> set = new();
         }
 
         private sealed class StringSetHost : ScriptableObject
         {
-            public SerializableHashSet<string> set = new SerializableHashSet<string>();
+            public SerializableHashSet<string> set = new();
         }
 
         private sealed class SortedSetHost : ScriptableObject
         {
-            public SerializableSortedSet<int> set = new SerializableSortedSet<int>();
+            public SerializableSortedSet<int> set = new();
         }
 
         private sealed class SortedStringSetHost : ScriptableObject
         {
-            public SerializableSortedSet<string> set = new SerializableSortedSet<string>();
+            public SerializableSortedSet<string> set = new();
         }
 
         private sealed class ObjectSetHost : ScriptableObject
         {
-            public SerializableHashSet<TestData> set = new SerializableHashSet<TestData>();
+            public SerializableHashSet<TestData> set = new();
         }
 
         private sealed class TestData : ScriptableObject { }
@@ -53,7 +53,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             serializedObject.Update();
             SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer drawer = new();
             SerializableSetPropertyDrawer.PaginationState pagination =
                 drawer.GetOrCreatePaginationState(setProperty);
             pagination.pageSize = 4096;
@@ -71,7 +71,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void EvaluateDuplicateStateDetectsDuplicateEntries()
         {
             HashSetHost host = CreateScriptableObject<HashSetHost>();
-            ISerializableSetInspector inspector = (ISerializableSetInspector)host.set;
+            ISerializableSetInspector inspector = host.set;
             Array duplicates = Array.CreateInstance(inspector.ElementType, 3);
             duplicates.SetValue(2, 0);
             duplicates.SetValue(2, 1);
@@ -86,7 +86,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer drawer = new();
             SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
                 setProperty,
                 itemsProperty,
@@ -94,7 +94,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             Assert.IsTrue(state.hasDuplicates);
-            CollectionAssert.AreEquivalent(new int[] { 0, 1 }, state.duplicateIndices);
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, state.duplicateIndices);
             StringAssert.Contains("Value 2", state.summary);
         }
 
@@ -102,7 +102,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void NullEntriesProduceInspectorWarnings()
         {
             ObjectSetHost host = CreateScriptableObject<ObjectSetHost>();
-            ISerializableSetInspector inspector = (ISerializableSetInspector)host.set;
+            ISerializableSetInspector inspector = host.set;
             Array values = Array.CreateInstance(inspector.ElementType, 2);
             values.SetValue(null, 0);
             values.SetValue(CreateScriptableObject<TestData>(), 1);
@@ -119,14 +119,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer drawer = new();
             SerializableSetPropertyDrawer.NullEntryState state = drawer.EvaluateNullEntryState(
                 setProperty,
                 itemsProperty
             );
 
             Assert.IsTrue(state.hasNullEntries);
-            CollectionAssert.AreEquivalent(new int[] { 0 }, state.nullIndices);
+            CollectionAssert.AreEquivalent(new[] { 0 }, state.nullIndices);
             Assert.IsTrue(state.tooltips.ContainsKey(0));
             StringAssert.Contains("Null entry", state.summary);
         }
@@ -135,7 +135,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void SortedSetEditingPreservesSerializedEntry()
         {
             SortedStringSetHost host = CreateScriptableObject<SortedStringSetHost>();
-            ISerializableSetInspector inspector = (ISerializableSetInspector)host.set;
+            ISerializableSetInspector inspector = host.set;
             Array values = Array.CreateInstance(inspector.ElementType, 1);
             values.SetValue(string.Empty, 0);
             inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
@@ -172,7 +172,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer drawer = new();
             SerializedProperty setProperty = serializedObject.FindProperty(
                 nameof(SortedStringSetHost.set)
             );
@@ -222,7 +222,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer drawer = new();
             SerializedProperty setProperty = serializedObject.FindProperty(
                 nameof(SortedStringSetHost.set)
             );
@@ -280,7 +280,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer drawer = new();
             SerializedProperty setProperty = serializedObject.FindProperty(
                 nameof(SortedStringSetHost.set)
             );
@@ -338,7 +338,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer drawer = new();
             SerializedProperty setProperty = serializedObject.FindProperty(
                 nameof(StringSetHost.set)
             );
@@ -388,7 +388,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer drawer = new();
             SerializedProperty setProperty = serializedObject.FindProperty(
                 nameof(StringSetHost.set)
             );
@@ -439,7 +439,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void ExpandRowRectVerticallyExtendsSelectionBounds()
         {
-            Rect baseRect = new Rect(5f, 10f, 25f, 16f);
+            Rect baseRect = new(5f, 10f, 25f, 16f);
             Rect expanded = SerializableSetPropertyDrawer.ExpandRowRectVertically(baseRect);
 
             Assert.That(expanded.yMin, Is.LessThan(baseRect.yMin));
@@ -460,7 +460,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer drawer = new();
             SerializableSetPropertyDrawer.PaginationState pagination =
                 drawer.GetOrCreatePaginationState(setProperty);
 
@@ -513,7 +513,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer drawer = new();
             SerializableSetPropertyDrawer.PaginationState pagination =
                 drawer.GetOrCreatePaginationState(setProperty);
             bool added = drawer.TryAddNewElement(
@@ -541,7 +541,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void TryAddNewElementPreservesSerializedDuplicates()
         {
             HashSetHost host = CreateScriptableObject<HashSetHost>();
-            ISerializableSetInspector inspector = (ISerializableSetInspector)host.set;
+            ISerializableSetInspector inspector = host.set;
             Array duplicates = Array.CreateInstance(inspector.ElementType, 3);
             duplicates.SetValue(1, 0);
             duplicates.SetValue(1, 1);
@@ -558,7 +558,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.IsNotNull(itemsProperty);
             Assert.AreEqual(3, itemsProperty.arraySize);
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer drawer = new();
             SerializableSetPropertyDrawer.PaginationState pagination =
                 drawer.GetOrCreatePaginationState(setProperty);
             bool added = drawer.TryAddNewElement(
@@ -586,14 +586,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(3, host.set.Count);
             SerializableSetPropertyDrawer.DuplicateState duplicateState =
                 drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
-            CollectionAssert.AreEquivalent(new int[] { 0, 1 }, duplicateState.duplicateIndices);
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, duplicateState.duplicateIndices);
         }
 
         [Test]
         public void TryAddNewElementPreservesSerializedDuplicatesForSortedSet()
         {
             SortedSetHost host = CreateScriptableObject<SortedSetHost>();
-            ISerializableSetInspector inspector = (ISerializableSetInspector)host.set;
+            ISerializableSetInspector inspector = host.set;
             Array duplicates = Array.CreateInstance(inspector.ElementType, 3);
             duplicates.SetValue(3, 0);
             duplicates.SetValue(3, 1);
@@ -612,7 +612,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.IsNotNull(itemsProperty);
             Assert.AreEqual(3, itemsProperty.arraySize);
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer drawer = new();
             SerializableSetPropertyDrawer.PaginationState pagination =
                 drawer.GetOrCreatePaginationState(setProperty);
             bool added = drawer.TryAddNewElement(
@@ -640,7 +640,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(3, host.set.Count);
             SerializableSetPropertyDrawer.DuplicateState duplicateState =
                 drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
-            CollectionAssert.AreEquivalent(new int[] { 0, 1 }, duplicateState.duplicateIndices);
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, duplicateState.duplicateIndices);
         }
 
         [Test]
@@ -667,7 +667,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             serializedObject.ApplyModifiedProperties();
             serializedObject.Update();
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer drawer = new();
             drawer.SortElements(setProperty, itemsProperty);
 
             serializedObject.Update();
@@ -681,8 +681,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 .Select(i => itemsProperty.GetArrayElementAtIndex(i).intValue)
                 .ToArray();
 
-            CollectionAssert.AreEqual(new int[] { 1, 3, 5 }, serialized);
-            CollectionAssert.AreEqual(new int[] { 1, 3, 5 }, host.set.ToArray());
+            CollectionAssert.AreEqual(new[] { 1, 3, 5 }, serialized);
+            CollectionAssert.AreEqual(new[] { 1, 3, 5 }, host.set.ToArray());
         }
 
         private static string[] ReadStringValues(SerializedProperty itemsProperty)
@@ -739,7 +739,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             Assert.IsNotNull(removeEntry);
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            SerializableSetPropertyDrawer drawer = new();
             MethodInfo removeValue = typeof(SerializableSetPropertyDrawer).GetMethod(
                 "RemoveValueFromSet",
                 BindingFlags.Instance | BindingFlags.NonPublic
@@ -765,7 +765,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 .Range(0, itemsProperty.arraySize)
                 .Select(i => itemsProperty.GetArrayElementAtIndex(i).intValue)
                 .ToArray();
-            CollectionAssert.AreEquivalent(new int[] { 10, 30 }, remaining);
+            CollectionAssert.AreEquivalent(new[] { 10, 30 }, remaining);
             Assert.AreEqual(2, host.set.Count);
         }
     }

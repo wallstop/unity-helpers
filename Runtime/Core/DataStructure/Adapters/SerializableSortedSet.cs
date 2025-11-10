@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using System.Collections.Generic;
     using System.Runtime.Serialization;
     using ProtoBuf;
-    using UnityEngine;
 
     /// <summary>
     /// Sorted set with Unity/ProtoBuf/System.Text.Json serialization support.
@@ -55,15 +54,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return Set.GetEnumerator();
         }
 
-        public T Min
-        {
-            get { return Set.Min; }
-        }
+        public T Min => Set.Min;
 
-        public T Max
-        {
-            get { return Set.Max; }
-        }
+        public T Max => Set.Max;
 
         public IEnumerable<T> Reverse()
         {
@@ -84,10 +77,5 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         {
             return Set.TryGetValue(equalValue, out actualValue);
         }
-    }
-
-    internal static class SerializableSortedSetSerializedPropertyNames
-    {
-        internal static readonly string Items = SerializableHashSetSerializedPropertyNames.Items;
     }
 }

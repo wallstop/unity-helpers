@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using System.Text.Json;
     using NUnit.Framework;
     using ProtoBuf;
-    using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
@@ -111,7 +110,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 SerializableSortedDictionary<int, string>
             >(json);
 
-            int[] expectedKeys = new int[] { 1, 3, 5 };
+            int[] expectedKeys = { 1, 3, 5 };
             int index = 0;
             foreach (KeyValuePair<int, string> pair in deserialized)
             {
@@ -155,7 +154,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 >
             >(json, null, options);
 
-            string[] expectedKeys = new string[] { "alpha", "charlie", "delta" };
+            string[] expectedKeys = { "alpha", "charlie", "delta" };
             int index = 0;
             foreach (KeyValuePair<string, SerializablePayload> pair in deserialized)
             {

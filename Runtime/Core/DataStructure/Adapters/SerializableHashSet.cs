@@ -105,7 +105,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 public const string ItemsName = nameof(_items);
             }
 
-            internal const string ItemsName = NameHolder.ItemsName;
+            internal const string ItemsNameInternal = NameHolder.ItemsName;
         }
 
         public int Count => _set.Count;
@@ -524,7 +524,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         Array ISerializableSetInspector.GetSerializedItemsSnapshot()
         {
-            if (_items != null && _items.Length > 0)
+            if (_items is { Length: > 0 })
             {
                 return (T[])_items.Clone();
             }
@@ -569,9 +569,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             _preserveSerializedEntries = preserveSerializedEntries;
 
             _set.Clear();
-            for (int index = 0; index < convertedItems.Length; index++)
+            foreach (T convertedItem in convertedItems)
             {
-                _set.Add(convertedItems[index]);
+                _set.Add(convertedItem);
             }
         }
 
@@ -722,6 +722,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     {
         internal static readonly string Items = SerializableHashSet<int>
             .SerializedPropertyNames
-            .ItemsName;
+            .ItemsNameInternal;
     }
 }
