@@ -129,6 +129,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             Assert.That(missingEntry.ButtonColor, Is.EqualTo(defaultEntry.ButtonColor));
             Assert.That(missingEntry.TextColor, Is.EqualTo(defaultEntry.TextColor));
         }
+
+        [Test]
+        public void WButtonPlacementDefaultsToTop()
+        {
+            Assert.That(
+                UnityHelpersSettings.GetWButtonActionsPlacement(),
+                Is.EqualTo(UnityHelpersSettings.WButtonActionsPlacement.Top)
+            );
+        }
+
+        [Test]
+        public void WButtonFoldoutBehaviorDefaultsToStartExpanded()
+        {
+            Assert.That(
+                UnityHelpersSettings.GetWButtonFoldoutBehavior(),
+                Is.EqualTo(UnityHelpersSettings.WButtonFoldoutBehavior.StartExpanded)
+            );
+        }
     }
 }
 #endif

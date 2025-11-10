@@ -4,14 +4,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     using System.Collections.Generic;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.WButton;
 
     [CustomEditor(typeof(UnityEngine.Object), true)]
     [CanEditMultipleObjects]
     public sealed class WButtonInspector : Editor
     {
-        private readonly Dictionary<int, WButtonPaginationState> _paginationStates =
-            new Dictionary<int, WButtonPaginationState>();
+        private readonly Dictionary<int, WButtonPaginationState> _paginationStates = new();
+        private readonly Dictionary<int, bool> _foldoutStates = new();
 
         public override void OnInspectorGUI()
         {
@@ -31,15 +32,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 EditorGUILayout.Space();
             }
 
-            bool topDrawn = WButtonGUI.DrawButtons(
-                this,
-                WButtonPlacement.Top,
-                _paginationStates,
-                triggeredContexts
-            );
-            if (topDrawn)
+            UnityHelpersSettings.WButtonActionsPlacement placement =
+                UnityHelpersSettings.GetWButtonActionsPlacement();
+            UnityHelpersSettings.WButtonFoldoutBehavior foldoutBehavior =
+                UnityHelpersSettings.GetWButtonFoldoutBehavior();
+
+            if (placement == UnityHelpersSettings.WButtonActionsPlacement.Top)
             {
-                EditorGUILayout.Space();
+                if (
+                    WButtonGUI.DrawButtons(
+                        this,
+                        WButtonPlacement.Top,
+                        _paginationStates,
+                        _foldoutStates,
+                        foldoutBehavior,
+                        triggeredContexts
+                    )
+                )
+                {
+                    EditorGUILayout.Space();
+                }
             }
 
             SerializedProperty iterator = serializedObject.GetIterator();
@@ -57,10 +69,29 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
             serializedObject.ApplyModifiedProperties();
 
+            if (placement == UnityHelpersSettings.WButtonActionsPlacement.Bottom)
+            {
+                if (
+                    WButtonGUI.DrawButtons(
+                        this,
+                        WButtonPlacement.Top,
+                        _paginationStates,
+                        _foldoutStates,
+                        foldoutBehavior,
+                        triggeredContexts
+                    )
+                )
+                {
+                    EditorGUILayout.Space();
+                }
+            }
+
             bool bottomDrawn = WButtonGUI.DrawButtons(
                 this,
                 WButtonPlacement.Bottom,
                 _paginationStates,
+                _foldoutStates,
+                foldoutBehavior,
                 triggeredContexts
             );
             if (bottomDrawn)

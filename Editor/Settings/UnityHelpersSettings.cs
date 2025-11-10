@@ -32,6 +32,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const int DefaultDuplicateTweenCycles = 3;
         private static readonly Color DefaultPriorityButtonColor = new(0.243f, 0.525f, 0.988f, 1f);
 
+        public enum WButtonActionsPlacement
+        {
+            Top = 0,
+            Bottom = 1,
+        }
+
+        public enum WButtonFoldoutBehavior
+        {
+            AlwaysOpen = 0,
+            StartExpanded = 1,
+            StartCollapsed = 2,
+        }
+
         public readonly struct WButtonPaletteEntry
         {
             public WButtonPaletteEntry(Color buttonColor, Color textColor)
@@ -73,6 +86,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [SerializeField]
         [Tooltip("Number of recent invocation results retained per WButton method.")]
         private int wbuttonHistorySize = DefaultWButtonHistorySize;
+
+        [SerializeField]
+        [Tooltip("Controls where WButton actions are rendered relative to the inspector content.")]
+        private WButtonActionsPlacement wbuttonActionsPlacement = WButtonActionsPlacement.Top;
+
+        [SerializeField]
+        [Tooltip(
+            "Determines whether WButton groups are always shown or foldouts start expanded/collapsed."
+        )]
+        private WButtonFoldoutBehavior wbuttonFoldoutBehavior =
+            WButtonFoldoutBehavior.StartExpanded;
 
         [SerializeField]
         [Tooltip(
@@ -343,6 +367,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return instance.GetWButtonPaletteEntry(priority);
         }
 
+        public static WButtonActionsPlacement GetWButtonActionsPlacement()
+        {
+            return instance.wbuttonActionsPlacement;
+        }
+
+        public static WButtonFoldoutBehavior GetWButtonFoldoutBehavior()
+        {
+            return instance.wbuttonFoldoutBehavior;
+        }
+
         public static DuplicateRowAnimationMode GetDuplicateRowAnimationMode()
         {
             return instance.duplicateRowAnimationMode;
@@ -380,6 +414,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 MinWButtonHistorySize,
                 MaxWButtonHistorySize
             );
+            if (!System.Enum.IsDefined(typeof(WButtonActionsPlacement), wbuttonActionsPlacement))
+            {
+                wbuttonActionsPlacement = WButtonActionsPlacement.Top;
+            }
+
+            if (!System.Enum.IsDefined(typeof(WButtonFoldoutBehavior), wbuttonFoldoutBehavior))
+            {
+                wbuttonFoldoutBehavior = WButtonFoldoutBehavior.StartExpanded;
+            }
             if (EnsureWButtonPriorityDefaults())
             {
                 SaveSettings();
@@ -694,6 +737,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     SerializedProperty buttonHistoryProperty = serializedSettings.FindProperty(
                         "wbuttonHistorySize"
                     );
+                    SerializedProperty actionsPlacementProperty = serializedSettings.FindProperty(
+                        "wbuttonActionsPlacement"
+                    );
+                    SerializedProperty foldoutBehaviorProperty = serializedSettings.FindProperty(
+                        "wbuttonFoldoutBehavior"
+                    );
                     SerializedProperty duplicateModeProperty = serializedSettings.FindProperty(
                         "duplicateRowAnimationMode"
                     );
@@ -753,6 +802,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     );
 
                     EditorGUILayout.PropertyField(
+                        actionsPlacementProperty,
+                        new GUIContent(
+                            "WButton Placement",
+                            "Controls whether WButton actions render near the top of the inspector (after the Script field) or near the bottom."
+                        )
+                    );
+
+                    EditorGUILayout.PropertyField(
+                        foldoutBehaviorProperty,
+                        new GUIContent(
+                            "WButton Foldout Behavior",
+                            "Determines whether WButton action groups are always visible, start expanded, or start collapsed when first drawn."
+                        )
+                    );
+
+                    EditorGUILayout.PropertyField(
                         duplicateModeProperty,
                         new GUIContent(
                             "Duplicate Row Animation",
@@ -787,6 +852,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     "SerializableSet",
                     "WButton",
                     "Buttons",
+                    "Placement",
+                    "Foldout",
                     "UnityHelpers",
                     "Duplicate",
                     "SerializableType",

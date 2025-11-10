@@ -42,6 +42,11 @@ public sealed class ExampleBehaviour : MonoBehaviour
 - Palette entries now store both the button background colour and the text colour. New priorities auto-pick a complimentary hue and a readable text colour, but you can tailor either value to match your branding.
 - When a button does not specify a priority (or when the key is missing), the drawer falls back to the `Default` palette entry. Colours are applied directly to the button surface, not the surrounding container, so the priority scheme remains distinct.
 
+## Layout & Foldouts
+
+- Configure where action groups render (top or bottom of the inspector) via **WButton Placement** in the Unity Helpers settings. By default, actions appear immediately beneath the Script field.
+- **WButton Foldout Behavior** controls whether each draw-order group is always open, starts expanded (default), or starts collapsed. Collapsible groups remember their state per inspector instance.
+
 ## Execution Behaviour
 
 - Methods execute on the main thread. Reflection delegates are cached for performance.
@@ -60,13 +65,19 @@ public sealed class ExampleBehaviour : MonoBehaviour
 
 ```csharp
 private readonly Dictionary<int, WButtonPaginationState> pagination = new();
+private readonly Dictionary<int, bool> foldouts = new();
 
 public override void OnInspectorGUI()
 {
-    WButtonGUI.DrawButtons(this, WButtonPlacement.Top, pagination);
+    var foldoutBehavior = UnityHelpersSettings.GetWButtonFoldoutBehavior();
+    if (UnityHelpersSettings.GetWButtonActionsPlacement() == UnityHelpersSettings.WButtonActionsPlacement.Top)
+    {
+        WButtonGUI.DrawButtons(this, WButtonPlacement.Top, pagination, foldouts, foldoutBehavior);
+    }
+
     // editor UI...
-    WButtonGUI.DrawButtons(this, WButtonPlacement.Bottom, pagination);
-    WButtonInvocationController.ProcessTriggeredMethods(triggered); // optional manual handling
+
+    WButtonGUI.DrawButtons(this, WButtonPlacement.Bottom, pagination, foldouts, foldoutBehavior);
 }
 ```
 

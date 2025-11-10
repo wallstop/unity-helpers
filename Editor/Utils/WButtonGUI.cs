@@ -22,6 +22,8 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             Editor editor,
             WButtonPlacement placement,
             IDictionary<int, WButtonPaginationState> paginationStates,
+            IDictionary<int, bool> foldoutStates,
+            UnityHelpersSettings.WButtonFoldoutBehavior foldoutBehavior,
             List<WButtonMethodContext> triggeredContexts = null
         )
         {
@@ -69,7 +71,14 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                     || (placement == WButtonPlacement.Bottom && !drawOnTop)
                 )
                 {
-                    DrawGroup(drawOrder, entry.Value, paginationStates, triggeredContexts);
+                    DrawGroup(
+                        drawOrder,
+                        entry.Value,
+                        paginationStates,
+                        foldoutStates,
+                        foldoutBehavior,
+                        triggeredContexts
+                    );
                     anyDrawn = true;
                 }
             }
@@ -134,6 +143,8 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             int drawOrder,
             List<WButtonMethodContext> contexts,
             IDictionary<int, WButtonPaginationState> paginationStates,
+            IDictionary<int, bool> foldoutStates,
+            UnityHelpersSettings.WButtonFoldoutBehavior foldoutBehavior,
             List<WButtonMethodContext> triggeredContexts
         )
         {
@@ -143,8 +154,39 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             }
 
             GUIContent header = BuildGroupHeader(drawOrder);
+            bool alwaysOpen =
+                foldoutBehavior == UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen;
+            bool expanded = true;
+            if (!alwaysOpen)
+            {
+                expanded = GetFoldoutState(foldoutStates, drawOrder, foldoutBehavior);
+                Rect foldoutRect = EditorGUILayout.GetControlRect();
+                EditorGUI.indentLevel++;
+                bool newExpanded = EditorGUI.Foldout(
+                    foldoutRect,
+                    expanded,
+                    header,
+                    true,
+                    EditorStyles.foldoutHeader
+                );
+                EditorGUI.indentLevel--;
+                if (foldoutStates != null)
+                {
+                    foldoutStates[drawOrder] = newExpanded;
+                }
+
+                if (!newExpanded)
+                {
+                    EditorGUILayout.Space();
+                    return;
+                }
+            }
+
             GUILayout.BeginVertical(WButtonStyles.GroupStyle);
-            GUILayout.Label(header, WButtonStyles.HeaderStyle);
+            if (alwaysOpen)
+            {
+                GUILayout.Label(header, WButtonStyles.HeaderStyle);
+            }
 
             int pageSize = UnityHelpersSettings.GetWButtonPageSize();
             WButtonPaginationState state = GetPaginationState(
@@ -223,6 +265,28 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 }
             }
             EditorGUILayout.Space(4f);
+        }
+
+        private static bool GetFoldoutState(
+            IDictionary<int, bool> foldoutStates,
+            int drawOrder,
+            UnityHelpersSettings.WButtonFoldoutBehavior behavior
+        )
+        {
+            bool defaultExpanded =
+                behavior != UnityHelpersSettings.WButtonFoldoutBehavior.StartCollapsed;
+            if (foldoutStates == null)
+            {
+                return defaultExpanded;
+            }
+
+            if (foldoutStates.TryGetValue(drawOrder, out bool current))
+            {
+                return current;
+            }
+
+            foldoutStates[drawOrder] = defaultExpanded;
+            return defaultExpanded;
         }
 
         private static GUIContent BuildGroupHeader(int drawOrder)
