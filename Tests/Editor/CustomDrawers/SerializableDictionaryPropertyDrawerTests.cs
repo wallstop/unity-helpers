@@ -23,6 +23,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public StringStringDictionary dictionary = new();
         }
 
+        private sealed class ComplexValueDictionaryHost : ScriptableObject
+        {
+            public StringComplexDictionary dictionary = new();
+        }
+
         private sealed class TestSortedDictionaryHost : ScriptableObject
         {
             public SerializableSortedDictionary<int, string> dictionary = new();
@@ -38,6 +43,17 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         [Serializable]
         private sealed class StringStringDictionary : SerializableDictionary<string, string> { }
+
+        [Serializable]
+        private sealed class StringComplexDictionary
+            : SerializableDictionary<string, ComplexValue> { }
+
+        [Serializable]
+        private sealed class ComplexValue
+        {
+            public Color button;
+            public Color text;
+        }
 
         [Serializable]
         private sealed class RectIntDictionary : SerializableDictionary<Rect, int> { }
@@ -115,6 +131,63 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 );
 
             Assert.That(resolvedHeight, Is.EqualTo(expectedHeight));
+        }
+
+        [Test]
+        public void SetPropertyValueHandlesSerializableClassValues()
+        {
+            ComplexValueDictionaryHost host = CreateScriptableObject<ComplexValueDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ComplexValueDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            keysProperty.arraySize = 1;
+            valuesProperty.arraySize = 1;
+
+            SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(0);
+            SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(0);
+
+            SerializableDictionaryPropertyDrawer.SetPropertyValue(
+                keyProperty,
+                "Alert",
+                typeof(string)
+            );
+
+            ComplexValue complexValue = new() { button = Color.magenta, text = Color.white };
+
+            SerializableDictionaryPropertyDrawer.SetPropertyValue(
+                valueProperty,
+                complexValue,
+                typeof(ComplexValue)
+            );
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            host.dictionary.EditorAfterDeserialize();
+
+            Assert.That(host.dictionary.Count, Is.EqualTo(1));
+
+            ComplexValue stored = host.dictionary["Alert"];
+            Assert.That(stored.button, Is.EqualTo(complexValue.button));
+            Assert.That(stored.text, Is.EqualTo(complexValue.text));
+
+            object roundTrip = SerializableDictionaryPropertyDrawer.GetPropertyValue(
+                valueProperty,
+                typeof(ComplexValue)
+            );
+
+            ComplexValue roundTripValue = roundTrip as ComplexValue;
+            Assert.IsNotNull(roundTripValue);
+            Assert.That(roundTripValue.button, Is.EqualTo(complexValue.button));
+            Assert.That(roundTripValue.text, Is.EqualTo(complexValue.text));
         }
 
         [Test]

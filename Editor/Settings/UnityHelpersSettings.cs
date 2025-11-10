@@ -173,7 +173,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         [SerializeField]
         [FormerlySerializedAs("wbuttonPriorityColors")]
+#pragma warning disable CS0618 // Type or member is obsolete
         private List<WButtonPriorityColor> legacyWButtonPriorityColors = new();
+#pragma warning restore CS0618 // Type or member is obsolete
 
         [SerializeField]
         private bool serializableTypePatternsInitialized;
@@ -231,6 +233,44 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [System.Serializable]
         private sealed class WButtonCustomColorDictionary
             : SerializableDictionary<string, WButtonCustomColor> { }
+
+#if UNITY_EDITOR
+        [CustomPropertyDrawer(typeof(WButtonCustomColor))]
+        private sealed class WButtonCustomColorDrawer : PropertyDrawer
+        {
+            public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+            {
+                return EditorGUIUtility.singleLineHeight;
+            }
+
+            public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+            {
+                SerializedProperty buttonColor = property.FindPropertyRelative("buttonColor");
+                SerializedProperty textColor = property.FindPropertyRelative("textColor");
+
+                float spacing = EditorGUIUtility.standardVerticalSpacing;
+                float halfWidth = (position.width - spacing) * 0.5f;
+                Rect buttonRect = new(position.x, position.y, halfWidth, position.height);
+                Rect textRect = new(
+                    position.x + halfWidth + spacing,
+                    position.y,
+                    halfWidth,
+                    position.height
+                );
+
+                EditorGUI.PropertyField(
+                    buttonRect,
+                    buttonColor,
+                    EditorGUIUtility.TrTextContent("Button")
+                );
+                EditorGUI.PropertyField(
+                    textRect,
+                    textColor,
+                    EditorGUIUtility.TrTextContent("Text")
+                );
+            }
+        }
+#endif
 
         /// <summary>
         /// Retrieves the effective page size for StringInList drawers, clamped to safe bounds.
@@ -584,6 +624,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// </summary>
         public void SaveSettings()
         {
+            EnsureWButtonCustomColorDefaults();
             ApplyRuntimeConfiguration();
             Save(true);
         }
@@ -656,7 +697,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     changed = true;
                 }
 
-                if (value.ButtonColor.maxColorComponent <= 0f)
+                bool needsSuggestion =
+                    value.ButtonColor.maxColorComponent <= 0f
+                    || (
+                        ColorsApproximatelyEqual(value.ButtonColor, Color.white)
+                        && ColorsApproximatelyEqual(value.TextColor, Color.black)
+                    );
+
+                if (needsSuggestion)
                 {
                     Color suggested = WButtonColorUtility.SuggestPaletteColor(paletteIndex);
                     value.ButtonColor = suggested;
@@ -667,7 +715,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 {
                     Color previousText = value.TextColor;
                     value.EnsureReadableText();
-                    if (value.TextColor != previousText)
+                    if (!ColorsApproximatelyEqual(value.TextColor, previousText))
                     {
                         changed = true;
                     }
@@ -681,6 +729,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         private bool MigrateLegacyWButtonPalette()
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             if (legacyWButtonPriorityColors == null || legacyWButtonPriorityColors.Count == 0)
             {
                 return false;
@@ -690,6 +739,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             for (int index = 0; index < legacyWButtonPriorityColors.Count; index++)
             {
                 WButtonPriorityColor legacy = legacyWButtonPriorityColors[index];
+#pragma warning restore CS0618 // Type or member is obsolete
                 if (legacy == null)
                 {
                     continue;
@@ -1133,6 +1183,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             );
 
             EditorGUILayout.PropertyField(paletteProperty, label, true);
+        }
+
+        private static bool ColorsApproximatelyEqual(Color left, Color right)
+        {
+            const float tolerance = 0.01f;
+            return Mathf.Abs(left.r - right.r) <= tolerance
+                && Mathf.Abs(left.g - right.g) <= tolerance
+                && Mathf.Abs(left.b - right.b) <= tolerance
+                && Mathf.Abs(left.a - right.a) <= tolerance;
         }
     }
 #endif

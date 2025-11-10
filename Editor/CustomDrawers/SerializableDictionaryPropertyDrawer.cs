@@ -2058,11 +2058,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             Rect keyRect = new(PendingSectionPadding, innerY, innerWidth, rowHeight);
-            pending.key = DrawFieldForType(keyRect, "Key", pending.key, keyType);
+            pending.key = DrawFieldForType(keyRect, "Key", pending.key, keyType, pending, false);
             innerY += rowHeight + spacing;
 
             Rect valueRect = new(PendingSectionPadding, innerY, innerWidth, rowHeight);
-            pending.value = DrawFieldForType(valueRect, "Value", pending.value, valueType);
+            pending.value = DrawFieldForType(
+                valueRect,
+                "Value",
+                pending.value,
+                valueType,
+                pending,
+                true
+            );
             innerY += rowHeight + spacing;
 
             bool keySupported = IsTypeSupported(keyType);
@@ -2177,6 +2184,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     {
                         pending.key = GetDefaultValue(keyType);
                         pending.value = GetDefaultValue(valueType);
+                        ReleasePendingWrapper(pending, false);
+                        ReleasePendingWrapper(pending, true);
                     }
 
                     if (result.index >= 0)
@@ -2271,6 +2280,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             pending.key = GetDefaultValue(keyType);
             pending.value = GetDefaultValue(valueType);
+            ReleasePendingWrapper(pending, false);
+            ReleasePendingWrapper(pending, true);
         }
 
         private static GUIStyle GetSolidButtonStyle(string action, bool enabled)
@@ -3127,9 +3138,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return _footerLabelStyle;
         }
 
-        private static object DrawFieldForType(Rect rect, string label, object current, Type type)
+        private static object DrawFieldForType(
+            Rect rect,
+            string label,
+            object current,
+            Type type,
+            PendingEntry pending,
+            bool isValueField
+        )
         {
             GUIContent content = new(label);
+
+            if (TryDrawComplexTypeField(rect, content, ref current, type, pending, isValueField))
+            {
+                return current;
+            }
 
             if (!IsTypeSupported(type))
             {
@@ -3264,8 +3287,59 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return current;
         }
 
+        private static bool TryDrawComplexTypeField(
+            Rect rect,
+            GUIContent content,
+            ref object current,
+            Type type,
+            PendingEntry pending,
+            bool isValueField
+        )
+        {
+            if (pending == null || !TypeSupportsComplexEditing(type))
+            {
+                return false;
+            }
+
+            PendingWrapperContext context = EnsurePendingWrapper(pending, type, isValueField);
+            if (context.Property == null)
+            {
+                return false;
+            }
+
+            object targetValue = current ?? GetDefaultValue(type);
+            object wrapperValue = context.Wrapper.GetValue();
+            if (!ValuesEqual(wrapperValue, targetValue))
+            {
+                context.Wrapper.SetValue(CloneComplexValue(targetValue, type));
+                context.Serialized.Update();
+            }
+
+            if (type.IsClass && context.Wrapper.GetValue() == null)
+            {
+                context.Wrapper.SetValue(GetDefaultValue(type));
+                context.Serialized.Update();
+            }
+
+            EditorGUI.BeginChangeCheck();
+            EditorGUI.PropertyField(rect, context.Property, content, includeChildren: true);
+            if (EditorGUI.EndChangeCheck())
+            {
+                context.Serialized.ApplyModifiedProperties();
+                object updated = context.Wrapper.GetValue();
+                current = CloneComplexValue(updated, type);
+            }
+
+            return true;
+        }
+
         private static bool IsTypeSupported(Type type)
         {
+            if (type == null)
+            {
+                return false;
+            }
+
             return type == typeof(string)
                 || type == typeof(int)
                 || type == typeof(float)
@@ -3284,10 +3358,218 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 || type == typeof(Color)
                 || type == typeof(AnimationCurve)
                 || type.IsEnum
-                || typeof(UnityEngine.Object).IsAssignableFrom(type);
+                || typeof(UnityEngine.Object).IsAssignableFrom(type)
+                || TypeSupportsComplexEditing(type);
         }
 
-        private static void SetPropertyValue(SerializedProperty property, object value, Type type)
+        private static bool TypeSupportsComplexEditing(Type type)
+        {
+            if (type == null)
+            {
+                return false;
+            }
+
+            if (typeof(UnityEngine.Object).IsAssignableFrom(type))
+            {
+                return true;
+            }
+
+            if (type.IsArray)
+            {
+                return TypeSupportsComplexEditing(type.GetElementType());
+            }
+
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>))
+            {
+                return TypeSupportsComplexEditing(type.GetGenericArguments()[0]);
+            }
+
+            return type.IsSerializable;
+        }
+
+        private static PendingWrapperContext EnsurePendingWrapper(
+            PendingEntry pending,
+            Type type,
+            bool isValueField
+        )
+        {
+            if (pending == null)
+            {
+                return PendingWrapperContext.Empty;
+            }
+
+            ScriptableObject wrapper = isValueField ? pending.valueWrapper : pending.keyWrapper;
+            SerializedObject serialized = isValueField
+                ? pending.valueWrapperSerialized
+                : pending.keyWrapperSerialized;
+            SerializedProperty property = isValueField
+                ? pending.valueWrapperProperty
+                : pending.keyWrapperProperty;
+
+            Type wrapperType = typeof(PendingValueWrapper<>).MakeGenericType(type);
+            if (wrapper == null || wrapper.GetType() != wrapperType)
+            {
+                if (wrapper != null)
+                {
+                    ScriptableObject.DestroyImmediate(wrapper);
+                }
+
+                wrapper = ScriptableObject.CreateInstance(wrapperType);
+                serialized = null;
+                property = null;
+            }
+
+            PendingValueWrapper baseWrapper = (PendingValueWrapper)wrapper;
+            if (serialized == null)
+            {
+                serialized = new SerializedObject(wrapper);
+                property = baseWrapper.FindValueProperty(serialized);
+            }
+
+            if (isValueField)
+            {
+                pending.valueWrapper = wrapper;
+                pending.valueWrapperSerialized = serialized;
+                pending.valueWrapperProperty = property;
+            }
+            else
+            {
+                pending.keyWrapper = wrapper;
+                pending.keyWrapperSerialized = serialized;
+                pending.keyWrapperProperty = property;
+            }
+
+            return new PendingWrapperContext(baseWrapper, serialized, property);
+        }
+
+        private static void ReleasePendingWrapper(PendingEntry pending, bool isValueField)
+        {
+            if (pending == null)
+            {
+                return;
+            }
+
+            if (isValueField)
+            {
+                if (pending.valueWrapper != null)
+                {
+                    ScriptableObject.DestroyImmediate(pending.valueWrapper);
+                }
+
+                pending.valueWrapper = null;
+                pending.valueWrapperSerialized = null;
+                pending.valueWrapperProperty = null;
+            }
+            else
+            {
+                if (pending.keyWrapper != null)
+                {
+                    ScriptableObject.DestroyImmediate(pending.keyWrapper);
+                }
+
+                pending.keyWrapper = null;
+                pending.keyWrapperSerialized = null;
+                pending.keyWrapperProperty = null;
+            }
+        }
+
+        private static object CloneComplexValue(object source, Type type)
+        {
+            if (source == null)
+            {
+                if (type == null)
+                {
+                    return null;
+                }
+
+                if (type.IsValueType)
+                {
+                    return Activator.CreateInstance(type);
+                }
+
+                return null;
+            }
+
+            if (
+                type == null
+                || type.IsValueType
+                || typeof(UnityEngine.Object).IsAssignableFrom(type)
+            )
+            {
+                return source;
+            }
+
+            try
+            {
+                string json = JsonUtility.ToJson(source);
+                object clone = Activator.CreateInstance(type);
+                JsonUtility.FromJsonOverwrite(json, clone);
+                return clone;
+            }
+            catch
+            {
+                return source;
+            }
+        }
+
+        private abstract class PendingValueWrapper : ScriptableObject
+        {
+            public abstract object GetValue();
+
+            public abstract void SetValue(object value);
+
+            public abstract SerializedProperty FindValueProperty(SerializedObject serializedObject);
+        }
+
+        private sealed class PendingValueWrapper<T> : PendingValueWrapper
+        {
+            public T value;
+
+            public override object GetValue()
+            {
+                return value;
+            }
+
+            public override void SetValue(object incoming)
+            {
+                if (incoming is T typed)
+                {
+                    value = typed;
+                    return;
+                }
+
+                value = default;
+            }
+
+            public override SerializedProperty FindValueProperty(SerializedObject serializedObject)
+            {
+                return serializedObject.FindProperty(nameof(value));
+            }
+        }
+
+        private readonly struct PendingWrapperContext
+        {
+            public static readonly PendingWrapperContext Empty = new(null, null, null);
+
+            public PendingWrapperContext(
+                PendingValueWrapper wrapper,
+                SerializedObject serialized,
+                SerializedProperty property
+            )
+            {
+                Wrapper = wrapper;
+                Serialized = serialized;
+                Property = property;
+            }
+
+            public PendingValueWrapper Wrapper { get; }
+
+            public SerializedObject Serialized { get; }
+
+            public SerializedProperty Property { get; }
+        }
+
+        internal static void SetPropertyValue(SerializedProperty property, object value, Type type)
         {
             switch (property.propertyType)
             {
@@ -3368,6 +3650,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 case SerializedPropertyType.ManagedReference:
                     property.managedReferenceValue = value;
                     break;
+                case SerializedPropertyType.Generic:
+                    CopyComplexValueToProperty(property, value, type);
+                    break;
                 default:
                     throw new NotSupportedException(
                         $"Unsupported property type: {property.propertyType}"
@@ -3375,7 +3660,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static object GetPropertyValue(SerializedProperty property, Type type)
+        internal static object GetPropertyValue(SerializedProperty property, Type type)
         {
             switch (property.propertyType)
             {
@@ -3431,8 +3716,162 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return property.hash128Value;
                 case SerializedPropertyType.ManagedReference:
                     return property.managedReferenceValue;
+                case SerializedPropertyType.Generic:
+                    return CopyComplexValueFromProperty(property, type);
                 default:
                     return null;
+            }
+        }
+
+        private static void CopyComplexValueToProperty(
+            SerializedProperty destination,
+            object value,
+            Type valueType
+        )
+        {
+            if (destination == null)
+            {
+                return;
+            }
+
+            if (destination.propertyType == SerializedPropertyType.ManagedReference)
+            {
+                destination.managedReferenceValue = value;
+                return;
+            }
+
+            if (destination.propertyType != SerializedPropertyType.Generic)
+            {
+                return;
+            }
+
+            if (value == null)
+            {
+                ClearComplexProperty(destination, valueType);
+                return;
+            }
+
+            foreach (FieldInfo field in GetSerializableFields(valueType))
+            {
+                SerializedProperty child = destination.FindPropertyRelative(field.Name);
+                if (child == null)
+                {
+                    continue;
+                }
+
+                object fieldValue = field.GetValue(value);
+                SetPropertyValue(child, fieldValue, field.FieldType);
+            }
+        }
+
+        private static object CopyComplexValueFromProperty(
+            SerializedProperty source,
+            Type valueType
+        )
+        {
+            if (valueType == null)
+            {
+                return null;
+            }
+
+            if (source.propertyType == SerializedPropertyType.ManagedReference)
+            {
+                return CloneComplexValue(source.managedReferenceValue, valueType);
+            }
+
+            if (source.propertyType != SerializedPropertyType.Generic)
+            {
+                return null;
+            }
+
+            object instance;
+            try
+            {
+                instance = Activator.CreateInstance(valueType);
+            }
+            catch
+            {
+                return null;
+            }
+
+            foreach (FieldInfo field in GetSerializableFields(valueType))
+            {
+                SerializedProperty child = source.FindPropertyRelative(field.Name);
+                if (child == null)
+                {
+                    continue;
+                }
+
+                object fieldValue = GetPropertyValue(child, field.FieldType);
+                field.SetValue(instance, fieldValue);
+            }
+
+            return instance;
+        }
+
+        private static void ClearComplexProperty(SerializedProperty property, Type type)
+        {
+            if (property == null || type == null)
+            {
+                return;
+            }
+
+            foreach (FieldInfo field in GetSerializableFields(type))
+            {
+                SerializedProperty child = property.FindPropertyRelative(field.Name);
+                if (child == null)
+                {
+                    continue;
+                }
+
+                object defaultValue = GetDefaultValue(field.FieldType);
+                SetPropertyValue(child, defaultValue, field.FieldType);
+            }
+        }
+
+        private static IEnumerable<FieldInfo> GetSerializableFields(Type type)
+        {
+            if (type == null)
+            {
+                yield break;
+            }
+
+            const BindingFlags Flags =
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+            Type current = type;
+            HashSet<string> yielded = new();
+
+            while (current != null && current != typeof(object))
+            {
+                FieldInfo[] fields = current.GetFields(Flags);
+                for (int index = 0; index < fields.Length; index++)
+                {
+                    FieldInfo field = fields[index];
+                    if (field.IsStatic || field.IsInitOnly || field.IsLiteral)
+                    {
+                        continue;
+                    }
+
+                    if (field.IsNotSerialized)
+                    {
+                        continue;
+                    }
+
+                    if (!field.IsPublic && field.GetCustomAttribute<SerializeField>() == null)
+                    {
+                        continue;
+                    }
+
+                    if (!yielded.Add($"{field.DeclaringType?.FullName}.{field.Name}"))
+                    {
+                        continue;
+                    }
+
+                    yield return field;
+                }
+
+                current = current.BaseType;
             }
         }
 
@@ -3531,7 +3970,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return left.Equals(right);
         }
 
-        private static object GetDefaultValue(Type type)
+        internal static object GetDefaultValue(Type type)
         {
             if (type == typeof(string))
             {
@@ -3553,7 +3992,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return Activator.CreateInstance(type);
             }
 
-            return null;
+            try
+            {
+                return Activator.CreateInstance(type);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private struct CommitResult
@@ -3576,6 +4022,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public bool isExpanded;
             public AnimBool foldoutAnim;
             public bool isSorted;
+            public ScriptableObject keyWrapper;
+            public SerializedObject keyWrapperSerialized;
+            public SerializedProperty keyWrapperProperty;
+            public ScriptableObject valueWrapper;
+            public SerializedObject valueWrapperSerialized;
+            public SerializedProperty valueWrapperProperty;
         }
 
         public sealed class NullKeyInfo
