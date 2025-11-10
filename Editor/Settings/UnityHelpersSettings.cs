@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Editor.WButton;
 
     /// <summary>
     /// Project-wide configuration surface for Unity Helpers editor tooling.
@@ -29,6 +30,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const int MaxWButtonHistorySize = 10;
         public const string DefaultWButtonPriority = "Default";
         public const int DefaultDuplicateTweenCycles = 3;
+        private static readonly Color DefaultPriorityButtonColor = new(0.243f, 0.525f, 0.988f, 1f);
+
+        public readonly struct WButtonPaletteEntry
+        {
+            public WButtonPaletteEntry(Color buttonColor, Color textColor)
+            {
+                ButtonColor = buttonColor;
+                TextColor = textColor;
+            }
+
+            public Color ButtonColor { get; }
+
+            public Color TextColor { get; }
+        }
 
         public enum DuplicateRowAnimationMode
         {
@@ -154,14 +169,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             private string priority = DefaultWButtonPriority;
 
             [SerializeField]
-            private Color color = Color.white;
+            private Color buttonColor = Color.white;
+
+            [SerializeField]
+            private Color textColor = Color.black;
 
             public WButtonPriorityColor() { }
 
-            public WButtonPriorityColor(string priority, Color color)
+            public WButtonPriorityColor(string priority, Color buttonColor, Color textColor)
             {
                 Priority = priority;
-                Color = color;
+                ButtonColor = buttonColor;
+                TextColor = textColor;
             }
 
             public string Priority
@@ -174,10 +193,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         : value.Trim();
             }
 
-            public Color Color
+            public Color ButtonColor
             {
-                get => color;
-                set => color = value;
+                get => buttonColor;
+                set => buttonColor = value;
+            }
+
+            public Color TextColor
+            {
+                get => textColor;
+                set => textColor = value;
             }
         }
 
@@ -263,9 +288,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             List<string> patterns = new(serializableTypeIgnorePatterns.Count);
-            for (int index = 0; index < serializableTypeIgnorePatterns.Count; index++)
+            foreach (SerializableTypeIgnorePattern entry in serializableTypeIgnorePatterns)
             {
-                SerializableTypeIgnorePattern entry = serializableTypeIgnorePatterns[index];
                 if (entry == null)
                 {
                     continue;
@@ -314,9 +338,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             );
         }
 
-        public static Color ResolveWButtonColor(string priority)
+        public static WButtonPaletteEntry ResolveWButtonPalette(string priority)
         {
-            return instance.GetWButtonPriorityColor(priority);
+            return instance.GetWButtonPaletteEntry(priority);
         }
 
         public static DuplicateRowAnimationMode GetDuplicateRowAnimationMode()
@@ -417,16 +441,41 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
             bool changed = false;
             RemoveNullPaletteEntries();
+            changed |= EnsurePriorityTextColors();
 
             if (!ContainsPriority(DefaultWButtonPriority))
             {
+                Color defaultButton = DefaultPriorityButtonColor;
+                Color defaultText = WButtonColorUtility.GetReadableTextColor(defaultButton);
                 wbuttonPriorityColors.Add(
-                    new WButtonPriorityColor(
-                        DefaultWButtonPriority,
-                        new Color(0.243f, 0.525f, 0.988f)
-                    )
+                    new WButtonPriorityColor(DefaultWButtonPriority, defaultButton, defaultText)
                 );
                 changed = true;
+            }
+
+            return changed;
+        }
+
+        private bool EnsurePriorityTextColors()
+        {
+            if (wbuttonPriorityColors == null)
+            {
+                return false;
+            }
+
+            bool changed = false;
+            foreach (WButtonPriorityColor entry in wbuttonPriorityColors)
+            {
+                if (entry == null)
+                {
+                    continue;
+                }
+
+                if (entry.TextColor.maxColorComponent <= 0f)
+                {
+                    entry.TextColor = WButtonColorUtility.GetReadableTextColor(entry.ButtonColor);
+                    changed = true;
+                }
             }
 
             return changed;
@@ -450,9 +499,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return false;
             }
 
-            for (int index = 0; index < wbuttonPriorityColors.Count; index++)
+            foreach (WButtonPriorityColor entry in wbuttonPriorityColors)
             {
-                WButtonPriorityColor entry = wbuttonPriorityColors[index];
                 if (entry == null)
                 {
                     continue;
@@ -473,16 +521,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return false;
         }
 
-        public Color GetWButtonPriorityColor(string priority)
+        private WButtonPaletteEntry GetWButtonPaletteEntry(string priority)
         {
             string key = string.IsNullOrWhiteSpace(priority)
                 ? DefaultWButtonPriority
                 : priority.Trim();
             if (wbuttonPriorityColors != null)
             {
-                for (int index = 0; index < wbuttonPriorityColors.Count; index++)
+                foreach (WButtonPriorityColor entry in wbuttonPriorityColors)
                 {
-                    WButtonPriorityColor entry = wbuttonPriorityColors[index];
                     if (entry == null)
                     {
                         continue;
@@ -496,7 +543,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         )
                     )
                     {
-                        return entry.Color;
+                        return new WButtonPaletteEntry(entry.ButtonColor, entry.TextColor);
                     }
                 }
             }
@@ -509,10 +556,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 )
             )
             {
-                return GetWButtonPriorityColor(DefaultWButtonPriority);
+                return GetWButtonPaletteEntry(DefaultWButtonPriority);
             }
 
-            return Color.white;
+            Color fallbackButton = DefaultPriorityButtonColor;
+            Color fallbackText = WButtonColorUtility.GetReadableTextColor(fallbackButton);
+            return new WButtonPaletteEntry(fallbackButton, fallbackText);
         }
 
         private static void DrawSerializableTypeIgnorePatterns(
@@ -632,7 +681,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 guiHandler = _ =>
                 {
                     UnityHelpersSettings settings = instance;
-                    SerializedObject serializedSettings = new SerializedObject(settings);
+                    SerializedObject serializedSettings = new(settings);
                     SerializedProperty pageSizeProperty = serializedSettings.FindProperty(
                         "stringInListPageSize"
                     );
@@ -753,7 +802,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return;
             }
 
-            GUIContent label = new GUIContent(
+            GUIContent label = new(
                 "WButton Priority Colors",
                 "Configure named colors applied to WButton priorities. Buttons referencing a priority key will render using the associated color."
             );
@@ -774,12 +823,49 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             {
                 SerializedProperty element = paletteProperty.GetArrayElementAtIndex(index);
                 SerializedProperty priorityProperty = element.FindPropertyRelative("priority");
-                SerializedProperty colorProperty = element.FindPropertyRelative("color");
+                SerializedProperty buttonColorProperty = element.FindPropertyRelative(
+                    "buttonColor"
+                );
+                SerializedProperty textColorProperty = element.FindPropertyRelative("textColor");
 
                 using (new EditorGUILayout.HorizontalScope())
                 {
-                    EditorGUILayout.PropertyField(priorityProperty, GUIContent.none);
-                    EditorGUILayout.PropertyField(colorProperty, GUIContent.none);
+                    EditorGUILayout.PropertyField(
+                        priorityProperty,
+                        GUIContent.none,
+                        GUILayout.Width(180f)
+                    );
+
+                    using (new EditorGUILayout.VerticalScope(GUILayout.Width(200f)))
+                    {
+                        Color previousButtonColor = buttonColorProperty.colorValue;
+                        Color previousSuggestedText = WButtonColorUtility.GetReadableTextColor(
+                            previousButtonColor
+                        );
+
+                        EditorGUILayout.PropertyField(
+                            buttonColorProperty,
+                            new GUIContent("Button")
+                        );
+
+                        if (buttonColorProperty.colorValue != previousButtonColor)
+                        {
+                            Color suggestedText = WButtonColorUtility.GetReadableTextColor(
+                                buttonColorProperty.colorValue
+                            );
+                            if (
+                                ColorsApproximatelyEqual(
+                                    textColorProperty.colorValue,
+                                    previousSuggestedText
+                                )
+                            )
+                            {
+                                textColorProperty.colorValue = suggestedText;
+                            }
+                        }
+
+                        EditorGUILayout.PropertyField(textColorProperty, new GUIContent("Text"));
+                    }
 
                     if (GUILayout.Button("Remove", GUILayout.Width(80f)))
                     {
@@ -797,7 +883,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     paletteProperty.InsertArrayElementAtIndex(newIndex);
                     SerializedProperty element = paletteProperty.GetArrayElementAtIndex(newIndex);
                     element.FindPropertyRelative("priority").stringValue = DefaultWButtonPriority;
-                    element.FindPropertyRelative("color").colorValue = Color.white;
+                    Color suggestedButton = WButtonColorUtility.SuggestPaletteColor(newIndex);
+                    element.FindPropertyRelative("buttonColor").colorValue = suggestedButton;
+                    element.FindPropertyRelative("textColor").colorValue =
+                        WButtonColorUtility.GetReadableTextColor(suggestedButton);
                 }
 
                 if (GUILayout.Button("Reset Palette", GUILayout.Width(120f)))
@@ -807,17 +896,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     SerializedProperty defaultElement = paletteProperty.GetArrayElementAtIndex(0);
                     defaultElement.FindPropertyRelative("priority").stringValue =
                         DefaultWButtonPriority;
-                    defaultElement.FindPropertyRelative("color").colorValue = new Color(
-                        0.243f,
-                        0.525f,
-                        0.988f
-                    );
+                    defaultElement.FindPropertyRelative("buttonColor").colorValue =
+                        DefaultPriorityButtonColor;
+                    defaultElement.FindPropertyRelative("textColor").colorValue =
+                        WButtonColorUtility.GetReadableTextColor(DefaultPriorityButtonColor);
                 }
 
                 GUILayout.FlexibleSpace();
             }
 
             EditorGUI.indentLevel--;
+        }
+
+        private static bool ColorsApproximatelyEqual(Color left, Color right)
+        {
+            const float tolerance = 0.01f;
+            return Mathf.Abs(left.r - right.r) <= tolerance
+                && Mathf.Abs(left.g - right.g) <= tolerance
+                && Mathf.Abs(left.b - right.b) <= tolerance
+                && Mathf.Abs(left.a - right.a) <= tolerance;
         }
     }
 #endif

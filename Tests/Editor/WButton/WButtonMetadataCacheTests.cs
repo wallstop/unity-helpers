@@ -115,17 +115,28 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
             SerializedObject serialized = new SerializedObject(settings);
             SerializedProperty palette = serialized.FindProperty("wbuttonPriorityColors");
-            List<(string Priority, Color Color)> originalEntries = new List<(string, Color)>();
+            List<(string Priority, Color ButtonColor, Color TextColor)> originalEntries =
+                new List<(string, Color, Color)>();
             for (int index = 0; index < palette.arraySize; index++)
             {
                 SerializedProperty element = palette.GetArrayElementAtIndex(index);
                 SerializedProperty priority = element.FindPropertyRelative("priority");
-                SerializedProperty colorProperty = element.FindPropertyRelative("color");
-                originalEntries.Add((priority.stringValue, colorProperty.colorValue));
+                SerializedProperty buttonColorProperty = element.FindPropertyRelative(
+                    "buttonColor"
+                );
+                SerializedProperty textColorProperty = element.FindPropertyRelative("textColor");
+                originalEntries.Add(
+                    (
+                        priority.stringValue,
+                        buttonColorProperty.colorValue,
+                        textColorProperty.colorValue
+                    )
+                );
             }
 
             string priorityKey = "Critical";
             Color expectedColor = new Color(0.85f, 0.2f, 0.2f);
+            Color expectedTextColor = WButtonColorUtility.GetReadableTextColor(expectedColor);
 
             try
             {
@@ -142,8 +153,14 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                         )
                     )
                     {
-                        SerializedProperty colorProperty = element.FindPropertyRelative("color");
-                        colorProperty.colorValue = expectedColor;
+                        SerializedProperty buttonColorProperty = element.FindPropertyRelative(
+                            "buttonColor"
+                        );
+                        buttonColorProperty.colorValue = expectedColor;
+                        SerializedProperty textColorProperty = element.FindPropertyRelative(
+                            "textColor"
+                        );
+                        textColorProperty.colorValue = expectedTextColor;
                         found = true;
                         break;
                     }
@@ -156,17 +173,22 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                         palette.arraySize - 1
                     );
                     element.FindPropertyRelative("priority").stringValue = priorityKey;
-                    element.FindPropertyRelative("color").colorValue = expectedColor;
+                    element.FindPropertyRelative("buttonColor").colorValue = expectedColor;
+                    element.FindPropertyRelative("textColor").colorValue = expectedTextColor;
                 }
 
                 serialized.ApplyModifiedPropertiesWithoutUndo();
                 settings.SaveSettings();
 
-                Color resolvedCustom = UnityHelpersSettings.ResolveWButtonColor(priorityKey);
-                Assert.That(resolvedCustom, Is.EqualTo(expectedColor));
+                UnityHelpersSettings.WButtonPaletteEntry resolvedCustom =
+                    UnityHelpersSettings.ResolveWButtonPalette(priorityKey);
+                Assert.That(resolvedCustom.ButtonColor, Is.EqualTo(expectedColor));
+                Assert.That(resolvedCustom.TextColor, Is.EqualTo(expectedTextColor));
 
-                Color resolvedDefault = UnityHelpersSettings.ResolveWButtonColor(null);
-                Assert.That(resolvedDefault.a, Is.GreaterThan(0.9f));
+                UnityHelpersSettings.WButtonPaletteEntry resolvedDefault =
+                    UnityHelpersSettings.ResolveWButtonPalette(null);
+                Assert.That(resolvedDefault.ButtonColor.a, Is.GreaterThan(0.9f));
+                Assert.That(resolvedDefault.TextColor.a, Is.GreaterThan(0.9f));
             }
             finally
             {
@@ -179,7 +201,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                     element.FindPropertyRelative("priority").stringValue = originalEntries[
                         index
                     ].Priority;
-                    element.FindPropertyRelative("color").colorValue = originalEntries[index].Color;
+                    element.FindPropertyRelative("buttonColor").colorValue = originalEntries[
+                        index
+                    ].ButtonColor;
+                    element.FindPropertyRelative("textColor").colorValue = originalEntries[
+                        index
+                    ].TextColor;
                 }
                 serialized.ApplyModifiedPropertiesWithoutUndo();
                 settings.SaveSettings();

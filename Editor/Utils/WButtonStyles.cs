@@ -13,9 +13,11 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
         private static GUIStyle _arrayHeaderStyle;
         private static GUIContent _topHeaderContent;
         private static GUIContent _bottomHeaderContent;
-        private static readonly Dictionary<Color, GUIStyle> ColoredButtonStyles = new Dictionary<
+        private static readonly Dictionary<ButtonStyleKey, GUIStyle> ColoredButtonStyles =
+            new Dictionary<ButtonStyleKey, GUIStyle>(new ButtonStyleKeyComparer());
+        private static readonly Dictionary<Color, Texture2D> SolidColorTextures = new Dictionary<
             Color,
-            GUIStyle
+            Texture2D
         >(new ColorComparer());
 
         internal const float ButtonHeight = 28f;
@@ -90,16 +92,16 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             }
         }
 
-        internal static GUIStyle GetColoredButtonStyle(Color background)
+        internal static GUIStyle GetColoredButtonStyle(Color buttonColor, Color textColor)
         {
             GUIStyle baseStyle = ButtonStyle;
-            if (ColoredButtonStyles.TryGetValue(background, out GUIStyle cached))
+            ButtonStyleKey key = new(buttonColor, textColor);
+            if (ColoredButtonStyles.TryGetValue(key, out GUIStyle cached))
             {
                 return cached;
             }
 
             GUIStyle style = new GUIStyle(baseStyle) { fixedHeight = ButtonHeight };
-            Color textColor = GetPreferredTextColor(background);
             style.normal.textColor = textColor;
             style.focused.textColor = textColor;
             style.active.textColor = textColor;
@@ -108,35 +110,97 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             style.onFocused.textColor = textColor;
             style.onActive.textColor = textColor;
             style.onHover.textColor = textColor;
-            ColoredButtonStyles[background] = style;
+
+            Texture2D normal = GetSolidTexture(buttonColor);
+            Texture2D hover = GetSolidTexture(WButtonColorUtility.GetHoverColor(buttonColor));
+            Texture2D active = GetSolidTexture(WButtonColorUtility.GetActiveColor(buttonColor));
+
+            style.normal.background = normal;
+            style.focused.background = normal;
+            style.onNormal.background = normal;
+            style.onFocused.background = normal;
+
+            style.hover.background = hover;
+            style.onHover.background = hover;
+
+            style.active.background = active;
+            style.onActive.background = active;
+
+            ColoredButtonStyles[key] = style;
             return style;
         }
 
-        internal static void DrawButtonBackground(Rect rect, Color color)
+        private static Texture2D GetSolidTexture(Color color)
         {
-            if (Event.current.type != EventType.Repaint)
+            if (SolidColorTextures.TryGetValue(color, out Texture2D cached))
             {
-                return;
+                return cached;
             }
 
-            EditorGUI.DrawRect(rect, color);
+            Texture2D texture = new Texture2D(1, 1)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+                filterMode = FilterMode.Point,
+            };
+            texture.SetPixel(0, 0, color);
+            texture.Apply();
+            SolidColorTextures[color] = texture;
+            return texture;
         }
 
-        private static Color GetPreferredTextColor(Color background)
+        private readonly struct ButtonStyleKey : System.IEquatable<ButtonStyleKey>
         {
-            float luminance =
-                (0.299f * background.r) + (0.587f * background.g) + (0.114f * background.b);
-            return luminance > 0.5f ? Color.black : Color.white;
+            internal ButtonStyleKey(Color buttonColor, Color textColor)
+            {
+                ButtonColor = buttonColor;
+                TextColor = textColor;
+            }
+
+            internal Color ButtonColor { get; }
+
+            internal Color TextColor { get; }
+
+            public bool Equals(ButtonStyleKey other)
+            {
+                return ColorComparer.AreEqual(ButtonColor, other.ButtonColor)
+                    && ColorComparer.AreEqual(TextColor, other.TextColor);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is ButtonStyleKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    int hash = 17;
+                    hash = (hash * 23) + ButtonColor.GetHashCode();
+                    hash = (hash * 23) + TextColor.GetHashCode();
+                    return hash;
+                }
+            }
+        }
+
+        private sealed class ButtonStyleKeyComparer : IEqualityComparer<ButtonStyleKey>
+        {
+            public bool Equals(ButtonStyleKey x, ButtonStyleKey y)
+            {
+                return x.Equals(y);
+            }
+
+            public int GetHashCode(ButtonStyleKey obj)
+            {
+                return obj.GetHashCode();
+            }
         }
 
         private sealed class ColorComparer : IEqualityComparer<Color>
         {
             public bool Equals(Color x, Color y)
             {
-                return Mathf.Approximately(x.r, y.r)
-                    && Mathf.Approximately(x.g, y.g)
-                    && Mathf.Approximately(x.b, y.b)
-                    && Mathf.Approximately(x.a, y.a);
+                return AreEqual(x, y);
             }
 
             public int GetHashCode(Color obj)
@@ -150,6 +214,14 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                     hash = (hash * 23) + obj.a.GetHashCode();
                     return hash;
                 }
+            }
+
+            public static bool AreEqual(Color x, Color y)
+            {
+                return Mathf.Approximately(x.r, y.r)
+                    && Mathf.Approximately(x.g, y.g)
+                    && Mathf.Approximately(x.b, y.b)
+                    && Mathf.Approximately(x.a, y.a);
             }
         }
     }

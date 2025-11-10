@@ -242,15 +242,18 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
             DrawInvocationStatus(context);
 
-            Color buttonColor = UnityHelpersSettings.ResolveWButtonColor(metadata.Priority);
-            GUIStyle buttonStyle = WButtonStyles.GetColoredButtonStyle(buttonColor);
+            UnityHelpersSettings.WButtonPaletteEntry palette =
+                UnityHelpersSettings.ResolveWButtonPalette(metadata.Priority);
+            GUIStyle buttonStyle = WButtonStyles.GetColoredButtonStyle(
+                palette.ButtonColor,
+                palette.TextColor
+            );
             Rect buttonRect = GUILayoutUtility.GetRect(
                 new GUIContent(metadata.DisplayName),
                 buttonStyle,
                 GUILayout.Height(WButtonStyles.ButtonHeight),
                 GUILayout.ExpandWidth(true)
             );
-            WButtonStyles.DrawButtonBackground(buttonRect, buttonColor);
 
             if (GUI.Button(buttonRect, metadata.DisplayName, buttonStyle))
             {

@@ -39,8 +39,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
     public enum WInLineEditorMode
     {
-        AlwaysExpanded,
-        FoldoutExpanded,
-        FoldoutCollapsed,
+        [Obsolete("Please use a valid value")]
+        None = 0,
+        AlwaysExpanded = 1,
+        FoldoutExpanded = 2,
+        FoldoutCollapsed = 3,
     }
 }

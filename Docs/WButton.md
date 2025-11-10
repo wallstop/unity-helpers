@@ -39,8 +39,8 @@ public sealed class ExampleBehaviour : MonoBehaviour
 ## Priority Palette & Colours
 
 - Every button can declare a `priority` string. The inspector resolves that key against the **WButton Priority Colors** palette in _Project Settings → Wallstop Studios → Unity Helpers_.
-- Palette entries are stored as name → colour pairs and can be modified, reordered, or reset to defaults. The default `Default` entry uses a blue tone, but you can define additional priorities such as `Warning`, `Danger`, or `Critical`.
-- When a button does not specify a priority (or when the key is missing), the drawer falls back to the `Default` colour. Colours are applied as true background fills rather than tints, and text colour automatically flips between black/white for readability.
+- Palette entries now store both the button background colour and the text colour. New priorities auto-pick a complimentary hue and a readable text colour, but you can tailor either value to match your branding.
+- When a button does not specify a priority (or when the key is missing), the drawer falls back to the `Default` palette entry. Colours are applied directly to the button surface, not the surrounding container, so the priority scheme remains distinct.
 
 ## Execution Behaviour
 

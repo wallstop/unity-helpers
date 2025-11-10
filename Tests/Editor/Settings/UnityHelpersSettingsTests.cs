@@ -117,14 +117,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         }
 
         [Test]
-        public void ResolveWButtonColorFallsBackToDefault()
+        public void ResolveWButtonPaletteFallsBackToDefault()
         {
-            UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            Color defaultColor = UnityHelpersSettings.ResolveWButtonColor(
-                UnityHelpersSettings.DefaultWButtonPriority
-            );
-            Color missingColor = UnityHelpersSettings.ResolveWButtonColor("NonExistentPriority");
-            Assert.That(missingColor, Is.EqualTo(defaultColor));
+            UnityHelpersSettings.WButtonPaletteEntry defaultEntry =
+                UnityHelpersSettings.ResolveWButtonPalette(
+                    UnityHelpersSettings.DefaultWButtonPriority
+                );
+            UnityHelpersSettings.WButtonPaletteEntry missingEntry =
+                UnityHelpersSettings.ResolveWButtonPalette("NonExistentPriority");
+
+            Assert.That(missingEntry.ButtonColor, Is.EqualTo(defaultEntry.ButtonColor));
+            Assert.That(missingEntry.TextColor, Is.EqualTo(defaultEntry.TextColor));
         }
     }
 }
