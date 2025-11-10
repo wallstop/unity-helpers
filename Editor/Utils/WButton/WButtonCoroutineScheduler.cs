@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Editor.WButton
+namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 {
 #if UNITY_EDITOR
     using System;
@@ -185,9 +185,8 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 return;
             }
 
-            for (int index = 0; index < Instances.Count; index++)
+            foreach (CoroutineInstance instance in Instances)
             {
-                CoroutineInstance instance = Instances[index];
                 if (instance.Id == ticket.Id)
                 {
                     instance.RequestCancel();

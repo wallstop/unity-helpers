@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Editor.WButton
+namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 {
 #if UNITY_EDITOR
     using System;
@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
     using System.Reflection;
     using System.Threading;
     using System.Threading.Tasks;
-    using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
@@ -22,12 +21,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
     {
         internal WButtonParameterMetadata(ParameterInfo parameter, int index)
         {
-            if (parameter == null)
-            {
-                throw new ArgumentNullException(nameof(parameter));
-            }
-
-            ParameterInfo = parameter;
+            ParameterInfo = parameter ?? throw new ArgumentNullException(nameof(parameter));
             Name = parameter.Name ?? $"arg{index}";
 
             Type parameterType = parameter.ParameterType;
@@ -195,9 +189,8 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                         | BindingFlags.DeclaredOnly
                 );
 
-                for (int index = 0; index < methods.Length; index++)
+                foreach (MethodInfo method in methods)
                 {
-                    MethodInfo method = methods[index];
                     MethodInfo baseDefinition = method.GetBaseDefinition();
                     if (processedBases.Contains(baseDefinition))
                     {
@@ -220,11 +213,10 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                     }
 
                     ParameterInfo[] rawParameters = method.GetParameters();
-                    int cancellationTokenIndex;
                     WButtonParameterMetadata[] parameterMetadata = BuildParameterMetadata(
                         method,
                         rawParameters,
-                        out cancellationTokenIndex
+                        out int cancellationTokenIndex
                     );
                     if (parameterMetadata == null)
                     {
@@ -232,17 +224,17 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                         continue;
                     }
 
-                    Type returnType = method.ReturnType ?? typeof(void);
+                    Type returnType = method.ReturnType;
                     Classification classification = ClassifyReturnType(returnType);
                     WButtonMethodMetadata metadata = new(
                         method.DeclaringType ?? inspectedType,
                         method,
                         attribute,
                         parameterMetadata,
-                        classification.ExecutionKind,
-                        classification.ReturnType,
-                        classification.AsyncResultType,
-                        classification.ReturnsVoid,
+                        classification._executionKind,
+                        classification._returnType,
+                        classification._asyncResultType,
+                        classification._returnsVoid,
                         cancellationTokenIndex,
                         attribute.Priority
                     );
@@ -359,10 +351,10 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
             Classification classification = new()
             {
-                ExecutionKind = executionKind,
-                ReturnType = returnType,
-                AsyncResultType = asyncResultType,
-                ReturnsVoid = returnsVoid,
+                _executionKind = executionKind,
+                _returnType = returnType,
+                _asyncResultType = asyncResultType,
+                _returnsVoid = returnsVoid,
             };
             return classification;
         }
@@ -384,10 +376,10 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
         private sealed class Classification
         {
-            internal WButtonExecutionKind ExecutionKind;
-            internal Type ReturnType;
-            internal Type AsyncResultType;
-            internal bool ReturnsVoid;
+            internal WButtonExecutionKind _executionKind;
+            internal Type _returnType;
+            internal Type _asyncResultType;
+            internal bool _returnsVoid;
         }
     }
 #endif

@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Editor.WButton
+namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 {
 #if UNITY_EDITOR
     using System;
@@ -43,9 +43,9 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             }
 
             WButtonMethodState[] states = context.States;
-            for (int index = 0; index < states.Length; index++)
+            foreach (WButtonMethodState state in states)
             {
-                CancelInvocation(states[index]);
+                CancelInvocation(state);
             }
         }
 

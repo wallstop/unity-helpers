@@ -1,9 +1,8 @@
-namespace WallstopStudios.UnityHelpers.Editor.WButton
+namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 {
 #if UNITY_EDITOR
     using System;
     using System.Threading;
-    using UnityEngine;
 
     internal enum WButtonInvocationStatus
     {

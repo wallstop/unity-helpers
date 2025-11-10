@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Editor.WButton
+namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 {
 #if UNITY_EDITOR
     using System;
@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
     using System.Reflection;
     using System.Runtime.CompilerServices;
     using System.Threading;
-    using UnityEngine;
 
     internal static class WButtonStateRepository
     {

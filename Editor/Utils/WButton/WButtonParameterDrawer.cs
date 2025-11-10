@@ -1,8 +1,7 @@
-namespace WallstopStudios.UnityHelpers.Editor.WButton
+namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 {
 #if UNITY_EDITOR
     using System;
-    using System.Threading;
     using UnityEditor;
     using UnityEngine;
 
@@ -84,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
             if (effectiveType == typeof(bool))
             {
-                bool value = currentValue is bool boolean ? boolean : false;
+                bool value = currentValue is true;
                 bool updated = EditorGUILayout.Toggle(label, value);
                 return updated;
             }
@@ -290,8 +289,10 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                             WButtonParameterState targetState = states[targetIndex].Parameters[
                                 parameterIndex
                             ];
-                            Array targetArray = targetState.CurrentValue as Array;
-                            if (targetArray == null || targetArray.Length != value.Length)
+                            if (
+                                targetState.CurrentValue is not Array targetArray
+                                || targetArray.Length != value.Length
+                            )
                             {
                                 targetArray = Array.CreateInstance(elementType, value.Length);
                                 targetState.CurrentValue = targetArray;
@@ -363,11 +364,9 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
         {
             string fallback = states[0].Parameters[parameterIndex].JsonFallback ?? string.Empty;
             string updated = EditorGUILayout.TextField(label, fallback);
-            for (int stateIndex = 0; stateIndex < states.Length; stateIndex++)
+            foreach (WButtonMethodState state in states)
             {
-                WButtonParameterState parameterState = states[stateIndex].Parameters[
-                    parameterIndex
-                ];
+                WButtonParameterState parameterState = state.Parameters[parameterIndex];
                 parameterState.JsonFallback = updated;
             }
 
@@ -380,18 +379,18 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             object newValue
         )
         {
-            for (int targetIndex = 0; targetIndex < states.Length; targetIndex++)
+            foreach (WButtonMethodState inputState in states)
             {
-                WButtonParameterState state = states[targetIndex].Parameters[parameterIndex];
+                WButtonParameterState state = inputState.Parameters[parameterIndex];
                 state.CurrentValue = WButtonValueUtility.CloneValue(newValue);
             }
         }
 
         private static void SetNull(WButtonMethodState[] states, int parameterIndex)
         {
-            for (int targetIndex = 0; targetIndex < states.Length; targetIndex++)
+            foreach (WButtonMethodState inputState in states)
             {
-                WButtonParameterState state = states[targetIndex].Parameters[parameterIndex];
+                WButtonParameterState state = inputState.Parameters[parameterIndex];
                 state.CurrentValue = null;
             }
         }

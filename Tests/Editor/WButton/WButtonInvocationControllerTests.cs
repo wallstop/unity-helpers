@@ -11,7 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Settings;
-    using WallstopStudios.UnityHelpers.Editor.WButton;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class WButtonInvocationControllerTests : CommonTestBase

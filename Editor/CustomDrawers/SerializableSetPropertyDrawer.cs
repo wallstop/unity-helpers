@@ -1263,9 +1263,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 state.animationKeysScratch.Clear();
                 state.animationKeysScratch.AddRange(state.animationStartTimes.Keys);
-                for (int i = 0; i < state.animationKeysScratch.Count; i++)
+                foreach (int trackedIndex in state.animationKeysScratch)
                 {
-                    int trackedIndex = state.animationKeysScratch[i];
                     if (!state.duplicateIndices.Contains(trackedIndex) || !animateDuplicates)
                     {
                         state.animationStartTimes.Remove(trackedIndex);

@@ -6,7 +6,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
-    using WallstopStudios.UnityHelpers.Editor.WButton;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
 
     /// <summary>
     /// Project-wide configuration surface for Unity Helpers editor tooling.

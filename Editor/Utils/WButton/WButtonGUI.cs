@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Editor.WButton
+namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 {
 #if UNITY_EDITOR
     using System;
@@ -12,19 +12,16 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
     internal enum WButtonPlacement
     {
-        Top,
-        Bottom,
+        Top = 0,
+        Bottom = 1,
     }
 
     internal static class WButtonGUI
     {
-        private static readonly Dictionary<int, int> GroupCounts = new Dictionary<int, int>();
-        private static readonly Dictionary<int, AnimBool> FoldoutAnimations =
-            new Dictionary<int, AnimBool>();
-        private static readonly GUIContent ClearHistoryContent = new GUIContent("Clear History");
-        private static readonly GUIContent RecentResultsHeaderContent = new GUIContent(
-            "Recent Results"
-        );
+        private static readonly Dictionary<int, int> GroupCounts = new();
+        private static readonly Dictionary<int, AnimBool> FoldoutAnimations = new();
+        private static readonly GUIContent ClearHistoryContent = new("Clear History");
+        private static readonly GUIContent RecentResultsHeaderContent = new("Recent Results");
         private const float ClearHistoryButtonPadding = 12f;
         private const float ClearHistoryMinWidth = 96f;
         private const float ClearHistorySpacing = 6f;
@@ -513,12 +510,12 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 ? Mathf.Min(labelSize.x, availableWidth - (buttonWidth + ClearHistorySpacing))
                 : availableWidth;
 
-            Rect labelRect = new Rect(headerRect.x, headerRect.y, labelWidth, headerRect.height);
+            Rect labelRect = new(headerRect.x, headerRect.y, labelWidth, headerRect.height);
             GUI.Label(labelRect, RecentResultsHeaderContent, EditorStyles.miniBoldLabel);
 
             if (canShowButton)
             {
-                Rect buttonRect = new Rect(
+                Rect buttonRect = new(
                     headerRect.xMax - buttonWidth,
                     headerRect.y,
                     buttonWidth,

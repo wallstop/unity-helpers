@@ -697,12 +697,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EventType eventType = hasEvent ? Event.current.type : EventType.Repaint;
             if (eventType != EventType.Repaint)
             {
-                if (_nullKeyStates.TryGetValue(cacheKey, out NullKeyState existingState))
-                {
-                    return existingState;
-                }
-
-                return null;
+                return _nullKeyStates.GetValueOrDefault(cacheKey);
             }
 
             if (!TypeSupportsNullReferences(keyType))

@@ -828,8 +828,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private void BindItem(VisualElement element, int index)
             {
-                StringInListSelector selector = element as StringInListSelector;
-                if (selector == null)
+                if (element is not StringInListSelector selector)
                 {
                     return;
                 }

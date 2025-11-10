@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Editor.WButton
+namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 {
 #if UNITY_EDITOR
     using System;
@@ -13,8 +13,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 return array.Clone();
             }
 
-            AnimationCurve curve = value as AnimationCurve;
-            if (curve != null)
+            if (value is AnimationCurve curve)
             {
                 AnimationCurve clone = new(curve.keys)
                 {
@@ -39,27 +38,27 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 return false;
             }
 
-            if (left is Array leftArray && right is Array rightArray)
+            if (left is not Array leftArray || right is not Array rightArray)
             {
-                if (leftArray.Length != rightArray.Length)
+                return left.Equals(right);
+            }
+
+            if (leftArray.Length != rightArray.Length)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < leftArray.Length; index++)
+            {
+                object leftElement = leftArray.GetValue(index);
+                object rightElement = rightArray.GetValue(index);
+                if (!ValuesEqual(leftElement, rightElement))
                 {
                     return false;
                 }
-
-                for (int index = 0; index < leftArray.Length; index++)
-                {
-                    object leftElement = leftArray.GetValue(index);
-                    object rightElement = rightArray.GetValue(index);
-                    if (!ValuesEqual(leftElement, rightElement))
-                    {
-                        return false;
-                    }
-                }
-
-                return true;
             }
 
-            return left.Equals(right);
+            return true;
         }
     }
 #endif

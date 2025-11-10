@@ -1,9 +1,10 @@
-namespace WallstopStudios.UnityHelpers.Editor.WButton
+namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 {
 #if UNITY_EDITOR
+    using System.Collections.Generic;
     using UnityEditor;
     using UnityEngine;
-    using System.Collections.Generic;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     internal static class WButtonStyles
     {
@@ -51,7 +52,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             }
         }
 
-        internal static GUIStyle ButtonStyle
+        private static GUIStyle ButtonStyle
         {
             get
             {
@@ -142,15 +143,18 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 return cached;
             }
 
-            GUIStyle style = new(baseStyle) { fixedHeight = ButtonHeight };
-            style.normal.textColor = textColor;
-            style.focused.textColor = textColor;
-            style.active.textColor = textColor;
-            style.hover.textColor = textColor;
-            style.onNormal.textColor = textColor;
-            style.onFocused.textColor = textColor;
-            style.onActive.textColor = textColor;
-            style.onHover.textColor = textColor;
+            GUIStyle style = new(baseStyle)
+            {
+                fixedHeight = ButtonHeight,
+                normal = { textColor = textColor },
+                focused = { textColor = textColor },
+                active = { textColor = textColor },
+                hover = { textColor = textColor },
+                onNormal = { textColor = textColor },
+                onFocused = { textColor = textColor },
+                onActive = { textColor = textColor },
+                onHover = { textColor = textColor },
+            };
 
             Texture2D normal = GetSolidTexture(buttonColor);
             Texture2D hover = GetSolidTexture(WButtonColorUtility.GetHoverColor(buttonColor));
@@ -194,7 +198,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             RectOffset padding = expanded
                 ? new RectOffset(12, 12, 10, 10)
                 : new RectOffset(12, 12, 10, 8);
-            GUIStyle style = new GUIStyle(EditorStyles.helpBox)
+            GUIStyle style = new(EditorStyles.helpBox)
             {
                 padding = padding,
                 margin = new RectOffset(4, 4, 6, 6),
@@ -210,9 +214,9 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 TextColor = textColor;
             }
 
-            internal Color ButtonColor { get; }
+            private Color ButtonColor { get; }
 
-            internal Color TextColor { get; }
+            private Color TextColor { get; }
 
             public bool Equals(ButtonStyleKey other)
             {
@@ -227,13 +231,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
             public override int GetHashCode()
             {
-                unchecked
-                {
-                    int hash = 17;
-                    hash = (hash * 23) + ButtonColor.GetHashCode();
-                    hash = (hash * 23) + TextColor.GetHashCode();
-                    return hash;
-                }
+                return Objects.HashCode(ButtonColor, TextColor);
             }
         }
 
@@ -259,15 +257,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
             public int GetHashCode(Color obj)
             {
-                unchecked
-                {
-                    int hash = 17;
-                    hash = (hash * 23) + obj.r.GetHashCode();
-                    hash = (hash * 23) + obj.g.GetHashCode();
-                    hash = (hash * 23) + obj.b.GetHashCode();
-                    hash = (hash * 23) + obj.a.GetHashCode();
-                    return hash;
-                }
+                return Objects.HashCode(obj.r, obj.g, obj.b, obj.a);
             }
 
             public static bool AreEqual(Color x, Color y)

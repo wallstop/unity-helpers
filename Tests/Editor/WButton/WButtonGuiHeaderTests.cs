@@ -5,7 +5,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using System.Reflection;
     using NUnit.Framework;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Editor.WButton;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
 
     public sealed class WButtonGuiHeaderTests
     {
