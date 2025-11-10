@@ -5,7 +5,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
     using System.Linq;
     using NUnit.Framework;
     using UnityEditor;
-    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.Settings;
 

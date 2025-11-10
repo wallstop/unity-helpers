@@ -11,7 +11,6 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Settings;
-    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
 
     [TestFixture]
@@ -114,10 +113,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         public void ResolvePriorityColorReturnsDefaultsAndCustomOverrides()
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            SerializedObject serialized = new SerializedObject(settings);
+            SerializedObject serialized = new(settings);
             SerializedProperty palette = serialized.FindProperty("wbuttonPriorityColors");
-            List<(string Priority, Color ButtonColor, Color TextColor)> originalEntries =
-                new List<(string, Color, Color)>();
+            List<(string Priority, Color ButtonColor, Color TextColor)> originalEntries = new();
             for (int index = 0; index < palette.arraySize; index++)
             {
                 SerializedProperty element = palette.GetArrayElementAtIndex(index);
@@ -136,7 +134,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             }
 
             string priorityKey = "Critical";
-            Color expectedColor = new Color(0.85f, 0.2f, 0.2f);
+            Color expectedColor = new(0.85f, 0.2f, 0.2f);
             Color expectedTextColor = WButtonColorUtility.GetReadableTextColor(expectedColor);
 
             try

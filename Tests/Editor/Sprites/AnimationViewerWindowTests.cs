@@ -29,8 +29,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             keys[2] = new ObjectReferenceKeyframe { time = 0.2f, value = s3 };
             AnimationUtility.SetObjectReferenceCurve(clip, binding, keys);
 
-            AnimationViewerWindow.EditorLayerData instance =
-                new AnimationViewerWindow.EditorLayerData(clip);
+            AnimationViewerWindow.EditorLayerData instance = new(clip);
             Assert.NotNull(instance);
             Assert.AreEqual(3, instance.Sprites.Count);
         }

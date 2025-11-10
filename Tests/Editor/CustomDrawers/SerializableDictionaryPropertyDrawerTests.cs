@@ -386,12 +386,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 valuesProperty
             );
             string listKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
-            Func<object, object, int> comparison = delegate(object left, object right)
-            {
-                int leftValue = left is int leftInt ? leftInt : Convert.ToInt32(left);
-                int rightValue = right is int rightInt ? rightInt : Convert.ToInt32(right);
-                return Comparer<int>.Default.Compare(leftValue, rightValue);
-            };
+
             Func<SerializableDictionaryPropertyDrawer.ListPageCache> cacheProvider = () =>
                 drawer.EnsurePageCache(listKey, keysProperty, pagination);
 
@@ -401,7 +396,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 valuesProperty,
                 typeof(int),
                 typeof(string),
-                comparison,
+                Comparison,
                 pagination,
                 list
             );
@@ -426,6 +421,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Assert.AreEqual(expectedKeys.Length, index);
             Assert.AreEqual(2, pagination.selectedIndex);
+            return;
+
+            int Comparison(object left, object right)
+            {
+                int leftValue = left is int leftInt ? leftInt : Convert.ToInt32(left);
+                int rightValue = right is int rightInt ? rightInt : Convert.ToInt32(right);
+                return Comparer<int>.Default.Compare(leftValue, rightValue);
+            }
         }
 
         [Test]

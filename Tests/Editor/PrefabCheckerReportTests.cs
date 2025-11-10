@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests
         [Test]
         public void ScanReportConstructorCopiesFolders()
         {
-            PrefabChecker.ScanReport report = new PrefabChecker.ScanReport(new[] { "A", "B" });
+            PrefabChecker.ScanReport report = new(new[] { "A", "B" });
             string[] folders = report.folders;
             CollectionAssert.AreEqual(new[] { "A", "B" }, folders);
         }
@@ -19,7 +19,7 @@ namespace WallstopStudios.UnityHelpers.Tests
         [Test]
         public void ScanReportAddCopiesMessages()
         {
-            PrefabChecker.ScanReport report = new PrefabChecker.ScanReport(Array.Empty<string>());
+            PrefabChecker.ScanReport report = new(Array.Empty<string>());
             report.Add("path.prefab", new List<string> { "m1", "m2" });
             Assert.AreEqual(1, report.items.Count);
             PrefabChecker.ScanReport.Item first = report.items[0];

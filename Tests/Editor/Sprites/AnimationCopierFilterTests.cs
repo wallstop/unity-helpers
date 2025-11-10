@@ -21,8 +21,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             AnimationCopierWindow.AnimationFileInfo a = NewFileInfo("zeta.anim");
             AnimationCopierWindow.AnimationFileInfo b = NewFileInfo("alpha.anim");
             AnimationCopierWindow.AnimationFileInfo c = NewFileInfo("beta.anim");
-            List<AnimationCopierWindow.AnimationFileInfo> items =
-                new List<AnimationCopierWindow.AnimationFileInfo> { a, b, c };
+            List<AnimationCopierWindow.AnimationFileInfo> items = new() { a, b, c };
 
             wnd._filterText = string.Empty;
             wnd._filterUseRegex = false;
@@ -46,8 +45,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             AnimationCopierWindow.AnimationFileInfo a = NewFileInfo("walk.anim");
             AnimationCopierWindow.AnimationFileInfo b = NewFileInfo("attack.anim");
             AnimationCopierWindow.AnimationFileInfo c = NewFileInfo("idle.anim");
-            List<AnimationCopierWindow.AnimationFileInfo> items =
-                new List<AnimationCopierWindow.AnimationFileInfo> { a, b, c };
+            List<AnimationCopierWindow.AnimationFileInfo> items = new() { a, b, c };
 
             wnd._filterText = "ta";
             wnd._filterUseRegex = false;

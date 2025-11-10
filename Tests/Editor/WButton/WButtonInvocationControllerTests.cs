@@ -11,7 +11,6 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Settings;
-    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Tests.Utils;
 
@@ -27,7 +26,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 .First(m => m.Method.Name == nameof(InvocationTarget.AsyncTaskButton));
             WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
             WButtonMethodState methodState = targetState.GetOrCreateMethodState(metadata);
-            WButtonMethodContext context = new WButtonMethodContext(
+            WButtonMethodContext context = new(
                 metadata,
                 new[] { methodState },
                 new UnityEngine.Object[] { target }
@@ -41,7 +40,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             yield return WaitUntil(() => methodState.ActiveInvocation == null, 5f);
 
             Assert.That(methodState.History.Count, Is.GreaterThan(0));
-            WButtonResultEntry entry = methodState.History[methodState.History.Count - 1];
+            WButtonResultEntry entry = methodState.History[^1];
             Assert.That(entry.Kind, Is.EqualTo(WButtonResultKind.Success));
             Assert.That(entry.Summary, Does.Contain("Task Complete"));
         }
@@ -56,7 +55,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 .First(m => m.Method.Name == nameof(InvocationTarget.EnumeratorButton));
             WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
             WButtonMethodState methodState = targetState.GetOrCreateMethodState(metadata);
-            WButtonMethodContext context = new WButtonMethodContext(
+            WButtonMethodContext context = new(
                 metadata,
                 new[] { methodState },
                 new UnityEngine.Object[] { target }
@@ -70,7 +69,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             yield return WaitUntil(() => methodState.ActiveInvocation == null, 2f);
 
             Assert.That(methodState.History.Count, Is.GreaterThan(0));
-            WButtonResultEntry entry = methodState.History[methodState.History.Count - 1];
+            WButtonResultEntry entry = methodState.History[^1];
             Assert.That(entry.Kind, Is.EqualTo(WButtonResultKind.Success));
             Assert.That(entry.Summary, Does.Contain("Enumerator completed"));
         }
@@ -106,7 +105,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             Assert.That(methodState.History, Is.Empty);
         }
 
-        private static IEnumerator WaitUntil(System.Func<bool> condition, float timeoutSeconds)
+        private static IEnumerator WaitUntil(Func<bool> condition, float timeoutSeconds)
         {
             float endTime = Time.realtimeSinceStartup + timeoutSeconds;
             while (!condition())
