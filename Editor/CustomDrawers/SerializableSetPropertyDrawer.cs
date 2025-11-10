@@ -1020,7 +1020,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return builder.ToString();
         }
 
-        private static void RemoveEntry(SerializedProperty itemsProperty, int index)
+        internal static void RemoveEntry(SerializedProperty itemsProperty, int index)
         {
             if (itemsProperty == null || !itemsProperty.isArray)
             {
@@ -1321,7 +1321,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static bool IsSortedSet(SerializedProperty property)
+        internal static bool IsSortedSet(SerializedProperty property)
         {
             if (property == null)
             {
@@ -1812,7 +1812,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return true;
         }
 
-        private void RemoveValueFromSet(
+        internal void RemoveValueFromSet(
             SerializedProperty property,
             string propertyPath,
             object value

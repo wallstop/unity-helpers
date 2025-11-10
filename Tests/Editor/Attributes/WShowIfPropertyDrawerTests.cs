@@ -1,6 +1,5 @@
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -12,11 +11,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     [TestFixture]
     public sealed class WShowIfPropertyDrawerTests : CommonTestBase
     {
-        private static readonly FieldInfo AttributeField = typeof(PropertyDrawer).GetField(
-            "m_Attribute",
-            BindingFlags.Instance | BindingFlags.NonPublic
-        );
-
         [Test]
         public void BoolConditionHidesFieldWhenFalse()
         {
@@ -234,8 +228,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         private static WShowIfPropertyDrawer CreateDrawer(WShowIfAttribute attribute)
         {
             WShowIfPropertyDrawer drawer = new();
-            Assert.NotNull(AttributeField);
-            AttributeField.SetValue(drawer, attribute);
+            drawer.InitializeForTesting(attribute);
             return drawer;
         }
 

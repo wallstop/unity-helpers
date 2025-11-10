@@ -18,6 +18,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Type,
             Dictionary<string, Func<object, object>>
         > CachedFields = new();
+        private WShowIfAttribute _overrideAttribute;
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
@@ -32,9 +33,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
+        internal void InitializeForTesting(WShowIfAttribute attributeOverride)
+        {
+            _overrideAttribute = attributeOverride;
+        }
+
+        private WShowIfAttribute ResolveAttribute()
+        {
+            if (_overrideAttribute != null)
+            {
+                return _overrideAttribute;
+            }
+
+            return attribute as WShowIfAttribute;
+        }
+
         private bool ShouldShow(SerializedProperty property)
         {
-            if (attribute is not WShowIfAttribute showIf)
+            WShowIfAttribute showIf = ResolveAttribute();
+            if (showIf == null)
             {
                 return true;
             }

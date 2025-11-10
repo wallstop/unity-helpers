@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using System.Globalization;
     using System.Reflection;
@@ -25,6 +26,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private readonly Dictionary<string, KeyIndexCache> _keyIndexCaches = new();
         private readonly Dictionary<string, DuplicateKeyState> _duplicateStates = new();
         private readonly Dictionary<string, NullKeyState> _nullKeyStates = new();
+        private readonly Dictionary<string, Type> _valueTypes = new();
+        private static readonly BindingFlags ReflectionBindingFlags =
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+        private static readonly char[] PropertyPathSeparators = { '.' };
 
         private const float PendingSectionPadding = 6f;
         private const float PendingAddButtonWidth = 110f;
@@ -94,6 +99,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             string cacheKey = GetListKey(property);
+            _valueTypes[cacheKey] = valueType;
             DuplicateKeyState duplicateState = RefreshDuplicateState(
                 cacheKey,
                 keysProperty,
@@ -276,6 +282,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             string key = GetListKey(dictionaryProperty);
+            _valueTypes.TryGetValue(key, out Type resolvedValueType);
             PaginationState pagination = GetOrCreatePaginationState(dictionaryProperty);
             ClampPaginationState(pagination, keysProperty.arraySize);
             float defaultRowHeight =
@@ -324,6 +331,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 cached.drawNoneElementCallback = _ => { };
                 cached.elementHeight = keysProperty.arraySize == 0 ? emptyHeight : defaultRowHeight;
                 cached.elementHeightCallback = ResolveRowHeight;
+                cached.list = cache.entries;
                 return cached;
             }
 
@@ -510,10 +518,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 float gap = 6f;
-                float halfWidth = (rect.width - gap) * 0.5f;
+                bool complexValue =
+                    resolvedValueType != null && TypeSupportsComplexEditing(resolvedValueType);
+                float keyColumnWidth = complexValue
+                    ? Mathf.Min(Mathf.Max(rect.width * 0.35f, 180f), rect.width - gap - 60f)
+                    : (rect.width - gap) * 0.5f;
+                keyColumnWidth = Mathf.Max(100f, keyColumnWidth);
+                float valueColumnWidth = Mathf.Max(0f, rect.width - keyColumnWidth - gap);
 
-                Rect keyRect = new(rect.x, contentY, halfWidth, keyHeight);
-                Rect valueRect = new(rect.x + halfWidth + gap, contentY, halfWidth, valueHeight);
+                Rect keyRect = new(rect.x, contentY, keyColumnWidth, keyHeight);
+                Rect valueRect = new(
+                    rect.x + keyColumnWidth + gap,
+                    contentY,
+                    valueColumnWidth,
+                    valueHeight
+                );
 
                 float iconSize = EditorGUIUtility.singleLineHeight;
                 float iconSpacing = 3f;
@@ -2420,6 +2439,35 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return GetPendingSectionHeight(GetPendingFoldoutProgress(pending));
         }
 
+        internal CommitResult CommitEntry(
+            SerializedProperty keysProperty,
+            SerializedProperty valuesProperty,
+            Type keyType,
+            Type valueType,
+            object key,
+            object value,
+            SerializedProperty dictionaryProperty,
+            int existingIndex = -1,
+            bool isSortedDictionary = false
+        )
+        {
+            PendingEntry pending = new()
+            {
+                key = key,
+                value = value,
+                isSorted = isSortedDictionary,
+            };
+            return CommitEntry(
+                keysProperty,
+                valuesProperty,
+                keyType,
+                valueType,
+                pending,
+                existingIndex,
+                dictionaryProperty
+            );
+        }
+
         private CommitResult CommitEntry(
             SerializedProperty keysProperty,
             SerializedProperty valuesProperty,
@@ -3507,6 +3555,35 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
+        private static bool TryCreateDefaultInstance(Type type, out object instance)
+        {
+            instance = null;
+            if (type == null)
+            {
+                return false;
+            }
+
+            if (type.IsAbstract || type.IsInterface)
+            {
+                return false;
+            }
+
+            if (typeof(UnityEngine.Object).IsAssignableFrom(type))
+            {
+                return false;
+            }
+
+            try
+            {
+                instance = Activator.CreateInstance(type, true);
+                return instance != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private static object CloneComplexValue(object source, Type type)
         {
             if (source == null)
@@ -3533,16 +3610,267 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return source;
             }
 
+            if (!TryCreateDefaultInstance(type, out object clone))
+            {
+                return source;
+            }
+
             try
             {
                 string json = JsonUtility.ToJson(source);
-                object clone = Activator.CreateInstance(type);
                 JsonUtility.FromJsonOverwrite(json, clone);
                 return clone;
             }
             catch
             {
                 return source;
+            }
+        }
+
+        private static bool TryAssignComplexValue(
+            SerializedProperty property,
+            object value,
+            Type valueType
+        )
+        {
+            if (property == null)
+            {
+                return false;
+            }
+
+            UnityEngine.Object[] targets = property.serializedObject.targetObjects;
+            if (targets == null || targets.Length == 0)
+            {
+                return false;
+            }
+
+            string finalSegment = GetFinalPathSegment(property.propertyPath);
+            bool applied = false;
+
+            for (int index = 0; index < targets.Length; index++)
+            {
+                UnityEngine.Object target = targets[index];
+                object parent = GetParentObject(target, property.propertyPath);
+                if (parent == null)
+                {
+                    continue;
+                }
+
+                object clone = CloneComplexValue(value, valueType);
+                if (SetPathComponentValue(parent, finalSegment, clone))
+                {
+                    applied = true;
+                }
+            }
+
+            if (applied)
+            {
+                property.serializedObject.Update();
+            }
+
+            return applied;
+        }
+
+        private static object GetParentObject(UnityEngine.Object target, string propertyPath)
+        {
+            if (target == null || string.IsNullOrEmpty(propertyPath))
+            {
+                return null;
+            }
+
+            string[] elements = propertyPath
+                .Replace(".Array.data[", "[")
+                .Split(PropertyPathSeparators, StringSplitOptions.RemoveEmptyEntries);
+
+            object current = target;
+            for (int index = 0; index < elements.Length - 1; index++)
+            {
+                current = GetPathComponentValue(current, elements[index]);
+                if (current == null)
+                {
+                    return null;
+                }
+            }
+
+            return current;
+        }
+
+        private static string GetFinalPathSegment(string propertyPath)
+        {
+            if (string.IsNullOrEmpty(propertyPath))
+            {
+                return string.Empty;
+            }
+
+            string[] elements = propertyPath
+                .Replace(".Array.data[", "[")
+                .Split(PropertyPathSeparators, StringSplitOptions.RemoveEmptyEntries);
+            return elements.Length > 0 ? elements[^1] : string.Empty;
+        }
+
+        private static object GetPathComponentValue(object source, string path)
+        {
+            if (source == null || string.IsNullOrEmpty(path))
+            {
+                return null;
+            }
+
+            int bracketIndex = path.IndexOf('[');
+            if (bracketIndex >= 0)
+            {
+                string elementName = path.Substring(0, bracketIndex);
+                int index = ParseElementIndex(path, bracketIndex);
+                if (index < 0)
+                {
+                    return null;
+                }
+
+                object collection = GetMemberValue(source, elementName);
+                if (collection is IList list)
+                {
+                    return index >= 0 && index < list.Count ? list[index] : null;
+                }
+
+                if (collection is Array array)
+                {
+                    return index >= 0 && index < array.Length ? array.GetValue(index) : null;
+                }
+
+                return null;
+            }
+
+            return GetMemberValue(source, path);
+        }
+
+        private static bool SetPathComponentValue(object source, string path, object value)
+        {
+            if (source == null || string.IsNullOrEmpty(path))
+            {
+                return false;
+            }
+
+            int bracketIndex = path.IndexOf('[');
+            if (bracketIndex >= 0)
+            {
+                string elementName = path.Substring(0, bracketIndex);
+                int index = ParseElementIndex(path, bracketIndex);
+                if (index < 0)
+                {
+                    return false;
+                }
+
+                object collection = GetMemberValue(source, elementName);
+                if (collection is IList list)
+                {
+                    if (index >= 0 && index < list.Count)
+                    {
+                        list[index] = value;
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                if (collection is Array array)
+                {
+                    if (index >= 0 && index < array.Length)
+                    {
+                        array.SetValue(value, index);
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                return false;
+            }
+
+            return SetMemberValue(source, path, value);
+        }
+
+        private static int ParseElementIndex(string path, int bracketIndex)
+        {
+            int endIndex = path.IndexOf(']', bracketIndex);
+            if (endIndex < 0)
+            {
+                return -1;
+            }
+
+            string indexString = path.Substring(bracketIndex + 1, endIndex - bracketIndex - 1);
+            return int.TryParse(indexString, out int result) ? result : -1;
+        }
+
+        private static object GetMemberValue(object source, string memberName)
+        {
+            if (source == null || string.IsNullOrEmpty(memberName))
+            {
+                return null;
+            }
+
+            Type type = source.GetType();
+
+            FieldInfo field = type.GetField(memberName, ReflectionBindingFlags);
+            if (field != null)
+            {
+                return field.GetValue(source);
+            }
+
+            PropertyInfo propertyInfo = type.GetProperty(memberName, ReflectionBindingFlags);
+            if (propertyInfo != null)
+            {
+                return propertyInfo.GetValue(source);
+            }
+
+            return null;
+        }
+
+        private static bool SetMemberValue(object source, string memberName, object value)
+        {
+            if (source == null || string.IsNullOrEmpty(memberName))
+            {
+                return false;
+            }
+
+            Type type = source.GetType();
+
+            FieldInfo field = type.GetField(memberName, ReflectionBindingFlags);
+            if (field != null)
+            {
+                field.SetValue(source, value);
+                return true;
+            }
+
+            PropertyInfo propertyInfo = type.GetProperty(memberName, ReflectionBindingFlags);
+            if (propertyInfo != null && propertyInfo.CanWrite)
+            {
+                propertyInfo.SetValue(source, value);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static void CopyComplexValueToPropertyFields(
+            SerializedProperty destination,
+            object value,
+            Type valueType
+        )
+        {
+            if (destination == null || valueType == null)
+            {
+                return;
+            }
+
+            foreach (FieldInfo field in GetSerializableFields(valueType))
+            {
+                SerializedProperty child = destination.FindPropertyRelative(field.Name);
+                if (child == null)
+                {
+                    continue;
+                }
+
+                object fieldValue = field.GetValue(value);
+                SetPropertyValue(child, fieldValue, field.FieldType);
             }
         }
 
@@ -3673,7 +4001,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     property.managedReferenceValue = value;
                     break;
                 case SerializedPropertyType.Generic:
-                    CopyComplexValueToProperty(property, value, type);
+                    if (!TryAssignComplexValue(property, value, type))
+                    {
+                        CopyComplexValueToPropertyFields(property, value, type);
+                    }
                     break;
                 default:
                     throw new NotSupportedException(
@@ -3806,12 +4137,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return null;
             }
 
-            object instance;
-            try
-            {
-                instance = Activator.CreateInstance(valueType);
-            }
-            catch
+            if (!TryCreateDefaultInstance(valueType, out object instance))
             {
                 return null;
             }
@@ -4005,6 +4331,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         internal static object GetDefaultValue(Type type)
         {
+            if (type == null)
+            {
+                return null;
+            }
+
             if (type == typeof(string))
             {
                 return string.Empty;
@@ -4025,17 +4356,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return Activator.CreateInstance(type);
             }
 
-            try
+            if (TryCreateDefaultInstance(type, out object instance))
             {
-                return Activator.CreateInstance(type);
+                return instance;
             }
-            catch
-            {
-                return null;
-            }
+
+            return null;
         }
 
-        private struct CommitResult
+        internal struct CommitResult
         {
             public bool added;
             public int index;

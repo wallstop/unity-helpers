@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
     using System;
     using System.Linq;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -46,12 +45,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         private sealed class TestData : ScriptableObject { }
-
-        private static readonly MethodInfo IsSortedSetMethod =
-            typeof(SerializableSetPropertyDrawer).GetMethod(
-                "IsSortedSet",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
 
         [Test]
         public void GetPropertyHeightClampsPageSize()
@@ -492,8 +485,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 nameof(DerivedSortedSetHost.set)
             );
 
-            Assert.IsNotNull(IsSortedSetMethod, "Reflection lookup for IsSortedSet failed.");
-            bool result = (bool)IsSortedSetMethod.Invoke(null, new object[] { setProperty });
+            bool result = SerializableSetPropertyDrawer.IsSortedSet(setProperty);
             Assert.IsTrue(
                 result,
                 "Derived SerializableSortedSet types should be detected for sorting."
@@ -887,7 +879,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
-        public void RemoveEntryViaReflectionShrinksSerializedArray()
+        public void RemoveEntryShrinksSerializedArray()
         {
             HashSetHost host = CreateScriptableObject<HashSetHost>();
             host.set.Add(10);
@@ -902,25 +894,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            MethodInfo removeEntry = typeof(SerializableSetPropertyDrawer).GetMethod(
-                "RemoveEntry",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(removeEntry);
-
             SerializableSetPropertyDrawer drawer = new();
-            MethodInfo removeValue = typeof(SerializableSetPropertyDrawer).GetMethod(
-                "RemoveValueFromSet",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(removeValue);
-
             int removedValue = itemsProperty.GetArrayElementAtIndex(1).intValue;
-            removeEntry.Invoke(null, new object[] { itemsProperty, 1 });
-            removeValue.Invoke(
-                drawer,
-                new object[] { setProperty, setProperty.propertyPath, removedValue }
-            );
+            SerializableSetPropertyDrawer.RemoveEntry(itemsProperty, 1);
+            drawer.RemoveValueFromSet(setProperty, setProperty.propertyPath, removedValue);
             serializedObject.ApplyModifiedProperties();
             serializedObject.Update();
 

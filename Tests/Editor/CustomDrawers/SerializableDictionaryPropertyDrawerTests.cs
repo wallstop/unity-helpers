@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEditorInternal;
@@ -29,6 +28,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public StringComplexDictionary dictionary = new();
         }
 
+        private sealed class PrivateComplexDictionaryHost : ScriptableObject
+        {
+            public PrivateComplexDictionary dictionary = new();
+        }
+
         private sealed class TestSortedDictionaryHost : ScriptableObject
         {
             public SerializableSortedDictionary<int, string> dictionary = new();
@@ -50,10 +54,36 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             : SerializableDictionary<string, ComplexValue> { }
 
         [Serializable]
+        private sealed class PrivateComplexDictionary
+            : SerializableDictionary<string, PrivateComplexValue> { }
+
+        [Serializable]
         private sealed class ComplexValue
         {
             public Color button;
             public Color text;
+        }
+
+        [Serializable]
+        private sealed class PrivateComplexValue
+        {
+            [SerializeField]
+            private Color primary = Color.white;
+
+            [SerializeField]
+            private Color secondary = Color.black;
+
+            public Color Primary
+            {
+                get => primary;
+                set => primary = value;
+            }
+
+            public Color Secondary
+            {
+                get => secondary;
+                set => secondary = value;
+            }
         }
 
         [Serializable]
@@ -603,43 +633,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             SerializableDictionaryPropertyDrawer drawer = new();
-
-            Type pendingType = typeof(SerializableDictionaryPropertyDrawer).GetNestedType(
-                "PendingEntry",
-                BindingFlags.NonPublic
+            SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(ComplexValue),
+                "Alert",
+                new ComplexValue { button = Color.magenta, text = Color.white },
+                dictionaryProperty
             );
-            Assert.IsNotNull(pendingType, "Failed to reflect PendingEntry type.");
-
-            object pending = Activator.CreateInstance(pendingType);
-            pendingType
-                .GetField("key", BindingFlags.Instance | BindingFlags.NonPublic)
-                ?.SetValue(pending, "Alert");
-            pendingType
-                .GetField("value", BindingFlags.Instance | BindingFlags.NonPublic)
-                ?.SetValue(
-                    pending,
-                    new ComplexValue { button = Color.magenta, text = Color.white }
-                );
-
-            MethodInfo commitMethod = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                "CommitEntry",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(commitMethod, "Failed to reflect CommitEntry method.");
-
-            commitMethod.Invoke(
-                drawer,
-                new object[]
-                {
-                    keysProperty,
-                    valuesProperty,
-                    typeof(string),
-                    typeof(ComplexValue),
-                    pending,
-                    -1,
-                    dictionaryProperty,
-                }
-            );
+            Assert.IsTrue(result.added, "Expected CommitEntry to add a new element.");
 
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
             serializedObject.Update();
@@ -654,6 +657,79 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 valuesProperty
             );
             Assert.That(list.count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void GetDefaultValueSupportsPrivateSerializableTypes()
+        {
+            object value = SerializableDictionaryPropertyDrawer.GetDefaultValue(
+                typeof(PrivateComplexValue)
+            );
+
+            Assert.IsNotNull(value);
+            Assert.IsInstanceOf<PrivateComplexValue>(value);
+        }
+
+        [Test]
+        public void CommitEntryAddsPrivateComplexValue()
+        {
+            PrivateComplexDictionaryHost host =
+                CreateScriptableObject<PrivateComplexDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(PrivateComplexDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            PrivateComplexValue valueInstance = new()
+            {
+                Primary = Color.yellow,
+                Secondary = Color.green,
+            };
+
+            SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(PrivateComplexValue),
+                "Accent",
+                valueInstance,
+                dictionaryProperty
+            );
+            Assert.IsTrue(result.added, "Expected CommitEntry to add the new complex value.");
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializedProperty valueElement = valuesProperty.GetArrayElementAtIndex(0);
+            Assert.IsNotNull(valueElement, "Expected value element to exist after commit.");
+
+            SerializedProperty primaryProperty = valueElement.FindPropertyRelative("primary");
+            SerializedProperty secondaryProperty = valueElement.FindPropertyRelative("secondary");
+
+            Assert.IsNotNull(
+                primaryProperty,
+                "Expected primary color property to exist on committed value."
+            );
+            Assert.IsNotNull(
+                secondaryProperty,
+                "Expected secondary color property to exist on committed value."
+            );
+
+            Assert.That(primaryProperty.colorValue, Is.EqualTo(Color.yellow));
+            Assert.That(secondaryProperty.colorValue, Is.EqualTo(Color.green));
+
+            host.dictionary.EditorAfterDeserialize();
+            Assert.That(host.dictionary.Count, Is.EqualTo(1));
+            Assert.That(host.dictionary.ContainsKey("Accent"), Is.True);
         }
     }
 }
