@@ -731,5 +731,87 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.That(host.dictionary.Count, Is.EqualTo(1));
             Assert.That(host.dictionary.ContainsKey("Accent"), Is.True);
         }
+
+        [Test]
+        public void GetOrCreateListRebuildsAfterCommit()
+        {
+            ComplexValueDictionaryHost host = CreateScriptableObject<ComplexValueDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ComplexValueDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            ReorderableList initialList = drawer.GetOrCreateList(
+                dictionaryProperty,
+                keysProperty,
+                valuesProperty
+            );
+            Assert.IsNotNull(initialList, "Initial call should create a ReorderableList instance.");
+            Assert.That(initialList.count, Is.EqualTo(0));
+
+            SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(ComplexValue),
+                "Inline",
+                new ComplexValue { button = Color.cyan, text = Color.black },
+                dictionaryProperty
+            );
+            Assert.IsTrue(result.added, "Expected CommitEntry to add a new entry.");
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            dictionaryProperty = serializedObject.FindProperty(
+                nameof(ComplexValueDictionaryHost.dictionary)
+            );
+            keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            ReorderableList refreshedList = drawer.GetOrCreateList(
+                dictionaryProperty,
+                keysProperty,
+                valuesProperty
+            );
+            Assert.IsNotNull(refreshedList);
+            Assert.AreNotSame(
+                initialList,
+                refreshedList,
+                "ReorderableList cache should rebuild after committing new entries."
+            );
+            Assert.That(refreshedList.count, Is.EqualTo(1));
+
+            float resolvedHeight =
+                refreshedList.elementHeightCallback != null
+                    ? refreshedList.elementHeightCallback.Invoke(0)
+                    : refreshedList.elementHeight;
+            Assert.That(
+                resolvedHeight,
+                Is.GreaterThan(0f),
+                "Row height should resolve using up-to-date serialized properties."
+            );
+
+            SerializedProperty keyElement = keysProperty.GetArrayElementAtIndex(0);
+            SerializedProperty valueElement = valuesProperty.GetArrayElementAtIndex(0);
+
+            Assert.That(keyElement.stringValue, Is.EqualTo("Inline"));
+            SerializedProperty buttonColorProperty = valueElement.FindPropertyRelative("button");
+            Assert.IsNotNull(buttonColorProperty);
+            Assert.That(buttonColorProperty.colorValue, Is.EqualTo(Color.cyan));
+        }
     }
 }
