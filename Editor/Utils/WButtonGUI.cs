@@ -22,6 +22,12 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
         private static readonly Dictionary<int, AnimBool> FoldoutAnimations =
             new Dictionary<int, AnimBool>();
         private static readonly GUIContent ClearHistoryContent = new GUIContent("Clear History");
+        private static readonly GUIContent RecentResultsHeaderContent = new GUIContent(
+            "Recent Results"
+        );
+        private const float ClearHistoryButtonPadding = 12f;
+        private const float ClearHistoryMinWidth = 96f;
+        private const float ClearHistorySpacing = 6f;
 
         internal static bool DrawButtons(
             Editor editor,
@@ -490,17 +496,35 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             }
 
             GUILayout.BeginVertical(EditorStyles.helpBox);
-            using (new EditorGUILayout.HorizontalScope())
+            Rect headerRect = EditorGUILayout.GetControlRect(
+                false,
+                EditorGUIUtility.singleLineHeight,
+                GUILayout.ExpandWidth(true)
+            );
+            Vector2 labelSize = EditorStyles.miniBoldLabel.CalcSize(RecentResultsHeaderContent);
+            float buttonWidth = Mathf.Max(
+                ClearHistoryMinWidth,
+                EditorStyles.miniButton.CalcSize(ClearHistoryContent).x + ClearHistoryButtonPadding
+            );
+            float availableWidth = headerRect.width;
+            bool canShowButton =
+                availableWidth >= (labelSize.x + ClearHistorySpacing + buttonWidth);
+            float labelWidth = canShowButton
+                ? Mathf.Min(labelSize.x, availableWidth - (buttonWidth + ClearHistorySpacing))
+                : availableWidth;
+
+            Rect labelRect = new Rect(headerRect.x, headerRect.y, labelWidth, headerRect.height);
+            GUI.Label(labelRect, RecentResultsHeaderContent, EditorStyles.miniBoldLabel);
+
+            if (canShowButton)
             {
-                GUILayout.Label("Recent Results", EditorStyles.miniBoldLabel);
-                GUILayout.FlexibleSpace();
-                if (
-                    GUILayout.Button(
-                        ClearHistoryContent,
-                        EditorStyles.miniButton,
-                        GUILayout.Width(80f)
-                    )
-                )
+                Rect buttonRect = new Rect(
+                    headerRect.xMax - buttonWidth,
+                    headerRect.y,
+                    buttonWidth,
+                    headerRect.height
+                );
+                if (GUI.Button(buttonRect, ClearHistoryContent, EditorStyles.miniButton))
                 {
                     state.ClearHistory();
                     GUI.FocusControl(null);

@@ -12,130 +12,97 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.WButton;
-    using Object = UnityEngine.Object;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
-    public sealed class WButtonInvocationControllerTests
+    public sealed class WButtonInvocationControllerTests : CommonTestBase
     {
         [UnityTest]
         public IEnumerator AsyncTaskInvocationCompletesAndRecordsHistory()
         {
-            InvocationTarget target = ScriptableObject.CreateInstance<InvocationTarget>();
-            try
-            {
-                WButtonMethodMetadata metadata = WButtonMetadataCache
-                    .GetMetadata(typeof(InvocationTarget))
-                    .First(m => m.Method.Name == nameof(InvocationTarget.AsyncTaskButton));
-                WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-                WButtonMethodState methodState = targetState.GetOrCreateMethodState(metadata);
-                WButtonMethodContext context = new WButtonMethodContext(
-                    metadata,
-                    new[] { methodState },
-                    new UnityEngine.Object[] { target }
-                );
+            InvocationTarget target = CreateScriptableObject<InvocationTarget>();
 
-                context.MarkTriggered();
-                WButtonInvocationController.ProcessTriggeredMethods(
-                    new List<WButtonMethodContext> { context }
-                );
+            WButtonMethodMetadata metadata = WButtonMetadataCache
+                .GetMetadata(typeof(InvocationTarget))
+                .First(m => m.Method.Name == nameof(InvocationTarget.AsyncTaskButton));
+            WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(metadata);
+            WButtonMethodContext context = new WButtonMethodContext(
+                metadata,
+                new[] { methodState },
+                new UnityEngine.Object[] { target }
+            );
 
-                yield return WaitUntil(() => methodState.ActiveInvocation == null, 5f);
+            context.MarkTriggered();
+            WButtonInvocationController.ProcessTriggeredMethods(
+                new List<WButtonMethodContext> { context }
+            );
 
-                Assert.That(methodState.History.Count, Is.GreaterThan(0));
-                WButtonResultEntry entry = methodState.History[methodState.History.Count - 1];
-                Assert.That(entry.Kind, Is.EqualTo(WButtonResultKind.Success));
-                Assert.That(entry.Summary, Does.Contain("Task Complete"));
-            }
-            finally
-            {
-                if (target != null)
-                {
-                    Object.DestroyImmediate(target);
-                }
-            }
+            yield return WaitUntil(() => methodState.ActiveInvocation == null, 5f);
+
+            Assert.That(methodState.History.Count, Is.GreaterThan(0));
+            WButtonResultEntry entry = methodState.History[methodState.History.Count - 1];
+            Assert.That(entry.Kind, Is.EqualTo(WButtonResultKind.Success));
+            Assert.That(entry.Summary, Does.Contain("Task Complete"));
         }
 
         [UnityTest]
         public IEnumerator EnumeratorInvocationClearsActiveState()
         {
-            InvocationTarget target = ScriptableObject.CreateInstance<InvocationTarget>();
-            try
-            {
-                WButtonMethodMetadata metadata = WButtonMetadataCache
-                    .GetMetadata(typeof(InvocationTarget))
-                    .First(m => m.Method.Name == nameof(InvocationTarget.EnumeratorButton));
-                WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-                WButtonMethodState methodState = targetState.GetOrCreateMethodState(metadata);
-                WButtonMethodContext context = new WButtonMethodContext(
-                    metadata,
-                    new[] { methodState },
-                    new UnityEngine.Object[] { target }
-                );
+            InvocationTarget target = CreateScriptableObject<InvocationTarget>();
 
-                context.MarkTriggered();
-                WButtonInvocationController.ProcessTriggeredMethods(
-                    new List<WButtonMethodContext> { context }
-                );
+            WButtonMethodMetadata metadata = WButtonMetadataCache
+                .GetMetadata(typeof(InvocationTarget))
+                .First(m => m.Method.Name == nameof(InvocationTarget.EnumeratorButton));
+            WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(metadata);
+            WButtonMethodContext context = new WButtonMethodContext(
+                metadata,
+                new[] { methodState },
+                new UnityEngine.Object[] { target }
+            );
 
-                yield return WaitUntil(() => methodState.ActiveInvocation == null, 2f);
+            context.MarkTriggered();
+            WButtonInvocationController.ProcessTriggeredMethods(
+                new List<WButtonMethodContext> { context }
+            );
 
-                Assert.That(methodState.History.Count, Is.GreaterThan(0));
-                WButtonResultEntry entry = methodState.History[methodState.History.Count - 1];
-                Assert.That(entry.Kind, Is.EqualTo(WButtonResultKind.Success));
-                Assert.That(entry.Summary, Does.Contain("Enumerator completed"));
-            }
-            finally
-            {
-                if (target != null)
-                {
-                    Object.DestroyImmediate(target);
-                }
-            }
+            yield return WaitUntil(() => methodState.ActiveInvocation == null, 2f);
+
+            Assert.That(methodState.History.Count, Is.GreaterThan(0));
+            WButtonResultEntry entry = methodState.History[methodState.History.Count - 1];
+            Assert.That(entry.Kind, Is.EqualTo(WButtonResultKind.Success));
+            Assert.That(entry.Summary, Does.Contain("Enumerator completed"));
         }
 
         [Test]
         public void ClearHistoryRemovesRecordedEntries()
         {
-            InvocationTarget target = ScriptableObject.CreateInstance<InvocationTarget>();
-            try
-            {
-                WButtonMethodMetadata metadata = WButtonMetadataCache
-                    .GetMetadata(typeof(InvocationTarget))
-                    .First(m => m.Method.Name == nameof(InvocationTarget.AsyncTaskButton));
-                WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-                WButtonMethodState methodState = targetState.GetOrCreateMethodState(metadata);
+            InvocationTarget target = CreateScriptableObject<InvocationTarget>();
 
-                int capacity = UnityHelpersSettings.GetWButtonHistorySize();
-                methodState.AddResult(
-                    new WButtonResultEntry(
-                        WButtonResultKind.Success,
-                        DateTime.UtcNow,
-                        value: "Sample",
-                        summary: "Sample Result",
-                        objectReference: null
-                    ),
-                    capacity
-                );
+            WButtonMethodMetadata metadata = WButtonMetadataCache
+                .GetMetadata(typeof(InvocationTarget))
+                .First(m => m.Method.Name == nameof(InvocationTarget.AsyncTaskButton));
+            WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(metadata);
 
-                Assert.IsTrue(
-                    methodState.HasHistory,
-                    "History should be populated after AddResult."
-                );
+            int capacity = UnityHelpersSettings.GetWButtonHistorySize();
+            methodState.AddResult(
+                new WButtonResultEntry(
+                    WButtonResultKind.Success,
+                    DateTime.UtcNow,
+                    value: "Sample",
+                    summary: "Sample Result",
+                    objectReference: null
+                ),
+                capacity
+            );
 
-                methodState.ClearHistory();
+            Assert.IsTrue(methodState.HasHistory, "History should be populated after AddResult.");
 
-                Assert.IsFalse(
-                    methodState.HasHistory,
-                    "History should be empty after ClearHistory."
-                );
-                Assert.That(methodState.History, Is.Empty);
-            }
-            finally
-            {
-                if (target != null)
-                {
-                    Object.DestroyImmediate(target);
-                }
-            }
+            methodState.ClearHistory();
+
+            Assert.IsFalse(methodState.HasHistory, "History should be empty after ClearHistory.");
+            Assert.That(methodState.History, Is.Empty);
         }
 
         private static IEnumerator WaitUntil(System.Func<bool> condition, float timeoutSeconds)

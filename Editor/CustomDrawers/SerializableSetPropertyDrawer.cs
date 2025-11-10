@@ -40,6 +40,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIStyle ClearAllInactiveButtonStyle = CreateSolidButtonStyle(
             new Color(0.55f, 0.55f, 0.55f)
         );
+        private static readonly GUIStyle SortActiveButtonStyle = CreateSolidButtonStyle(
+            new Color(0.22f, 0.62f, 0.29f)
+        );
+        private static readonly GUIStyle SortInactiveButtonStyle = CreateSolidButtonStyle(
+            new Color(0.55f, 0.55f, 0.55f)
+        );
         private static readonly GUIStyle RemoveButtonStyle = CreateSolidButtonStyle(
             new Color(0.86f, 0.23f, 0.23f)
         );
@@ -116,6 +122,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ConfigureButtonStyle(AddButtonStyle, lineHeight);
             ConfigureButtonStyle(ClearAllActiveButtonStyle, lineHeight);
             ConfigureButtonStyle(ClearAllInactiveButtonStyle, lineHeight);
+            ConfigureButtonStyle(SortActiveButtonStyle, lineHeight);
+            ConfigureButtonStyle(SortInactiveButtonStyle, lineHeight);
             ConfigureButtonStyle(RemoveButtonStyle, lineHeight);
             RemoveButtonStyle.fixedWidth = 0f;
             RemoveButtonStyle.padding = new RectOffset(3, 3, 1, 1);
@@ -676,20 +684,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (isSortedSet)
             {
                 Rect sortRect = new(nextX, firstRowRect.y, 60f, lineHeight);
-                using (new EditorGUI.DisabledScope(!CanSortElements(itemsProperty)))
+                bool canSortElements = CanSortElements(itemsProperty);
+                bool needsSorting = canSortElements && NeedsSorting(itemsProperty);
+                GUIStyle sortStyle = needsSorting ? SortActiveButtonStyle : SortInactiveButtonStyle;
+                if (GUI.Button(sortRect, SortContent, sortStyle) && needsSorting)
                 {
-                    if (GUI.Button(sortRect, SortContent, EditorStyles.miniButton))
+                    if (TrySortElements(ref property, propertyPath, itemsProperty))
                     {
-                        if (TrySortElements(ref property, propertyPath, itemsProperty))
-                        {
-                            itemsProperty = property.FindPropertyRelative(
-                                SerializableHashSetSerializedPropertyNames.Items
-                            );
-                            totalCount = itemsProperty is { isArray: true }
-                                ? itemsProperty.arraySize
-                                : 0;
-                            EnsurePaginationBounds(pagination, totalCount);
-                        }
+                        itemsProperty = property.FindPropertyRelative(
+                            SerializableHashSetSerializedPropertyNames.Items
+                        );
+                        totalCount = itemsProperty is { isArray: true }
+                            ? itemsProperty.arraySize
+                            : 0;
+                        EnsurePaginationBounds(pagination, totalCount);
                     }
                 }
             }
@@ -1321,6 +1329,53 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             SerializedProperty element = itemsProperty.GetArrayElementAtIndex(0);
             return SupportsSorting(element.propertyType);
+        }
+
+        private static bool NeedsSorting(SerializedProperty itemsProperty)
+        {
+            if (!CanSortElements(itemsProperty))
+            {
+                return false;
+            }
+
+            int count = itemsProperty.arraySize;
+            SetElementData previous = default;
+            bool hasPrevious = false;
+
+            for (int index = 0; index < count; index++)
+            {
+                SerializedProperty elementProperty = itemsProperty.GetArrayElementAtIndex(index);
+                SetElementData current = ReadElementData(elementProperty);
+
+                if (hasPrevious)
+                {
+                    int comparison = CompareComparableValues(
+                        previous.comparable,
+                        current.comparable
+                    );
+                    if (comparison > 0)
+                    {
+                        return true;
+                    }
+
+                    if (comparison == 0)
+                    {
+                        string previousFallback =
+                            previous.value != null ? previous.value.ToString() : string.Empty;
+                        string currentFallback =
+                            current.value != null ? current.value.ToString() : string.Empty;
+                        if (string.CompareOrdinal(previousFallback, currentFallback) > 0)
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                previous = current;
+                hasPrevious = true;
+            }
+
+            return false;
         }
 
         private static bool SupportsSorting(SerializedPropertyType propertyType)
