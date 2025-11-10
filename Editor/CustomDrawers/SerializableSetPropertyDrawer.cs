@@ -1269,8 +1269,27 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             Type fieldType = property.GetManagedType();
-            return fieldType != null
+            bool matchesFieldType =
+                fieldType != null
                 && TypeMatchesGenericDefinition(fieldType, typeof(SerializableSortedSet<>));
+            return matchesFieldType || IsRuntimeSortedSet(property);
+        }
+
+        private static bool IsRuntimeSortedSet(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return false;
+            }
+
+            object instance = GetSetInstance(property, property.propertyPath);
+            if (instance == null)
+            {
+                return false;
+            }
+
+            Type instanceType = instance.GetType();
+            return TypeMatchesGenericDefinition(instanceType, typeof(SerializableSortedSet<>));
         }
 
         private static bool TypeMatchesGenericDefinition(Type candidate, Type openGeneric)

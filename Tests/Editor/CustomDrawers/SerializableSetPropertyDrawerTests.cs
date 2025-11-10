@@ -33,12 +33,25 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public SerializableSortedSet<string> set = new();
         }
 
+        private sealed class CustomSortedSet : SerializableSortedSet<int> { }
+
+        private sealed class DerivedSortedSetHost : ScriptableObject
+        {
+            public CustomSortedSet set = new();
+        }
+
         private sealed class ObjectSetHost : ScriptableObject
         {
             public SerializableHashSet<TestData> set = new();
         }
 
         private sealed class TestData : ScriptableObject { }
+
+        private static readonly MethodInfo IsSortedSetMethod =
+            typeof(SerializableSetPropertyDrawer).GetMethod(
+                "IsSortedSet",
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
 
         [Test]
         public void GetPropertyHeightClampsPageSize()
@@ -329,6 +342,25 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
             CollectionAssert.AreEqual(new[] { "beta", "zeta" }, ReadStringValues(itemsProperty));
+        }
+
+        [Test]
+        public void IsSortedSetRecognizesDerivedTypes()
+        {
+            DerivedSortedSetHost host = CreateScriptableObject<DerivedSortedSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(DerivedSortedSetHost.set)
+            );
+
+            Assert.IsNotNull(IsSortedSetMethod, "Reflection lookup for IsSortedSet failed.");
+            bool result = (bool)IsSortedSetMethod.Invoke(null, new object[] { setProperty });
+            Assert.IsTrue(
+                result,
+                "Derived SerializableSortedSet types should be detected for sorting."
+            );
         }
 
         [Test]

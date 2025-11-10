@@ -94,6 +94,8 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
         internal List<WButtonResultEntry> History { get; } = new();
 
+        internal bool HasHistory => History.Count > 0;
+
         internal void AddResult(WButtonResultEntry entry, int historyCapacity)
         {
             if (entry == null)
@@ -110,6 +112,16 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                     History.RemoveRange(0, overflow);
                 }
             }
+        }
+
+        internal void ClearHistory()
+        {
+            if (!HasHistory)
+            {
+                return;
+            }
+
+            History.Clear();
         }
     }
 

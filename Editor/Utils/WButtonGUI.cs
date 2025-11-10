@@ -21,6 +21,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
         private static readonly Dictionary<int, int> GroupCounts = new Dictionary<int, int>();
         private static readonly Dictionary<int, AnimBool> FoldoutAnimations =
             new Dictionary<int, AnimBool>();
+        private static readonly GUIContent ClearHistoryContent = new GUIContent("Clear History");
 
         internal static bool DrawButtons(
             Editor editor,
@@ -483,13 +484,35 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
         private static void DrawHistory(WButtonMethodState state)
         {
-            if (state == null || state.History.Count == 0)
+            if (state == null || !state.HasHistory)
             {
                 return;
             }
 
             GUILayout.BeginVertical(EditorStyles.helpBox);
-            GUILayout.Label("Recent Results", EditorStyles.miniBoldLabel);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.Label("Recent Results", EditorStyles.miniBoldLabel);
+                GUILayout.FlexibleSpace();
+                if (
+                    GUILayout.Button(
+                        ClearHistoryContent,
+                        EditorStyles.miniButton,
+                        GUILayout.Width(80f)
+                    )
+                )
+                {
+                    state.ClearHistory();
+                    GUI.FocusControl(null);
+                }
+            }
+
+            if (!state.HasHistory)
+            {
+                GUILayout.EndVertical();
+                EditorGUILayout.Space(3f);
+                return;
+            }
 
             for (int index = state.History.Count - 1; index >= 0; index--)
             {

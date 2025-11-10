@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 namespace WallstopStudios.UnityHelpers.Tests.WButton
 {
+    using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
@@ -9,7 +10,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.WButton;
+    using Object = UnityEngine.Object;
 
     public sealed class WButtonInvocationControllerTests
     {
@@ -79,6 +82,52 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 WButtonResultEntry entry = methodState.History[methodState.History.Count - 1];
                 Assert.That(entry.Kind, Is.EqualTo(WButtonResultKind.Success));
                 Assert.That(entry.Summary, Does.Contain("Enumerator completed"));
+            }
+            finally
+            {
+                if (target != null)
+                {
+                    Object.DestroyImmediate(target);
+                }
+            }
+        }
+
+        [Test]
+        public void ClearHistoryRemovesRecordedEntries()
+        {
+            InvocationTarget target = ScriptableObject.CreateInstance<InvocationTarget>();
+            try
+            {
+                WButtonMethodMetadata metadata = WButtonMetadataCache
+                    .GetMetadata(typeof(InvocationTarget))
+                    .First(m => m.Method.Name == nameof(InvocationTarget.AsyncTaskButton));
+                WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
+                WButtonMethodState methodState = targetState.GetOrCreateMethodState(metadata);
+
+                int capacity = UnityHelpersSettings.GetWButtonHistorySize();
+                methodState.AddResult(
+                    new WButtonResultEntry(
+                        WButtonResultKind.Success,
+                        DateTime.UtcNow,
+                        value: "Sample",
+                        summary: "Sample Result",
+                        objectReference: null
+                    ),
+                    capacity
+                );
+
+                Assert.IsTrue(
+                    methodState.HasHistory,
+                    "History should be populated after AddResult."
+                );
+
+                methodState.ClearHistory();
+
+                Assert.IsFalse(
+                    methodState.HasHistory,
+                    "History should be empty after ClearHistory."
+                );
+                Assert.That(methodState.History, Is.Empty);
             }
             finally
             {
