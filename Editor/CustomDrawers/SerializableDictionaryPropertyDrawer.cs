@@ -651,7 +651,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             DuplicateKeyState state = _duplicateStates.GetOrAdd(cacheKey);
 
-            bool changed = state.Refresh(keysProperty, keyType);
+            bool hasEvent = Event.current != null;
+            EventType eventType = hasEvent ? Event.current.type : EventType.Repaint;
+            bool shouldRefresh = eventType == EventType.Repaint;
+            bool changed = false;
+
+            if (shouldRefresh)
+            {
+                changed = state.Refresh(keysProperty, keyType);
+            }
+
             if (!state.HasDuplicates && state.IsEmpty)
             {
                 _duplicateStates.Remove(cacheKey);
@@ -681,6 +690,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             if (string.IsNullOrEmpty(cacheKey))
             {
+                return null;
+            }
+
+            bool hasEvent = Event.current != null;
+            EventType eventType = hasEvent ? Event.current.type : EventType.Repaint;
+            if (eventType != EventType.Repaint)
+            {
+                if (_nullKeyStates.TryGetValue(cacheKey, out NullKeyState existingState))
+                {
+                    return existingState;
+                }
+
                 return null;
             }
 

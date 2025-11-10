@@ -80,6 +80,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public string summary = string.Empty;
             public readonly Dictionary<int, double> animationStartTimes = new();
             public readonly Dictionary<int, bool> primaryFlags = new();
+            public readonly Dictionary<object, List<int>> grouping = new();
+            public readonly Stack<List<int>> listPool = new();
+            public readonly StringBuilder summaryBuilder = new();
+            public readonly List<int> animationKeysScratch = new();
         }
 
         internal sealed class NullEntryState
@@ -88,6 +92,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public readonly HashSet<int> nullIndices = new();
             public readonly Dictionary<int, string> tooltips = new();
             public string summary = string.Empty;
+            public readonly List<int> scratch = new();
         }
 
         private struct SetElementData
@@ -1051,10 +1056,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 _nullEntryStates[key] = state;
             }
 
+            bool hasEvent = Event.current != null;
+            EventType eventType = hasEvent ? Event.current.type : EventType.Repaint;
+            if (eventType != EventType.Repaint)
+            {
+                return state;
+            }
+
             state.nullIndices.Clear();
             state.tooltips.Clear();
             state.summary = string.Empty;
             state.hasNullEntries = false;
+            state.scratch.Clear();
 
             if (
                 itemsProperty == null
@@ -1076,7 +1089,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return state;
             }
 
-            List<int> nullIndices = new();
             int count = itemsProperty.arraySize;
             for (int index = 0; index < count; index++)
             {
@@ -1087,16 +1099,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     state.nullIndices.Add(index);
                     state.tooltips[index] =
                         $"Null entry detected at index {index}. Value will be ignored at runtime.";
-                    nullIndices.Add(index);
+                    state.scratch.Add(index);
                 }
             }
 
             if (state.nullIndices.Count > 0)
             {
                 state.hasNullEntries = true;
-                state.summary = BuildNullEntrySummary(nullIndices);
+                state.summary = BuildNullEntrySummary(state.scratch);
             }
-            else
+            else if (_nullEntryStates.ContainsKey(key))
             {
                 _nullEntryStates.Remove(key);
             }
@@ -1115,12 +1127,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 state = new DuplicateState();
                 _duplicateStates[key] = state;
+                force = true;
+            }
+
+            bool hasEvent = Event.current != null;
+            EventType eventType = hasEvent ? Event.current.type : EventType.Repaint;
+            if (!force && eventType != EventType.Repaint)
+            {
+                return state;
             }
 
             state.duplicateIndices.Clear();
-            state.hasDuplicates = false;
-            state.summary = string.Empty;
             state.primaryFlags.Clear();
+            state.summaryBuilder.Clear();
+            state.summary = string.Empty;
+            state.hasDuplicates = false;
 
             if (itemsProperty == null || !itemsProperty.isArray || itemsProperty.arraySize <= 1)
             {
@@ -1128,111 +1149,127 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return state;
             }
 
-            Dictionary<object, List<int>> duplicates = new();
-            int count = itemsProperty.arraySize;
+            if (state.grouping.Count > 0)
+            {
+                foreach (KeyValuePair<object, List<int>> existing in state.grouping)
+                {
+                    existing.Value.Clear();
+                    state.listPool.Push(existing.Value);
+                }
 
+                state.grouping.Clear();
+            }
+
+            int count = itemsProperty.arraySize;
             for (int index = 0; index < count; index++)
             {
                 SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
                 SetElementData data = ReadElementData(element);
                 object keyValue = data.comparable ?? NullComparable;
 
-                if (!duplicates.TryGetValue(keyValue, out List<int> indices))
+                if (!state.grouping.TryGetValue(keyValue, out List<int> indices))
                 {
-                    indices = new List<int>();
-                    duplicates[keyValue] = indices;
+                    indices = state.listPool.Count > 0 ? state.listPool.Pop() : new List<int>(4);
+                    state.grouping[keyValue] = indices;
                 }
 
                 indices.Add(index);
-            }
-
-            StringBuilder summaryBuilder = new();
-            int duplicateGroupCount = 0;
-
-            foreach (KeyValuePair<object, List<int>> pair in duplicates)
-            {
-                if (pair.Value.Count <= 1)
-                {
-                    continue;
-                }
-
-                duplicateGroupCount++;
-                state.hasDuplicates = true;
-                bool isPrimary = true;
-                foreach (int duplicateIndex in pair.Value)
-                {
-                    state.duplicateIndices.Add(duplicateIndex);
-                    state.primaryFlags[duplicateIndex] = isPrimary;
-                    isPrimary = false;
-                }
-
-                if (summaryBuilder.Length > 0)
-                {
-                    summaryBuilder.AppendLine();
-                }
-
-                if (duplicateGroupCount <= 5)
-                {
-                    summaryBuilder.Append("Value ");
-                    summaryBuilder.Append(ConvertDuplicateKeyToString(pair.Key));
-                    summaryBuilder.Append(" at indices ");
-                    AppendIndexList(summaryBuilder, pair.Value);
-                }
-            }
-
-            if (duplicateGroupCount > 5)
-            {
-                summaryBuilder.AppendLine();
-                summaryBuilder.Append("Additional duplicate groups omitted for brevity.");
-            }
-
-            if (state.hasDuplicates)
-            {
-                state.summary =
-                    summaryBuilder.Length > 0
-                        ? summaryBuilder.ToString()
-                        : "Duplicate values detected.";
             }
 
             UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
                 UnityHelpersSettings.GetDuplicateRowAnimationMode();
             bool animateDuplicates =
                 animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
+            double now = animateDuplicates ? EditorApplication.timeSinceStartup : 0d;
 
-            if (state.hasDuplicates && animateDuplicates)
+            int duplicateGroupCount = 0;
+            foreach (KeyValuePair<object, List<int>> entry in state.grouping)
             {
-                double now = EditorApplication.timeSinceStartup;
-                foreach (int duplicateIndex in state.duplicateIndices)
+                List<int> indices = entry.Value;
+                if (indices.Count <= 1)
                 {
-                    if (force || !state.animationStartTimes.ContainsKey(duplicateIndex))
+                    indices.Clear();
+                    state.listPool.Push(indices);
+                    continue;
+                }
+
+                indices.Sort();
+                duplicateGroupCount++;
+                state.hasDuplicates = true;
+
+                bool isPrimary = true;
+                foreach (int duplicateIndex in indices)
+                {
+                    state.duplicateIndices.Add(duplicateIndex);
+                    state.primaryFlags[duplicateIndex] = isPrimary;
+                    isPrimary = false;
+
+                    if (animateDuplicates)
                     {
-                        state.animationStartTimes[duplicateIndex] = now;
+                        if (force || !state.animationStartTimes.ContainsKey(duplicateIndex))
+                        {
+                            state.animationStartTimes[duplicateIndex] = now;
+                        }
                     }
                 }
 
-                List<int> staleKeys = null;
-                foreach (int existingKey in state.animationStartTimes.Keys)
+                if (state.summaryBuilder.Length > 0)
                 {
-                    if (!state.duplicateIndices.Contains(existingKey))
+                    state.summaryBuilder.AppendLine();
+                }
+
+                if (duplicateGroupCount <= 5)
+                {
+                    state.summaryBuilder.Append("Value ");
+                    state.summaryBuilder.Append(ConvertDuplicateKeyToString(entry.Key));
+                    state.summaryBuilder.Append(" at indices ");
+                    AppendIndexList(state.summaryBuilder, indices);
+                }
+
+                indices.Clear();
+                state.listPool.Push(indices);
+            }
+
+            if (duplicateGroupCount > 5)
+            {
+                if (state.summaryBuilder.Length > 0)
+                {
+                    state.summaryBuilder.AppendLine();
+                }
+
+                state.summaryBuilder.Append("Additional duplicate groups omitted for brevity.");
+            }
+
+            if (state.animationStartTimes.Count > 0)
+            {
+                state.animationKeysScratch.Clear();
+                state.animationKeysScratch.AddRange(state.animationStartTimes.Keys);
+                for (int i = 0; i < state.animationKeysScratch.Count; i++)
+                {
+                    int trackedIndex = state.animationKeysScratch[i];
+                    if (!state.duplicateIndices.Contains(trackedIndex) || !animateDuplicates)
                     {
-                        staleKeys ??= new List<int>();
-                        staleKeys.Add(existingKey);
+                        state.animationStartTimes.Remove(trackedIndex);
                     }
                 }
+                state.animationKeysScratch.Clear();
+            }
 
-                if (staleKeys == null)
-                {
-                    return state;
-                }
+            if (!animateDuplicates)
+            {
+                state.animationStartTimes.Clear();
+            }
 
-                foreach (int staleKey in staleKeys)
-                {
-                    state.animationStartTimes.Remove(staleKey);
-                }
+            if (state.hasDuplicates)
+            {
+                state.summary =
+                    state.summaryBuilder.Length > 0
+                        ? state.summaryBuilder.ToString()
+                        : "Duplicate values detected.";
             }
             else
             {
-                state.animationStartTimes.Clear();
+                state.summary = string.Empty;
             }
 
             return state;
