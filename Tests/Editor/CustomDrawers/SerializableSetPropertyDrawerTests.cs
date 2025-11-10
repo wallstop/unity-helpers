@@ -210,6 +210,78 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        public void DuplicateStateHandlesDistinctStrings()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array values = Array.CreateInstance(inspector.ElementType, 2);
+            values.SetValue("999", 0);
+            values.SetValue("ddd", 1);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsFalse(state.hasDuplicates);
+            CollectionAssert.IsEmpty(state.duplicateIndices);
+            Assert.IsTrue(string.IsNullOrEmpty(state.summary));
+        }
+
+        [Test]
+        public void EditingStringSetEntryAffectsOnlyTarget()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array values = Array.CreateInstance(inspector.ElementType, 3);
+            values.SetValue("first", 0);
+            values.SetValue("second", 1);
+            values.SetValue("third", 2);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            itemsProperty.GetArrayElementAtIndex(2).stringValue = "updated";
+            Assert.IsTrue(serializedObject.ApplyModifiedProperties());
+
+            SerializableSetPropertyDrawer.SyncRuntimeSet(setProperty);
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(StringSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            string[] snapshot = new string[itemsProperty.arraySize];
+            for (int index = 0; index < snapshot.Length; index++)
+            {
+                snapshot[index] = itemsProperty.GetArrayElementAtIndex(index).stringValue;
+            }
+
+            CollectionAssert.AreEqual(new[] { "first", "second", "updated" }, snapshot);
+        }
+
+        [Test]
         public void SortedSetEditingPreservesSerializedEntry()
         {
             SortedStringSetHost host = CreateScriptableObject<SortedStringSetHost>();
