@@ -387,10 +387,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             string[] storedValues = dictionary._values;
             bool preserveFlag = dictionary.PreserveSerializedEntries;
 
-            Assert.IsNotNull(storedKeys);
-            CollectionAssert.AreEqual(serializedKeys, storedKeys);
-            Assert.IsNotNull(storedValues);
-            CollectionAssert.AreEqual(serializedValues, storedValues);
+            Assert.IsNull(storedKeys);
+            Assert.IsNull(storedValues);
             Assert.IsFalse(preserveFlag);
         }
 

@@ -441,18 +441,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             SerializableSortedSet<ScriptableSample> set =
                 new SerializableSortedSet<ScriptableSample>();
-            FieldInfo itemsField = typeof(SerializableSortedSet<ScriptableSample>).GetField(
-                "_items",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(itemsField);
-
             ScriptableSample valid = ScriptableObject.CreateInstance<ScriptableSample>();
-            itemsField.SetValue(set, new ScriptableSample[] { null, valid });
+            set._items = new ScriptableSample[] { null, valid };
 
             LogAssert.Expect(
                 LogType.Error,
-                "SerializableSortedSet<WallstopStudios.UnityHelpers.Tests.DataStructures.SerializableHashSetTests+ScriptableSample> skipped serialized entry at index 0 because the value reference was null."
+                "SerializableSet<WallstopStudios.UnityHelpers.Tests.DataStructures.SerializableSortedSetTests+ScriptableSample> skipped serialized entry at index 0 because the value reference was null."
             );
 
             set.OnAfterDeserialize();
@@ -460,7 +454,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(1, set.Count);
             Assert.IsTrue(set.Contains(valid));
 
-            object cached = itemsField.GetValue(set);
+            object cached = set._items;
             Assert.IsNotNull(cached, "Serialized cache should be preserved for inspector review.");
             ScriptableSample[] cachedValues = (ScriptableSample[])cached;
             CollectionAssert.AreEqual(new ScriptableSample[] { null, valid }, cachedValues);
@@ -474,14 +468,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void UnityDeserializationRestoresSortOrderFromUnsortedSerializedItems()
         {
             SerializableSortedSet<string> set = new SerializableSortedSet<string>();
-            FieldInfo itemsField = typeof(SerializableSortedSet<string>).GetField(
-                "_items",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(itemsField, "Unable to access serialized items backing field.");
-
             string[] unsorted = new[] { "delta", "alpha", "charlie" };
-            itemsField.SetValue(set, unsorted);
+            set._items = unsorted;
 
             set.OnAfterDeserialize();
 
@@ -492,11 +480,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 "SortedSet enumeration should follow comparer order after deserialization."
             );
 
-            string[] preservedItems = (string[])itemsField.GetValue(set);
-            CollectionAssert.AreEqual(
-                unsorted,
-                preservedItems,
-                "Serialized cache should retain the inspector ordering."
+            Assert.IsNull(
+                set._items,
+                "Serialized cache should be released when no null entries or duplicates remain."
             );
         }
 

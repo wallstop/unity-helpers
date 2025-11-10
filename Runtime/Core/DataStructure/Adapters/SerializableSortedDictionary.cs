@@ -7,6 +7,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using System.Text.Json.Serialization;
     using ProtoBuf;
     using UnityEngine;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
 
     /// <summary>
     /// Sorted dictionary that supports Unity, JSON, and ProtoBuf serialisation.
@@ -249,12 +252,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
             _dictionary.Clear();
             bool hasDuplicateKeys = false;
+            bool encounteredNullReference = false;
+            bool keySupportsNullCheck = TypeSupportsNullReferences(typeof(TKey));
             int length = _keys.Length;
 
             for (int index = 0; index < length; index++)
             {
                 TKey key = _keys[index];
                 TValue value = GetValue(_values, index);
+
+                if (keySupportsNullCheck && ReferenceEquals(key, null))
+                {
+                    encounteredNullReference = true;
+                    LogNullReferenceSkip("key", index);
+                    continue;
+                }
 
                 if (!hasDuplicateKeys && _dictionary.ContainsKey(key))
                 {
@@ -264,9 +276,50 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 _dictionary[key] = value;
             }
 
-            _preserveSerializedEntries = hasDuplicateKeys;
-            _arraysDirty = false;
+            _preserveSerializedEntries = hasDuplicateKeys || encounteredNullReference;
+            if (!_preserveSerializedEntries)
+            {
+                _keys = null;
+                _values = null;
+            }
+            else
+            {
+                _arraysDirty = false;
+            }
         }
+
+        private static bool TypeSupportsNullReferences(Type type)
+        {
+            return type != null
+                && (!type.IsValueType || typeof(UnityEngine.Object).IsAssignableFrom(type));
+        }
+
+        private static void LogNullReferenceSkip(string component, int index)
+        {
+#if UNITY_EDITOR
+            if (!EditorShouldLog())
+            {
+                return;
+            }
+#endif
+            Debug.LogError(
+                $"SerializableSortedDictionary<{typeof(TKey).FullName}, {typeof(TValue).FullName}> skipped serialized entry at index {index} because the {component} reference was null."
+            );
+        }
+
+#if UNITY_EDITOR
+        private static bool EditorShouldLog()
+        {
+            try
+            {
+                return EditorApplication.isPlayingOrWillChangePlaymode;
+            }
+            catch (UnityException)
+            {
+                return false;
+            }
+        }
+#endif
 
         [ProtoBeforeSerialization]
         private void OnProtoBeforeSerialization()
