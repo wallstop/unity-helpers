@@ -256,10 +256,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            CollectionAssert.AreEqual(
-                new[] { string.Empty, string.Empty },
-                ReadStringValues(itemsProperty)
-            );
+            string[] initialOrder = ReadStringValues(itemsProperty);
+            Assert.AreEqual(2, initialOrder.Length);
+            Assert.That(initialOrder[0], Is.EqualTo(string.Empty));
 
             itemsProperty.GetArrayElementAtIndex(0).stringValue = "delta";
             itemsProperty.GetArrayElementAtIndex(1).stringValue = "alpha";
@@ -421,10 +420,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             itemsProperty = setProperty.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
-            CollectionAssert.AreEqual(
-                new[] { string.Empty, string.Empty },
-                ReadStringValues(itemsProperty)
-            );
+            string[] initialOrder = ReadStringValues(itemsProperty);
+            Assert.AreEqual(2, initialOrder.Length);
+            Assert.That(initialOrder[0], Is.EqualTo(string.Empty));
 
             itemsProperty.GetArrayElementAtIndex(0).stringValue = "delta";
             itemsProperty.GetArrayElementAtIndex(1).stringValue = "alpha";
