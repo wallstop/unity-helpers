@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEditorInternal;
@@ -582,6 +583,77 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             Assert.AreEqual(0f, offset);
+        }
+
+        [Test]
+        public void CommitEntryAddsComplexValue()
+        {
+            ComplexValueDictionaryHost host = CreateScriptableObject<ComplexValueDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ComplexValueDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+
+            Type pendingType = typeof(SerializableDictionaryPropertyDrawer).GetNestedType(
+                "PendingEntry",
+                BindingFlags.NonPublic
+            );
+            Assert.IsNotNull(pendingType, "Failed to reflect PendingEntry type.");
+
+            object pending = Activator.CreateInstance(pendingType);
+            pendingType
+                .GetField("key", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(pending, "Alert");
+            pendingType
+                .GetField("value", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(
+                    pending,
+                    new ComplexValue { button = Color.magenta, text = Color.white }
+                );
+
+            MethodInfo commitMethod = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
+                "CommitEntry",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            Assert.IsNotNull(commitMethod, "Failed to reflect CommitEntry method.");
+
+            commitMethod.Invoke(
+                drawer,
+                new object[]
+                {
+                    keysProperty,
+                    valuesProperty,
+                    typeof(string),
+                    typeof(ComplexValue),
+                    pending,
+                    -1,
+                    dictionaryProperty,
+                }
+            );
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+            host.dictionary.EditorAfterDeserialize();
+
+            Assert.That(host.dictionary.Count, Is.EqualTo(1));
+            Assert.That(host.dictionary.ContainsKey("Alert"), Is.True);
+
+            ReorderableList list = drawer.GetOrCreateList(
+                dictionaryProperty,
+                keysProperty,
+                valuesProperty
+            );
+            Assert.That(list.count, Is.EqualTo(1));
         }
     }
 }

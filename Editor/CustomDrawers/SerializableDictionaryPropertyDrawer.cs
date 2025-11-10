@@ -1782,7 +1782,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             keysProperty.DeleteArrayElementAtIndex(removeIndex);
             valuesProperty.DeleteArrayElementAtIndex(removeIndex);
             serializedObject.ApplyModifiedProperties();
+            serializedObject.Update();
             SyncRuntimeDictionary(dictionaryProperty);
+            foreach (UnityEngine.Object target in serializedObject.targetObjects)
+            {
+                if (target != null)
+                {
+                    EditorUtility.SetDirty(target);
+                }
+            }
             ClampPaginationState(pagination, keysProperty.arraySize);
 
             if (keysProperty.arraySize > 0)
@@ -2463,9 +2471,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             serializedObject.ApplyModifiedProperties();
+            serializedObject.Update();
             SyncRuntimeDictionary(dictionaryProperty);
+
+            if (targets.Length > 0)
+            {
+                for (int index = 0; index < targets.Length; index++)
+                {
+                    UnityEngine.Object target = targets[index];
+                    if (target != null)
+                    {
+                        EditorUtility.SetDirty(target);
+                    }
+                }
+            }
+
+            string listKey = GetListKey(dictionaryProperty);
+            MarkListCacheDirty(listKey);
+            InvalidateKeyCache(listKey);
             GUI.changed = true;
-            InvalidateKeyCache(GetListKey(dictionaryProperty));
             return new CommitResult { added = addedNewEntry, index = affectedIndex };
         }
 
