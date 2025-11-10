@@ -69,15 +69,20 @@ private readonly Dictionary<int, bool> foldouts = new();
 
 public override void OnInspectorGUI()
 {
+    var placement = UnityHelpersSettings.GetWButtonActionsPlacement();
     var foldoutBehavior = UnityHelpersSettings.GetWButtonFoldoutBehavior();
-    if (UnityHelpersSettings.GetWButtonActionsPlacement() == UnityHelpersSettings.WButtonActionsPlacement.Top)
+
+    if (placement == UnityHelpersSettings.WButtonActionsPlacement.Top)
     {
         WButtonGUI.DrawButtons(this, WButtonPlacement.Top, pagination, foldouts, foldoutBehavior);
     }
 
     // editor UI...
 
-    WButtonGUI.DrawButtons(this, WButtonPlacement.Bottom, pagination, foldouts, foldoutBehavior);
+    if (placement == UnityHelpersSettings.WButtonActionsPlacement.Bottom)
+    {
+        WButtonGUI.DrawButtons(this, WButtonPlacement.Bottom, pagination, foldouts, foldoutBehavior);
+    }
 }
 ```
 

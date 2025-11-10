@@ -156,20 +156,43 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             GUIContent header = BuildGroupHeader(drawOrder);
             bool alwaysOpen =
                 foldoutBehavior == UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen;
-            bool expanded = true;
-            if (!alwaysOpen)
+            bool expanded =
+                alwaysOpen || GetFoldoutState(foldoutStates, drawOrder, foldoutBehavior);
+
+            Color previousBackground = GUI.backgroundColor;
+            GUI.backgroundColor = WButtonStyles.GetFoldoutBackgroundColor(expanded || alwaysOpen);
+
+            GUILayout.BeginVertical(
+                alwaysOpen
+                    ? WButtonStyles.GroupStyle
+                    : WButtonStyles.GetFoldoutContainerStyle(expanded)
+            );
+
+            GUI.backgroundColor = previousBackground;
+
+            if (alwaysOpen)
             {
-                expanded = GetFoldoutState(foldoutStates, drawOrder, foldoutBehavior);
-                Rect foldoutRect = EditorGUILayout.GetControlRect();
+                GUILayout.Label(header, WButtonStyles.HeaderStyle);
+                EditorGUILayout.Space(WButtonStyles.FoldoutContentSpacing);
+            }
+            else
+            {
+                Rect headerRect = GUILayoutUtility.GetRect(
+                    header,
+                    WButtonStyles.FoldoutHeaderStyle,
+                    GUILayout.ExpandWidth(true)
+                );
+
                 EditorGUI.indentLevel++;
                 bool newExpanded = EditorGUI.Foldout(
-                    foldoutRect,
+                    headerRect,
                     expanded,
                     header,
                     true,
-                    EditorStyles.foldoutHeader
+                    WButtonStyles.FoldoutHeaderStyle
                 );
                 EditorGUI.indentLevel--;
+
                 if (foldoutStates != null)
                 {
                     foldoutStates[drawOrder] = newExpanded;
@@ -177,15 +200,12 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
                 if (!newExpanded)
                 {
+                    GUILayout.EndVertical();
                     EditorGUILayout.Space();
                     return;
                 }
-            }
 
-            GUILayout.BeginVertical(WButtonStyles.GroupStyle);
-            if (alwaysOpen)
-            {
-                GUILayout.Label(header, WButtonStyles.HeaderStyle);
+                EditorGUILayout.Space(WButtonStyles.FoldoutContentSpacing);
             }
 
             int pageSize = UnityHelpersSettings.GetWButtonPageSize();

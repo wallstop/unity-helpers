@@ -11,6 +11,9 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
         private static GUIStyle _headerStyle;
         private static GUIStyle _baseButtonStyle;
         private static GUIStyle _arrayHeaderStyle;
+        private static GUIStyle _foldoutContainerExpanded;
+        private static GUIStyle _foldoutContainerCollapsed;
+        private static GUIStyle _foldoutHeaderStyle;
         private static GUIContent _topHeaderContent;
         private static GUIContent _bottomHeaderContent;
         private static readonly Dictionary<ButtonStyleKey, GUIStyle> ColoredButtonStyles = new(
@@ -29,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 _groupStyle ??= new GUIStyle(EditorStyles.helpBox)
                 {
                     padding = new RectOffset(12, 12, 10, 10),
-                    margin = new RectOffset(2, 2, 4, 4),
+                    margin = new RectOffset(4, 4, 4, 4),
                 };
                 return _groupStyle;
             }
@@ -59,7 +62,7 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                     richText = false,
                     fixedHeight = ButtonHeight,
                     alignment = TextAnchor.MiddleCenter,
-                    margin = new RectOffset(2, 2, 2, 2),
+                    margin = new RectOffset(2, 2, 2, 6),
                 };
                 return _baseButtonStyle;
             }
@@ -73,6 +76,43 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 return _arrayHeaderStyle;
             }
         }
+
+        internal static GUIStyle GetFoldoutContainerStyle(bool expanded)
+        {
+            _foldoutContainerExpanded ??= CreateFoldoutContainerStyle(expanded: true);
+            _foldoutContainerCollapsed ??= CreateFoldoutContainerStyle(expanded: false);
+            return expanded ? _foldoutContainerExpanded : _foldoutContainerCollapsed;
+        }
+
+        internal static GUIStyle FoldoutHeaderStyle
+        {
+            get
+            {
+                _foldoutHeaderStyle ??= new GUIStyle(EditorStyles.foldoutHeader)
+                {
+                    fontStyle = FontStyle.Bold,
+                    padding = new RectOffset(18, 8, 4, 4),
+                    margin = new RectOffset(0, 4, 2, 2),
+                };
+                return _foldoutHeaderStyle;
+            }
+        }
+
+        internal static Color GetFoldoutBackgroundColor(bool expanded)
+        {
+            if (EditorGUIUtility.isProSkin)
+            {
+                return expanded
+                    ? new Color(0.23f, 0.23f, 0.25f, 1f)
+                    : new Color(0.19f, 0.19f, 0.2f, 1f);
+            }
+
+            return expanded
+                ? new Color(0.89f, 0.92f, 0.97f, 1f)
+                : new Color(0.94f, 0.94f, 0.96f, 1f);
+        }
+
+        internal const float FoldoutContentSpacing = 4f;
 
         internal static GUIContent TopGroupLabel
         {
@@ -146,6 +186,16 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
             texture.Apply();
             SolidColorTextures[color] = texture;
             return texture;
+        }
+
+        private static GUIStyle CreateFoldoutContainerStyle(bool expanded)
+        {
+            GUIStyle style = new GUIStyle(EditorStyles.helpBox)
+            {
+                padding = expanded ? new RectOffset(12, 12, 8, 10) : new RectOffset(12, 12, 6, 8),
+                margin = new RectOffset(4, 4, 6, 6),
+            };
+            return style;
         }
 
         private readonly struct ButtonStyleKey : System.IEquatable<ButtonStyleKey>

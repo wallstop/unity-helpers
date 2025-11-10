@@ -36,22 +36,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 UnityHelpersSettings.GetWButtonActionsPlacement();
             UnityHelpersSettings.WButtonFoldoutBehavior foldoutBehavior =
                 UnityHelpersSettings.GetWButtonFoldoutBehavior();
+            bool drawTop = placement == UnityHelpersSettings.WButtonActionsPlacement.Top;
+            bool drawBottom = placement == UnityHelpersSettings.WButtonActionsPlacement.Bottom;
 
-            if (placement == UnityHelpersSettings.WButtonActionsPlacement.Top)
-            {
-                if (
-                    WButtonGUI.DrawButtons(
-                        this,
-                        WButtonPlacement.Top,
-                        _paginationStates,
-                        _foldoutStates,
-                        foldoutBehavior,
-                        triggeredContexts
-                    )
+            if (
+                drawTop
+                && WButtonGUI.DrawButtons(
+                    this,
+                    WButtonPlacement.Top,
+                    _paginationStates,
+                    _foldoutStates,
+                    foldoutBehavior,
+                    triggeredContexts
                 )
-                {
-                    EditorGUILayout.Space();
-                }
+            )
+            {
+                EditorGUILayout.Space();
             }
 
             SerializedProperty iterator = serializedObject.GetIterator();
@@ -69,32 +69,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
             serializedObject.ApplyModifiedProperties();
 
-            if (placement == UnityHelpersSettings.WButtonActionsPlacement.Bottom)
-            {
-                if (
-                    WButtonGUI.DrawButtons(
-                        this,
-                        WButtonPlacement.Top,
-                        _paginationStates,
-                        _foldoutStates,
-                        foldoutBehavior,
-                        triggeredContexts
-                    )
+            if (
+                drawBottom
+                && WButtonGUI.DrawButtons(
+                    this,
+                    WButtonPlacement.Bottom,
+                    _paginationStates,
+                    _foldoutStates,
+                    foldoutBehavior,
+                    triggeredContexts
                 )
-                {
-                    EditorGUILayout.Space();
-                }
-            }
-
-            bool bottomDrawn = WButtonGUI.DrawButtons(
-                this,
-                WButtonPlacement.Bottom,
-                _paginationStates,
-                _foldoutStates,
-                foldoutBehavior,
-                triggeredContexts
-            );
-            if (bottomDrawn)
+            )
             {
                 EditorGUILayout.Space();
             }
