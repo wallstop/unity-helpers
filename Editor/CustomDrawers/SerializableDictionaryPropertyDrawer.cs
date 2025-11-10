@@ -1041,7 +1041,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 isExpanded = false,
                 isSorted = isSortedDictionary,
             };
-            entry.foldoutAnim = CreatePendingFoldoutAnim(entry.isExpanded, isSortedDictionary);
+            if (ShouldTweenPendingFoldout(isSortedDictionary))
+            {
+                entry.foldoutAnim = CreatePendingFoldoutAnim(entry.isExpanded, isSortedDictionary);
+            }
             _pendingEntries[key] = entry;
             return entry;
         }
@@ -3011,6 +3014,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             MarkListCacheDirty(cacheKey);
         }
 
+        private static bool ShouldTweenPendingFoldout(bool isSortedDictionary)
+        {
+            return isSortedDictionary
+                ? UnityHelpersSettings.ShouldTweenSerializableSortedDictionaryFoldouts()
+                : UnityHelpersSettings.ShouldTweenSerializableDictionaryFoldouts();
+        }
+
         private static float GetPendingFoldoutAnimationSpeed(bool isSortedDictionary)
         {
             return isSortedDictionary
@@ -3032,6 +3042,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             if (pending == null)
             {
+                return null;
+            }
+
+            bool shouldTween = ShouldTweenPendingFoldout(pending.isSorted);
+            if (!shouldTween)
+            {
+                if (pending.foldoutAnim != null)
+                {
+                    pending.foldoutAnim.valueChanged.RemoveListener(RequestRepaint);
+                    pending.foldoutAnim = null;
+                }
+
                 return null;
             }
 

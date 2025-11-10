@@ -164,6 +164,59 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 Is.EqualTo(UnityHelpersSettings.DefaultFoldoutSpeed)
             );
         }
+
+        [Test]
+        public void FoldoutTweensEnabledByDefault()
+        {
+            Assert.IsTrue(UnityHelpersSettings.ShouldTweenWButtonFoldouts());
+            Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableDictionaryFoldouts());
+            Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableSortedDictionaryFoldouts());
+        }
+
+        [Test]
+        public void FoldoutTweenTogglesAffectBehavior()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            SerializedObject serialized = new(settings);
+            SerializedProperty wbuttonTweenProperty = serialized.FindProperty(
+                "wbuttonFoldoutTweenEnabled"
+            );
+            SerializedProperty dictionaryTweenProperty = serialized.FindProperty(
+                "serializableDictionaryFoldoutTweenEnabled"
+            );
+            SerializedProperty sortedDictionaryTweenProperty = serialized.FindProperty(
+                "serializableSortedDictionaryFoldoutTweenEnabled"
+            );
+
+            bool originalWButtonValue = wbuttonTweenProperty.boolValue;
+            bool originalDictionaryValue = dictionaryTweenProperty.boolValue;
+            bool originalSortedValue = sortedDictionaryTweenProperty.boolValue;
+
+            try
+            {
+                wbuttonTweenProperty.boolValue = false;
+                dictionaryTweenProperty.boolValue = false;
+                sortedDictionaryTweenProperty.boolValue = false;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                Assert.IsFalse(UnityHelpersSettings.ShouldTweenWButtonFoldouts());
+                Assert.IsFalse(UnityHelpersSettings.ShouldTweenSerializableDictionaryFoldouts());
+                Assert.IsFalse(
+                    UnityHelpersSettings.ShouldTweenSerializableSortedDictionaryFoldouts()
+                );
+            }
+            finally
+            {
+                SerializedObject restore = new(settings);
+                restore.FindProperty("wbuttonFoldoutTweenEnabled").boolValue = originalWButtonValue;
+                restore.FindProperty("serializableDictionaryFoldoutTweenEnabled").boolValue =
+                    originalDictionaryValue;
+                restore.FindProperty("serializableSortedDictionaryFoldoutTweenEnabled").boolValue =
+                    originalSortedValue;
+                restore.ApplyModifiedPropertiesWithoutUndo();
+                settings.SaveSettings();
+            }
+        }
     }
 }
 #endif

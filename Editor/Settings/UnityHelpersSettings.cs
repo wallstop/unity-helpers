@@ -31,8 +31,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const string DefaultWButtonPriority = "Default";
         public const int DefaultDuplicateTweenCycles = 3;
         public const float DefaultFoldoutSpeed = 2f;
-        public const float MinFoldoutSpeed = 0.05f;
-        public const float MaxFoldoutSpeed = 8f;
+        public const float MinFoldoutSpeed = 2f;
+        public const float MaxFoldoutSpeed = 12f;
         private static readonly Color DefaultPriorityButtonColor = new(0.243f, 0.525f, 0.988f, 1f);
 
         public enum WButtonActionsPlacement
@@ -102,19 +102,41 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             WButtonFoldoutBehavior.StartExpanded;
 
         [SerializeField]
+        [Tooltip("Animate WButton action foldouts when toggled.")]
+        private bool wbuttonFoldoutTweenEnabled = true;
+
+        [SerializeField]
         [Tooltip("Animation speed used when toggling WButton action foldouts.")]
+        [WShowIf(nameof(wbuttonFoldoutTweenEnabled))]
+        [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
         private float wbuttonFoldoutSpeed = DefaultFoldoutSpeed;
 
         [SerializeField]
         [Tooltip(
             "Animation speed used when toggling SerializableDictionary pending entry foldouts."
         )]
+        private bool serializableDictionaryFoldoutTweenEnabled = true;
+
+        [SerializeField]
+        [Tooltip(
+            "Animation speed used when toggling SerializableDictionary pending entry foldouts."
+        )]
+        [WShowIf(nameof(serializableDictionaryFoldoutTweenEnabled))]
+        [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
         private float serializableDictionaryFoldoutSpeed = DefaultFoldoutSpeed;
 
         [SerializeField]
         [Tooltip(
             "Animation speed used when toggling SerializableSortedDictionary pending entry foldouts."
         )]
+        private bool serializableSortedDictionaryFoldoutTweenEnabled = true;
+
+        [SerializeField]
+        [Tooltip(
+            "Animation speed used when toggling SerializableSortedDictionary pending entry foldouts."
+        )]
+        [WShowIf(nameof(serializableSortedDictionaryFoldoutTweenEnabled))]
+        [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
         private float serializableSortedDictionaryFoldoutSpeed = DefaultFoldoutSpeed;
 
         [SerializeField]
@@ -396,9 +418,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return instance.wbuttonFoldoutBehavior;
         }
 
+        public static bool ShouldTweenWButtonFoldouts()
+        {
+            return instance.wbuttonFoldoutTweenEnabled;
+        }
+
         public static float GetWButtonFoldoutSpeed()
         {
             return Mathf.Clamp(instance.wbuttonFoldoutSpeed, MinFoldoutSpeed, MaxFoldoutSpeed);
+        }
+
+        public static bool ShouldTweenSerializableDictionaryFoldouts()
+        {
+            return instance.serializableDictionaryFoldoutTweenEnabled;
         }
 
         public static float GetSerializableDictionaryFoldoutSpeed()
@@ -408,6 +440,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 MinFoldoutSpeed,
                 MaxFoldoutSpeed
             );
+        }
+
+        public static bool ShouldTweenSerializableSortedDictionaryFoldouts()
+        {
+            return instance.serializableSortedDictionaryFoldoutTweenEnabled;
         }
 
         public static float GetSerializableSortedDictionaryFoldoutSpeed()
@@ -877,28 +914,47 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             "Determines whether WButton action groups are always visible, start expanded, or start collapsed when first drawn."
                         )
                     );
-                    EditorGUILayout.Slider(
+                    EditorGUILayout.PropertyField(
+                        serializedSettings.FindProperty("wbuttonFoldoutTweenEnabled"),
+                        new GUIContent(
+                            "Tween WButton Foldouts",
+                            "Enable animated transitions when expanding or collapsing WButton action groups."
+                        )
+                    );
+                    EditorGUILayout.PropertyField(
                         serializedSettings.FindProperty("wbuttonFoldoutSpeed"),
-                        MinFoldoutSpeed,
-                        MaxFoldoutSpeed,
                         new GUIContent(
                             "WButton Foldout Speed",
                             "Animation speed used when expanding or collapsing WButton action groups."
                         )
                     );
-                    EditorGUILayout.Slider(
+                    EditorGUILayout.PropertyField(
+                        serializedSettings.FindProperty(
+                            "serializableDictionaryFoldoutTweenEnabled"
+                        ),
+                        new GUIContent(
+                            "Tween Dictionary Foldouts",
+                            "Enable animated transitions when expanding or collapsing SerializableDictionary pending entries."
+                        )
+                    );
+                    EditorGUILayout.PropertyField(
                         serializedSettings.FindProperty("serializableDictionaryFoldoutSpeed"),
-                        MinFoldoutSpeed,
-                        MaxFoldoutSpeed,
                         new GUIContent(
                             "Dictionary Foldout Speed",
                             "Animation speed used when expanding or collapsing SerializableDictionary pending entries."
                         )
                     );
-                    EditorGUILayout.Slider(
+                    EditorGUILayout.PropertyField(
+                        serializedSettings.FindProperty(
+                            "serializableSortedDictionaryFoldoutTweenEnabled"
+                        ),
+                        new GUIContent(
+                            "Tween Sorted Dictionary Foldouts",
+                            "Enable animated transitions when expanding or collapsing SerializableSortedDictionary pending entries."
+                        )
+                    );
+                    EditorGUILayout.PropertyField(
                         serializedSettings.FindProperty("serializableSortedDictionaryFoldoutSpeed"),
-                        MinFoldoutSpeed,
-                        MaxFoldoutSpeed,
                         new GUIContent(
                             "Sorted Dictionary Foldout Speed",
                             "Animation speed used when expanding or collapsing SerializableSortedDictionary pending entries."

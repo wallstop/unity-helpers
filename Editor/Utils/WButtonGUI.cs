@@ -162,7 +162,17 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
                 foldoutBehavior == UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen;
             bool expanded =
                 alwaysOpen || GetFoldoutState(foldoutStates, drawOrder, foldoutBehavior);
-            AnimBool foldoutAnim = alwaysOpen ? null : GetFoldoutAnim(drawOrder, expanded);
+            bool tweenEnabled = UnityHelpersSettings.ShouldTweenWButtonFoldouts();
+            AnimBool foldoutAnim =
+                alwaysOpen || !tweenEnabled ? null : GetFoldoutAnim(drawOrder, expanded);
+            if (!tweenEnabled)
+            {
+                if (FoldoutAnimations.TryGetValue(drawOrder, out AnimBool cached) && cached != null)
+                {
+                    cached.valueChanged.RemoveListener(RequestRepaint);
+                }
+                FoldoutAnimations.Remove(drawOrder);
+            }
 
             Color previousBackground = GUI.backgroundColor;
             GUI.backgroundColor = WButtonStyles.GetFoldoutBackgroundColor(expanded || alwaysOpen);
@@ -207,7 +217,6 @@ namespace WallstopStudios.UnityHelpers.Editor.WButton
 
                 if (foldoutAnim != null)
                 {
-                    foldoutAnim.speed = UnityHelpersSettings.GetWButtonFoldoutSpeed();
                     foldoutAnim.target = newExpanded;
                 }
 
