@@ -487,7 +487,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             );
         }
 
-        private sealed class SortedSample : IComparable
+        private sealed class SortedSample : IComparable<SortedSample>, IComparable
         {
             public SortedSample(string token)
             {
@@ -516,47 +516,47 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 return Token.GetHashCode(StringComparison.Ordinal);
             }
 
-            public int CompareTo(object obj)
+            public int CompareTo(SortedSample other)
+            {
+                if (other == null)
+                {
+                    return 1;
+                }
+
+                return string.CompareOrdinal(Token, other.Token);
+            }
+
+            int IComparable.CompareTo(object obj)
             {
                 if (obj is SortedSample other)
                 {
-                    return string.CompareOrdinal(Token, other.Token);
+                    return CompareTo(other);
                 }
 
                 return -1;
             }
         }
 
-        private sealed class SortedSampleComparer : IComparer<SortedSample>
+        private sealed class ScriptableSample
+            : ScriptableObject,
+                IComparable<ScriptableSample>,
+                IComparable
         {
-            public int Compare(SortedSample x, SortedSample y)
+            public int CompareTo(ScriptableSample other)
             {
-                if (ReferenceEquals(x, y))
-                {
-                    return 0;
-                }
-
-                if (x == null)
-                {
-                    return -1;
-                }
-
-                if (y == null)
+                if (other == null)
                 {
                     return 1;
                 }
 
-                return string.Compare(x.Token, y.Token, StringComparison.Ordinal);
+                return UnityObjectNameComparer<ScriptableSample>.Instance.Compare(this, other);
             }
-        }
 
-        private sealed class ScriptableSample : ScriptableObject, IComparable
-        {
             public int CompareTo(object obj)
             {
                 if (obj is ScriptableSample other)
                 {
-                    return UnityObjectNameComparer<ScriptableSample>.Instance.Compare(this, other);
+                    return CompareTo(other);
                 }
 
                 return -1;
@@ -599,11 +599,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void TryGetValueReturnsStoredReferenceWithComparer()
+        public void TryGetValueReturnsStoredReferenceForMatchingComparable()
         {
-            SerializableSortedSet<SortedSample> set = new SerializableSortedSet<SortedSample>(
-                new SortedSampleComparer()
-            );
+            SerializableSortedSet<SortedSample> set = new SerializableSortedSet<SortedSample>();
 
             SortedSample stored = new SortedSample("delta");
             set.Add(stored);

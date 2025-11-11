@@ -23,10 +23,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             ISerializationCallbackReceiver,
             IDeserializationCallback,
             ISerializable
+        where TKey : IComparable<TKey>
     {
         private const string KeysSerializationName = "Keys";
         private const string ValuesSerializationName = "Values";
-        private const string ComparerSerializationName = "Comparer";
 
         [SerializeField]
         [ProtoMember(1, OverwriteList = true)]
@@ -49,30 +49,22 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         internal bool PreserveSerializedEntries => _preserveSerializedEntries;
 
         protected SerializableSortedDictionaryBase()
-            : this((IComparer<TKey>)null) { }
-
-        protected SerializableSortedDictionaryBase(IComparer<TKey> comparer)
         {
-            _dictionary = new SortedDictionary<TKey, TValue>(comparer ?? Comparer<TKey>.Default);
+            _dictionary = new SortedDictionary<TKey, TValue>();
         }
 
         protected SerializableSortedDictionaryBase(IDictionary<TKey, TValue> dictionary)
-            : this(dictionary, null) { }
-
-        protected SerializableSortedDictionaryBase(
-            IDictionary<TKey, TValue> dictionary,
-            IComparer<TKey> comparer
-        )
         {
             if (dictionary == null)
             {
                 throw new ArgumentNullException(nameof(dictionary));
             }
 
-            _dictionary = new SortedDictionary<TKey, TValue>(
-                dictionary,
-                comparer ?? Comparer<TKey>.Default
-            );
+            _dictionary = new SortedDictionary<TKey, TValue>();
+            foreach (KeyValuePair<TKey, TValue> pair in dictionary)
+            {
+                _dictionary[pair.Key] = pair.Value;
+            }
         }
 
         protected SerializableSortedDictionaryBase(SerializationInfo info, StreamingContext context)
@@ -82,35 +74,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 throw new ArgumentNullException(nameof(info));
             }
 
-            IComparer<TKey> comparer =
-                (IComparer<TKey>)info.GetValue(ComparerSerializationName, typeof(IComparer<TKey>));
-            _dictionary = new SortedDictionary<TKey, TValue>(comparer ?? Comparer<TKey>.Default);
+            _dictionary = new SortedDictionary<TKey, TValue>();
 
             _keys = (TKey[])info.GetValue(KeysSerializationName, typeof(TKey[]));
             _values = (TValueCache[])info.GetValue(ValuesSerializationName, typeof(TValueCache[]));
             OnAfterDeserialize();
         }
-
-        protected SerializableSortedDictionaryBase(
-            SerializationInfo info,
-            StreamingContext context,
-            IComparer<TKey> comparer
-        )
-            : this(info, context)
-        {
-            if (comparer != null && comparer != _dictionary.Comparer)
-            {
-                SortedDictionary<TKey, TValue> replacement = new(comparer);
-                foreach (KeyValuePair<TKey, TValue> pair in _dictionary)
-                {
-                    replacement[pair.Key] = pair.Value;
-                }
-
-                _dictionary = replacement;
-            }
-        }
-
-        public IComparer<TKey> Comparer => _dictionary.Comparer;
 
         protected abstract TValue GetValue(TValueCache[] cache, int index);
 
@@ -355,14 +324,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             OnBeforeSerialize();
             info.AddValue(KeysSerializationName, _keys, typeof(TKey[]));
             info.AddValue(ValuesSerializationName, _values, typeof(TValueCache[]));
-            info.AddValue(ComparerSerializationName, _dictionary.Comparer, typeof(IComparer<TKey>));
         }
 
         public void OnDeserialization(object sender)
         {
             // No additional action required. The serialization constructor already
-            // reconstructed the sorted dictionary using the stored comparer and
-            // serialized key/value arrays.
+            // reconstructed the sorted dictionary from the serialized key/value arrays.
         }
 
         private void MarkSerializationCacheDirty()
@@ -503,31 +470,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     [ProtoContract]
     public class SerializableSortedDictionary<TKey, TValue>
         : SerializableSortedDictionaryBase<TKey, TValue, TValue>
-        where TKey : IComparable
+        where TKey : IComparable<TKey>
     {
         public SerializableSortedDictionary() { }
-
-        public SerializableSortedDictionary(IComparer<TKey> comparer)
-            : base(comparer) { }
 
         public SerializableSortedDictionary(IDictionary<TKey, TValue> dictionary)
             : base(dictionary) { }
 
-        public SerializableSortedDictionary(
-            IDictionary<TKey, TValue> dictionary,
-            IComparer<TKey> comparer
-        )
-            : base(dictionary, comparer) { }
-
         protected SerializableSortedDictionary(SerializationInfo info, StreamingContext context)
             : base(info, context) { }
-
-        protected SerializableSortedDictionary(
-            SerializationInfo info,
-            StreamingContext context,
-            IComparer<TKey> comparer
-        )
-            : base(info, context, comparer) { }
 
         protected override TValue GetValue(TValue[] cache, int index)
         {
@@ -544,31 +495,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     [ProtoContract]
     public class SerializableSortedDictionary<TKey, TValue, TValueCache>
         : SerializableSortedDictionaryBase<TKey, TValue, TValueCache>
+        where TKey : IComparable<TKey>
         where TValueCache : SerializableDictionary.Cache<TValue>, new()
     {
         public SerializableSortedDictionary() { }
 
-        public SerializableSortedDictionary(IComparer<TKey> comparer)
-            : base(comparer) { }
-
         public SerializableSortedDictionary(IDictionary<TKey, TValue> dictionary)
             : base(dictionary) { }
 
-        public SerializableSortedDictionary(
-            IDictionary<TKey, TValue> dictionary,
-            IComparer<TKey> comparer
-        )
-            : base(dictionary, comparer) { }
-
         protected SerializableSortedDictionary(SerializationInfo info, StreamingContext context)
             : base(info, context) { }
-
-        protected SerializableSortedDictionary(
-            SerializationInfo info,
-            StreamingContext context,
-            IComparer<TKey> comparer
-        )
-            : base(info, context, comparer) { }
 
         protected override TValue GetValue(TValueCache[] cache, int index)
         {

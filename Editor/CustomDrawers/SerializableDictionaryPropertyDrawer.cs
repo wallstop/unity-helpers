@@ -1591,7 +1591,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             GUIContent removeContent = EditorGUIUtility.TrTextContent("-", "Remove selected entry");
             GUIContent sortContent = EditorGUIUtility.TrTextContent(
                 "Sort",
-                "Sort entries by key using the dictionary comparer"
+                "Sort entries by key using natural ordering"
             );
 
             bool showRange = itemCount > 0 || rangeText == "Empty";

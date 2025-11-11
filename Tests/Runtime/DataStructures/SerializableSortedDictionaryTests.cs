@@ -11,19 +11,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
     public sealed class SerializableSortedDictionaryTests
     {
-        private sealed class DescendingComparer : IComparer<int>
-        {
-            public int Compare(int x, int y)
-            {
-                if (x == y)
-                {
-                    return 0;
-                }
-
-                return x > y ? -1 : 1;
-            }
-        }
-
         [Test]
         public void EntriesEnumerateInAscendingOrder()
         {
@@ -409,31 +396,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             int[] expectedKeys = { 2, 4, 9 };
             int index = 0;
             foreach (KeyValuePair<int, string> pair in deserialized)
-            {
-                Assert.Less(index, expectedKeys.Length);
-                Assert.AreEqual(expectedKeys[index], pair.Key);
-                index++;
-            }
-
-            Assert.AreEqual(expectedKeys.Length, index);
-        }
-
-        [Test]
-        public void CustomComparerControlsOrdering()
-        {
-            SerializableSortedDictionary<int, string> dictionary = new SerializableSortedDictionary<
-                int,
-                string
-            >(new DescendingComparer());
-            dictionary.Add(1, "one");
-            dictionary.Add(3, "three");
-            dictionary.Add(2, "two");
-
-            Assert.IsInstanceOf<DescendingComparer>(dictionary.Comparer);
-
-            int[] expectedKeys = { 3, 2, 1 };
-            int index = 0;
-            foreach (KeyValuePair<int, string> pair in dictionary)
             {
                 Assert.Less(index, expectedKeys.Length);
                 Assert.AreEqual(expectedKeys[index], pair.Key);

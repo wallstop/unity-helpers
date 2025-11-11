@@ -1475,32 +1475,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static bool TypeMatchesGenericDefinition(Type candidate, Type openGeneric)
         {
-            if (candidate == null)
-            {
-                return false;
-            }
-
-            string openGenericName = openGeneric.Name;
-            int genericTickIndex = openGenericName.IndexOf('`');
-            if (genericTickIndex >= 0)
-            {
-                openGenericName = openGenericName.Substring(0, genericTickIndex);
-            }
-
             Type current = candidate;
             while (current != null)
             {
                 if (current.IsGenericType && current.GetGenericTypeDefinition() == openGeneric)
-                {
-                    return true;
-                }
-
-                string fullName = current.FullName ?? current.Name;
-                if (
-                    !string.IsNullOrEmpty(fullName)
-                    && fullName.IndexOf(openGenericName, StringComparison.Ordinal) >= 0
-                    && typeof(ISerializableSetInspector).IsAssignableFrom(current)
-                )
                 {
                     return true;
                 }
