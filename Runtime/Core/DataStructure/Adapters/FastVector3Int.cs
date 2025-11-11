@@ -8,12 +8,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using UnityEngine;
 
     /// <summary>
-    /// Lightweight alternative to <see cref="Vector3Int"/> that caches its hash to accelerate dictionary and set lookups.
+    /// Lightweight alternative to Unity's <see cref="Vector3Int"/> that caches its hash to accelerate dictionary and set lookups.
+    /// Converts seamlessly to and from Unity vectors so you can drop it into serialization-friendly containers without refactors.
     /// </summary>
     /// <example>
-    /// <code>
+    /// <code><![CDATA[
     /// FastVector3Int voxel = new FastVector3Int(4, 2, 6);
-    /// </code>
+    /// Dictionary<FastVector3Int, float> heatMap = new Dictionary<FastVector3Int, float>();
+    /// heatMap[voxel] = 0.75f;
+    /// bool isTracked = heatMap.ContainsKey(new FastVector3Int(4, 2, 6));
+    /// Vector3Int unityVector = voxel;
+    /// ]]></code>
     /// </example>
     [Serializable]
     [ProtoContract]

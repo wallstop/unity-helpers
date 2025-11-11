@@ -7,8 +7,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using UnityEngine;
 
     /// <summary>
-    /// Represents an axis-aligned bounding box with half-open semantics on the maximum edge.
+    /// Axis-aligned bounding box that uses half-open semantics on its upper bounds so hit tests behave consistently with grid and voxel data.
+    /// Useful for spatial queries, containment checks, and broad-phase culling without off-by-one float errors.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// BoundingBox3D box = BoundingBox3D.FromCenterAndSize(Vector3.zero, Vector3.one * 10f);
+    /// bool containsPlayer = box.Contains(playerPosition);
+    /// BoundingBox3D expanded = box.ExpandToInclude(enemyPosition);
+    /// ]]></code>
+    /// </example>
     public readonly struct BoundingBox3D : IEquatable<BoundingBox3D>
     {
         private const float MinimumExclusivePadding = 1e-6f;

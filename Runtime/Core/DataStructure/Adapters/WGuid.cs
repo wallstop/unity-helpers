@@ -16,10 +16,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     /// The structure enforces version-4 GUIDs so that values generated through Unity serialization or manual assignment remain compatible across formats.
     /// </remarks>
     /// <example>
-    /// <code>
+    /// <code><![CDATA[
     /// WGuid identifier = WGuid.NewGuid();
     /// Guid systemGuid = identifier;
-    /// </code>
+    /// string persisted = identifier.ToString();
+    /// WGuid parsed;
+    /// if (WGuid.TryParse(persisted, out parsed))
+    /// {
+    ///     Debug.Log($"Restored GUID {parsed}");
+    /// }
+    /// ]]></code>
     /// </example>
     [Serializable]
     [DataContract]

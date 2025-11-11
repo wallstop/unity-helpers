@@ -6,8 +6,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using UnityEngine;
 
     /// <summary>
-    /// A lightweight time-based cache that recomputes a value after a TTL expires.
+    /// A lightweight time-based cache that recomputes a value after a time-to-live interval expires.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// TimedCache<int> enemyCount = new TimedCache<int>(TimeSpan.FromSeconds(1f), () => FindEnemies().Count);
+    /// int cachedValue = enemyCount.GetValue(Time.time);
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="T">Value type produced by the cache factory.</typeparam>
     /// <remarks>
     /// Use for expensive computations that can be reused for a short period (e.g., path costs, counts, queries).

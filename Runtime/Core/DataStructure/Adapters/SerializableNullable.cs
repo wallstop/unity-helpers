@@ -11,7 +11,23 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
     /// <summary>
     /// Unity-serializable alternative to <see cref="Nullable{T}"/> that supports ProtoBuf and JSON.
+    /// Enables authoring optional value types in the inspector without custom drawer code.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// [Serializable]
+    /// public sealed class SpawnSettings : MonoBehaviour
+    /// {
+    ///     [SerializeField]
+    ///     private SerializableNullable<float> respawnDelay = new SerializableNullable<float>(5f);
+    ///
+    ///     public bool TryGetRespawnDelay(out float seconds)
+    ///     {
+    ///         return respawnDelay.TryGet(out seconds);
+    ///     }
+    /// }
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="T">The underlying value type.</typeparam>
     [Serializable]
     [ProtoContract]

@@ -10,6 +10,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// <summary>
     /// Immutable octree for efficient 3D spatial queries.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// OctTree3D<Vector3>.Entry[] entries = points.Select(p => new OctTree3D<Vector3>.Entry(p, p)).ToArray();
+    /// OctTree3D<Vector3> tree = OctTree3D<Vector3>.Build(entries);
+    /// List<Vector3> hits = new List<Vector3>();
+    /// tree.GetElementsInBounds(searchBounds, hits);
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="T">Element type contained in the tree.</typeparam>
     /// <remarks>
     /// <para>Pros: Good all-around performance for 3D point queries, range queries, and approximate nearest neighbor searches.</para>

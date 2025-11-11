@@ -559,8 +559,26 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     }
 
     /// <summary>
-    /// Serializable dictionary with values serialized directly.
+    /// Unity-friendly dictionary that keeps keys and values serialized for editor, ProtoBuf, and JSON pipelines.
+    /// Use this when you need deterministic order, inspector editing, and runtime dictionary semantics without custom wrappers.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// [Serializable]
+    /// public sealed class LootTable : MonoBehaviour
+    /// {
+    ///     [SerializeField]
+    ///     private SerializableDictionary<string, int> weights = new SerializableDictionary<string, int>();
+    ///
+    ///     private void Awake()
+    ///     {
+    ///         weights["Common"] = 80;
+    ///         weights["Rare"] = 15;
+    ///         weights["Legendary"] = 5;
+    ///     }
+    /// }
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="TKey">Dictionary key type.</typeparam>
     /// <typeparam name="TValue">Dictionary value type.</typeparam>
     [Serializable]
@@ -602,8 +620,29 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     }
 
     /// <summary>
-    /// Serializable dictionary that uses cache objects for value serialization.
+    /// Serializable dictionary that stores value data inside cache objects so complex or non-serializable runtime types can participate in Unity serialization.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// [Serializable]
+    /// [Serializable]
+    /// public sealed class ComplexValue
+    /// {
+    ///     public int Score;
+    /// }
+    ///
+    /// [Serializable]
+    /// public sealed class ComplexValueCache : SerializableDictionary.Cache<ComplexValue>
+    /// {
+    /// }
+    ///
+    /// [Serializable]
+    /// public sealed class ComplexValueDictionary
+    ///     : SerializableDictionary<string, ComplexValue, ComplexValueCache>
+    /// {
+    /// }
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="TKey">Dictionary key type.</typeparam>
     /// <typeparam name="TValue">Dictionary value type.</typeparam>
     /// <typeparam name="TValueCache">Serialized value cache type.</typeparam>

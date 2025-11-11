@@ -9,8 +9,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using Utils;
 
     /// <summary>
-    /// Immutable 2D R-Tree for efficient spatial indexing of rectangular bounds.
+    /// Immutable 2D R-tree for efficient spatial indexing of rectangular bounds.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// RTree2D<Collider>.Entry[] entries = colliders.Select(c => new RTree2D<Collider>.Entry(c, c.bounds)).ToArray();
+    /// RTree2D<Collider> tree = RTree2D<Collider>.Build(entries);
+    /// List<Collider> results = new List<Collider>();
+    /// tree.GetElementsInBounds(searchBounds, results);
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="T">Element type.</typeparam>
     /// <remarks>
     /// Pros: Great for sized objects (sprites, colliders) with area; supports fast rectangle and radius queries.

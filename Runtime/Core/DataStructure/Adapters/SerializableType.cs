@@ -14,8 +14,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
-    /// Unity serializable wrapper for <see cref="Type"/> that supports JSON and ProtoBuf.
+    /// Unity serializable wrapper for <see cref="Type"/> that survives JSON, ProtoBuf, and Unity serialization by storing normalized assembly-qualified names.
+    /// Keeps inspector fields and saved data resilient to refactors by handling renames and namespace changes.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// [Serializable]
+    /// public sealed class SpawnRule : MonoBehaviour
+    /// {
+    ///     [SerializeField]
+    ///     private SerializableType behaviourType = new SerializableType(typeof(EnemyController));
+    ///
+    ///     public Type Resolve() => behaviourType.Value;
+    /// }
+    /// ]]></code>
+    /// </example>
     [Serializable]
     [ProtoContract]
     [JsonConverter(typeof(SerializableTypeJsonConverter))]

@@ -3,6 +3,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Collections.Generic;
     using UnityEngine;
 
+    /// <summary>
+    /// Contract for 2D spatial trees (quad trees, k-d trees, etc.) that support range and nearest-neighbor queries.
+    /// Enables algorithms to consume spatial containers without caring about the concrete backing structure.
+    /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// ISpatialTree2D<Enemy> tree = new QuadTree2D<Enemy>(worldBounds);
+    /// List<Enemy> results = new List<Enemy>();
+    /// tree.GetElementsInRange(playerPosition, 5f, results);
+    /// ]]></code>
+    /// </example>
     public interface ISpatialTree2D<T>
     {
         Bounds Boundary { get; }

@@ -9,11 +9,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
-    /// A highly optimized, array-backed Trie implementation for fast prefix search and exact word lookup.
+    /// A highly optimized, array-backed trie implementation for fast prefix search and exact word lookup.
     /// Preallocates storage based on total characters in the input set and uses integer indices for traversal,
-    /// minimizing memory allocations and indirections. Provides allocation-free prefix search method (aside from
-    /// returned string allocations).
+    /// minimizing memory allocations and indirections. Provides allocation-free prefix search aside from returned string allocations.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// Trie commands = new Trie(new[] { "spawn", "speed", "spectate" });
+    /// foreach (string suggestion in commands.GetWordsWithPrefix("sp"))
+    /// {
+    ///     Debug.Log(suggestion);
+    /// }
+    /// ]]></code>
+    /// </example>
     public sealed class Trie : IEnumerable<string>
     {
         private const int Poison = -1;

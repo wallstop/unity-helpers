@@ -680,8 +680,24 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     }
 
     /// <summary>
-    /// Hash set that can be serialized by Unity, ProtoBuf, and System.Text.Json.
+    /// Unity-serializable hash set that keeps elements deduplicated while remaining compatible with ProtoBuf and System.Text.Json.
+    /// Perfect for authoring unlock lists, feature flags, and other boolean membership data in the inspector.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// [Serializable]
+    /// public sealed class UnlockState : MonoBehaviour
+    /// {
+    ///     [SerializeField]
+    ///     private SerializableHashSet<string> unlockedLevels = new SerializableHashSet<string>();
+    ///
+    ///     public bool HasUnlocked(string levelId)
+    ///     {
+    ///         return unlockedLevels.Contains(levelId);
+    ///     }
+    /// }
+    /// ]]></code>
+    /// </example>
     [Serializable]
     [ProtoContract]
     public class SerializableHashSet<T> : SerializableSetBase<T, HashSet<T>>

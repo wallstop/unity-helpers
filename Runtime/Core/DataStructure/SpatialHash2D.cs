@@ -9,9 +9,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
     /// <summary>
     /// A 2D spatial hash for fast broad-phase collision detection and neighbor queries.
-    /// Simpler and more efficient than QuadTree for uniformly distributed objects.
+    /// Simpler and more efficient than <see cref="QuadTree2D{T}"/> for uniformly distributed objects.
     /// Perfect for particle systems, entity proximity checks, and collision culling.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// SpatialHash2D<Enemy> hash = new SpatialHash2D<Enemy>(2f);
+    /// hash.Insert(enemy.Position, enemy);
+    /// List<Enemy> nearby = new List<Enemy>();
+    /// hash.QueryRange(playerPosition, 5f, nearby);
+    /// ]]></code>
+    /// </example>
     [Serializable]
     public sealed class SpatialHash2D<T> : IDisposable
     {

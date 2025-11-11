@@ -6,8 +6,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using ProtoBuf;
 
     /// <summary>
-    /// Sorted set with Unity/ProtoBuf/System.Text.Json serialization support.
+    /// Sorted set wrapper that keeps ordering intact across Unity, ProtoBuf, and JSON serialization.
+    /// Ideal for deterministic gameplay systems that need sorted iteration but still want to save or inspect data.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// SerializableSortedSet<int> highscores = new SerializableSortedSet<int>(new[] { 100, 250, 420 });
+    /// highscores.Add(360);
+    /// foreach (int score in highscores)
+    /// {
+    ///     Debug.Log(score);
+    /// }
+    /// ]]></code>
+    /// </example>
     [Serializable]
     [ProtoContract]
     public class SerializableSortedSet<T> : SerializableSetBase<T, SortedSet<T>>

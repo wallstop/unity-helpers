@@ -8,8 +8,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using Utils;
 
     /// <summary>
-    /// Immutable 3D R-Tree for efficient spatial indexing of 3D bounds.
+    /// Immutable 3D R-tree for efficient spatial indexing of 3D bounds.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// RTree3D<Volume>.Entry[] entries = volumes.Select(v => new RTree3D<Volume>.Entry(v, v.Bounds)).ToArray();
+    /// RTree3D<Volume> tree = RTree3D<Volume>.Build(entries);
+    /// List<Volume> overlaps = new List<Volume>();
+    /// tree.GetElementsInRange(origin, 8f, overlaps);
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="T">Element type.</typeparam>
     /// <remarks>
     /// <para>Pros: Great for sized 3D objects (meshes, volumes) with fast box and radius intersection queries.</para>

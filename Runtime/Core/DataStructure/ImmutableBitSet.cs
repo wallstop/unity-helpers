@@ -8,11 +8,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
-    /// An immutable value-type variant of BitSet that provides read-only access to bit data.
-    /// Uses a single bit per element for memory efficiency. Perfect for passing bit flags
-    /// without risk of modification, or for creating snapshots of BitSet state.
-    /// Supports fast O(1) read operations and implements value semantics.
+    /// Immutable value-type snapshot of a <see cref="BitSet"/> that exposes read-only bit access without allocating.
+    /// Ideal for safely sharing flag data across threads, event callbacks, or history buffers without accidental mutations.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// BitSet runtimeState = GetRuntimeFlags();
+    /// ImmutableBitSet snapshot = runtimeState.ToImmutable();
+    /// if (snapshot.TryGet(flagIndex, out bool enabled) && enabled)
+    /// {
+    ///     ActivateFeature();
+    /// }
+    /// ]]></code>
+    /// </example>
     [Serializable]
     [ProtoContract(IgnoreListHandling = true)]
     public readonly struct ImmutableBitSet : IEquatable<ImmutableBitSet>

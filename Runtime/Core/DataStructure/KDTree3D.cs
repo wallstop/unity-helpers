@@ -10,6 +10,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// <summary>
     /// Immutable 3D k-d tree for efficient nearest neighbor, range, and bounds queries in 3D space.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// KdTree3D<Vector3>.Entry[] entries = points.Select(p => new KdTree3D<Vector3>.Entry(p, p)).ToArray();
+    /// KdTree3D<Vector3> tree = KdTree3D<Vector3>.Build(entries);
+    /// List<Vector3> neighbors = new List<Vector3>();
+    /// tree.GetElementsInRange(queryPosition, 4f, neighbors);
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="T">Element type contained in the tree.</typeparam>
     /// <remarks>
     /// <para>Pros: Very fast nearest neighbor performance; good for static or batched updates.</para>

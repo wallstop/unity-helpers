@@ -9,11 +9,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
-    /// A compact, dynamically resizable bit set data structure for storing boolean flags.
-    /// Uses a single bit per element for memory efficiency. Perfect for entity states,
-    /// visibility masks, collision layers, and any scenario requiring dense boolean storage.
-    /// Supports fast O(1) set, clear, and test operations with dynamic growth and shrinking.
+    /// Compact, dynamically resizable bit set that stores dense boolean flags using a single bit per entry.
+    /// Ideal for entity state masks, collision layers, and other scenarios that benefit from memory-efficient O(1) reads and writes.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// BitSet activeLayers = new BitSet();
+    /// activeLayers.Set(2);
+    /// bool isLayerActive = activeLayers.TryGet(2, out bool value) && value;
+    /// ]]></code>
+    /// </example>
     [Serializable]
     [ProtoContract(IgnoreListHandling = true)]
     public sealed class BitSet : IReadOnlyList<bool>

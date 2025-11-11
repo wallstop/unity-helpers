@@ -10,9 +10,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// A disjoint-set (union-find) data structure with path compression and union by rank.
     /// Essential for determining connectivity in graphs, procedural generation (maze/terrain),
     /// and grouping/clustering algorithms. Near-constant time O(α(n)) operations where α is
-    /// the inverse Ackermann function.
-    /// Works with integer indices for maximum performance.
+    /// the inverse Ackermann function. Works with integer indices for maximum performance.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// DisjointSet islands = new DisjointSet(width * height);
+    /// islands.TryUnion(cellA, cellB);
+    /// bool sameRegion = islands.TryIsConnected(cellA, cellB, out bool connected) && connected;
+    /// ]]></code>
+    /// </example>
     [Serializable]
     [ProtoContract]
     public sealed class DisjointSet
@@ -274,9 +280,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
     /// <summary>
     /// A generic disjoint-set (union-find) data structure that maps elements of type T to indices.
-    /// Provides the same performance as DisjointSet with support for any element type.
+    /// Provides the same performance as <see cref="DisjointSet"/> with support for any element type.
     /// Uses a dictionary to map elements to internal indices.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// DisjointSet<string> rooms = new DisjointSet<string>(new[] { "Hall", "Kitchen", "Library" });
+    /// rooms.TryUnion("Hall", "Kitchen");
+    /// rooms.TryIsConnected("Hall", "Library", out bool linked);
+    /// ]]></code>
+    /// </example>
     [Serializable]
     public sealed class DisjointSet<T>
     {

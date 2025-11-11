@@ -12,8 +12,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 #endif
 
     /// <summary>
-    /// Sorted dictionary that supports Unity, JSON, and ProtoBuf serialisation.
+    /// Sorted dictionary wrapper that keeps key ordering intact across Unity, JSON, and ProtoBuf serialization.
+    /// Ideal when deterministic iteration order matters for gameplay logic or editor tooling.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// SerializableSortedDictionary<int, string> loot = new SerializableSortedDictionary<int, string>();
+    /// loot.Add(50, "Gold");
+    /// loot.Add(100, "Potion");
+    /// foreach (KeyValuePair<int, string> entry in loot)
+    /// {
+    ///     Debug.Log($"{entry.Key} -> {entry.Value}");
+    /// }
+    /// ]]></code>
+    /// </example>
     [Serializable]
     [ProtoContract]
     public abstract class SerializableSortedDictionaryBase<TKey, TValue, TValueCache>
@@ -509,6 +521,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         }
     }
 
+    /// <summary>
+    /// Concrete sorted dictionary implementation that saves both keys and values through Unity, ProtoBuf, and JSON serialization.
+    /// Use this when you need deterministic iteration order plus inspector support for key/value data.
+    /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+    /// scoreboard.Add("Alice", 1200);
+    /// scoreboard.Add("Bob", 900);
+    /// foreach (KeyValuePair<string, int> entry in scoreboard)
+    /// {
+    ///     Debug.Log($"{entry.Key}: {entry.Value}");
+    /// }
+    /// ]]></code>
+    /// </example>
     [Serializable]
     [ProtoContract]
     public class SerializableSortedDictionary<TKey, TValue>
@@ -544,6 +571,29 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         }
     }
 
+    /// <summary>
+    /// Sorted dictionary variant that stores each value in a cache object so complex data can be serialized safely.
+    /// Extend this when values require bespoke serialization, such as types containing Unity objects or unmanaged resources.
+    /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// [Serializable]
+    /// public sealed class RichValue
+    /// {
+    ///     public string Name;
+    ///     public int Cost;
+    /// }
+    ///
+    /// [Serializable]
+    /// public sealed class RichValueCache : SerializableDictionary.Cache<RichValue>
+    /// {
+    /// }
+    ///
+    /// SerializableSortedDictionary<int, RichValue, RichValueCache> catalog =
+    ///     new SerializableSortedDictionary<int, RichValue, RichValueCache>();
+    /// catalog[1] = new RichValue { Name = "HealthPotion", Cost = 50 };
+    /// ]]></code>
+    /// </example>
     [Serializable]
     [ProtoContract]
     public class SerializableSortedDictionary<TKey, TValue, TValueCache>

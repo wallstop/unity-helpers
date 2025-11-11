@@ -11,6 +11,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// A 3D spatial hash for fast broad-phase collision detection and neighbor queries.
     /// Simpler and more efficient than octrees for uniformly distributed objects and frequently moving items.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// SpatialHash3D<Projectile> hash = new SpatialHash3D<Projectile>(1.5f);
+    /// hash.Insert(projectile.Position, projectile);
+    /// List<Projectile> nearby = new List<Projectile>();
+    /// hash.QueryRange(origin, 3f, nearby);
+    /// ]]></code>
+    /// </example>
     /// <remarks>
     /// This structure is stable and production-ready. It supports distinct or non-distinct queries,
     /// exact-distance filtering, and efficient incremental updates for moving items.

@@ -9,11 +9,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
     /// <summary>
     /// Lightweight alternative to Unity's <see cref="Vector2Int"/> that caches its hash for efficient dictionary and set usage.
+    /// Provides implicit conversions to and from Unity's struct so gameplay code can continue to use the familiar API while
+    /// obtaining stable, allocation-free dictionary keys.
     /// </summary>
     /// <example>
-    /// <code>
+    /// <code><![CDATA[
     /// FastVector2Int gridCell = new FastVector2Int(3, 5);
-    /// </code>
+    /// Dictionary<FastVector2Int, string> labels = new Dictionary<FastVector2Int, string>();
+    /// labels[gridCell] = "SpawnPoint";
+    /// bool hasSpawn = labels.ContainsKey(new FastVector2Int(3, 5));
+    /// Vector2Int unityVector = gridCell;
+    /// ]]></code>
     /// </example>
     [Serializable]
     [ProtoContract]

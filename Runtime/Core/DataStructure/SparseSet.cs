@@ -14,6 +14,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// fast membership testing combined with cache-friendly iteration over active elements.
     /// Elements must be non-negative integers within a specified universe size.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// SparseSet activeEntities = new SparseSet(1024);
+    /// activeEntities.Add(entityId);
+    /// if (activeEntities.Contains(entityId))
+    /// {
+    ///     UpdateEntity(entityId);
+    /// }
+    /// ]]></code>
+    /// </example>
     [Serializable]
     [ProtoContract(IgnoreListHandling = true)]
     public sealed class SparseSet : IReadOnlyList<int>
