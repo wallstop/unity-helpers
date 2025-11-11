@@ -698,6 +698,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public IEqualityComparer<T> Comparer => Set.Comparer;
 
+        /// <summary>
+        /// Creates a new <see cref="global::System.Collections.Generic.HashSet{T}"/> populated with this set's contents.
+        /// </summary>
+        /// <returns>A copy of the hash set's current state.</returns>
+        public global::System.Collections.Generic.HashSet<T> ToHashSet()
+        {
+            global::System.Collections.Generic.HashSet<T> copy =
+                new global::System.Collections.Generic.HashSet<T>(Set, Set.Comparer);
+            return copy;
+        }
+
         public HashSet<T>.Enumerator GetEnumerator()
         {
             return Set.GetEnumerator();

@@ -40,6 +40,31 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void ToHashSetReturnsIndependentCopy()
+        {
+            SerializableHashSet<int> set = new SerializableHashSet<int>();
+            bool addedOne = set.Add(1);
+            bool addedTwo = set.Add(2);
+
+            Assert.IsTrue(addedOne);
+            Assert.IsTrue(addedTwo);
+
+            HashSet<int> copy = set.ToHashSet();
+
+            Assert.AreEqual(set.Count, copy.Count);
+            Assert.IsTrue(copy.Contains(1));
+            Assert.IsTrue(copy.Contains(2));
+
+            bool copyAddedThree = copy.Add(3);
+            Assert.IsTrue(copyAddedThree);
+            Assert.IsFalse(set.Contains(3));
+
+            bool setAddedFour = set.Add(4);
+            Assert.IsTrue(setAddedFour);
+            Assert.IsFalse(copy.Contains(4));
+        }
+
+        [Test]
         public void NullEntriesAreSkippedDuringDeserialization()
         {
             SerializableHashSet<string> set = new SerializableHashSet<string>();
@@ -359,6 +384,43 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             Assert.AreEqual(expected.Length, index);
+        }
+
+        [Test]
+        public void ToSortedSetReturnsIndependentCopy()
+        {
+            SerializableSortedSet<int> set = new SerializableSortedSet<int>();
+            bool addedFive = set.Add(5);
+            bool addedTwo = set.Add(2);
+
+            Assert.IsTrue(addedFive);
+            Assert.IsTrue(addedTwo);
+
+            SortedSet<int> copy = set.ToSortedSet();
+
+            Assert.AreEqual(set.Count, copy.Count);
+
+            bool firstAssigned = false;
+            int firstValue = 0;
+            foreach (int value in copy)
+            {
+                if (!firstAssigned)
+                {
+                    firstValue = value;
+                    firstAssigned = true;
+                }
+            }
+
+            Assert.IsTrue(firstAssigned);
+            Assert.AreEqual(2, firstValue);
+
+            bool copyAdded = copy.Add(10);
+            Assert.IsTrue(copyAdded);
+            Assert.IsFalse(set.Contains(10));
+
+            bool setAdded = set.Add(12);
+            Assert.IsTrue(setAdded);
+            Assert.IsFalse(copy.Contains(12));
         }
 
         [Test]

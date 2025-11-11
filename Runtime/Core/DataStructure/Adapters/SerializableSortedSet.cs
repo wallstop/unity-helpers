@@ -38,6 +38,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                     new StorageSet(serializationInfo, streamingContext)
             ) { }
 
+        /// <summary>
+        /// Creates a new <see cref="global::System.Collections.Generic.SortedSet{T}"/> populated with this set's contents.
+        /// </summary>
+        /// <returns>A copy of the sorted set's current state.</returns>
+        public global::System.Collections.Generic.SortedSet<T> ToSortedSet()
+        {
+            global::System.Collections.Generic.SortedSet<T> copy =
+                new global::System.Collections.Generic.SortedSet<T>(Set, Set.Comparer);
+            return copy;
+        }
+
         public SortedSet<T>.Enumerator GetEnumerator()
         {
             return Set.GetEnumerator();

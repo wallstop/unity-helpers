@@ -34,6 +34,16 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void ImplicitConversionRoundTripsGuid()
+        {
+            Guid source = Guid.NewGuid();
+            WGuid wrapper = source;
+            Guid converted = wrapper;
+            Assert.AreEqual(source, converted);
+            Assert.AreEqual(source, wrapper.ToGuid());
+        }
+
+        [Test]
         public void ToByteArrayMatchesGuidBytes()
         {
             Guid source = Guid.NewGuid();

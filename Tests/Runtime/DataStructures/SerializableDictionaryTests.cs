@@ -39,6 +39,27 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void ToDictionaryReturnsIndependentCopy()
+        {
+            SerializableDictionary<string, int> dictionary =
+                new SerializableDictionary<string, int>();
+            dictionary.Add("alpha", 1);
+            dictionary.Add("beta", 2);
+
+            Dictionary<string, int> copy = dictionary.ToDictionary();
+
+            Assert.AreEqual(dictionary.Count, copy.Count);
+            Assert.AreEqual(1, copy["alpha"]);
+            Assert.AreEqual(2, copy["beta"]);
+
+            copy["gamma"] = 3;
+            Assert.IsFalse(dictionary.ContainsKey("gamma"));
+
+            dictionary["alpha"] = 10;
+            Assert.AreEqual(1, copy["alpha"]);
+        }
+
+        [Test]
         public void CopyFromReplacesExistingContent()
         {
             SerializableDictionary<int, string> dictionary = new() { { 1, "one" } };

@@ -59,6 +59,41 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void ToSortedDictionaryReturnsIndependentCopy()
+        {
+            SerializableSortedDictionary<int, string> dictionary =
+                new SerializableSortedDictionary<int, string>();
+            dictionary.Add(2, "two");
+            dictionary.Add(1, "one");
+
+            SortedDictionary<int, string> copy = dictionary.ToSortedDictionary();
+
+            Assert.AreEqual(dictionary.Count, copy.Count);
+            Assert.AreEqual("two", copy[2]);
+
+            bool firstAssigned = false;
+            KeyValuePair<int, string> firstPair = default;
+            foreach (KeyValuePair<int, string> pair in copy)
+            {
+                if (!firstAssigned)
+                {
+                    firstPair = pair;
+                    firstAssigned = true;
+                }
+            }
+
+            Assert.IsTrue(firstAssigned);
+            Assert.AreEqual(1, firstPair.Key);
+            Assert.AreEqual("one", firstPair.Value);
+
+            copy.Add(3, "three");
+            Assert.IsFalse(dictionary.ContainsKey(3));
+
+            dictionary[2] = "two-updated";
+            Assert.AreEqual("two", copy[2]);
+        }
+
+        [Test]
         public void TryAddWhenKeyExistsDoesNotInvalidateCache()
         {
             SerializableSortedDictionary<int, string> dictionary =

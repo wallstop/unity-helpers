@@ -275,6 +275,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             MarkSerializationCacheDirty();
         }
 
+        /// <summary>
+        /// Creates a new <see cref="global::System.Collections.Generic.Dictionary{TKey, TValue}"/> populated with this dictionary's contents.
+        /// </summary>
+        /// <returns>A copy of the dictionary's current state.</returns>
+        public global::System.Collections.Generic.Dictionary<TKey, TValue> ToDictionary()
+        {
+            global::System.Collections.Generic.Dictionary<TKey, TValue> copy =
+                new global::System.Collections.Generic.Dictionary<TKey, TValue>(
+                    _dictionary,
+                    _dictionary.Comparer
+                );
+            return copy;
+        }
+
         private void MarkSerializationCacheDirty()
         {
             _preserveSerializedEntries = false;
