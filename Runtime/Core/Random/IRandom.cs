@@ -154,7 +154,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         Guid NextGuid();
 
-        KGuid NextKGuid();
+        WGuid NextWGuid();
 
         T NextOf<T>(IEnumerable<T> enumerable);
         T NextOf<T>(IReadOnlyCollection<T> collection);

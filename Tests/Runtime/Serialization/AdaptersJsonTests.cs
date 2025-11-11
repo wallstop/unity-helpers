@@ -26,12 +26,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         }
 
         [Test]
-        public void KGuidRoundTrips()
+        public void WGuidRoundTrips()
         {
-            KGuid id = KGuid.NewGuid();
+            WGuid id = WGuid.NewGuid();
             string json = Serializer.JsonStringify(id);
-            KGuid again = Serializer.JsonDeserialize<KGuid>(json);
-            Assert.AreEqual(id, again, "KGuid should round-trip by value");
+            WGuid again = Serializer.JsonDeserialize<WGuid>(json);
+            Assert.AreEqual(id, again, "WGuid should round-trip by value");
         }
 
         [Test]

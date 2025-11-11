@@ -1181,9 +1181,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return new Guid(GenerateGuidBytes(_guidBytes));
         }
 
-        public KGuid NextKGuid()
+        public WGuid NextWGuid()
         {
-            return new KGuid(GenerateGuidBytes(_guidBytes));
+            return new WGuid(GenerateGuidBytes(_guidBytes));
         }
 
         private byte[] GenerateGuidBytes(byte[] guidBytes)

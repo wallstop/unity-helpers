@@ -468,14 +468,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
 
         [Test]
         [Parallelizable]
-        public void NextKGuid()
+        public void NextWGuid()
         {
             IRandom random = NewRandom();
 
-            HashSet<KGuid> seen = new();
+            HashSet<WGuid> seen = new();
             for (int i = 0; i < NormalIterations; ++i)
             {
-                KGuid value = random.NextKGuid();
+                WGuid value = random.NextWGuid();
                 seen.Add(value);
             }
 

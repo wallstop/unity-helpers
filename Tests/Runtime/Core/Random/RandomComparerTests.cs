@@ -114,7 +114,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Random
 
             public Guid NextGuid() => NotSupported<Guid>();
 
-            public KGuid NextKGuid() => NotSupported<KGuid>();
+            public WGuid NextWGuid() => NotSupported<WGuid>();
 
             public T NextOf<T>(IEnumerable<T> enumerable) => NotSupported<T>();
 
