@@ -43,6 +43,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             [WShowIf(nameof(applyCrunchCompression))]
             public bool useCrunchCompression;
+
+            internal static class SerializedPropertyNames
+            {
+                internal const string PlatformName = nameof(platformName);
+                internal const string ApplyResizeAlgorithm = nameof(applyResizeAlgorithm);
+                internal const string ResizeAlgorithm = nameof(resizeAlgorithm);
+                internal const string ApplyMaxTextureSize = nameof(applyMaxTextureSize);
+                internal const string MaxTextureSize = nameof(maxTextureSize);
+                internal const string ApplyFormat = nameof(applyFormat);
+                internal const string Format = nameof(format);
+                internal const string ApplyCompression = nameof(applyCompression);
+                internal const string Compression = nameof(compression);
+                internal const string ApplyCrunchCompression = nameof(applyCrunchCompression);
+                internal const string UseCrunchCompression = nameof(useCrunchCompression);
+            }
         }
 
         // Basic importer settings

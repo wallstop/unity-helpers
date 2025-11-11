@@ -26,12 +26,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 ),
                 "Expected AnimationEventSource to be registered."
             );
-            CollectionAssert.Contains(
-                methods,
-                typeof(AnimationEventSource).GetMethod(
-                    nameof(AnimationEventSource.SimpleEvent),
-                    BindingFlags.Instance | BindingFlags.NonPublic
-                )
+            Assert.IsTrue(
+                methods.Any(method =>
+                    method.DeclaringType == typeof(AnimationEventSource)
+                    && method.Name == nameof(AnimationEventSource.SimpleEvent)
+                ),
+                "Expected SimpleEvent to be registered for AnimationEventSource."
             );
 
             Assert.IsFalse(mapping.ContainsKey(typeof(AnimationEventPlainBehaviour)));
@@ -57,19 +57,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 ),
                 "Derived type should register when it declares its own handlers."
             );
-            CollectionAssert.Contains(
-                methods,
-                typeof(AnimationEventDerivedAllowed).GetMethod(
-                    nameof(AnimationEventDerivedAllowed.DerivedOnly),
-                    BindingFlags.Instance | BindingFlags.NonPublic
-                )
+            Assert.IsTrue(
+                methods.Any(method =>
+                    method.DeclaringType == typeof(AnimationEventDerivedAllowed)
+                    && method.Name == nameof(AnimationEventDerivedAllowed.DerivedOnly)
+                ),
+                "Derived-only handler should be registered."
             );
-            CollectionAssert.Contains(
-                methods,
-                typeof(AnimationEventSource).GetMethod(
-                    nameof(AnimationEventSource.AllowDerived),
-                    BindingFlags.Instance | BindingFlags.NonPublic
-                )
+            Assert.IsTrue(
+                methods.Any(method =>
+                    method.DeclaringType == typeof(AnimationEventSource)
+                    && method.Name == nameof(AnimationEventSource.AllowDerived)
+                ),
+                "Base handler that allows derived types should be included."
             );
         }
 

@@ -4,12 +4,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using PlatformPropertyNames = WallstopStudios.UnityHelpers.Editor.Sprites.TextureSettingsApplierWindow.PlatformOverrideEntry.SerializedPropertyNames;
 
     [CustomPropertyDrawer(typeof(TextureSettingsApplierWindow.PlatformOverrideEntry))]
     public sealed class TexturePlatformOverrideEntryDrawer : PropertyDrawer
     {
         private static string[] _cachedChoices;
         private static string[] _lastKnownRef;
+        private const string CustomOptionLabel = "Custom";
 
         private static string[] GetChoices()
         {
@@ -24,7 +26,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
             {
                 arr[i] = known[i];
             }
-            arr[arr.Length - 1] = "Custom";
+            arr[arr.Length - 1] = CustomOptionLabel;
             _lastKnownRef = known;
             _cachedChoices = arr;
             return _cachedChoices;
@@ -35,18 +37,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
             // Layout: 1 line for platform + potential custom name, then each checkbox possibly adds a line
             float h = EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
             // custom name line
-            string name = property.FindPropertyRelative("platformName").stringValue;
+            string name = property
+                .FindPropertyRelative(PlatformPropertyNames.PlatformName)
+                .stringValue;
             string[] choices = GetChoices();
             if (GetSelectedIndex(name, choices) == choices.Length - 1) // Custom
             {
                 h += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
             }
             // For each apply field, add one line; if true, add an extra line for its value
-            h += LineCount(property, "applyResizeAlgorithm", true);
-            h += LineCount(property, "applyMaxTextureSize", true);
-            h += LineCount(property, "applyFormat", true);
-            h += LineCount(property, "applyCompression", true);
-            h += LineCount(property, "applyCrunchCompression", true);
+            h += LineCount(property, PlatformPropertyNames.ApplyResizeAlgorithm, true);
+            h += LineCount(property, PlatformPropertyNames.ApplyMaxTextureSize, true);
+            h += LineCount(property, PlatformPropertyNames.ApplyFormat, true);
+            h += LineCount(property, PlatformPropertyNames.ApplyCompression, true);
+            h += LineCount(property, PlatformPropertyNames.ApplyCrunchCompression, true);
             return h;
         }
 
@@ -70,12 +74,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
             EditorGUI.BeginProperty(position, label, property);
             Rect r = new(position.x, position.y, position.width, EditorGUIUtility.singleLineHeight);
 
-            SerializedProperty nameProp = property.FindPropertyRelative("platformName");
+            SerializedProperty nameProp = property.FindPropertyRelative(
+                PlatformPropertyNames.PlatformName
+            );
             string[] choices = GetChoices();
             int idx = GetSelectedIndex(nameProp.stringValue, choices);
             idx = EditorGUI.Popup(r, "Platform", idx, choices);
             string selected = choices[idx];
-            if (selected == "Custom")
+            if (selected == CustomOptionLabel)
             {
                 r.y += r.height + EditorGUIUtility.standardVerticalSpacing;
                 nameProp.stringValue = EditorGUI.TextField(r, "Custom Name", nameProp.stringValue);
@@ -88,24 +94,36 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
             DrawToggleWithValue(
                 property,
                 ref r,
-                "applyResizeAlgorithm",
-                "resizeAlgorithm",
+                PlatformPropertyNames.ApplyResizeAlgorithm,
+                PlatformPropertyNames.ResizeAlgorithm,
                 "Resize Algorithm"
             );
             DrawToggleWithValue(
                 property,
                 ref r,
-                "applyMaxTextureSize",
-                "maxTextureSize",
+                PlatformPropertyNames.ApplyMaxTextureSize,
+                PlatformPropertyNames.MaxTextureSize,
                 "Max Texture Size"
             );
-            DrawToggleWithValue(property, ref r, "applyFormat", "format", "Format");
-            DrawToggleWithValue(property, ref r, "applyCompression", "compression", "Compression");
             DrawToggleWithValue(
                 property,
                 ref r,
-                "applyCrunchCompression",
-                "useCrunchCompression",
+                PlatformPropertyNames.ApplyFormat,
+                PlatformPropertyNames.Format,
+                "Format"
+            );
+            DrawToggleWithValue(
+                property,
+                ref r,
+                PlatformPropertyNames.ApplyCompression,
+                PlatformPropertyNames.Compression,
+                "Compression"
+            );
+            DrawToggleWithValue(
+                property,
+                ref r,
+                PlatformPropertyNames.ApplyCrunchCompression,
+                PlatformPropertyNames.UseCrunchCompression,
                 "Use Crunch Compression"
             );
 

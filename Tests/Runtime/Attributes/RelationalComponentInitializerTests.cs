@@ -21,18 +21,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void InitializeWarmsReflectionCachesForProvidedType()
         {
             Type testerType = typeof(PrewarmTesterComponent);
-            FieldInfo parentField = testerType.GetField(
-                nameof(PrewarmTesterComponent.parentBody),
-                BindingFlags.Instance | BindingFlags.Public
-            );
+            FieldInfo parentField = testerType.GetField(nameof(PrewarmTesterComponent.parentBody));
             FieldInfo siblingField = testerType.GetField(
-                nameof(PrewarmTesterComponent.siblingCollider),
-                BindingFlags.Instance | BindingFlags.Public
+                nameof(PrewarmTesterComponent.siblingCollider)
             );
             FieldInfo childField = testerType.GetField(
-                nameof(PrewarmTesterComponent.childColliders),
-                BindingFlags.Instance | BindingFlags.Public
+                nameof(PrewarmTesterComponent.childColliders)
             );
+            Assert.NotNull(parentField);
+            Assert.NotNull(siblingField);
+            Assert.NotNull(childField);
 
             Assert.IsFalse(
                 CacheContainsField("FieldGetterCache", parentField),

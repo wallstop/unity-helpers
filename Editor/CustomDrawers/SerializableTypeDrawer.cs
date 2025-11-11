@@ -37,7 +37,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             SerializedProperty assemblyQualifiedName = property.FindPropertyRelative(
-                "_assemblyQualifiedName"
+                SerializableType.SerializedPropertyNames.AssemblyQualifiedName
             );
             if (assemblyQualifiedName == null)
             {

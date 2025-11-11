@@ -42,6 +42,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         [JsonIgnore]
         private bool _resolutionAttempted;
 
+        internal static class SerializedPropertyNames
+        {
+            internal const string AssemblyQualifiedName = nameof(_assemblyQualifiedName);
+        }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="SerializableType"/> struct.
         /// </summary>
