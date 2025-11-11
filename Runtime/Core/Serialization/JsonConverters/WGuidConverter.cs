@@ -1,0 +1,147 @@
+namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
+{
+    using System;
+    using System.Buffers.Binary;
+    using System.Text.Json;
+    using System.Text.Json.Serialization;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+
+    /// <summary>
+    /// Serializes WGuid values as canonical Guid strings while remaining tolerant of legacy payloads.
+    /// </summary>
+    public sealed class WGuidConverter : JsonConverter<WGuid>
+    {
+        public static readonly WGuidConverter Instance = new();
+
+        private WGuidConverter() { }
+
+        public override WGuid Read(
+            ref Utf8JsonReader reader,
+            Type typeToConvert,
+            JsonSerializerOptions options
+        )
+        {
+            if (reader.TokenType == JsonTokenType.String)
+            {
+                string value = reader.GetString();
+                if (string.IsNullOrEmpty(value))
+                {
+                    return WGuid.Empty;
+                }
+
+                if (WGuid.TryParse(value, out WGuid parsed))
+                {
+                    return parsed;
+                }
+
+                throw new JsonException($"Invalid {nameof(WGuid)} string value.");
+            }
+
+            if (reader.TokenType == JsonTokenType.StartObject)
+            {
+                return ReadFromObject(ref reader);
+            }
+
+            if (reader.TokenType == JsonTokenType.Null)
+            {
+                return WGuid.Empty;
+            }
+
+            throw new JsonException($"{nameof(WGuid)} must be encoded as a JSON string.");
+        }
+
+        public override void Write(
+            Utf8JsonWriter writer,
+            WGuid value,
+            JsonSerializerOptions options
+        )
+        {
+            writer.WriteStringValue(value.ToString());
+        }
+
+        private static WGuid ReadFromObject(ref Utf8JsonReader reader)
+        {
+            long low = 0L;
+            long high = 0L;
+            bool sawLow = false;
+            bool sawHigh = false;
+            string guidString = null;
+
+            while (reader.Read())
+            {
+                if (reader.TokenType == JsonTokenType.EndObject)
+                {
+                    if (!string.IsNullOrEmpty(guidString))
+                    {
+                        if (WGuid.TryParse(guidString, out WGuid parsed))
+                        {
+                            return parsed;
+                        }
+
+                        throw new JsonException(
+                            $"Invalid {nameof(Guid)} property for {nameof(WGuid)}."
+                        );
+                    }
+
+                    if (sawLow && sawHigh)
+                    {
+                        Span<byte> buffer = stackalloc byte[16];
+                        BinaryPrimitives.WriteUInt64LittleEndian(
+                            buffer.Slice(0, 8),
+                            unchecked((ulong)low)
+                        );
+                        BinaryPrimitives.WriteUInt64LittleEndian(
+                            buffer.Slice(8, 8),
+                            unchecked((ulong)high)
+                        );
+                        return new WGuid(new Guid(buffer));
+                    }
+
+                    return WGuid.Empty;
+                }
+
+                if (reader.TokenType != JsonTokenType.PropertyName)
+                {
+                    throw new JsonException(
+                        $"Unexpected token while reading {nameof(WGuid)} object."
+                    );
+                }
+
+                if (reader.ValueTextEquals(WGuid.LowFieldName))
+                {
+                    reader.Read();
+                    low = reader.GetInt64();
+                    sawLow = true;
+                }
+                else if (reader.ValueTextEquals(WGuid.HighFieldName))
+                {
+                    reader.Read();
+                    high = reader.GetInt64();
+                    sawHigh = true;
+                }
+                else if (reader.ValueTextEquals(WGuid.GuidPropertyName))
+                {
+                    reader.Read();
+                    if (reader.TokenType == JsonTokenType.String)
+                    {
+                        guidString = reader.GetString();
+                    }
+                    else
+                    {
+                        throw new JsonException(
+                            $"{WGuid.GuidPropertyName} property on {nameof(WGuid)} must be a string."
+                        );
+                    }
+                }
+                else
+                {
+                    reader.Skip();
+                }
+            }
+
+            throw new JsonException(
+                $"Unexpected end of JSON while reading {nameof(WGuid)} object."
+            );
+        }
+    }
+}

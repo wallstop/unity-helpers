@@ -24,13 +24,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public static WGuid Empty => default;
 
+        internal const string LowFieldName = nameof(_low);
+        internal const string HighFieldName = nameof(_high);
+        internal const string GuidPropertyName = nameof(Guid);
+
         [ProtoMember(1)]
         [SerializeField]
-        internal long _low;
+        private long _low;
 
         [ProtoMember(2)]
         [SerializeField]
-        internal long _high;
+        private long _high;
 
         [JsonInclude]
         [DataMember]
@@ -50,7 +54,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         [JsonConstructor]
         public WGuid(string guid)
-            : this(global::System.Guid.Parse(guid)) { }
+            : this(ParseGuidString(guid)) { }
 
         public WGuid(byte[] guidBytes)
         {
@@ -93,12 +97,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public static WGuid Parse(string value)
         {
-            return new WGuid(global::System.Guid.Parse(value));
+            Guid parsed = ParseGuidString(value);
+            return new WGuid(parsed);
         }
 
         public static bool TryParse(string value, out WGuid guid)
         {
-            if (global::System.Guid.TryParse(value, out Guid parsed))
+            if (global::System.Guid.TryParse(value, out Guid parsed) && IsVersionFour(parsed))
             {
                 guid = new WGuid(parsed);
                 return true;
@@ -110,7 +115,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public static bool TryParse(ReadOnlySpan<char> value, out WGuid guid)
         {
-            if (global::System.Guid.TryParse(value, out Guid parsed))
+            if (global::System.Guid.TryParse(value, out Guid parsed) && IsVersionFour(parsed))
             {
                 guid = new WGuid(parsed);
                 return true;
@@ -262,6 +267,37 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             ulong high = unchecked((ulong)_high);
             BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(0, 8), low);
             BinaryPrimitives.WriteUInt64LittleEndian(destination.Slice(8, 8), high);
+        }
+
+        private static Guid ParseGuidString(string value)
+        {
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
+
+            Guid parsed = global::System.Guid.Parse(value);
+            if (!IsVersionFour(parsed))
+            {
+                throw new FormatException($"{nameof(WGuid)} requires a version 4 {nameof(Guid)}.");
+            }
+
+            return parsed;
+        }
+
+        private static bool IsVersionFour(Guid guid)
+        {
+            Span<byte> buffer = stackalloc byte[16];
+            bool success = guid.TryWriteBytes(buffer);
+            if (!success)
+            {
+                return false;
+            }
+
+            ulong low = BinaryPrimitives.ReadUInt64LittleEndian(buffer.Slice(0, 8));
+            ushort segment = (ushort)((low >> 48) & 0xFFFF);
+            int version = (segment >> 12) & 0x0F;
+            return version == 4;
         }
     }
 }

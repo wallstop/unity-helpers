@@ -1,5 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
 {
+    using System;
+    using System.Buffers.Binary;
     using System.Text.Json;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
@@ -32,6 +34,44 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             string json = Serializer.JsonStringify(id);
             WGuid again = Serializer.JsonDeserialize<WGuid>(json);
             Assert.AreEqual(id, again, "WGuid should round-trip by value");
+        }
+
+        [Test]
+        public void WGuidLegacyObjectPayloadRoundTrips()
+        {
+            WGuid id = WGuid.NewGuid();
+            Span<byte> buffer = stackalloc byte[16];
+            bool success = id.TryWriteBytes(buffer);
+            Assert.IsTrue(success);
+
+            long low = (long)BinaryPrimitives.ReadUInt64LittleEndian(buffer.Slice(0, 8));
+            long high = (long)BinaryPrimitives.ReadUInt64LittleEndian(buffer.Slice(8, 8));
+            string legacy = FormattableString.Invariant(
+                $"{{\"{WGuid.LowFieldName}\":{low},\"{WGuid.HighFieldName}\":{high},\"{WGuid.GuidPropertyName}\":\"{id}\"}}"
+            );
+
+            WGuid roundTripped = Serializer.JsonDeserialize<WGuid>(legacy);
+            Assert.AreEqual(id, roundTripped, "WGuid legacy object should round-trip by value");
+        }
+
+        [Test]
+        public void WGuidEmptyStringDeserializesToEmpty()
+        {
+            WGuid result = Serializer.JsonDeserialize<WGuid>("\"\"");
+            Assert.IsTrue(result.IsEmpty);
+        }
+
+        [Test]
+        public void WGuidNullDeserializesToEmpty()
+        {
+            WGuid result = Serializer.JsonDeserialize<WGuid>("null");
+            Assert.IsTrue(result.IsEmpty);
+        }
+
+        [Test]
+        public void WGuidInvalidStringThrows()
+        {
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<WGuid>("\"not-a-guid\""));
         }
 
         [Test]

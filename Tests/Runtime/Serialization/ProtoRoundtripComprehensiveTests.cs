@@ -11,6 +11,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
 
     public sealed class ProtoRoundtripComprehensiveTests
     {
+        [ProtoContract]
+        private sealed class WGuidCollection
+        {
+            [ProtoMember(1)]
+            public WGuid single;
+
+            [ProtoMember(2)]
+            public WGuid[] array;
+
+            [ProtoMember(3)]
+            public List<WGuid> list;
+        }
+
         private static T RoundTrip<T>(T value)
         {
             byte[] bytes = Serializer.ProtoSerialize(value);
@@ -25,6 +38,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             WGuid id = WGuid.NewGuid();
             WGuid again = RoundTrip(id);
             Assert.AreEqual(id, again, "WGuid should round-trip by value");
+        }
+
+        [Test]
+        public void WGuidCollectionsRoundTrip()
+        {
+            WGuidCollection payload = new()
+            {
+                single = WGuid.NewGuid(),
+                array = new[] { WGuid.NewGuid(), WGuid.NewGuid() },
+                list = new List<WGuid> { WGuid.NewGuid(), WGuid.NewGuid(), WGuid.NewGuid() },
+            };
+
+            WGuidCollection again = RoundTrip(payload);
+
+            Assert.AreEqual(payload.single, again.single, "Single WGuid should round-trip");
+            CollectionAssert.AreEqual(
+                payload.array,
+                again.array,
+                "Array of WGuid should round-trip"
+            );
+            CollectionAssert.AreEqual(payload.list, again.list, "List of WGuid should round-trip");
+
+            Assert.IsTrue(again.single.IsVersion4, "Single WGuid should remain v4");
+            foreach (WGuid value in again.array)
+            {
+                Assert.IsTrue(value.IsVersion4, "Array WGuid entries should remain v4");
+            }
+
+            foreach (WGuid value in again.list)
+            {
+                Assert.IsTrue(value.IsVersion4, "List WGuid entries should remain v4");
+            }
         }
 
         [Test]

@@ -41,6 +41,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 AllowTrailingCommas = true,
                 Converters =
                 {
+                    WGuidConverter.Instance,
                     RangeConverterFactory.Instance,
                     FastVector2IntConverter.Instance,
                     FastVector3IntConverter.Instance,
@@ -105,6 +106,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 AllowTrailingCommas = true,
                 Converters =
                 {
+                    WGuidConverter.Instance,
                     RangeConverterFactory.Instance,
                     FastVector2IntConverter.Instance,
                     FastVector3IntConverter.Instance,
@@ -167,6 +169,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 AllowTrailingCommas = false,
                 Converters =
                 {
+                    WGuidConverter.Instance,
                     RangeConverterFactory.Instance,
                     FastVector2IntConverter.Instance,
                     FastVector3IntConverter.Instance,
