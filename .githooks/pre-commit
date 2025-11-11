@@ -55,10 +55,14 @@ fi
 
 # 3) Format staged C# files with CSharpier (if available) and re-stage
 CS_FILES=$(echo "$STAGED_FILES" | grep -E '\\.cs$' || true)
-if [ -n "$CS_FILES" ] && command -v dotnet >/dev/null 2>&1; then
-  # Use local tool version to format paths; fall back to repo-wide if necessary
-  dotnet tool run csharpier $CS_FILES >/dev/null 2>&1 || dotnet tool run csharpier . >/dev/null 2>&1 || true
-  echo "$CS_FILES" | xargs git add
+if [ -n "$CS_FILES" ]; then
+  if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -File scripts/format-staged-csharp.ps1
+  elif command -v powershell >/dev/null 2>&1; then
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/format-staged-csharp.ps1
+  else
+    echo "PowerShell not found. Skipping CSharpier formatting." >&2
+  fi
 fi
 
 # 4) Markdown lint for staged Markdown files

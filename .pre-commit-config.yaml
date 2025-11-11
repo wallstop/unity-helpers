@@ -15,7 +15,7 @@ repos:
         description: Install the .NET tools listed at .config/dotnet-tools.json.
       - id: csharpier
         name: Run CSharpier on C# files
-        entry: dotnet tool run csharpier format
+        entry: pwsh -NoProfile -File scripts/format-staged-csharp.ps1
         language: system
         types:
           - c#
