@@ -81,6 +81,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         internal bool PreserveSerializedEntries => _preserveSerializedEntries;
 
+        internal TKey[] SerializedKeys => _keys;
+
+        internal TValueCache[] SerializedValues => _values;
+
         protected SerializableDictionaryBase()
         {
             _dictionary = new Dictionary<TKey, TValue>();

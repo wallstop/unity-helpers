@@ -48,6 +48,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         internal bool PreserveSerializedEntries => _preserveSerializedEntries;
 
+        internal TKey[] SerializedKeys => _keys;
+
+        internal TValueCache[] SerializedValues => _values;
+
+        internal bool SerializationArraysDirty => _arraysDirty;
+
         protected SerializableSortedDictionaryBase()
         {
             _dictionary = new SortedDictionary<TKey, TValue>();

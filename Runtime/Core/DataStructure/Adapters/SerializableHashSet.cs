@@ -71,6 +71,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         internal bool PreserveSerializedEntries => _preserveSerializedEntries;
 
+        internal T[] SerializedItems => _items;
+
         protected virtual bool SupportsSorting => false;
 
         protected SerializableSetBase(TSet set)

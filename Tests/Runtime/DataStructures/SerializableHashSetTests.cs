@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
@@ -462,20 +461,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void UnityDeserializationPreservesDuplicateSerializedEntries()
         {
             SerializableSortedSet<int> set = new();
-            FieldInfo itemsField = typeof(SerializableSortedSet<int>).GetField(
-                "_items",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(itemsField);
-
-            itemsField.SetValue(set, new int[] { 1, 1, 2 });
+            set._items = new int[] { 1, 1, 2 };
             set.OnAfterDeserialize();
 
-            object cached = itemsField.GetValue(set);
+            int[] cached = set.SerializedItems;
             Assert.IsNotNull(cached, "Duplicate entries must keep serialized cache for inspector.");
 
-            int[] cachedValues = (int[])cached;
-            CollectionAssert.AreEqual(new int[] { 1, 1, 2 }, cachedValues);
+            CollectionAssert.AreEqual(new int[] { 1, 1, 2 }, cached);
             Assert.AreEqual(2, set.Count);
             Assert.IsTrue(set.Contains(1));
             Assert.IsTrue(set.Contains(2));

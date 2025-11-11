@@ -246,7 +246,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsNotEmpty(attributes);
 
             WShowIfAttribute attribute = (WShowIfAttribute)attributes[0];
-            Assert.AreEqual("_hasValue", attribute.conditionField);
+            Assert.AreEqual(
+                SerializableNullable<int>.SerializedPropertyNames.HasValue,
+                attribute.conditionField
+            );
             Assert.IsFalse(attribute.inverse);
         }
     }
