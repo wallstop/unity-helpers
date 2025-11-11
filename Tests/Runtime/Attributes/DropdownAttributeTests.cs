@@ -1,0 +1,558 @@
+namespace WallstopStudios.UnityHelpers.Tests.Attributes
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Text.RegularExpressions;
+    using NUnit.Framework;
+    using UnityEngine;
+    using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+
+    [TestFixture]
+    public sealed class DropdownAttributeTests
+    {
+        [TearDown]
+        public void VerifyNoUnexpectedLogs()
+        {
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void StringInListInlineOptionsReturnSameReferences()
+        {
+            string[] values = { "Alpha", "Beta", "Gamma" };
+            StringInListAttribute attribute = new(values);
+            CollectionAssert.AreEqual(values, attribute.List);
+        }
+
+        [Test]
+        public void StringInListMethodProviderReturnsValues()
+        {
+            StringInListAttribute attribute = new(
+                typeof(StringProviders),
+                nameof(StringProviders.GetStringValues)
+            );
+            CollectionAssert.AreEqual(new[] { "One", "Two", "Three" }, attribute.List);
+        }
+
+        [Test]
+        public void StringInListEnumerableProviderSupported()
+        {
+            StringInListAttribute attribute = new(
+                typeof(StringProviders),
+                nameof(StringProviders.GetEnumerableStrings)
+            );
+            CollectionAssert.AreEqual(new[] { "Red", "Green" }, attribute.List);
+        }
+
+        [Test]
+        public void StringInListMissingMethodLogsErrorAndReturnsEmpty()
+        {
+            Regex pattern = new Regex("StringInListAttribute");
+            LogAssert.Expect(LogType.Error, pattern);
+            StringInListAttribute attribute = new(typeof(StringProviders), "Missing");
+            CollectionAssert.IsEmpty(attribute.List);
+        }
+
+        [Test]
+        public void StringInListMethodThrowingExceptionLogsErrorAndReturnsEmpty()
+        {
+            Regex pattern = new Regex("StringInListAttribute");
+            LogAssert.Expect(LogType.Error, pattern);
+            StringInListAttribute attribute = new(
+                typeof(StringProviders),
+                nameof(StringProviders.ThrowingProvider)
+            );
+            CollectionAssert.IsEmpty(attribute.List);
+        }
+
+        [Test]
+        public void IntDropdownInlineOptionsReturnSameReferences()
+        {
+            int[] values = { 2, 4, 6 };
+            IntDropdownAttribute attribute = new(values);
+            CollectionAssert.AreEqual(values, attribute.Options);
+        }
+
+        [Test]
+        public void IntDropdownMethodProviderReturnsValues()
+        {
+            IntDropdownAttribute attribute = new(
+                typeof(IntProviders),
+                nameof(IntProviders.GetValues)
+            );
+            CollectionAssert.AreEqual(new[] { 1, 5, 9 }, attribute.Options);
+        }
+
+        [Test]
+        public void IntDropdownEnumerableProviderSupported()
+        {
+            IntDropdownAttribute attribute = new(
+                typeof(IntProviders),
+                nameof(IntProviders.GetEnumerableValues)
+            );
+            CollectionAssert.AreEqual(new[] { 10, 20 }, attribute.Options);
+        }
+
+        [Test]
+        public void IntDropdownMissingMethodLogsErrorAndReturnsEmpty()
+        {
+            Regex pattern = new Regex("IntDropdownAttribute");
+            LogAssert.Expect(LogType.Error, pattern);
+            IntDropdownAttribute attribute = new(typeof(IntProviders), "Missing");
+            CollectionAssert.IsEmpty(attribute.Options);
+        }
+
+        [Test]
+        public void IntDropdownMethodThrowingExceptionLogsErrorAndReturnsEmpty()
+        {
+            Regex pattern = new Regex("IntDropdownAttribute");
+            LogAssert.Expect(LogType.Error, pattern);
+            IntDropdownAttribute attribute = new(
+                typeof(IntProviders),
+                nameof(IntProviders.ThrowingProvider)
+            );
+            CollectionAssert.IsEmpty(attribute.Options);
+        }
+
+        [Test]
+        public void ValueDropdownInlineFloatsConvertSuccessfully()
+        {
+            ValueDropdownAttribute attribute = new(typeof(float), 1, 2.5f, "3.75");
+            object[] options = attribute.Options;
+            Assert.AreEqual(3, options.Length);
+            Assert.AreEqual(1f, options[0]);
+            Assert.AreEqual(2.5f, options[1]);
+            Assert.AreEqual(3.75f, options[2]);
+        }
+
+        [Test]
+        public void ValueDropdownMethodProviderHandlesDoubles()
+        {
+            ValueDropdownAttribute attribute = new(
+                typeof(ValueProviders),
+                nameof(ValueProviders.GetDoubles),
+                typeof(double)
+            );
+            object[] options = attribute.Options;
+            Assert.AreEqual(2, options.Length);
+            Assert.AreEqual(12.5d, options[0]);
+            Assert.AreEqual(42.25d, options[1]);
+        }
+
+        [Test]
+        public void ValueDropdownTypedConstructorSupportsFloats()
+        {
+            ValueDropdownAttribute attribute = new(1f, 2.5f);
+            Assert.AreEqual(typeof(float), attribute.ValueType);
+            object[] options = attribute.Options;
+            Assert.AreEqual(2, options.Length);
+            Assert.AreEqual(1f, options[0]);
+            Assert.AreEqual(2.5f, options[1]);
+        }
+
+        [Test]
+        public void ValueDropdownTypedConstructorSupportsBooleans()
+        {
+            ValueDropdownAttribute attribute = new(true, false, true);
+            AssertOptions(attribute, typeof(bool), new[] { true, false, true });
+        }
+
+        [Test]
+        public void ValueDropdownTypedConstructorSupportsCharacters()
+        {
+            ValueDropdownAttribute attribute = new('A', 'B');
+            AssertOptions(attribute, typeof(char), new[] { 'A', 'B' });
+        }
+
+        [Test]
+        public void ValueDropdownTypedConstructorSupportsStrings()
+        {
+            ValueDropdownAttribute attribute = new("Alpha", "Beta");
+            AssertOptions(attribute, typeof(string), new[] { "Alpha", "Beta" });
+        }
+
+        [Test]
+        public void ValueDropdownTypedConstructorSupportsSignedBytes()
+        {
+            ValueDropdownAttribute attribute = new((sbyte)1, (sbyte)-2);
+            AssertOptions(attribute, typeof(sbyte), new[] { (sbyte)1, (sbyte)-2 });
+        }
+
+        [Test]
+        public void ValueDropdownTypedConstructorSupportsUnsignedBytes()
+        {
+            ValueDropdownAttribute attribute = new((byte)1, (byte)200);
+            AssertOptions(attribute, typeof(byte), new[] { (byte)1, (byte)200 });
+        }
+
+        [Test]
+        public void ValueDropdownTypedConstructorSupportsShorts()
+        {
+            ValueDropdownAttribute attribute = new((short)10, (short)-20);
+            AssertOptions(attribute, typeof(short), new[] { (short)10, (short)-20 });
+        }
+
+        [Test]
+        public void ValueDropdownTypedConstructorSupportsUnsignedShorts()
+        {
+            ValueDropdownAttribute attribute = new((ushort)10, (ushort)20);
+            AssertOptions(attribute, typeof(ushort), new[] { (ushort)10, (ushort)20 });
+        }
+
+        [Test]
+        public void ValueDropdownTypedConstructorSupportsIntegers()
+        {
+            ValueDropdownAttribute attribute = new(10, -30, 50);
+            AssertOptions(attribute, typeof(int), new[] { 10, -30, 50 });
+        }
+
+        [Test]
+        public void ValueDropdownTypedConstructorSupportsUnsignedIntegers()
+        {
+            ValueDropdownAttribute attribute = new(10u, 30u);
+            AssertOptions(attribute, typeof(uint), new[] { 10u, 30u });
+        }
+
+        [Test]
+        public void ValueDropdownTypedConstructorSupportsLongs()
+        {
+            ValueDropdownAttribute attribute = new(10L, -20L);
+            AssertOptions(attribute, typeof(long), new[] { 10L, -20L });
+        }
+
+        [Test]
+        public void ValueDropdownTypedConstructorSupportsUnsignedLongs()
+        {
+            ValueDropdownAttribute attribute = new(10UL, 20UL);
+            AssertOptions(attribute, typeof(ulong), new[] { 10UL, 20UL });
+        }
+
+        [Test]
+        public void ValueDropdownTypedConstructorSupportsDoubles()
+        {
+            ValueDropdownAttribute attribute = new(1.25d, 2.5d);
+            AssertOptions(attribute, typeof(double), new[] { 1.25d, 2.5d });
+        }
+
+        [Test]
+        public void ValueDropdownEnumConversionSupportsNames()
+        {
+            ValueDropdownAttribute attribute = new(
+                typeof(ValueProviders),
+                nameof(ValueProviders.GetEnumNames),
+                typeof(TestEnum)
+            );
+            object[] options = attribute.Options;
+            Assert.AreEqual(2, options.Length);
+            Assert.AreEqual(TestEnum.First, options[0]);
+            Assert.AreEqual(TestEnum.Second, options[1]);
+        }
+
+        [Test]
+        public void ValueDropdownInvalidConversionLogsErrorAndSkips()
+        {
+            Regex pattern = new Regex("ValueDropdownAttribute");
+            LogAssert.Expect(LogType.Error, pattern);
+            ValueDropdownAttribute attribute = new(typeof(byte), 1, 512);
+            object[] options = attribute.Options;
+            Assert.AreEqual(1, options.Length);
+            Assert.AreEqual((byte)1, options[0]);
+        }
+
+        [Test]
+        public void ValueDropdownMissingProviderLogsErrorAndReturnsEmpty()
+        {
+            Regex pattern = new Regex("ValueDropdownAttribute");
+            LogAssert.Expect(LogType.Error, pattern);
+            ValueDropdownAttribute attribute = new(
+                typeof(ValueProviders),
+                "Missing",
+                typeof(float)
+            );
+            CollectionAssert.IsEmpty(attribute.Options);
+        }
+
+        [Test]
+        public void ValueDropdownProviderInfersElementType()
+        {
+            ValueDropdownAttribute attribute = new(
+                typeof(ValueProviders),
+                nameof(ValueProviders.GetShorts)
+            );
+            Assert.AreEqual(typeof(short), attribute.ValueType);
+            object[] options = attribute.Options;
+            Assert.AreEqual(3, options.Length);
+            Assert.AreEqual((short)1, options[0]);
+            Assert.AreEqual((short)2, options[1]);
+            Assert.AreEqual((short)3, options[2]);
+        }
+
+        [Test]
+        public void ValueDropdownProviderSupportsCustomStructs()
+        {
+            ValueDropdownAttribute attribute = new(
+                typeof(ValueProviders),
+                nameof(ValueProviders.GetDropdownItems)
+            );
+
+            Assert.AreEqual(typeof(DropdownItem), attribute.ValueType);
+            object[] options = attribute.Options;
+            Assert.AreEqual(2, options.Length);
+            Assert.IsInstanceOf<DropdownItem>(options[0]);
+            Assert.AreEqual("Alpha", ((DropdownItem)options[0]).Name);
+            Assert.IsInstanceOf<DropdownItem>(options[1]);
+            Assert.AreEqual("Beta", ((DropdownItem)options[1]).Name);
+        }
+
+        [Test]
+        public void ValueDropdownProviderSupportsCustomReferenceTypes()
+        {
+            ValueDropdownAttribute attribute = new(
+                typeof(ValueProviders),
+                nameof(ValueProviders.GetCustomReferences)
+            );
+
+            Assert.AreEqual(typeof(CustomReference), attribute.ValueType);
+            object[] options = attribute.Options;
+            Assert.AreEqual(2, options.Length);
+            Assert.IsInstanceOf<CustomReference>(options[0]);
+            Assert.AreEqual("First", ((CustomReference)options[0]).Identifier);
+            Assert.IsInstanceOf<CustomReference>(options[1]);
+            Assert.AreEqual("Second", ((CustomReference)options[1]).Identifier);
+        }
+
+        [Test]
+        public void ValueDropdownProviderSupportsArrays()
+        {
+            ValueDropdownAttribute attribute = new(
+                typeof(ValueProviders),
+                nameof(ValueProviders.GetDropdownItemArray)
+            );
+
+            Assert.AreEqual(typeof(DropdownItem), attribute.ValueType);
+            object[] options = attribute.Options;
+            Assert.AreEqual(2, options.Length);
+            Assert.IsInstanceOf<DropdownItem>(options[0]);
+            Assert.AreEqual("ArrayAlpha", ((DropdownItem)options[0]).Name);
+            Assert.IsInstanceOf<DropdownItem>(options[1]);
+            Assert.AreEqual("ArrayBeta", ((DropdownItem)options[1]).Name);
+        }
+
+        [Test]
+        public void ValueDropdownProviderReturningNullCollectionReturnsEmpty()
+        {
+            ValueDropdownAttribute attribute = new(
+                typeof(ValueProviders),
+                nameof(ValueProviders.GetNullCollection)
+            );
+
+            Assert.AreEqual(typeof(int), attribute.ValueType);
+            CollectionAssert.IsEmpty(attribute.Options);
+        }
+
+        [Test]
+        public void ValueDropdownProviderThrowingLogsErrorAndReturnsEmpty()
+        {
+            Regex pattern = new Regex("ValueDropdownAttribute");
+            LogAssert.Expect(LogType.Error, pattern);
+            ValueDropdownAttribute attribute = new(
+                typeof(ValueProviders),
+                nameof(ValueProviders.ThrowingProvider)
+            );
+            Assert.AreEqual(typeof(int), attribute.ValueType);
+            CollectionAssert.IsEmpty(attribute.Options);
+        }
+
+        [Test]
+        public void ValueDropdownExplicitTypeConvertsEntries()
+        {
+            ValueDropdownAttribute attribute = new(
+                typeof(ValueProviders),
+                nameof(ValueProviders.GetIntList),
+                typeof(long)
+            );
+
+            Assert.AreEqual(typeof(long), attribute.ValueType);
+            object[] options = attribute.Options;
+            Assert.AreEqual(3, options.Length);
+            Assert.AreEqual(10L, options[0]);
+            Assert.AreEqual(20L, options[1]);
+            Assert.AreEqual(30L, options[2]);
+        }
+
+        [Test]
+        public void ValueDropdownProviderSupportsEnumerableOfObject()
+        {
+            ValueDropdownAttribute attribute = new(
+                typeof(ValueProviders),
+                nameof(ValueProviders.GetObjectEnumerable)
+            );
+
+            Assert.AreEqual(typeof(object), attribute.ValueType);
+            object[] options = attribute.Options;
+            Assert.AreEqual(2, options.Length);
+            Assert.IsInstanceOf<DropdownItem>(options[0]);
+            Assert.AreEqual("Gamma", ((DropdownItem)options[0]).Name);
+            Assert.AreEqual("Literal", options[1]);
+        }
+
+        [Test]
+        public void ValueDropdownProviderWithInvalidReturnLogsError()
+        {
+            Regex pattern = new Regex("ValueDropdownAttribute");
+            LogAssert.Expect(LogType.Error, pattern);
+            ValueDropdownAttribute attribute = new(
+                typeof(ValueProviders),
+                nameof(ValueProviders.GetInvalidProvider)
+            );
+            Assert.AreEqual(typeof(object), attribute.ValueType);
+            CollectionAssert.IsEmpty(attribute.Options);
+        }
+
+        private static void AssertOptions<T>(
+            ValueDropdownAttribute attribute,
+            Type expectedType,
+            T[] expectedValues
+        )
+        {
+            Assert.AreEqual(expectedType, attribute.ValueType);
+            object[] options = attribute.Options;
+            Assert.AreEqual(expectedValues.Length, options.Length);
+
+            for (int index = 0; index < expectedValues.Length; index += 1)
+            {
+                Assert.IsInstanceOf<T>(options[index]);
+                Assert.AreEqual(expectedValues[index], (T)options[index]);
+            }
+        }
+
+        private static class StringProviders
+        {
+            public static string[] GetStringValues()
+            {
+                return new[] { "One", "Two", "Three" };
+            }
+
+            public static IEnumerable<string> GetEnumerableStrings()
+            {
+                return new List<string> { "Red", "Green" };
+            }
+
+            public static string[] ThrowingProvider()
+            {
+                throw new InvalidOperationException("Example");
+            }
+        }
+
+        private static class IntProviders
+        {
+            public static int[] GetValues()
+            {
+                return new[] { 1, 5, 9 };
+            }
+
+            public static IEnumerable<int> GetEnumerableValues()
+            {
+                return new List<int> { 10, 20 };
+            }
+
+            public static int[] ThrowingProvider()
+            {
+                throw new InvalidOperationException("Example");
+            }
+        }
+
+        private static class ValueProviders
+        {
+            public static IEnumerable<double> GetDoubles()
+            {
+                return new List<double> { 12.5d, 42.25d };
+            }
+
+            public static IEnumerable<string> GetEnumNames()
+            {
+                return new List<string> { nameof(TestEnum.First), nameof(TestEnum.Second) };
+            }
+
+            public static short[] GetShorts()
+            {
+                return new[] { (short)1, (short)2, (short)3 };
+            }
+
+            public static IEnumerable<DropdownItem> GetDropdownItems()
+            {
+                return new List<DropdownItem>
+                {
+                    new DropdownItem("Alpha"),
+                    new DropdownItem("Beta"),
+                };
+            }
+
+            public static DropdownItem[] GetDropdownItemArray()
+            {
+                return new[] { new DropdownItem("ArrayAlpha"), new DropdownItem("ArrayBeta") };
+            }
+
+            public static List<CustomReference> GetCustomReferences()
+            {
+                return new List<CustomReference>
+                {
+                    new CustomReference("First"),
+                    new CustomReference("Second"),
+                };
+            }
+
+            public static IEnumerable<int> GetNullCollection()
+            {
+                return null;
+            }
+
+            public static IEnumerable<int> ThrowingProvider()
+            {
+                throw new InvalidOperationException("Example");
+            }
+
+            public static IEnumerable<int> GetIntList()
+            {
+                return new List<int> { 10, 20, 30 };
+            }
+
+            public static IEnumerable<object> GetObjectEnumerable()
+            {
+                return new List<object> { new DropdownItem("Gamma"), "Literal" };
+            }
+
+            public static int GetInvalidProvider()
+            {
+                return 1;
+            }
+        }
+
+        private enum TestEnum
+        {
+            First,
+            Second,
+        }
+
+        private readonly struct DropdownItem
+        {
+            public DropdownItem(string name)
+            {
+                Name = name;
+            }
+
+            public string Name { get; }
+        }
+
+        private sealed class CustomReference
+        {
+            public CustomReference(string identifier)
+            {
+                Identifier = identifier;
+            }
+
+            public string Identifier { get; }
+        }
+    }
+}

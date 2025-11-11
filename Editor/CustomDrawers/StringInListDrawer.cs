@@ -7,19 +7,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEditor.UIElements;
     using UnityEngine;
     using UnityEngine.UIElements;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
 
     /// <summary>
-    /// UI Toolkit drawer for <see cref="StringInList"/> that provides search, pagination, and autocomplete.
+    /// UI Toolkit drawer for <see cref="StringInListAttribute"/> that provides search, pagination, and autocomplete.
     /// </summary>
-    [CustomPropertyDrawer(typeof(StringInList))]
+    [CustomPropertyDrawer(typeof(StringInListAttribute))]
     public sealed class StringInListDrawer : PropertyDrawer
     {
         /// <inheritdoc/>
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
-            StringInList stringInList = (StringInList)attribute;
+            StringInListAttribute stringInList = (StringInListAttribute)attribute;
             string[] options = stringInList.List ?? Array.Empty<string>();
 
             if (options.Length == 0)

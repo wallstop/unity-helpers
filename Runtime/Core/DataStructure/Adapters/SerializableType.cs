@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using System.Text.RegularExpressions;
     using ProtoBuf;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>

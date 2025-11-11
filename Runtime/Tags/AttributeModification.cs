@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     using Core.Extension;
     using Core.Helper;
     using ProtoBuf;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
 
     /// <summary>
     /// Declarative change applied to an <see cref="Attribute"/>.

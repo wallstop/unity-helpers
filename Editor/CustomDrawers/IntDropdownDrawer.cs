@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
+    using System;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
@@ -26,13 +27,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
+            int[] options = dropdown.Options ?? Array.Empty<int>();
+            if (options.Length == 0)
+            {
+                EditorGUI.PropertyField(position, property, label);
+                return;
+            }
+
             int currentValue = property.intValue;
 
-            int selectedIndex = Mathf.Max(0, System.Array.IndexOf(dropdown.Options, currentValue));
-            string[] displayedOptions = System.Array.ConvertAll(
-                dropdown.Options,
-                opt => opt.ToString()
-            );
+            int selectedIndex = Mathf.Max(0, Array.IndexOf(options, currentValue));
+            string[] displayedOptions = Array.ConvertAll(options, Convert.ToString);
 
             EditorGUI.BeginProperty(position, label, property);
             try
@@ -44,9 +49,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     displayedOptions
                 );
 
-                if (selectedIndex >= 0 && selectedIndex < dropdown.Options.Length)
+                if (selectedIndex >= 0 && selectedIndex < options.Length)
                 {
-                    property.intValue = dropdown.Options[selectedIndex];
+                    property.intValue = options[selectedIndex];
                 }
             }
             finally
