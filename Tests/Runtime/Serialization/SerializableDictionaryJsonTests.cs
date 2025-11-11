@@ -12,7 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void SerializableDictionaryRoundTripsJson()
         {
-            SerializableDictionary<string, int> original = new SerializableDictionary<string, int>
+            SerializableDictionary<string, int> original = new()
             {
                 { "alpha", 1 },
                 { "beta", 2 },
@@ -35,7 +35,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void SerializableDictionaryRoundTripsJsonWithFastOptions()
         {
-            SerializableDictionary<int, string> original = new SerializableDictionary<int, string>
+            SerializableDictionary<int, string> original = new()
             {
                 { 1, "one" },
                 { 2, "two" },
@@ -63,15 +63,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 string,
                 SerializablePayload,
                 SerializableDictionary.Cache<SerializablePayload>
-            > original =
-                new SerializableDictionary<
-                    string,
-                    SerializablePayload,
-                    SerializableDictionary.Cache<SerializablePayload>
-                >();
-
-            original.Add("primary", new SerializablePayload { Id = 1, Name = "Primary" });
-            original.Add("secondary", new SerializablePayload { Id = 2, Name = "Secondary" });
+            > original = new()
+            {
+                {
+                    "primary",
+                    new SerializablePayload { Id = 1, Name = "Primary" }
+                },
+                {
+                    "secondary",
+                    new SerializablePayload { Id = 2, Name = "Secondary" }
+                },
+            };
 
             JsonSerializerOptions options = Serializer.CreatePrettyJsonOptions();
             string json = Serializer.JsonStringify(original, options);
@@ -99,11 +101,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void SerializableSortedDictionaryRoundTripsJson()
         {
-            SerializableSortedDictionary<int, string> original =
-                new SerializableSortedDictionary<int, string>();
-            original.Add(5, "five");
-            original.Add(1, "one");
-            original.Add(3, "three");
+            SerializableSortedDictionary<int, string> original = new()
+            {
+                { 5, "five" },
+                { 1, "one" },
+                { 3, "three" },
+            };
 
             string json = Serializer.JsonStringify(original);
             SerializableSortedDictionary<int, string> deserialized = Serializer.JsonDeserialize<
@@ -129,16 +132,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 string,
                 SerializablePayload,
                 SerializableDictionary.Cache<SerializablePayload>
-            > original =
-                new SerializableSortedDictionary<
-                    string,
-                    SerializablePayload,
-                    SerializableDictionary.Cache<SerializablePayload>
-                >();
-
-            original.Add("delta", new SerializablePayload { Id = 4, Name = "Delta" });
-            original.Add("alpha", new SerializablePayload { Id = 1, Name = "Alpha" });
-            original.Add("charlie", new SerializablePayload { Id = 3, Name = "Charlie" });
+            > original = new()
+            {
+                {
+                    "delta",
+                    new SerializablePayload { Id = 4, Name = "Delta" }
+                },
+                {
+                    "alpha",
+                    new SerializablePayload { Id = 1, Name = "Alpha" }
+                },
+                {
+                    "charlie",
+                    new SerializablePayload { Id = 3, Name = "Charlie" }
+                },
+            };
 
             JsonSerializerOptions options = Serializer.CreatePrettyJsonOptions();
             string json = Serializer.JsonStringify(original, options);
@@ -169,7 +177,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void SerializableDictionaryHandlesMultipleJsonMutations()
         {
-            SerializableDictionary<string, int> dictionary = new SerializableDictionary<string, int>
+            SerializableDictionary<string, int> dictionary = new()
             {
                 { "alpha", 1 },
                 { "beta", 2 },
@@ -233,15 +241,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 string,
                 SerializablePayload,
                 SerializableDictionary.Cache<SerializablePayload>
-            > dictionary =
-                new SerializableDictionary<
-                    string,
-                    SerializablePayload,
-                    SerializableDictionary.Cache<SerializablePayload>
-                >();
-
-            dictionary.Add("primary", new SerializablePayload { Id = 1, Name = "Primary" });
-            dictionary.Add("secondary", new SerializablePayload { Id = 2, Name = "Secondary" });
+            > dictionary = new()
+            {
+                {
+                    "primary",
+                    new SerializablePayload { Id = 1, Name = "Primary" }
+                },
+                {
+                    "secondary",
+                    new SerializablePayload { Id = 2, Name = "Secondary" }
+                },
+            };
 
             JsonSerializerOptions options = Serializer.CreateNormalJsonOptions();
             string firstSnapshot = Serializer.JsonStringify(dictionary, options);

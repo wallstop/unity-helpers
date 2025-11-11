@@ -220,7 +220,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void SerializableDictionarySerializesAndDeserializes()
         {
-            SerializableDictionary<string, int> original = new SerializableDictionary<string, int>
+            SerializableDictionary<string, int> original = new()
             {
                 { "alpha", 1 },
                 { "beta", 2 },
@@ -247,15 +247,17 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 int,
                 SerializablePayload,
                 SerializableDictionary.Cache<SerializablePayload>
-            > original =
-                new SerializableDictionary<
-                    int,
-                    SerializablePayload,
-                    SerializableDictionary.Cache<SerializablePayload>
-                >();
-
-            original.Add(1, new SerializablePayload { Id = 1, Name = "Primary" });
-            original.Add(2, new SerializablePayload { Id = 2, Name = "Secondary" });
+            > original = new()
+            {
+                {
+                    1,
+                    new SerializablePayload { Id = 1, Name = "Primary" }
+                },
+                {
+                    2,
+                    new SerializablePayload { Id = 2, Name = "Secondary" }
+                },
+            };
 
             byte[] data = Serializer.ProtoSerialize(original);
             SerializableDictionary<
@@ -549,7 +551,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void SerializableDictionarySupportsMultipleProtobufCycles()
         {
-            SerializableDictionary<string, int> dictionary = new SerializableDictionary<string, int>
+            SerializableDictionary<string, int> dictionary = new()
             {
                 { "alpha", 1 },
                 { "beta", 2 },
@@ -624,15 +626,17 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 int,
                 SerializablePayload,
                 SerializableDictionary.Cache<SerializablePayload>
-            > dictionary =
-                new SerializableDictionary<
-                    int,
-                    SerializablePayload,
-                    SerializableDictionary.Cache<SerializablePayload>
-                >();
-
-            dictionary.Add(1, new SerializablePayload { Id = 1, Name = "First" });
-            dictionary.Add(2, new SerializablePayload { Id = 2, Name = "Second" });
+            > dictionary = new()
+            {
+                {
+                    1,
+                    new SerializablePayload { Id = 1, Name = "First" }
+                },
+                {
+                    2,
+                    new SerializablePayload { Id = 2, Name = "Second" }
+                },
+            };
 
             byte[] firstSnapshot = Serializer.ProtoSerialize(dictionary);
 

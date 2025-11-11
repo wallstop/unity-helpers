@@ -702,10 +702,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// Creates a new <see cref="global::System.Collections.Generic.HashSet{T}"/> populated with this set's contents.
         /// </summary>
         /// <returns>A copy of the hash set's current state.</returns>
-        public global::System.Collections.Generic.HashSet<T> ToHashSet()
+        public HashSet<T> ToHashSet()
         {
-            global::System.Collections.Generic.HashSet<T> copy =
-                new global::System.Collections.Generic.HashSet<T>(Set, Set.Comparer);
+            HashSet<T> copy = new(Set, Set.Comparer);
             return copy;
         }
 

@@ -28,7 +28,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void ConstructorFromGuidPreservesValue()
         {
             Guid expected = Guid.NewGuid();
-            WGuid guid = new WGuid(expected);
+            WGuid guid = new(expected);
             Assert.AreEqual(expected, guid.ToGuid());
             Assert.IsTrue(guid.IsVersion4);
         }
@@ -47,7 +47,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void ToByteArrayMatchesGuidBytes()
         {
             Guid source = Guid.NewGuid();
-            WGuid guid = new WGuid(source);
+            WGuid guid = new(source);
             byte[] expected = source.ToByteArray();
             byte[] actual = guid.ToByteArray();
             CollectionAssert.AreEqual(expected, actual);
@@ -57,7 +57,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void TryWriteBytesWritesIntoSpan()
         {
             Guid source = Guid.NewGuid();
-            WGuid guid = new WGuid(source);
+            WGuid guid = new(source);
             Span<byte> destination = stackalloc byte[16];
             bool success = guid.TryWriteBytes(destination);
             Assert.IsTrue(success);
@@ -121,7 +121,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             );
             Assert.IsTrue(formatted);
             Assert.AreEqual(36, charsWritten);
-            string formattedString = new string(destination.Slice(0, charsWritten));
+            string formattedString = new(destination.Slice(0, charsWritten));
             Assert.IsTrue(Guid.TryParse(formattedString, out Guid parsed));
             Assert.AreEqual(guid.ToGuid(), parsed);
         }
@@ -140,8 +140,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void EqualityUsesUnderlyingValue()
         {
             Guid source = Guid.NewGuid();
-            WGuid first = new WGuid(source);
-            WGuid second = new WGuid(source);
+            WGuid first = new(source);
+            WGuid second = new(source);
             Assert.IsTrue(first.Equals(second));
             Assert.AreEqual(first.GetHashCode(), second.GetHashCode());
         }

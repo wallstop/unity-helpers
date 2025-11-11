@@ -182,16 +182,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// Creates a new <see cref="global::System.Collections.Generic.SortedDictionary{TKey, TValue}"/> populated with this dictionary's contents.
         /// </summary>
         /// <returns>A copy of the sorted dictionary's current state.</returns>
-        public global::System.Collections.Generic.SortedDictionary<
-            TKey,
-            TValue
-        > ToSortedDictionary()
+        public SortedDictionary<TKey, TValue> ToSortedDictionary()
         {
-            global::System.Collections.Generic.SortedDictionary<TKey, TValue> copy =
-                new global::System.Collections.Generic.SortedDictionary<TKey, TValue>(
-                    _dictionary,
-                    _dictionary.Comparer
-                );
+            SortedDictionary<TKey, TValue> copy = new(_dictionary, _dictionary.Comparer);
             return copy;
         }
 

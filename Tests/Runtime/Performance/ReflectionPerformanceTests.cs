@@ -20,13 +20,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         {
             StrategyConfig[] strategies =
             {
-                new StrategyConfig("Default (auto)", null, null),
-                new StrategyConfig("Expressions", true, false),
-                new StrategyConfig("Dynamic IL", false, true),
-                new StrategyConfig("Reflection Fallback", false, false),
+                new("Default (auto)", null, null),
+                new("Expressions", true, false),
+                new("Dynamic IL", false, true),
+                new("Reflection Fallback", false, false),
             };
 
-            List<StrategyRunResult> supportedRuns = new List<StrategyRunResult>();
+            List<StrategyRunResult> supportedRuns = new();
 
             foreach (StrategyConfig config in strategies)
             {
@@ -42,7 +42,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 supportedRuns.Add(result);
             }
 
-            List<string> outputLines = new List<string>
+            List<string> outputLines = new()
             {
                 string.Format(
                     System.Globalization.CultureInfo.InvariantCulture,
@@ -98,10 +98,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                     "| -------- | ---------------- | --------------------------- | --------------------------- | ------------------- | -------------------- |"
                 );
 
-                Dictionary<string, double> reflectionBaselineLookup = new Dictionary<
-                    string,
-                    double
-                >(StringComparer.Ordinal);
+                Dictionary<string, double> reflectionBaselineLookup = new(StringComparer.Ordinal);
                 foreach (ScenarioResult boxed in run.BoxedResults)
                 {
                     reflectionBaselineLookup[GetScenarioKey(boxed.Name)] =
@@ -161,11 +158,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
         private static ReflectionPerfTarget CreateTargetInstance()
         {
-            ReflectionPerfTarget instance = new ReflectionPerfTarget
-            {
-                InstanceField = 5,
-                InstanceProperty = 7,
-            };
+            ReflectionPerfTarget instance = new() { InstanceField = 5, InstanceProperty = 7 };
             ReflectionPerfTarget.StaticField = 11;
             ReflectionPerfTarget.StaticProperty = 13;
             return instance;
@@ -218,7 +211,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
         private static List<ScenarioResult> RunScenarios(IEnumerable<Scenario> scenarios)
         {
-            List<ScenarioResult> results = new List<ScenarioResult>();
+            List<ScenarioResult> results = new();
             foreach (Scenario scenario in scenarios)
             {
                 results.Add(RunScenario(scenario));

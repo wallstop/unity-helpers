@@ -41,10 +41,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void ToDictionaryReturnsIndependentCopy()
         {
-            SerializableDictionary<string, int> dictionary =
-                new SerializableDictionary<string, int>();
-            dictionary.Add("alpha", 1);
-            dictionary.Add("beta", 2);
+            SerializableDictionary<string, int> dictionary = new()
+            {
+                { "alpha", 1 },
+                { "beta", 2 },
+            };
 
             Dictionary<string, int> copy = dictionary.ToDictionary();
 

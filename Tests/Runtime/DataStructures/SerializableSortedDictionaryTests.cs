@@ -14,11 +14,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EntriesEnumerateInAscendingOrder()
         {
-            SerializableSortedDictionary<int, string> dictionary =
-                new SerializableSortedDictionary<int, string>();
-            dictionary.Add(3, "three");
-            dictionary.Add(1, "one");
-            dictionary.Add(2, "two");
+            SerializableSortedDictionary<int, string> dictionary = new()
+            {
+                { 3, "three" },
+                { 1, "one" },
+                { 2, "two" },
+            };
 
             int[] expectedKeys = { 1, 2, 3 };
             int index = 0;
@@ -35,9 +36,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void CopyFromOrdersSourceDictionary()
         {
-            SerializableSortedDictionary<int, string> dictionary =
-                new SerializableSortedDictionary<int, string>();
-            Dictionary<int, string> source = new Dictionary<int, string>
+            SerializableSortedDictionary<int, string> dictionary = new();
+            Dictionary<int, string> source = new()
             {
                 { 7, "seven" },
                 { 4, "four" },
@@ -61,10 +61,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void ToSortedDictionaryReturnsIndependentCopy()
         {
-            SerializableSortedDictionary<int, string> dictionary =
-                new SerializableSortedDictionary<int, string>();
-            dictionary.Add(2, "two");
-            dictionary.Add(1, "one");
+            SerializableSortedDictionary<int, string> dictionary = new()
+            {
+                { 2, "two" },
+                { 1, "one" },
+            };
 
             SortedDictionary<int, string> copy = dictionary.ToSortedDictionary();
 
@@ -96,9 +97,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void TryAddWhenKeyExistsDoesNotInvalidateCache()
         {
-            SerializableSortedDictionary<int, string> dictionary =
-                new SerializableSortedDictionary<int, string>();
-            dictionary.Add(5, "five");
+            SerializableSortedDictionary<int, string> dictionary = new() { { 5, "five" } };
 
             Type baseType = typeof(SerializableSortedDictionary<int, string>).BaseType;
             Assert.IsNotNull(baseType, "Base type lookup failed.");
@@ -143,9 +142,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void IndexerUpdateClearsSerializationArrays()
         {
-            SerializableSortedDictionary<int, string> dictionary =
-                new SerializableSortedDictionary<int, string>();
-            dictionary.Add(7, "seven");
+            SerializableSortedDictionary<int, string> dictionary = new() { { 7, "seven" } };
 
             Type baseType = typeof(SerializableSortedDictionary<int, string>).BaseType;
             Assert.IsNotNull(baseType, "Base type lookup failed.");
@@ -184,10 +181,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void OnBeforeSerializeSkipsRebuildWhenCacheFresh()
         {
-            SerializableSortedDictionary<int, string> dictionary =
-                new SerializableSortedDictionary<int, string>();
-            dictionary.Add(2, "two");
-            dictionary.Add(4, "four");
+            SerializableSortedDictionary<int, string> dictionary = new()
+            {
+                { 2, "two" },
+                { 4, "four" },
+            };
 
             Type baseType = typeof(SerializableSortedDictionary<int, string>).BaseType;
             Assert.IsNotNull(baseType, "Base type lookup failed.");
@@ -219,8 +217,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void CopyFromNullThrowsArgumentNullException()
         {
-            SerializableSortedDictionary<int, string> dictionary =
-                new SerializableSortedDictionary<int, string>();
+            SerializableSortedDictionary<int, string> dictionary = new();
 
             Assert.Throws<ArgumentNullException>(() => dictionary.CopyFrom(null));
         }
@@ -228,10 +225,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void ProtoSerializationPreservesTemporaryArraysWhenNoDuplicatesExist()
         {
-            SerializableSortedDictionary<int, string> dictionary =
-                new SerializableSortedDictionary<int, string>();
-            dictionary.Add(1, "one");
-            dictionary.Add(3, "three");
+            SerializableSortedDictionary<int, string> dictionary = new()
+            {
+                { 1, "one" },
+                { 3, "three" },
+            };
 
             Type baseType = typeof(SerializableSortedDictionary<int, string>).BaseType;
             Assert.IsNotNull(baseType, "Base type lookup failed.");
@@ -288,11 +286,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void OnBeforeSerializeProducesSortedArrays()
         {
-            SerializableSortedDictionary<int, string> dictionary =
-                new SerializableSortedDictionary<int, string>();
-            dictionary.Add(10, "ten");
-            dictionary.Add(2, "two");
-            dictionary.Add(7, "seven");
+            SerializableSortedDictionary<int, string> dictionary = new()
+            {
+                { 10, "ten" },
+                { 2, "two" },
+                { 7, "seven" },
+            };
 
             dictionary.OnBeforeSerialize();
 
@@ -317,8 +316,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void OnAfterDeserializeSortsEntries()
         {
-            SerializableSortedDictionary<int, string> dictionary =
-                new SerializableSortedDictionary<int, string>();
+            SerializableSortedDictionary<int, string> dictionary = new();
             Type baseType = typeof(SerializableSortedDictionary<int, string>).BaseType;
             Assert.IsNotNull(baseType);
             BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
@@ -352,8 +350,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void NullKeysAreSkippedDuringDeserialization()
         {
-            SerializableSortedDictionary<string, string> dictionary =
-                new SerializableSortedDictionary<string, string>();
+            SerializableSortedDictionary<string, string> dictionary = new();
 
             string[] serializedKeys = { null, "valid" };
             string[] serializedValues = { "ignored", "retained" };
@@ -389,8 +386,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void NullValuesArePreservedDuringDeserialization()
         {
-            SerializableSortedDictionary<string, string> dictionary =
-                new SerializableSortedDictionary<string, string>();
+            SerializableSortedDictionary<string, string> dictionary = new();
 
             string[] serializedKeys = { "skip", "keep" };
             string[] serializedValues = { null, "retained" };
@@ -417,11 +413,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void ProtoSerializationRoundTrips()
         {
-            SerializableSortedDictionary<int, string> original =
-                new SerializableSortedDictionary<int, string>();
-            original.Add(4, "four");
-            original.Add(2, "two");
-            original.Add(9, "nine");
+            SerializableSortedDictionary<int, string> original = new()
+            {
+                { 4, "four" },
+                { 2, "two" },
+                { 9, "nine" },
+            };
 
             byte[] data = Serializer.ProtoSerialize(original);
             SerializableSortedDictionary<int, string> deserialized = Serializer.ProtoDeserialize<

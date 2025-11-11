@@ -143,7 +143,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public bool Equals(Guid other)
         {
-            WGuid converted = new WGuid(other);
+            WGuid converted = new(other);
             return Equals(converted);
         }
 

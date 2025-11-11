@@ -18,33 +18,33 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
         private static readonly DatasetSizeSpec[] DatasetSizeSpecs =
         {
-            new DatasetSizeSpec("100", 100),
-            new DatasetSizeSpec("1,000", 1_000),
-            new DatasetSizeSpec("10,000", 10_000),
-            new DatasetSizeSpec("100,000", 100_000),
-            new DatasetSizeSpec("1,000,000", 1_000_000),
+            new("100", 100),
+            new("1,000", 1_000),
+            new("10,000", 10_000),
+            new("100,000", 100_000),
+            new("1,000,000", 1_000_000),
         };
 
         private static readonly DatasetState[] DatasetStates =
         {
-            new DatasetState("Sorted", BuildSortedData),
-            new DatasetState("Nearly Sorted (2% swaps)", BuildNearlySortedData),
-            new DatasetState("Shuffled (deterministic)", BuildShuffledData),
+            new("Sorted", BuildSortedData),
+            new("Nearly Sorted (2% swaps)", BuildNearlySortedData),
+            new("Shuffled (deterministic)", BuildShuffledData),
         };
 
         private static readonly SortImplementation[] SortImplementations =
         {
-            new SortImplementation("Ghost", SortAlgorithm.Ghost, false, int.MaxValue),
-            new SortImplementation("Meteor", SortAlgorithm.Meteor, false, int.MaxValue),
-            new SortImplementation(
+            new("Ghost", SortAlgorithm.Ghost, false, int.MaxValue),
+            new("Meteor", SortAlgorithm.Meteor, false, int.MaxValue),
+            new(
                 "Pattern-Defeating QuickSort",
                 SortAlgorithm.PatternDefeatingQuickSort,
                 false,
                 int.MaxValue
             ),
-            new SortImplementation("Grail", SortAlgorithm.Grail, true, int.MaxValue),
-            new SortImplementation("Power", SortAlgorithm.Power, true, int.MaxValue),
-            new SortImplementation("Insertion", SortAlgorithm.Insertion, true, 10_000),
+            new("Grail", SortAlgorithm.Grail, true, int.MaxValue),
+            new("Power", SortAlgorithm.Power, true, int.MaxValue),
+            new("Insertion", SortAlgorithm.Insertion, true, 10_000),
         };
 
         [Test]
@@ -54,7 +54,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             string operatingSystemToken = GetOperatingSystemToken();
             string sectionName = SectionPrefix + operatingSystemToken;
 
-            List<string> readmeLines = new List<string>
+            List<string> readmeLines = new()
             {
                 string.Format(
                     CultureInfo.InvariantCulture,
@@ -98,7 +98,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
         private static string BuildHeaderLine()
         {
-            StringBuilder headerBuilder = new StringBuilder();
+            StringBuilder headerBuilder = new();
             headerBuilder.Append("| List Size |");
             foreach (SortImplementation implementation in SortImplementations)
             {
@@ -112,7 +112,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
         private static string BuildDividerLine()
         {
-            StringBuilder dividerBuilder = new StringBuilder();
+            StringBuilder dividerBuilder = new();
             dividerBuilder.Append("| --- |");
             foreach (SortImplementation implementation in SortImplementations)
             {
@@ -128,7 +128,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             IComparer<int> comparer
         )
         {
-            StringBuilder rowBuilder = new StringBuilder();
+            StringBuilder rowBuilder = new();
             rowBuilder.Append("| ");
             rowBuilder.Append(sizeLabel);
             rowBuilder.Append(" |");

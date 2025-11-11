@@ -281,11 +281,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// <returns>A copy of the dictionary's current state.</returns>
         public global::System.Collections.Generic.Dictionary<TKey, TValue> ToDictionary()
         {
-            global::System.Collections.Generic.Dictionary<TKey, TValue> copy =
-                new global::System.Collections.Generic.Dictionary<TKey, TValue>(
-                    _dictionary,
-                    _dictionary.Comparer
-                );
+            global::System.Collections.Generic.Dictionary<TKey, TValue> copy = new(
+                _dictionary,
+                _dictionary.Comparer
+            );
             return copy;
         }
 

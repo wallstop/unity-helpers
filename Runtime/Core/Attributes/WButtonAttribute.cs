@@ -46,7 +46,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// <summary>
         /// Legacy alias for <see cref="ColorKey"/> to maintain backwards compatibility.
         /// </summary>
-        [System.Obsolete("Use ColorKey instead.")]
+        [Obsolete("Use ColorKey instead.")]
         public string Priority => ColorKey;
     }
 }
