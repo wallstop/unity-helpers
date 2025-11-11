@@ -194,6 +194,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return copy;
         }
 
+        /// <summary>
+        /// Flushes the in-memory dictionary into the serialized key/value arrays prior to Unity or ProtoBuf serialization.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// sortedDictionary.OnBeforeSerialize();
+        /// var keys = sortedDictionary.SerializedKeys;
+        /// </code>
+        /// </example>
         public void OnBeforeSerialize()
         {
             bool arraysIntact = _keys != null && _values != null && _keys.Length == _values.Length;
@@ -219,6 +228,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             _arraysDirty = false;
         }
 
+        /// <summary>
+        /// Rehydrates the sorted dictionary from the serialized key/value arrays after Unity or ProtoBuf deserialization.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// sortedDictionary.OnAfterDeserialize();
+        /// TValue value = sortedDictionary[key];
+        /// </code>
+        /// </example>
         public void OnAfterDeserialize()
         {
             bool keysAndValuesPresent =
@@ -330,6 +348,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             OnAfterDeserialize();
         }
 
+        /// <summary>
+        /// Writes the serialized representation of the dictionary into a <see cref="SerializationInfo"/> instance.
+        /// </summary>
+        /// <param name="info">The serialization store to populate.</param>
+        /// <param name="context">Context for the serialization process.</param>
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             if (info == null)
@@ -342,6 +365,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             info.AddValue(ValuesSerializationName, _values, typeof(TValueCache[]));
         }
 
+        /// <summary>
+        /// Finalizes deserialization after <see cref="SerializationInfo"/> data has been applied.
+        /// </summary>
+        /// <param name="sender">Reserved for future use.</param>
         public void OnDeserialization(object sender)
         {
             // No additional action required. The serialization constructor already
@@ -488,11 +515,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         : SerializableSortedDictionaryBase<TKey, TValue, TValue>
         where TKey : IComparable<TKey>
     {
+        /// <summary>
+        /// Initializes an empty sorted dictionary compatible with Unity and ProtoBuf serialization.
+        /// </summary>
         public SerializableSortedDictionary() { }
 
+        /// <summary>
+        /// Initializes the dictionary by copying entries from an existing map.
+        /// </summary>
+        /// <param name="dictionary">Source dictionary whose contents are copied into the new instance.</param>
         public SerializableSortedDictionary(IDictionary<TKey, TValue> dictionary)
             : base(dictionary) { }
 
+        /// <summary>
+        /// Initializes the dictionary during custom serialization scenarios.
+        /// </summary>
         protected SerializableSortedDictionary(SerializationInfo info, StreamingContext context)
             : base(info, context) { }
 
@@ -514,11 +551,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         where TKey : IComparable<TKey>
         where TValueCache : SerializableDictionary.Cache<TValue>, new()
     {
+        /// <summary>
+        /// Initializes an empty sorted dictionary whose values are stored through cache entries.
+        /// </summary>
         public SerializableSortedDictionary() { }
 
+        /// <summary>
+        /// Initializes the dictionary by copying entries from an existing map.
+        /// </summary>
+        /// <param name="dictionary">Source dictionary whose contents are copied into the new instance.</param>
         public SerializableSortedDictionary(IDictionary<TKey, TValue> dictionary)
             : base(dictionary) { }
 
+        /// <summary>
+        /// Initializes the dictionary during custom serialization scenarios.
+        /// </summary>
         protected SerializableSortedDictionary(SerializationInfo info, StreamingContext context)
             : base(info, context) { }
 

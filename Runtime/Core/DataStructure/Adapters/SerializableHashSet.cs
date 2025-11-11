@@ -318,6 +318,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return ((IEnumerable)_set).GetEnumerator();
         }
 
+        /// <summary>
+        /// Copies the live set contents into the serialized backing array before Unity or ProtoBuf serialization.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// hashSet.OnBeforeSerialize();
+        /// var snapshot = hashSet.SerializedItems;
+        /// </code>
+        /// </example>
         public void OnBeforeSerialize()
         {
             if (_preserveSerializedEntries && _items != null)
@@ -331,6 +340,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             _preserveSerializedEntries = false;
         }
 
+        /// <summary>
+        /// Reconstructs the live set from the serialized array after Unity or ProtoBuf deserialization.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// hashSet.OnAfterDeserialize();
+        /// bool contains = hashSet.Contains(item);
+        /// </code>
+        /// </example>
         public void OnAfterDeserialize()
         {
             OnAfterDeserializeInternal(suppressWarnings: false);
@@ -439,6 +457,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             OnAfterDeserialize();
         }
 
+        /// <summary>
+        /// Completes deserialization after <see cref="SerializationInfo"/> data has been applied.
+        /// </summary>
+        /// <param name="sender">Reserved for future use.</param>
         public void OnDeserialization(object sender)
         {
             if (_set is IDeserializationCallback callback)
@@ -447,6 +469,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
         }
 
+        /// <summary>
+        /// Writes the serialized representation of the set into a <see cref="SerializationInfo"/> instance.
+        /// </summary>
+        /// <param name="info">The serialization store to populate.</param>
+        /// <param name="context">Context for the serialization process.</param>
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             if (_set is ISerializable serializable)
@@ -673,15 +700,31 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 : base(info, context) { }
         }
 
+        /// <summary>
+        /// Initializes an empty hash set compatible with Unity and ProtoBuf serialization.
+        /// </summary>
         public SerializableHashSet()
             : base(new StorageSet()) { }
 
+        /// <summary>
+        /// Initializes an empty hash set using the supplied equality comparer.
+        /// </summary>
+        /// <param name="comparer">Comparer used to evaluate set membership. Defaults to <see cref="EqualityComparer{T}.Default"/> when <c>null</c>.</param>
         public SerializableHashSet(IEqualityComparer<T> comparer)
             : base(new StorageSet(comparer ?? EqualityComparer<T>.Default)) { }
 
+        /// <summary>
+        /// Initializes the set with elements copied from the provided collection.
+        /// </summary>
+        /// <param name="collection">Sequence whose elements are added to the set. <see cref="Array.Empty{T}"/> is used when <c>null</c>.</param>
         public SerializableHashSet(IEnumerable<T> collection)
             : base(new StorageSet(collection ?? Array.Empty<T>(), EqualityComparer<T>.Default)) { }
 
+        /// <summary>
+        /// Initializes the set with elements copied from the provided collection and comparer.
+        /// </summary>
+        /// <param name="collection">Sequence whose elements are added to the set. <see cref="Array.Empty{T}"/> is used when <c>null</c>.</param>
+        /// <param name="comparer">Comparer used to evaluate set membership. Defaults to <see cref="EqualityComparer{T}.Default"/> when <c>null</c>.</param>
         public SerializableHashSet(IEnumerable<T> collection, IEqualityComparer<T> comparer)
             : base(
                 new StorageSet(
@@ -698,6 +741,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                     new StorageSet(serializationInfo, streamingContext)
             ) { }
 
+        /// <summary>
+        /// Gets the equality comparer used by the underlying hash set.
+        /// </summary>
         public IEqualityComparer<T> Comparer => Set.Comparer;
 
         /// <summary>
@@ -710,16 +756,28 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return copy;
         }
 
+        /// <summary>
+        /// Returns an enumerator that iterates through the set.
+        /// </summary>
         public HashSet<T>.Enumerator GetEnumerator()
         {
             return Set.GetEnumerator();
         }
 
+        /// <summary>
+        /// Copies a subset of elements into the provided array starting at the specified index.
+        /// </summary>
+        /// <param name="array">Destination array that receives items.</param>
+        /// <param name="arrayIndex">Zero-based index indicating where copying starts.</param>
+        /// <param name="count">Number of elements to copy.</param>
         public void CopyTo(T[] array, int arrayIndex, int count)
         {
             Set.CopyTo(array, arrayIndex, count);
         }
 
+        /// <summary>
+        /// Resizes the underlying hash set to remove unused capacity.
+        /// </summary>
         public void TrimExcess()
         {
             Set.TrimExcess();

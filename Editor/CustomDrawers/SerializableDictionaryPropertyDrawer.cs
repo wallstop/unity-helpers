@@ -69,6 +69,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static GUIStyle _footerLabelStyle;
         private static readonly object NullKeySentinel = new();
 
+        /// <summary>
+        /// Draws the expandable dictionary inspector UI, including toolbar actions and inline key/value editing.
+        /// </summary>
+        /// <param name="position">The rectangle reserved by Unity.</param>
+        /// <param name="property">The serialized dictionary being edited.</param>
+        /// <param name="label">The label displayed for the field.</param>
+        /// <example>
+        /// <code>
+        /// EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(inventory)));
+        /// </code>
+        /// </example>
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             EditorGUI.BeginProperty(position, label, property);
@@ -206,6 +217,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EditorGUI.EndProperty();
         }
 
+        /// <summary>
+        /// Calculates how much vertical space is required to render the dictionary, including any expanded entries and validation messages.
+        /// </summary>
+        /// <param name="property">The serialized dictionary wrapper.</param>
+        /// <param name="label">The label shown for the field.</param>
+        /// <returns>The height Unity should reserve for the drawer.</returns>
+        /// <example>
+        /// <code>
+        /// float height = drawer.GetPropertyHeight(property, GUIContent.none);
+        /// </code>
+        /// </example>
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
             float height = EditorGUIUtility.singleLineHeight;

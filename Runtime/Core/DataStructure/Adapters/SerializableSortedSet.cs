@@ -24,12 +24,22 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 : base(info, context) { }
         }
 
+        /// <summary>
+        /// Initializes an empty sorted set that can participate in Unity and ProtoBuf serialization.
+        /// </summary>
         public SerializableSortedSet()
             : base(new StorageSet()) { }
 
+        /// <summary>
+        /// Initializes the set with the provided items.
+        /// </summary>
+        /// <param name="collection">Sequence whose elements are copied into the set.</param>
         public SerializableSortedSet(IEnumerable<T> collection)
             : base(new StorageSet(collection)) { }
 
+        /// <summary>
+        /// Initializes the set during custom serialization scenarios.
+        /// </summary>
         protected SerializableSortedSet(SerializationInfo info, StreamingContext context)
             : base(
                 info,
@@ -48,20 +58,39 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return copy;
         }
 
+        /// <summary>
+        /// Returns an enumerator that iterates through the set in sorted order.
+        /// </summary>
         public SortedSet<T>.Enumerator GetEnumerator()
         {
             return Set.GetEnumerator();
         }
 
+        /// <summary>
+        /// Gets the smallest value stored in the set.
+        /// </summary>
         public T Min => Set.Min;
 
+        /// <summary>
+        /// Gets the largest value stored in the set.
+        /// </summary>
         public T Max => Set.Max;
 
+        /// <summary>
+        /// Enumerates the set in descending order without allocating a copy.
+        /// </summary>
+        /// <returns>Lazy enumerable that yields items from greatest to least.</returns>
         public IEnumerable<T> Reverse()
         {
             return Set.Reverse();
         }
 
+        /// <summary>
+        /// Produces a view of the set constrained between the provided lower and upper bounds.
+        /// </summary>
+        /// <param name="lowerValue">Inclusive lower bound.</param>
+        /// <param name="upperValue">Inclusive upper bound.</param>
+        /// <returns>A view that reflects mutations made to the underlying set.</returns>
         public SortedSet<T> GetViewBetween(T lowerValue, T upperValue)
         {
             return Set.GetViewBetween(lowerValue, upperValue);

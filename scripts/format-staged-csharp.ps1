@@ -43,6 +43,7 @@ if (-not $dotnet) {
 & dotnet tool restore > $null 2>&1
 
 $dotnetArgs = @('tool', 'run', 'csharpier')
+$dotnetArgs += 'format'
 $dotnetArgs += $existingPaths
 & dotnet @dotnetArgs
 if ($LASTEXITCODE -ne 0) {

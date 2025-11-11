@@ -115,6 +115,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             internal const string ValuesNameInternal = NameHolder.ValuesName;
         }
 
+        /// <summary>
+        /// Rebuilds the runtime dictionary from the serialized key/value arrays after Unity or ProtoBuf deserialization.
+        /// </summary>
+        /// <remarks>
+        /// Invoked automatically by Unity; call it manually only when deserializing outside of Unity's pipeline.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// dictionary.OnAfterDeserialize();
+        /// IReadOnlyDictionary<TKey, TValue> restored = dictionary;
+        /// </code>
+        /// </example>
         public void OnAfterDeserialize()
         {
             OnAfterDeserializeInternal(suppressWarnings: false);
@@ -212,6 +224,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         }
 #endif
 
+        /// <summary>
+        /// Packs the runtime dictionary contents into the serialized key/value arrays prior to Unity or ProtoBuf serialization.
+        /// </summary>
+        /// <remarks>
+        /// This method is invoked automatically by Unity's serialization pipeline; call it manually only when integrating with custom serializers.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// dictionary.OnBeforeSerialize();
+        /// var keys = dictionary.SerializedKeys;
+        /// </code>
+        /// </example>
         public void OnBeforeSerialize()
         {
             bool arraysIntact = _keys != null && _values != null && _keys.Length == _values.Length;
@@ -471,11 +495,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             ((IDictionary)_dictionary).CopyTo(array, index);
         }
 
+        /// <summary>
+        /// Completes deserialization after <see cref="SerializationInfo"/> data has been applied.
+        /// </summary>
+        /// <param name="sender">Reserved for future use.</param>
         public void OnDeserialization(object sender)
         {
             ((IDeserializationCallback)_dictionary).OnDeserialization(sender);
         }
 
+        /// <summary>
+        /// Writes the serialized representation of the dictionary into a <see cref="SerializationInfo"/> instance.
+        /// </summary>
+        /// <param name="info">The serialization store to populate.</param>
+        /// <param name="context">Context for the serialization process.</param>
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             _dictionary.GetObjectData(info, context);

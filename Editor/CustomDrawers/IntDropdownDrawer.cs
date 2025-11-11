@@ -7,6 +7,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     [CustomPropertyDrawer(typeof(IntDropdownAttribute))]
     public sealed class IntDropdownDrawer : PropertyDrawer
     {
+        /// <summary>
+        /// Renders a dropdown that allows selecting one of the configured integer options.
+        /// </summary>
+        /// <param name="position">The rectangle reserved for drawing the control.</param>
+        /// <param name="property">The backing serialized property.</param>
+        /// <param name="label">The label displayed next to the field.</param>
+        /// <example>
+        /// <code>
+        /// [IntDropdown(1, 2, 3)]
+        /// public int qualityLevel;
+        /// </code>
+        /// </example>
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             if (attribute is not IntDropdownAttribute dropdown)

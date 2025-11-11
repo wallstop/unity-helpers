@@ -19,6 +19,8 @@ repos:
         language: system
         types:
           - c#
+        pass_filenames: false
+        require_serial: true
         description: CSharpier is an opinionated C# formatter inspired by Prettier.
 
   - repo: local
