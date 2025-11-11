@@ -4,54 +4,107 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using UnityEngine;
 
     /// <summary>
-    /// Draws a serialized property as a dropdown populated from fixed values or a method provider.
-    /// Provides strongly-typed constructors for common primitives, enums, and numeric types.
+    /// Draws a serialized property as a dropdown populated from fixed values or a static method provider.
+    /// Supports inline lists, strongly typed primitive overloads, and late-bound providers that return custom structs or reference types.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Use this attribute when a field should only be assigned values from a curated set (difficulty levels, asset references, data-driven enums, etc.).
+    /// Inline lists are ideal for short constants, while provider overloads let you mirror external collections without duplicating state.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// Inline values:
+    /// <code>
+    /// [ValueDropdown(0, 25, 50, 100)]
+    /// public int staminaThreshold;
+    /// </code>
+    /// Typed inline overload:
+    /// <code>
+    /// [ValueDropdown(true, false)]
+    /// public bool isEnabled;
+    /// </code>
+    /// Provider-based values:
+    /// <code>
+    /// [ValueDropdown(typeof(PowerUpCatalogue), nameof(PowerUpCatalogue.GetAvailablePowerUps))]
+    /// public PowerUpDefinition selectedPowerUp;
+    ///
+    /// private static class PowerUpCatalogue
+    /// {
+    ///     internal static IEnumerable&lt;PowerUpDefinition&gt; GetAvailablePowerUps()
+    ///     {
+    ///         return Resources.LoadAll&lt;PowerUpDefinition&gt;(\"PowerUps\");
+    ///     }
+    /// }
+    /// </code>
+    /// </example>
     public sealed class ValueDropdownAttribute : PropertyAttribute
     {
         private const string AttributeName = "ValueDropdownAttribute";
         private static readonly Func<object[]> EmptyFactory = () => Array.Empty<object>();
         private readonly Func<object[]> _getOptions;
 
+        /// <inheritdoc cref="ValueDropdownAttribute(Type, object[])" />
         public ValueDropdownAttribute(params bool[] options)
             : this(typeof(bool), Wrap(DropdownValueProvider<bool>.FromList(options))) { }
 
+        /// <inheritdoc cref="ValueDropdownAttribute(Type, object[])" />
         public ValueDropdownAttribute(params char[] options)
             : this(typeof(char), Wrap(DropdownValueProvider<char>.FromList(options))) { }
 
+        /// <inheritdoc cref="ValueDropdownAttribute(Type, object[])" />
         public ValueDropdownAttribute(params string[] options)
             : this(typeof(string), Wrap(DropdownValueProvider<string>.FromList(options))) { }
 
+        /// <inheritdoc cref="ValueDropdownAttribute(Type, object[])" />
         public ValueDropdownAttribute(params sbyte[] options)
             : this(typeof(sbyte), Wrap(DropdownValueProvider<sbyte>.FromList(options))) { }
 
+        /// <inheritdoc cref="ValueDropdownAttribute(Type, object[])" />
         public ValueDropdownAttribute(params byte[] options)
             : this(typeof(byte), Wrap(DropdownValueProvider<byte>.FromList(options))) { }
 
+        /// <inheritdoc cref="ValueDropdownAttribute(Type, object[])" />
         public ValueDropdownAttribute(params short[] options)
             : this(typeof(short), Wrap(DropdownValueProvider<short>.FromList(options))) { }
 
+        /// <inheritdoc cref="ValueDropdownAttribute(Type, object[])" />
         public ValueDropdownAttribute(params ushort[] options)
             : this(typeof(ushort), Wrap(DropdownValueProvider<ushort>.FromList(options))) { }
 
+        /// <inheritdoc cref="ValueDropdownAttribute(Type, object[])" />
         public ValueDropdownAttribute(params int[] options)
             : this(typeof(int), Wrap(DropdownValueProvider<int>.FromList(options))) { }
 
+        /// <inheritdoc cref="ValueDropdownAttribute(Type, object[])" />
         public ValueDropdownAttribute(params uint[] options)
             : this(typeof(uint), Wrap(DropdownValueProvider<uint>.FromList(options))) { }
 
+        /// <inheritdoc cref="ValueDropdownAttribute(Type, object[])" />
         public ValueDropdownAttribute(params long[] options)
             : this(typeof(long), Wrap(DropdownValueProvider<long>.FromList(options))) { }
 
+        /// <inheritdoc cref="ValueDropdownAttribute(Type, object[])" />
         public ValueDropdownAttribute(params ulong[] options)
             : this(typeof(ulong), Wrap(DropdownValueProvider<ulong>.FromList(options))) { }
 
+        /// <inheritdoc cref="ValueDropdownAttribute(Type, object[])" />
         public ValueDropdownAttribute(params float[] options)
             : this(typeof(float), Wrap(DropdownValueProvider<float>.FromList(options))) { }
 
+        /// <inheritdoc cref="ValueDropdownAttribute(Type, object[])" />
         public ValueDropdownAttribute(params double[] options)
             : this(typeof(double), Wrap(DropdownValueProvider<double>.FromList(options))) { }
 
+        /// <summary>
+        /// Initializes the attribute using a static provider method and infers the option type from its return value.
+        /// </summary>
+        /// <remarks>
+        /// The provider must be parameterless, static, and return an array or <see cref="System.Collections.Generic.IEnumerable{T}"/>.
+        /// The inspector queries the provider each time it renders the field, keeping the dropdown synchronised with external data.
+        /// </remarks>
+        /// <param name="providerType">Type that defines the static provider.</param>
+        /// <param name="methodName">Name of the parameterless static method that supplies the dropdown values.</param>
         public ValueDropdownAttribute(Type providerType, string methodName)
             : this(
                 ResolveProviderFactory(providerType, methodName, out Type resolvedValueType),
@@ -61,6 +114,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// <summary>
         /// Initializes the attribute with an inline list of values.
         /// </summary>
+        /// <remarks>
+        /// Use this overload for custom types or when you already have an object array. Values are coerced to <paramref name="valueType"/>.
+        /// </remarks>
         /// <param name="valueType">Target value type for the decorated property.</param>
         /// <param name="options">One or more selectable values compatible with <paramref name="valueType"/>.</param>
         public ValueDropdownAttribute(Type valueType, params object[] options)
@@ -70,10 +126,13 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             ) { }
 
         /// <summary>
-        /// Initializes the attribute using a method provider.
+        /// Initializes the attribute using a method provider with explicit output type conversion.
         /// </summary>
+        /// <remarks>
+        /// This overload is useful when the provider returns a type that needs to be converted before appearing in the dropdown (for example, numeric IDs mapped to enums).
+        /// </remarks>
         /// <param name="providerType">Type containing the static provider method.</param>
-        /// <param name="methodName">Parameterless static method returning an array or IEnumerable of compatible values.</param>
+        /// <param name="methodName">Parameterless static method returning an array or enumerable of values.</param>
         /// <param name="valueType">Target value type for the decorated property.</param>
         public ValueDropdownAttribute(Type providerType, string methodName, Type valueType)
             : this(
@@ -91,12 +150,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             : this(valueType ?? typeof(object), optionFactory) { }
 
         /// <summary>
-        /// Gets the target value type represented by the dropdown options.
+        /// Gets the effective type for the dropdown values.
+        /// When constructors infer provider output, this is the element type returned by the provider.
         /// </summary>
         public Type ValueType { get; }
 
         /// <summary>
-        /// Retrieves the dropdown options.
+        /// Retrieves the dropdown entries as boxed objects.
+        /// The returned array should be treated as read-only.
         /// </summary>
         public object[] Options => _getOptions();
 
