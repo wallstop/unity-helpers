@@ -32,7 +32,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public SerializableSortedSet<string> set = new();
         }
 
-        private sealed class CustomSortedSet : SerializableSortedSet<int> { }
+        [Serializable]
+        internal sealed class CustomSortedSet : SerializableSortedSet<int> { }
 
         private sealed class DerivedSortedSetHost : ScriptableObject
         {

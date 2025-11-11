@@ -66,5 +66,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         {
             return Set.TryGetValue(equalValue, out actualValue);
         }
+
+        protected override bool SupportsSorting => true;
     }
 }

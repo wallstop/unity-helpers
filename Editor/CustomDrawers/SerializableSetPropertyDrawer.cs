@@ -61,6 +61,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float DuplicateShakeFrequency = 7f;
         private const float DuplicateOutlineThickness = 1f;
         private static readonly GUIContent NullEntryTooltipContent = new();
+        private static readonly Dictionary<string, Type> PropertyTypeResolutionCache = new(
+            StringComparer.Ordinal
+        );
 
         private readonly Dictionary<string, PaginationState> _paginationStates = new();
         private readonly Dictionary<string, DuplicateState> _duplicateStates = new();
@@ -1328,7 +1331,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
-            if (property.type.IndexOf("SerializableSortedSet", StringComparison.Ordinal) >= 0)
+            string propertyTypeName = property.type ?? string.Empty;
+            if (
+                propertyTypeName.IndexOf("SerializableSortedSet", StringComparison.Ordinal) >= 0
+                || propertyTypeName.IndexOf("SortedSet", StringComparison.Ordinal) >= 0
+            )
             {
                 return true;
             }
@@ -1345,14 +1352,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return true;
             }
 
-            return IsRuntimeSortedSet(property);
-        }
-
-        private static bool IsRuntimeSortedSet(SerializedProperty property)
-        {
-            if (property == null)
+            Type unityResolvedType = ResolveUnityPropertyType(property);
+            if (TypeMatchesGenericDefinition(unityResolvedType, typeof(SerializableSortedSet<>)))
             {
-                return false;
+                return true;
             }
 
             object instance = GetSetInstance(property, property.propertyPath);
@@ -1368,12 +1371,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
             }
-            if (instance == null)
+
+            if (instance is ISerializableSetInspector inspector && inspector.SupportsSorting)
             {
-                return false;
+                return true;
             }
 
-            Type instanceType = instance.GetType();
+            Type instanceType = instance?.GetType();
             return TypeMatchesGenericDefinition(instanceType, typeof(SerializableSortedSet<>));
         }
 
@@ -1476,9 +1480,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static bool TypeMatchesGenericDefinition(Type candidate, Type openGeneric)
         {
             Type current = candidate;
+            string openGenericName = openGeneric.Name;
+            int tickIndex = openGenericName.IndexOf('`');
+            if (tickIndex >= 0)
+            {
+                openGenericName = openGenericName.Substring(0, tickIndex);
+            }
+
             while (current != null)
             {
                 if (current.IsGenericType && current.GetGenericTypeDefinition() == openGeneric)
+                {
+                    return true;
+                }
+
+                string currentName = current.FullName ?? current.Name;
+                if (
+                    !string.IsNullOrEmpty(currentName)
+                    && currentName.IndexOf(openGenericName, StringComparison.Ordinal) >= 0
+                    && typeof(ISerializableSetInspector).IsAssignableFrom(current)
+                )
                 {
                     return true;
                 }
@@ -1487,6 +1508,96 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return false;
+        }
+
+        private static Type ResolveUnityPropertyType(SerializedProperty property)
+        {
+            string typeName = property?.type;
+            if (string.IsNullOrEmpty(typeName))
+            {
+                return null;
+            }
+
+            if (!PropertyTypeResolutionCache.TryGetValue(typeName, out Type cached))
+            {
+                cached = FindTypeByUnityName(typeName);
+                PropertyTypeResolutionCache[typeName] = cached;
+            }
+
+            return cached;
+        }
+
+        private static Type FindTypeByUnityName(string typeName)
+        {
+            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            for (int index = 0; index < assemblies.Length; index++)
+            {
+                Assembly assembly = assemblies[index];
+                Type match = FindTypeByName(assembly, typeName);
+                if (match != null)
+                {
+                    return match;
+                }
+            }
+
+            return null;
+        }
+
+        private static Type FindTypeByName(Assembly assembly, string typeName)
+        {
+            if (string.IsNullOrEmpty(typeName))
+            {
+                return null;
+            }
+
+            string trimmedName = typeName.Replace("+", ".").Trim();
+            bool hasNamespace = typeName.Contains(".");
+
+            Type[] types;
+            try
+            {
+                types = assembly.GetTypes();
+            }
+            catch (ReflectionTypeLoadException exception)
+            {
+                types = exception.Types;
+            }
+
+            if (types == null)
+            {
+                return null;
+            }
+
+            for (int index = 0; index < types.Length; index++)
+            {
+                Type candidate = types[index];
+                if (
+                    candidate != null
+                    && (
+                        string.Equals(candidate.Name, typeName, StringComparison.Ordinal)
+                        || string.Equals(candidate.FullName, typeName, StringComparison.Ordinal)
+                        || string.Equals(candidate.FullName, trimmedName, StringComparison.Ordinal)
+                        || (
+                            !hasNamespace
+                            && (
+                                candidate.FullName?.EndsWith(
+                                    "." + typeName,
+                                    StringComparison.Ordinal
+                                ) == true
+                                || candidate.FullName?.EndsWith(
+                                    "+" + typeName,
+                                    StringComparison.Ordinal
+                                ) == true
+                            )
+                        )
+                    )
+                )
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
         }
 
         private static bool CanSortElements(SerializedProperty itemsProperty)

@@ -34,6 +34,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         void SetSerializedItemsSnapshot(Array values, bool preserveSerializedEntries);
 
         void SynchronizeSerializedState();
+
+        bool SupportsSorting { get; }
     }
 
     internal interface ISerializableSetEditorSync
@@ -68,6 +70,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         private bool _preserveSerializedEntries;
 
         internal bool PreserveSerializedEntries => _preserveSerializedEntries;
+
+        protected virtual bool SupportsSorting => false;
 
         protected SerializableSetBase(TSet set)
         {
@@ -465,6 +469,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         int ISerializableSetInspector.UniqueCount => _set.Count;
 
         int ISerializableSetInspector.SerializedCount => _items?.Length ?? _set.Count;
+
+        bool ISerializableSetInspector.SupportsSorting => SupportsSorting;
 
         bool ISerializableSetInspector.TryAddElement(object value, out object normalizedValue)
         {
