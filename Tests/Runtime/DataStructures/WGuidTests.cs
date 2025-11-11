@@ -1,7 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
     using System;
-    using System.Buffers.Binary;
     using System.Text;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;

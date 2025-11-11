@@ -1217,10 +1217,15 @@ public class AbilityDatabase : ScriptableObject
 **Syntax:**
 
 ```csharp
-[WShowIf("fieldName")]
-[WShowIf("fieldName", inverse = true)]
-[WShowIf("fieldName", expectedValues = new object[] { value1, value2 })]
+[WShowIf(nameof(fieldName))]
+[WShowIf(nameof(fieldName), inverse = true)]
+[WShowIf(nameof(fieldName), expectedValues: new object[] { value1, value2 })]
+[WShowIf(nameof(numericField), WShowIfComparison.GreaterThan, 10)]
+[WShowIf(nameof(stringField), WShowIfComparison.IsNotNullOrEmpty)]
+[WShowIf(nameof(parentField) + "." + nameof(ChildType.someFlag))]
 ```
+
+> `WShowIfComparison.Unknown` exists only for backward compatibility and is marked obsolete; always choose an explicit comparison mode.
 
 **Examples:**
 
@@ -1261,9 +1266,10 @@ public List<string> regexPatterns;
 **Features:**
 
 - Hides field when condition false (0 height)
-- Supports boolean and enum conditions
-- `inverse` parameter for NOT logic
-- `expectedValues` for checking against specific values
+- Supports boolean, enum, numeric, any `IComparable`/`IComparable<T>` type, null, and string/collection comparisons
+- Allows referencing nested paths, properties, and parameterless methods
+- `inverse` parameter inverts any comparison result
+- `expectedValues` (or params arguments) for equality checks without manual arrays
 - Falls back to reflection for non-SerializedProperty fields
 - Cached reflection for performance
 
