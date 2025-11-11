@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Utils;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
     public sealed class SerializableHashSetTests
@@ -486,7 +487,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             );
         }
 
-        private sealed class SortedSample
+        private sealed class SortedSample : IComparable
         {
             public SortedSample(string token)
             {
@@ -514,6 +515,16 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
                 return Token.GetHashCode(StringComparison.Ordinal);
             }
+
+            public int CompareTo(object obj)
+            {
+                if (obj is SortedSample other)
+                {
+                    return string.CompareOrdinal(Token, other.Token);
+                }
+
+                return -1;
+            }
         }
 
         private sealed class SortedSampleComparer : IComparer<SortedSample>
@@ -539,7 +550,18 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
         }
 
-        private sealed class ScriptableSample : ScriptableObject { }
+        private sealed class ScriptableSample : ScriptableObject, IComparable
+        {
+            public int CompareTo(object obj)
+            {
+                if (obj is ScriptableSample other)
+                {
+                    return UnityObjectNameComparer<ScriptableSample>.Instance.Compare(this, other);
+                }
+
+                return -1;
+            }
+        }
 
         [Test]
         public void EnumeratorIsValueTypeAndMaintainsSortOrder()

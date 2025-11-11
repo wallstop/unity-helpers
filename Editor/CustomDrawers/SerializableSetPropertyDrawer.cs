@@ -1334,10 +1334,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             Type fieldType = property.GetManagedType();
-            bool matchesFieldType =
-                fieldType != null
-                && TypeMatchesGenericDefinition(fieldType, typeof(SerializableSortedSet<>));
-            return matchesFieldType || IsRuntimeSortedSet(property);
+            if (TypeMatchesGenericDefinition(fieldType, typeof(SerializableSortedSet<>)))
+            {
+                return true;
+            }
+
+            Type declaredType = TryResolveDeclaredSetType(property);
+            if (TypeMatchesGenericDefinition(declaredType, typeof(SerializableSortedSet<>)))
+            {
+                return true;
+            }
+
+            return IsRuntimeSortedSet(property);
         }
 
         private static bool IsRuntimeSortedSet(SerializedProperty property)
@@ -1350,11 +1358,119 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             object instance = GetSetInstance(property, property.propertyPath);
             if (instance == null)
             {
+                SerializedObject serializedObject = property.serializedObject;
+                if (serializedObject != null)
+                {
+                    UnityEngine.Object target = serializedObject.targetObject;
+                    if (target != null)
+                    {
+                        instance = GetMemberValue(target, property.name);
+                    }
+                }
+            }
+            if (instance == null)
+            {
                 return false;
             }
 
             Type instanceType = instance.GetType();
             return TypeMatchesGenericDefinition(instanceType, typeof(SerializableSortedSet<>));
+        }
+
+        private static Type TryResolveDeclaredSetType(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return null;
+            }
+
+            SerializedObject serializedObject = property.serializedObject;
+            if (serializedObject == null)
+            {
+                return null;
+            }
+
+            UnityEngine.Object targetObject = serializedObject.targetObject;
+            if (targetObject == null)
+            {
+                return null;
+            }
+
+            string propertyPath = property.propertyPath;
+            if (string.IsNullOrEmpty(propertyPath))
+            {
+                return null;
+            }
+
+            string[] segments = propertyPath.Split('.');
+            return ResolveDeclaredType(targetObject.GetType(), segments, 0);
+        }
+
+        private static Type ResolveDeclaredType(Type type, string[] segments, int index)
+        {
+            while (type != null && segments != null && index < segments.Length)
+            {
+                string segment = segments[index];
+                if (segment == "Array")
+                {
+                    if (index + 1 >= segments.Length)
+                    {
+                        break;
+                    }
+
+                    string next = segments[index + 1];
+                    if (!next.StartsWith("data[", StringComparison.Ordinal))
+                    {
+                        break;
+                    }
+
+                    if (type.IsArray)
+                    {
+                        type = type.GetElementType();
+                        index += 2;
+                        continue;
+                    }
+
+                    if (type.IsGenericType)
+                    {
+                        Type[] arguments = type.GetGenericArguments();
+                        if (arguments.Length == 1)
+                        {
+                            type = arguments[0];
+                            index += 2;
+                            continue;
+                        }
+                    }
+
+                    break;
+                }
+
+                FieldInfo field = type.GetField(
+                    segment,
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                );
+                if (field != null)
+                {
+                    type = field.FieldType;
+                    index += 1;
+                    continue;
+                }
+
+                PropertyInfo propertyInfo = type.GetProperty(
+                    segment,
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                );
+                if (propertyInfo != null)
+                {
+                    type = propertyInfo.PropertyType;
+                    index += 1;
+                    continue;
+                }
+
+                break;
+            }
+
+            return type;
         }
 
         private static bool TypeMatchesGenericDefinition(Type candidate, Type openGeneric)
@@ -1364,14 +1480,32 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
-            if (candidate.IsGenericType && candidate.GetGenericTypeDefinition() == openGeneric)
+            string openGenericName = openGeneric.Name;
+            int genericTickIndex = openGenericName.IndexOf('`');
+            if (genericTickIndex >= 0)
             {
-                return true;
+                openGenericName = openGenericName.Substring(0, genericTickIndex);
             }
 
-            if (candidate.BaseType != null)
+            Type current = candidate;
+            while (current != null)
             {
-                return TypeMatchesGenericDefinition(candidate.BaseType, openGeneric);
+                if (current.IsGenericType && current.GetGenericTypeDefinition() == openGeneric)
+                {
+                    return true;
+                }
+
+                string fullName = current.FullName ?? current.Name;
+                if (
+                    !string.IsNullOrEmpty(fullName)
+                    && fullName.IndexOf(openGenericName, StringComparison.Ordinal) >= 0
+                    && typeof(ISerializableSetInspector).IsAssignableFrom(current)
+                )
+                {
+                    return true;
+                }
+
+                current = current.BaseType;
             }
 
             return false;

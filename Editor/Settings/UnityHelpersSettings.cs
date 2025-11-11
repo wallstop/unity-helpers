@@ -123,6 +123,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private bool serializableDictionaryFoldoutTweenEnabled = true;
 
         [SerializeField]
+        [Tooltip("Tracks whether foldout tween settings have been migrated to defaults.")]
+        private bool foldoutTweenSettingsInitialized;
+
+        [SerializeField]
         [Tooltip(
             "Animation speed used when toggling SerializableDictionary pending entry foldouts."
         )]
@@ -605,6 +609,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 MinFoldoutSpeed,
                 MaxFoldoutSpeed
             );
+            if (EnsureFoldoutTweenDefaults())
+            {
+                SaveSettings();
+            }
             if (EnsureWButtonCustomColorDefaults())
             {
                 SaveSettings();
@@ -659,6 +667,32 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             bool changed = !serializableTypePatternsInitialized;
             serializableTypePatternsInitialized = true;
             return changed;
+        }
+
+        private bool EnsureFoldoutTweenDefaults()
+        {
+            if (foldoutTweenSettingsInitialized)
+            {
+                return false;
+            }
+
+            if (!wbuttonFoldoutTweenEnabled)
+            {
+                wbuttonFoldoutTweenEnabled = true;
+            }
+
+            if (!serializableDictionaryFoldoutTweenEnabled)
+            {
+                serializableDictionaryFoldoutTweenEnabled = true;
+            }
+
+            if (!serializableSortedDictionaryFoldoutTweenEnabled)
+            {
+                serializableSortedDictionaryFoldoutTweenEnabled = true;
+            }
+
+            foldoutTweenSettingsInitialized = true;
+            return true;
         }
 
         private bool EnsureWButtonCustomColorDefaults()

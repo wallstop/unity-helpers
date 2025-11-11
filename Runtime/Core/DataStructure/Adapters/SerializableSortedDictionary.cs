@@ -503,6 +503,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     [ProtoContract]
     public class SerializableSortedDictionary<TKey, TValue>
         : SerializableSortedDictionaryBase<TKey, TValue, TValue>
+        where TKey : IComparable
     {
         public SerializableSortedDictionary() { }
 

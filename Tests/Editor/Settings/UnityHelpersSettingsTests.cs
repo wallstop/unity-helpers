@@ -310,6 +310,73 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         }
 
         [Test]
+        public void FoldoutTweenDefaultsRepairWhenUninitialized()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            SerializedObject serialized = new(settings);
+            serialized.Update();
+
+            SerializedProperty wbuttonTweenProperty = serialized.FindProperty(
+                "wbuttonFoldoutTweenEnabled"
+            );
+            SerializedProperty dictionaryTweenProperty = serialized.FindProperty(
+                "serializableDictionaryFoldoutTweenEnabled"
+            );
+            SerializedProperty sortedDictionaryTweenProperty = serialized.FindProperty(
+                "serializableSortedDictionaryFoldoutTweenEnabled"
+            );
+            SerializedProperty initializedProperty = serialized.FindProperty(
+                "foldoutTweenSettingsInitialized"
+            );
+
+            bool originalWButton = wbuttonTweenProperty.boolValue;
+            bool originalDictionary = dictionaryTweenProperty.boolValue;
+            bool originalSorted = sortedDictionaryTweenProperty.boolValue;
+            bool originalInitialized = initializedProperty.boolValue;
+
+            try
+            {
+                wbuttonTweenProperty.boolValue = false;
+                dictionaryTweenProperty.boolValue = false;
+                sortedDictionaryTweenProperty.boolValue = false;
+                initializedProperty.boolValue = false;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                MethodInfo onEnable = typeof(UnityHelpersSettings).GetMethod(
+                    "OnEnable",
+                    BindingFlags.Instance | BindingFlags.NonPublic
+                );
+                Assert.IsNotNull(onEnable, "Unable to locate UnityHelpersSettings.OnEnable.");
+                onEnable?.Invoke(settings, null);
+
+                Assert.IsTrue(UnityHelpersSettings.ShouldTweenWButtonFoldouts());
+                Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableDictionaryFoldouts());
+                Assert.IsTrue(
+                    UnityHelpersSettings.ShouldTweenSerializableSortedDictionaryFoldouts()
+                );
+
+                SerializedObject verification = new(settings);
+                verification.Update();
+                Assert.IsTrue(
+                    verification.FindProperty("foldoutTweenSettingsInitialized").boolValue
+                );
+            }
+            finally
+            {
+                SerializedObject restore = new(settings);
+                restore.FindProperty("wbuttonFoldoutTweenEnabled").boolValue = originalWButton;
+                restore.FindProperty("serializableDictionaryFoldoutTweenEnabled").boolValue =
+                    originalDictionary;
+                restore.FindProperty("serializableSortedDictionaryFoldoutTweenEnabled").boolValue =
+                    originalSorted;
+                restore.FindProperty("foldoutTweenSettingsInitialized").boolValue =
+                    originalInitialized;
+                restore.ApplyModifiedPropertiesWithoutUndo();
+                settings.SaveSettings();
+            }
+        }
+
+        [Test]
         public void FoldoutTweenTogglesAffectBehavior()
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
