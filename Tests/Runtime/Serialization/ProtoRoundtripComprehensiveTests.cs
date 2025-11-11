@@ -20,14 +20,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         }
 
         [Test]
-        public void KVector2RoundTrips()
-        {
-            KVector2 v = new(1.25f, -2.5f);
-            KVector2 again = RoundTrip(v);
-            Assert.AreEqual(v, again, "KVector2 should round-trip by value");
-        }
-
-        [Test]
         public void KGuidRoundTrips()
         {
             KGuid id = KGuid.NewGuid();
@@ -194,9 +186,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             [ProtoMember(2)]
             public FastVector3Int fv3;
 
-            [ProtoMember(3)]
-            public KVector2 kv2;
-
             [ProtoMember(4)]
             public Line2D l2;
 
@@ -223,7 +212,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             {
                 fv2 = new FastVector2Int(-3, 7),
                 fv3 = new FastVector3Int(1, -2, 3),
-                kv2 = new KVector2(0.5f, -1.5f),
                 l2 = new Line2D(new Vector2(0, 0), new Vector2(1, 1)),
                 l3 = new Line3D(new Vector3(0, 0, 0), new Vector3(1, 2, 3)),
                 ri = Range<int>.InclusiveExclusive(0, 5),
@@ -244,7 +232,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 again.fv3,
                 "FastVector3Int should round-trip in composite"
             );
-            Assert.AreEqual(payload.kv2, again.kv2, "KVector2 should round-trip in composite");
             Assert.AreEqual(payload.l2, again.l2, "Line2D should round-trip in composite");
             Assert.AreEqual(payload.l3, again.l3, "Line3D should round-trip in composite");
             Assert.AreEqual(payload.ri, again.ri, "Range<int> should round-trip in composite");

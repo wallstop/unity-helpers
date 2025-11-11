@@ -84,7 +84,6 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                     ImmutableBitSetConverter.Instance,
                     DequeConverterFactory.Instance,
                     CyclicBufferConverterFactory.Instance,
-                    KVector2Converter.Instance,
                 },
             };
             ;
@@ -149,7 +148,6 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                     ImmutableBitSetConverter.Instance,
                     DequeConverterFactory.Instance,
                     CyclicBufferConverterFactory.Instance,
-                    KVector2Converter.Instance,
                 },
                 WriteIndented = true,
             };
@@ -211,7 +209,6 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                     ImmutableBitSetConverter.Instance,
                     DequeConverterFactory.Instance,
                     CyclicBufferConverterFactory.Instance,
-                    KVector2Converter.Instance,
                 },
             };
         }

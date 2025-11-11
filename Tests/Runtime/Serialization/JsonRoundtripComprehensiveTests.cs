@@ -14,7 +14,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         {
             public FastVector2Int fv2 { get; set; }
             public FastVector3Int fv3 { get; set; }
-            public KVector2 kv { get; set; }
             public Vector2 v2 { get; set; }
             public Vector3 v3 { get; set; }
             public Bounds bounds { get; set; }
@@ -75,7 +74,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             {
                 fv2 = new FastVector2Int(-3, 7),
                 fv3 = new FastVector3Int(1, -2, 3),
-                kv = new KVector2(1.25f, -2.5f),
                 v2 = new Vector2(10.5f, -0.25f),
                 v3 = new Vector3(-1.5f, 2.75f, 3.25f),
                 bounds = new Bounds(new Vector3(1, 2, 3), new Vector3(4, 5, 6)),
@@ -102,7 +100,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 again.fv3,
                 "FastVector3Int should round-trip in composite"
             );
-            Assert.AreEqual(payload.kv, again.kv, "KVector2 should round-trip in composite");
             Assert.AreEqual(payload.v2, again.v2, "Vector2 should round-trip in composite");
             Assert.AreEqual(payload.v3, again.v3, "Vector3 should round-trip in composite");
             Assert.AreEqual(
@@ -146,7 +143,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             {
                 fv2 = new FastVector2Int(9, -4),
                 fv3 = new FastVector3Int(5, 6, -7),
-                kv = new KVector2(-3.5f, 8.25f),
                 v2 = new Vector2(-2f, 3f),
                 v3 = new Vector3(0.5f, -1.5f, 2.5f),
                 bounds = new Bounds(new Vector3(0, 0, 0), new Vector3(1, 1, 1)),
@@ -178,7 +174,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 again.fv3,
                 "FastVector3Int should round-trip with fast options"
             );
-            Assert.AreEqual(payload.kv, again.kv, "KVector2 should round-trip with fast options");
             Assert.AreEqual(payload.v2, again.v2, "Vector2 should round-trip with fast options");
             Assert.AreEqual(payload.v3, again.v3, "Vector3 should round-trip with fast options");
             Assert.AreEqual(
