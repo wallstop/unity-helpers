@@ -16,8 +16,40 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 #endif
 
     /// <summary>
-    /// Provides the shared infrastructure for serializable dictionary implementations.
+    /// Provides the shared infrastructure for Unity-friendly serializable dictionary implementations.
+    /// Manages the synchronized key and value arrays that Unity, ProtoBuf, and JSON rely on,
+    /// while exposing a runtime dictionary for fast lookups and mutations.
+    /// Derive from the generic base to create strongly typed dictionaries that stay editable in the inspector.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// [Serializable]
+    /// public sealed class WeaponDefinition
+    /// {
+    ///     public string DisplayName;
+    /// }
+    ///
+    /// [Serializable]
+    /// public sealed class WeaponDefinitionCache : SerializableDictionary.Cache<WeaponDefinition>
+    /// {
+    /// }
+    ///
+    /// [Serializable]
+    /// public sealed class WeaponDictionary
+    ///     : SerializableDictionaryBase<int, WeaponDefinition, WeaponDefinitionCache>
+    /// {
+    ///     protected override WeaponDefinition GetValue(WeaponDefinitionCache[] cache, int index)
+    ///     {
+    ///         return cache[index].Data;
+    ///     }
+    ///
+    ///     protected override void SetValue(WeaponDefinitionCache[] cache, int index, WeaponDefinition value)
+    ///     {
+    ///         cache[index] = new WeaponDefinitionCache { Data = value };
+    ///     }
+    /// }
+    /// ]]></code>
+    /// </example>
     [Serializable]
     public abstract class SerializableDictionaryBase
     {
@@ -48,8 +80,43 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     }
 
     /// <summary>
-    /// Shared implementation for Unity serializable dictionaries.
+    /// Shared implementation for Unity serializable dictionaries that keeps serialized key/value arrays synchronized with the runtime <see cref="Dictionary{TKey,TValue}"/>.
+    /// Override <see cref="SetValue"/> and <see cref="GetValue"/> to control how values move between serialized caches and the live map.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// [Serializable]
+    /// public sealed class AbilityDefinition : ScriptableObject
+    /// {
+    ///     public string Id;
+    /// }
+    ///
+    /// [Serializable]
+    /// public sealed class AbilityCache : SerializableDictionary.Cache<AbilityDefinition>
+    /// {
+    /// }
+    ///
+    /// [Serializable]
+    /// public sealed class AbilityDictionary
+    ///     : SerializableDictionaryBase<string, AbilityDefinition, AbilityCache>
+    /// {
+    ///     public AbilityDictionary()
+    ///         : base(new Dictionary<string, AbilityDefinition>(StringComparer.OrdinalIgnoreCase))
+    ///     {
+    ///     }
+    ///
+    ///     protected override AbilityDefinition GetValue(AbilityCache[] cache, int index)
+    ///     {
+    ///         return cache[index].Data;
+    ///     }
+    ///
+    ///     protected override void SetValue(AbilityCache[] cache, int index, AbilityDefinition value)
+    ///     {
+    ///         cache[index] = new AbilityCache { Data = value };
+    ///     }
+    /// }
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="TKey">Dictionary key type.</typeparam>
     /// <typeparam name="TValue">Dictionary value type.</typeparam>
     /// <typeparam name="TValueCache">Serialized value cache type.</typeparam>

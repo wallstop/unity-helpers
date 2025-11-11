@@ -45,7 +45,36 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
     /// <summary>
     /// Shared infrastructure for Unity-friendly serialized sets.
+    /// Synchronizes the serialized element array with a backing <see cref="ISet{T}"/> so Unity, ProtoBuf, and JSON stay in step with runtime mutations.
+    /// Extend this class to build custom set types with specialized equality logic or editor behavior.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// [Serializable]
+    /// public sealed class CaseInsensitiveTagSet : SerializableSetBase<string, HashSet<string>>
+    /// {
+    ///     public CaseInsensitiveTagSet()
+    ///         : base(new HashSet<string>(StringComparer.OrdinalIgnoreCase))
+    ///     {
+    ///     }
+    ///
+    ///     protected override bool TryGetValueCore(string equalValue, out string actualValue)
+    ///     {
+    ///         foreach (string value in Set)
+    ///         {
+    ///             if (string.Equals(value, equalValue, StringComparison.OrdinalIgnoreCase))
+    ///             {
+    ///                 actualValue = value;
+    ///                 return true;
+    ///             }
+    ///         }
+    ///
+    ///         actualValue = equalValue;
+    ///         return false;
+    ///     }
+    /// }
+    /// ]]></code>
+    /// </example>
     [Serializable]
     [ProtoContract]
     public abstract class SerializableSetBase<T, TSet>

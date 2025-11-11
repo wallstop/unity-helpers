@@ -12,17 +12,40 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 #endif
 
     /// <summary>
-    /// Sorted dictionary wrapper that keeps key ordering intact across Unity, JSON, and ProtoBuf serialization.
-    /// Ideal when deterministic iteration order matters for gameplay logic or editor tooling.
+    /// Base implementation for Unity-friendly sorted dictionaries that preserves ordering across Unity, JSON, and ProtoBuf serialization.
+    /// Coordinates the serialized key/value arrays with an underlying <see cref="SortedDictionary{TKey,TValue}"/> and lets derived types decide how values are cached.
     /// </summary>
     /// <example>
     /// <code><![CDATA[
-    /// SerializableSortedDictionary<int, string> loot = new SerializableSortedDictionary<int, string>();
-    /// loot.Add(50, "Gold");
-    /// loot.Add(100, "Potion");
-    /// foreach (KeyValuePair<int, string> entry in loot)
+    /// [Serializable]
+    /// public sealed class QuestDefinition
     /// {
-    ///     Debug.Log($"{entry.Key} -> {entry.Value}");
+    ///     public string Title;
+    /// }
+    ///
+    /// [Serializable]
+    /// public sealed class QuestCache : SerializableDictionary.Cache<QuestDefinition>
+    /// {
+    /// }
+    ///
+    /// [Serializable]
+    /// public sealed class QuestDictionary
+    ///     : SerializableSortedDictionaryBase<string, QuestDefinition, QuestCache>
+    /// {
+    ///     public QuestDictionary()
+    ///         : base(new SortedDictionary<string, QuestDefinition>(StringComparer.OrdinalIgnoreCase))
+    ///     {
+    ///     }
+    ///
+    ///     protected override QuestDefinition GetValue(QuestCache[] cache, int index)
+    ///     {
+    ///         return cache[index].Data;
+    ///     }
+    ///
+    ///     protected override void SetValue(QuestCache[] cache, int index, QuestDefinition value)
+    ///     {
+    ///         cache[index] = new QuestCache { Data = value };
+    ///     }
     /// }
     /// ]]></code>
     /// </example>
