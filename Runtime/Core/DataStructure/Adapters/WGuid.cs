@@ -26,11 +26,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         [ProtoMember(1)]
         [SerializeField]
-        private long _low;
+        internal long _low;
 
         [ProtoMember(2)]
         [SerializeField]
-        private long _high;
+        internal long _high;
 
         [JsonInclude]
         [DataMember]

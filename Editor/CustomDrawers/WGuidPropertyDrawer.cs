@@ -13,15 +13,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     {
         private sealed class DrawerState
         {
-            public string DisplayText = string.Empty;
-            public string SerializedText = string.Empty;
-            public bool HasPendingInvalid;
-            public string WarningMessage = string.Empty;
+            public string displayText = string.Empty;
+            public string serializedText = string.Empty;
+            public bool hasPendingInvalid;
+            public string warningMessage = string.Empty;
         }
 
         private const float ButtonWidth = 24f;
-        private static readonly Dictionary<string, DrawerState> States =
-            new Dictionary<string, DrawerState>();
+        private static readonly Dictionary<string, DrawerState> States = new();
         private static readonly GUIContent GenerateContent = CreateGenerateContent();
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
@@ -29,22 +28,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             DrawerState state = GetState(property);
             float lineHeight = EditorGUIUtility.singleLineHeight;
             float height = lineHeight;
-            if (state.HasPendingInvalid && !string.IsNullOrEmpty(state.WarningMessage))
+            if (!state.hasPendingInvalid || string.IsNullOrEmpty(state.warningMessage))
             {
-                float spacing = EditorGUIUtility.standardVerticalSpacing;
-                float warningWidth = EditorGUIUtility.currentViewWidth;
-                GUIContent warningContent = new GUIContent(state.WarningMessage);
-                float warningHeight = EditorStyles.helpBox.CalcHeight(warningContent, warningWidth);
-                height += spacing + warningHeight;
+                return height;
             }
+
+            float spacing = EditorGUIUtility.standardVerticalSpacing;
+            float warningWidth = EditorGUIUtility.currentViewWidth;
+            GUIContent warningContent = new(state.warningMessage);
+            float warningHeight = EditorStyles.helpBox.CalcHeight(warningContent, warningWidth);
+            height += spacing + warningHeight;
 
             return height;
         }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            SerializedProperty lowProperty = property.FindPropertyRelative("_low");
-            SerializedProperty highProperty = property.FindPropertyRelative("_high");
+            SerializedProperty lowProperty = property.FindPropertyRelative(nameof(WGuid._low));
+            SerializedProperty highProperty = property.FindPropertyRelative(nameof(WGuid._high));
             if (lowProperty == null || highProperty == null)
             {
                 EditorGUI.PropertyField(position, property, label, true);
@@ -53,23 +54,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             DrawerState state = GetState(property);
             string serializedText = ConvertToString(lowProperty.longValue, highProperty.longValue);
-            if (!state.HasPendingInvalid || string.IsNullOrEmpty(state.DisplayText))
+            if (!state.hasPendingInvalid || string.IsNullOrEmpty(state.displayText))
             {
-                if (!string.Equals(state.DisplayText, serializedText, StringComparison.Ordinal))
+                if (!string.Equals(state.displayText, serializedText, StringComparison.Ordinal))
                 {
-                    state.DisplayText = serializedText;
+                    state.displayText = serializedText;
                 }
 
-                state.SerializedText = serializedText;
-                state.HasPendingInvalid = false;
-                state.WarningMessage = string.Empty;
+                state.serializedText = serializedText;
+                state.hasPendingInvalid = false;
+                state.warningMessage = string.Empty;
             }
-            else if (!string.Equals(state.SerializedText, serializedText, StringComparison.Ordinal))
+            else if (!string.Equals(state.serializedText, serializedText, StringComparison.Ordinal))
             {
-                state.SerializedText = serializedText;
-                state.DisplayText = serializedText;
-                state.HasPendingInvalid = false;
-                state.WarningMessage = string.Empty;
+                state.serializedText = serializedText;
+                state.displayText = serializedText;
+                state.hasPendingInvalid = false;
+                state.warningMessage = string.Empty;
             }
 
             EditorGUI.BeginProperty(position, label, property);
@@ -80,14 +81,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float spacing = EditorGUIUtility.standardVerticalSpacing;
             Rect contentRect = EditorGUI.PrefixLabel(position, label);
             float buttonX = contentRect.x + Mathf.Max(0f, contentRect.width - ButtonWidth);
-            Rect buttonRect = new Rect(buttonX, contentRect.y, ButtonWidth, lineHeight);
+            Rect buttonRect = new(buttonX, contentRect.y, ButtonWidth, lineHeight);
             float textWidth = buttonRect.x - contentRect.x - spacing;
             if (textWidth < 0f)
             {
                 textWidth = 0f;
             }
 
-            Rect textRect = new Rect(contentRect.x, contentRect.y, textWidth, lineHeight);
+            Rect textRect = new(contentRect.x, contentRect.y, textWidth, lineHeight);
 
             if (textRect.width < 0)
             {
@@ -97,7 +98,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EditorGUI.BeginChangeCheck();
             string incoming = EditorGUI.DelayedTextField(
                 textRect,
-                state.DisplayText ?? string.Empty
+                state.displayText ?? string.Empty
             );
             if (EditorGUI.EndChangeCheck())
             {
@@ -109,18 +110,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 GenerateNewGuid(property, lowProperty, highProperty, state);
             }
 
-            if (state.HasPendingInvalid && !string.IsNullOrEmpty(state.WarningMessage))
+            if (state.hasPendingInvalid && !string.IsNullOrEmpty(state.warningMessage))
             {
-                Rect helpRect = new Rect(
+                Rect helpRect = new(
                     position.x,
                     position.y + lineHeight + spacing,
                     position.width,
                     EditorStyles.helpBox.CalcHeight(
-                        new GUIContent(state.WarningMessage),
+                        new GUIContent(state.warningMessage),
                         position.width
                     )
                 );
-                EditorGUI.HelpBox(helpRect, state.WarningMessage, MessageType.Warning);
+                EditorGUI.HelpBox(helpRect, state.warningMessage, MessageType.Warning);
             }
 
             EditorGUI.indentLevel = previousIndent;
@@ -137,7 +138,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             string normalizedInput = incoming ?? string.Empty;
             string trimmed = normalizedInput.Trim();
-            state.DisplayText = normalizedInput;
+            state.displayText = normalizedInput;
 
             if (string.IsNullOrEmpty(trimmed))
             {
@@ -147,33 +148,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     lowProperty.longValue,
                     highProperty.longValue
                 );
-                state.DisplayText = serializedText;
-                state.SerializedText = serializedText;
-                state.HasPendingInvalid = false;
-                state.WarningMessage = string.Empty;
+                state.displayText = serializedText;
+                state.serializedText = serializedText;
+                state.hasPendingInvalid = false;
+                state.warningMessage = string.Empty;
                 return;
             }
 
             if (!WGuid.TryParse(trimmed, out WGuid parsed))
             {
-                state.HasPendingInvalid = true;
-                state.WarningMessage = "Enter a valid GUID string.";
+                state.hasPendingInvalid = true;
+                state.warningMessage = "Enter a valid GUID string.";
                 return;
             }
 
             if (!parsed.IsVersion4)
             {
-                state.HasPendingInvalid = true;
-                state.WarningMessage = "WGuid expects a version 4 GUID.";
+                state.hasPendingInvalid = true;
+                state.warningMessage = "WGuid expects a version 4 GUID.";
                 return;
             }
 
             UpdateGuidValue(property, lowProperty, highProperty, parsed, "Set WGuid");
             string normalized = parsed.ToString();
-            state.DisplayText = normalized;
-            state.SerializedText = normalized;
-            state.HasPendingInvalid = false;
-            state.WarningMessage = string.Empty;
+            state.displayText = normalized;
+            state.serializedText = normalized;
+            state.hasPendingInvalid = false;
+            state.warningMessage = string.Empty;
         }
 
         private static void GenerateNewGuid(
@@ -186,10 +187,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             WGuid generated = WGuid.NewGuid();
             UpdateGuidValue(property, lowProperty, highProperty, generated, "Generate WGuid");
             string normalized = generated.ToString();
-            state.DisplayText = normalized;
-            state.SerializedText = normalized;
-            state.HasPendingInvalid = false;
-            state.WarningMessage = string.Empty;
+            state.displayText = normalized;
+            state.serializedText = normalized;
+            state.hasPendingInvalid = false;
+            state.warningMessage = string.Empty;
         }
 
         private static void UpdateGuidValue(
@@ -230,7 +231,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ulong highUnsigned = unchecked((ulong)high);
             BinaryPrimitives.WriteUInt64LittleEndian(buffer.Slice(0, 8), lowUnsigned);
             BinaryPrimitives.WriteUInt64LittleEndian(buffer.Slice(8, 8), highUnsigned);
-            Guid guid = new Guid(buffer);
+            Guid guid = new(buffer);
             return guid.ToString();
         }
 
