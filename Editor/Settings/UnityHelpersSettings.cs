@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Editor.Settings
 {
 #if UNITY_EDITOR
+    using System;
     using System.Collections.Generic;
     using UnityEditor;
     using UnityEngine;
@@ -14,7 +15,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
     /// Project-wide configuration surface for Unity Helpers editor tooling.
     /// </summary>
     /// <remarks>
-    /// Currently exposes pagination defaults for <see cref="CustomDrawers.StringInListDrawer"/> and companion editor tooling (SerializableSet, WButton trays, duplicate highlighting).
+    /// Currently exposes pagination defaults for <see cref="CustomDrawers.StringInListDrawer"/> and companion editor tooling (SerializableSet, WEnumToggleButtons, WButton trays, duplicate highlighting).
     /// </remarks>
     [FilePath(
         "ProjectSettings/UnityHelpersSettings.asset",
@@ -26,6 +27,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const int MaxPageSize = 500;
         public const int DefaultStringInListPageSize = 25;
         public const int DefaultSerializableSetPageSize = 15;
+        public const int DefaultEnumToggleButtonsPageSize = 15;
         public const int DefaultWButtonPageSize = 6;
         public const int DefaultWButtonHistorySize = 5;
         public const int MinWButtonHistorySize = 1;
@@ -90,6 +92,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [SerializeField]
         [Tooltip("Maximum number of WButton actions displayed per page in inspector trays.")]
         private int wbuttonPageSize = DefaultWButtonPageSize;
+
+        [SerializeField]
+        [Tooltip(
+            "Maximum number of toggle buttons shown per page when drawing WEnumToggleButtons groups."
+        )]
+        private int enumToggleButtonsPageSize = DefaultEnumToggleButtonsPageSize;
 
         [SerializeField]
         [Tooltip("Number of recent invocation results retained per WButton method.")]
@@ -314,6 +322,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
         }
 
+        /// <summary>
+        /// Gets the configured page size for WEnumToggleButtons groups.
+        /// </summary>
+        public int EnumToggleButtonsPageSize
+        {
+            get => Mathf.Clamp(enumToggleButtonsPageSize, MinPageSize, MaxPageSize);
+            set
+            {
+                int clamped = Mathf.Clamp(value, MinPageSize, MaxPageSize);
+                if (clamped == enumToggleButtonsPageSize)
+                {
+                    return;
+                }
+
+                enumToggleButtonsPageSize = clamped;
+                SaveSettings();
+            }
+        }
+
         [System.Serializable]
         [System.Obsolete("Use WButtonCustomColorDictionary for serialization instead.")]
         private sealed class WButtonPriorityColor
@@ -477,6 +504,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return Mathf.Clamp(instance.SerializableSetPageSize, MinPageSize, MaxPageSize);
         }
 
+        public static int GetEnumToggleButtonsPageSize()
+        {
+            return Mathf.Clamp(instance.EnumToggleButtonsPageSize, MinPageSize, MaxPageSize);
+        }
+
         public static int GetWButtonPageSize()
         {
             return Mathf.Clamp(instance.WButtonPageSize, MinPageSize, MaxPageSize);
@@ -571,6 +603,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 MinPageSize,
                 MaxPageSize
             );
+            enumToggleButtonsPageSize = Mathf.Clamp(
+                enumToggleButtonsPageSize <= 0
+                    ? DefaultEnumToggleButtonsPageSize
+                    : enumToggleButtonsPageSize,
+                MinPageSize,
+                MaxPageSize
+            );
             wbuttonPageSize = Mathf.Clamp(
                 wbuttonPageSize <= 0 ? DefaultWButtonPageSize : wbuttonPageSize,
                 MinPageSize,
@@ -624,6 +663,28 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             else
             {
                 ApplyRuntimeConfiguration();
+            }
+        }
+
+        private static void DrawIntSlider(
+            string label,
+            string tooltip,
+            int currentValue,
+            int min,
+            int max,
+            Action<int> onValueChanged
+        )
+        {
+            int newValue = EditorGUILayout.IntSlider(
+                new GUIContent(label, tooltip),
+                currentValue,
+                min,
+                max
+            );
+
+            if (newValue != currentValue)
+            {
+                onValueChanged?.Invoke(newValue);
             }
         }
 
@@ -1019,81 +1080,98 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 {
                     UnityHelpersSettings settings = instance;
                     SerializedObject serializedSettings = new(settings);
-                    SerializedProperty pageSizeProperty = serializedSettings.FindProperty(
-                        "stringInListPageSize"
-                    );
-                    SerializedProperty setPageSizeProperty = serializedSettings.FindProperty(
-                        "serializableSetPageSize"
-                    );
-                    SerializedProperty buttonPageSizeProperty = serializedSettings.FindProperty(
-                        "wbuttonPageSize"
-                    );
-                    SerializedProperty buttonHistoryProperty = serializedSettings.FindProperty(
-                        "wbuttonHistorySize"
-                    );
-                    SerializedProperty actionsPlacementProperty = serializedSettings.FindProperty(
-                        "wbuttonActionsPlacement"
-                    );
-                    SerializedProperty foldoutBehaviorProperty = serializedSettings.FindProperty(
-                        "wbuttonFoldoutBehavior"
-                    );
-                    SerializedProperty duplicateModeProperty = serializedSettings.FindProperty(
-                        "duplicateRowAnimationMode"
-                    );
-                    SerializedProperty duplicateTweenCyclesProperty =
-                        serializedSettings.FindProperty("duplicateRowTweenCycles");
-                    SerializedProperty patternsProperty = serializedSettings.FindProperty(
-                        "serializableTypeIgnorePatterns"
-                    );
-                    SerializedProperty patternsInitializedProperty =
-                        serializedSettings.FindProperty("serializableTypePatternsInitialized");
-                    SerializedProperty wbuttonPaletteProperty = serializedSettings.FindProperty(
-                        "wbuttonCustomColors"
-                    );
+                    serializedSettings.UpdateIfRequiredOrScript();
 
-                    serializedSettings.Update();
-
-                    EditorGUI.BeginChangeCheck();
-
-                    EditorGUILayout.IntSlider(
-                        pageSizeProperty,
+                    DrawIntSlider(
+                        "StringInList Page Size",
+                        "Number of options displayed per page in StringInList dropdowns.",
+                        settings.StringInListPageSize,
                         MinPageSize,
                         MaxPageSize,
-                        new GUIContent(
-                            "StringInList Page Size",
-                            "Number of options displayed per page in StringInList dropdowns."
-                        )
+                        value =>
+                        {
+                            settings.StringInListPageSize = value;
+                            serializedSettings.UpdateIfRequiredOrScript();
+                        }
                     );
 
-                    EditorGUILayout.IntSlider(
-                        setPageSizeProperty,
+                    DrawIntSlider(
+                        "Serializable Set Page Size",
+                        "Number of entries displayed per page in SerializableHashSet and SerializableSortedSet inspectors.",
+                        settings.SerializableSetPageSize,
                         MinPageSize,
                         MaxPageSize,
-                        new GUIContent(
-                            "Serializable Set Page Size",
-                            "Number of entries displayed per page in SerializableHashSet and SerializableSortedSet inspectors."
-                        )
+                        value =>
+                        {
+                            settings.SerializableSetPageSize = value;
+                            serializedSettings.UpdateIfRequiredOrScript();
+                        }
                     );
 
-                    EditorGUILayout.IntSlider(
-                        buttonPageSizeProperty,
+                    DrawIntSlider(
+                        "WEnum Toggle Buttons Page Size",
+                        "Number of toggle buttons displayed per page when WEnumToggleButtons groups exceed the configured threshold.",
+                        settings.EnumToggleButtonsPageSize,
                         MinPageSize,
                         MaxPageSize,
-                        new GUIContent(
-                            "WButton Page Size",
-                            "Number of WButton actions displayed per page when grouped by draw order."
-                        )
+                        value =>
+                        {
+                            settings.EnumToggleButtonsPageSize = value;
+                            serializedSettings.UpdateIfRequiredOrScript();
+                        }
                     );
 
-                    EditorGUILayout.IntSlider(
-                        buttonHistoryProperty,
+                    DrawIntSlider(
+                        "WButton Page Size",
+                        "Number of WButton actions displayed per page when grouped by draw order.",
+                        settings.WButtonPageSize,
+                        MinPageSize,
+                        MaxPageSize,
+                        value =>
+                        {
+                            settings.WButtonPageSize = value;
+                            serializedSettings.UpdateIfRequiredOrScript();
+                        }
+                    );
+
+                    DrawIntSlider(
+                        "WButton History Size",
+                        "Number of recent results remembered per WButton method for each inspected object.",
+                        settings.WButtonHistorySize,
                         MinWButtonHistorySize,
                         MaxWButtonHistorySize,
-                        new GUIContent(
-                            "WButton History Size",
-                            "Number of recent results remembered per WButton method for each inspected object."
-                        )
+                        value =>
+                        {
+                            settings.WButtonHistorySize = value;
+                            serializedSettings.UpdateIfRequiredOrScript();
+                        }
                     );
+
+                    SerializedProperty actionsPlacementProperty = serializedSettings.FindProperty(
+                        nameof(UnityHelpersSettings.wbuttonActionsPlacement)
+                    );
+                    SerializedProperty foldoutBehaviorProperty = serializedSettings.FindProperty(
+                        nameof(UnityHelpersSettings.wbuttonFoldoutBehavior)
+                    );
+                    SerializedProperty duplicateModeProperty = serializedSettings.FindProperty(
+                        nameof(UnityHelpersSettings.duplicateRowAnimationMode)
+                    );
+                    SerializedProperty duplicateTweenCyclesProperty =
+                        serializedSettings.FindProperty(
+                            nameof(UnityHelpersSettings.duplicateRowTweenCycles)
+                        );
+                    SerializedProperty patternsProperty = serializedSettings.FindProperty(
+                        nameof(UnityHelpersSettings.serializableTypeIgnorePatterns)
+                    );
+                    SerializedProperty patternsInitializedProperty =
+                        serializedSettings.FindProperty(
+                            nameof(UnityHelpersSettings.serializableTypePatternsInitialized)
+                        );
+                    SerializedProperty wbuttonPaletteProperty = serializedSettings.FindProperty(
+                        nameof(UnityHelpersSettings.wbuttonCustomColors)
+                    );
+
+                    EditorGUI.BeginChangeCheck();
 
                     EditorGUILayout.PropertyField(
                         actionsPlacementProperty,
@@ -1111,14 +1189,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         )
                     );
                     EditorGUILayout.PropertyField(
-                        serializedSettings.FindProperty("wbuttonFoldoutTweenEnabled"),
+                        serializedSettings.FindProperty(
+                            nameof(UnityHelpersSettings.wbuttonFoldoutTweenEnabled)
+                        ),
                         new GUIContent(
                             "Tween WButton Foldouts",
                             "Enable animated transitions when expanding or collapsing WButton action groups."
                         )
                     );
                     EditorGUILayout.PropertyField(
-                        serializedSettings.FindProperty("wbuttonFoldoutSpeed"),
+                        serializedSettings.FindProperty(
+                            nameof(UnityHelpersSettings.wbuttonFoldoutSpeed)
+                        ),
                         new GUIContent(
                             "WButton Foldout Speed",
                             "Animation speed used when expanding or collapsing WButton action groups."
@@ -1126,7 +1208,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     );
                     EditorGUILayout.PropertyField(
                         serializedSettings.FindProperty(
-                            "serializableDictionaryFoldoutTweenEnabled"
+                            nameof(UnityHelpersSettings.serializableDictionaryFoldoutTweenEnabled)
                         ),
                         new GUIContent(
                             "Tween Dictionary Foldouts",
@@ -1134,7 +1216,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         )
                     );
                     EditorGUILayout.PropertyField(
-                        serializedSettings.FindProperty("serializableDictionaryFoldoutSpeed"),
+                        serializedSettings.FindProperty(
+                            nameof(UnityHelpersSettings.serializableDictionaryFoldoutSpeed)
+                        ),
                         new GUIContent(
                             "Dictionary Foldout Speed",
                             "Animation speed used when expanding or collapsing SerializableDictionary pending entries."
@@ -1142,7 +1226,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     );
                     EditorGUILayout.PropertyField(
                         serializedSettings.FindProperty(
-                            "serializableSortedDictionaryFoldoutTweenEnabled"
+                            nameof(
+                                UnityHelpersSettings.serializableSortedDictionaryFoldoutTweenEnabled
+                            )
                         ),
                         new GUIContent(
                             "Tween Sorted Dictionary Foldouts",
@@ -1150,7 +1236,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         )
                     );
                     EditorGUILayout.PropertyField(
-                        serializedSettings.FindProperty("serializableSortedDictionaryFoldoutSpeed"),
+                        serializedSettings.FindProperty(
+                            nameof(UnityHelpersSettings.serializableSortedDictionaryFoldoutSpeed)
+                        ),
                         new GUIContent(
                             "Sorted Dictionary Foldout Speed",
                             "Animation speed used when expanding or collapsing SerializableSortedDictionary pending entries."
@@ -1179,10 +1267,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     );
                     DrawWButtonCustomColors(wbuttonPaletteProperty);
 
-                    if (EditorGUI.EndChangeCheck())
+                    bool guiChanged = EditorGUI.EndChangeCheck();
+                    bool applied = serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+                    if (guiChanged || applied)
                     {
-                        serializedSettings.ApplyModifiedPropertiesWithoutUndo();
                         settings.SaveSettings();
+                        serializedSettings.UpdateIfRequiredOrScript();
                     }
                 },
                 keywords = new[]
