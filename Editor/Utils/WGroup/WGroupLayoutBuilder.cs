@@ -31,7 +31,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 return new WGroupLayout(
                     new List<WGroupDrawOperation>(0),
                     new List<WGroupDefinition>(0),
-                    new Dictionary<string, WGroupDefinition>(StringComparer.OrdinalIgnoreCase)
+                    new Dictionary<string, WGroupDefinition>(StringComparer.OrdinalIgnoreCase),
+                    new List<WFoldoutGroupDefinition>(0),
+                    new Dictionary<string, WFoldoutGroupDefinition>(
+                        StringComparer.OrdinalIgnoreCase
+                    )
                 );
             }
 
@@ -42,6 +46,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             Dictionary<string, GroupContext> contextsByName = new(StringComparer.OrdinalIgnoreCase);
             List<GroupContext> contextsInDeclarationOrder = new();
             List<GroupContext> activeAutoContexts = new();
+            Dictionary<string, FoldoutGroupContext> foldoutContextsByName = new(
+                StringComparer.OrdinalIgnoreCase
+            );
+            List<FoldoutGroupContext> foldoutContextsInDeclarationOrder = new();
+            List<FoldoutGroupContext> activeFoldoutAutoContexts = new();
 
             for (int index = 0; index < descriptors.Count; index++)
             {
@@ -101,6 +110,77 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                     }
                 }
 
+                HashSet<FoldoutGroupContext> explicitFoldoutContexts = null;
+                if (descriptor.FoldoutAttributes.Count > 0)
+                {
+                    explicitFoldoutContexts = new HashSet<FoldoutGroupContext>();
+                    foreach (WFoldoutGroupAttribute attribute in descriptor.FoldoutAttributes)
+                    {
+                        string normalizedName = NormalizeGroupName(attribute.GroupName);
+                        if (
+                            !foldoutContextsByName.TryGetValue(
+                                normalizedName,
+                                out FoldoutGroupContext context
+                            )
+                        )
+                        {
+                            context = new FoldoutGroupContext(
+                                normalizedName,
+                                foldoutContextsInDeclarationOrder.Count
+                            );
+                            foldoutContextsByName.Add(normalizedName, context);
+                            foldoutContextsInDeclarationOrder.Add(context);
+                        }
+
+                        context.ApplyAttribute(attribute, descriptor.PropertyPath, index);
+
+                        AutoIncludeConfiguration localConfiguration = ResolveAutoInclude(
+                            attribute.AutoIncludeCount,
+                            globalConfiguration
+                        );
+                        context.SetAutoInclude(localConfiguration);
+                        UpdateActiveFoldoutContextList(activeFoldoutAutoContexts, context);
+
+                        explicitFoldoutContexts.Add(context);
+                    }
+                }
+
+                if (explicitFoldoutContexts == null || explicitFoldoutContexts.Count == 0)
+                {
+                    FoldoutGroupContext autoFoldoutContext = SelectFoldoutAutoIncludeTarget(
+                        activeFoldoutAutoContexts,
+                        explicitFoldoutContexts
+                    );
+                    if (autoFoldoutContext != null)
+                    {
+                        bool added = autoFoldoutContext.AddProperty(descriptor.PropertyPath, index);
+                        if (added)
+                        {
+                            autoFoldoutContext.ConsumeAutoInclude();
+                            UpdateActiveFoldoutContextList(
+                                activeFoldoutAutoContexts,
+                                autoFoldoutContext
+                            );
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (FoldoutGroupContext context in explicitFoldoutContexts)
+                    {
+                        context.AddProperty(descriptor.PropertyPath, index);
+                    }
+                }
+
+                if (descriptor.FoldoutEndAttributes.Count > 0)
+                {
+                    ApplyFoldoutGroupEnds(
+                        descriptor.FoldoutEndAttributes,
+                        activeFoldoutAutoContexts,
+                        foldoutContextsByName
+                    );
+                }
+
                 if (descriptor.EndAttributes.Count > 0)
                 {
                     ApplyGroupEnds(descriptor.EndAttributes, activeAutoContexts, contextsByName);
@@ -110,6 +190,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             List<WGroupDefinition> definitions = new(contextsInDeclarationOrder.Count);
             Dictionary<string, List<WGroupDefinition>> groupsByAnchor = new(StringComparer.Ordinal);
             Dictionary<string, WGroupDefinition> groupsByName = new(
+                StringComparer.OrdinalIgnoreCase
+            );
+            List<WFoldoutGroupDefinition> foldoutDefinitions = new(
+                foldoutContextsInDeclarationOrder.Count
+            );
+            Dictionary<string, List<WFoldoutGroupDefinition>> foldoutGroupsByAnchor = new(
+                StringComparer.Ordinal
+            );
+            Dictionary<string, WFoldoutGroupDefinition> foldoutGroupsByName = new(
                 StringComparer.OrdinalIgnoreCase
             );
 
@@ -130,8 +219,35 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 anchored.Add(definition);
             }
 
-            List<WGroupDrawOperation> operations = BuildDrawOperations(descriptors, groupsByAnchor);
-            return new WGroupLayout(operations, definitions, groupsByName);
+            foreach (FoldoutGroupContext context in foldoutContextsInDeclarationOrder)
+            {
+                if (context.PropertyCount == 0)
+                {
+                    continue;
+                }
+
+                WFoldoutGroupDefinition definition = context.ToDefinition();
+                foldoutDefinitions.Add(definition);
+                foldoutGroupsByName[definition.Name] = definition;
+
+                List<WFoldoutGroupDefinition> anchored = foldoutGroupsByAnchor.GetOrAdd(
+                    definition.AnchorPropertyPath
+                );
+                anchored.Add(definition);
+            }
+
+            List<WGroupDrawOperation> operations = BuildDrawOperations(
+                descriptors,
+                groupsByAnchor,
+                foldoutGroupsByAnchor
+            );
+            return new WGroupLayout(
+                operations,
+                definitions,
+                groupsByName,
+                foldoutDefinitions,
+                foldoutGroupsByName
+            );
         }
 
         private static List<PropertyDescriptor> CollectPropertyDescriptors(
@@ -165,10 +281,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 List<WGroupEndAttribute> endAttributes = CollectAttributes<WGroupEndAttribute>(
                     fieldInfo
                 );
+                List<WFoldoutGroupAttribute> foldoutAttributes =
+                    CollectAttributes<WFoldoutGroupAttribute>(fieldInfo);
+                List<WFoldoutGroupEndAttribute> foldoutEndAttributes =
+                    CollectAttributes<WFoldoutGroupEndAttribute>(fieldInfo);
                 PropertyDescriptor descriptor = new(
                     iterator.propertyPath,
                     groupAttributes,
-                    endAttributes
+                    endAttributes,
+                    foldoutAttributes,
+                    foldoutEndAttributes
                 );
                 descriptors.Add(descriptor);
             }
@@ -346,6 +468,115 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             }
         }
 
+        private static void UpdateActiveFoldoutContextList(
+            List<FoldoutGroupContext> activeAutoContexts,
+            FoldoutGroupContext context
+        )
+        {
+            for (int index = 0; index < activeAutoContexts.Count; index++)
+            {
+                if (ReferenceEquals(activeAutoContexts[index], context))
+                {
+                    activeAutoContexts.RemoveAt(index);
+                    break;
+                }
+            }
+
+            if (!context.HasAutoIncludeBudget)
+            {
+                return;
+            }
+
+            InsertActiveFoldoutContext(activeAutoContexts, context);
+        }
+
+        private static void InsertActiveFoldoutContext(
+            List<FoldoutGroupContext> activeAutoContexts,
+            FoldoutGroupContext context
+        )
+        {
+            for (int index = 0; index < activeAutoContexts.Count; index++)
+            {
+                FoldoutGroupContext existing = activeAutoContexts[index];
+                if (existing.DeclarationOrder > context.DeclarationOrder)
+                {
+                    activeAutoContexts.Insert(index, context);
+                    return;
+                }
+            }
+
+            activeAutoContexts.Add(context);
+        }
+
+        private static FoldoutGroupContext SelectFoldoutAutoIncludeTarget(
+            List<FoldoutGroupContext> activeAutoContexts,
+            HashSet<FoldoutGroupContext> explicitContexts
+        )
+        {
+            for (int index = 0; index < activeAutoContexts.Count; index++)
+            {
+                FoldoutGroupContext candidate = activeAutoContexts[index];
+                if (!candidate.HasAutoIncludeBudget)
+                {
+                    activeAutoContexts.RemoveAt(index);
+                    index--;
+                    continue;
+                }
+
+                if (explicitContexts != null && explicitContexts.Contains(candidate))
+                {
+                    continue;
+                }
+
+                return candidate;
+            }
+
+            return null;
+        }
+
+        private static void ApplyFoldoutGroupEnds(
+            List<WFoldoutGroupEndAttribute> endAttributes,
+            List<FoldoutGroupContext> activeAutoContexts,
+            Dictionary<string, FoldoutGroupContext> contextsByName
+        )
+        {
+            for (int index = 0; index < endAttributes.Count; index++)
+            {
+                WFoldoutGroupEndAttribute attribute = endAttributes[index];
+                IReadOnlyList<string> groupNames = attribute.GroupNames;
+                if (groupNames.Count == 0)
+                {
+                    if (activeAutoContexts.Count > 0)
+                    {
+                        FoldoutGroupContext last = activeAutoContexts[^1];
+                        last.SetAutoInclude(new AutoIncludeConfiguration(false, 0));
+                        UpdateActiveFoldoutContextList(activeAutoContexts, last);
+                    }
+                    continue;
+                }
+
+                for (int nameIndex = 0; nameIndex < groupNames.Count; nameIndex++)
+                {
+                    string groupName = groupNames[nameIndex];
+                    if (string.IsNullOrEmpty(groupName))
+                    {
+                        continue;
+                    }
+
+                    string normalizedName = NormalizeGroupName(groupName);
+                    if (
+                        !contextsByName.TryGetValue(normalizedName, out FoldoutGroupContext context)
+                    )
+                    {
+                        continue;
+                    }
+
+                    context.SetAutoInclude(new AutoIncludeConfiguration(false, 0));
+                    UpdateActiveFoldoutContextList(activeAutoContexts, context);
+                }
+            }
+        }
+
         private static string NormalizeGroupName(string groupName)
         {
             return string.IsNullOrWhiteSpace(groupName) ? string.Empty : groupName.Trim();
@@ -353,7 +584,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
         private static List<WGroupDrawOperation> BuildDrawOperations(
             List<PropertyDescriptor> descriptors,
-            Dictionary<string, List<WGroupDefinition>> groupsByAnchor
+            Dictionary<string, List<WGroupDefinition>> groupsByAnchor,
+            Dictionary<string, List<WFoldoutGroupDefinition>> foldoutGroupsByAnchor
         )
         {
             List<WGroupDrawOperation> operations = new(descriptors.Count);
@@ -363,6 +595,32 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             {
                 PropertyDescriptor descriptor = descriptors[index];
                 string propertyPath = descriptor.PropertyPath;
+                bool anchoredHandled = false;
+
+                if (
+                    foldoutGroupsByAnchor.TryGetValue(
+                        propertyPath,
+                        out List<WFoldoutGroupDefinition> anchoredFoldouts
+                    )
+                )
+                {
+                    anchoredHandled = true;
+                    anchoredFoldouts.Sort(
+                        (left, right) => left.DeclarationOrder.CompareTo(right.DeclarationOrder)
+                    );
+                    foreach (WFoldoutGroupDefinition definition in anchoredFoldouts)
+                    {
+                        operations.Add(new WGroupDrawOperation(definition));
+                        for (
+                            int memberIndex = 0;
+                            memberIndex < definition.PropertyPaths.Count;
+                            memberIndex++
+                        )
+                        {
+                            consumed.Add(definition.PropertyPaths[memberIndex]);
+                        }
+                    }
+                }
 
                 if (
                     groupsByAnchor.TryGetValue(
@@ -371,6 +629,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                     )
                 )
                 {
+                    anchoredHandled = true;
                     anchoredGroups.Sort(
                         (left, right) => left.DeclarationOrder.CompareTo(right.DeclarationOrder)
                     );
@@ -386,6 +645,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                             consumed.Add(definition.PropertyPaths[memberIndex]);
                         }
                     }
+                }
+
+                if (anchoredHandled)
+                {
                     continue;
                 }
 
@@ -572,17 +835,181 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             }
         }
 
+        private sealed class FoldoutGroupContext
+        {
+            private readonly List<PropertyEntry> _entries = new();
+            private readonly HashSet<string> _lookup = new(StringComparer.Ordinal);
+
+            internal FoldoutGroupContext(string name, int declarationOrder)
+            {
+                Name = name;
+                DeclarationOrder = declarationOrder;
+                AnchorIndex = int.MaxValue;
+            }
+
+            internal string Name { get; }
+
+            internal int DeclarationOrder { get; }
+
+            internal string DisplayName { get; private set; }
+
+            internal bool StartCollapsed { get; private set; }
+
+            internal bool HideHeader { get; private set; }
+
+            internal string ColorKey { get; private set; }
+
+            internal int AnchorIndex { get; private set; }
+
+            internal string AnchorPropertyPath { get; private set; }
+
+            internal bool AutoIncludeInfinite { get; private set; }
+
+            internal int RemainingAutoInclude { get; private set; }
+
+            internal int PropertyCount
+            {
+                get { return _entries.Count; }
+            }
+
+            internal void ApplyAttribute(
+                WFoldoutGroupAttribute attribute,
+                string propertyPath,
+                int propertyIndex
+            )
+            {
+                if (!string.IsNullOrWhiteSpace(attribute.DisplayName))
+                {
+                    DisplayName = attribute.DisplayName;
+                }
+
+                if (!string.IsNullOrWhiteSpace(attribute.ColorKey))
+                {
+                    string normalized = UnityHelpersSettings.EnsureWFoldoutGroupColorKey(
+                        attribute.ColorKey
+                    );
+                    if (!string.IsNullOrEmpty(normalized))
+                    {
+                        ColorKey = normalized;
+                    }
+                }
+
+                StartCollapsed = attribute.StartCollapsed;
+                HideHeader = attribute.HideHeader;
+
+                AddProperty(propertyPath, propertyIndex);
+            }
+
+            internal void SetAutoInclude(AutoIncludeConfiguration configuration)
+            {
+                AutoIncludeInfinite = configuration.IsInfinite;
+                RemainingAutoInclude = configuration.IsInfinite ? 0 : configuration.Count;
+            }
+
+            internal bool AddProperty(string propertyPath, int propertyIndex)
+            {
+                if (_lookup.Contains(propertyPath))
+                {
+                    return false;
+                }
+
+                PropertyEntry entry = new(propertyPath, propertyIndex);
+                _entries.Add(entry);
+                _lookup.Add(propertyPath);
+
+                if (propertyIndex < AnchorIndex)
+                {
+                    AnchorIndex = propertyIndex;
+                    AnchorPropertyPath = propertyPath;
+                }
+
+                return true;
+            }
+
+            internal void ConsumeAutoInclude()
+            {
+                if (AutoIncludeInfinite)
+                {
+                    return;
+                }
+
+                if (RemainingAutoInclude <= 0)
+                {
+                    return;
+                }
+
+                RemainingAutoInclude--;
+            }
+
+            internal bool HasAutoIncludeBudget
+            {
+                get
+                {
+                    if (AutoIncludeInfinite)
+                    {
+                        return true;
+                    }
+
+                    return RemainingAutoInclude > 0;
+                }
+            }
+
+            internal WFoldoutGroupDefinition ToDefinition()
+            {
+                _entries.Sort((left, right) => left.PropertyIndex.CompareTo(right.PropertyIndex));
+                List<string> orderedPaths = new(_entries.Count);
+                for (int index = 0; index < _entries.Count; index++)
+                {
+                    orderedPaths.Add(_entries[index].PropertyPath);
+                }
+
+                string displayName = DisplayName ?? Name;
+                string anchorPath = AnchorPropertyPath ?? orderedPaths[0];
+                int anchorIndex = AnchorIndex == int.MaxValue ? 0 : AnchorIndex;
+
+                return new WFoldoutGroupDefinition(
+                    Name,
+                    displayName,
+                    ColorKey,
+                    StartCollapsed,
+                    HideHeader,
+                    orderedPaths,
+                    anchorPath,
+                    anchorIndex,
+                    DeclarationOrder
+                );
+            }
+
+            private readonly struct PropertyEntry
+            {
+                internal PropertyEntry(string propertyPath, int propertyIndex)
+                {
+                    PropertyPath = propertyPath;
+                    PropertyIndex = propertyIndex;
+                }
+
+                internal string PropertyPath { get; }
+
+                internal int PropertyIndex { get; }
+            }
+        }
+
         private sealed class PropertyDescriptor
         {
             internal PropertyDescriptor(
                 string propertyPath,
                 List<WGroupAttribute> groupAttributes,
-                List<WGroupEndAttribute> endAttributes
+                List<WGroupEndAttribute> endAttributes,
+                List<WFoldoutGroupAttribute> foldoutAttributes,
+                List<WFoldoutGroupEndAttribute> foldoutEndAttributes
             )
             {
                 PropertyPath = propertyPath;
                 GroupAttributes = groupAttributes ?? new List<WGroupAttribute>();
                 EndAttributes = endAttributes ?? new List<WGroupEndAttribute>();
+                FoldoutAttributes = foldoutAttributes ?? new List<WFoldoutGroupAttribute>();
+                FoldoutEndAttributes =
+                    foldoutEndAttributes ?? new List<WFoldoutGroupEndAttribute>();
             }
 
             internal string PropertyPath { get; }
@@ -590,6 +1017,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             internal List<WGroupAttribute> GroupAttributes { get; }
 
             internal List<WGroupEndAttribute> EndAttributes { get; }
+
+            internal List<WFoldoutGroupAttribute> FoldoutAttributes { get; }
+
+            internal List<WFoldoutGroupEndAttribute> FoldoutEndAttributes { get; }
         }
 
         private readonly struct AutoIncludeConfiguration
@@ -610,6 +1041,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
     {
         Property = 0,
         Group = 1,
+        FoldoutGroup = 2,
     }
 
     internal readonly struct WGroupDrawOperation
@@ -619,6 +1051,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             Type = WGroupDrawOperationType.Property;
             PropertyPath = propertyPath;
             Group = null;
+            FoldoutGroup = null;
         }
 
         internal WGroupDrawOperation(WGroupDefinition group)
@@ -626,6 +1059,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             Type = WGroupDrawOperationType.Group;
             PropertyPath = null;
             Group = group;
+            FoldoutGroup = null;
+        }
+
+        internal WGroupDrawOperation(WFoldoutGroupDefinition foldoutGroup)
+        {
+            Type = WGroupDrawOperationType.FoldoutGroup;
+            PropertyPath = null;
+            Group = null;
+            FoldoutGroup = foldoutGroup;
         }
 
         internal WGroupDrawOperationType Type { get; }
@@ -633,6 +1075,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         internal string PropertyPath { get; }
 
         internal WGroupDefinition Group { get; }
+
+        internal WFoldoutGroupDefinition FoldoutGroup { get; }
     }
 
     internal sealed class WGroupDefinition
@@ -683,17 +1127,65 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         internal int DeclarationOrder { get; }
     }
 
+    internal sealed class WFoldoutGroupDefinition
+    {
+        internal WFoldoutGroupDefinition(
+            string name,
+            string displayName,
+            string colorKey,
+            bool startCollapsed,
+            bool hideHeader,
+            IReadOnlyList<string> propertyPaths,
+            string anchorPropertyPath,
+            int anchorIndex,
+            int declarationOrder
+        )
+        {
+            Name = name;
+            DisplayName = displayName;
+            ColorKey = colorKey;
+            StartCollapsed = startCollapsed;
+            HideHeader = hideHeader;
+            PropertyPaths = propertyPaths;
+            AnchorPropertyPath = anchorPropertyPath;
+            AnchorIndex = anchorIndex;
+            DeclarationOrder = declarationOrder;
+        }
+
+        internal string Name { get; }
+
+        internal string DisplayName { get; }
+
+        internal string ColorKey { get; }
+
+        internal bool StartCollapsed { get; }
+
+        internal bool HideHeader { get; }
+
+        internal IReadOnlyList<string> PropertyPaths { get; }
+
+        internal string AnchorPropertyPath { get; }
+
+        internal int AnchorIndex { get; }
+
+        internal int DeclarationOrder { get; }
+    }
+
     internal sealed class WGroupLayout
     {
         internal WGroupLayout(
             IReadOnlyList<WGroupDrawOperation> operations,
             IReadOnlyList<WGroupDefinition> groups,
-            IReadOnlyDictionary<string, WGroupDefinition> groupsByName
+            IReadOnlyDictionary<string, WGroupDefinition> groupsByName,
+            IReadOnlyList<WFoldoutGroupDefinition> foldoutGroups,
+            IReadOnlyDictionary<string, WFoldoutGroupDefinition> foldoutGroupsByName
         )
         {
             Operations = operations;
             Groups = groups;
             GroupsByName = groupsByName;
+            FoldoutGroups = foldoutGroups;
+            FoldoutGroupsByName = foldoutGroupsByName;
         }
 
         internal IReadOnlyList<WGroupDrawOperation> Operations { get; }
@@ -701,6 +1193,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         internal IReadOnlyList<WGroupDefinition> Groups { get; }
 
         internal IReadOnlyDictionary<string, WGroupDefinition> GroupsByName { get; }
+
+        internal IReadOnlyList<WFoldoutGroupDefinition> FoldoutGroups { get; }
+
+        internal IReadOnlyDictionary<string, WFoldoutGroupDefinition> FoldoutGroupsByName { get; }
 
         internal bool TryGetGroup(string groupName, out WGroupDefinition definition)
         {
@@ -711,6 +1207,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             }
 
             return GroupsByName.TryGetValue(groupName.Trim(), out definition);
+        }
+
+        internal bool TryGetFoldoutGroup(string groupName, out WFoldoutGroupDefinition definition)
+        {
+            if (string.IsNullOrWhiteSpace(groupName))
+            {
+                definition = null;
+                return false;
+            }
+
+            return FoldoutGroupsByName.TryGetValue(groupName.Trim(), out definition);
         }
     }
 #endif

@@ -239,6 +239,36 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             Assert.IsTrue(UnityHelpersSettings.HasWGroupPaletteColorKey(definition.ColorKey));
         }
 
+        [Test]
+        public void FoldoutGroupProducesDefinitionAndOperation()
+        {
+            FoldoutGroupAsset asset = CreateScriptableObject<FoldoutGroupAsset>();
+            SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
+            string scriptPath = scriptProperty != null ? scriptProperty.propertyPath : null;
+
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, scriptPath);
+            Assert.IsTrue(
+                layout.TryGetFoldoutGroup("Details", out WFoldoutGroupDefinition foldoutGroup)
+            );
+
+            Assert.That(
+                foldoutGroup.PropertyPaths,
+                Is.EqualTo(
+                    new[] { nameof(FoldoutGroupAsset.health), nameof(FoldoutGroupAsset.mana) }
+                )
+            );
+            Assert.IsTrue(foldoutGroup.StartCollapsed);
+
+            IReadOnlyList<WGroupDrawOperation> operations = layout.Operations;
+            Assert.That(operations[0].Type, Is.EqualTo(WGroupDrawOperationType.FoldoutGroup));
+            Assert.AreSame(foldoutGroup, operations[0].FoldoutGroup);
+            Assert.That(operations[1].Type, Is.EqualTo(WGroupDrawOperationType.Property));
+            Assert.That(operations[1].PropertyPath, Is.EqualTo(nameof(FoldoutGroupAsset.stamina)));
+        }
+
         private sealed class FiniteGroupAsset : ScriptableObject
         {
             [WGroup("Stats")]
@@ -262,6 +292,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             public string terminator;
 
             public string trailing;
+        }
+
+        private sealed class FoldoutGroupAsset : ScriptableObject
+        {
+            [WFoldoutGroup("Details", autoIncludeCount: 1, startCollapsed: true)]
+            public int health;
+
+            public int mana;
+
+            public int stamina;
         }
 
         private sealed class NamedEndGroupAsset : ScriptableObject

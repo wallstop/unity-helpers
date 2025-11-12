@@ -517,6 +517,31 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             AssertColorsApproximately(expectedText, groupEntry.TextColor);
         }
 
+        [Test]
+        public void EnsureWFoldoutGroupColorKeyRegistersPalette()
+        {
+            const string PaletteKey = "EditorTestFoldoutPaletteKey";
+            string resolved = UnityHelpersSettings.EnsureWFoldoutGroupColorKey(PaletteKey);
+            Assert.IsNotNull(resolved);
+            UnityHelpersSettings.WFoldoutGroupPaletteEntry entry =
+                UnityHelpersSettings.ResolveWFoldoutGroupPalette(resolved);
+            Assert.Greater(entry.BackgroundColor.a, 0f);
+        }
+
+        [Test]
+        public void ResolveWFoldoutGroupPaletteFallsBackToDefault()
+        {
+            UnityHelpersSettings.WFoldoutGroupPaletteEntry entry =
+                UnityHelpersSettings.ResolveWFoldoutGroupPalette(null);
+            Color expectedBackground = EditorGUIUtility.isProSkin
+                ? new Color(0.215f, 0.215f, 0.215f, 1f)
+                : new Color(0.90f, 0.90f, 0.90f, 1f);
+            Color expectedText = EditorGUIUtility.isProSkin ? Color.white : Color.black;
+
+            AssertColorsApproximately(expectedBackground, entry.BackgroundColor);
+            AssertColorsApproximately(expectedText, entry.TextColor);
+        }
+
         private static void AssertColorsApproximately(
             Color expected,
             Color actual,
