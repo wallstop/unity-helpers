@@ -1092,22 +1092,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             return ReflectionHelpers.GetAttributeSafe<TAttribute>(fieldInfo, true);
         }
-
-        private readonly struct SelectionSummary
-        {
-            internal static SelectionSummary None { get; } =
-                new SelectionSummary(false, GUIContent.none);
-
-            internal SelectionSummary(bool hasSummary, GUIContent content)
-            {
-                HasSummary = hasSummary;
-                Content = content ?? GUIContent.none;
-            }
-
-            internal bool HasSummary { get; }
-
-            internal GUIContent Content { get; }
-        }
     }
 
     internal enum ToggleSource

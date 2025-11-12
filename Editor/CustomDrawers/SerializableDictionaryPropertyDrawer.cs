@@ -14,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using Object = UnityEngine.Object;
 
     [CustomPropertyDrawer(typeof(SerializableDictionary<,>), true)]
     [CustomPropertyDrawer(typeof(SerializableSortedDictionary<,>), true)]
@@ -176,7 +177,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     y = warningRect.yMax + EditorGUIUtility.standardVerticalSpacing;
                 }
 
-                ReorderableList list = GetOrCreateList(property, keysProperty, valuesProperty);
+                ReorderableList list = GetOrCreateList(property);
                 PaginationState pagination = GetOrCreatePaginationState(property);
                 PendingEntry pending = GetOrCreatePendingEntry(
                     property,
@@ -292,37 +293,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float pendingHeight = GetPendingSectionHeight(pending);
             height += pendingHeight + spacing;
 
-            ReorderableList list = GetOrCreateList(property, keysProperty, valuesProperty);
+            ReorderableList list = GetOrCreateList(property);
             float listHeight = list.GetHeight();
             height += listHeight;
             return height;
         }
 
-        internal ReorderableList GetOrCreateList(
-            SerializedProperty dictionaryProperty,
-            SerializedProperty keysProperty,
-            SerializedProperty valuesProperty
-        )
+        internal ReorderableList GetOrCreateList(SerializedProperty dictionaryProperty)
         {
             string key = GetListKey(dictionaryProperty);
             _valueTypes.TryGetValue(key, out Type resolvedValueType);
             PaginationState pagination = GetOrCreatePaginationState(dictionaryProperty);
-            SerializedProperty ResolveKeysProperty()
-            {
-                return dictionaryProperty.FindPropertyRelative(
-                    SerializableDictionarySerializedPropertyNames.Keys
-                );
-            }
 
-            SerializedProperty ResolveValuesProperty()
-            {
-                return dictionaryProperty.FindPropertyRelative(
-                    SerializableDictionarySerializedPropertyNames.Values
-                );
-            }
-
-            keysProperty = ResolveKeysProperty();
-            valuesProperty = ResolveValuesProperty();
+            SerializedProperty keysProperty = ResolveKeysProperty();
+            SerializedProperty valuesProperty = ResolveValuesProperty();
             ClampPaginationState(pagination, keysProperty.arraySize);
             float defaultRowHeight =
                 EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing * 2f;
@@ -335,35 +319,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 EnsurePageCache(key, ResolveKeysProperty(), pagination);
 
             ListPageCache cache = cacheProvider();
-
-            float ResolveRowHeight(int elementIndex)
-            {
-                ListPageCache currentCache = cacheProvider();
-                if (!RelativeIndexIsValid(currentCache, elementIndex))
-                {
-                    return defaultRowHeight;
-                }
-
-                SerializedProperty currentKeys = ResolveKeysProperty();
-                SerializedProperty currentValues = ResolveValuesProperty();
-
-                int globalIndex = currentCache.entries[elementIndex].arrayIndex;
-                if (
-                    globalIndex < 0
-                    || globalIndex >= currentKeys.arraySize
-                    || globalIndex >= currentValues.arraySize
-                )
-                {
-                    return defaultRowHeight;
-                }
-
-                SerializedProperty rowKeyProperty = currentKeys.GetArrayElementAtIndex(globalIndex);
-                SerializedProperty rowValueProperty = currentValues.GetArrayElementAtIndex(
-                    globalIndex
-                );
-
-                return CalculateDictionaryRowHeight(rowKeyProperty, rowValueProperty);
-            }
 
             if (_lists.TryGetValue(key, out ReorderableList cached))
             {
@@ -703,6 +658,49 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             _lists[key] = list;
             return list;
+
+            SerializedProperty ResolveKeysProperty()
+            {
+                return dictionaryProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Keys
+                );
+            }
+
+            SerializedProperty ResolveValuesProperty()
+            {
+                return dictionaryProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Values
+                );
+            }
+
+            float ResolveRowHeight(int elementIndex)
+            {
+                ListPageCache currentCache = cacheProvider();
+                if (!RelativeIndexIsValid(currentCache, elementIndex))
+                {
+                    return defaultRowHeight;
+                }
+
+                SerializedProperty currentKeys = ResolveKeysProperty();
+                SerializedProperty currentValues = ResolveValuesProperty();
+
+                int globalIndex = currentCache.entries[elementIndex].arrayIndex;
+                if (
+                    globalIndex < 0
+                    || globalIndex >= currentKeys.arraySize
+                    || globalIndex >= currentValues.arraySize
+                )
+                {
+                    return defaultRowHeight;
+                }
+
+                SerializedProperty rowKeyProperty = currentKeys.GetArrayElementAtIndex(globalIndex);
+                SerializedProperty rowValueProperty = currentValues.GetArrayElementAtIndex(
+                    globalIndex
+                );
+
+                return CalculateDictionaryRowHeight(rowKeyProperty, rowValueProperty);
+            }
         }
 
         private DuplicateKeyState RefreshDuplicateState(
@@ -983,8 +981,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static bool TypeSupportsNullReferences(Type type)
         {
-            return type != null
-                && (!type.IsValueType || typeof(UnityEngine.Object).IsAssignableFrom(type));
+            return type != null && (!type.IsValueType || typeof(Object).IsAssignableFrom(type));
         }
 
         private static string BuildNullKeySummary(ICollection<int> indices)
@@ -1029,19 +1026,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return summaryBuilder.ToString();
         }
 
-        internal bool HasNullKeyAtIndex(string cacheKey, int arrayIndex)
-        {
-            return _nullKeyStates.TryGetValue(cacheKey, out NullKeyState state)
-                && state.ContainsIndex(arrayIndex);
-        }
-
-        internal string GetNullKeyWarningSummary(string cacheKey)
-        {
-            return _nullKeyStates.TryGetValue(cacheKey, out NullKeyState state)
-                ? state.WarningMessage
-                : string.Empty;
-        }
-
         private static string FormatDuplicateKeyDisplay(object keyValue)
         {
             object actualKey = ReferenceEquals(keyValue, NullKeySentinel) ? null : keyValue;
@@ -1061,7 +1045,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return stringKey;
             }
 
-            if (actualKey is UnityEngine.Object unityObject)
+            if (actualKey is Object unityObject)
             {
                 if (unityObject == null)
                 {
@@ -1842,7 +1826,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             SerializedObject serializedObject = dictionaryProperty.serializedObject;
-            UnityEngine.Object[] targets = serializedObject.targetObjects;
+            Object[] targets = serializedObject.targetObjects;
             if (targets.Length > 0)
             {
                 Undo.RecordObjects(targets, "Remove Dictionary Entry");
@@ -1853,7 +1837,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             serializedObject.ApplyModifiedProperties();
             serializedObject.Update();
             SyncRuntimeDictionary(dictionaryProperty);
-            foreach (UnityEngine.Object target in serializedObject.targetObjects)
+            foreach (Object target in serializedObject.targetObjects)
             {
                 if (target != null)
                 {
@@ -1904,7 +1888,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             SerializedObject serializedObject = dictionaryProperty.serializedObject;
-            UnityEngine.Object[] targets = serializedObject.targetObjects;
+            Object[] targets = serializedObject.targetObjects;
             if (targets.Length > 0)
             {
                 Undo.RecordObjects(targets, "Clear Dictionary Entries");
@@ -2529,7 +2513,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             SerializedObject serializedObject = dictionaryProperty.serializedObject;
-            UnityEngine.Object[] targets = serializedObject.targetObjects;
+            Object[] targets = serializedObject.targetObjects;
             if (targets.Length > 0)
             {
                 string undoLabel =
@@ -2574,9 +2558,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (targets.Length > 0)
             {
-                for (int index = 0; index < targets.Length; index++)
+                foreach (Object target in targets)
                 {
-                    UnityEngine.Object target = targets[index];
                     if (target != null)
                     {
                         EditorUtility.SetDirty(target);
@@ -2886,7 +2869,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             SerializedObject serializedObject = dictionaryProperty.serializedObject;
-            UnityEngine.Object[] targets = serializedObject.targetObjects;
+            Object[] targets = serializedObject.targetObjects;
             if (targets.Length > 0)
             {
                 Undo.RecordObjects(targets, "Sort Dictionary Keys");
@@ -3071,9 +3054,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return !string.IsNullOrEmpty(keyValue as string);
             }
 
-            if (typeof(UnityEngine.Object).IsAssignableFrom(keyType))
+            if (typeof(Object).IsAssignableFrom(keyType))
             {
-                return keyValue is UnityEngine.Object obj && obj != null;
+                return keyValue is Object obj && obj != null;
             }
 
             return keyValue != null || keyType.IsValueType;
@@ -3399,9 +3382,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return EditorGUI.EnumPopup(rect, content, currentEnum);
             }
 
-            if (typeof(UnityEngine.Object).IsAssignableFrom(type))
+            if (typeof(Object).IsAssignableFrom(type))
             {
-                UnityEngine.Object obj = current as UnityEngine.Object;
+                Object obj = current as Object;
                 return EditorGUI.ObjectField(rect, content, obj, type, allowSceneObjects: false);
             }
 
@@ -3421,7 +3404,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (
                 pending == null
                 || !TypeSupportsComplexEditing(type)
-                || (type.IsValueType && !typeof(UnityEngine.Object).IsAssignableFrom(type))
+                || (type.IsValueType && !typeof(Object).IsAssignableFrom(type))
                 || type == typeof(string)
             )
             {
@@ -3488,7 +3471,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 || type == typeof(Color)
                 || type == typeof(AnimationCurve)
                 || type.IsEnum
-                || typeof(UnityEngine.Object).IsAssignableFrom(type)
+                || typeof(Object).IsAssignableFrom(type)
                 || TypeSupportsComplexEditing(type);
         }
 
@@ -3499,7 +3482,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
-            if (typeof(UnityEngine.Object).IsAssignableFrom(type))
+            if (typeof(Object).IsAssignableFrom(type))
             {
                 return true;
             }
@@ -3585,7 +3568,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 if (pending.valueWrapper != null)
                 {
-                    ScriptableObject.DestroyImmediate(pending.valueWrapper);
+                    Object.DestroyImmediate(pending.valueWrapper);
                 }
 
                 pending.valueWrapper = null;
@@ -3596,7 +3579,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 if (pending.keyWrapper != null)
                 {
-                    ScriptableObject.DestroyImmediate(pending.keyWrapper);
+                    Object.DestroyImmediate(pending.keyWrapper);
                 }
 
                 pending.keyWrapper = null;
@@ -3618,7 +3601,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
-            if (typeof(UnityEngine.Object).IsAssignableFrom(type))
+            if (typeof(Object).IsAssignableFrom(type))
             {
                 return false;
             }
@@ -3651,11 +3634,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return null;
             }
 
-            if (
-                type == null
-                || type.IsValueType
-                || typeof(UnityEngine.Object).IsAssignableFrom(type)
-            )
+            if (type == null || type.IsValueType || typeof(Object).IsAssignableFrom(type))
             {
                 return source;
             }
@@ -3688,7 +3667,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
-            UnityEngine.Object[] targets = property.serializedObject.targetObjects;
+            Object[] targets = property.serializedObject.targetObjects;
             if (targets == null || targets.Length == 0)
             {
                 return false;
@@ -3697,9 +3676,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string finalSegment = GetFinalPathSegment(property.propertyPath);
             bool applied = false;
 
-            for (int index = 0; index < targets.Length; index++)
+            foreach (Object target in targets)
             {
-                UnityEngine.Object target = targets[index];
                 object parent = GetParentObject(target, property.propertyPath);
                 if (parent == null)
                 {
@@ -3721,7 +3699,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return applied;
         }
 
-        private static object GetParentObject(UnityEngine.Object target, string propertyPath)
+        private static object GetParentObject(Object target, string propertyPath)
         {
             if (target == null || string.IsNullOrEmpty(propertyPath))
             {
@@ -3766,30 +3744,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             int bracketIndex = path.IndexOf('[');
-            if (bracketIndex >= 0)
+            if (bracketIndex < 0)
             {
-                string elementName = path.Substring(0, bracketIndex);
-                int index = ParseElementIndex(path, bracketIndex);
-                if (index < 0)
-                {
-                    return null;
-                }
+                return GetMemberValue(source, path);
+            }
 
-                object collection = GetMemberValue(source, elementName);
-                if (collection is IList list)
-                {
-                    return index >= 0 && index < list.Count ? list[index] : null;
-                }
-
-                if (collection is Array array)
-                {
-                    return index >= 0 && index < array.Length ? array.GetValue(index) : null;
-                }
-
+            string elementName = path.Substring(0, bracketIndex);
+            int index = ParseElementIndex(path, bracketIndex);
+            if (index < 0)
+            {
                 return null;
             }
 
-            return GetMemberValue(source, path);
+            object collection = GetMemberValue(source, elementName);
+            if (collection is IList list)
+            {
+                return index < list.Count ? list[index] : null;
+            }
+
+            return null;
         }
 
         private static bool SetPathComponentValue(object source, string path, object value)
@@ -3800,42 +3773,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             int bracketIndex = path.IndexOf('[');
-            if (bracketIndex >= 0)
+            if (bracketIndex < 0)
             {
-                string elementName = path.Substring(0, bracketIndex);
-                int index = ParseElementIndex(path, bracketIndex);
-                if (index < 0)
-                {
-                    return false;
-                }
+                return SetMemberValue(source, path, value);
+            }
 
-                object collection = GetMemberValue(source, elementName);
-                if (collection is IList list)
-                {
-                    if (index >= 0 && index < list.Count)
-                    {
-                        list[index] = value;
-                        return true;
-                    }
-
-                    return false;
-                }
-
-                if (collection is Array array)
-                {
-                    if (index >= 0 && index < array.Length)
-                    {
-                        array.SetValue(value, index);
-                        return true;
-                    }
-
-                    return false;
-                }
-
+            string elementName = path.Substring(0, bracketIndex);
+            int index = ParseElementIndex(path, bracketIndex);
+            if (index < 0)
+            {
                 return false;
             }
 
-            return SetMemberValue(source, path, value);
+            object collection = GetMemberValue(source, elementName);
+            if (collection is IList list && index < list.Count)
+            {
+                list[index] = value;
+                return true;
+            }
+
+            return false;
         }
 
         private static int ParseElementIndex(string path, int bracketIndex)
@@ -3989,7 +3946,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     property.colorValue = value is Color color ? color : Color.clear;
                     break;
                 case SerializedPropertyType.ObjectReference:
-                    property.objectReferenceValue = value as UnityEngine.Object;
+                    property.objectReferenceValue = value as Object;
                     break;
                 case SerializedPropertyType.Rect:
                     property.rectValue = value is Rect rect ? rect : default;
@@ -4126,47 +4083,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static void CopyComplexValueToProperty(
-            SerializedProperty destination,
-            object value,
-            Type valueType
-        )
-        {
-            if (destination == null)
-            {
-                return;
-            }
-
-            if (destination.propertyType == SerializedPropertyType.ManagedReference)
-            {
-                destination.managedReferenceValue = value;
-                return;
-            }
-
-            if (destination.propertyType != SerializedPropertyType.Generic)
-            {
-                return;
-            }
-
-            if (value == null)
-            {
-                ClearComplexProperty(destination, valueType);
-                return;
-            }
-
-            foreach (FieldInfo field in GetSerializableFields(valueType))
-            {
-                SerializedProperty child = destination.FindPropertyRelative(field.Name);
-                if (child == null)
-                {
-                    continue;
-                }
-
-                object fieldValue = field.GetValue(value);
-                SetPropertyValue(child, fieldValue, field.FieldType);
-            }
-        }
-
         private static object CopyComplexValueFromProperty(
             SerializedProperty source,
             Type valueType
@@ -4207,37 +4123,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return instance;
         }
 
-        private static void ClearComplexProperty(SerializedProperty property, Type type)
-        {
-            if (property == null || type == null)
-            {
-                return;
-            }
-
-            if (property.propertyType == SerializedPropertyType.ManagedReference)
-            {
-                property.managedReferenceValue = null;
-                return;
-            }
-
-            if (property.propertyType != SerializedPropertyType.Generic)
-            {
-                return;
-            }
-
-            foreach (FieldInfo field in GetSerializableFields(type))
-            {
-                SerializedProperty child = property.FindPropertyRelative(field.Name);
-                if (child == null)
-                {
-                    continue;
-                }
-
-                object defaultValue = GetDefaultValue(field.FieldType);
-                SetPropertyValue(child, defaultValue, field.FieldType);
-            }
-        }
-
         private static IEnumerable<FieldInfo> GetSerializableFields(Type type)
         {
             if (type == null)
@@ -4254,9 +4139,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             while (current != null && current != typeof(object))
             {
                 FieldInfo[] fields = current.GetFields(Flags);
-                for (int index = 0; index < fields.Length; index++)
+                foreach (FieldInfo field in fields)
                 {
-                    FieldInfo field = fields[index];
                     if (field.IsStatic || field.IsInitOnly || field.IsLiteral)
                     {
                         continue;
@@ -4269,10 +4153,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     if (
                         !field.IsPublic
-                        && !ReflectionHelpers.HasAttributeSafe<SerializeFieldAttribute>(
-                            field,
-                            inherit: true
-                        )
+                        && !ReflectionHelpers.HasAttributeSafe<SerializeField>(field, inherit: true)
                     )
                     {
                         continue;
@@ -4359,7 +4240,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static bool ValuesEqual(object left, object right)
         {
-            if (left is UnityEngine.Object leftObj && right is UnityEngine.Object rightObj)
+            if (left is Object leftObj && right is Object rightObj)
             {
                 if (leftObj == null && rightObj == null)
                 {
@@ -4538,11 +4419,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public bool TryGetInfo(int arrayIndex, out NullKeyInfo info)
             {
                 return _nullLookup.TryGetValue(arrayIndex, out info);
-            }
-
-            public bool ContainsIndex(int arrayIndex)
-            {
-                return _nullIndices.Contains(arrayIndex);
             }
         }
 
@@ -4750,9 +4626,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     y = null;
                 }
 
-                if (x is UnityEngine.Object xObj)
+                if (x is Object xObj)
                 {
-                    if (y is UnityEngine.Object yObj)
+                    if (y is Object yObj)
                     {
                         return xObj == yObj;
                     }
@@ -4760,7 +4636,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return false;
                 }
 
-                if (y is UnityEngine.Object)
+                if (y is Object)
                 {
                     return false;
                 }
@@ -4780,7 +4656,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return 0;
                 }
 
-                if (obj is UnityEngine.Object objObj && objObj == null)
+                if (obj is Object objObj && objObj == null)
                 {
                     return 0;
                 }
@@ -4792,9 +4668,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static void SyncRuntimeDictionary(SerializedProperty dictionaryProperty)
         {
             SerializedObject serializedObject = dictionaryProperty.serializedObject;
-            UnityEngine.Object[] targets = serializedObject.targetObjects;
+            Object[] targets = serializedObject.targetObjects;
 
-            foreach (UnityEngine.Object target in targets)
+            foreach (Object target in targets)
             {
                 object dictionaryInstance = GetTargetObjectOfProperty(
                     target,
@@ -4889,7 +4765,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 if (index >= 0)
                 {
-                    if (current is System.Collections.IList list)
+                    if (current is IList list)
                     {
                         if (index >= list.Count)
                         {

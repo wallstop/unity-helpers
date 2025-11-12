@@ -103,12 +103,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
-            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
-                SerializableDictionarySerializedPropertyNames.Keys
-            );
-            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
-                SerializableDictionarySerializedPropertyNames.Values
-            );
 
             SerializableDictionaryPropertyDrawer drawer = new();
 
@@ -116,7 +110,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 drawer.GetOrCreatePaginationState(dictionaryProperty);
             pagination.pageSize = 512;
 
-            drawer.GetOrCreateList(dictionaryProperty, keysProperty, valuesProperty);
+            drawer.GetOrCreateList(dictionaryProperty);
 
             Assert.AreEqual(SerializableDictionaryPropertyDrawer.MaxPageSize, pagination.pageSize);
         }
@@ -140,11 +134,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             SerializableDictionaryPropertyDrawer drawer = new();
-            ReorderableList list = drawer.GetOrCreateList(
-                dictionaryProperty,
-                keysProperty,
-                valuesProperty
-            );
+            ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
 
             Assert.IsNotNull(
                 list.elementHeightCallback,
@@ -249,9 +239,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
                 SerializableDictionarySerializedPropertyNames.Keys
             );
-            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
-                SerializableDictionarySerializedPropertyNames.Values
-            );
 
             SerializableDictionaryPropertyDrawer drawer = new();
 
@@ -260,11 +247,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             pagination.pageSize = 10;
             pagination.pageIndex = 0;
 
-            ReorderableList list = drawer.GetOrCreateList(
-                dictionaryProperty,
-                keysProperty,
-                valuesProperty
-            );
+            ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
 
             string listKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
 
@@ -315,16 +298,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
                 SerializableDictionarySerializedPropertyNames.Keys
             );
-            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
-                SerializableDictionarySerializedPropertyNames.Values
-            );
 
             SerializableDictionaryPropertyDrawer drawer = new();
 
             SerializableDictionaryPropertyDrawer.PaginationState pagination =
                 drawer.GetOrCreatePaginationState(dictionaryProperty);
 
-            drawer.GetOrCreateList(dictionaryProperty, keysProperty, valuesProperty);
+            drawer.GetOrCreateList(dictionaryProperty);
 
             string listKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
 
@@ -373,11 +353,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             pagination.pageIndex = 2;
             pagination.selectedIndex = 25;
 
-            ReorderableList list = drawer.GetOrCreateList(
-                dictionaryProperty,
-                keysProperty,
-                valuesProperty
-            );
+            ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
 
             string listKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
             SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
@@ -484,15 +460,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 drawer.GetOrCreatePaginationState(dictionaryProperty);
             pagination.selectedIndex = 0;
 
-            ReorderableList list = drawer.GetOrCreateList(
-                dictionaryProperty,
-                keysProperty,
-                valuesProperty
-            );
-            string listKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
-
-            Func<SerializableDictionaryPropertyDrawer.ListPageCache> cacheProvider = () =>
-                drawer.EnsurePageCache(listKey, keysProperty, pagination);
+            ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
 
             drawer.SortDictionaryEntries(
                 dictionaryProperty,
@@ -651,11 +619,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.That(host.dictionary.Count, Is.EqualTo(1));
             Assert.That(host.dictionary.ContainsKey("Alert"), Is.True);
 
-            ReorderableList list = drawer.GetOrCreateList(
-                dictionaryProperty,
-                keysProperty,
-                valuesProperty
-            );
+            ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
             Assert.That(list.count, Is.EqualTo(1));
         }
 
@@ -750,11 +714,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             SerializableDictionaryPropertyDrawer drawer = new();
-            ReorderableList initialList = drawer.GetOrCreateList(
-                dictionaryProperty,
-                keysProperty,
-                valuesProperty
-            );
+            ReorderableList initialList = drawer.GetOrCreateList(dictionaryProperty);
             Assert.IsNotNull(initialList, "Initial call should create a ReorderableList instance.");
             Assert.That(initialList.count, Is.EqualTo(0));
 
@@ -782,11 +742,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableDictionarySerializedPropertyNames.Values
             );
 
-            ReorderableList refreshedList = drawer.GetOrCreateList(
-                dictionaryProperty,
-                keysProperty,
-                valuesProperty
-            );
+            ReorderableList refreshedList = drawer.GetOrCreateList(dictionaryProperty);
             Assert.IsNotNull(refreshedList);
             Assert.AreNotSame(
                 initialList,
@@ -796,9 +752,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.That(refreshedList.count, Is.EqualTo(1));
 
             float resolvedHeight =
-                refreshedList.elementHeightCallback != null
-                    ? refreshedList.elementHeightCallback.Invoke(0)
-                    : refreshedList.elementHeight;
+                refreshedList.elementHeightCallback?.Invoke(0) ?? refreshedList.elementHeight;
             Assert.That(
                 resolvedHeight,
                 Is.GreaterThan(0f),

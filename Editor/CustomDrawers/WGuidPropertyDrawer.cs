@@ -152,18 +152,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            if (!System.Guid.TryParse(trimmed, out _))
+            if (!Guid.TryParse(trimmed, out _))
             {
                 state.hasPendingInvalid = true;
-                state.warningMessage = $"Enter a valid {nameof(System.Guid)} string.";
+                state.warningMessage = $"Enter a valid {nameof(Guid)} string.";
                 return;
             }
 
             if (!WGuid.TryParse(trimmed, out WGuid parsed))
             {
                 state.hasPendingInvalid = true;
-                state.warningMessage =
-                    $"{nameof(WGuid)} expects a version 4 {nameof(System.Guid)}.";
+                state.warningMessage = $"{nameof(WGuid)} expects a version 4 {nameof(Guid)}.";
                 return;
             }
 

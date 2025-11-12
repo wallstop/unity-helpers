@@ -24,7 +24,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void FlagEnumOptionsIncludeDiscreteValues()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -69,7 +69,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void FlagEnumToggleMutatesMask()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -97,7 +97,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void FlagEnumSelectAllAndNoneOperate()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -136,7 +136,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void StandardEnumHonorsSingleSelection()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -172,7 +172,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void IntDropdownOptionsRespectSelection()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -198,7 +198,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void StringInListOptionsRespectSelection()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -224,7 +224,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void ValueDropdownOptionsPopulateAndSelect()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -250,7 +250,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void PaginationStateClampsIndicesAndUpdatesVisibleCount()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -271,11 +271,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 );
             Assert.NotNull(attribute);
 
-            int pageSize;
             bool shouldPaginate = WEnumToggleButtonsUtility.ShouldPaginate(
                 attribute,
                 toggleSet.Options.Count,
-                out pageSize
+                out int pageSize
             );
             Assert.True(shouldPaginate);
             Assert.AreEqual(attribute.PageSize, pageSize);
@@ -309,7 +308,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void DisablePaginationAttributePreventsPagination()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -326,11 +325,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.NotNull(attribute);
 
             ToggleSet toggleSet = WEnumToggleButtonsUtility.CreateToggleSet(property, fieldInfo);
-            int pageSize;
             bool shouldPaginate = WEnumToggleButtonsUtility.ShouldPaginate(
                 attribute,
                 toggleSet.Options.Count,
-                out pageSize
+                out int pageSize
             );
             Assert.False(shouldPaginate);
             Assert.Greater(pageSize, 0);
@@ -341,7 +339,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
             asset.paginatedInt = 8;
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -360,11 +358,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 );
             Assert.NotNull(attribute);
 
-            int pageSize;
             bool usePagination = WEnumToggleButtonsUtility.ShouldPaginate(
                 attribute,
                 toggleSet.Options.Count,
-                out pageSize
+                out int pageSize
             );
             Assert.True(usePagination);
 
@@ -388,7 +385,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
             asset.paginatedInt = 2;
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -408,7 +405,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
             asset.paginatedInt = 8;
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -567,7 +564,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             [WEnumToggleButtons(PageSize = 6)]
             [IntDropdown(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)]
-            public int paginatedInt = 0;
+            public int paginatedInt;
 
             [WEnumToggleButtons(EnablePagination = false)]
             [StringInList("Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta")]
@@ -593,7 +590,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             {
                 internal static IEnumerable<int> GetPriorityEntries()
                 {
-                    return new int[] { 1, 2, 3 };
+                    return new[] { 1, 2, 3 };
                 }
             }
         }
