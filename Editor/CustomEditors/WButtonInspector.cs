@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
+    using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
 
     [CustomEditor(typeof(UnityEngine.Object), true)]
     [CanEditMultipleObjects]
@@ -13,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     {
         private readonly Dictionary<int, WButtonPaginationState> _paginationStates = new();
         private readonly Dictionary<int, bool> _foldoutStates = new();
+        private readonly Dictionary<int, bool> _groupFoldoutStates = new();
 
         public override void OnInspectorGUI()
         {
@@ -54,17 +56,27 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 EditorGUILayout.Space();
             }
 
-            SerializedProperty iterator = serializedObject.GetIterator();
-            bool enterChildren = true;
-            while (iterator.NextVisible(enterChildren))
+            string scriptPathOrNull = scriptPath;
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, scriptPathOrNull);
+            IReadOnlyList<WGroupDrawOperation> operations = layout.Operations;
+
+            for (int index = 0; index < operations.Count; index++)
             {
-                enterChildren = false;
-                if (!string.IsNullOrEmpty(scriptPath) && iterator.propertyPath == scriptPath)
+                WGroupDrawOperation operation = operations[index];
+                if (operation.Type == WGroupDrawOperationType.Group)
+                {
+                    WGroupDefinition definition = operation.Group;
+                    WGroupGUI.DrawGroup(definition, serializedObject, _groupFoldoutStates);
+                    continue;
+                }
+
+                SerializedProperty property = serializedObject.FindProperty(operation.PropertyPath);
+                if (property == null)
                 {
                     continue;
                 }
 
-                EditorGUILayout.PropertyField(iterator, true);
+                EditorGUILayout.PropertyField(property, true);
             }
 
             serializedObject.ApplyModifiedProperties();

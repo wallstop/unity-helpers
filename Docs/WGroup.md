@@ -1,0 +1,49 @@
+# WGroup Inspector Groups
+
+`WGroupAttribute` provides Odin-like boxed group rendering for serialized fields without the boilerplate of repeating attributes for every member. Inspector groups can expand automatically, inherit palette colors, and opt into collapsible headers.
+
+## Usage
+
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public sealed class CharacterStats : MonoBehaviour
+{
+    [WGroup("Vitals", autoIncludeCount: WGroupAttribute.InfiniteAutoInclude, collapsible: true)]
+    public int health;
+
+    public int stamina;
+
+    [WGroupEnd]
+    public int mana;
+
+    [WGroup("Equipment", autoIncludeCount: 1, colorKey: "Loot")]
+    public string primaryWeapon;
+
+    public string secondaryWeapon;
+}
+```
+
+- Fields marked with `[WGroup]` define the first member of a group. The next serialized members are automatically captured up to the configured limit.
+- When auto-including infinitely, add `[WGroupEnd]` to the member that should terminate grouping.
+- Applying `[WGroup]` again later in the type merges the members into the existing group and resets the auto-include budget.
+- Set `hideHeader: true` to render a border without a header label.
+
+## Project Settings defaults
+
+`Project Settings → Wallstop Studios → Unity Helpers` exposes **WGroup Auto Include Mode**:
+
+- **None** – only annotated members are grouped.
+- **Finite** – automatically include the configured number of subsequent members.
+- **Infinite** – keep including members until reaching `[WGroupEnd]` or another group declaration.
+
+Per-attribute `autoIncludeCount` overrides the global mode. Use `WGroupAttribute.InfiniteAutoInclude` for local infinite groups or `0` to disable extension for a specific declaration.
+
+## Color palette integration
+
+Group headers use a dedicated WGroup palette that mirrors the WButton defaults. Leaving `colorKey` unset renders the group with the global default color (same background/text pairing as buttons). Supplying a `colorKey` registers that entry in **Project Settings → Wallstop Studios → Unity Helpers → WGroup Custom Colors**, where you can author background and text swatches. New keys receive palette-suggested colors automatically so you can refine them later.
+
+## Compatibility
+
+WGroup operates at the inspector level, so existing property drawers and custom inspectors continue to work. Groups appear in the order of their first declaration, and operations like multi-object editing remain supported.

@@ -420,6 +420,66 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 settings.SaveSettings();
             }
         }
+
+        [Test]
+        public void WGroupAutoIncludeConfigurationClampsToBounds()
+        {
+            UnityHelpersSettings.WGroupAutoIncludeConfiguration original =
+                UnityHelpersSettings.GetWGroupAutoIncludeConfiguration();
+
+            try
+            {
+                UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
+                    UnityHelpersSettings.WGroupAutoIncludeMode.Finite,
+                    1000
+                );
+
+                UnityHelpersSettings.WGroupAutoIncludeConfiguration configuration =
+                    UnityHelpersSettings.GetWGroupAutoIncludeConfiguration();
+
+                Assert.AreEqual(
+                    UnityHelpersSettings.WGroupAutoIncludeMode.Finite,
+                    configuration.Mode
+                );
+                Assert.AreEqual(
+                    UnityHelpersSettings.MaxWGroupAutoIncludeRowCount,
+                    configuration.RowCount
+                );
+            }
+            finally
+            {
+                UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
+                    original.Mode,
+                    original.RowCount
+                );
+            }
+        }
+
+        [Test]
+        public void ResolveWGroupColorKeyEnsuresPaletteEntry()
+        {
+            const string PaletteKey = "EditorTestGroupPaletteKey";
+            string resolved = UnityHelpersSettings.EnsureWGroupColorKey(PaletteKey);
+            Assert.IsNotNull(resolved);
+            Assert.IsTrue(UnityHelpersSettings.HasWGroupPaletteColorKey(resolved));
+            UnityHelpersSettings.WGroupPaletteEntry entry =
+                UnityHelpersSettings.ResolveWGroupPalette(resolved);
+            Assert.Greater(entry.BackgroundColor.a, 0f);
+        }
+
+        [Test]
+        public void ResolveWGroupPaletteFallsBackToDefault()
+        {
+            UnityHelpersSettings.WGroupPaletteEntry groupEntry =
+                UnityHelpersSettings.ResolveWGroupPalette(null);
+            UnityHelpersSettings.WButtonPaletteEntry buttonEntry =
+                UnityHelpersSettings.ResolveWButtonPalette(
+                    UnityHelpersSettings.DefaultWButtonColorKey
+                );
+
+            Assert.AreEqual(buttonEntry.ButtonColor, groupEntry.BackgroundColor);
+            Assert.AreEqual(buttonEntry.TextColor, groupEntry.TextColor);
+        }
     }
 }
 #endif
