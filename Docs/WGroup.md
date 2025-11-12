@@ -42,7 +42,12 @@ Per-attribute `autoIncludeCount` overrides the global mode. Use `WGroupAttribute
 
 ## Color palette integration
 
-Group headers use a dedicated WGroup palette that mirrors the WButton defaults. Leaving `colorKey` unset renders the group with the global default color (same background/text pairing as buttons). Supplying a `colorKey` registers that entry in **Project Settings → Wallstop Studios → Unity Helpers → WGroup Custom Colors**, where you can author background and text swatches. New keys receive palette-suggested colors automatically so you can refine them later.
+Group headers use a dedicated WGroup palette:
+
+- Omitting `colorKey` resolves to a theme-aware default (`Default`), producing a subtle Unity-style frame in both light and dark editors.
+- Two editable entries (`Default-Light`, `Default-Dark`) back those defaults so you can tweak each theme independently.
+- The vibrant blue style that shipped initially now lives under `WDefault`; apply that key to keep the saturated accent.
+- Additional keys register automatically in **Project Settings → Wallstop Studios → Unity Helpers → WGroup Custom Colors**. New entries receive suggested colours and readable text, and you can adjust them at any time.
 
 ## Compatibility
 

@@ -472,13 +472,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         {
             UnityHelpersSettings.WGroupPaletteEntry groupEntry =
                 UnityHelpersSettings.ResolveWGroupPalette(null);
-            UnityHelpersSettings.WButtonPaletteEntry buttonEntry =
-                UnityHelpersSettings.ResolveWButtonPalette(
-                    UnityHelpersSettings.DefaultWButtonColorKey
-                );
+            Color expectedBackground = EditorGUIUtility.isProSkin
+                ? new Color(0.215f, 0.215f, 0.215f, 1f)
+                : new Color(0.90f, 0.90f, 0.90f, 1f);
+            Color expectedText = EditorGUIUtility.isProSkin ? Color.white : Color.black;
 
-            Assert.AreEqual(buttonEntry.ButtonColor, groupEntry.BackgroundColor);
-            Assert.AreEqual(buttonEntry.TextColor, groupEntry.TextColor);
+            AssertColorsApproximately(expectedBackground, groupEntry.BackgroundColor);
+            AssertColorsApproximately(expectedText, groupEntry.TextColor);
+        }
+
+        private static void AssertColorsApproximately(
+            Color expected,
+            Color actual,
+            float tolerance = 0.01f
+        )
+        {
+            Assert.That(Mathf.Abs(expected.r - actual.r), Is.LessThanOrEqualTo(tolerance));
+            Assert.That(Mathf.Abs(expected.g - actual.g), Is.LessThanOrEqualTo(tolerance));
+            Assert.That(Mathf.Abs(expected.b - actual.b), Is.LessThanOrEqualTo(tolerance));
+            Assert.That(Mathf.Abs(expected.a - actual.a), Is.LessThanOrEqualTo(tolerance));
         }
     }
 }

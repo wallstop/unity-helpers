@@ -23,17 +23,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             UnityHelpersSettings.WGroupPaletteEntry palette =
                 UnityHelpersSettings.ResolveWGroupPalette(definition.ColorKey);
 
-            using (
-                EditorGUILayout.VerticalScope scope = new EditorGUILayout.VerticalScope(
-                    WGroupStyles.ContainerStyle
-                )
-            )
+            Rect scopeRect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            if (Event.current.type == EventType.Repaint)
             {
-                if (Event.current.type == EventType.Repaint)
-                {
-                    WGroupStyles.DrawContainerBackground(scope.rect, palette.BackgroundColor);
-                }
+                Rect backgroundRect = scopeRect;
+                backgroundRect.xMin += 2f;
+                backgroundRect.xMax -= 2f;
+                backgroundRect.yMin += 2f;
+                backgroundRect.yMax -= 2f;
+                EditorGUI.DrawRect(backgroundRect, palette.BackgroundColor);
+            }
 
+            {
                 bool expanded = true;
                 bool allowHeader = !definition.HideHeader;
                 if (definition.Collapsible && allowHeader)
@@ -47,7 +48,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
                 if (expanded)
                 {
-                    EditorGUILayout.Space(2f);
+                    if (allowHeader)
+                    {
+                        EditorGUILayout.Space(2f);
+                    }
                     EditorGUI.indentLevel++;
                     IReadOnlyList<string> propertyPaths = definition.PropertyPaths;
                     for (int index = 0; index < propertyPaths.Count; index++)
@@ -65,6 +69,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 }
             }
 
+            EditorGUILayout.EndVertical();
             EditorGUILayout.Space(6f);
         }
 
@@ -113,14 +118,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             return expanded;
         }
 
-        private static void DrawHeader(
+        private static Rect DrawHeader(
             string displayName,
             UnityHelpersSettings.WGroupPaletteEntry palette
         )
         {
             if (string.IsNullOrEmpty(displayName))
             {
-                return;
+                return Rect.zero;
             }
 
             GUIContent content = EditorGUIUtility.TrTextContent(displayName);
@@ -133,6 +138,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             WGroupStyles.DrawHeaderBackground(labelRect, palette.BackgroundColor);
             GUI.Label(labelRect, content, labelStyle);
             GUILayout.Space(2f);
+            return labelRect;
         }
     }
 
@@ -140,25 +146,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
     {
         private static readonly Dictionary<Color, GUIStyle> FoldoutStyles = new();
         private static readonly Dictionary<Color, GUIStyle> HeaderStyles = new();
-
-        private static GUIStyle _containerStyle;
-
-        internal static GUIStyle ContainerStyle
-        {
-            get
-            {
-                if (_containerStyle == null)
-                {
-                    _containerStyle = new GUIStyle(EditorStyles.helpBox)
-                    {
-                        padding = new RectOffset(0, 0, 6, 6),
-                        margin = new RectOffset(4, 4, 4, 4),
-                    };
-                }
-
-                return _containerStyle;
-            }
-        }
 
         internal static GUIStyle GetFoldoutStyle(Color textColor)
         {
@@ -198,28 +185,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             return style;
         }
 
-        internal static void DrawContainerBackground(Rect rect, Color baseColor)
-        {
-            if (Event.current.type != EventType.Repaint)
-            {
-                return;
-            }
-
-            Rect backgroundRect = rect;
-            backgroundRect.xMin += 1f;
-            backgroundRect.xMax -= 1f;
-            backgroundRect.yMin += 1f;
-            backgroundRect.yMax -= 1f;
-
-            if (backgroundRect.width <= 0f || backgroundRect.height <= 0f)
-            {
-                return;
-            }
-
-            Color tinted = GetContainerTint(baseColor);
-            EditorGUI.DrawRect(backgroundRect, tinted);
-        }
-
         internal static void DrawHeaderBackground(Rect rect, Color baseColor)
         {
             if (Event.current.type != EventType.Repaint)
@@ -229,13 +194,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
             Color tinted = GetHeaderTint(baseColor);
             EditorGUI.DrawRect(rect, tinted);
-        }
-
-        private static Color GetContainerTint(Color baseColor)
-        {
-            Color tinted = baseColor;
-            tinted.a = 1f;
-            return tinted;
         }
 
         private static Color GetHeaderTint(Color baseColor)

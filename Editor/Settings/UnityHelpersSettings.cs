@@ -34,9 +34,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const int MaxWButtonHistorySize = 10;
         public const string DefaultWButtonColorKey = "Default";
         public const string DefaultWGroupColorKey = "Default";
+        public const string WGroupLightThemeColorKey = "Default-Light";
+        public const string WGroupDarkThemeColorKey = "Default-Dark";
+        public const string WGroupLegacyColorKey = "WDefault";
         public const int DefaultWGroupAutoIncludeRowCount = 4;
         public const int MinWGroupAutoIncludeRowCount = 0;
         public const int MaxWGroupAutoIncludeRowCount = 32;
+        private static readonly Color DefaultLightThemeGroupBackground = new(
+            0.90f,
+            0.90f,
+            0.90f,
+            1f
+        );
+        private static readonly Color DefaultDarkThemeGroupBackground = new(
+            0.215f,
+            0.215f,
+            0.215f,
+            1f
+        );
 
         [System.Obsolete("Use DefaultWButtonColorKey instead.")]
         public const string DefaultWButtonPriority = DefaultWButtonColorKey;
@@ -1053,18 +1068,44 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
             bool changed = false;
 
-            if (!ContainsWGroupColorKey(DefaultWGroupColorKey))
+            if (
+                wgroupCustomColors.TryGetValue(
+                    DefaultWGroupColorKey,
+                    out WGroupCustomColor legacyDefault
+                )
+            )
             {
-                WGroupCustomColor defaultColor = new()
+                if (!wgroupCustomColors.ContainsKey(WGroupLegacyColorKey))
+                {
+                    wgroupCustomColors[WGroupLegacyColorKey] = legacyDefault;
+                }
+                wgroupCustomColors.Remove(DefaultWGroupColorKey);
+                changed = true;
+            }
+
+            if (!wgroupCustomColors.ContainsKey(WGroupLegacyColorKey))
+            {
+                WGroupCustomColor legacyColor = new()
                 {
                     BackgroundColor = DefaultColorKeyButtonColor,
                     TextColor = WButtonColorUtility.GetReadableTextColor(
                         DefaultColorKeyButtonColor
                     ),
                 };
-                wgroupCustomColors[DefaultWGroupColorKey] = defaultColor;
+                wgroupCustomColors[WGroupLegacyColorKey] = legacyColor;
                 changed = true;
             }
+
+            changed |= EnsureThemeEntry(
+                WGroupLightThemeColorKey,
+                DefaultLightThemeGroupBackground,
+                Color.black
+            );
+            changed |= EnsureThemeEntry(
+                WGroupDarkThemeColorKey,
+                DefaultDarkThemeGroupBackground,
+                Color.white
+            );
 
             int paletteIndex = 0;
             foreach (KeyValuePair<string, WGroupCustomColor> entry in wgroupCustomColors)
@@ -1077,6 +1118,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     value.BackgroundColor = DefaultColorKeyButtonColor;
                     value.EnsureReadableText();
                     changed = true;
+                }
+
+                if (IsReservedWGroupColorKey(entry.Key))
+                {
+                    value.EnsureReadableText();
+                    continue;
                 }
 
                 bool needsSuggestion =
@@ -1107,6 +1154,59 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             return changed;
+        }
+
+        private bool EnsureThemeEntry(string key, Color background, Color defaultText)
+        {
+            if (
+                wgroupCustomColors.TryGetValue(key, out WGroupCustomColor existing)
+                && existing != null
+            )
+            {
+                existing.EnsureReadableText();
+                return false;
+            }
+
+            WGroupCustomColor themeColor = new()
+            {
+                BackgroundColor = background,
+                TextColor =
+                    defaultText.maxColorComponent <= 0f
+                        ? WButtonColorUtility.GetReadableTextColor(background)
+                        : defaultText,
+            };
+            themeColor.EnsureReadableText();
+            wgroupCustomColors[key] = themeColor;
+            return true;
+        }
+
+        private static bool IsReservedWGroupColorKey(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                return true;
+            }
+
+            return string.Equals(
+                    key,
+                    DefaultWGroupColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+                || string.Equals(
+                    key,
+                    WGroupLightThemeColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+                || string.Equals(
+                    key,
+                    WGroupDarkThemeColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+                || string.Equals(
+                    key,
+                    WGroupLegacyColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                );
         }
 
         private bool ContainsColorKey(string colorKey)
@@ -1218,7 +1318,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         {
             if (string.IsNullOrWhiteSpace(colorKey))
             {
-                return null;
+                return DefaultWGroupColorKey;
+            }
+
+            if (IsReservedWGroupColorKey(colorKey))
+            {
+                return NormalizeWGroupColorKey(colorKey);
             }
 
             EnsureWGroupCustomColorDefaults();
@@ -1262,14 +1367,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         private bool ContainsWGroupColorKey(string colorKey)
         {
+            if (string.IsNullOrWhiteSpace(colorKey))
+            {
+                return true;
+            }
+
+            if (IsReservedWGroupColorKey(colorKey))
+            {
+                return true;
+            }
+
             if (wgroupCustomColors == null || wgroupCustomColors.Count == 0)
             {
                 return false;
             }
 
-            string normalized = string.IsNullOrWhiteSpace(colorKey)
-                ? DefaultWGroupColorKey
-                : colorKey.Trim();
+            string normalized = colorKey.Trim();
 
             foreach (string existingKey in wgroupCustomColors.Keys)
             {
@@ -1290,9 +1403,48 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         private string NormalizeWGroupColorKey(string colorKey)
         {
-            string normalized = string.IsNullOrWhiteSpace(colorKey)
-                ? DefaultWGroupColorKey
-                : colorKey.Trim();
+            if (string.IsNullOrWhiteSpace(colorKey))
+            {
+                return DefaultWGroupColorKey;
+            }
+
+            if (IsReservedWGroupColorKey(colorKey))
+            {
+                if (
+                    string.Equals(
+                        colorKey,
+                        WGroupLightThemeColorKey,
+                        System.StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    return WGroupLightThemeColorKey;
+                }
+
+                if (
+                    string.Equals(
+                        colorKey,
+                        WGroupDarkThemeColorKey,
+                        System.StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    return WGroupDarkThemeColorKey;
+                }
+
+                if (
+                    string.Equals(
+                        colorKey,
+                        WGroupLegacyColorKey,
+                        System.StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    return WGroupLegacyColorKey;
+                }
+
+                return DefaultWGroupColorKey;
+            }
 
             if (wgroupCustomColors != null)
             {
@@ -1301,7 +1453,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     if (
                         string.Equals(
                             existingKey,
-                            normalized,
+                            colorKey.Trim(),
                             System.StringComparison.OrdinalIgnoreCase
                         )
                     )
@@ -1311,7 +1463,44 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 }
             }
 
-            return normalized;
+            return colorKey.Trim();
+        }
+
+        private WGroupPaletteEntry GetThemeAwareDefaultGroupPalette()
+        {
+            string themeKey = EditorGUIUtility.isProSkin
+                ? WGroupDarkThemeColorKey
+                : WGroupLightThemeColorKey;
+            Color fallbackBackground = EditorGUIUtility.isProSkin
+                ? DefaultDarkThemeGroupBackground
+                : DefaultLightThemeGroupBackground;
+            Color fallbackText = EditorGUIUtility.isProSkin ? Color.white : Color.black;
+            return GetThemePaletteEntry(themeKey, fallbackBackground, fallbackText);
+        }
+
+        private WGroupPaletteEntry GetThemePaletteEntry(
+            string key,
+            Color fallbackBackground,
+            Color fallbackText
+        )
+        {
+            EnsureWGroupCustomColorDefaults();
+
+            if (
+                wgroupCustomColors != null
+                && wgroupCustomColors.TryGetValue(key, out WGroupCustomColor value)
+                && value != null
+            )
+            {
+                value.EnsureReadableText();
+                return new WGroupPaletteEntry(value.BackgroundColor, value.TextColor);
+            }
+
+            Color readableText =
+                fallbackText.maxColorComponent <= 0f
+                    ? WButtonColorUtility.GetReadableTextColor(fallbackBackground)
+                    : fallbackText;
+            return new WGroupPaletteEntry(fallbackBackground, readableText);
         }
 
         private WGroupPaletteEntry GetWGroupPaletteEntry(string colorKey)
@@ -1320,20 +1509,59 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
             string normalized = NormalizeWGroupColorKey(colorKey);
 
-            if (wgroupCustomColors != null && wgroupCustomColors.Count > 0)
-            {
-                if (
-                    wgroupCustomColors.TryGetValue(normalized, out WGroupCustomColor directValue)
-                    && directValue != null
+            if (
+                string.Equals(
+                    normalized,
+                    DefaultWGroupColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
                 )
-                {
-                    directValue.EnsureReadableText();
-                    return new WGroupPaletteEntry(
-                        directValue.BackgroundColor,
-                        directValue.TextColor
-                    );
-                }
+            )
+            {
+                return GetThemeAwareDefaultGroupPalette();
+            }
 
+            if (
+                string.Equals(
+                    normalized,
+                    WGroupLightThemeColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                return GetThemePaletteEntry(
+                    WGroupLightThemeColorKey,
+                    DefaultLightThemeGroupBackground,
+                    Color.black
+                );
+            }
+
+            if (
+                string.Equals(
+                    normalized,
+                    WGroupDarkThemeColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                return GetThemePaletteEntry(
+                    WGroupDarkThemeColorKey,
+                    DefaultDarkThemeGroupBackground,
+                    Color.white
+                );
+            }
+
+            if (
+                wgroupCustomColors != null
+                && wgroupCustomColors.TryGetValue(normalized, out WGroupCustomColor directValue)
+                && directValue != null
+            )
+            {
+                directValue.EnsureReadableText();
+                return new WGroupPaletteEntry(directValue.BackgroundColor, directValue.TextColor);
+            }
+
+            if (wgroupCustomColors != null)
+            {
                 foreach (KeyValuePair<string, WGroupCustomColor> entry in wgroupCustomColors)
                 {
                     if (
@@ -1354,20 +1582,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 }
             }
 
-            if (
-                !string.Equals(
-                    normalized,
-                    DefaultWGroupColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
-                )
-            )
-            {
-                return GetWGroupPaletteEntry(DefaultWGroupColorKey);
-            }
-
-            Color fallbackBackground = DefaultColorKeyButtonColor;
-            Color fallbackText = WButtonColorUtility.GetReadableTextColor(fallbackBackground);
-            return new WGroupPaletteEntry(fallbackBackground, fallbackText);
+            return GetThemeAwareDefaultGroupPalette();
         }
 
         private static void DrawSerializableTypeIgnorePatterns(
