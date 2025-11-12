@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEngine;
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     [CustomPropertyDrawer(typeof(WInLineEditorAttribute))]
     public sealed class WInLineEditorPropertyDrawer : PropertyDrawer
@@ -23,7 +24,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             FieldInfo resolvedFieldInfo = fieldInfo ?? ResolveFieldInfo(property);
             WInLineEditorAttribute inlineAttribute =
                 attribute as WInLineEditorAttribute
-                ?? resolvedFieldInfo?.GetCustomAttribute<WInLineEditorAttribute>();
+                ?? ReflectionHelpers.GetAttributeSafe<WInLineEditorAttribute>(
+                    resolvedFieldInfo,
+                    inherit: true
+                );
 
             if (
                 inlineAttribute == null

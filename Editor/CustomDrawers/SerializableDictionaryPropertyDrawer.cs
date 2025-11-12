@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
 
     [CustomPropertyDrawer(typeof(SerializableDictionary<,>), true)]
@@ -4266,7 +4267,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         continue;
                     }
 
-                    if (!field.IsPublic && field.GetCustomAttribute<SerializeField>() == null)
+                    if (
+                        !field.IsPublic
+                        && !ReflectionHelpers.HasAttributeSafe<SerializeFieldAttribute>(
+                            field,
+                            inherit: true
+                        )
+                    )
                     {
                         continue;
                     }

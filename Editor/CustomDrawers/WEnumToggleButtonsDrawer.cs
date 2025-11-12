@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
 
     [CustomPropertyDrawer(typeof(WEnumToggleButtonsAttribute))]
@@ -63,7 +64,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 extraToolbarHeight = EditorGUIUtility.singleLineHeight + ToolbarSpacing;
             }
 
-            WEnumToggleButtonsUtility.ResolvePageSize(toggleAttribute);
             bool usePagination = WEnumToggleButtonsUtility.ShouldPaginate(
                 toggleAttribute,
                 toggleSet.Options.Count,
@@ -1090,13 +1090,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static TAttribute GetAttribute<TAttribute>(FieldInfo fieldInfo)
             where TAttribute : Attribute
         {
-            object[] attributes = fieldInfo.GetCustomAttributes(typeof(TAttribute), true);
-            if (attributes.Length == 0)
+            return ReflectionHelpers.GetAttributeSafe<TAttribute>(fieldInfo, true);
+        }
+
+        private readonly struct SelectionSummary
+        {
+            internal static SelectionSummary None { get; } =
+                new SelectionSummary(false, GUIContent.none);
+
+            internal SelectionSummary(bool hasSummary, GUIContent content)
             {
-                return null;
+                HasSummary = hasSummary;
+                Content = content ?? GUIContent.none;
             }
 
-            return attributes[0] as TAttribute;
+            internal bool HasSummary { get; }
+
+            internal GUIContent Content { get; }
         }
     }
 

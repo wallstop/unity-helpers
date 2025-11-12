@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Tests.Utils;
 
@@ -264,7 +265,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             FieldInfo fieldInfo = GetFieldInfo(nameof(ToggleTestAsset.paginatedInt));
             WEnumToggleButtonsAttribute attribute =
-                fieldInfo.GetCustomAttribute<WEnumToggleButtonsAttribute>();
+                ReflectionHelpers.GetAttributeSafe<WEnumToggleButtonsAttribute>(
+                    fieldInfo,
+                    inherit: true
+                );
             Assert.NotNull(attribute);
 
             int pageSize;
@@ -315,7 +319,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             FieldInfo fieldInfo = GetFieldInfo(nameof(ToggleTestAsset.noPaginationState));
             WEnumToggleButtonsAttribute attribute =
-                fieldInfo.GetCustomAttribute<WEnumToggleButtonsAttribute>();
+                ReflectionHelpers.GetAttributeSafe<WEnumToggleButtonsAttribute>(
+                    fieldInfo,
+                    inherit: true
+                );
             Assert.NotNull(attribute);
 
             ToggleSet toggleSet = WEnumToggleButtonsUtility.CreateToggleSet(property, fieldInfo);
@@ -347,7 +354,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             FieldInfo fieldInfo = GetFieldInfo(nameof(ToggleTestAsset.paginatedInt));
             WEnumToggleButtonsAttribute attribute =
-                fieldInfo.GetCustomAttribute<WEnumToggleButtonsAttribute>();
+                ReflectionHelpers.GetAttributeSafe<WEnumToggleButtonsAttribute>(
+                    fieldInfo,
+                    inherit: true
+                );
             Assert.NotNull(attribute);
 
             int pageSize;
