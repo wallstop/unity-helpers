@@ -329,6 +329,133 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.Greater(pageSize, 0);
         }
 
+        [Test]
+        public void SummaryCreatedForSelectionOutsideVisiblePage()
+        {
+            ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
+            asset.paginatedInt = 8;
+            SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(ToggleTestAsset.paginatedInt)
+            );
+            ToggleSet toggleSet = WEnumToggleButtonsUtility.CreateToggleSet(
+                property,
+                GetFieldInfo(nameof(ToggleTestAsset.paginatedInt))
+            );
+
+            FieldInfo fieldInfo = GetFieldInfo(nameof(ToggleTestAsset.paginatedInt));
+            WEnumToggleButtonsAttribute attribute =
+                fieldInfo.GetCustomAttribute<WEnumToggleButtonsAttribute>();
+            Assert.NotNull(attribute);
+
+            int pageSize;
+            bool usePagination = WEnumToggleButtonsUtility.ShouldPaginate(
+                attribute,
+                toggleSet.Options.Count,
+                out pageSize
+            );
+            Assert.True(usePagination);
+
+            WEnumToggleButtonsPagination.PaginationState state =
+                WEnumToggleButtonsPagination.GetState(property, toggleSet.Options.Count, pageSize);
+
+            SummaryResult summary = InvokeSummary(
+                toggleSet,
+                property,
+                state.StartIndex,
+                state.VisibleCount,
+                true
+            );
+
+            Assert.True(summary.HasSummary);
+            Assert.That(summary.Content.text, Does.Contain("8"));
+        }
+
+        [Test]
+        public void SummaryNotCreatedWhenSelectionInVisibleRange()
+        {
+            ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
+            asset.paginatedInt = 2;
+            SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(ToggleTestAsset.paginatedInt)
+            );
+            ToggleSet toggleSet = WEnumToggleButtonsUtility.CreateToggleSet(
+                property,
+                GetFieldInfo(nameof(ToggleTestAsset.paginatedInt))
+            );
+
+            SummaryResult summary = InvokeSummary(toggleSet, property, 0, 6, true);
+            Assert.False(summary.HasSummary);
+        }
+
+        [Test]
+        public void SummaryNotCreatedWhenPaginationDisabled()
+        {
+            ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
+            asset.paginatedInt = 8;
+            SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(ToggleTestAsset.paginatedInt)
+            );
+            ToggleSet toggleSet = WEnumToggleButtonsUtility.CreateToggleSet(
+                property,
+                GetFieldInfo(nameof(ToggleTestAsset.paginatedInt))
+            );
+
+            SummaryResult summary = InvokeSummary(
+                toggleSet,
+                property,
+                0,
+                toggleSet.Options.Count,
+                false
+            );
+
+            Assert.False(summary.HasSummary);
+        }
+
+        private static SummaryResult InvokeSummary(
+            ToggleSet toggleSet,
+            SerializedProperty property,
+            int startIndex,
+            int visibleCount,
+            bool usePagination
+        )
+        {
+            MethodInfo method = typeof(WEnumToggleButtonsDrawer).GetMethod(
+                "BuildSelectionSummary",
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
+            Assert.NotNull(method, "Unable to reflect BuildSelectionSummary.");
+
+            object summaryInstance = method.Invoke(
+                null,
+                new object[] { toggleSet, property, startIndex, visibleCount, usePagination }
+            );
+            Type summaryType = method.ReturnType;
+            PropertyInfo hasSummaryProperty = summaryType.GetProperty(
+                "HasSummary",
+                BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            PropertyInfo contentProperty = summaryType.GetProperty(
+                "Content",
+                BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            Assert.NotNull(hasSummaryProperty);
+            Assert.NotNull(contentProperty);
+
+            bool hasSummary = (bool)hasSummaryProperty.GetValue(summaryInstance);
+            GUIContent content =
+                (GUIContent)contentProperty.GetValue(summaryInstance) ?? GUIContent.none;
+            return new SummaryResult(hasSummary, content);
+        }
+
         private static ToggleOption GetFlagOption(
             ToggleSet toggleSet,
             ToggleTestAsset.ExampleFlags flag
@@ -392,6 +519,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             Assert.NotNull(fieldInfo, "Unable to resolve field: " + fieldName);
             return fieldInfo;
+        }
+
+        private readonly struct SummaryResult
+        {
+            internal SummaryResult(bool hasSummary, GUIContent content)
+            {
+                HasSummary = hasSummary;
+                Content = content;
+            }
+
+            internal bool HasSummary { get; }
+
+            internal GUIContent Content { get; }
         }
 
         [Serializable]

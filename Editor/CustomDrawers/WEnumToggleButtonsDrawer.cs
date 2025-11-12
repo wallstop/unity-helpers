@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Editor.Settings;
 
     [CustomPropertyDrawer(typeof(WEnumToggleButtonsAttribute))]
@@ -16,6 +17,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float MinButtonWidth = 68f;
         private const float PaginationButtonWidth = 22f;
         private const float PaginationLabelMinWidth = 80f;
+        private const float SummarySpacing = 2f;
 
         private static readonly GUIContent FirstPageContent = EditorGUIUtility.TrTextContent(
             "<<",
@@ -33,6 +35,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ">>",
             "Last Page"
         );
+        private static readonly GUIStyle SummaryStyle = new(EditorStyles.wordWrappedMiniLabel)
+        {
+            fontStyle = FontStyle.Italic,
+        };
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
@@ -57,13 +63,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 extraToolbarHeight = EditorGUIUtility.singleLineHeight + ToolbarSpacing;
             }
 
-            int pageSize = WEnumToggleButtonsUtility.ResolvePageSize(toggleAttribute);
+            WEnumToggleButtonsUtility.ResolvePageSize(toggleAttribute);
             bool usePagination = WEnumToggleButtonsUtility.ShouldPaginate(
                 toggleAttribute,
                 toggleSet.Options.Count,
-                out pageSize
+                out int pageSize
             );
+            int startIndex = 0;
             int visibleCount = toggleSet.Options.Count;
+            SelectionSummary summary = SelectionSummary.None;
             if (usePagination)
             {
                 WEnumToggleButtonsPagination.PaginationState state =
@@ -72,8 +80,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         toggleSet.Options.Count,
                         pageSize
                     );
+                startIndex = state.StartIndex;
                 visibleCount = state.VisibleCount;
                 extraToolbarHeight += EditorGUIUtility.singleLineHeight + ToolbarSpacing;
+                summary = BuildSelectionSummary(
+                    toggleSet,
+                    property,
+                    startIndex,
+                    visibleCount,
+                    true
+                );
             }
 
             float estimatedWidth =
@@ -86,6 +102,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 ToolbarSpacing,
                 MinButtonWidth
             );
+
+            if (summary.HasSummary)
+            {
+                float summaryHeight = SummaryStyle.CalcHeight(summary.Content, estimatedWidth);
+                extraToolbarHeight += summaryHeight + SummarySpacing;
+            }
 
             return extraToolbarHeight + metrics.TotalHeight;
         }
@@ -106,11 +128,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            int pageSize = WEnumToggleButtonsUtility.ResolvePageSize(toggleAttribute);
             bool usePagination = WEnumToggleButtonsUtility.ShouldPaginate(
                 toggleAttribute,
                 toggleSet.Options.Count,
-                out pageSize
+                out int pageSize
             );
             int startIndex = 0;
             int visibleCount = toggleSet.Options.Count;
@@ -125,6 +146,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 startIndex = paginationState.StartIndex;
                 visibleCount = paginationState.VisibleCount;
             }
+            SelectionSummary summary = BuildSelectionSummary(
+                toggleSet,
+                property,
+                startIndex,
+                visibleCount,
+                usePagination
+            );
 
             EditorGUI.BeginProperty(position, label, property);
             Rect contentRect = EditorGUI.PrefixLabel(position, label);
@@ -135,7 +163,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 && (toggleAttribute.ShowSelectAll || toggleAttribute.ShowSelectNone)
             )
             {
-                Rect toolbarRect = new Rect(
+                Rect toolbarRect = new(
                     contentRect.x,
                     currentY,
                     contentRect.width,
@@ -145,9 +173,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 currentY += toolbarRect.height + ToolbarSpacing;
             }
 
-            if (usePagination && paginationState != null)
+            if (usePagination)
             {
-                Rect paginationRect = new Rect(
+                Rect paginationRect = new(
                     contentRect.x,
                     currentY,
                     contentRect.width,
@@ -155,6 +183,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
                 DrawPagination(paginationRect, paginationState);
                 currentY += paginationRect.height + ToolbarSpacing;
+            }
+
+            if (summary.HasSummary)
+            {
+                float summaryHeight = SummaryStyle.CalcHeight(summary.Content, contentRect.width);
+                Rect summaryRect = new(contentRect.x, currentY, contentRect.width, summaryHeight);
+                EditorGUI.LabelField(summaryRect, summary.Content, SummaryStyle);
+                currentY += summaryHeight + SummarySpacing;
             }
 
             LayoutMetrics metrics = WEnumToggleButtonsUtility.CalculateLayout(
@@ -166,12 +202,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 MinButtonWidth
             );
 
-            Rect buttonsRect = new Rect(
-                contentRect.x,
-                currentY,
-                contentRect.width,
-                metrics.TotalHeight
-            );
+            Rect buttonsRect = new(contentRect.x, currentY, contentRect.width, metrics.TotalHeight);
 
             for (int index = 0; index < visibleCount; index += 1)
             {
@@ -203,15 +234,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (drawSelectAll)
             {
-                Rect selectAllRect;
-                if (alignedPair)
-                {
-                    selectAllRect = new Rect(rect.x, rect.y, Mathf.Floor(halfWidth), rect.height);
-                }
-                else
-                {
-                    selectAllRect = rect;
-                }
+                Rect selectAllRect = alignedPair
+                    ? new Rect(rect.x, rect.y, Mathf.Floor(halfWidth), rect.height)
+                    : rect;
 
                 bool allActive = WEnumToggleButtonsUtility.AreAllFlagsSelected(property, toggleSet);
                 bool selectAllPressed = GUI.Toggle(
@@ -279,11 +304,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 rect.width - (buttonWidth * 4f) - spacing * 4f
             );
 
-            Rect firstRect = new Rect(rect.x, rect.y, buttonWidth, rect.height);
-            Rect prevRect = new Rect(firstRect.xMax + spacing, rect.y, buttonWidth, rect.height);
-            Rect labelRect = new Rect(prevRect.xMax + spacing, rect.y, labelWidth, rect.height);
-            Rect nextRect = new Rect(labelRect.xMax + spacing, rect.y, buttonWidth, rect.height);
-            Rect lastRect = new Rect(nextRect.xMax + spacing, rect.y, buttonWidth, rect.height);
+            Rect firstRect = new(rect.x, rect.y, buttonWidth, rect.height);
+            Rect prevRect = new(firstRect.xMax + spacing, rect.y, buttonWidth, rect.height);
+            Rect labelRect = new(prevRect.xMax + spacing, rect.y, labelWidth, rect.height);
+            Rect nextRect = new(labelRect.xMax + spacing, rect.y, buttonWidth, rect.height);
+            Rect lastRect = new(nextRect.xMax + spacing, rect.y, buttonWidth, rect.height);
 
             if (lastRect.xMax > rect.xMax)
             {
@@ -347,6 +372,49 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             property.serializedObject.ApplyModifiedProperties();
         }
 
+        private static SelectionSummary BuildSelectionSummary(
+            ToggleSet toggleSet,
+            SerializedProperty property,
+            int startIndex,
+            int visibleCount,
+            bool usePagination
+        )
+        {
+            if (!usePagination || toggleSet.IsEmpty || property == null)
+            {
+                return SelectionSummary.None;
+            }
+
+            int endIndex = startIndex + visibleCount;
+            List<string> outOfView = null;
+            IReadOnlyList<ToggleOption> options = toggleSet.Options;
+            for (int index = 0; index < options.Count; index += 1)
+            {
+                ToggleOption option = options[index];
+                if (!WEnumToggleButtonsUtility.IsOptionActive(property, toggleSet, option))
+                {
+                    continue;
+                }
+
+                if (index >= startIndex && index < endIndex)
+                {
+                    continue;
+                }
+
+                outOfView ??= new List<string>();
+                outOfView.Add(option.Label);
+            }
+
+            if (outOfView == null || outOfView.Count == 0)
+            {
+                return SelectionSummary.None;
+            }
+
+            string joined = string.Join(", ", outOfView.ToArray());
+            string text = $"Current (out of view): {joined}";
+            return new SelectionSummary(true, new GUIContent(text));
+        }
+
         private static GUIStyle ResolveButtonStyle(int index, int total, int columns)
         {
             if (columns <= 1)
@@ -374,6 +442,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return EditorStyles.miniButtonMid;
+        }
+
+        private readonly struct SelectionSummary
+        {
+            internal static SelectionSummary None { get; } = new(false, GUIContent.none);
+
+            internal SelectionSummary(bool hasSummary, GUIContent content)
+            {
+                HasSummary = hasSummary;
+                Content = content ?? GUIContent.none;
+            }
+
+            internal bool HasSummary { get; }
+
+            internal GUIContent Content { get; }
         }
     }
 
@@ -405,7 +488,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             pageSize = ResolvePageSize(attribute);
-            if (attribute != null && !attribute.EnablePagination)
+            if (attribute is { EnablePagination: false })
             {
                 return false;
             }
@@ -614,13 +697,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 enumType = enumType.GetElementType();
             }
 
-            Type nullableUnderlying = Nullable.GetUnderlyingType(enumType);
-            if (nullableUnderlying != null)
+            if (enumType != null)
             {
-                enumType = nullableUnderlying;
+                Type nullableUnderlying = Nullable.GetUnderlyingType(enumType);
+                if (nullableUnderlying != null)
+                {
+                    enumType = nullableUnderlying;
+                }
             }
 
-            if (enumType == null || !enumType.IsEnum)
+            if (enumType is not { IsEnum: true })
             {
                 return null;
             }
@@ -631,7 +717,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static ToggleOption[] BuildEnumOptions(Type enumType, bool isFlags)
         {
             Array values = Enum.GetValues(enumType);
-            List<ToggleOption> options = new List<ToggleOption>(values.Length);
+            List<ToggleOption> options = new(values.Length);
 
             for (int index = 0; index < values.Length; index += 1)
             {
@@ -654,12 +740,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 string label = ObjectNames.NicifyVariableName(name);
-                ToggleOption option = new ToggleOption(
-                    label,
-                    value,
-                    numericValue,
-                    numericValue == 0UL
-                );
+                ToggleOption option = new(label, value, numericValue, numericValue == 0UL);
                 options.Add(option);
             }
 
@@ -693,7 +774,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     int value = values[index];
                     string label = FormatOption(value);
-                    ToggleOption option = new ToggleOption(label, value, 0UL, value == 0);
+                    ToggleOption option = new(label, value, 0UL, value == 0);
                     options[index] = option;
                 }
                 return options;
@@ -710,7 +791,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     string value = values[index] ?? string.Empty;
                     string label = FormatOption(value);
-                    ToggleOption option = new ToggleOption(label, value, 0UL, false);
+                    ToggleOption option = new(label, value, 0UL, false);
                     options[index] = option;
                 }
                 return options;
@@ -732,7 +813,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 object value = values[index];
                 string label = FormatOption(value);
                 bool isZero = IsZeroEquivalent(value);
-                ToggleOption option = new ToggleOption(label, value, 0UL, isZero);
+                ToggleOption option = new(label, value, 0UL, isZero);
                 options[index] = option;
             }
 
@@ -1010,7 +1091,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             where TAttribute : Attribute
         {
             object[] attributes = fieldInfo.GetCustomAttributes(typeof(TAttribute), true);
-            if (attributes == null || attributes.Length == 0)
+            if (attributes.Length == 0)
             {
                 return null;
             }
@@ -1064,7 +1145,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         }
 
         internal static ToggleSet Empty { get; } =
-            new ToggleSet(Array.Empty<ToggleOption>(), false, ToggleSource.None, null);
+            new(Array.Empty<ToggleOption>(), false, ToggleSource.None, null);
 
         internal IReadOnlyList<ToggleOption> Options => _options;
 
@@ -1177,10 +1258,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static readonly Dictionary<string, PaginationState> _states = new Dictionary<
-            string,
-            PaginationState
-        >(StringComparer.Ordinal);
+        private static readonly Dictionary<string, PaginationState> States = new(
+            StringComparer.Ordinal
+        );
 
         internal static PaginationState GetState(
             SerializedProperty property,
@@ -1189,11 +1269,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             string key = BuildKey(property);
-            if (!_states.TryGetValue(key, out PaginationState state))
-            {
-                state = new PaginationState();
-                _states[key] = state;
-            }
+            PaginationState state = States.GetOrAdd(key);
 
             state.PageSize = Mathf.Max(1, pageSize);
             state.TotalItems = Mathf.Max(0, totalItems);
@@ -1214,7 +1290,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         internal static void Reset()
         {
-            _states.Clear();
+            States.Clear();
         }
 
         private static string BuildKey(SerializedProperty property)

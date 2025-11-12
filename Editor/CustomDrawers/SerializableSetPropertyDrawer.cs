@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Editor.Settings;
 
     [CustomPropertyDrawer(typeof(SerializableHashSet<>), true)]
@@ -574,11 +575,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal PaginationState GetOrCreatePaginationState(SerializedProperty property)
         {
             string key = property.propertyPath;
-            if (!_paginationStates.TryGetValue(key, out PaginationState state))
-            {
-                state = new PaginationState();
-                _paginationStates[key] = state;
-            }
+            PaginationState state = _paginationStates.GetOrAdd(key);
 
             int configuredPageSize = UnityHelpersSettings.GetSerializableSetPageSize();
             if (state.pageSize != configuredPageSize)
@@ -1054,11 +1051,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             string key = property.propertyPath;
-            if (!_nullEntryStates.TryGetValue(key, out NullEntryState state))
-            {
-                state = new NullEntryState();
-                _nullEntryStates[key] = state;
-            }
+            NullEntryState state = _nullEntryStates.GetOrAdd(key);
 
             bool hasEvent = Event.current != null;
             EventType eventType = hasEvent ? Event.current.type : EventType.Repaint;
@@ -1127,11 +1120,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             string key = property.propertyPath;
-            if (!_duplicateStates.TryGetValue(key, out DuplicateState state))
-            {
-                state = new DuplicateState();
-                _duplicateStates[key] = state;
-            }
+            DuplicateState state = _duplicateStates.GetOrAdd(key);
 
             if (state.grouping.Count > 0)
             {
@@ -1372,7 +1361,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
-            if (instance is ISerializableSetInspector inspector && inspector.SupportsSorting)
+            if (instance is ISerializableSetInspector { SupportsSorting: true })
             {
                 return true;
             }

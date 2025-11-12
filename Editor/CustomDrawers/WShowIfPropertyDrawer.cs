@@ -240,7 +240,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return static _ => null;
             }
 
-            List<Func<object, object>> steps = new List<Func<object, object>>(segments.Count);
+            List<Func<object, object>> steps = new(segments.Count);
             Type currentType = ownerType;
 
             for (int segmentIndex = 0; segmentIndex < segments.Count; segmentIndex += 1)
@@ -525,7 +525,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             object[] expectedValues
         )
         {
-            if (expectedValues != null && expectedValues.Length > 0)
+            if (expectedValues is { Length: > 0 })
             {
                 bool matches = MatchesAny(value, expectedValues);
                 if (comparison == WShowIfComparison.NotEqual)
@@ -594,11 +594,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             IComparable comparable = actual as IComparable;
             if (comparable != null)
             {
-                bool conversionSucceeded;
                 object converted = ConvertValue(
                     actual.GetType(),
                     expected,
-                    out conversionSucceeded
+                    out bool conversionSucceeded
                 );
                 if (conversionSucceeded)
                 {
@@ -619,11 +618,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             IComparable expectedComparable = expected as IComparable;
             if (expectedComparable != null)
             {
-                bool conversionSucceeded;
                 object converted = ConvertValue(
                     expected.GetType(),
                     actual,
-                    out conversionSucceeded
+                    out bool conversionSucceeded
                 );
                 if (conversionSucceeded)
                 {
@@ -641,11 +639,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return true;
             }
 
-            double actualDouble;
-            double expectedDouble;
             if (
-                TryConvertToDouble(actual, out actualDouble)
-                && TryConvertToDouble(expected, out expectedDouble)
+                TryConvertToDouble(actual, out double actualDouble)
+                && TryConvertToDouble(expected, out double expectedDouble)
             )
             {
                 comparisonResult = actualDouble.CompareTo(expectedDouble);
@@ -818,7 +814,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static List<MemberPathSegment> ParseMemberPath(string memberPath)
         {
             string[] rawSegments = memberPath.Split('.');
-            List<MemberPathSegment> segments = new List<MemberPathSegment>(rawSegments.Length);
+            List<MemberPathSegment> segments = new(rawSegments.Length);
             for (int index = 0; index < rawSegments.Length; index += 1)
             {
                 string raw = rawSegments[index];
@@ -828,7 +824,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 string name = raw;
-                List<int> indices = new List<int>();
+                List<int> indices = new();
 
                 int bracket = raw.IndexOf('[');
                 if (bracket >= 0)
@@ -852,7 +848,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
 
-                MemberPathSegment segment = new MemberPathSegment(
+                MemberPathSegment segment = new(
                     name,
                     indices.Count > 0 ? indices.ToArray() : Array.Empty<int>()
                 );
@@ -920,7 +916,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private readonly struct MemberAccessor
         {
-            public static readonly MemberAccessor Invalid = new MemberAccessor(null, null);
+            public static readonly MemberAccessor Invalid = new(null, null);
 
             public MemberAccessor(Func<object, object> getter, Type valueType)
             {
@@ -937,7 +933,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private readonly struct IndexAccessor
         {
-            public static readonly IndexAccessor Invalid = new IndexAccessor(null, null);
+            public static readonly IndexAccessor Invalid = new(null, null);
 
             public IndexAccessor(Func<object, object> getter, Type elementType)
             {

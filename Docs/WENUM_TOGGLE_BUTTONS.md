@@ -69,6 +69,7 @@ public string facing;
 - **Non-flags:** Buttons behave like radio controls; only one remains active.
 - **Dropdown-backed fields:** Options mirror the ordering supplied by their source attribute.
 - **Pagination:** Navigation controls appear above the buttons once the configured threshold is exceeded. Page state persists per object while the inspector is open.
+- **Current Selection Badge:** When the active choice lives on a different page, a short read-only summary appears beneath the field label so you can see what is currently applied without hunting through pages.
 
 ### What About Composite Flags?
 

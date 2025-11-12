@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Core.Extension;
 
     [CustomPropertyDrawer(typeof(WGuid))]
     public sealed class WGuidPropertyDrawer : PropertyDrawer
@@ -24,8 +25,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const string SetUndoLabel = nameof(WGuid) + ".Set";
         private const string GenerateUndoLabel = nameof(WGuid) + ".Generate";
 
-        private static readonly Dictionary<string, DrawerState> States =
-            new Dictionary<string, DrawerState>();
+        private static readonly Dictionary<string, DrawerState> States = new();
         private static readonly GUIContent GenerateContent = CreateGenerateContent();
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
@@ -39,7 +39,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             float spacing = EditorGUIUtility.standardVerticalSpacing;
             float warningWidth = GetWarningWidth();
-            GUIContent warningContent = new GUIContent(state.warningMessage);
+            GUIContent warningContent = new(state.warningMessage);
             float warningHeight = EditorStyles.helpBox.CalcHeight(warningContent, warningWidth);
             return lineHeight + spacing + warningHeight;
         }
@@ -83,14 +83,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float spacing = EditorGUIUtility.standardVerticalSpacing;
             Rect contentRect = EditorGUI.PrefixLabel(position, label);
             float buttonX = contentRect.x + Mathf.Max(0f, contentRect.width - ButtonWidth);
-            Rect buttonRect = new Rect(buttonX, contentRect.y, ButtonWidth, lineHeight);
+            Rect buttonRect = new(buttonX, contentRect.y, ButtonWidth, lineHeight);
             float textWidth = buttonRect.x - contentRect.x - spacing;
             if (textWidth < 0f)
             {
                 textWidth = 0f;
             }
 
-            Rect textRect = new Rect(contentRect.x, contentRect.y, textWidth, lineHeight);
+            Rect textRect = new(contentRect.x, contentRect.y, textWidth, lineHeight);
 
             EditorGUI.BeginChangeCheck();
             string incoming = EditorGUI.DelayedTextField(
@@ -109,7 +109,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (state.hasPendingInvalid && !string.IsNullOrEmpty(state.warningMessage))
             {
-                Rect helpRect = new Rect(
+                Rect helpRect = new(
                     position.x,
                     position.y + lineHeight + spacing,
                     position.width,
@@ -201,7 +201,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             SerializedObject serializedObject = property.serializedObject;
             UnityEngine.Object[] targets = serializedObject.targetObjects;
-            if (targets != null && targets.Length > 0)
+            if (targets is { Length: > 0 })
             {
                 Undo.RecordObjects(targets, undoLabel);
             }
@@ -229,20 +229,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ulong highUnsigned = unchecked((ulong)high);
             BinaryPrimitives.WriteUInt64LittleEndian(buffer.Slice(0, 8), lowUnsigned);
             BinaryPrimitives.WriteUInt64LittleEndian(buffer.Slice(8, 8), highUnsigned);
-            Guid guid = new Guid(buffer);
+            Guid guid = new(buffer);
             return guid.ToString();
         }
 
         internal static DrawerState GetState(SerializedProperty property)
         {
             string key = property.propertyPath;
-            if (!States.TryGetValue(key, out DrawerState state))
-            {
-                state = new DrawerState();
-                States[key] = state;
-            }
-
-            return state;
+            return States.GetOrAdd(key);
         }
 
         internal static void ClearCachedStates()
