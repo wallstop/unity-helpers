@@ -468,7 +468,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static bool? EvaluateCondition(object conditionValue, WShowIfAttribute attribute)
         {
             WShowIfComparison comparison = attribute.comparison;
+#pragma warning disable CS0618 // Type or member is obsolete
             if (comparison == WShowIfComparison.Unknown)
+#pragma warning restore CS0618 // Type or member is obsolete
             {
                 comparison = WShowIfComparison.Equal;
             }
