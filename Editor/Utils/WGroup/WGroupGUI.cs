@@ -23,39 +23,48 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             UnityHelpersSettings.WGroupPaletteEntry palette =
                 UnityHelpersSettings.ResolveWGroupPalette(definition.ColorKey);
 
-            Rect containerRect = EditorGUILayout.BeginVertical(WGroupStyles.ContainerStyle);
-            WGroupStyles.DrawContainerBackground(containerRect, palette.BackgroundColor);
-
-            bool expanded = true;
-            bool allowHeader = !definition.HideHeader;
-            if (definition.Collapsible && allowHeader)
+            using (
+                EditorGUILayout.VerticalScope scope = new EditorGUILayout.VerticalScope(
+                    WGroupStyles.ContainerStyle
+                )
+            )
             {
-                expanded = DrawFoldoutHeader(definition, palette, foldoutStates);
-            }
-            else if (allowHeader)
-            {
-                DrawHeader(definition.DisplayName, palette);
-            }
-
-            if (expanded)
-            {
-                EditorGUI.indentLevel++;
-                IReadOnlyList<string> propertyPaths = definition.PropertyPaths;
-                for (int index = 0; index < propertyPaths.Count; index++)
+                if (Event.current.type == EventType.Repaint)
                 {
-                    string propertyPath = propertyPaths[index];
-                    SerializedProperty property = serializedObject.FindProperty(propertyPath);
-                    if (property == null)
-                    {
-                        continue;
-                    }
-
-                    EditorGUILayout.PropertyField(property, true);
+                    WGroupStyles.DrawContainerBackground(scope.rect, palette.BackgroundColor);
                 }
-                EditorGUI.indentLevel--;
+
+                bool expanded = true;
+                bool allowHeader = !definition.HideHeader;
+                if (definition.Collapsible && allowHeader)
+                {
+                    expanded = DrawFoldoutHeader(definition, palette, foldoutStates);
+                }
+                else if (allowHeader)
+                {
+                    DrawHeader(definition.DisplayName, palette);
+                }
+
+                if (expanded)
+                {
+                    EditorGUILayout.Space(2f);
+                    EditorGUI.indentLevel++;
+                    IReadOnlyList<string> propertyPaths = definition.PropertyPaths;
+                    for (int index = 0; index < propertyPaths.Count; index++)
+                    {
+                        string propertyPath = propertyPaths[index];
+                        SerializedProperty property = serializedObject.FindProperty(propertyPath);
+                        if (property == null)
+                        {
+                            continue;
+                        }
+
+                        EditorGUILayout.PropertyField(property, true);
+                    }
+                    EditorGUI.indentLevel--;
+                }
             }
 
-            EditorGUILayout.EndVertical();
             EditorGUILayout.Space(6f);
         }
 
@@ -142,7 +151,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 {
                     _containerStyle = new GUIStyle(EditorStyles.helpBox)
                     {
-                        padding = new RectOffset(12, 12, 8, 8),
+                        padding = new RectOffset(0, 0, 6, 6),
                         margin = new RectOffset(4, 4, 4, 4),
                     };
                 }
@@ -196,8 +205,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 return;
             }
 
+            Rect backgroundRect = rect;
+            backgroundRect.xMin += 1f;
+            backgroundRect.xMax -= 1f;
+            backgroundRect.yMin += 1f;
+            backgroundRect.yMax -= 1f;
+
+            if (backgroundRect.width <= 0f || backgroundRect.height <= 0f)
+            {
+                return;
+            }
+
             Color tinted = GetContainerTint(baseColor);
-            EditorGUI.DrawRect(rect, tinted);
+            EditorGUI.DrawRect(backgroundRect, tinted);
         }
 
         internal static void DrawHeaderBackground(Rect rect, Color baseColor)
@@ -213,8 +233,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
         private static Color GetContainerTint(Color baseColor)
         {
-            float alpha = EditorGUIUtility.isProSkin ? 0.36f : 0.14f;
-            return new Color(baseColor.r, baseColor.g, baseColor.b, alpha);
+            Color tinted = baseColor;
+            tinted.a = 1f;
+            return tinted;
         }
 
         private static Color GetHeaderTint(Color baseColor)

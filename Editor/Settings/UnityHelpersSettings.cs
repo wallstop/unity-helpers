@@ -230,6 +230,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [Tooltip(
             "Number of additional serialized members captured when the WGroup auto include mode is set to Finite."
         )]
+        [WShowIf(
+            nameof(wgroupAutoIncludeMode),
+            expectedValues: new object[] { WGroupAutoIncludeMode.Finite }
+        )]
+        [Range(MinWGroupAutoIncludeRowCount, MaxWGroupAutoIncludeRowCount)]
         private int wgroupAutoIncludeRowCount = DefaultWGroupAutoIncludeRowCount;
 
         [SerializeField]
@@ -1594,26 +1599,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         )
                     );
 
-                    bool finiteMode =
-                        (WGroupAutoIncludeMode)wgroupModeProperty.enumValueIndex
-                        == WGroupAutoIncludeMode.Finite;
-                    using (new EditorGUI.DisabledScope(!finiteMode))
-                    {
-                        int finiteCount = wgroupCountProperty.intValue;
-                        finiteCount = EditorGUILayout.IntSlider(
-                            new GUIContent(
-                                "Finite Include Count",
-                                "Number of additional serialized members appended when auto include mode is Finite."
-                            ),
-                            finiteCount,
-                            MinWGroupAutoIncludeRowCount,
-                            MaxWGroupAutoIncludeRowCount
-                        );
-                        if (finiteMode)
-                        {
-                            wgroupCountProperty.intValue = finiteCount;
-                        }
-                    }
+                    EditorGUILayout.PropertyField(
+                        wgroupCountProperty,
+                        new GUIContent(
+                            "Finite Include Count",
+                            "Number of additional serialized members appended when auto include mode is Finite."
+                        )
+                    );
 
                     EditorGUILayout.Space();
 
