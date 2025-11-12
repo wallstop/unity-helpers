@@ -72,6 +72,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private static readonly Color DefaultDarkThemeButtonColor = new(0.35f, 0.35f, 0.35f, 1f);
         private static readonly Dictionary<int, bool> SettingsGroupFoldoutStates = new();
         private static readonly Dictionary<int, bool> SettingsFoldoutGroupStates = new();
+        private const float SettingsLabelWidth = 260f;
         private static readonly GUIContent StringInListPageSizeContent =
             EditorGUIUtility.TrTextContent(
                 "StringInList Page Size",
@@ -2602,6 +2603,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return false;
         }
 
+        private readonly struct LabelWidthScope : System.IDisposable
+        {
+            private readonly float _previousWidth;
+
+            internal LabelWidthScope(float targetWidth)
+            {
+                _previousWidth = EditorGUIUtility.labelWidth;
+                float normalizedTarget = Mathf.Max(targetWidth, 0f);
+                float appliedWidth = Mathf.Max(_previousWidth, normalizedTarget);
+                EditorGUIUtility.labelWidth = appliedWidth;
+            }
+
+            public void Dispose()
+            {
+                EditorGUIUtility.labelWidth = _previousWidth;
+            }
+        }
+
         [SettingsProvider]
         private static SettingsProvider CreateSettingsProvider()
         {
@@ -2617,578 +2636,552 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     SerializedObject serializedSettings = new(settings);
                     serializedSettings.UpdateIfRequiredOrScript();
 
-                    SerializedProperty scriptProperty = serializedSettings.FindProperty("m_Script");
-                    SerializedProperty patternsInitializedProperty =
-                        serializedSettings.FindProperty(
-                            nameof(UnityHelpersSettings.serializableTypePatternsInitialized)
-                        );
-
                     bool dataChanged = false;
 
-                    if (scriptProperty != null)
+                    using (new LabelWidthScope(SettingsLabelWidth))
                     {
-                        using (new EditorGUI.DisabledScope(true))
-                        {
-                            EditorGUILayout.PropertyField(scriptProperty, true);
-                        }
-                        EditorGUILayout.Space();
-                    }
+                        SerializedProperty scriptProperty = serializedSettings.FindProperty(
+                            "m_Script"
+                        );
+                        SerializedProperty patternsInitializedProperty =
+                            serializedSettings.FindProperty(
+                                nameof(UnityHelpersSettings.serializableTypePatternsInitialized)
+                            );
 
-                    bool TryDrawSettingsGroupProperty(
-                        SerializedObject owner,
-                        SerializedProperty property
-                    )
-                    {
-                        if (property == null)
+                        if (scriptProperty != null)
                         {
+                            using (new EditorGUI.DisabledScope(true))
+                            {
+                                EditorGUILayout.PropertyField(scriptProperty, true);
+                            }
+                            EditorGUILayout.Space();
+                        }
+
+                        bool TryDrawSettingsGroupProperty(
+                            SerializedObject owner,
+                            SerializedProperty property
+                        )
+                        {
+                            if (property == null)
+                            {
+                                return false;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(serializableTypeIgnorePatterns),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawSerializableTypeIgnorePatterns(
+                                    property,
+                                    patternsInitializedProperty
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(stringInListPageSize),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawIntSliderField(
+                                    StringInListPageSizeContent,
+                                    settings.stringInListPageSize,
+                                    MinPageSize,
+                                    MaxPageSize,
+                                    value => settings.stringInListPageSize = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(serializableSetPageSize),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawIntSliderField(
+                                    SerializableSetPageSizeContent,
+                                    settings.serializableSetPageSize,
+                                    MinPageSize,
+                                    MaxPageSize,
+                                    value => settings.serializableSetPageSize = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(enumToggleButtonsPageSize),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawIntSliderField(
+                                    EnumToggleButtonsPageSizeContent,
+                                    settings.enumToggleButtonsPageSize,
+                                    MinPageSize,
+                                    MaxPageSize,
+                                    value => settings.enumToggleButtonsPageSize = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wbuttonPageSize),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawIntSliderField(
+                                    WButtonPageSizeContent,
+                                    settings.wbuttonPageSize,
+                                    MinPageSize,
+                                    MaxPageSize,
+                                    value => settings.wbuttonPageSize = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wbuttonHistorySize),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawIntSliderField(
+                                    WButtonHistorySizeContent,
+                                    settings.wbuttonHistorySize,
+                                    MinWButtonHistorySize,
+                                    MaxWButtonHistorySize,
+                                    value => settings.wbuttonHistorySize = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wbuttonActionsPlacement),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawEnumPopupField(
+                                    WButtonPlacementContent,
+                                    settings.wbuttonActionsPlacement,
+                                    value => settings.wbuttonActionsPlacement = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wbuttonFoldoutSpeed),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (!settings.wbuttonFoldoutTweenEnabled)
+                                {
+                                    return true;
+                                }
+
+                                bool changed = DrawFloatSliderField(
+                                    WButtonFoldoutSpeedContent,
+                                    settings.wbuttonFoldoutSpeed,
+                                    MinFoldoutSpeed,
+                                    MaxFoldoutSpeed,
+                                    value => settings.wbuttonFoldoutSpeed = value,
+                                    true
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wfoldoutGroupTweenEnabled),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawToggleField(
+                                    WFoldoutGroupTweenEnabledContent,
+                                    settings.wfoldoutGroupTweenEnabled,
+                                    value => settings.wfoldoutGroupTweenEnabled = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wfoldoutGroupTweenSpeed),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (!settings.wfoldoutGroupTweenEnabled)
+                                {
+                                    return true;
+                                }
+
+                                bool changed = DrawFloatSliderField(
+                                    WFoldoutGroupTweenSpeedContent,
+                                    settings.wfoldoutGroupTweenSpeed,
+                                    MinFoldoutSpeed,
+                                    MaxFoldoutSpeed,
+                                    value => settings.wfoldoutGroupTweenSpeed = value,
+                                    true
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wbuttonCustomColors),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                EditorGUI.BeginChangeCheck();
+                                EditorGUILayout.PropertyField(
+                                    property,
+                                    WButtonCustomColorsContent,
+                                    true
+                                );
+                                if (EditorGUI.EndChangeCheck())
+                                {
+                                    dataChanged = true;
+                                }
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wgroupCustomColors),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                EditorGUI.BeginChangeCheck();
+                                EditorGUILayout.PropertyField(
+                                    property,
+                                    WGroupCustomColorsContent,
+                                    true
+                                );
+                                if (EditorGUI.EndChangeCheck())
+                                {
+                                    dataChanged = true;
+                                }
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wfoldoutGroupCustomColors),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                EditorGUI.BeginChangeCheck();
+                                EditorGUILayout.PropertyField(
+                                    property,
+                                    WFoldoutGroupCustomColorsContent,
+                                    true
+                                );
+                                if (EditorGUI.EndChangeCheck())
+                                {
+                                    dataChanged = true;
+                                }
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(serializableDictionaryFoldoutTweenEnabled),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawToggleField(
+                                    DictionaryFoldoutTweenEnabledContent,
+                                    settings.serializableDictionaryFoldoutTweenEnabled,
+                                    value =>
+                                        settings.serializableDictionaryFoldoutTweenEnabled = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(serializableDictionaryFoldoutSpeed),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (!settings.serializableDictionaryFoldoutTweenEnabled)
+                                {
+                                    return true;
+                                }
+
+                                bool changed = DrawFloatSliderField(
+                                    DictionaryFoldoutSpeedContent,
+                                    settings.serializableDictionaryFoldoutSpeed,
+                                    MinFoldoutSpeed,
+                                    MaxFoldoutSpeed,
+                                    value => settings.serializableDictionaryFoldoutSpeed = value,
+                                    true
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(serializableSortedDictionaryFoldoutTweenEnabled),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawToggleField(
+                                    SortedDictionaryFoldoutTweenEnabledContent,
+                                    settings.serializableSortedDictionaryFoldoutTweenEnabled,
+                                    value =>
+                                        settings.serializableSortedDictionaryFoldoutTweenEnabled =
+                                            value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(serializableSortedDictionaryFoldoutSpeed),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (!settings.serializableSortedDictionaryFoldoutTweenEnabled)
+                                {
+                                    return true;
+                                }
+
+                                bool changed = DrawFloatSliderField(
+                                    SortedDictionaryFoldoutSpeedContent,
+                                    settings.serializableSortedDictionaryFoldoutSpeed,
+                                    MinFoldoutSpeed,
+                                    MaxFoldoutSpeed,
+                                    value =>
+                                        settings.serializableSortedDictionaryFoldoutSpeed = value,
+                                    true
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(duplicateRowAnimationMode),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawEnumPopupField(
+                                    DuplicateAnimationModeContent,
+                                    settings.duplicateRowAnimationMode,
+                                    value => settings.duplicateRowAnimationMode = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(duplicateRowTweenCycles),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (
+                                    settings.duplicateRowAnimationMode
+                                    != DuplicateRowAnimationMode.Tween
+                                )
+                                {
+                                    return true;
+                                }
+
+                                bool changed = DrawIntField(
+                                    DuplicateTweenCyclesContent,
+                                    settings.duplicateRowTweenCycles,
+                                    value => settings.duplicateRowTweenCycles = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wgroupAutoIncludeMode),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawEnumPopupField(
+                                    WGroupAutoIncludeModeContent,
+                                    settings.wgroupAutoIncludeMode,
+                                    value => settings.wgroupAutoIncludeMode = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wgroupAutoIncludeRowCount),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (settings.wgroupAutoIncludeMode != WGroupAutoIncludeMode.Finite)
+                                {
+                                    return true;
+                                }
+
+                                bool changed = DrawIntSliderField(
+                                    WGroupAutoIncludeCountContent,
+                                    settings.wgroupAutoIncludeRowCount,
+                                    MinWGroupAutoIncludeRowCount,
+                                    MaxWGroupAutoIncludeRowCount,
+                                    value => settings.wgroupAutoIncludeRowCount = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
                             return false;
                         }
 
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(serializableTypeIgnorePatterns),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            bool changed = DrawSerializableTypeIgnorePatterns(
-                                property,
-                                patternsInitializedProperty
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
+                        EditorGUI.BeginChangeCheck();
 
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(stringInListPageSize),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            bool changed = DrawIntSliderField(
-                                StringInListPageSizeContent,
-                                settings.stringInListPageSize,
-                                MinPageSize,
-                                MaxPageSize,
-                                value => settings.stringInListPageSize = value
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(serializableSetPageSize),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            bool changed = DrawIntSliderField(
-                                SerializableSetPageSizeContent,
-                                settings.serializableSetPageSize,
-                                MinPageSize,
-                                MaxPageSize,
-                                value => settings.serializableSetPageSize = value
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(enumToggleButtonsPageSize),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            bool changed = DrawIntSliderField(
-                                EnumToggleButtonsPageSizeContent,
-                                settings.enumToggleButtonsPageSize,
-                                MinPageSize,
-                                MaxPageSize,
-                                value => settings.enumToggleButtonsPageSize = value
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(wbuttonPageSize),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            bool changed = DrawIntSliderField(
-                                WButtonPageSizeContent,
-                                settings.wbuttonPageSize,
-                                MinPageSize,
-                                MaxPageSize,
-                                value => settings.wbuttonPageSize = value
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(wbuttonHistorySize),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            bool changed = DrawIntSliderField(
-                                WButtonHistorySizeContent,
-                                settings.wbuttonHistorySize,
-                                MinWButtonHistorySize,
-                                MaxWButtonHistorySize,
-                                value => settings.wbuttonHistorySize = value
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(wbuttonActionsPlacement),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            bool changed = DrawEnumPopupField(
-                                WButtonPlacementContent,
-                                settings.wbuttonActionsPlacement,
-                                value => settings.wbuttonActionsPlacement = value
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(wbuttonFoldoutBehavior),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            bool changed = DrawEnumPopupField(
-                                WButtonFoldoutBehaviorContent,
-                                settings.wbuttonFoldoutBehavior,
-                                value => settings.wbuttonFoldoutBehavior = value
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(wbuttonFoldoutTweenEnabled),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            bool changed = DrawToggleField(
-                                WButtonFoldoutTweenEnabledContent,
-                                settings.wbuttonFoldoutTweenEnabled,
-                                value => settings.wbuttonFoldoutTweenEnabled = value
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(wbuttonFoldoutSpeed),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            if (!settings.wbuttonFoldoutTweenEnabled)
-                            {
-                                return true;
-                            }
-
-                            bool changed = DrawFloatSliderField(
-                                WButtonFoldoutSpeedContent,
-                                settings.wbuttonFoldoutSpeed,
-                                MinFoldoutSpeed,
-                                MaxFoldoutSpeed,
-                                value => settings.wbuttonFoldoutSpeed = value,
-                                true
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(wfoldoutGroupTweenEnabled),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            bool changed = DrawToggleField(
-                                WFoldoutGroupTweenEnabledContent,
-                                settings.wfoldoutGroupTweenEnabled,
-                                value => settings.wfoldoutGroupTweenEnabled = value
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(wfoldoutGroupTweenSpeed),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            if (!settings.wfoldoutGroupTweenEnabled)
-                            {
-                                return true;
-                            }
-
-                            bool changed = DrawFloatSliderField(
-                                WFoldoutGroupTweenSpeedContent,
-                                settings.wfoldoutGroupTweenSpeed,
-                                MinFoldoutSpeed,
-                                MaxFoldoutSpeed,
-                                value => settings.wfoldoutGroupTweenSpeed = value,
-                                true
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(wbuttonCustomColors),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            EditorGUI.BeginChangeCheck();
-                            EditorGUILayout.PropertyField(
-                                property,
-                                WButtonCustomColorsContent,
-                                true
-                            );
-                            if (EditorGUI.EndChangeCheck())
-                            {
-                                dataChanged = true;
-                            }
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(wgroupCustomColors),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            EditorGUI.BeginChangeCheck();
-                            EditorGUILayout.PropertyField(
-                                property,
-                                WGroupCustomColorsContent,
-                                true
-                            );
-                            if (EditorGUI.EndChangeCheck())
-                            {
-                                dataChanged = true;
-                            }
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(wfoldoutGroupCustomColors),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            EditorGUI.BeginChangeCheck();
-                            EditorGUILayout.PropertyField(
-                                property,
-                                WFoldoutGroupCustomColorsContent,
-                                true
-                            );
-                            if (EditorGUI.EndChangeCheck())
-                            {
-                                dataChanged = true;
-                            }
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(serializableDictionaryFoldoutTweenEnabled),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            bool changed = DrawToggleField(
-                                DictionaryFoldoutTweenEnabledContent,
-                                settings.serializableDictionaryFoldoutTweenEnabled,
-                                value => settings.serializableDictionaryFoldoutTweenEnabled = value
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(serializableDictionaryFoldoutSpeed),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            if (!settings.serializableDictionaryFoldoutTweenEnabled)
-                            {
-                                return true;
-                            }
-
-                            bool changed = DrawFloatSliderField(
-                                DictionaryFoldoutSpeedContent,
-                                settings.serializableDictionaryFoldoutSpeed,
-                                MinFoldoutSpeed,
-                                MaxFoldoutSpeed,
-                                value => settings.serializableDictionaryFoldoutSpeed = value,
-                                true
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(serializableSortedDictionaryFoldoutTweenEnabled),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            bool changed = DrawToggleField(
-                                SortedDictionaryFoldoutTweenEnabledContent,
-                                settings.serializableSortedDictionaryFoldoutTweenEnabled,
-                                value =>
-                                    settings.serializableSortedDictionaryFoldoutTweenEnabled = value
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(serializableSortedDictionaryFoldoutSpeed),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            if (!settings.serializableSortedDictionaryFoldoutTweenEnabled)
-                            {
-                                return true;
-                            }
-
-                            bool changed = DrawFloatSliderField(
-                                SortedDictionaryFoldoutSpeedContent,
-                                settings.serializableSortedDictionaryFoldoutSpeed,
-                                MinFoldoutSpeed,
-                                MaxFoldoutSpeed,
-                                value => settings.serializableSortedDictionaryFoldoutSpeed = value,
-                                true
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(duplicateRowAnimationMode),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            bool changed = DrawEnumPopupField(
-                                DuplicateAnimationModeContent,
-                                settings.duplicateRowAnimationMode,
-                                value => settings.duplicateRowAnimationMode = value
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(duplicateRowTweenCycles),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            if (
-                                settings.duplicateRowAnimationMode
-                                != DuplicateRowAnimationMode.Tween
-                            )
-                            {
-                                return true;
-                            }
-
-                            bool changed = DrawIntField(
-                                DuplicateTweenCyclesContent,
-                                settings.duplicateRowTweenCycles,
-                                value => settings.duplicateRowTweenCycles = value
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(wgroupAutoIncludeMode),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            bool changed = DrawEnumPopupField(
-                                WGroupAutoIncludeModeContent,
-                                settings.wgroupAutoIncludeMode,
-                                value => settings.wgroupAutoIncludeMode = value
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        if (
-                            string.Equals(
-                                property.propertyPath,
-                                nameof(wgroupAutoIncludeRowCount),
-                                System.StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            if (settings.wgroupAutoIncludeMode != WGroupAutoIncludeMode.Finite)
-                            {
-                                return true;
-                            }
-
-                            bool changed = DrawIntSliderField(
-                                WGroupAutoIncludeCountContent,
-                                settings.wgroupAutoIncludeRowCount,
-                                MinWGroupAutoIncludeRowCount,
-                                MaxWGroupAutoIncludeRowCount,
-                                value => settings.wgroupAutoIncludeRowCount = value
-                            );
-                            dataChanged |= changed;
-                            return true;
-                        }
-
-                        return false;
-                    }
-
-                    EditorGUI.BeginChangeCheck();
-
-                    string scriptPropertyPath =
-                        scriptProperty != null ? scriptProperty.propertyPath : null;
-                    WGroupLayout layout = WGroupLayoutBuilder.Build(
-                        serializedSettings,
-                        scriptPropertyPath
-                    );
-                    IReadOnlyList<WGroupDrawOperation> operations = layout.Operations;
-
-                    for (int index = 0; index < operations.Count; index++)
-                    {
-                        WGroupDrawOperation operation = operations[index];
-                        if (operation.Type == WGroupDrawOperationType.Group)
-                        {
-                            WGroupDefinition definition = operation.Group;
-                            if (definition == null)
-                            {
-                                continue;
-                            }
-
-                            WGroupGUI.DrawGroup(
-                                definition,
-                                serializedSettings,
-                                SettingsGroupFoldoutStates,
-                                TryDrawSettingsGroupProperty
-                            );
-                            continue;
-                        }
-                        if (operation.Type == WGroupDrawOperationType.FoldoutGroup)
-                        {
-                            WFoldoutGroupDefinition foldoutDefinition = operation.FoldoutGroup;
-                            if (foldoutDefinition == null)
-                            {
-                                continue;
-                            }
-
-                            WFoldoutGroupGUI.DrawGroup(
-                                foldoutDefinition,
-                                serializedSettings,
-                                SettingsFoldoutGroupStates,
-                                TryDrawSettingsGroupProperty
-                            );
-                            continue;
-                        }
-
-                        SerializedProperty property = serializedSettings.FindProperty(
-                            operation.PropertyPath
+                        string scriptPropertyPath =
+                            scriptProperty != null ? scriptProperty.propertyPath : null;
+                        WGroupLayout layout = WGroupLayoutBuilder.Build(
+                            serializedSettings,
+                            scriptPropertyPath
                         );
-                        if (property == null)
-                        {
-                            continue;
-                        }
+                        IReadOnlyList<WGroupDrawOperation> operations = layout.Operations;
 
-                        string propertyPath = property.propertyPath;
-                        if (
-                            string.Equals(
-                                propertyPath,
-                                nameof(foldoutTweenSettingsInitialized),
-                                System.StringComparison.Ordinal
-                            )
-                            || string.Equals(
-                                propertyPath,
-                                nameof(serializableTypePatternsInitialized),
-                                System.StringComparison.Ordinal
-                            )
-                            || string.Equals(
-                                propertyPath,
-                                nameof(legacyWButtonPriorityColors),
-                                System.StringComparison.Ordinal
-                            )
-                            || string.Equals(
-                                propertyPath,
-                                nameof(serializableTypeIgnorePatterns),
-                                System.StringComparison.Ordinal
-                            )
-                        )
+                        for (int index = 0; index < operations.Count; index++)
                         {
-                            continue;
-                        }
+                            WGroupDrawOperation operation = operations[index];
+                            if (operation.Type == WGroupDrawOperationType.Group)
+                            {
+                                WGroupDefinition definition = operation.Group;
+                                if (definition == null)
+                                {
+                                    continue;
+                                }
 
-                        EditorGUILayout.PropertyField(property, true);
+                                WGroupGUI.DrawGroup(
+                                    definition,
+                                    serializedSettings,
+                                    SettingsGroupFoldoutStates,
+                                    TryDrawSettingsGroupProperty
+                                );
+                                continue;
+                            }
+                            if (operation.Type == WGroupDrawOperationType.FoldoutGroup)
+                            {
+                                WFoldoutGroupDefinition foldoutDefinition = operation.FoldoutGroup;
+                                if (foldoutDefinition == null)
+                                {
+                                    continue;
+                                }
+
+                                WFoldoutGroupGUI.DrawGroup(
+                                    foldoutDefinition,
+                                    serializedSettings,
+                                    SettingsFoldoutGroupStates,
+                                    TryDrawSettingsGroupProperty
+                                );
+                                continue;
+                            }
+
+                            SerializedProperty property = serializedSettings.FindProperty(
+                                operation.PropertyPath
+                            );
+                            if (property == null)
+                            {
+                                continue;
+                            }
+
+                            string propertyPath = property.propertyPath;
+                            if (
+                                string.Equals(
+                                    propertyPath,
+                                    nameof(foldoutTweenSettingsInitialized),
+                                    System.StringComparison.Ordinal
+                                )
+                                || string.Equals(
+                                    propertyPath,
+                                    nameof(serializableTypePatternsInitialized),
+                                    System.StringComparison.Ordinal
+                                )
+                                || string.Equals(
+                                    propertyPath,
+                                    nameof(legacyWButtonPriorityColors),
+                                    System.StringComparison.Ordinal
+                                )
+                                || string.Equals(
+                                    propertyPath,
+                                    nameof(serializableTypeIgnorePatterns),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                continue;
+                            }
+
+                            EditorGUILayout.PropertyField(property, true);
+                        }
                     }
 
                     bool guiChanged = EditorGUI.EndChangeCheck();
