@@ -67,6 +67,89 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private static readonly Color DefaultLightThemeButtonColor = new(0.78f, 0.78f, 0.78f, 1f);
         private static readonly Color DefaultDarkThemeButtonColor = new(0.35f, 0.35f, 0.35f, 1f);
         private static readonly Dictionary<int, bool> SettingsGroupFoldoutStates = new();
+        private static readonly GUIContent StringInListPageSizeContent =
+            EditorGUIUtility.TrTextContent(
+                "StringInList Page Size",
+                "Number of options displayed per page in StringInList dropdowns."
+            );
+        private static readonly GUIContent SerializableSetPageSizeContent =
+            EditorGUIUtility.TrTextContent(
+                "Serializable Set Page Size",
+                "Number of entries displayed per page in SerializableHashSet and SerializableSortedSet inspectors."
+            );
+        private static readonly GUIContent EnumToggleButtonsPageSizeContent =
+            EditorGUIUtility.TrTextContent(
+                "WEnum Toggle Buttons Page Size",
+                "Number of toggle buttons displayed per page when WEnumToggleButtons groups exceed the configured threshold."
+            );
+        private static readonly GUIContent WButtonPageSizeContent = EditorGUIUtility.TrTextContent(
+            "WButton Page Size",
+            "Number of WButton actions displayed per page when grouped by draw order."
+        );
+        private static readonly GUIContent WButtonHistorySizeContent =
+            EditorGUIUtility.TrTextContent(
+                "WButton History Size",
+                "Number of recent results remembered per WButton method for each inspected object."
+            );
+        private static readonly GUIContent WButtonPlacementContent = EditorGUIUtility.TrTextContent(
+            "WButton Placement",
+            "Controls where WButton actions render relative to the inspector content."
+        );
+        private static readonly GUIContent WButtonFoldoutBehaviorContent =
+            EditorGUIUtility.TrTextContent(
+                "WButton Foldout Behavior",
+                "Determines whether WButton action groups are always visible, start expanded, or start collapsed when first drawn."
+            );
+        private static readonly GUIContent WButtonFoldoutTweenEnabledContent =
+            EditorGUIUtility.TrTextContent(
+                "Tween WButton Foldouts",
+                "Enable animated transitions when expanding or collapsing WButton action groups."
+            );
+        private static readonly GUIContent WButtonFoldoutSpeedContent =
+            EditorGUIUtility.TrTextContent(
+                "WButton Foldout Speed",
+                "Animation speed used when expanding or collapsing WButton action groups."
+            );
+        private static readonly GUIContent DictionaryFoldoutTweenEnabledContent =
+            EditorGUIUtility.TrTextContent(
+                "Tween Dictionary Foldouts",
+                "Enable animated transitions when expanding or collapsing SerializableDictionary pending entries."
+            );
+        private static readonly GUIContent DictionaryFoldoutSpeedContent =
+            EditorGUIUtility.TrTextContent(
+                "Dictionary Foldout Speed",
+                "Animation speed used when expanding or collapsing SerializableDictionary pending entries."
+            );
+        private static readonly GUIContent SortedDictionaryFoldoutTweenEnabledContent =
+            EditorGUIUtility.TrTextContent(
+                "Tween Sorted Dictionary Foldouts",
+                "Enable animated transitions when expanding or collapsing SerializableSortedDictionary pending entries."
+            );
+        private static readonly GUIContent SortedDictionaryFoldoutSpeedContent =
+            EditorGUIUtility.TrTextContent(
+                "Sorted Dictionary Foldout Speed",
+                "Animation speed used when expanding or collapsing SerializableSortedDictionary pending entries."
+            );
+        private static readonly GUIContent DuplicateAnimationModeContent =
+            EditorGUIUtility.TrTextContent(
+                "Duplicate Row Animation",
+                "Controls how duplicate entries are presented in SerializableDictionary inspectors."
+            );
+        private static readonly GUIContent DuplicateTweenCyclesContent =
+            EditorGUIUtility.TrTextContent(
+                "Tween Cycle Limit",
+                "Number of shake cycles performed when highlighting duplicate entries. Negative values loop indefinitely."
+            );
+        private static readonly GUIContent WGroupAutoIncludeModeContent =
+            EditorGUIUtility.TrTextContent(
+                "Auto Include Mode",
+                "Default behavior for automatically extending WGroup declarations."
+            );
+        private static readonly GUIContent WGroupAutoIncludeCountContent =
+            EditorGUIUtility.TrTextContent(
+                "Finite Include Count",
+                "Number of additional serialized members appended when auto include mode is Finite."
+            );
 
         public enum WButtonActionsPlacement
         {
@@ -1854,16 +1937,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return GetThemeAwareDefaultGroupPalette();
         }
 
-        private static void DrawSerializableTypeIgnorePatterns(
+        private static bool DrawSerializableTypeIgnorePatterns(
             SerializedProperty patternsProperty,
             SerializedProperty initializationFlagProperty
         )
         {
             if (patternsProperty == null)
             {
-                return;
+                return false;
             }
 
+            EditorGUI.BeginChangeCheck();
             GUIContent label = new(
                 "SerializableType Ignore Regexes",
                 "Regex patterns evaluated against type names (simple and fully-qualified) to exclude them from the SerializableType picker."
@@ -1876,7 +1960,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             );
             if (!patternsProperty.isExpanded)
             {
-                return;
+                return false;
             }
 
             EditorGUI.indentLevel++;
@@ -1957,6 +2041,98 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             EditorGUI.indentLevel--;
+            return EditorGUI.EndChangeCheck();
+        }
+
+        private static bool DrawIntSliderField(
+            GUIContent content,
+            int currentValue,
+            int min,
+            int max,
+            Action<int> setter
+        )
+        {
+            EditorGUI.BeginChangeCheck();
+            int newValue = EditorGUILayout.IntSlider(content, currentValue, min, max);
+            if (EditorGUI.EndChangeCheck())
+            {
+                setter(Mathf.Clamp(newValue, min, max));
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool DrawIntField(GUIContent content, int currentValue, Action<int> setter)
+        {
+            EditorGUI.BeginChangeCheck();
+            int newValue = EditorGUILayout.IntField(content, currentValue);
+            if (EditorGUI.EndChangeCheck())
+            {
+                setter(newValue);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool DrawFloatSliderField(
+            GUIContent content,
+            float currentValue,
+            float min,
+            float max,
+            Action<float> setter,
+            bool enabled
+        )
+        {
+            using (new EditorGUI.DisabledScope(!enabled))
+            {
+                EditorGUI.BeginChangeCheck();
+                float newValue = EditorGUILayout.Slider(content, currentValue, min, max);
+                bool changed = EditorGUI.EndChangeCheck();
+                if (changed && enabled)
+                {
+                    setter(Mathf.Clamp(newValue, min, max));
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool DrawToggleField(
+            GUIContent content,
+            bool currentValue,
+            Action<bool> setter
+        )
+        {
+            EditorGUI.BeginChangeCheck();
+            bool newValue = EditorGUILayout.Toggle(content, currentValue);
+            if (EditorGUI.EndChangeCheck())
+            {
+                setter(newValue);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool DrawEnumPopupField<TEnum>(
+            GUIContent content,
+            TEnum currentValue,
+            Action<TEnum> setter
+        )
+            where TEnum : System.Enum
+        {
+            EditorGUI.BeginChangeCheck();
+            TEnum newValue = (TEnum)EditorGUILayout.EnumPopup(content, currentValue);
+            if (EditorGUI.EndChangeCheck())
+            {
+                setter(newValue);
+                return true;
+            }
+
+            return false;
         }
 
         [SettingsProvider]
@@ -1979,6 +2155,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         serializedSettings.FindProperty(
                             nameof(UnityHelpersSettings.serializableTypePatternsInitialized)
                         );
+
+                    bool dataChanged = false;
 
                     if (scriptProperty != null)
                     {
@@ -2007,10 +2185,350 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             )
                         )
                         {
-                            DrawSerializableTypeIgnorePatterns(
+                            bool changed = DrawSerializableTypeIgnorePatterns(
                                 property,
                                 patternsInitializedProperty
                             );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(stringInListPageSize),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            bool changed = DrawIntSliderField(
+                                StringInListPageSizeContent,
+                                settings.stringInListPageSize,
+                                MinPageSize,
+                                MaxPageSize,
+                                value => settings.stringInListPageSize = value
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(serializableSetPageSize),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            bool changed = DrawIntSliderField(
+                                SerializableSetPageSizeContent,
+                                settings.serializableSetPageSize,
+                                MinPageSize,
+                                MaxPageSize,
+                                value => settings.serializableSetPageSize = value
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(enumToggleButtonsPageSize),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            bool changed = DrawIntSliderField(
+                                EnumToggleButtonsPageSizeContent,
+                                settings.enumToggleButtonsPageSize,
+                                MinPageSize,
+                                MaxPageSize,
+                                value => settings.enumToggleButtonsPageSize = value
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(wbuttonPageSize),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            bool changed = DrawIntSliderField(
+                                WButtonPageSizeContent,
+                                settings.wbuttonPageSize,
+                                MinPageSize,
+                                MaxPageSize,
+                                value => settings.wbuttonPageSize = value
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(wbuttonHistorySize),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            bool changed = DrawIntSliderField(
+                                WButtonHistorySizeContent,
+                                settings.wbuttonHistorySize,
+                                MinWButtonHistorySize,
+                                MaxWButtonHistorySize,
+                                value => settings.wbuttonHistorySize = value
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(wbuttonActionsPlacement),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            bool changed = DrawEnumPopupField(
+                                WButtonPlacementContent,
+                                settings.wbuttonActionsPlacement,
+                                value => settings.wbuttonActionsPlacement = value
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(wbuttonFoldoutBehavior),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            bool changed = DrawEnumPopupField(
+                                WButtonFoldoutBehaviorContent,
+                                settings.wbuttonFoldoutBehavior,
+                                value => settings.wbuttonFoldoutBehavior = value
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(wbuttonFoldoutTweenEnabled),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            bool changed = DrawToggleField(
+                                WButtonFoldoutTweenEnabledContent,
+                                settings.wbuttonFoldoutTweenEnabled,
+                                value => settings.wbuttonFoldoutTweenEnabled = value
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(wbuttonFoldoutSpeed),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            if (!settings.wbuttonFoldoutTweenEnabled)
+                            {
+                                return true;
+                            }
+
+                            bool changed = DrawFloatSliderField(
+                                WButtonFoldoutSpeedContent,
+                                settings.wbuttonFoldoutSpeed,
+                                MinFoldoutSpeed,
+                                MaxFoldoutSpeed,
+                                value => settings.wbuttonFoldoutSpeed = value,
+                                true
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(serializableDictionaryFoldoutTweenEnabled),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            bool changed = DrawToggleField(
+                                DictionaryFoldoutTweenEnabledContent,
+                                settings.serializableDictionaryFoldoutTweenEnabled,
+                                value => settings.serializableDictionaryFoldoutTweenEnabled = value
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(serializableDictionaryFoldoutSpeed),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            if (!settings.serializableDictionaryFoldoutTweenEnabled)
+                            {
+                                return true;
+                            }
+
+                            bool changed = DrawFloatSliderField(
+                                DictionaryFoldoutSpeedContent,
+                                settings.serializableDictionaryFoldoutSpeed,
+                                MinFoldoutSpeed,
+                                MaxFoldoutSpeed,
+                                value => settings.serializableDictionaryFoldoutSpeed = value,
+                                true
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(serializableSortedDictionaryFoldoutTweenEnabled),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            bool changed = DrawToggleField(
+                                SortedDictionaryFoldoutTweenEnabledContent,
+                                settings.serializableSortedDictionaryFoldoutTweenEnabled,
+                                value =>
+                                    settings.serializableSortedDictionaryFoldoutTweenEnabled = value
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(serializableSortedDictionaryFoldoutSpeed),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            if (!settings.serializableSortedDictionaryFoldoutTweenEnabled)
+                            {
+                                return true;
+                            }
+
+                            bool changed = DrawFloatSliderField(
+                                SortedDictionaryFoldoutSpeedContent,
+                                settings.serializableSortedDictionaryFoldoutSpeed,
+                                MinFoldoutSpeed,
+                                MaxFoldoutSpeed,
+                                value => settings.serializableSortedDictionaryFoldoutSpeed = value,
+                                true
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(duplicateRowAnimationMode),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            bool changed = DrawEnumPopupField(
+                                DuplicateAnimationModeContent,
+                                settings.duplicateRowAnimationMode,
+                                value => settings.duplicateRowAnimationMode = value
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(duplicateRowTweenCycles),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            if (
+                                settings.duplicateRowAnimationMode
+                                != DuplicateRowAnimationMode.Tween
+                            )
+                            {
+                                return true;
+                            }
+
+                            bool changed = DrawIntField(
+                                DuplicateTweenCyclesContent,
+                                settings.duplicateRowTweenCycles,
+                                value => settings.duplicateRowTweenCycles = value
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(wgroupAutoIncludeMode),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            bool changed = DrawEnumPopupField(
+                                WGroupAutoIncludeModeContent,
+                                settings.wgroupAutoIncludeMode,
+                                value => settings.wgroupAutoIncludeMode = value
+                            );
+                            dataChanged |= changed;
+                            return true;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(wgroupAutoIncludeRowCount),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            if (settings.wgroupAutoIncludeMode != WGroupAutoIncludeMode.Finite)
+                            {
+                                return true;
+                            }
+
+                            bool changed = DrawIntSliderField(
+                                WGroupAutoIncludeCountContent,
+                                settings.wgroupAutoIncludeRowCount,
+                                MinWGroupAutoIncludeRowCount,
+                                MaxWGroupAutoIncludeRowCount,
+                                value => settings.wgroupAutoIncludeRowCount = value
+                            );
+                            dataChanged |= changed;
                             return true;
                         }
 
@@ -2055,28 +2573,39 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             continue;
                         }
 
-                        switch (property.propertyPath)
+                        string propertyPath = property.propertyPath;
+                        if (
+                            string.Equals(
+                                propertyPath,
+                                nameof(foldoutTweenSettingsInitialized),
+                                System.StringComparison.Ordinal
+                            )
+                            || string.Equals(
+                                propertyPath,
+                                nameof(serializableTypePatternsInitialized),
+                                System.StringComparison.Ordinal
+                            )
+                            || string.Equals(
+                                propertyPath,
+                                nameof(legacyWButtonPriorityColors),
+                                System.StringComparison.Ordinal
+                            )
+                            || string.Equals(
+                                propertyPath,
+                                nameof(serializableTypeIgnorePatterns),
+                                System.StringComparison.Ordinal
+                            )
+                        )
                         {
-                            case nameof(serializableTypeIgnorePatterns):
-                                DrawSerializableTypeIgnorePatterns(
-                                    property,
-                                    patternsInitializedProperty
-                                );
-                                break;
-                            case nameof(foldoutTweenSettingsInitialized):
-                            case nameof(serializableTypePatternsInitialized):
-                            case nameof(legacyWButtonPriorityColors):
-                                // Internal maintenance fields; do not draw.
-                                break;
-                            default:
-                                EditorGUILayout.PropertyField(property, true);
-                                break;
+                            continue;
                         }
+
+                        EditorGUILayout.PropertyField(property, true);
                     }
 
                     bool guiChanged = EditorGUI.EndChangeCheck();
                     bool applied = serializedSettings.ApplyModifiedPropertiesWithoutUndo();
-                    if (guiChanged || applied)
+                    if (dataChanged || guiChanged || applied)
                     {
                         settings.SaveSettings();
                         serializedSettings.UpdateIfRequiredOrScript();
