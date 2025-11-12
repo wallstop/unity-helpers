@@ -9,10 +9,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
     internal static class WGroupGUI
     {
+        internal delegate bool PropertyOverride(
+            SerializedObject owner,
+            SerializedProperty property
+        );
+
         internal static void DrawGroup(
             WGroupDefinition definition,
             SerializedObject serializedObject,
-            Dictionary<int, bool> foldoutStates
+            Dictionary<int, bool> foldoutStates,
+            PropertyOverride overrideDrawer = null
         )
         {
             if (definition == null || serializedObject == null)
@@ -59,6 +65,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                         string propertyPath = propertyPaths[index];
                         SerializedProperty property = serializedObject.FindProperty(propertyPath);
                         if (property == null)
+                        {
+                            continue;
+                        }
+
+                        if (overrideDrawer != null && overrideDrawer(serializedObject, property))
                         {
                             continue;
                         }

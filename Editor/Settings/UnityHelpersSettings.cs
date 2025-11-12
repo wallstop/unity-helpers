@@ -265,6 +265,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [Tooltip(
             "Regular expressions evaluated against type names to exclude them from SerializableType pickers."
         )]
+        [WGroup(
+            "Serializable Types",
+            displayName: "Serializable Types",
+            autoIncludeCount: 0,
+            collapsible: true
+        )]
         private List<SerializableTypeIgnorePattern> serializableTypeIgnorePatterns = new();
 
         [SerializeField]
@@ -1983,6 +1989,34 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         EditorGUILayout.Space();
                     }
 
+                    bool TryDrawSettingsGroupProperty(
+                        SerializedObject owner,
+                        SerializedProperty property
+                    )
+                    {
+                        if (property == null)
+                        {
+                            return false;
+                        }
+
+                        if (
+                            string.Equals(
+                                property.propertyPath,
+                                nameof(serializableTypeIgnorePatterns),
+                                System.StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            DrawSerializableTypeIgnorePatterns(
+                                property,
+                                patternsInitializedProperty
+                            );
+                            return true;
+                        }
+
+                        return false;
+                    }
+
                     EditorGUI.BeginChangeCheck();
 
                     string scriptPropertyPath =
@@ -2007,7 +2041,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             WGroupGUI.DrawGroup(
                                 definition,
                                 serializedSettings,
-                                SettingsGroupFoldoutStates
+                                SettingsGroupFoldoutStates,
+                                TryDrawSettingsGroupProperty
                             );
                             continue;
                         }
