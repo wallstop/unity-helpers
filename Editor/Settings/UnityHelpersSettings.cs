@@ -33,6 +33,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const int MinWButtonHistorySize = 1;
         public const int MaxWButtonHistorySize = 10;
         public const string DefaultWButtonColorKey = "Default";
+        public const string WButtonLightThemeColorKey = "Default-Light";
+        public const string WButtonDarkThemeColorKey = "Default-Dark";
+        public const string WButtonLegacyColorKey = "WDefault";
         public const string DefaultWGroupColorKey = "Default";
         public const string WGroupLightThemeColorKey = "Default-Light";
         public const string WGroupDarkThemeColorKey = "Default-Dark";
@@ -60,6 +63,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const float MinFoldoutSpeed = 2f;
         public const float MaxFoldoutSpeed = 12f;
         private static readonly Color DefaultColorKeyButtonColor = new(0.243f, 0.525f, 0.988f, 1f);
+        private static readonly Color DefaultLightThemeButtonColor = new(0.78f, 0.78f, 0.78f, 1f);
+        private static readonly Color DefaultDarkThemeButtonColor = new(0.35f, 0.35f, 0.35f, 1f);
 
         public enum WButtonActionsPlacement
         {
@@ -697,6 +702,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return instance.GetWButtonPaletteEntry(colorKey);
         }
 
+        internal static bool HasWButtonPaletteColorKey(string colorKey)
+        {
+            return instance.ContainsColorKey(colorKey);
+        }
+
         public static WGroupPaletteEntry ResolveWGroupPalette(string colorKey)
         {
             return instance.GetWGroupPaletteEntry(colorKey);
@@ -968,18 +978,44 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             bool changed = false;
             changed |= MigrateLegacyWButtonPalette();
 
-            if (!ContainsColorKey(DefaultWButtonColorKey))
+            if (
+                wbuttonCustomColors.TryGetValue(
+                    DefaultWButtonColorKey,
+                    out WButtonCustomColor legacyDefault
+                )
+            )
             {
-                WButtonCustomColor defaultColor = new()
+                if (!wbuttonCustomColors.ContainsKey(WButtonLegacyColorKey))
+                {
+                    wbuttonCustomColors[WButtonLegacyColorKey] = legacyDefault;
+                }
+                wbuttonCustomColors.Remove(DefaultWButtonColorKey);
+                changed = true;
+            }
+
+            if (!wbuttonCustomColors.ContainsKey(WButtonLegacyColorKey))
+            {
+                WButtonCustomColor legacyColor = new()
                 {
                     ButtonColor = DefaultColorKeyButtonColor,
                     TextColor = WButtonColorUtility.GetReadableTextColor(
                         DefaultColorKeyButtonColor
                     ),
                 };
-                wbuttonCustomColors[DefaultWButtonColorKey] = defaultColor;
+                wbuttonCustomColors[WButtonLegacyColorKey] = legacyColor;
                 changed = true;
             }
+
+            changed |= EnsureWButtonThemeEntry(
+                WButtonLightThemeColorKey,
+                DefaultLightThemeButtonColor,
+                Color.black
+            );
+            changed |= EnsureWButtonThemeEntry(
+                WButtonDarkThemeColorKey,
+                DefaultDarkThemeButtonColor,
+                Color.white
+            );
 
             int paletteIndex = 0;
             foreach (KeyValuePair<string, WButtonCustomColor> entry in wbuttonCustomColors)
@@ -992,6 +1028,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     value.ButtonColor = DefaultColorKeyButtonColor;
                     value.EnsureReadableText();
                     changed = true;
+                }
+
+                if (IsReservedWButtonColorKey(entry.Key))
+                {
+                    value.EnsureReadableText();
+                    continue;
                 }
 
                 bool needsSuggestion =
@@ -1022,6 +1064,60 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             return changed;
+        }
+
+        private bool EnsureWButtonThemeEntry(string key, Color buttonColor, Color defaultTextColor)
+        {
+            if (
+                wbuttonCustomColors.TryGetValue(key, out WButtonCustomColor existing)
+                && existing != null
+            )
+            {
+                existing.EnsureReadableText();
+                return false;
+            }
+
+            Color textColor =
+                defaultTextColor.maxColorComponent <= 0f
+                    ? WButtonColorUtility.GetReadableTextColor(buttonColor)
+                    : defaultTextColor;
+            WButtonCustomColor themeColor = new()
+            {
+                ButtonColor = buttonColor,
+                TextColor = textColor,
+            };
+            themeColor.EnsureReadableText();
+            wbuttonCustomColors[key] = themeColor;
+            return true;
+        }
+
+        private static bool IsReservedWButtonColorKey(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                return true;
+            }
+
+            return string.Equals(
+                    key,
+                    DefaultWButtonColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+                || string.Equals(
+                    key,
+                    WButtonLightThemeColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+                || string.Equals(
+                    key,
+                    WButtonDarkThemeColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+                || string.Equals(
+                    key,
+                    WButtonLegacyColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                );
         }
 
         private bool MigrateLegacyWButtonPalette()
@@ -1211,6 +1307,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         private bool ContainsColorKey(string colorKey)
         {
+            if (string.IsNullOrWhiteSpace(colorKey))
+            {
+                return true;
+            }
+
+            if (IsReservedWButtonColorKey(colorKey))
+            {
+                return true;
+            }
+
             if (wbuttonCustomColors == null || wbuttonCustomColors.Count == 0)
             {
                 return false;
@@ -1239,9 +1345,50 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         private string NormalizeColorKey(string colorKey)
         {
-            string normalized = string.IsNullOrWhiteSpace(colorKey)
-                ? DefaultWButtonColorKey
-                : colorKey.Trim();
+            if (string.IsNullOrWhiteSpace(colorKey))
+            {
+                return DefaultWButtonColorKey;
+            }
+
+            if (IsReservedWButtonColorKey(colorKey))
+            {
+                if (
+                    string.Equals(
+                        colorKey,
+                        WButtonLightThemeColorKey,
+                        System.StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    return WButtonLightThemeColorKey;
+                }
+
+                if (
+                    string.Equals(
+                        colorKey,
+                        WButtonDarkThemeColorKey,
+                        System.StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    return WButtonDarkThemeColorKey;
+                }
+
+                if (
+                    string.Equals(
+                        colorKey,
+                        WButtonLegacyColorKey,
+                        System.StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    return WButtonLegacyColorKey;
+                }
+
+                return DefaultWButtonColorKey;
+            }
+
+            string normalized = colorKey.Trim();
 
             if (wbuttonCustomColors != null)
             {
@@ -1265,7 +1412,76 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         private WButtonPaletteEntry GetWButtonPaletteEntry(string colorKey)
         {
+            EnsureWButtonCustomColorDefaults();
+
             string normalized = NormalizeColorKey(colorKey);
+
+            if (
+                string.Equals(
+                    normalized,
+                    DefaultWButtonColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                return GetThemeAwareDefaultWButtonPalette();
+            }
+
+            if (
+                string.Equals(
+                    normalized,
+                    WButtonLightThemeColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                return GetWButtonThemePaletteEntry(
+                    WButtonLightThemeColorKey,
+                    DefaultLightThemeButtonColor,
+                    Color.black
+                );
+            }
+
+            if (
+                string.Equals(
+                    normalized,
+                    WButtonDarkThemeColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                return GetWButtonThemePaletteEntry(
+                    WButtonDarkThemeColorKey,
+                    DefaultDarkThemeButtonColor,
+                    Color.white
+                );
+            }
+
+            if (
+                string.Equals(
+                    normalized,
+                    WButtonLegacyColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                if (
+                    wbuttonCustomColors != null
+                    && wbuttonCustomColors.TryGetValue(
+                        WButtonLegacyColorKey,
+                        out WButtonCustomColor legacy
+                    )
+                    && legacy != null
+                )
+                {
+                    legacy.EnsureReadableText();
+                    return new WButtonPaletteEntry(legacy.ButtonColor, legacy.TextColor);
+                }
+
+                Color fallbackButton = DefaultColorKeyButtonColor;
+                Color fallbackText = WButtonColorUtility.GetReadableTextColor(fallbackButton);
+                return new WButtonPaletteEntry(fallbackButton, fallbackText);
+            }
 
             if (wbuttonCustomColors != null && wbuttonCustomColors.Count > 0)
             {
@@ -1298,20 +1514,44 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 }
             }
 
+            return GetThemeAwareDefaultWButtonPalette();
+        }
+
+        private WButtonPaletteEntry GetThemeAwareDefaultWButtonPalette()
+        {
+            string themeKey = EditorGUIUtility.isProSkin
+                ? WButtonDarkThemeColorKey
+                : WButtonLightThemeColorKey;
+            Color fallbackButton = EditorGUIUtility.isProSkin
+                ? DefaultDarkThemeButtonColor
+                : DefaultLightThemeButtonColor;
+            Color fallbackText = EditorGUIUtility.isProSkin ? Color.white : Color.black;
+            return GetWButtonThemePaletteEntry(themeKey, fallbackButton, fallbackText);
+        }
+
+        private WButtonPaletteEntry GetWButtonThemePaletteEntry(
+            string key,
+            Color buttonColor,
+            Color defaultTextColor
+        )
+        {
+            EnsureWButtonCustomColorDefaults();
+
             if (
-                !string.Equals(
-                    normalized,
-                    DefaultWButtonColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
-                )
+                wbuttonCustomColors != null
+                && wbuttonCustomColors.TryGetValue(key, out WButtonCustomColor value)
+                && value != null
             )
             {
-                return GetWButtonPaletteEntry(DefaultWButtonColorKey);
+                value.EnsureReadableText();
+                return new WButtonPaletteEntry(value.ButtonColor, value.TextColor);
             }
 
-            Color fallbackButton = DefaultColorKeyButtonColor;
-            Color fallbackText = WButtonColorUtility.GetReadableTextColor(fallbackButton);
-            return new WButtonPaletteEntry(fallbackButton, fallbackText);
+            Color textColor =
+                defaultTextColor.maxColorComponent <= 0f
+                    ? WButtonColorUtility.GetReadableTextColor(buttonColor)
+                    : defaultTextColor;
+            return new WButtonPaletteEntry(buttonColor, textColor);
         }
 
         private string EnsureWGroupColorKeyInternal(string colorKey)

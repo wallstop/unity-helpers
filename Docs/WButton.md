@@ -38,9 +38,11 @@ public sealed class ExampleBehaviour : MonoBehaviour
 
 ## Custom Colour Palette
 
-- Every button can declare a custom colour key. The inspector resolves that key against the **WButton Custom Colors** dictionary in _Project Settings → Wallstop Studios → Unity Helpers_.
-- Entries store both the button background colour and the text colour. New keys auto-pick a complimentary hue and a readable text colour, but you can tailor either value to match your branding.
-- When a button does not specify a colour key (or when the key is missing), the drawer falls back to the `Default` palette entry. Colours are applied directly to the button surface, not the surrounding container, so the scheme remains distinct.
+- Buttons inherit a theme-aware default (`Default`) when no colour key is supplied. The light editor matches Unity’s pale grey button, and Pro Skin receives a subtle dark slate—very close to Odin’s defaults.
+- Two editable entries (`Default-Light`, `Default-Dark`) back those defaults. Tweak them in _Project Settings → Wallstop Studios → Unity Helpers_ to customise each editor theme independently.
+- The vibrant blue palette that originally shipped is still available as `WDefault`. Assign that key to restore the legacy accent on a per-button basis.
+- Any other key resolves against the **WButton Custom Colors** dictionary. New entries auto-generate a complementary hue and a readable text colour, and you can refine both values at any time.
+- Colours are applied directly to the button surface, keeping the container styling untouched so grouped inspectors remain consistent.
 
 ## Layout & Foldouts
 

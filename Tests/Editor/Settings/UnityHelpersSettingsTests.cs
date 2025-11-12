@@ -128,9 +128,45 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 );
             UnityHelpersSettings.WButtonPaletteEntry missingEntry =
                 UnityHelpersSettings.ResolveWButtonPalette("NonExistentColorKey");
+            UnityHelpersSettings.WButtonPaletteEntry lightThemeEntry =
+                UnityHelpersSettings.ResolveWButtonPalette(
+                    UnityHelpersSettings.WButtonLightThemeColorKey
+                );
+            UnityHelpersSettings.WButtonPaletteEntry darkThemeEntry =
+                UnityHelpersSettings.ResolveWButtonPalette(
+                    UnityHelpersSettings.WButtonDarkThemeColorKey
+                );
 
-            Assert.That(missingEntry.ButtonColor, Is.EqualTo(defaultEntry.ButtonColor));
-            Assert.That(missingEntry.TextColor, Is.EqualTo(defaultEntry.TextColor));
+            Color expectedButton = EditorGUIUtility.isProSkin
+                ? new Color(0.35f, 0.35f, 0.35f, 1f)
+                : new Color(0.78f, 0.78f, 0.78f, 1f);
+            Color expectedText = EditorGUIUtility.isProSkin ? Color.white : Color.black;
+            Color expectedLightButton = new(0.78f, 0.78f, 0.78f, 1f);
+            Color expectedDarkButton = new(0.35f, 0.35f, 0.35f, 1f);
+
+            AssertColorsApproximately(expectedButton, defaultEntry.ButtonColor);
+            AssertColorsApproximately(expectedText, defaultEntry.TextColor);
+            AssertColorsApproximately(expectedButton, missingEntry.ButtonColor);
+            AssertColorsApproximately(expectedText, missingEntry.TextColor);
+            AssertColorsApproximately(expectedLightButton, lightThemeEntry.ButtonColor);
+            AssertColorsApproximately(Color.black, lightThemeEntry.TextColor);
+            AssertColorsApproximately(expectedDarkButton, darkThemeEntry.ButtonColor);
+            AssertColorsApproximately(Color.white, darkThemeEntry.TextColor);
+            Assert.IsTrue(
+                UnityHelpersSettings.HasWButtonPaletteColorKey(
+                    UnityHelpersSettings.WButtonLightThemeColorKey
+                )
+            );
+            Assert.IsTrue(
+                UnityHelpersSettings.HasWButtonPaletteColorKey(
+                    UnityHelpersSettings.WButtonDarkThemeColorKey
+                )
+            );
+            Assert.IsTrue(
+                UnityHelpersSettings.HasWButtonPaletteColorKey(
+                    UnityHelpersSettings.WButtonLegacyColorKey
+                )
+            );
         }
 
         [Test]
