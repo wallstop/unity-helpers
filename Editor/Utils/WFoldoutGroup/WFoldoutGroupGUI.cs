@@ -68,6 +68,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup
                 );
 
                 WFoldoutGroupStyles.DrawHeaderBackground(headerRect, palette.BackgroundColor);
+                headerRect.xMin += WFoldoutGroupStyles.HeaderContentOffset;
 
                 int originalIndent = EditorGUI.indentLevel;
                 EditorGUI.indentLevel = 0;
@@ -200,6 +201,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup
 
     internal static class WFoldoutGroupStyles
     {
+        internal const float HeaderContentOffset = 10f;
         private static readonly Dictionary<Color, GUIStyle> FoldoutStyles = new();
 
         internal static GUIStyle GetFoldoutStyle(Color textColor)
