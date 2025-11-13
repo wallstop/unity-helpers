@@ -165,7 +165,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             );
 
             EditorGUI.BeginProperty(position, label, property);
-            Rect contentRect = EditorGUI.PrefixLabel(position, label);
+
+            int controlId = GUIUtility.GetControlID(FocusType.Passive);
+            bool labelTemporarilyEnabled = usePagination && !GUI.enabled;
+            bool previousLabelState = GUI.enabled;
+            if (labelTemporarilyEnabled)
+            {
+                GUI.enabled = true;
+            }
+            Rect contentRect = EditorGUI.PrefixLabel(position, controlId, label);
+            if (labelTemporarilyEnabled)
+            {
+                GUI.enabled = previousLabelState;
+            }
 
             float currentY = contentRect.y;
             if (
@@ -311,7 +323,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static void DrawPagination(
+        internal static void DrawPagination(
             Rect rect,
             WEnumToggleButtonsPagination.PaginationState state
         )
@@ -344,7 +356,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 lastRect.x -= overflow * 0.5f;
             }
 
-            EditorGUI.BeginDisabledGroup(state.PageIndex <= 0);
+            bool originalEnabled = GUI.enabled;
+            bool canNavigateBackward = state.PageIndex > 0;
+            bool canNavigateForward = state.PageIndex < state.TotalPages - 1;
+
+            GUI.enabled = originalEnabled && canNavigateBackward;
             if (GUI.Button(firstRect, FirstPageContent, EditorStyles.miniButtonLeft))
             {
                 state.PageIndex = 0;
@@ -354,12 +370,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 state.PageIndex = Mathf.Max(0, state.PageIndex - 1);
             }
-            EditorGUI.EndDisabledGroup();
+            GUI.enabled = originalEnabled;
 
             string pageLabel = $"Page {state.PageIndex + 1} / {state.TotalPages}";
             GUI.Label(labelRect, pageLabel, EditorStyles.miniLabel);
 
-            EditorGUI.BeginDisabledGroup(state.PageIndex >= state.TotalPages - 1);
+            GUI.enabled = originalEnabled && canNavigateForward;
             if (GUI.Button(nextRect, NextPageContent, EditorStyles.miniButtonMid))
             {
                 state.PageIndex = Mathf.Min(state.TotalPages - 1, state.PageIndex + 1);
@@ -369,7 +385,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 state.PageIndex = state.TotalPages - 1;
             }
-            EditorGUI.EndDisabledGroup();
+
+            GUI.enabled = originalEnabled;
         }
 
         private static void DrawToggle(
