@@ -59,6 +59,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// </example>
     public sealed class WEnumToggleButtonsAttribute : PropertyAttribute
     {
+        private string colorKey;
+
         /// <summary>
         /// Initializes the attribute with automatic row sizing.
         /// </summary>
@@ -115,5 +117,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// Values less than or equal to zero defer to the project-wide default stored in <c>UnityHelpersSettings</c>.
         /// </summary>
         public int PageSize { get; set; } = 0;
+
+        /// <summary>
+        /// Gets or sets an optional palette key used to resolve theming for the toggle buttons.
+        /// </summary>
+        public string ColorKey
+        {
+            get => colorKey;
+            set => colorKey = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
     }
 }

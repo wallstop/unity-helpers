@@ -322,6 +322,60 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
 
         [Test]
+        public void HashCodeSupportsUpToTwentyParameters()
+        {
+            int[] values =
+            {
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+            };
+
+            int spanHash = Objects.SpanHashCode<int>(values);
+            int variadicHash = Objects.HashCode(
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20
+            );
+
+            Assert.AreEqual(spanHash, variadicHash);
+        }
+
+        [Test]
         public void EnumerableHashCodeMatchesDeterministicHash()
         {
             const int expected = 1456420779;

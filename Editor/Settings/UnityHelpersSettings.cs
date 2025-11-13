@@ -45,6 +45,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const string DefaultWFoldoutGroupColorKey = "Foldout-Default";
         public const string WFoldoutGroupLightThemeColorKey = "Foldout-Default-Light";
         public const string WFoldoutGroupDarkThemeColorKey = "Foldout-Default-Dark";
+        public const string DefaultWEnumToggleButtonsColorKey = "Default";
+        public const string WEnumToggleButtonsLightThemeColorKey = "Default-Light";
+        public const string WEnumToggleButtonsDarkThemeColorKey = "Default-Dark";
         public const int DefaultWGroupAutoIncludeRowCount = 4;
         public const int MinWGroupAutoIncludeRowCount = 0;
         public const int MaxWGroupAutoIncludeRowCount = 32;
@@ -70,6 +73,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private static readonly Color DefaultColorKeyButtonColor = new(0.243f, 0.525f, 0.988f, 1f);
         private static readonly Color DefaultLightThemeButtonColor = new(0.78f, 0.78f, 0.78f, 1f);
         private static readonly Color DefaultDarkThemeButtonColor = new(0.35f, 0.35f, 0.35f, 1f);
+        private static readonly Color DefaultLightThemeEnumSelectedColor =
+            DefaultColorKeyButtonColor;
+        private static readonly Color DefaultLightThemeEnumSelectedTextColor = Color.white;
+        private static readonly Color DefaultLightThemeEnumInactiveColor =
+            DefaultLightThemeButtonColor;
+        private static readonly Color DefaultLightThemeEnumInactiveTextColor = Color.black;
+        private static readonly Color DefaultDarkThemeEnumSelectedColor =
+            DefaultColorKeyButtonColor;
+        private static readonly Color DefaultDarkThemeEnumSelectedTextColor = Color.white;
+        private static readonly Color DefaultDarkThemeEnumInactiveColor =
+            DefaultDarkThemeButtonColor;
+        private static readonly Color DefaultDarkThemeEnumInactiveTextColor = Color.white;
         private static readonly Dictionary<int, bool> SettingsGroupFoldoutStates = new();
         private static readonly Dictionary<int, bool> SettingsFoldoutGroupStates = new();
         private const float SettingsLabelWidth = 260f;
@@ -133,6 +148,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             EditorGUIUtility.TrTextContent("WGroup Custom Colors");
         private static readonly GUIContent WFoldoutGroupCustomColorsContent =
             EditorGUIUtility.TrTextContent("WFoldoutGroup Custom Colors");
+        private static readonly GUIContent WEnumToggleButtonsCustomColorsContent =
+            EditorGUIUtility.TrTextContent("WEnumToggleButtons Custom Colors");
         private static readonly GUIContent DictionaryFoldoutTweenEnabledContent =
             EditorGUIUtility.TrTextContent(
                 "Tween Dictionary Foldouts",
@@ -244,6 +261,30 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             public Color BackgroundColor { get; }
 
             public Color TextColor { get; }
+        }
+
+        public readonly struct WEnumToggleButtonsPaletteEntry
+        {
+            public WEnumToggleButtonsPaletteEntry(
+                Color selectedBackgroundColor,
+                Color selectedTextColor,
+                Color inactiveBackgroundColor,
+                Color inactiveTextColor
+            )
+            {
+                SelectedBackgroundColor = selectedBackgroundColor;
+                SelectedTextColor = selectedTextColor;
+                InactiveBackgroundColor = inactiveBackgroundColor;
+                InactiveTextColor = inactiveTextColor;
+            }
+
+            public Color SelectedBackgroundColor { get; }
+
+            public Color SelectedTextColor { get; }
+
+            public Color InactiveBackgroundColor { get; }
+
+            public Color InactiveTextColor { get; }
         }
 
         public enum DuplicateRowAnimationMode
@@ -436,7 +477,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [WGroup(
             "Color Palettes",
             displayName: "Color Palettes",
-            autoIncludeCount: 2,
+            autoIncludeCount: 3,
             collapsible: true
         )]
         private WButtonCustomColorDictionary wbuttonCustomColors = new();
@@ -448,6 +489,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [SerializeField]
         [Tooltip("Named color palette applied to WFoldoutGroup custom color keys.")]
         private WFoldoutGroupCustomColorDictionary wfoldoutGroupCustomColors = new();
+
+        [SerializeField]
+        [Tooltip("Named color palette applied to WEnumToggleButtons color keys.")]
+        private WEnumToggleButtonsCustomColorDictionary wenumToggleButtonsCustomColors = new();
 
         [SerializeField]
         [FormerlySerializedAs("wbuttonPriorityColors")]
@@ -550,6 +595,78 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 );
             }
         }
+
+        [CustomPropertyDrawer(typeof(WEnumToggleButtonsCustomColor))]
+        private sealed class WEnumToggleButtonsCustomColorDrawer : PropertyDrawer
+        {
+            public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+            {
+                float lineHeight = EditorGUIUtility.singleLineHeight;
+                float spacing = EditorGUIUtility.standardVerticalSpacing;
+                return lineHeight * 2f + spacing;
+            }
+
+            public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+            {
+                SerializedProperty selectedBackground = property.FindPropertyRelative(
+                    "selectedBackgroundColor"
+                );
+                SerializedProperty selectedText = property.FindPropertyRelative(
+                    "selectedTextColor"
+                );
+                SerializedProperty inactiveBackground = property.FindPropertyRelative(
+                    "inactiveBackgroundColor"
+                );
+                SerializedProperty inactiveText = property.FindPropertyRelative(
+                    "inactiveTextColor"
+                );
+
+                float spacing = EditorGUIUtility.standardVerticalSpacing;
+                float halfWidth = (position.width - spacing) * 0.5f;
+                float lineHeight = EditorGUIUtility.singleLineHeight;
+
+                Rect selectedBackgroundRect = new(position.x, position.y, halfWidth, lineHeight);
+                Rect selectedTextRect = new(
+                    position.x + halfWidth + spacing,
+                    position.y,
+                    halfWidth,
+                    lineHeight
+                );
+                Rect inactiveBackgroundRect = new(
+                    position.x,
+                    position.y + lineHeight + spacing,
+                    halfWidth,
+                    lineHeight
+                );
+                Rect inactiveTextRect = new(
+                    position.x + halfWidth + spacing,
+                    position.y + lineHeight + spacing,
+                    halfWidth,
+                    lineHeight
+                );
+
+                EditorGUI.PropertyField(
+                    selectedBackgroundRect,
+                    selectedBackground,
+                    EditorGUIUtility.TrTextContent("Selected Background")
+                );
+                EditorGUI.PropertyField(
+                    selectedTextRect,
+                    selectedText,
+                    EditorGUIUtility.TrTextContent("Selected Text")
+                );
+                EditorGUI.PropertyField(
+                    inactiveBackgroundRect,
+                    inactiveBackground,
+                    EditorGUIUtility.TrTextContent("Inactive Background")
+                );
+                EditorGUI.PropertyField(
+                    inactiveTextRect,
+                    inactiveText,
+                    EditorGUIUtility.TrTextContent("Inactive Text")
+                );
+            }
+        }
 #endif
 
         [System.Serializable]
@@ -589,6 +706,67 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [System.Serializable]
         private sealed class WFoldoutGroupCustomColorDictionary
             : SerializableDictionary<string, WGroupCustomColor> { }
+
+        [System.Serializable]
+        private sealed class WEnumToggleButtonsCustomColor
+        {
+            [SerializeField]
+            private Color selectedBackgroundColor = DefaultColorKeyButtonColor;
+
+            [SerializeField]
+            private Color selectedTextColor = Color.white;
+
+            [SerializeField]
+            private Color inactiveBackgroundColor = DefaultLightThemeButtonColor;
+
+            [SerializeField]
+            private Color inactiveTextColor = Color.black;
+
+            public Color SelectedBackgroundColor
+            {
+                get => selectedBackgroundColor;
+                set => selectedBackgroundColor = value;
+            }
+
+            public Color SelectedTextColor
+            {
+                get => selectedTextColor;
+                set => selectedTextColor = value;
+            }
+
+            public Color InactiveBackgroundColor
+            {
+                get => inactiveBackgroundColor;
+                set => inactiveBackgroundColor = value;
+            }
+
+            public Color InactiveTextColor
+            {
+                get => inactiveTextColor;
+                set => inactiveTextColor = value;
+            }
+
+            public void EnsureReadableText()
+            {
+                if (selectedTextColor.maxColorComponent <= 0f)
+                {
+                    selectedTextColor = WButtonColorUtility.GetReadableTextColor(
+                        selectedBackgroundColor
+                    );
+                }
+
+                if (inactiveTextColor.maxColorComponent <= 0f)
+                {
+                    inactiveTextColor = WButtonColorUtility.GetReadableTextColor(
+                        inactiveBackgroundColor
+                    );
+                }
+            }
+        }
+
+        [System.Serializable]
+        private sealed class WEnumToggleButtonsCustomColorDictionary
+            : SerializableDictionary<string, WEnumToggleButtonsCustomColor> { }
 
 #if UNITY_EDITOR
         [CustomPropertyDrawer(typeof(WGroupCustomColor))]
@@ -921,6 +1099,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return instance.GetWFoldoutGroupPaletteEntry(colorKey);
         }
 
+        public static WEnumToggleButtonsPaletteEntry ResolveWEnumToggleButtonsPalette(
+            string colorKey
+        )
+        {
+            return instance.GetWEnumToggleButtonsPaletteEntry(colorKey);
+        }
+
         public static string EnsureWFoldoutGroupColorKey(string colorKey)
         {
             return instance.EnsureWFoldoutGroupColorKeyInternal(colorKey);
@@ -929,6 +1114,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         internal static bool HasWFoldoutGroupPaletteColorKey(string colorKey)
         {
             return instance.ContainsWFoldoutGroupColorKey(colorKey);
+        }
+
+        internal static bool HasWEnumToggleButtonsPaletteColorKey(string colorKey)
+        {
+            return instance.ContainsWEnumToggleButtonsColorKey(colorKey);
         }
 
         public static WButtonActionsPlacement GetWButtonActionsPlacement()
@@ -1087,6 +1277,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             {
                 SaveSettings();
             }
+            if (EnsureWEnumToggleButtonsCustomColorDefaults())
+            {
+                SaveSettings();
+            }
             if (EnsureWGroupCustomColorDefaults())
             {
                 SaveSettings();
@@ -1111,6 +1305,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public void SaveSettings()
         {
             EnsureWButtonCustomColorDefaults();
+            EnsureWEnumToggleButtonsCustomColorDefaults();
             EnsureWGroupCustomColorDefaults();
             EnsureWFoldoutGroupCustomColorDefaults();
             ApplyRuntimeConfiguration();
@@ -1524,6 +1719,127 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return changed;
         }
 
+        private bool EnsureWEnumToggleButtonsCustomColorDefaults()
+        {
+            if (wenumToggleButtonsCustomColors == null)
+            {
+                wenumToggleButtonsCustomColors = new WEnumToggleButtonsCustomColorDictionary();
+            }
+
+            bool changed = false;
+
+            if (!wenumToggleButtonsCustomColors.ContainsKey(DefaultWEnumToggleButtonsColorKey))
+            {
+                bool proSkin = EditorGUIUtility.isProSkin;
+                WEnumToggleButtonsCustomColor defaultColor = new()
+                {
+                    SelectedBackgroundColor = proSkin
+                        ? DefaultDarkThemeEnumSelectedColor
+                        : DefaultLightThemeEnumSelectedColor,
+                    SelectedTextColor = proSkin
+                        ? DefaultDarkThemeEnumSelectedTextColor
+                        : DefaultLightThemeEnumSelectedTextColor,
+                    InactiveBackgroundColor = proSkin
+                        ? DefaultDarkThemeEnumInactiveColor
+                        : DefaultLightThemeEnumInactiveColor,
+                    InactiveTextColor = proSkin
+                        ? DefaultDarkThemeEnumInactiveTextColor
+                        : DefaultLightThemeEnumInactiveTextColor,
+                };
+                defaultColor.EnsureReadableText();
+                wenumToggleButtonsCustomColors[DefaultWEnumToggleButtonsColorKey] = defaultColor;
+                changed = true;
+            }
+
+            changed |= EnsureWEnumToggleButtonsThemeEntry(
+                WEnumToggleButtonsLightThemeColorKey,
+                DefaultLightThemeEnumSelectedColor,
+                DefaultLightThemeEnumSelectedTextColor,
+                DefaultLightThemeEnumInactiveColor,
+                DefaultLightThemeEnumInactiveTextColor
+            );
+            changed |= EnsureWEnumToggleButtonsThemeEntry(
+                WEnumToggleButtonsDarkThemeColorKey,
+                DefaultDarkThemeEnumSelectedColor,
+                DefaultDarkThemeEnumSelectedTextColor,
+                DefaultDarkThemeEnumInactiveColor,
+                DefaultDarkThemeEnumInactiveTextColor
+            );
+
+            foreach (
+                KeyValuePair<
+                    string,
+                    WEnumToggleButtonsCustomColor
+                > entry in wenumToggleButtonsCustomColors
+            )
+            {
+                WEnumToggleButtonsCustomColor value = entry.Value;
+                if (value == null)
+                {
+                    value = new WEnumToggleButtonsCustomColor();
+                    wenumToggleButtonsCustomColors[entry.Key] = value;
+                    changed = true;
+                }
+
+                Color previousSelectedText = value.SelectedTextColor;
+                Color previousInactiveText = value.InactiveTextColor;
+                value.EnsureReadableText();
+
+                if (!ColorsApproximatelyEqual(value.SelectedTextColor, previousSelectedText))
+                {
+                    changed = true;
+                }
+
+                if (!ColorsApproximatelyEqual(value.InactiveTextColor, previousInactiveText))
+                {
+                    changed = true;
+                }
+            }
+
+            return changed;
+        }
+
+        private bool EnsureWEnumToggleButtonsThemeEntry(
+            string key,
+            Color selectedBackground,
+            Color selectedTextDefault,
+            Color inactiveBackground,
+            Color inactiveTextDefault
+        )
+        {
+            if (
+                wenumToggleButtonsCustomColors.TryGetValue(
+                    key,
+                    out WEnumToggleButtonsCustomColor existing
+                )
+                && existing != null
+            )
+            {
+                existing.EnsureReadableText();
+                return false;
+            }
+
+            Color resolvedSelectedText =
+                selectedTextDefault.maxColorComponent <= 0f
+                    ? WButtonColorUtility.GetReadableTextColor(selectedBackground)
+                    : selectedTextDefault;
+            Color resolvedInactiveText =
+                inactiveTextDefault.maxColorComponent <= 0f
+                    ? WButtonColorUtility.GetReadableTextColor(inactiveBackground)
+                    : inactiveTextDefault;
+
+            WEnumToggleButtonsCustomColor themeColor = new()
+            {
+                SelectedBackgroundColor = selectedBackground,
+                SelectedTextColor = resolvedSelectedText,
+                InactiveBackgroundColor = inactiveBackground,
+                InactiveTextColor = resolvedInactiveText,
+            };
+            themeColor.EnsureReadableText();
+            wenumToggleButtonsCustomColors[key] = themeColor;
+            return true;
+        }
+
         private bool EnsureThemeEntry(string key, Color background, Color defaultText)
         {
             if (
@@ -1577,6 +1893,30 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 );
         }
 
+        private static bool IsReservedWEnumToggleButtonsColorKey(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                return true;
+            }
+
+            return string.Equals(
+                    key,
+                    DefaultWEnumToggleButtonsColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+                || string.Equals(
+                    key,
+                    WEnumToggleButtonsLightThemeColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+                || string.Equals(
+                    key,
+                    WEnumToggleButtonsDarkThemeColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                );
+        }
+
         private bool ContainsColorKey(string colorKey)
         {
             if (string.IsNullOrWhiteSpace(colorKey))
@@ -1599,6 +1939,42 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 : colorKey.Trim();
 
             foreach (string existingKey in wbuttonCustomColors.Keys)
+            {
+                if (
+                    string.Equals(
+                        existingKey,
+                        normalized,
+                        System.StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool ContainsWEnumToggleButtonsColorKey(string colorKey)
+        {
+            if (string.IsNullOrWhiteSpace(colorKey))
+            {
+                return true;
+            }
+
+            if (IsReservedWEnumToggleButtonsColorKey(colorKey))
+            {
+                return true;
+            }
+
+            if (wenumToggleButtonsCustomColors == null || wenumToggleButtonsCustomColors.Count == 0)
+            {
+                return false;
+            }
+
+            string normalized = colorKey.Trim();
+
+            foreach (string existingKey in wenumToggleButtonsCustomColors.Keys)
             {
                 if (
                     string.Equals(
@@ -1680,6 +2056,60 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             return normalized;
+        }
+
+        private string NormalizeWEnumToggleButtonsColorKey(string colorKey)
+        {
+            if (string.IsNullOrWhiteSpace(colorKey))
+            {
+                return DefaultWEnumToggleButtonsColorKey;
+            }
+
+            if (IsReservedWEnumToggleButtonsColorKey(colorKey))
+            {
+                if (
+                    string.Equals(
+                        colorKey,
+                        WEnumToggleButtonsLightThemeColorKey,
+                        System.StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    return WEnumToggleButtonsLightThemeColorKey;
+                }
+
+                if (
+                    string.Equals(
+                        colorKey,
+                        WEnumToggleButtonsDarkThemeColorKey,
+                        System.StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    return WEnumToggleButtonsDarkThemeColorKey;
+                }
+
+                return DefaultWEnumToggleButtonsColorKey;
+            }
+
+            if (wenumToggleButtonsCustomColors != null)
+            {
+                foreach (string existingKey in wenumToggleButtonsCustomColors.Keys)
+                {
+                    if (
+                        string.Equals(
+                            existingKey,
+                            colorKey,
+                            System.StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                    {
+                        return existingKey;
+                    }
+                }
+            }
+
+            return colorKey.Trim();
         }
 
         private WButtonPaletteEntry GetWButtonPaletteEntry(string colorKey)
@@ -2406,6 +2836,172 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return GetThemeAwareDefaultFoldoutPalette();
         }
 
+        private WEnumToggleButtonsPaletteEntry GetWEnumToggleButtonsPaletteEntry(string colorKey)
+        {
+            EnsureWEnumToggleButtonsCustomColorDefaults();
+
+            string normalized = NormalizeWEnumToggleButtonsColorKey(colorKey);
+
+            if (
+                string.Equals(
+                    normalized,
+                    DefaultWEnumToggleButtonsColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                return GetThemeAwareDefaultWEnumToggleButtonsPalette();
+            }
+
+            if (
+                string.Equals(
+                    normalized,
+                    WEnumToggleButtonsLightThemeColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                return GetWEnumToggleButtonsThemePaletteEntry(
+                    WEnumToggleButtonsLightThemeColorKey,
+                    DefaultLightThemeEnumSelectedColor,
+                    DefaultLightThemeEnumSelectedTextColor,
+                    DefaultLightThemeEnumInactiveColor,
+                    DefaultLightThemeEnumInactiveTextColor
+                );
+            }
+
+            if (
+                string.Equals(
+                    normalized,
+                    WEnumToggleButtonsDarkThemeColorKey,
+                    System.StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                return GetWEnumToggleButtonsThemePaletteEntry(
+                    WEnumToggleButtonsDarkThemeColorKey,
+                    DefaultDarkThemeEnumSelectedColor,
+                    DefaultDarkThemeEnumSelectedTextColor,
+                    DefaultDarkThemeEnumInactiveColor,
+                    DefaultDarkThemeEnumInactiveTextColor
+                );
+            }
+
+            if (
+                wenumToggleButtonsCustomColors != null
+                && wenumToggleButtonsCustomColors.TryGetValue(
+                    normalized,
+                    out WEnumToggleButtonsCustomColor directValue
+                )
+                && directValue != null
+            )
+            {
+                directValue.EnsureReadableText();
+                return new WEnumToggleButtonsPaletteEntry(
+                    directValue.SelectedBackgroundColor,
+                    directValue.SelectedTextColor,
+                    directValue.InactiveBackgroundColor,
+                    directValue.InactiveTextColor
+                );
+            }
+
+            if (wenumToggleButtonsCustomColors != null)
+            {
+                foreach (
+                    KeyValuePair<
+                        string,
+                        WEnumToggleButtonsCustomColor
+                    > entry in wenumToggleButtonsCustomColors
+                )
+                {
+                    if (
+                        string.Equals(
+                            entry.Key,
+                            normalized,
+                            System.StringComparison.OrdinalIgnoreCase
+                        )
+                        && entry.Value != null
+                    )
+                    {
+                        entry.Value.EnsureReadableText();
+                        return new WEnumToggleButtonsPaletteEntry(
+                            entry.Value.SelectedBackgroundColor,
+                            entry.Value.SelectedTextColor,
+                            entry.Value.InactiveBackgroundColor,
+                            entry.Value.InactiveTextColor
+                        );
+                    }
+                }
+            }
+
+            return GetThemeAwareDefaultWEnumToggleButtonsPalette();
+        }
+
+        private WEnumToggleButtonsPaletteEntry GetThemeAwareDefaultWEnumToggleButtonsPalette()
+        {
+            bool proSkin = EditorGUIUtility.isProSkin;
+            return proSkin
+                ? GetWEnumToggleButtonsThemePaletteEntry(
+                    WEnumToggleButtonsDarkThemeColorKey,
+                    DefaultDarkThemeEnumSelectedColor,
+                    DefaultDarkThemeEnumSelectedTextColor,
+                    DefaultDarkThemeEnumInactiveColor,
+                    DefaultDarkThemeEnumInactiveTextColor
+                )
+                : GetWEnumToggleButtonsThemePaletteEntry(
+                    WEnumToggleButtonsLightThemeColorKey,
+                    DefaultLightThemeEnumSelectedColor,
+                    DefaultLightThemeEnumSelectedTextColor,
+                    DefaultLightThemeEnumInactiveColor,
+                    DefaultLightThemeEnumInactiveTextColor
+                );
+        }
+
+        private WEnumToggleButtonsPaletteEntry GetWEnumToggleButtonsThemePaletteEntry(
+            string key,
+            Color selectedBackground,
+            Color selectedTextDefault,
+            Color inactiveBackground,
+            Color inactiveTextDefault
+        )
+        {
+            EnsureWEnumToggleButtonsCustomColorDefaults();
+
+            if (
+                wenumToggleButtonsCustomColors != null
+                && wenumToggleButtonsCustomColors.TryGetValue(
+                    key,
+                    out WEnumToggleButtonsCustomColor value
+                )
+                && value != null
+            )
+            {
+                value.EnsureReadableText();
+                return new WEnumToggleButtonsPaletteEntry(
+                    value.SelectedBackgroundColor,
+                    value.SelectedTextColor,
+                    value.InactiveBackgroundColor,
+                    value.InactiveTextColor
+                );
+            }
+
+            Color resolvedSelectedText =
+                selectedTextDefault.maxColorComponent <= 0f
+                    ? WButtonColorUtility.GetReadableTextColor(selectedBackground)
+                    : selectedTextDefault;
+            Color resolvedInactiveText =
+                inactiveTextDefault.maxColorComponent <= 0f
+                    ? WButtonColorUtility.GetReadableTextColor(inactiveBackground)
+                    : inactiveTextDefault;
+
+            return new WEnumToggleButtonsPaletteEntry(
+                selectedBackground,
+                resolvedSelectedText,
+                inactiveBackground,
+                resolvedInactiveText
+            );
+        }
+
         private static bool DrawSerializableTypeIgnorePatterns(
             SerializedProperty patternsProperty,
             SerializedProperty initializationFlagProperty
@@ -2918,6 +3514,27 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 EditorGUILayout.PropertyField(
                                     property,
                                     WFoldoutGroupCustomColorsContent,
+                                    true
+                                );
+                                if (EditorGUI.EndChangeCheck())
+                                {
+                                    dataChanged = true;
+                                }
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wenumToggleButtonsCustomColors),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                EditorGUI.BeginChangeCheck();
+                                EditorGUILayout.PropertyField(
+                                    property,
+                                    WEnumToggleButtonsCustomColorsContent,
                                     true
                                 );
                                 if (EditorGUI.EndChangeCheck())

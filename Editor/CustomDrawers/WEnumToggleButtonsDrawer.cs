@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
 
     [CustomPropertyDrawer(typeof(WEnumToggleButtonsAttribute))]
     public sealed class WEnumToggleButtonsDrawer : PropertyDrawer
@@ -40,6 +41,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             fontStyle = FontStyle.Italic,
         };
+        private static readonly Dictionary<ButtonStyleCacheKey, GUIStyle> ButtonStyleCache = new(
+            new ButtonStyleCacheKeyComparer()
+        );
+        private static readonly Dictionary<Color, Texture2D> SolidTextureCache = new(
+            new ColorComparer()
+        );
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
@@ -128,6 +135,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
+            UnityHelpersSettings.WEnumToggleButtonsPaletteEntry palette =
+                UnityHelpersSettings.ResolveWEnumToggleButtonsPalette(toggleAttribute.ColorKey);
+
             bool usePagination = WEnumToggleButtonsUtility.ShouldPaginate(
                 toggleAttribute,
                 toggleSet.Options.Count,
@@ -169,7 +179,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     contentRect.width,
                     EditorGUIUtility.singleLineHeight
                 );
-                DrawToolbar(toolbarRect, toggleSet, property, toggleAttribute);
+                DrawToolbar(toolbarRect, toggleSet, property, toggleAttribute, palette);
                 currentY += toolbarRect.height + ToolbarSpacing;
             }
 
@@ -208,7 +218,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 ToggleOption option = toggleSet.Options[startIndex + index];
                 Rect buttonRect = metrics.GetItemRect(buttonsRect, index);
-                DrawToggle(buttonRect, toggleSet, property, metrics, option, index, visibleCount);
+                DrawToggle(
+                    buttonRect,
+                    toggleSet,
+                    property,
+                    metrics,
+                    option,
+                    index,
+                    visibleCount,
+                    palette
+                );
             }
 
             EditorGUI.EndProperty();
@@ -218,7 +237,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Rect rect,
             ToggleSet toggleSet,
             SerializedProperty property,
-            WEnumToggleButtonsAttribute toggleAttribute
+            WEnumToggleButtonsAttribute toggleAttribute,
+            UnityHelpersSettings.WEnumToggleButtonsPaletteEntry palette
         )
         {
             bool drawSelectAll = toggleAttribute.ShowSelectAll;
@@ -239,11 +259,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     : rect;
 
                 bool allActive = WEnumToggleButtonsUtility.AreAllFlagsSelected(property, toggleSet);
+                ButtonSegment segment = alignedPair ? ButtonSegment.Left : ButtonSegment.Single;
+                GUIStyle style = GetButtonStyle(segment, allActive, palette);
                 bool selectAllPressed = GUI.Toggle(
                     selectAllRect,
                     allActive,
                     new GUIContent("All"),
-                    alignedPair ? EditorStyles.miniButtonLeft : EditorStyles.miniButton
+                    style
                 );
 
                 if (selectAllPressed && !allActive)
@@ -272,11 +294,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 bool noneActive = WEnumToggleButtonsUtility.AreNoFlagsSelected(property);
+                ButtonSegment segment = alignedPair ? ButtonSegment.Right : ButtonSegment.Single;
+                GUIStyle style = GetButtonStyle(segment, noneActive, palette);
                 bool selectNonePressed = GUI.Toggle(
                     selectNoneRect,
                     noneActive,
                     new GUIContent("None"),
-                    alignedPair ? EditorStyles.miniButtonRight : EditorStyles.miniButton
+                    style
                 );
 
                 if (selectNonePressed && !noneActive)
@@ -355,12 +379,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             LayoutMetrics metrics,
             ToggleOption option,
             int visibleIndex,
-            int visibleCount
+            int visibleCount,
+            UnityHelpersSettings.WEnumToggleButtonsPaletteEntry palette
         )
         {
             bool isActive = WEnumToggleButtonsUtility.IsOptionActive(property, toggleSet, option);
-
-            GUIStyle style = ResolveButtonStyle(visibleIndex, visibleCount, metrics.Columns);
+            ButtonSegment segment = ResolveButtonSegment(
+                visibleIndex,
+                visibleCount,
+                metrics.Columns
+            );
+            GUIStyle style = GetButtonStyle(segment, isActive, palette);
             bool newState = GUI.Toggle(rect, isActive, option.Label, style);
 
             if (newState == isActive)
@@ -415,11 +444,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return new SelectionSummary(true, new GUIContent(text));
         }
 
-        private static GUIStyle ResolveButtonStyle(int index, int total, int columns)
+        private static ButtonSegment ResolveButtonSegment(int index, int total, int columns)
         {
             if (columns <= 1)
             {
-                return EditorStyles.miniButton;
+                return ButtonSegment.Single;
             }
 
             int columnIndex = index % columns;
@@ -428,20 +457,120 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (isFirst && isLast)
             {
-                return EditorStyles.miniButton;
+                return ButtonSegment.Single;
             }
 
             if (isFirst)
             {
-                return EditorStyles.miniButtonLeft;
+                return ButtonSegment.Left;
             }
 
             if (isLast)
             {
-                return EditorStyles.miniButtonRight;
+                return ButtonSegment.Right;
             }
 
-            return EditorStyles.miniButtonMid;
+            return ButtonSegment.Middle;
+        }
+
+        private static GUIStyle GetButtonStyle(
+            ButtonSegment segment,
+            bool isActive,
+            UnityHelpersSettings.WEnumToggleButtonsPaletteEntry palette
+        )
+        {
+            ButtonStyleCacheKey key = new(segment, isActive, palette);
+            if (ButtonStyleCache.TryGetValue(key, out GUIStyle cached))
+            {
+                return cached;
+            }
+
+            GUIStyle basis = segment switch
+            {
+                ButtonSegment.Left => EditorStyles.miniButtonLeft,
+                ButtonSegment.Middle => EditorStyles.miniButtonMid,
+                ButtonSegment.Right => EditorStyles.miniButtonRight,
+                _ => EditorStyles.miniButton,
+            };
+
+            GUIStyle style = new(basis)
+            {
+                name = $"WEnumToggleButtons/{segment}/{(isActive ? "Active" : "Inactive")}",
+            };
+
+            Color baseBackground = isActive
+                ? palette.SelectedBackgroundColor
+                : palette.InactiveBackgroundColor;
+            Color hoverBackground = WButtonColorUtility.GetHoverColor(baseBackground);
+            Color activeBackground = WButtonColorUtility.GetActiveColor(baseBackground);
+            Color textColor = isActive ? palette.SelectedTextColor : palette.InactiveTextColor;
+
+            ConfigureButtonStyle(
+                style,
+                baseBackground,
+                hoverBackground,
+                activeBackground,
+                textColor
+            );
+
+            ButtonStyleCache[key] = style;
+            return style;
+        }
+
+        private static void ConfigureButtonStyle(
+            GUIStyle style,
+            Color normalBackground,
+            Color hoverBackground,
+            Color activeBackground,
+            Color textColor
+        )
+        {
+            Texture2D normalTexture = GetSolidTexture(normalBackground);
+            Texture2D hoverTexture = GetSolidTexture(hoverBackground);
+            Texture2D activeTexture = GetSolidTexture(activeBackground);
+
+            style.normal.background = normalTexture;
+            style.normal.textColor = textColor;
+
+            style.focused.background = normalTexture;
+            style.focused.textColor = textColor;
+
+            style.onNormal.background = normalTexture;
+            style.onNormal.textColor = textColor;
+
+            style.onFocused.background = normalTexture;
+            style.onFocused.textColor = textColor;
+
+            style.hover.background = hoverTexture;
+            style.hover.textColor = textColor;
+
+            style.onHover.background = hoverTexture;
+            style.onHover.textColor = textColor;
+
+            style.active.background = activeTexture;
+            style.active.textColor = textColor;
+
+            style.onActive.background = activeTexture;
+            style.onActive.textColor = textColor;
+        }
+
+        private static Texture2D GetSolidTexture(Color color)
+        {
+            if (SolidTextureCache.TryGetValue(color, out Texture2D cached))
+            {
+                return cached;
+            }
+
+            Texture2D texture = new(1, 1, TextureFormat.RGBA32, false)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Point,
+            };
+            texture.SetPixel(0, 0, color);
+            texture.Apply(false, true);
+            SolidTextureCache[color] = texture;
+            return texture;
         }
 
         private readonly struct SelectionSummary
@@ -457,6 +586,116 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             internal bool HasSummary { get; }
 
             internal GUIContent Content { get; }
+        }
+
+        private enum ButtonSegment
+        {
+            Single = 0,
+            Left = 1,
+            Middle = 2,
+            Right = 3,
+        }
+
+        private readonly struct ButtonStyleCacheKey : System.IEquatable<ButtonStyleCacheKey>
+        {
+            internal ButtonStyleCacheKey(
+                ButtonSegment segment,
+                bool isActive,
+                UnityHelpersSettings.WEnumToggleButtonsPaletteEntry palette
+            )
+            {
+                Segment = segment;
+                IsActive = isActive;
+                SelectedBackground = palette.SelectedBackgroundColor;
+                SelectedText = palette.SelectedTextColor;
+                InactiveBackground = palette.InactiveBackgroundColor;
+                InactiveText = palette.InactiveTextColor;
+            }
+
+            internal ButtonSegment Segment { get; }
+
+            internal bool IsActive { get; }
+
+            private Color SelectedBackground { get; }
+
+            private Color SelectedText { get; }
+
+            private Color InactiveBackground { get; }
+
+            private Color InactiveText { get; }
+
+            public bool Equals(ButtonStyleCacheKey other)
+            {
+                return Segment == other.Segment
+                    && IsActive == other.IsActive
+                    && ColorComparer.AreEqual(SelectedBackground, other.SelectedBackground)
+                    && ColorComparer.AreEqual(SelectedText, other.SelectedText)
+                    && ColorComparer.AreEqual(InactiveBackground, other.InactiveBackground)
+                    && ColorComparer.AreEqual(InactiveText, other.InactiveText);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is ButtonStyleCacheKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                return Objects.HashCode(
+                    Segment,
+                    IsActive,
+                    SelectedBackground.r,
+                    SelectedBackground.g,
+                    SelectedBackground.b,
+                    SelectedBackground.a,
+                    SelectedText.r,
+                    SelectedText.g,
+                    SelectedText.b,
+                    SelectedText.a,
+                    InactiveBackground.r,
+                    InactiveBackground.g,
+                    InactiveBackground.b,
+                    InactiveBackground.a,
+                    InactiveText.r,
+                    InactiveText.g,
+                    InactiveText.b,
+                    InactiveText.a
+                );
+            }
+        }
+
+        private sealed class ButtonStyleCacheKeyComparer : IEqualityComparer<ButtonStyleCacheKey>
+        {
+            public bool Equals(ButtonStyleCacheKey x, ButtonStyleCacheKey y)
+            {
+                return x.Equals(y);
+            }
+
+            public int GetHashCode(ButtonStyleCacheKey obj)
+            {
+                return obj.GetHashCode();
+            }
+        }
+
+        private sealed class ColorComparer : IEqualityComparer<Color>
+        {
+            public bool Equals(Color x, Color y)
+            {
+                return AreEqual(x, y);
+            }
+
+            public int GetHashCode(Color obj)
+            {
+                return Objects.HashCode(obj.r, obj.g, obj.b, obj.a);
+            }
+
+            internal static bool AreEqual(Color x, Color y)
+            {
+                return Mathf.Approximately(x.r, y.r)
+                    && Mathf.Approximately(x.g, y.g)
+                    && Mathf.Approximately(x.b, y.b)
+                    && Mathf.Approximately(x.a, y.a);
+            }
         }
     }
 
