@@ -73,6 +73,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private static readonly Dictionary<int, bool> SettingsGroupFoldoutStates = new();
         private static readonly Dictionary<int, bool> SettingsFoldoutGroupStates = new();
         private const float SettingsLabelWidth = 260f;
+        private const float SettingsMinFieldWidth = 140f;
         private static readonly GUIContent StringInListPageSizeContent =
             EditorGUIUtility.TrTextContent(
                 "StringInList Page Size",
@@ -2610,8 +2611,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             internal LabelWidthScope(float targetWidth)
             {
                 _previousWidth = EditorGUIUtility.labelWidth;
-                float normalizedTarget = Mathf.Max(targetWidth, 0f);
-                float appliedWidth = Mathf.Max(_previousWidth, normalizedTarget);
+                float currentViewWidth = EditorGUIUtility.currentViewWidth;
+                float maxLabelWidth = Mathf.Max(0f, currentViewWidth - SettingsMinFieldWidth);
+                float appliedWidth = Mathf.Clamp(targetWidth, 0f, maxLabelWidth);
+                if (appliedWidth <= 0f)
+                {
+                    appliedWidth = _previousWidth;
+                }
                 EditorGUIUtility.labelWidth = appliedWidth;
             }
 
