@@ -269,6 +269,98 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             Assert.That(operations[1].PropertyPath, Is.EqualTo(nameof(FoldoutGroupAsset.stamina)));
         }
 
+        [Test]
+        public void FoldoutAutoIncludeRespectsFiniteBudget()
+        {
+            UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
+                UnityHelpersSettings.WGroupAutoIncludeMode.Infinite,
+                0
+            );
+
+            FoldoutFiniteAsset asset = CreateScriptableObject<FoldoutFiniteAsset>();
+            SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
+            string scriptPath = scriptProperty != null ? scriptProperty.propertyPath : null;
+
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, scriptPath);
+            Assert.IsTrue(layout.TryGetFoldoutGroup("Stats", out WFoldoutGroupDefinition foldout));
+
+            Assert.That(
+                foldout.PropertyPaths,
+                Is.EqualTo(
+                    new[]
+                    {
+                        nameof(FoldoutFiniteAsset.primary),
+                        nameof(FoldoutFiniteAsset.secondary),
+                    }
+                )
+            );
+
+            IReadOnlyList<WGroupDrawOperation> operations = layout.Operations;
+            Assert.That(operations[0].Type, Is.EqualTo(WGroupDrawOperationType.FoldoutGroup));
+            Assert.That(operations[1].PropertyPath, Is.EqualTo(nameof(FoldoutFiniteAsset.outside)));
+        }
+
+        [Test]
+        public void FoldoutHideHeaderMetadataIsPreserved()
+        {
+            HiddenHeaderFoldoutAsset asset = CreateScriptableObject<HiddenHeaderFoldoutAsset>();
+            SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
+            string scriptPath = scriptProperty != null ? scriptProperty.propertyPath : null;
+
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, scriptPath);
+            Assert.IsTrue(layout.TryGetFoldoutGroup("Hidden", out WFoldoutGroupDefinition foldout));
+            Assert.IsTrue(foldout.HideHeader);
+            Assert.IsFalse(foldout.StartCollapsed);
+        }
+
+        [Test]
+        public void MixedGroupAndFoldoutOperationsMaintainOrder()
+        {
+            UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
+                UnityHelpersSettings.WGroupAutoIncludeMode.Finite,
+                1
+            );
+
+            MixedGroupFoldoutAsset asset = CreateScriptableObject<MixedGroupFoldoutAsset>();
+            SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
+            string scriptPath = scriptProperty != null ? scriptProperty.propertyPath : null;
+
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, scriptPath);
+            IReadOnlyList<WGroupDrawOperation> operations = layout.Operations;
+
+            Assert.That(operations[0].Type, Is.EqualTo(WGroupDrawOperationType.Group));
+            Assert.That(
+                operations[0].Group.PropertyPaths,
+                Is.EqualTo(
+                    new[]
+                    {
+                        nameof(MixedGroupFoldoutAsset.grouped),
+                        nameof(MixedGroupFoldoutAsset.groupMember),
+                    }
+                )
+            );
+
+            Assert.That(operations[1].Type, Is.EqualTo(WGroupDrawOperationType.FoldoutGroup));
+            Assert.That(
+                operations[1].FoldoutGroup.PropertyPaths,
+                Is.EqualTo(new[] { nameof(MixedGroupFoldoutAsset.foldoutValue) })
+            );
+
+            Assert.That(
+                operations[2].PropertyPath,
+                Is.EqualTo(nameof(MixedGroupFoldoutAsset.trailing))
+            );
+        }
+
         private sealed class FiniteGroupAsset : ScriptableObject
         {
             [WGroup("Stats")]
@@ -302,6 +394,35 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             public int mana;
 
             public int stamina;
+        }
+
+        private sealed class FoldoutFiniteAsset : ScriptableObject
+        {
+            [WFoldoutGroup("Stats", autoIncludeCount: 1)]
+            public int primary;
+
+            public int secondary;
+
+            public int outside;
+        }
+
+        private sealed class HiddenHeaderFoldoutAsset : ScriptableObject
+        {
+            [WFoldoutGroup("Hidden", autoIncludeCount: 0, hideHeader: true, startCollapsed: false)]
+            public float value;
+        }
+
+        private sealed class MixedGroupFoldoutAsset : ScriptableObject
+        {
+            [WGroup("Config", autoIncludeCount: 1, collapsible: true)]
+            public int grouped;
+
+            public int groupMember;
+
+            [WFoldoutGroup("Advanced", autoIncludeCount: 0)]
+            public float foldoutValue;
+
+            public float trailing;
         }
 
         private sealed class NamedEndGroupAsset : ScriptableObject

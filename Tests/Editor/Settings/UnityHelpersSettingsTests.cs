@@ -542,6 +542,106 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             AssertColorsApproximately(expectedText, entry.TextColor);
         }
 
+        [Test]
+        public void WFoldoutTweenSettingsRoundTripThroughSerializedObject()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            bool originalEnabled = UnityHelpersSettings.ShouldTweenWFoldoutGroups();
+            float originalSpeed = UnityHelpersSettings.GetWFoldoutGroupTweenSpeed();
+
+            bool newEnabled = !originalEnabled;
+            float newSpeed =
+                Math.Abs(originalSpeed - UnityHelpersSettings.MinFoldoutSpeed) < 0.01f
+                    ? UnityHelpersSettings.MaxFoldoutSpeed
+                    : UnityHelpersSettings.MinFoldoutSpeed;
+
+            try
+            {
+                SerializedObject serialized = new(settings);
+                SerializedProperty enabledProperty = serialized.FindProperty(
+                    "wfoldoutGroupTweenEnabled"
+                );
+                SerializedProperty speedProperty = serialized.FindProperty(
+                    "wfoldoutGroupTweenSpeed"
+                );
+
+                enabledProperty.boolValue = newEnabled;
+                speedProperty.floatValue = newSpeed;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                settings.SaveSettings();
+
+                Assert.AreEqual(
+                    newEnabled,
+                    UnityHelpersSettings.ShouldTweenWFoldoutGroups(),
+                    "ShouldTweenWFoldoutGroups should reflect serialized toggle changes."
+                );
+                Assert.That(
+                    UnityHelpersSettings.GetWFoldoutGroupTweenSpeed(),
+                    Is.EqualTo(
+                        Mathf.Clamp(
+                            newSpeed,
+                            UnityHelpersSettings.MinFoldoutSpeed,
+                            UnityHelpersSettings.MaxFoldoutSpeed
+                        )
+                    )
+                );
+            }
+            finally
+            {
+                SerializedObject restore = new(settings);
+                restore.FindProperty("wfoldoutGroupTweenEnabled").boolValue = originalEnabled;
+                restore.FindProperty("wfoldoutGroupTweenSpeed").floatValue = originalSpeed;
+                restore.ApplyModifiedPropertiesWithoutUndo();
+                settings.SaveSettings();
+            }
+        }
+
+        [Test]
+        public void WGroupAndFoldoutDictionariesPreserveCustomEntries()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+
+            string wgroupKey = "TestGroupPaletteKey_Settings";
+            string wfoldoutKey = "TestFoldoutPaletteKey_Settings";
+
+            try
+            {
+                string resolvedGroup = UnityHelpersSettings.EnsureWGroupColorKey(wgroupKey);
+                string resolvedFoldout = UnityHelpersSettings.EnsureWFoldoutGroupColorKey(
+                    wfoldoutKey
+                );
+
+                UnityHelpersSettings.WGroupPaletteEntry groupPalette =
+                    UnityHelpersSettings.ResolveWGroupPalette(resolvedGroup);
+                UnityHelpersSettings.WFoldoutGroupPaletteEntry foldoutPalette =
+                    UnityHelpersSettings.ResolveWFoldoutGroupPalette(resolvedFoldout);
+
+                Assert.IsTrue(
+                    UnityHelpersSettings.HasWGroupPaletteColorKey(resolvedGroup),
+                    "WGroup palette should contain the user supplied key."
+                );
+                Assert.IsTrue(
+                    UnityHelpersSettings.HasWFoldoutGroupPaletteColorKey(resolvedFoldout),
+                    "WFoldout palette should contain the user supplied key."
+                );
+                Assert.Greater(groupPalette.BackgroundColor.a, 0f);
+                Assert.Greater(foldoutPalette.BackgroundColor.a, 0f);
+            }
+            finally
+            {
+                SerializedObject serialized = new(settings);
+                SerializedProperty groupDictionary = serialized.FindProperty("wgroupCustomColors");
+                RemoveDictionaryEntry(groupDictionary, wgroupKey);
+                SerializedProperty foldoutDictionary = serialized.FindProperty(
+                    "wfoldoutGroupCustomColors"
+                );
+                RemoveDictionaryEntry(foldoutDictionary, wfoldoutKey);
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                settings.SaveSettings();
+            }
+        }
+
         private static void AssertColorsApproximately(
             Color expected,
             Color actual,
@@ -552,6 +652,31 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             Assert.That(Mathf.Abs(expected.g - actual.g), Is.LessThanOrEqualTo(tolerance));
             Assert.That(Mathf.Abs(expected.b - actual.b), Is.LessThanOrEqualTo(tolerance));
             Assert.That(Mathf.Abs(expected.a - actual.a), Is.LessThanOrEqualTo(tolerance));
+        }
+
+        private static void RemoveDictionaryEntry(SerializedProperty dictionaryProperty, string key)
+        {
+            if (dictionaryProperty == null || !dictionaryProperty.isArray)
+            {
+                return;
+            }
+
+            for (int index = dictionaryProperty.arraySize - 1; index >= 0; index--)
+            {
+                SerializedProperty element = dictionaryProperty.GetArrayElementAtIndex(index);
+                SerializedProperty keyProperty = element.FindPropertyRelative("Key");
+                if (
+                    keyProperty != null
+                    && string.Equals(
+                        keyProperty.stringValue,
+                        key,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    dictionaryProperty.DeleteArrayElementAtIndex(index);
+                }
+            }
         }
     }
 }

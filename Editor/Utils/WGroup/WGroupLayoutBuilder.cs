@@ -406,13 +406,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             HashSet<GroupContext> explicitContexts
         )
         {
-            for (int index = 0; index < activeAutoContexts.Count; index++)
+            for (int index = activeAutoContexts.Count - 1; index >= 0; index--)
             {
                 GroupContext candidate = activeAutoContexts[index];
                 if (!candidate.HasAutoIncludeBudget)
                 {
                     activeAutoContexts.RemoveAt(index);
-                    index--;
                     continue;
                 }
 
@@ -513,13 +512,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             HashSet<FoldoutGroupContext> explicitContexts
         )
         {
-            for (int index = 0; index < activeAutoContexts.Count; index++)
+            for (int index = activeAutoContexts.Count - 1; index >= 0; index--)
             {
                 FoldoutGroupContext candidate = activeAutoContexts[index];
                 if (!candidate.HasAutoIncludeBudget)
                 {
                     activeAutoContexts.RemoveAt(index);
-                    index--;
                     continue;
                 }
 
