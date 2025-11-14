@@ -22,6 +22,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float PaginationLabelMinWidth = 80f;
         private const float SummarySpacing = 2f;
         private const float ContentWidthPadding = 24f;
+        private const float VerticalPadding = 5f;
 
         private static readonly GUIContent FirstPageContent = EditorGUIUtility.TrTextContent(
             "<<",
@@ -154,7 +155,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 extraHeight += summaryHeight + SummarySpacing;
             }
 
-            return extraHeight + metrics.TotalHeight;
+            return extraHeight + metrics.TotalHeight + VerticalPadding * 2f;
         }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -240,7 +241,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 toggleSet.SupportsMultipleSelection
                 && (toggleAttribute.ShowSelectAll || toggleAttribute.ShowSelectNone);
 
-            float currentY = contentRect.y;
+            float currentY = contentRect.y + VerticalPadding;
             if (showToolbarControls)
             {
                 Rect toolbarRect = new(
@@ -282,7 +283,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 MinButtonWidth
             );
 
-            Rect buttonsRect = new(contentRect.x, currentY, contentRect.width, metrics.TotalHeight);
+            Rect buttonsRect = new(
+                contentRect.x,
+                currentY,
+                contentRect.width,
+                metrics.TotalHeight + VerticalPadding * 2
+            );
 
             for (int index = 0; index < visibleCount; index += 1)
             {
@@ -300,7 +306,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
             }
 
-            float totalHeight = (currentY - contentRect.y) + metrics.TotalHeight;
+            float totalHeight = (currentY - contentRect.y) + metrics.TotalHeight + VerticalPadding;
             WEnumToggleButtonsLayoutCache.Store(
                 property,
                 signature,
