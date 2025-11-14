@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Extensions;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
 
@@ -20,6 +21,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float PaginationButtonWidth = 22f;
         private const float PaginationLabelMinWidth = 80f;
         private const float SummarySpacing = 2f;
+        private const float ContentWidthPadding = 24f;
 
         private static readonly GUIContent FirstPageContent = EditorGUIUtility.TrTextContent(
             "<<",
@@ -62,13 +64,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return EditorGUI.GetPropertyHeight(property, label, true);
             }
 
-            float extraToolbarHeight = 0f;
-            if (
+            bool showToolbarControls =
                 toggleSet.SupportsMultipleSelection
-                && (toggleAttribute.ShowSelectAll || toggleAttribute.ShowSelectNone)
-            )
+                && (toggleAttribute.ShowSelectAll || toggleAttribute.ShowSelectNone);
+
+            float extraHeight = 0f;
+            if (showToolbarControls)
             {
-                extraToolbarHeight = EditorGUIUtility.singleLineHeight + ToolbarSpacing;
+                extraHeight = EditorGUIUtility.singleLineHeight + ToolbarSpacing;
             }
 
             bool usePagination = WEnumToggleButtonsUtility.ShouldPaginate(
@@ -78,7 +81,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             );
             int startIndex = 0;
             int visibleCount = toggleSet.Options.Count;
-            SelectionSummary summary = SelectionSummary.None;
             if (usePagination)
             {
                 WEnumToggleButtonsPagination.PaginationState state =
@@ -89,18 +91,54 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     );
                 startIndex = state.StartIndex;
                 visibleCount = state.VisibleCount;
-                extraToolbarHeight += EditorGUIUtility.singleLineHeight + ToolbarSpacing;
-                summary = BuildSelectionSummary(
-                    toggleSet,
-                    property,
-                    startIndex,
-                    visibleCount,
-                    true
-                );
+                extraHeight += EditorGUIUtility.singleLineHeight + ToolbarSpacing;
             }
 
+            if (visibleCount <= 0)
+            {
+                return EditorGUI.GetPropertyHeight(property, label, true);
+            }
+
+            SelectionSummary summary = BuildSelectionSummary(
+                toggleSet,
+                property,
+                startIndex,
+                visibleCount,
+                usePagination
+            );
+
             float estimatedWidth =
-                EditorGUIUtility.currentViewWidth - EditorGUIUtility.labelWidth - 20f;
+                EditorGUIUtility.currentViewWidth
+                - EditorGUIUtility.labelWidth
+                - ContentWidthPadding;
+            if (estimatedWidth <= 0f)
+            {
+                estimatedWidth = MinButtonWidth;
+            }
+
+            LayoutSignature signature = WEnumToggleButtonsLayoutCache.CreateSignature(
+                toggleSet.Options.Count,
+                visibleCount,
+                toggleAttribute.ButtonsPerRow,
+                toggleSet.SupportsMultipleSelection,
+                toggleAttribute.ShowSelectAll,
+                toggleAttribute.ShowSelectNone,
+                usePagination,
+                summary.HasSummary,
+                estimatedWidth
+            );
+
+            if (
+                WEnumToggleButtonsLayoutCache.TryGetHeight(
+                    property,
+                    signature,
+                    out float cachedHeight
+                )
+            )
+            {
+                return cachedHeight;
+            }
+
             LayoutMetrics metrics = WEnumToggleButtonsUtility.CalculateLayout(
                 toggleAttribute.ButtonsPerRow,
                 visibleCount,
@@ -113,10 +151,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (summary.HasSummary)
             {
                 float summaryHeight = SummaryStyle.CalcHeight(summary.Content, estimatedWidth);
-                extraToolbarHeight += summaryHeight + SummarySpacing;
+                extraHeight += summaryHeight + SummarySpacing;
             }
 
-            return extraToolbarHeight + metrics.TotalHeight;
+            return extraHeight + metrics.TotalHeight;
         }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -179,11 +217,31 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 GUI.enabled = previousLabelState;
             }
 
-            float currentY = contentRect.y;
-            if (
+            if (contentRect.width <= 0f || visibleCount <= 0)
+            {
+                EditorGUI.PropertyField(position, property, label, true);
+                EditorGUI.EndProperty();
+                return;
+            }
+
+            LayoutSignature signature = WEnumToggleButtonsLayoutCache.CreateSignature(
+                toggleSet.Options.Count,
+                visibleCount,
+                toggleAttribute.ButtonsPerRow,
+                toggleSet.SupportsMultipleSelection,
+                toggleAttribute.ShowSelectAll,
+                toggleAttribute.ShowSelectNone,
+                usePagination,
+                summary.HasSummary,
+                contentRect.width
+            );
+
+            bool showToolbarControls =
                 toggleSet.SupportsMultipleSelection
-                && (toggleAttribute.ShowSelectAll || toggleAttribute.ShowSelectNone)
-            )
+                && (toggleAttribute.ShowSelectAll || toggleAttribute.ShowSelectNone);
+
+            float currentY = contentRect.y;
+            if (showToolbarControls)
             {
                 Rect toolbarRect = new(
                     contentRect.x,
@@ -241,6 +299,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     palette
                 );
             }
+
+            float totalHeight = (currentY - contentRect.y) + metrics.TotalHeight;
+            WEnumToggleButtonsLayoutCache.Store(
+                property,
+                signature,
+                contentRect.width,
+                totalHeight
+            );
 
             EditorGUI.EndProperty();
         }
@@ -759,9 +825,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return ToggleSet.Empty;
             }
 
+            FieldInfo resolvedFieldInfo = fieldInfo;
+            if (resolvedFieldInfo == null)
+            {
+                property.GetEnclosingObject(out resolvedFieldInfo);
+            }
+
             if (property.propertyType == SerializedPropertyType.Enum)
             {
-                Type enumType = ResolveEnumType(fieldInfo);
+                Type enumType = ResolveEnumType(resolvedFieldInfo);
                 if (enumType == null)
                 {
                     return ToggleSet.Empty;
@@ -778,13 +850,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return new ToggleSet(enumOptions, isFlags, source, enumType);
             }
 
-            ToggleOption[] dropdownOptions = BuildDropdownOptions(fieldInfo);
+            ToggleOption[] dropdownOptions = BuildDropdownOptions(property, resolvedFieldInfo);
             if (dropdownOptions.Length == 0)
             {
                 return ToggleSet.Empty;
             }
 
-            Type valueType = fieldInfo != null ? fieldInfo.FieldType : null;
+            Type valueType = resolvedFieldInfo != null ? resolvedFieldInfo.FieldType : null;
             return new ToggleSet(dropdownOptions, false, ToggleSource.Dropdown, valueType);
         }
 
@@ -1003,15 +1075,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return options.ToArray();
         }
 
-        private static ToggleOption[] BuildDropdownOptions(FieldInfo fieldInfo)
+        private static ToggleOption[] BuildDropdownOptions(
+            SerializedProperty property,
+            FieldInfo fieldInfo
+        )
         {
-            if (fieldInfo == null)
-            {
-                return Array.Empty<ToggleOption>();
-            }
-
             ValueDropdownAttribute valueDropdownAttribute = GetAttribute<ValueDropdownAttribute>(
-                fieldInfo
+                fieldInfo,
+                property
             );
             if (valueDropdownAttribute != null)
             {
@@ -1020,7 +1091,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             IntDropdownAttribute intDropdownAttribute = GetAttribute<IntDropdownAttribute>(
-                fieldInfo
+                fieldInfo,
+                property
             );
             if (intDropdownAttribute != null)
             {
@@ -1037,7 +1109,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             StringInListAttribute stringInListAttribute = GetAttribute<StringInListAttribute>(
-                fieldInfo
+                fieldInfo,
+                property
             );
             if (stringInListAttribute != null)
             {
@@ -1343,10 +1416,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return value != 0UL && (value & (value - 1UL)) == 0UL;
         }
 
-        private static TAttribute GetAttribute<TAttribute>(FieldInfo fieldInfo)
+        private static TAttribute GetAttribute<TAttribute>(
+            FieldInfo fieldInfo,
+            SerializedProperty property
+        )
             where TAttribute : Attribute
         {
-            return ReflectionHelpers.GetAttributeSafe<TAttribute>(fieldInfo, true);
+            TAttribute attribute = ReflectionHelpers.GetAttributeSafe<TAttribute>(fieldInfo, true);
+            if (attribute != null || property == null)
+            {
+                return attribute;
+            }
+
+            property.GetEnclosingObject(out FieldInfo inferredFieldInfo);
+            if (inferredFieldInfo != null && inferredFieldInfo != fieldInfo)
+            {
+                attribute = ReflectionHelpers.GetAttributeSafe<TAttribute>(inferredFieldInfo, true);
+            }
+
+            return attribute;
         }
     }
 
@@ -1406,6 +1494,195 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal Type ValueType { get; }
 
         internal bool IsEmpty => _options == null || _options.Length == 0;
+    }
+
+    internal readonly struct LayoutSignature : IEquatable<LayoutSignature>
+    {
+        internal LayoutSignature(
+            int optionCount,
+            int visibleCount,
+            int buttonsPerRow,
+            bool supportsMultipleSelection,
+            bool showSelectAll,
+            bool showSelectNone,
+            bool usePagination,
+            bool hasSummary,
+            int widthBucket
+        )
+        {
+            OptionCount = optionCount;
+            VisibleCount = visibleCount;
+            ButtonsPerRow = buttonsPerRow;
+            SupportsMultipleSelection = supportsMultipleSelection;
+            ShowSelectAll = showSelectAll;
+            ShowSelectNone = showSelectNone;
+            UsePagination = usePagination;
+            HasSummary = hasSummary;
+            WidthBucket = widthBucket;
+        }
+
+        internal int OptionCount { get; }
+
+        internal int VisibleCount { get; }
+
+        internal int ButtonsPerRow { get; }
+
+        internal bool SupportsMultipleSelection { get; }
+
+        internal bool ShowSelectAll { get; }
+
+        internal bool ShowSelectNone { get; }
+
+        internal bool UsePagination { get; }
+
+        internal bool HasSummary { get; }
+
+        internal int WidthBucket { get; }
+
+        public bool Equals(LayoutSignature other)
+        {
+            return OptionCount == other.OptionCount
+                && VisibleCount == other.VisibleCount
+                && ButtonsPerRow == other.ButtonsPerRow
+                && SupportsMultipleSelection == other.SupportsMultipleSelection
+                && ShowSelectAll == other.ShowSelectAll
+                && ShowSelectNone == other.ShowSelectNone
+                && UsePagination == other.UsePagination
+                && HasSummary == other.HasSummary
+                && WidthBucket == other.WidthBucket;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is LayoutSignature other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return Objects.HashCode(
+                OptionCount,
+                VisibleCount,
+                ButtonsPerRow,
+                SupportsMultipleSelection,
+                ShowSelectAll,
+                ShowSelectNone,
+                UsePagination,
+                HasSummary,
+                WidthBucket
+            );
+        }
+    }
+
+    internal static class WEnumToggleButtonsLayoutCache
+    {
+        private sealed class Entry
+        {
+            internal Entry(LayoutSignature signature, float width, float height)
+            {
+                Signature = signature;
+                Width = width;
+                Height = height;
+            }
+
+            internal LayoutSignature Signature { get; }
+
+            internal float Width { get; }
+
+            internal float Height { get; }
+        }
+
+        private static readonly Dictionary<string, Entry> Entries = new(StringComparer.Ordinal);
+
+        internal static LayoutSignature CreateSignature(
+            int optionCount,
+            int visibleCount,
+            int buttonsPerRow,
+            bool supportsMultipleSelection,
+            bool showSelectAll,
+            bool showSelectNone,
+            bool usePagination,
+            bool hasSummary,
+            float widthHint
+        )
+        {
+            int widthBucket = Mathf.RoundToInt(Mathf.Max(0f, widthHint) * 100f);
+            return new LayoutSignature(
+                optionCount,
+                visibleCount,
+                buttonsPerRow,
+                supportsMultipleSelection,
+                showSelectAll,
+                showSelectNone,
+                usePagination,
+                hasSummary,
+                widthBucket
+            );
+        }
+
+        internal static bool TryGetHeight(
+            SerializedProperty property,
+            LayoutSignature signature,
+            out float height
+        )
+        {
+            if (property == null)
+            {
+                height = 0f;
+                return false;
+            }
+
+            string key = BuildKey(property);
+            if (Entries.TryGetValue(key, out Entry entry) && entry.Signature.Equals(signature))
+            {
+                height = entry.Height;
+                return true;
+            }
+
+            height = 0f;
+            return false;
+        }
+
+        internal static void Store(
+            SerializedProperty property,
+            LayoutSignature signature,
+            float width,
+            float height
+        )
+        {
+            if (property == null)
+            {
+                return;
+            }
+
+            string key = BuildKey(property);
+            Entries[key] = new Entry(signature, width, height);
+        }
+
+        internal static void Reset()
+        {
+            Entries.Clear();
+        }
+
+        private static string BuildKey(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return string.Empty;
+            }
+
+            SerializedObject serializedObject = property.serializedObject;
+            UnityEngine.Object target = serializedObject?.targetObject;
+            if (target == null)
+            {
+                return property.propertyPath ?? string.Empty;
+            }
+
+            string instancePart = target
+                .GetInstanceID()
+                .ToString("X8", CultureInfo.InvariantCulture);
+            string pathPart = property.propertyPath ?? string.Empty;
+            return instancePart + ":" + pathPart;
+        }
     }
 
     internal readonly struct LayoutMetrics
@@ -1541,6 +1818,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal static void Reset()
         {
             States.Clear();
+            WEnumToggleButtonsLayoutCache.Reset();
         }
 
         private static string BuildKey(SerializedProperty property)

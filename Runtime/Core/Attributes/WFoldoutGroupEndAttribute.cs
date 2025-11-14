@@ -31,6 +31,12 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             GroupNames = normalized;
         }
 
+        /// <summary>
+        /// Whether to include the marked element in the foldout group.
+        /// When false (default), the marked element is excluded from the group.
+        /// </summary>
+        public bool IncludeElement { get; set; }
+
         public IReadOnlyList<string> GroupNames { get; }
     }
 }

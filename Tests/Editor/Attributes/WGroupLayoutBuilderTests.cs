@@ -2,6 +2,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System.Collections.Generic;
+    using System.Linq;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -320,6 +321,160 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
+        public void FoldoutEndExcludesElementByDefaultButDrawsProperty()
+        {
+            UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
+                UnityHelpersSettings.WGroupAutoIncludeMode.None,
+                0
+            );
+
+            FoldoutEndDefaultAsset asset = CreateScriptableObject<FoldoutEndDefaultAsset>();
+            SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
+            string scriptPath = scriptProperty != null ? scriptProperty.propertyPath : null;
+
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, scriptPath);
+            Assert.IsTrue(layout.TryGetFoldoutGroup("Stats", out WFoldoutGroupDefinition foldout));
+
+            Assert.That(
+                foldout.PropertyPaths,
+                Is.EqualTo(
+                    new[]
+                    {
+                        nameof(FoldoutEndDefaultAsset.first),
+                        nameof(FoldoutEndDefaultAsset.second),
+                    }
+                )
+            );
+
+            List<string> propertyOperations = layout
+                .Operations.Where(op => op.Type == WGroupDrawOperationType.Property)
+                .Select(op => op.PropertyPath)
+                .ToList();
+
+            CollectionAssert.Contains(
+                propertyOperations,
+                nameof(FoldoutEndDefaultAsset.terminator)
+            );
+            int terminatorIndex = propertyOperations.IndexOf(
+                nameof(FoldoutEndDefaultAsset.terminator)
+            );
+            Assert.That(
+                terminatorIndex,
+                Is.EqualTo(propertyOperations.Count - 2),
+                "Terminator should render immediately before the trailing property."
+            );
+            Assert.That(
+                propertyOperations.Last(),
+                Is.EqualTo(nameof(FoldoutEndDefaultAsset.trailing))
+            );
+        }
+
+        [Test]
+        public void FoldoutEndIncludeElementRetainsEntry()
+        {
+            UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
+                UnityHelpersSettings.WGroupAutoIncludeMode.None,
+                0
+            );
+
+            FoldoutEndIncludeAsset asset = CreateScriptableObject<FoldoutEndIncludeAsset>();
+            SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
+            string scriptPath = scriptProperty != null ? scriptProperty.propertyPath : null;
+
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, scriptPath);
+            Assert.IsTrue(layout.TryGetFoldoutGroup("Stats", out WFoldoutGroupDefinition foldout));
+
+            Assert.That(
+                foldout.PropertyPaths,
+                Is.EqualTo(
+                    new[]
+                    {
+                        nameof(FoldoutEndIncludeAsset.first),
+                        nameof(FoldoutEndIncludeAsset.second),
+                        nameof(FoldoutEndIncludeAsset.terminator),
+                    }
+                )
+            );
+
+            List<string> propertyOperations = layout
+                .Operations.Where(op => op.Type == WGroupDrawOperationType.Property)
+                .Select(op => op.PropertyPath)
+                .ToList();
+
+            CollectionAssert.DoesNotContain(
+                propertyOperations,
+                nameof(FoldoutEndIncludeAsset.terminator)
+            );
+            Assert.That(
+                propertyOperations.Last(),
+                Is.EqualTo(nameof(FoldoutEndIncludeAsset.trailing))
+            );
+        }
+
+        [Test]
+        public void NamedFoldoutEndStopsOnlySpecifiedGroup()
+        {
+            UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
+                UnityHelpersSettings.WGroupAutoIncludeMode.None,
+                0
+            );
+
+            FoldoutNamedEndAsset asset = CreateScriptableObject<FoldoutNamedEndAsset>();
+            SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
+            string scriptPath = scriptProperty != null ? scriptProperty.propertyPath : null;
+
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, scriptPath);
+
+            Assert.IsTrue(layout.TryGetFoldoutGroup("Alpha", out WFoldoutGroupDefinition alpha));
+            Assert.That(
+                alpha.PropertyPaths,
+                Is.EqualTo(
+                    new[]
+                    {
+                        nameof(FoldoutNamedEndAsset.alphaStart),
+                        nameof(FoldoutNamedEndAsset.alphaMid),
+                    }
+                )
+            );
+
+            Assert.IsTrue(layout.TryGetFoldoutGroup("Beta", out WFoldoutGroupDefinition beta));
+            Assert.That(
+                beta.PropertyPaths,
+                Is.EqualTo(
+                    new[]
+                    {
+                        nameof(FoldoutNamedEndAsset.betaStart),
+                        nameof(FoldoutNamedEndAsset.betaMid),
+                        nameof(FoldoutNamedEndAsset.shared),
+                    }
+                )
+            );
+
+            List<string> propertyOperations = layout
+                .Operations.Where(op => op.Type == WGroupDrawOperationType.Property)
+                .Select(op => op.PropertyPath)
+                .ToList();
+
+            CollectionAssert.DoesNotContain(
+                propertyOperations,
+                nameof(FoldoutNamedEndAsset.shared)
+            );
+            Assert.That(
+                propertyOperations.Last(),
+                Is.EqualTo(nameof(FoldoutNamedEndAsset.trailing))
+            );
+        }
+
+        [Test]
         public void MixedGroupAndFoldoutOperationsMaintainOrder()
         {
             UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
@@ -410,6 +565,51 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         {
             [WFoldoutGroup("Hidden", autoIncludeCount: 0, hideHeader: true, startCollapsed: false)]
             public float value;
+        }
+
+        private sealed class FoldoutEndDefaultAsset : ScriptableObject
+        {
+            [WFoldoutGroup("Stats", autoIncludeCount: WFoldoutGroupAttribute.InfiniteAutoInclude)]
+            public int first;
+
+            public int second;
+
+            [WFoldoutGroupEnd]
+            public int terminator;
+
+            public int trailing;
+        }
+
+        private sealed class FoldoutEndIncludeAsset : ScriptableObject
+        {
+            [WFoldoutGroup("Stats", autoIncludeCount: WFoldoutGroupAttribute.InfiniteAutoInclude)]
+            public int first;
+
+            public int second;
+
+            [WFoldoutGroupEnd(IncludeElement = true)]
+            public int terminator;
+
+            public int trailing;
+        }
+
+        private sealed class FoldoutNamedEndAsset : ScriptableObject
+        {
+            [WFoldoutGroup("Alpha", autoIncludeCount: WFoldoutGroupAttribute.InfiniteAutoInclude)]
+            public int alphaStart;
+
+            public int alphaMid;
+
+            [WFoldoutGroup("Beta", autoIncludeCount: WFoldoutGroupAttribute.InfiniteAutoInclude)]
+            public int betaStart;
+
+            public int betaMid;
+
+            [WFoldoutGroup("Beta", autoIncludeCount: 0)]
+            [WFoldoutGroupEnd("Alpha")]
+            public int shared;
+
+            public int trailing;
         }
 
         private sealed class MixedGroupFoldoutAsset : ScriptableObject
