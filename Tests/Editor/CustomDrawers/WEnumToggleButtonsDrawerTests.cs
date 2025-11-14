@@ -247,6 +247,32 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        public void FloatValueDropdownOptionsRespectSelection()
+        {
+            ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
+            SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(ToggleTestAsset.floatPriority)
+            );
+            Assert.NotNull(property);
+
+            ToggleSet toggleSet = WEnumToggleButtonsUtility.CreateToggleSet(
+                property,
+                GetFieldInfo(nameof(ToggleTestAsset.floatPriority))
+            );
+
+            Assert.False(toggleSet.SupportsMultipleSelection);
+            Assert.AreEqual(3, toggleSet.Options.Count);
+
+            ToggleOption mediumOption = GetOptionByLabel(toggleSet, "1.5");
+            WEnumToggleButtonsUtility.ApplyOption(property, toggleSet, mediumOption, true);
+            serializedObject.ApplyModifiedProperties();
+            Assert.That(asset.floatPriority, Is.EqualTo(1.5f).Within(0.0001f));
+        }
+
+        [Test]
         public void PaginationStateClampsIndicesAndUpdatesVisibleCount()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
@@ -562,6 +588,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             [ValueDropdown(typeof(DropdownProvider), nameof(DropdownProvider.GetPriorityEntries))]
             public int priority = 1;
 
+            [WEnumToggleButtons]
+            [ValueDropdown(typeof(DropdownProvider), nameof(DropdownProvider.GetFloatEntries))]
+            public float floatPriority = 0.5f;
+
             [WEnumToggleButtons(PageSize = 6)]
             [IntDropdown(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)]
             public int paginatedInt;
@@ -591,6 +621,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 internal static IEnumerable<int> GetPriorityEntries()
                 {
                     return new[] { 1, 2, 3 };
+                }
+
+                internal static IEnumerable<float> GetFloatEntries()
+                {
+                    return new[] { 0.5f, 1.5f, 3f };
                 }
             }
         }

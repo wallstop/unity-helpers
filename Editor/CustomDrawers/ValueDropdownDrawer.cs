@@ -134,8 +134,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             try
             {
                 Type targetType = Nullable.GetUnderlyingType(valueType) ?? valueType;
+                double currentValue = IsDoubleProperty(property)
+                    ? property.doubleValue
+                    : property.floatValue;
                 object converted = Convert.ChangeType(
-                    property.doubleValue,
+                    currentValue,
                     targetType,
                     CultureInfo.InvariantCulture
                 );
@@ -272,9 +275,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             try
             {
                 double value = Convert.ToDouble(selectedOption, CultureInfo.InvariantCulture);
-                property.doubleValue = value;
+                if (IsDoubleProperty(property))
+                {
+                    property.doubleValue = value;
+                }
+                else
+                {
+                    property.floatValue = (float)value;
+                }
             }
             catch (Exception) { }
+        }
+
+        private static bool IsDoubleProperty(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return false;
+            }
+
+            return string.Equals(property.type, "double", StringComparison.Ordinal);
         }
 
         private static void ApplyString(SerializedProperty property, object selectedOption)

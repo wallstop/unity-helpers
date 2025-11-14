@@ -569,31 +569,31 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 IReadOnlyList<string> groupNames = attribute.GroupNames;
                 if (groupNames.Count == 0)
                 {
-                    bool handled = false;
+                    bool removed = false;
                     if (activeAutoContexts.Count > 0)
                     {
                         FoldoutGroupContext last = activeAutoContexts[^1];
                         if (!includeElement)
                         {
-                            if (last.ContainsProperty(propertyPath))
-                            {
-                                last.RemoveProperty(propertyPath);
-                            }
+                            removed = last.RemoveProperty(propertyPath);
                         }
                         else
                         {
                             if (!last.ContainsProperty(propertyPath))
                             {
-                                last.AddProperty(propertyPath, propertyIndex);
+                                removed = last.AddProperty(propertyPath, propertyIndex);
+                            }
+                            else
+                            {
+                                removed = true;
                             }
                         }
 
                         last.SetAutoInclude(new AutoIncludeConfiguration(false, 0));
                         UpdateActiveFoldoutContextList(activeAutoContexts, last);
-                        handled = true;
                     }
 
-                    if (!handled && propertyContexts != null)
+                    if (!removed && propertyContexts != null)
                     {
                         for (
                             int contextIndex = 0;
@@ -610,17 +610,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                             bool modified = false;
                             if (!includeElement)
                             {
-                                if (context.ContainsProperty(propertyPath))
-                                {
-                                    context.RemoveProperty(propertyPath);
-                                    modified = true;
-                                }
+                                modified = context.RemoveProperty(propertyPath);
                             }
                             else
                             {
                                 if (!context.ContainsProperty(propertyPath))
                                 {
-                                    context.AddProperty(propertyPath, propertyIndex);
+                                    modified = context.AddProperty(propertyPath, propertyIndex);
+                                }
+                                else
+                                {
                                     modified = true;
                                 }
                             }
@@ -629,8 +628,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                             {
                                 context.SetAutoInclude(new AutoIncludeConfiguration(false, 0));
                                 RemoveActiveFoldoutContext(activeAutoContexts, context);
+                                removed = true;
                             }
                         }
+                    }
+
+                    if (!removed && propertyContexts == null)
+                    {
+                        // Nothing to remove; continue.
                     }
                     continue;
                 }

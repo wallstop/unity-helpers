@@ -108,10 +108,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 usePagination
             );
 
+            Rect dummyRect = new(
+                0f,
+                0f,
+                EditorGUIUtility.currentViewWidth,
+                EditorGUIUtility.singleLineHeight
+            );
+            Rect indentedRect = EditorGUI.IndentedRect(dummyRect);
             float estimatedWidth =
-                EditorGUIUtility.currentViewWidth
-                - EditorGUIUtility.labelWidth
-                - ContentWidthPadding;
+                indentedRect.width - EditorGUIUtility.labelWidth - ContentWidthPadding;
             if (estimatedWidth <= 0f)
             {
                 estimatedWidth = MinButtonWidth;
@@ -1179,7 +1184,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 case SerializedPropertyType.Integer:
                     return CompareLong(property.longValue, candidate);
                 case SerializedPropertyType.Float:
-                    return CompareDouble(property.doubleValue, candidate);
+                    double numericValue = IsDoubleProperty(property)
+                        ? property.doubleValue
+                        : property.floatValue;
+                    return CompareDouble(numericValue, candidate);
                 case SerializedPropertyType.String:
                     return CompareString(property.stringValue, candidate);
                 case SerializedPropertyType.ObjectReference:
@@ -1252,7 +1260,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 case SerializedPropertyType.Float:
                     if (TryConvertToDouble(option.Value, out double doubleValue))
                     {
-                        property.doubleValue = doubleValue;
+                        if (IsDoubleProperty(property))
+                        {
+                            property.doubleValue = doubleValue;
+                        }
+                        else
+                        {
+                            property.floatValue = (float)doubleValue;
+                        }
                     }
                     break;
                 case SerializedPropertyType.String:
@@ -1292,6 +1307,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return Math.Abs(current - candidateValue) <= 0.000001d;
+        }
+
+        private static bool IsDoubleProperty(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return false;
+            }
+
+            return string.Equals(property.type, "double", StringComparison.Ordinal);
         }
 
         private static bool CompareString(string current, object candidate)
