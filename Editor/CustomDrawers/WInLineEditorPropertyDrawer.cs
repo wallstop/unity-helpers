@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 #if UNITY_EDITOR
     using System;
     using System.Collections;
+    using System.Collections.Generic;
     using System.Reflection;
     using UnityEditor;
     using UnityEditor.UIElements;
@@ -14,6 +15,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     [CustomPropertyDrawer(typeof(WInLineEditorAttribute))]
     public sealed class WInLineEditorPropertyDrawer : PropertyDrawer
     {
+        internal const float InlineBorderThickness = 1f;
+        internal const float InlinePadding = 6f;
+        private const float InlineHeaderSpacing = 2f;
+        private const float InlinePreviewSpacing = 4f;
+        private const float InlinePingButtonWidth = 58f;
+
+        private static readonly Color LightInlineBackground = new(0.95f, 0.95f, 0.95f, 1f);
+        private static readonly Color DarkInlineBackground = new(0.17f, 0.17f, 0.17f, 1f);
+        private static readonly Color InlineBorderColor = new(0.25f, 0.25f, 0.25f, 1f);
+
+        private static readonly Dictionary<string, InlineInspectorImGuiState> ImGuiStateCache =
+            new();
+
+        static WInLineEditorPropertyDrawer()
+        {
+            AssemblyReloadEvents.beforeAssemblyReload += ClearImGuiStateCache;
+            EditorApplication.quitting += ClearImGuiStateCache;
+        }
+
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
             if (property == null)
@@ -21,17 +41,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return new PropertyField(null);
             }
 
-            FieldInfo resolvedFieldInfo = fieldInfo ?? ResolveFieldInfo(property);
-            WInLineEditorAttribute inlineAttribute =
-                attribute as WInLineEditorAttribute
-                ?? ReflectionHelpers.GetAttributeSafe<WInLineEditorAttribute>(
-                    resolvedFieldInfo,
-                    inherit: true
-                );
-
             if (
-                inlineAttribute == null
-                || property.propertyType != SerializedPropertyType.ObjectReference
+                !TryResolveSettings(
+                    property,
+                    out WInLineEditorAttribute inlineAttribute,
+                    out FieldInfo resolvedFieldInfo
+                )
             )
             {
                 return new PropertyField(property);
@@ -42,12 +57,206 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            EditorGUI.PropertyField(position, property, label, true);
+            if (
+                !TryResolveSettings(
+                    property,
+                    out WInLineEditorAttribute inlineAttribute,
+                    out FieldInfo resolvedField
+                )
+            )
+            {
+                EditorGUI.PropertyField(position, property, label, true);
+                return;
+            }
+
+            EditorGUI.BeginProperty(position, label, property);
+
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            float verticalSpacing = EditorGUIUtility.standardVerticalSpacing;
+            float cursorY = position.y;
+            float width = position.width;
+            bool hasFoldout = inlineAttribute.mode != WInLineEditorMode.AlwaysExpanded;
+            UnityEngine.Object initialValue = property.objectReferenceValue;
+            bool hasReference = initialValue != null;
+            string sessionKey = BuildSessionKey(property);
+            bool defaultExpanded = inlineAttribute.mode == WInLineEditorMode.FoldoutExpanded;
+            bool persistedFoldout = hasFoldout
+                ? (
+                    string.IsNullOrEmpty(sessionKey)
+                        ? defaultExpanded
+                        : SessionState.GetBool(sessionKey, defaultExpanded)
+                )
+                : true;
+            bool displayFoldout = hasFoldout ? (hasReference ? persistedFoldout : false) : true;
+
+            if (hasFoldout)
+            {
+                if (hasReference)
+                {
+                    Rect foldoutRect = new(position.x, cursorY, width, lineHeight);
+                    bool userFoldout = EditorGUI.Foldout(foldoutRect, displayFoldout, label, true);
+
+                    if (userFoldout != persistedFoldout)
+                    {
+                        persistedFoldout = userFoldout;
+                        if (!string.IsNullOrEmpty(sessionKey))
+                        {
+                            SessionState.SetBool(sessionKey, persistedFoldout);
+                        }
+                    }
+
+                    displayFoldout = persistedFoldout;
+                    cursorY += lineHeight;
+
+                    if (inlineAttribute.drawObjectField)
+                    {
+                        cursorY += verticalSpacing;
+                        float objectFieldHeight = EditorGUI.GetPropertyHeight(
+                            property,
+                            GUIContent.none,
+                            true
+                        );
+                        Rect objectRect = new(position.x, cursorY, width, objectFieldHeight);
+                        DrawObjectReferenceField(objectRect, property, GUIContent.none);
+                        cursorY += objectFieldHeight;
+                    }
+                }
+                else
+                {
+                    if (inlineAttribute.drawObjectField)
+                    {
+                        float objectFieldHeight = EditorGUI.GetPropertyHeight(
+                            property,
+                            label,
+                            true
+                        );
+                        Rect objectRect = new(position.x, cursorY, width, objectFieldHeight);
+                        DrawObjectReferenceField(objectRect, property, label);
+                        cursorY += objectFieldHeight;
+                    }
+                    else
+                    {
+                        Rect labelRect = new(position.x, cursorY, width, lineHeight);
+                        EditorGUI.LabelField(labelRect, label);
+                        cursorY += lineHeight;
+                    }
+                }
+            }
+            else
+            {
+                if (inlineAttribute.drawObjectField)
+                {
+                    float objectFieldHeight = EditorGUI.GetPropertyHeight(property, label, true);
+                    Rect objectRect = new(position.x, cursorY, width, objectFieldHeight);
+                    DrawObjectReferenceField(objectRect, property, label);
+                    cursorY += objectFieldHeight;
+                }
+                else
+                {
+                    Rect labelRect = new(position.x, cursorY, width, lineHeight);
+                    EditorGUI.LabelField(labelRect, label);
+                    cursorY += lineHeight;
+                }
+
+                displayFoldout = true;
+            }
+
+            UnityEngine.Object currentValue = property.objectReferenceValue;
+            if (hasFoldout && currentValue != null)
+            {
+                displayFoldout = persistedFoldout;
+            }
+            InlineInspectorImGuiState state = GetOrCreateImGuiState(sessionKey);
+            UpdateImGuiStateTarget(state, currentValue);
+
+            bool shouldShowInline =
+                currentValue != null
+                && (inlineAttribute.mode == WInLineEditorMode.AlwaysExpanded || displayFoldout);
+
+            if (shouldShowInline)
+            {
+                float inlineHeight = CalculateInlineContainerHeight(inlineAttribute);
+                cursorY += verticalSpacing;
+                Rect inlineRect = new(position.x, cursorY, width, inlineHeight);
+                DrawInlineInspector(inlineRect, state, inlineAttribute);
+            }
+
+            EditorGUI.EndProperty();
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
-            return EditorGUI.GetPropertyHeight(property, label, true);
+            if (!TryResolveSettings(property, out WInLineEditorAttribute inlineAttribute, out _))
+            {
+                return EditorGUI.GetPropertyHeight(property, label, true);
+            }
+
+            float height = 0f;
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            float verticalSpacing = EditorGUIUtility.standardVerticalSpacing;
+            bool hasFoldout = inlineAttribute.mode != WInLineEditorMode.AlwaysExpanded;
+            bool hasReference = property != null && property.objectReferenceValue != null;
+
+            if (hasFoldout && hasReference)
+            {
+                height += lineHeight;
+                if (inlineAttribute.drawObjectField)
+                {
+                    height += verticalSpacing;
+                    height += EditorGUI.GetPropertyHeight(property, GUIContent.none, true);
+                }
+            }
+            else
+            {
+                if (inlineAttribute.drawObjectField)
+                {
+                    height += EditorGUI.GetPropertyHeight(property, label, true);
+                }
+                else
+                {
+                    height += lineHeight;
+                }
+            }
+
+            if (ShouldShowInlineInspector(property, inlineAttribute))
+            {
+                height += verticalSpacing;
+                height += CalculateInlineContainerHeight(inlineAttribute);
+            }
+
+            return height;
+        }
+
+        private bool TryResolveSettings(
+            SerializedProperty property,
+            out WInLineEditorAttribute inlineAttribute,
+            out FieldInfo resolvedField
+        )
+        {
+            inlineAttribute = null;
+            resolvedField = null;
+
+            if (property == null)
+            {
+                return false;
+            }
+
+            FieldInfo field = fieldInfo ?? ResolveFieldInfo(property);
+            WInLineEditorAttribute drawerAttribute =
+                attribute as WInLineEditorAttribute
+                ?? ReflectionHelpers.GetAttributeSafe<WInLineEditorAttribute>(field, true);
+
+            if (
+                drawerAttribute == null
+                || property.propertyType != SerializedPropertyType.ObjectReference
+            )
+            {
+                return false;
+            }
+
+            inlineAttribute = drawerAttribute;
+            resolvedField = field;
+            return true;
         }
 
         private static FieldInfo ResolveFieldInfo(SerializedProperty property)
@@ -173,6 +382,449 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return null;
         }
 
+        private static void DrawObjectReferenceField(
+            Rect rect,
+            SerializedProperty property,
+            GUIContent label
+        )
+        {
+            EditorGUI.BeginChangeCheck();
+            EditorGUI.PropertyField(rect, property, label, true);
+            if (EditorGUI.EndChangeCheck())
+            {
+                if (property.serializedObject.ApplyModifiedProperties())
+                {
+                    property.serializedObject.Update();
+                }
+            }
+        }
+
+        private static InlineInspectorImGuiState GetOrCreateImGuiState(string sessionKey)
+        {
+            if (string.IsNullOrEmpty(sessionKey))
+            {
+                sessionKey = Guid.NewGuid().ToString();
+            }
+
+            if (!ImGuiStateCache.TryGetValue(sessionKey, out InlineInspectorImGuiState state))
+            {
+                state = new InlineInspectorImGuiState();
+                ImGuiStateCache[sessionKey] = state;
+            }
+
+            return state;
+        }
+
+        private static void UpdateImGuiStateTarget(
+            InlineInspectorImGuiState state,
+            UnityEngine.Object newTarget
+        )
+        {
+            if (state == null)
+            {
+                return;
+            }
+
+            if (state.CurrentTarget == newTarget)
+            {
+                return;
+            }
+
+            state.DisposeEditor();
+            state.CurrentTarget = newTarget;
+            state.ErrorMessage = null;
+
+            if (newTarget == null)
+            {
+                return;
+            }
+
+            try
+            {
+                state.CachedEditor = Editor.CreateEditor(newTarget);
+            }
+            catch (Exception ex)
+            {
+                state.ErrorMessage = ex.Message;
+                state.CachedEditor = null;
+            }
+
+            if (state.CachedEditor == null && state.ErrorMessage == null)
+            {
+                state.ErrorMessage = "Inspector unavailable.";
+            }
+        }
+
+        private static void DrawInlineInspector(
+            Rect position,
+            InlineInspectorImGuiState state,
+            WInLineEditorAttribute settings
+        )
+        {
+            Rect inlineRect = position;
+            state.LastInlineRect = inlineRect;
+            DrawInlineBackground(inlineRect);
+
+            GUI.BeginGroup(inlineRect);
+            try
+            {
+                Rect contentRect = GetInlineContentRect(inlineRect);
+                state.LastContentRect = contentRect;
+                float cursorY = contentRect.y;
+
+                if (settings.drawHeader)
+                {
+                    Rect headerRect = new Rect(
+                        contentRect.x,
+                        cursorY,
+                        contentRect.width,
+                        EditorGUIUtility.singleLineHeight
+                    );
+                    DrawHeaderRow(headerRect, state);
+                    cursorY += EditorGUIUtility.singleLineHeight + InlineHeaderSpacing;
+                }
+
+                Rect inspectorRect = new Rect(
+                    contentRect.x,
+                    cursorY,
+                    contentRect.width,
+                    settings.inspectorHeight
+                );
+                state.LastInspectorRect = inspectorRect;
+                cursorY += settings.inspectorHeight;
+
+                if (state.CachedEditor == null)
+                {
+                    DrawMessage(
+                        inspectorRect,
+                        string.IsNullOrEmpty(state.ErrorMessage)
+                            ? "Inspector unavailable."
+                            : state.ErrorMessage
+                    );
+                }
+                else
+                {
+                    DrawInspectorContents(inspectorRect, state, settings);
+                }
+
+                if (
+                    settings.drawPreview
+                    && settings.previewHeight > 0f
+                    && state.CachedEditor != null
+                )
+                {
+                    cursorY += InlinePreviewSpacing;
+                    Rect previewRect = new Rect(
+                        contentRect.x,
+                        cursorY,
+                        contentRect.width,
+                        settings.previewHeight
+                    );
+                    DrawPreview(previewRect, state);
+                }
+            }
+            finally
+            {
+                GUI.EndGroup();
+            }
+        }
+
+        private static void DrawHeaderRow(Rect area, InlineInspectorImGuiState state)
+        {
+            GUIContent content =
+                state.CurrentTarget == null
+                    ? GUIContent.none
+                    : EditorGUIUtility.ObjectContent(
+                        state.CurrentTarget,
+                        state.CurrentTarget.GetType()
+                    );
+            Rect labelRect = new Rect(
+                area.x,
+                area.y,
+                area.width - InlinePingButtonWidth - 4f,
+                area.height
+            );
+            GUI.Label(labelRect, content, EditorStyles.boldLabel);
+
+            Rect buttonRect = new Rect(
+                area.x + area.width - InlinePingButtonWidth,
+                area.y,
+                InlinePingButtonWidth,
+                area.height
+            );
+            using (new EditorGUI.DisabledScope(state.CurrentTarget == null))
+            {
+                if (GUI.Button(buttonRect, "Ping") && state.CurrentTarget != null)
+                {
+                    EditorGUIUtility.PingObject(state.CurrentTarget);
+                    Selection.activeObject = state.CurrentTarget;
+                }
+            }
+        }
+
+        private static void DrawMessage(Rect rect, string message)
+        {
+            GUIStyle style = new GUIStyle(EditorStyles.helpBox)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                wordWrap = true,
+            };
+            GUI.Label(rect, message, style);
+        }
+
+        private static void DrawInspectorContents(
+            Rect rect,
+            InlineInspectorImGuiState state,
+            WInLineEditorAttribute settings
+        )
+        {
+            GUILayout.BeginArea(rect);
+            try
+            {
+                if (settings.enableScrolling)
+                {
+                    state.ScrollPosition = EditorGUILayout.BeginScrollView(
+                        state.ScrollPosition,
+                        GUILayout.ExpandHeight(true)
+                    );
+                    try
+                    {
+                        state.CachedEditor.OnInspectorGUI();
+                    }
+                    finally
+                    {
+                        EditorGUILayout.EndScrollView();
+                    }
+                }
+                else
+                {
+                    state.CachedEditor.OnInspectorGUI();
+                }
+            }
+            catch (Exception ex)
+            {
+                DrawMessage(new Rect(0f, 0f, rect.width, rect.height), ex.Message);
+            }
+            finally
+            {
+                GUILayout.EndArea();
+            }
+        }
+
+        private static void DrawPreview(Rect rect, InlineInspectorImGuiState state)
+        {
+            if (!state.CachedEditor.HasPreviewGUI())
+            {
+                DrawMessage(rect, "Preview unavailable.");
+                return;
+            }
+
+            state.CachedEditor.OnPreviewGUI(rect, GUIStyle.none);
+        }
+
+        private static void DrawInlineBackground(Rect rect)
+        {
+            Color backgroundColor = EditorGUIUtility.isProSkin
+                ? DarkInlineBackground
+                : LightInlineBackground;
+            EditorGUI.DrawRect(rect, backgroundColor);
+            DrawRectBorder(rect, InlineBorderColor, InlineBorderThickness);
+        }
+
+        private static Rect GetInlineContentRect(Rect containerRect)
+        {
+            float offset = InlineBorderThickness + InlinePadding;
+            float width = Mathf.Max(0f, containerRect.width - (offset * 2f));
+            float height = Mathf.Max(0f, containerRect.height - (offset * 2f));
+            return new Rect(offset, offset, width, height);
+        }
+
+        private static void DrawRectBorder(Rect rect, Color color, float thickness)
+        {
+            if (thickness <= 0f)
+            {
+                return;
+            }
+
+            EditorGUI.DrawRect(new Rect(rect.x, rect.y, rect.width, thickness), color); // Top
+            EditorGUI.DrawRect(
+                new Rect(rect.x, rect.yMax - thickness, rect.width, thickness),
+                color
+            ); // Bottom
+            EditorGUI.DrawRect(new Rect(rect.x, rect.y, thickness, rect.height), color); // Left
+            EditorGUI.DrawRect(
+                new Rect(rect.xMax - thickness, rect.y, thickness, rect.height),
+                color
+            ); // Right
+        }
+
+        private static float CalculateInlineContainerHeight(WInLineEditorAttribute settings)
+        {
+            if (settings == null)
+            {
+                return 0f;
+            }
+
+            float height =
+                (InlineBorderThickness * 2f) + (InlinePadding * 2f) + settings.inspectorHeight;
+
+            if (settings.drawHeader)
+            {
+                height += EditorGUIUtility.singleLineHeight + InlineHeaderSpacing;
+            }
+
+            if (settings.drawPreview && settings.previewHeight > 0f)
+            {
+                height += InlinePreviewSpacing + settings.previewHeight;
+            }
+
+            return height;
+        }
+
+        internal static float GetInlineContainerHeightForTesting(WInLineEditorAttribute settings)
+        {
+            return CalculateInlineContainerHeight(settings);
+        }
+
+        private static bool ShouldShowInlineInspector(
+            SerializedProperty property,
+            WInLineEditorAttribute settings
+        )
+        {
+            if (property == null || property.objectReferenceValue == null || settings == null)
+            {
+                return false;
+            }
+
+            if (settings.mode == WInLineEditorMode.AlwaysExpanded)
+            {
+                return true;
+            }
+
+            string sessionKey = BuildSessionKey(property);
+            bool defaultExpanded = settings.mode == WInLineEditorMode.FoldoutExpanded;
+
+            if (string.IsNullOrEmpty(sessionKey))
+            {
+                return defaultExpanded;
+            }
+
+            return SessionState.GetBool(sessionKey, defaultExpanded);
+        }
+
+        private static string BuildSessionKey(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return string.Empty;
+            }
+
+            SerializedObject serializedObject = property.serializedObject;
+            if (serializedObject == null || serializedObject.targetObject == null)
+            {
+                return string.Empty;
+            }
+
+            return $"WInLineEditor:{serializedObject.targetObject.GetInstanceID()}:{property.propertyPath}";
+        }
+
+        private static void ClearImGuiStateCache()
+        {
+            foreach (KeyValuePair<string, InlineInspectorImGuiState> entry in ImGuiStateCache)
+            {
+                InlineInspectorImGuiState state = entry.Value;
+                state?.DisposeEditor();
+            }
+
+            ImGuiStateCache.Clear();
+        }
+
+        internal static void ResetImGuiStateCacheForTesting()
+        {
+            ClearImGuiStateCache();
+        }
+
+        internal static bool TryGetImGuiStateInfo(
+            string sessionKey,
+            out InlineInspectorImGuiStateInfo info
+        )
+        {
+            if (ImGuiStateCache.TryGetValue(sessionKey, out InlineInspectorImGuiState state))
+            {
+                info = new InlineInspectorImGuiStateInfo(
+                    state.CurrentTarget,
+                    state.CachedEditor != null,
+                    state.ErrorMessage,
+                    state.LastInlineRect,
+                    state.LastContentRect,
+                    state.LastInspectorRect
+                );
+                return true;
+            }
+
+            info = default;
+            return false;
+        }
+
+        internal readonly struct InlineInspectorImGuiStateInfo
+        {
+            public InlineInspectorImGuiStateInfo(
+                UnityEngine.Object target,
+                bool hasEditor,
+                string errorMessage,
+                Rect inlineRect,
+                Rect contentRect,
+                Rect inspectorRect
+            )
+            {
+                Target = target;
+                HasEditor = hasEditor;
+                ErrorMessage = errorMessage;
+                InlineRect = inlineRect;
+                ContentRect = contentRect;
+                InspectorRect = inspectorRect;
+            }
+
+            public UnityEngine.Object Target { get; }
+
+            public bool HasEditor { get; }
+
+            public string ErrorMessage { get; }
+
+            public Rect InlineRect { get; }
+
+            public Rect ContentRect { get; }
+
+            public Rect InspectorRect { get; }
+        }
+
+        private sealed class InlineInspectorImGuiState
+        {
+            public UnityEngine.Object CurrentTarget;
+            public Editor CachedEditor;
+            public Vector2 ScrollPosition;
+            public string ErrorMessage;
+            public Rect LastInlineRect;
+            public Rect LastContentRect;
+            public Rect LastInspectorRect;
+
+            public void DisposeEditor()
+            {
+                if (CachedEditor != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(CachedEditor);
+                    CachedEditor = null;
+                }
+
+                CurrentTarget = null;
+                ScrollPosition = Vector2.zero;
+                ErrorMessage = null;
+                LastInlineRect = default;
+                LastContentRect = default;
+                LastInspectorRect = default;
+            }
+        }
+
         private sealed class InlineInspectorElement : VisualElement
         {
             private const float FoldoutIndent = 2.5f;
@@ -206,8 +858,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 _settings = inlineAttribute;
                 _referenceType = ResolveObjectReferenceType(drawerField);
                 _allowSceneObjects = ShouldAllowSceneObjects(_referenceType);
-                string sessionKey =
-                    $"WInLineEditor:{_serializedObject.targetObject.GetInstanceID()}:{_propertyPath}";
+                string sessionKey = BuildSessionKey(property);
 
                 style.flexDirection = FlexDirection.Column;
 
@@ -240,7 +891,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 else
                 {
                     bool defaultExpanded = _settings.mode == WInLineEditorMode.FoldoutExpanded;
-                    bool savedState = SessionState.GetBool(sessionKey, defaultExpanded);
+                    bool savedState = string.IsNullOrEmpty(sessionKey)
+                        ? defaultExpanded
+                        : SessionState.GetBool(sessionKey, defaultExpanded);
                     _lastFoldoutExpanded = savedState;
 
                     _foldout = new Foldout
@@ -259,7 +912,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             return;
                         }
 
-                        SessionState.SetBool(sessionKey, evt.newValue);
+                        if (!string.IsNullOrEmpty(sessionKey))
+                        {
+                            SessionState.SetBool(sessionKey, evt.newValue);
+                        }
                         _lastFoldoutExpanded = evt.newValue;
                         UpdateInlineVisibility();
                     });
