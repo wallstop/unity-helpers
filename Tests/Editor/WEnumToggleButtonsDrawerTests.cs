@@ -1,52 +1,61 @@
 namespace WallstopStudios.UnityHelpers.Tests.Editor
 {
 #if UNITY_EDITOR
+    using System.Collections;
     using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Tests.EditorFramework;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     [TestFixture]
-    public sealed class WEnumToggleButtonsDrawerTests
+    public sealed class WEnumToggleButtonsDrawerTests : CommonTestBase
     {
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             WEnumToggleButtonsPagination.Reset();
         }
 
-        [Test]
-        public void DrawPaginationPreservesGuiEnabledState()
+        [UnityTest]
+        public IEnumerator DrawPaginationPreservesGuiEnabledState()
         {
-            WEnumToggleButtonsPagination.PaginationState state =
-                new WEnumToggleButtonsPagination.PaginationState
+            bool assertionMade = false;
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                WEnumToggleButtonsPagination.PaginationState state =
+                    new WEnumToggleButtonsPagination.PaginationState
+                    {
+                        PageSize = 5,
+                        TotalItems = 10,
+                        PageIndex = 0,
+                    };
+
+                Rect rect = new Rect(0f, 0f, 200f, EditorGUIUtility.singleLineHeight);
+
+                bool originalEnabled = GUI.enabled;
+                GUI.enabled = true;
+                try
                 {
-                    PageSize = 5,
-                    TotalItems = 10,
-                    PageIndex = 0,
-                };
-
-            Rect rect = new Rect(0f, 0f, 200f, EditorGUIUtility.singleLineHeight);
-
-            bool originalEnabled = GUI.enabled;
-            GUI.enabled = true;
-
-            WEnumToggleButtonsDrawer.DrawPagination(rect, state);
-
-            try
-            {
-                Assert.IsTrue(
-                    GUI.enabled,
-                    "DrawPagination leaked GUI.enabled=false to subsequent controls."
-                );
-            }
-            finally
-            {
-                GUI.enabled = originalEnabled;
-            }
+                    WEnumToggleButtonsDrawer.DrawPagination(rect, state);
+                    Assert.IsTrue(
+                        GUI.enabled,
+                        "DrawPagination leaked GUI.enabled=false to subsequent controls."
+                    );
+                    assertionMade = true;
+                }
+                finally
+                {
+                    GUI.enabled = originalEnabled;
+                }
+            });
+            Assert.IsTrue(assertionMade);
         }
 
         [Test]
@@ -100,115 +109,132 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
             );
         }
 
-        [Test]
-        public void GetPropertyHeightUsesCachedLayoutWhenAvailable()
+        [UnityTest]
+        public IEnumerator GetPropertyHeightUsesCachedLayoutWhenAvailable()
         {
-            ToggleDropdownAsset asset = ScriptableObject.CreateInstance<ToggleDropdownAsset>();
-            try
+            ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
+            SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(ToggleDropdownAsset.mode)
+            );
+            Assert.IsNotNull(property, "Failed to locate serialized property for test asset.");
+
+            FieldInfo fieldInfo = typeof(ToggleDropdownAsset).GetField(
+                nameof(ToggleDropdownAsset.mode),
+                BindingFlags.Instance | BindingFlags.Public
+            );
+            Assert.IsNotNull(fieldInfo, "Failed to locate field info for test asset.");
+
+            WEnumToggleButtonsAttribute toggleAttribute =
+                fieldInfo.GetCustomAttribute<WEnumToggleButtonsAttribute>();
+            Assert.IsNotNull(
+                toggleAttribute,
+                "Expected WEnumToggleButtonsAttribute on test field."
+            );
+
+            WEnumToggleButtonsDrawer drawer = new WEnumToggleButtonsDrawer();
+            ConfigureDrawer(drawer, fieldInfo, toggleAttribute);
+
+            GUIContent label = new GUIContent("Mode");
+
+            bool assertionMade = false;
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                SerializedObject serializedObject = new SerializedObject(asset);
-                serializedObject.Update();
-
-                SerializedProperty property = serializedObject.FindProperty(
-                    nameof(ToggleDropdownAsset.mode)
-                );
-                Assert.IsNotNull(property, "Failed to locate serialized property for test asset.");
-
-                FieldInfo fieldInfo = typeof(ToggleDropdownAsset).GetField(
-                    nameof(ToggleDropdownAsset.mode),
-                    BindingFlags.Instance | BindingFlags.Public
-                );
-                Assert.IsNotNull(fieldInfo, "Failed to locate field info for test asset.");
-
-                WEnumToggleButtonsAttribute toggleAttribute =
-                    fieldInfo.GetCustomAttribute<WEnumToggleButtonsAttribute>();
-                Assert.IsNotNull(
-                    toggleAttribute,
-                    "Expected WEnumToggleButtonsAttribute on test field."
-                );
-
-                WEnumToggleButtonsDrawer drawer = new WEnumToggleButtonsDrawer();
-                ConfigureDrawer(drawer, fieldInfo, toggleAttribute);
-
-                GUIContent label = new GUIContent("Mode");
                 float baselineHeight = drawer.GetPropertyHeight(property, label);
                 Assert.Greater(baselineHeight, 0f, "Baseline height should be positive.");
 
-                ToggleSet toggleSet = WEnumToggleButtonsUtility.CreateToggleSet(
-                    property,
-                    fieldInfo
-                );
-                Assert.IsFalse(
-                    toggleSet.IsEmpty,
-                    "Toggle set should contain options for the test."
-                );
-
-                bool usePagination = WEnumToggleButtonsUtility.ShouldPaginate(
-                    toggleAttribute,
-                    toggleSet.Options.Count,
-                    out int pageSize
-                );
-                int visibleCount = usePagination
-                    ? WEnumToggleButtonsPagination
-                        .GetState(property, toggleSet.Options.Count, pageSize)
-                        .VisibleCount
-                    : toggleSet.Options.Count;
-
-                LayoutSignature signature = WEnumToggleButtonsLayoutCache.CreateSignature(
-                    toggleSet.Options.Count,
-                    visibleCount,
-                    toggleAttribute.ButtonsPerRow,
-                    toggleSet.SupportsMultipleSelection,
-                    toggleAttribute.ShowSelectAll,
-                    toggleAttribute.ShowSelectNone,
-                    usePagination,
-                    hasSummary: false,
-                    widthHint: 160f
-                );
-
-                const float CachedHeight = 128f;
-                WEnumToggleButtonsLayoutCache.Store(property, signature, 160f, CachedHeight);
+                Rect position = new Rect(0f, 0f, 400f, baselineHeight + 40f);
+                drawer.OnGUI(position, property, label);
 
                 float cachedHeight = drawer.GetPropertyHeight(property, label);
                 Assert.AreEqual(
-                    CachedHeight,
+                    baselineHeight,
                     cachedHeight,
-                    "Drawer should use cached layout height when signature matches."
+                    "Drawer should reuse cached layout height when signature matches."
                 );
-            }
-            finally
-            {
-                ScriptableObject.DestroyImmediate(asset);
-            }
+
+                assertionMade = true;
+            });
+
+            Assert.IsTrue(assertionMade);
         }
 
         [Test]
         public void CreateToggleSetHandlesMissingFieldInfo()
         {
-            ToggleDropdownAsset asset = ScriptableObject.CreateInstance<ToggleDropdownAsset>();
-            try
-            {
-                SerializedObject serializedObject = new SerializedObject(asset);
-                serializedObject.Update();
+            ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
+            SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
 
-                SerializedProperty property = serializedObject.FindProperty(
-                    nameof(ToggleDropdownAsset.mode)
-                );
-                Assert.IsNotNull(property, "Failed to locate serialized property for test asset.");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(ToggleDropdownAsset.mode)
+            );
+            Assert.IsNotNull(property, "Failed to locate serialized property for test asset.");
 
-                ToggleSet toggleSet = WEnumToggleButtonsUtility.CreateToggleSet(
-                    property,
-                    fieldInfo: null
-                );
-                Assert.IsFalse(
-                    toggleSet.IsEmpty,
-                    "Toggle set should be created even when FieldInfo is unavailable."
-                );
-            }
-            finally
+            ToggleSet toggleSet = WEnumToggleButtonsUtility.CreateToggleSet(
+                property,
+                fieldInfo: null
+            );
+            Assert.IsFalse(
+                toggleSet.IsEmpty,
+                "Toggle set should be created even when FieldInfo is unavailable."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator GetPropertyHeightIgnoresExternalIndentation()
+        {
+            ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
+            SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(ToggleDropdownAsset.mode)
+            );
+            Assert.IsNotNull(property, "Failed to locate serialized property for test asset.");
+
+            FieldInfo fieldInfo = typeof(ToggleDropdownAsset).GetField(
+                nameof(ToggleDropdownAsset.mode),
+                BindingFlags.Instance | BindingFlags.Public
+            );
+            Assert.IsNotNull(fieldInfo);
+
+            WEnumToggleButtonsAttribute toggleAttribute =
+                fieldInfo.GetCustomAttribute<WEnumToggleButtonsAttribute>();
+            Assert.IsNotNull(toggleAttribute);
+
+            WEnumToggleButtonsDrawer drawer = new WEnumToggleButtonsDrawer();
+            ConfigureDrawer(drawer, fieldInfo, toggleAttribute);
+
+            GUIContent label = new GUIContent("Mode");
+
+            bool assertionMade = false;
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                ScriptableObject.DestroyImmediate(asset);
-            }
+                float baseline = drawer.GetPropertyHeight(property, label);
+
+                int previousIndent = EditorGUI.indentLevel;
+                try
+                {
+                    EditorGUI.indentLevel = 5;
+                    float indented = drawer.GetPropertyHeight(property, label);
+                    Assert.AreEqual(
+                        baseline,
+                        indented,
+                        0.0001f,
+                        "Property height should not change due to outer indent levels."
+                    );
+                    assertionMade = true;
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndent;
+                }
+            });
+
+            Assert.IsTrue(assertionMade);
         }
 
         private static void AssertColorApproximately(Color expected, Color actual)

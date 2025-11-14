@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
 
     internal static class WGroupGUI
     {
@@ -79,7 +80,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                             continue;
                         }
 
-                        DrawAlignedPropertyField(property);
+                        GroupGUIIndentUtility.ExecuteWithIndentCompensation(() =>
+                            EditorGUILayout.PropertyField(property, true)
+                        );
                     }
                     if (propertyCount > 0)
                     {
@@ -165,14 +168,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         {
             float spacing = Mathf.Max(1f, EditorGUIUtility.standardVerticalSpacing);
             GUILayout.Space(spacing);
-        }
-
-        private static void DrawAlignedPropertyField(SerializedProperty property)
-        {
-            int originalIndent = EditorGUI.indentLevel;
-            EditorGUI.indentLevel = Mathf.Max(0, originalIndent - 1);
-            EditorGUILayout.PropertyField(property, true);
-            EditorGUI.indentLevel = originalIndent;
         }
     }
 
