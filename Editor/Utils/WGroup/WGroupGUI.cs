@@ -60,7 +60,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                     }
                     EditorGUI.indentLevel++;
                     IReadOnlyList<string> propertyPaths = definition.PropertyPaths;
-                    for (int index = 0; index < propertyPaths.Count; index++)
+                    int propertyCount = propertyPaths.Count;
+                    if (propertyCount > 0)
+                    {
+                        AddContentPadding();
+                    }
+                    for (int index = 0; index < propertyCount; index++)
                     {
                         string propertyPath = propertyPaths[index];
                         SerializedProperty property = serializedObject.FindProperty(propertyPath);
@@ -75,6 +80,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                         }
 
                         EditorGUILayout.PropertyField(property, true);
+                    }
+                    if (propertyCount > 0)
+                    {
+                        AddContentPadding();
                     }
                     EditorGUI.indentLevel--;
                 }
@@ -150,6 +159,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             GUI.Label(labelRect, content, labelStyle);
             GUILayout.Space(2f);
             return labelRect;
+        }
+
+        private static void AddContentPadding()
+        {
+            float spacing = Mathf.Max(1f, EditorGUIUtility.standardVerticalSpacing);
+            GUILayout.Space(spacing);
         }
     }
 
