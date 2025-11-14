@@ -28,6 +28,13 @@
 - Avoid `var` wherever possible, use expressive types.
 - Do not use nullable reference types.
 
+## Reflection & API Access
+
+- Avoid runtime reflection wherever possible in favor of explicit APIs and compiler-checked contracts.
+- Expose shared editor/runtime helpers via `internal` members and use `InternalsVisibleTo` for the assemblies that need access.
+- Prefer `nameof(...)` (or constants defined in one place) instead of magic strings, especially in property drawers, custom inspectors, editor utilities, and tests.
+- If a Unity serialization hook requires string references, centralize them in a single source of truth and document why reflection is unavoidable.
+
 ## Testing Guidelines
 
 - Frameworks: NUnit + Unity Test Framework (`[Test]`, `[UnityTest]`).
