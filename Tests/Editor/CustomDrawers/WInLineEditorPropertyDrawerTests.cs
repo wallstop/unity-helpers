@@ -23,6 +23,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             WInLineEditorPropertyDrawer.ResetImGuiStateCacheForTesting();
             WInLineEditorPropertyDrawer.ResetViewWidthResolver();
+            WInLineEditorPropertyDrawer.ResetVisibleRectResolver();
             _holder = ScriptableObject.CreateInstance<TestHolder>();
             _data = ScriptableObject.CreateInstance<TestData>();
 
@@ -65,6 +66,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             WInLineEditorPropertyDrawer.ResetImGuiStateCacheForTesting();
             WInLineEditorPropertyDrawer.ResetViewWidthResolver();
+            WInLineEditorPropertyDrawer.ResetVisibleRectResolver();
         }
 
         [Test]
@@ -347,6 +349,38 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     )
                 );
             Assert.That(info.InspectorRect.width, Is.EqualTo(expectedContentWidth).Within(0.1f));
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIClampsWidthWhenVisibleRectIsNarrower()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => 520f);
+            WInLineEditorPropertyDrawer.SetVisibleRectResolver(() => new Rect(0f, 0f, 260f, 800f));
+
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float height = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect rect = new Rect(40f, 10f, 180f, height);
+
+            bool executed = false;
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(rect, _inlineProperty, label);
+                executed = true;
+            });
+            Assert.IsTrue(executed);
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+
+            float expectedWidth = 260f - rect.x;
+            Assert.That(info.InlineRect.width, Is.EqualTo(expectedWidth).Within(0.1f));
         }
 
         private static string GetSessionKey(SerializedProperty property)

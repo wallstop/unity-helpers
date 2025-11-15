@@ -27,6 +27,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Dictionary<string, InlineInspectorImGuiState> ImGuiStateCache =
             new();
         private static Func<float> s_ViewWidthResolver = () => EditorGUIUtility.currentViewWidth;
+        private static readonly Func<Rect> DefaultVisibleRectResolver = CreateVisibleRectResolver();
+        private static Func<Rect> s_VisibleRectResolver = DefaultVisibleRectResolver;
 
         static WInLineEditorPropertyDrawer()
         {
@@ -638,18 +640,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static Rect ExpandToViewWidth(Rect rect)
         {
-            float viewWidth = ResolveViewWidth();
-            if (viewWidth <= 0f)
+            float viewRight = ResolveViewWidth() - InlineInspectorRightPadding;
+            Rect visibleRect = ResolveVisibleRect();
+            if (visibleRect.width > 0f)
             {
-                return rect;
+                float clipRight = visibleRect.xMax;
+                if (clipRight > 0f)
+                {
+                    viewRight = Mathf.Min(viewRight, clipRight);
+                }
             }
 
-            float availableWidth = viewWidth - rect.x - InlineInspectorRightPadding;
-            if (availableWidth > rect.width)
-            {
-                rect.width = availableWidth;
-            }
-
+            float targetWidth = Mathf.Max(0f, viewRight - rect.x);
+            rect.width = targetWidth;
             return rect;
         }
 
@@ -663,6 +666,47 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 return Mathf.Max(0f, EditorGUIUtility.currentViewWidth);
             }
+        }
+
+        private static Rect ResolveVisibleRect()
+        {
+            try
+            {
+                return s_VisibleRectResolver();
+            }
+            catch
+            {
+                return new Rect(0f, 0f, ResolveViewWidth(), 0f);
+            }
+        }
+
+        private static Func<Rect> CreateVisibleRectResolver()
+        {
+            Type guiClipType = typeof(GUI).Assembly.GetType("UnityEngine.GUIClip");
+            PropertyInfo visibleRectProperty =
+                guiClipType?.GetProperty("visibleRect", BindingFlags.Public | BindingFlags.Static)
+                ?? guiClipType?.GetProperty(
+                    "visibleRect",
+                    BindingFlags.NonPublic | BindingFlags.Static
+                );
+
+            if (visibleRectProperty == null)
+            {
+                return () => new Rect(0f, 0f, ResolveViewWidth(), 0f);
+            }
+
+            return () =>
+            {
+                try
+                {
+                    object value = visibleRectProperty.GetValue(null, null);
+                    return value is Rect rect ? rect : new Rect(0f, 0f, ResolveViewWidth(), 0f);
+                }
+                catch
+                {
+                    return new Rect(0f, 0f, ResolveViewWidth(), 0f);
+                }
+            };
         }
 
         private static void DrawRectBorder(Rect rect, Color color, float thickness)
@@ -778,6 +822,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal static void ResetViewWidthResolver()
         {
             s_ViewWidthResolver = () => EditorGUIUtility.currentViewWidth;
+        }
+
+        internal static void SetVisibleRectResolver(Func<Rect> resolver)
+        {
+            s_VisibleRectResolver = resolver ?? DefaultVisibleRectResolver;
+        }
+
+        internal static void ResetVisibleRectResolver()
+        {
+            s_VisibleRectResolver = DefaultVisibleRectResolver;
         }
 
         internal static bool TryGetImGuiStateInfo(
