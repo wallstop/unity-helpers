@@ -564,8 +564,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     preferredContentWidth = expandedContentWidth;
                 }
 
-                bool needsHorizontalScroll =
-                    hasInspector && preferredContentWidth - inspectorRect.width > 0.5f;
+                float effectiveViewportWidth = Mathf.Max(0f, inspectorRect.width);
+                float widthDeficit = preferredContentWidth - effectiveViewportWidth;
+                bool needsHorizontalScroll = hasInspector && widthDeficit > 0.5f;
 
                 float inspectorContentWidth = needsHorizontalScroll
                     ? preferredContentWidth
@@ -594,7 +595,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         settings,
                         inspectorContentWidth,
                         needsHorizontalScroll,
-                        scrollbarRect
+                        scrollbarRect,
+                        effectiveViewportWidth
                     );
                 }
 
@@ -669,7 +671,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             WInLineEditorAttribute settings,
             float contentWidth,
             bool needsHorizontalScroll,
-            Rect scrollbarRect
+            Rect scrollbarRect,
+            float viewportWidth
         )
         {
             if (!needsHorizontalScroll)
@@ -687,9 +690,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            float viewportWidth = rect.width;
             float viewportHeight = rect.height;
-            float maxScroll = Mathf.Max(0f, contentWidth - viewportWidth);
+            float effectiveViewportWidth =
+                viewportWidth > 0f ? Mathf.Max(1f, viewportWidth) : Mathf.Max(1f, rect.width);
+            float maxScroll = Mathf.Max(0f, contentWidth - effectiveViewportWidth);
             state.HorizontalScrollOffset = Mathf.Clamp(state.HorizontalScrollOffset, 0f, maxScroll);
 
             GUI.BeginGroup(rect);
@@ -698,7 +702,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 Rect contentRect = new Rect(
                     -state.HorizontalScrollOffset,
                     0f,
-                    contentWidth,
+                    Mathf.Max(contentWidth, effectiveViewportWidth),
                     viewportHeight
                 );
                 GUI.BeginGroup(contentRect);
@@ -737,9 +741,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float newOffset = GUI.HorizontalScrollbar(
                 resolvedScrollbarRect,
                 state.HorizontalScrollOffset,
-                viewportWidth,
+                effectiveViewportWidth,
                 0f,
-                Mathf.Max(viewportWidth, contentWidth)
+                Mathf.Max(effectiveViewportWidth, contentWidth)
             );
             state.HorizontalScrollOffset = Mathf.Clamp(newOffset, 0f, maxScroll);
         }
@@ -972,20 +976,30 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
-            if (HorizontalScrollbarReservationKeys.Contains(sessionKey))
-            {
-                return true;
-            }
+            bool hasReservation = HorizontalScrollbarReservationKeys.Contains(sessionKey);
 
             float availableWidth = EstimateInlineAvailableWidth();
             if (availableWidth <= 0f)
             {
-                return false;
+                return hasReservation;
             }
 
             float padding = 2f * (InlineBorderThickness + InlinePadding);
             float contentWidth = Mathf.Max(0f, availableWidth - padding);
-            return contentWidth < settings.minInspectorWidth - 0.5f;
+            bool needsReservation = contentWidth < settings.minInspectorWidth - 0.5f;
+
+            if (hasReservation && !needsReservation)
+            {
+                HorizontalScrollbarReservationKeys.Remove(sessionKey);
+                hasReservation = false;
+            }
+            else if (!hasReservation && needsReservation)
+            {
+                HorizontalScrollbarReservationKeys.Add(sessionKey);
+                hasReservation = true;
+            }
+
+            return hasReservation;
         }
 
         private static float EstimateInlineAvailableWidth()
