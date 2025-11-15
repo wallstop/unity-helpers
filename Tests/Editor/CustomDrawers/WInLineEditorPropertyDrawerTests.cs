@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using System.Collections;
     using NUnit.Framework;
     using UnityEditor;
-    using UnityEditor.UIElements;
     using UnityEngine;
     using UnityEngine.TestTools;
     using UnityEngine.UIElements;
@@ -23,6 +22,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void SetUp()
         {
             WInLineEditorPropertyDrawer.ResetImGuiStateCacheForTesting();
+            WInLineEditorPropertyDrawer.ResetViewWidthResolver();
             _holder = ScriptableObject.CreateInstance<TestHolder>();
             _data = ScriptableObject.CreateInstance<TestData>();
 
@@ -64,84 +64,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
 
             WInLineEditorPropertyDrawer.ResetImGuiStateCacheForTesting();
+            WInLineEditorPropertyDrawer.ResetViewWidthResolver();
         }
 
         [Test]
-        public void CreatePropertyGUIDrawObjectFieldEnabledAddsObjectField()
+        public void CreatePropertyGUIFallsBackToIMGUI()
         {
             WInLineEditorPropertyDrawer drawer = new();
-
-            VisualElement root = drawer.CreatePropertyGUI(_inlineProperty);
-            root.Bind(_serializedHolder);
-
-            ObjectField field = root.Query<ObjectField>()
-                .Where(x => x.bindingPath == _inlineProperty.propertyPath)
-                .First();
-            Assert.That(field, Is.Not.Null);
-            Assert.That(field.objectType, Is.EqualTo(typeof(TestData)));
-        }
-
-        [Test]
-        public void CreatePropertyGUIModeFoldoutCollapsedStartsCollapsed()
-        {
-            SerializedProperty property = _serializedHolder.FindProperty(
-                nameof(TestHolder.collapsedData)
-            );
-            SessionState.EraseBool(GetSessionKey(property));
-
-            WInLineEditorPropertyDrawer drawer = new();
-            VisualElement root = drawer.CreatePropertyGUI(property);
-            root.Bind(_serializedHolder);
-
-            Foldout foldout = root.Q<Foldout>();
-            Assert.That(foldout, Is.Not.Null);
-            Assert.That(foldout.value, Is.False);
-        }
-
-        [Test]
-        public void NullReferenceKeepsFieldEnabledAndFoldoutCollapsed()
-        {
-            SerializedProperty property = _serializedHolder.FindProperty(
-                nameof(TestHolder.collapsedData)
-            );
-            SessionState.EraseBool(GetSessionKey(property));
-            property.objectReferenceValue = null;
-            _serializedHolder.ApplyModifiedProperties();
-            _serializedHolder.Update();
-
-            WInLineEditorPropertyDrawer drawer = new();
-            VisualElement root = drawer.CreatePropertyGUI(property);
-            root.Bind(_serializedHolder);
-
-            ObjectField field = root.Query<ObjectField>()
-                .Where(x => x.bindingPath == property.propertyPath)
-                .First();
-            Assert.That(field, Is.Not.Null);
-            Assert.That(field.enabledInHierarchy, Is.True);
-
-            Foldout foldout = root.Q<Foldout>();
-            Assert.That(foldout, Is.Not.Null);
-            Toggle toggle = foldout.Q<Toggle>();
-            Assert.That(toggle, Is.Not.Null);
-            toggle.value = true;
-            Assert.That(foldout.value, Is.False);
-        }
-
-        [Test]
-        public void CreatePropertyGUIDrawObjectFieldDisabledHasNoObjectField()
-        {
-            SerializedProperty property = _serializedHolder.FindProperty(
-                nameof(TestHolder.headerOnlyData)
-            );
-
-            WInLineEditorPropertyDrawer drawer = new();
-            VisualElement root = drawer.CreatePropertyGUI(property);
-            root.Bind(_serializedHolder);
-
-            ObjectField field = root.Query<ObjectField>()
-                .Where(x => x.bindingPath == property.propertyPath)
-                .First();
-            Assert.That(field, Is.Null);
+            VisualElement element = drawer.CreatePropertyGUI(_inlineProperty);
+            Assert.That(element, Is.Null);
         }
 
         [Test]
@@ -234,12 +165,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Is.True
             );
             Assert.That(info.Target, Is.EqualTo(_data));
-            Assert.That(info.HasEditor, Is.True);
+            Assert.That(info.HasSerializedObject, Is.True);
             Assert.That(string.IsNullOrEmpty(info.ErrorMessage), Is.True);
         }
 
         [UnityTest]
-        public IEnumerator OnGUINullReferenceDisposesCachedEditor()
+        public IEnumerator OnGUINullReferenceClearsSerializedState()
         {
             string sessionKey = GetSessionKey(_inlineProperty);
             WInLineEditorPropertyDrawer drawer = new();
@@ -267,17 +198,20 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Is.True
             );
             Assert.That(info.Target, Is.Null);
-            Assert.That(info.HasEditor, Is.False);
+            Assert.That(info.HasSerializedObject, Is.False);
         }
 
         [UnityTest]
-        public IEnumerator OnGUIRespectsProvidedRectWidthWhenIndented()
+        public IEnumerator OnGUIPreservesIndentWhenFullWidthAlreadyAvailable()
         {
             string sessionKey = GetSessionKey(_inlineProperty);
             WInLineEditorPropertyDrawer drawer = new();
             GUIContent label = new GUIContent(_inlineProperty.displayName);
             float height = drawer.GetPropertyHeight(_inlineProperty, label);
             Rect rect = new Rect(40f, 20f, 320f, height);
+            float viewWidth =
+                rect.x + rect.width + WInLineEditorPropertyDrawer.InlineInspectorRightPadding;
+            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => viewWidth);
 
             int originalIndent = EditorGUI.indentLevel;
             bool executed = false;
@@ -304,9 +238,107 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Is.True
             );
 
+            Assert.That(info.InlineRect.x, Is.EqualTo(rect.x).Within(0.1f));
             Assert.That(info.InlineRect.width, Is.EqualTo(rect.width).Within(0.1f));
             float expectedContentWidth =
-                rect.width
+                info.InlineRect.width
+                - (
+                    2f
+                    * (
+                        WInLineEditorPropertyDrawer.InlineBorderThickness
+                        + WInLineEditorPropertyDrawer.InlinePadding
+                    )
+                );
+            Assert.That(info.InspectorRect.width, Is.EqualTo(expectedContentWidth).Within(0.1f));
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIExpandsInlineRectWhenViewWidthExceedsParent()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float height = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect rect = new Rect(40f, 10f, 220f, height);
+            float extraWidth = 180f;
+            float viewWidth =
+                rect.x
+                + rect.width
+                + extraWidth
+                + WInLineEditorPropertyDrawer.InlineInspectorRightPadding;
+            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => viewWidth);
+
+            int originalIndent = EditorGUI.indentLevel;
+            bool executed = false;
+            try
+            {
+                EditorGUI.indentLevel = 2;
+                yield return TestIMGUIExecutor.Run(() =>
+                {
+                    drawer.OnGUI(rect, _inlineProperty, label);
+                    executed = true;
+                });
+            }
+            finally
+            {
+                EditorGUI.indentLevel = originalIndent;
+            }
+
+            Assert.IsTrue(executed);
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+
+            float expectedWidth = rect.width + extraWidth;
+            Assert.That(info.InlineRect.x, Is.EqualTo(rect.x).Within(0.1f));
+            Assert.That(info.InlineRect.width, Is.EqualTo(expectedWidth).Within(0.1f));
+
+            float expectedContentWidth =
+                info.InlineRect.width
+                - (
+                    2f
+                    * (
+                        WInLineEditorPropertyDrawer.InlineBorderThickness
+                        + WInLineEditorPropertyDrawer.InlinePadding
+                    )
+                );
+            Assert.That(info.InspectorRect.width, Is.EqualTo(expectedContentWidth).Within(0.1f));
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIKeepsProvidedWidthWhenViewWidthIsSmaller()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float height = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect rect = new Rect(24f, 12f, 280f, height);
+            float constrainedViewWidth = rect.x + rect.width - 40f; // make available width smaller than rect
+            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => constrainedViewWidth);
+
+            bool executed = false;
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(rect, _inlineProperty, label);
+                executed = true;
+            });
+
+            Assert.IsTrue(executed);
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+
+            Assert.That(info.InlineRect.width, Is.EqualTo(rect.width).Within(0.1f));
+            float expectedContentWidth =
+                info.InlineRect.width
                 - (
                     2f
                     * (
