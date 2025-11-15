@@ -173,9 +173,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 float inlineHeight = CalculateInlineContainerHeight(inlineAttribute);
                 cursorY += verticalSpacing;
                 Rect inlineRect = ExpandToViewWidth(
-                    new Rect(position.x, cursorY, width, inlineHeight)
+                    new Rect(position.x, cursorY, width, inlineHeight),
+                    out float preferredInlineWidth,
+                    out bool widthWasClipped
                 );
-                DrawInlineInspector(inlineRect, state, inlineAttribute);
+                DrawInlineInspector(
+                    inlineRect,
+                    state,
+                    inlineAttribute,
+                    preferredInlineWidth,
+                    widthWasClipped
+                );
             }
 
             EditorGUI.EndProperty();
@@ -459,7 +467,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static void DrawInlineInspector(
             Rect position,
             InlineInspectorImGuiState state,
-            WInLineEditorAttribute settings
+            WInLineEditorAttribute settings,
+            float preferredInlineWidth,
+            bool widthWasClipped
         )
         {
             Rect inlineRect = position;
@@ -494,7 +504,34 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 state.LastInspectorRect = inspectorRect;
                 cursorY += settings.inspectorHeight;
 
-                if (state.CachedEditor == null)
+                bool hasInspector = state.CachedEditor != null;
+                float contentWidthPadding = 2f * (InlineBorderThickness + InlinePadding);
+                float preferredContentWidth = inspectorRect.width;
+                float minimumContentWidth = Mathf.Max(0f, settings.minInspectorWidth);
+                if (minimumContentWidth > preferredContentWidth)
+                {
+                    preferredContentWidth = minimumContentWidth;
+                }
+
+                float expandedContentWidth = preferredInlineWidth - contentWidthPadding;
+                if (expandedContentWidth > preferredContentWidth)
+                {
+                    preferredContentWidth = expandedContentWidth;
+                }
+
+                bool needsHorizontalScroll =
+                    hasInspector && preferredContentWidth - inspectorRect.width > 0.5f;
+                float inspectorContentWidth = needsHorizontalScroll
+                    ? preferredContentWidth
+                    : inspectorRect.width;
+                state.InspectorContentWidth = inspectorContentWidth;
+                state.UsedHorizontalScroll = needsHorizontalScroll;
+                if (!needsHorizontalScroll)
+                {
+                    state.HorizontalScrollOffset = 0f;
+                }
+
+                if (!hasInspector)
                 {
                     DrawMessage(
                         inspectorRect,
@@ -505,7 +542,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
                 else
                 {
-                    DrawInspectorContents(inspectorRect, state, settings);
+                    DrawInspectorContents(
+                        inspectorRect,
+                        state,
+                        settings,
+                        inspectorContentWidth,
+                        needsHorizontalScroll
+                    );
                 }
 
                 if (
@@ -576,16 +619,59 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static void DrawInspectorContents(
             Rect rect,
             InlineInspectorImGuiState state,
+            WInLineEditorAttribute settings,
+            float contentWidth,
+            bool needsHorizontalScroll
+        )
+        {
+            if (!needsHorizontalScroll)
+            {
+                GUILayout.BeginArea(rect);
+                try
+                {
+                    DrawInspectorBody(rect, state, settings);
+                }
+                finally
+                {
+                    GUILayout.EndArea();
+                }
+
+                return;
+            }
+
+            Rect scrollRect = rect;
+            Rect viewRect = new Rect(0f, 0f, contentWidth, rect.height);
+            Vector2 scroll = new Vector2(state.HorizontalScrollOffset, 0f);
+
+            scroll = GUI.BeginScrollView(scrollRect, scroll, viewRect);
+            state.HorizontalScrollOffset = scroll.x;
+
+            Rect areaRect = new Rect(0f, 0f, contentWidth, rect.height);
+            GUILayout.BeginArea(areaRect);
+            try
+            {
+                DrawInspectorBody(areaRect, state, settings);
+            }
+            finally
+            {
+                GUILayout.EndArea();
+                GUI.EndScrollView();
+            }
+        }
+
+        private static void DrawInspectorBody(
+            Rect layoutRect,
+            InlineInspectorImGuiState state,
             WInLineEditorAttribute settings
         )
         {
-            GUILayout.BeginArea(rect);
             try
             {
                 if (settings.enableScrolling)
                 {
                     state.ScrollPosition = EditorGUILayout.BeginScrollView(
                         state.ScrollPosition,
+                        GUILayout.Width(layoutRect.width),
                         GUILayout.ExpandHeight(true)
                     );
                     try
@@ -604,11 +690,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
             catch (Exception ex)
             {
-                DrawMessage(new Rect(0f, 0f, rect.width, rect.height), ex.Message);
-            }
-            finally
-            {
-                GUILayout.EndArea();
+                DrawMessage(new Rect(0f, 0f, layoutRect.width, layoutRect.height), ex.Message);
             }
         }
 
@@ -642,16 +724,32 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static Rect ExpandToViewWidth(Rect rect)
         {
+            return ExpandToViewWidth(rect, out _, out _);
+        }
+
+        private static Rect ExpandToViewWidth(
+            Rect rect,
+            out float preferredWidth,
+            out bool widthWasClipped
+        )
+        {
             Rect visibleRect = ResolveVisibleRect();
             float visibleLeftOffset =
                 visibleRect.width > 0f ? Mathf.Max(0f, rect.x - visibleRect.xMin) : 0f;
 
-            float viewRight =
+            float baseRight =
                 ResolveViewWidth() - InlineInspectorRightPadding - InlineGroupEdgePadding;
+            baseRight = Mathf.Max(rect.x + InlineGroupEdgePadding, baseRight);
+            float unclampedRight = baseRight;
+            float adjustedRight = baseRight;
+
             if (visibleRect.width > 0f)
             {
-                float clipRight = visibleRect.xMax - InlineGroupEdgePadding;
-                viewRight = Mathf.Min(viewRight, clipRight);
+                float clipRight = Mathf.Max(
+                    rect.x + InlineGroupEdgePadding,
+                    visibleRect.xMax - InlineGroupEdgePadding
+                );
+                adjustedRight = Mathf.Min(adjustedRight, clipRight);
 
                 if (visibleLeftOffset > 0f)
                 {
@@ -659,24 +757,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         InlineGroupNestingPadding,
                         visibleLeftOffset * 0.5f
                     );
-                    viewRight = Mathf.Max(
+                    adjustedRight = Mathf.Max(
                         rect.x + InlineGroupEdgePadding,
-                        viewRight - nestingShrink
+                        adjustedRight - nestingShrink
                     );
                 }
             }
-            else
-            {
-                viewRight = Mathf.Max(rect.x + InlineGroupEdgePadding, viewRight);
-            }
 
-            float desiredWidth = Mathf.Max(0f, viewRight - rect.x);
+            float desiredWidth = Mathf.Max(0f, adjustedRight - rect.x);
             float expansionThreshold = Mathf.Max(24f, visibleLeftOffset * 0.5f);
             float gain = desiredWidth - rect.width;
             if (gain > expansionThreshold)
             {
                 rect.width = desiredWidth;
             }
+
+            preferredWidth = Mathf.Max(0f, unclampedRight - rect.x);
+            widthWasClipped = unclampedRight - adjustedRight > 0.5f;
 
             return rect;
         }
@@ -872,7 +969,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     state.ErrorMessage,
                     state.LastInlineRect,
                     state.LastContentRect,
-                    state.LastInspectorRect
+                    state.LastInspectorRect,
+                    state.InspectorContentWidth,
+                    state.UsedHorizontalScroll,
+                    state.HorizontalScrollOffset
                 );
                 return true;
             }
@@ -889,7 +989,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 string errorMessage,
                 Rect inlineRect,
                 Rect contentRect,
-                Rect inspectorRect
+                Rect inspectorRect,
+                float inspectorContentWidth,
+                bool usesHorizontalScroll,
+                float horizontalScrollOffset
             )
             {
                 Target = target;
@@ -898,6 +1001,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 InlineRect = inlineRect;
                 ContentRect = contentRect;
                 InspectorRect = inspectorRect;
+                InspectorContentWidth = inspectorContentWidth;
+                UsesHorizontalScroll = usesHorizontalScroll;
+                HorizontalScrollOffset = horizontalScrollOffset;
             }
 
             public UnityEngine.Object Target { get; }
@@ -911,6 +1017,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public Rect ContentRect { get; }
 
             public Rect InspectorRect { get; }
+
+            public float InspectorContentWidth { get; }
+
+            public bool UsesHorizontalScroll { get; }
+
+            public float HorizontalScrollOffset { get; }
         }
 
         private sealed class InlineInspectorImGuiState
@@ -919,6 +1031,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public Editor CachedEditor;
             public SerializedObject SerializedObject;
             public Vector2 ScrollPosition;
+            public float HorizontalScrollOffset;
+            public bool UsedHorizontalScroll;
+            public float InspectorContentWidth;
             public string ErrorMessage;
             public Rect LastInlineRect;
             public Rect LastContentRect;
@@ -935,6 +1050,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 CurrentTarget = null;
                 SerializedObject = null;
                 ScrollPosition = Vector2.zero;
+                HorizontalScrollOffset = 0f;
+                UsedHorizontalScroll = false;
+                InspectorContentWidth = 0f;
                 ErrorMessage = null;
                 LastInlineRect = default;
                 LastContentRect = default;

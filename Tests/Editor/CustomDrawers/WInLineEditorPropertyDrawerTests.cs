@@ -17,6 +17,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         private TestData _data;
         private SerializedObject _serializedHolder;
         private SerializedProperty _inlineProperty;
+        private SerializedProperty _noMinWidthProperty;
 
         [SetUp]
         public void SetUp()
@@ -30,9 +31,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             _holder.inlineData = _data;
             _holder.collapsedData = _data;
             _holder.headerOnlyData = _data;
+            _holder.noMinWidthData = _data;
 
             _serializedHolder = new SerializedObject(_holder);
             _inlineProperty = _serializedHolder.FindProperty(nameof(TestHolder.inlineData));
+            _noMinWidthProperty = _serializedHolder.FindProperty(nameof(TestHolder.noMinWidthData));
         }
 
         [TearDown]
@@ -48,6 +51,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 );
                 SessionState.EraseBool(
                     GetSessionKey(_serializedHolder.FindProperty(nameof(TestHolder.headerOnlyData)))
+                );
+                SessionState.EraseBool(
+                    GetSessionKey(_serializedHolder.FindProperty(nameof(TestHolder.noMinWidthData)))
                 );
                 _serializedHolder = null;
             }
@@ -252,6 +258,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     )
                 );
             Assert.That(info.InspectorRect.width, Is.EqualTo(expectedContentWidth).Within(0.1f));
+            Assert.That(info.UsesHorizontalScroll, Is.True);
+            Assert.That(info.InspectorContentWidth, Is.GreaterThan(info.InspectorRect.width));
         }
 
         [UnityTest]
@@ -309,6 +317,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     )
                 );
             Assert.That(info.InspectorRect.width, Is.EqualTo(expectedContentWidth).Within(0.1f));
+            Assert.That(info.UsesHorizontalScroll, Is.False);
+            Assert.That(
+                info.InspectorContentWidth,
+                Is.EqualTo(info.InspectorRect.width).Within(0.1f)
+            );
         }
 
         [UnityTest]
@@ -349,6 +362,41 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     )
                 );
             Assert.That(info.InspectorRect.width, Is.EqualTo(expectedContentWidth).Within(0.1f));
+            Assert.That(info.UsesHorizontalScroll, Is.True);
+            Assert.That(info.InspectorContentWidth, Is.GreaterThan(info.InspectorRect.width));
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIDoesNotForceHorizontalScrollWhenMinimumWidthDisabled()
+        {
+            string sessionKey = GetSessionKey(_noMinWidthProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_noMinWidthProperty.displayName);
+            float height = drawer.GetPropertyHeight(_noMinWidthProperty, label);
+            Rect rect = new Rect(24f, 12f, 260f, height);
+            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => rect.x + rect.width);
+
+            bool executed = false;
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(rect, _noMinWidthProperty, label);
+                executed = true;
+            });
+
+            Assert.IsTrue(executed);
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+
+            Assert.That(info.UsesHorizontalScroll, Is.False);
+            Assert.That(
+                info.InspectorContentWidth,
+                Is.EqualTo(info.InspectorRect.width).Within(0.1f)
+            );
         }
 
         [UnityTest]
@@ -382,6 +430,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             float maxWidth = 260f - rect.x;
             Assert.That(info.InlineRect.width, Is.LessThanOrEqualTo(maxWidth));
             Assert.That(info.InlineRect.width, Is.GreaterThanOrEqualTo(rect.width - 0.1f));
+            Assert.That(info.UsesHorizontalScroll, Is.True);
+            Assert.That(info.InspectorContentWidth, Is.GreaterThan(info.InspectorRect.width));
+            Assert.That(info.HorizontalScrollOffset, Is.EqualTo(0f).Within(0.001f));
         }
 
         private static string GetSessionKey(SerializedProperty property)
@@ -406,6 +457,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             [WInLineEditor(drawObjectField: false)]
             public TestData headerOnlyData;
+
+            [WInLineEditor(minInspectorWidth: 0f)]
+            public TestData noMinWidthData;
         }
     }
 }

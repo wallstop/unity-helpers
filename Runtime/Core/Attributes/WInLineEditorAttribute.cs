@@ -45,6 +45,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         public readonly bool enableScrolling;
 
         /// <summary>
+        /// Gets the minimum content width the inline inspector should reserve before enabling horizontal scrolling.
+        /// </summary>
+        public readonly float minInspectorWidth;
+
+        /// <summary>
         /// Configures inline inspector rendering for a referenced Unity object.
         /// </summary>
         /// <param name="mode">How the nested inspector should expand or collapse.</param>
@@ -54,6 +59,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// <param name="drawPreview">Whether to draw a preview texture, if available.</param>
         /// <param name="previewHeight">Height allocated to the preview texture.</param>
         /// <param name="enableScrolling">Whether to wrap the inspector region in a scroll view.</param>
+        /// <param name="minInspectorWidth">Minimum content width before the inline inspector enables horizontal scrolling.</param>
         /// <example>
         /// <code>
         /// [WInLineEditor(WInLineEditorMode.FoldoutExpanded, inspectorHeight: 180f, drawPreview: true)]
@@ -67,7 +73,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             bool drawHeader = true,
             bool drawPreview = false,
             float previewHeight = 96f,
-            bool enableScrolling = true
+            bool enableScrolling = true,
+            float minInspectorWidth = 520f
         )
         {
             this.mode = mode;
@@ -77,6 +84,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             this.previewHeight = previewHeight < 0f ? 0f : previewHeight;
             this.inspectorHeight = inspectorHeight < 32f ? 32f : inspectorHeight;
             this.enableScrolling = enableScrolling;
+            this.minInspectorWidth = minInspectorWidth < 0f ? 0f : minInspectorWidth;
         }
     }
 

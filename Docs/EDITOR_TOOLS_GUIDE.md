@@ -1168,6 +1168,7 @@ Custom property drawers enhance the inspector with conditional display, validati
 - `drawHeader` — draw a bold header with a ping button.
 - `drawPreview` & `previewHeight` — render the preview area when the target editor exposes one.
 - `enableScrolling` — wrap the inspector body in a scroll view for long inspectors.
+- `minInspectorWidth` (default 520) — when the content area is narrower than this width, a horizontal scrollbar appears; set to `0` to disable the safeguard.
 
 **Examples:**
 
