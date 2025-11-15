@@ -22,6 +22,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float InlineGroupNestingPadding = 4f;
         private const float InlineGroupEdgePadding = 8f;
         internal const float InlineHorizontalScrollbarHeight = 12f;
+        private const float InlineHorizontalScrollHysteresis = 12f;
 
         private static readonly Color LightInlineBackground = new(0.95f, 0.95f, 0.95f, 1f);
         private static readonly Color DarkInlineBackground = new(0.17f, 0.17f, 0.17f, 1f);
@@ -564,9 +565,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     preferredContentWidth = expandedContentWidth;
                 }
 
+                if (hasReservedScrollbarSpace)
+                {
+                    float stableWidth =
+                        settings.minInspectorWidth + InlineHorizontalScrollHysteresis;
+                    if (stableWidth > preferredContentWidth)
+                    {
+                        preferredContentWidth = stableWidth;
+                    }
+                }
+
                 float effectiveViewportWidth = Mathf.Max(0f, inspectorRect.width);
                 float widthDeficit = preferredContentWidth - effectiveViewportWidth;
-                bool needsHorizontalScroll = hasInspector && widthDeficit > 0.5f;
+                bool needsHorizontalScroll =
+                    (hasInspector && widthDeficit > 0.5f) || hasReservedScrollbarSpace;
 
                 float inspectorContentWidth = needsHorizontalScroll
                     ? preferredContentWidth
@@ -987,8 +999,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float padding = 2f * (InlineBorderThickness + InlinePadding);
             float contentWidth = Mathf.Max(0f, availableWidth - padding);
             bool needsReservation = contentWidth < settings.minInspectorWidth - 0.5f;
+            bool canReleaseReservation =
+                contentWidth > (settings.minInspectorWidth + InlineHorizontalScrollHysteresis);
 
-            if (hasReservation && !needsReservation)
+            if (hasReservation && canReleaseReservation)
             {
                 HorizontalScrollbarReservationKeys.Remove(sessionKey);
                 hasReservation = false;
