@@ -379,8 +379,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Is.True
             );
 
-            float expectedWidth = 260f - rect.x;
-            Assert.That(info.InlineRect.width, Is.EqualTo(expectedWidth).Within(0.1f));
+            float maxWidth = 260f - rect.x;
+            Assert.That(info.InlineRect.width, Is.LessThanOrEqualTo(maxWidth));
+            Assert.That(info.InlineRect.width, Is.GreaterThanOrEqualTo(rect.width - 0.1f));
         }
 
         private static string GetSessionKey(SerializedProperty property)

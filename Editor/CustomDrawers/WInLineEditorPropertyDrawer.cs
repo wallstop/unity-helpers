@@ -19,6 +19,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float InlinePreviewSpacing = 4f;
         private const float InlinePingButtonWidth = 58f;
         internal const float InlineInspectorRightPadding = 6f;
+        private const float InlineGroupNestingPadding = 4f;
+        private const float InlineGroupEdgePadding = 8f;
 
         private static readonly Color LightInlineBackground = new(0.95f, 0.95f, 0.95f, 1f);
         private static readonly Color DarkInlineBackground = new(0.17f, 0.17f, 0.17f, 1f);
@@ -640,19 +642,42 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static Rect ExpandToViewWidth(Rect rect)
         {
-            float viewRight = ResolveViewWidth() - InlineInspectorRightPadding;
             Rect visibleRect = ResolveVisibleRect();
+            float visibleLeftOffset =
+                visibleRect.width > 0f ? Mathf.Max(0f, rect.x - visibleRect.xMin) : 0f;
+
+            float viewRight =
+                ResolveViewWidth() - InlineInspectorRightPadding - InlineGroupEdgePadding;
             if (visibleRect.width > 0f)
             {
-                float clipRight = visibleRect.xMax;
-                if (clipRight > 0f)
+                float clipRight = visibleRect.xMax - InlineGroupEdgePadding;
+                viewRight = Mathf.Min(viewRight, clipRight);
+
+                if (visibleLeftOffset > 0f)
                 {
-                    viewRight = Mathf.Min(viewRight, clipRight);
+                    float nestingShrink = Mathf.Max(
+                        InlineGroupNestingPadding,
+                        visibleLeftOffset * 0.5f
+                    );
+                    viewRight = Mathf.Max(
+                        rect.x + InlineGroupEdgePadding,
+                        viewRight - nestingShrink
+                    );
                 }
             }
+            else
+            {
+                viewRight = Mathf.Max(rect.x + InlineGroupEdgePadding, viewRight);
+            }
 
-            float targetWidth = Mathf.Max(0f, viewRight - rect.x);
-            rect.width = targetWidth;
+            float desiredWidth = Mathf.Max(0f, viewRight - rect.x);
+            float expansionThreshold = Mathf.Max(24f, visibleLeftOffset * 0.5f);
+            float gain = desiredWidth - rect.width;
+            if (gain > expansionThreshold)
+            {
+                rect.width = desiredWidth;
+            }
+
             return rect;
         }
 
