@@ -60,34 +60,47 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                         EditorGUILayout.Space(2f);
                     }
                     EditorGUI.indentLevel++;
-                    IReadOnlyList<string> propertyPaths = definition.PropertyPaths;
-                    int propertyCount = propertyPaths.Count;
-                    if (propertyCount > 0)
-                    {
-                        AddContentPadding();
-                    }
-                    for (int index = 0; index < propertyCount; index++)
-                    {
-                        string propertyPath = propertyPaths[index];
-                        SerializedProperty property = serializedObject.FindProperty(propertyPath);
-                        if (property == null)
-                        {
-                            continue;
-                        }
 
-                        if (overrideDrawer != null && overrideDrawer(serializedObject, property))
-                        {
-                            continue;
-                        }
-
-                        GroupGUIIndentUtility.ExecuteWithIndentCompensation(() =>
-                            EditorGUILayout.PropertyField(property, true)
-                        );
-                    }
-                    if (propertyCount > 0)
+                    float horizontalPadding = GroupGUIWidthUtility.CalculateHorizontalPadding(
+                        EditorStyles.helpBox
+                    );
+                    using (GroupGUIWidthUtility.PushContentPadding(horizontalPadding))
                     {
-                        AddContentPadding();
+                        IReadOnlyList<string> propertyPaths = definition.PropertyPaths;
+                        int propertyCount = propertyPaths.Count;
+                        if (propertyCount > 0)
+                        {
+                            AddContentPadding();
+                        }
+                        for (int index = 0; index < propertyCount; index++)
+                        {
+                            string propertyPath = propertyPaths[index];
+                            SerializedProperty property = serializedObject.FindProperty(
+                                propertyPath
+                            );
+                            if (property == null)
+                            {
+                                continue;
+                            }
+
+                            if (
+                                overrideDrawer != null
+                                && overrideDrawer(serializedObject, property)
+                            )
+                            {
+                                continue;
+                            }
+
+                            GroupGUIIndentUtility.ExecuteWithIndentCompensation(() =>
+                                EditorGUILayout.PropertyField(property, true)
+                            );
+                        }
+                        if (propertyCount > 0)
+                        {
+                            AddContentPadding();
+                        }
                     }
+
                     EditorGUI.indentLevel--;
                 }
             }

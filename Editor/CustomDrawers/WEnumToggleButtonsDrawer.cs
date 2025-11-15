@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Extensions;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
 
     [CustomPropertyDrawer(typeof(WEnumToggleButtonsAttribute))]
@@ -50,6 +51,29 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Dictionary<Color, Texture2D> SolidTextureCache = new(
             new ColorComparer()
         );
+
+        private static float EstimateContentWidth()
+        {
+            float viewWidth = Mathf.Max(0f, EditorGUIUtility.currentViewWidth);
+            Rect dummyRect = new Rect(0f, 0f, viewWidth, EditorGUIUtility.singleLineHeight);
+            Rect indentedRect = EditorGUI.IndentedRect(dummyRect);
+
+            float widthAfterPadding =
+                indentedRect.width - GroupGUIWidthUtility.CurrentHorizontalPadding;
+            if (widthAfterPadding < 0f || float.IsNaN(widthAfterPadding))
+            {
+                widthAfterPadding = 0f;
+            }
+            float estimatedWidth =
+                widthAfterPadding - EditorGUIUtility.labelWidth - ContentWidthPadding;
+
+            if (estimatedWidth <= 0f || float.IsNaN(estimatedWidth))
+            {
+                estimatedWidth = MinButtonWidth;
+            }
+
+            return estimatedWidth;
+        }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
@@ -108,19 +132,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 usePagination
             );
 
-            Rect dummyRect = new(
-                0f,
-                0f,
-                EditorGUIUtility.currentViewWidth,
-                EditorGUIUtility.singleLineHeight
-            );
-            Rect indentedRect = EditorGUI.IndentedRect(dummyRect);
-            float estimatedWidth =
-                indentedRect.width - EditorGUIUtility.labelWidth - ContentWidthPadding;
-            if (estimatedWidth <= 0f)
-            {
-                estimatedWidth = MinButtonWidth;
-            }
+            float estimatedWidth = EstimateContentWidth();
 
             LayoutSignature signature = WEnumToggleButtonsLayoutCache.CreateSignature(
                 toggleSet.Options.Count,

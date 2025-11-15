@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using WallstopStudios.UnityHelpers.Tests.Utils;
 
@@ -235,6 +236,57 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
             });
 
             Assert.IsTrue(assertionMade);
+        }
+
+        [Test]
+        public void GetPropertyHeightRespectsGroupPaddingContext()
+        {
+            ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
+            SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(ToggleDropdownAsset.mode)
+            );
+            Assert.IsNotNull(property, "Failed to locate serialized property for test asset.");
+
+            FieldInfo fieldInfo = typeof(ToggleDropdownAsset).GetField(
+                nameof(ToggleDropdownAsset.mode),
+                BindingFlags.Instance | BindingFlags.Public
+            );
+            Assert.IsNotNull(fieldInfo);
+
+            WEnumToggleButtonsAttribute toggleAttribute =
+                fieldInfo.GetCustomAttribute<WEnumToggleButtonsAttribute>();
+            Assert.IsNotNull(toggleAttribute);
+
+            WEnumToggleButtonsDrawer drawer = new WEnumToggleButtonsDrawer();
+            ConfigureDrawer(drawer, fieldInfo, toggleAttribute);
+
+            GUIContent label = new GUIContent("Mode");
+
+            float baselineHeight = drawer.GetPropertyHeight(property, label);
+            Assert.Greater(baselineHeight, 0f);
+
+            float constrainedHeight;
+            using (GroupGUIWidthUtility.PushContentPadding(600f))
+            {
+                constrainedHeight = drawer.GetPropertyHeight(property, label);
+            }
+
+            Assert.Greater(
+                constrainedHeight,
+                baselineHeight,
+                "Additional group padding should reduce usable width and increase height."
+            );
+
+            float restoredHeight = drawer.GetPropertyHeight(property, label);
+            Assert.AreEqual(
+                baselineHeight,
+                restoredHeight,
+                0.0001f,
+                "Padding scope disposal should restore the baseline width estimate."
+            );
         }
 
         private static void AssertColorApproximately(Color expected, Color actual)

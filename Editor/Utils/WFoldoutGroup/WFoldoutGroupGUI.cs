@@ -138,26 +138,32 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup
                 return;
             }
 
-            AddContentPadding();
-            for (int index = 0; index < propertyCount; index++)
+            float horizontalPadding = GroupGUIWidthUtility.CalculateHorizontalPadding(
+                EditorStyles.helpBox
+            );
+            using (GroupGUIWidthUtility.PushContentPadding(horizontalPadding))
             {
-                string propertyPath = propertyPaths[index];
-                SerializedProperty property = serializedObject.FindProperty(propertyPath);
-                if (property == null)
+                AddContentPadding();
+                for (int index = 0; index < propertyCount; index++)
                 {
-                    continue;
-                }
+                    string propertyPath = propertyPaths[index];
+                    SerializedProperty property = serializedObject.FindProperty(propertyPath);
+                    if (property == null)
+                    {
+                        continue;
+                    }
 
-                if (overrideDrawer != null && overrideDrawer(serializedObject, property))
-                {
-                    continue;
-                }
+                    if (overrideDrawer != null && overrideDrawer(serializedObject, property))
+                    {
+                        continue;
+                    }
 
-                GroupGUIIndentUtility.ExecuteWithIndentCompensation(() =>
-                    EditorGUILayout.PropertyField(property, true)
-                );
+                    GroupGUIIndentUtility.ExecuteWithIndentCompensation(() =>
+                        EditorGUILayout.PropertyField(property, true)
+                    );
+                }
+                AddContentPadding();
             }
-            AddContentPadding();
         }
 
         private static bool GetFoldoutState(
