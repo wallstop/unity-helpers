@@ -335,14 +335,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             float constrainedViewWidth = rect.x + rect.width - 40f; // make available width smaller than rect
             WInLineEditorPropertyDrawer.SetViewWidthResolver(() => constrainedViewWidth);
 
-            bool executed = false;
+            yield return TestIMGUIExecutor.Run(() => drawer.OnGUI(rect, _inlineProperty, label));
+
+            float paddedHeight = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect paddedRect = new Rect(rect.x, rect.y, rect.width, paddedHeight);
+
             yield return TestIMGUIExecutor.Run(() =>
             {
-                drawer.OnGUI(rect, _inlineProperty, label);
-                executed = true;
+                drawer.OnGUI(paddedRect, _inlineProperty, label);
             });
 
-            Assert.IsTrue(executed);
             Assert.That(
                 WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
                     sessionKey,
@@ -351,7 +353,17 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Is.True
             );
 
+            float expectedInlineHeight =
+                WInLineEditorPropertyDrawer.GetInlineContainerHeightForTesting(
+                    new WInLineEditorAttribute()
+                ) + WInLineEditorPropertyDrawer.InlineHorizontalScrollbarHeight;
             Assert.That(info.InlineRect.width, Is.EqualTo(rect.width).Within(0.1f));
+            Assert.That(info.InlineRect.height, Is.EqualTo(expectedInlineHeight).Within(0.1f));
+            float expectedInspectorHeight = new WInLineEditorAttribute().inspectorHeight;
+            Assert.That(
+                info.InspectorRect.height,
+                Is.EqualTo(expectedInspectorHeight).Within(0.1f)
+            );
             float expectedContentWidth =
                 info.InlineRect.width
                 - (
@@ -364,6 +376,45 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.That(info.InspectorRect.width, Is.EqualTo(expectedContentWidth).Within(0.1f));
             Assert.That(info.UsesHorizontalScroll, Is.True);
             Assert.That(info.InspectorContentWidth, Is.GreaterThan(info.InspectorRect.width));
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIHorizontalScrollPreservesVerticalPosition()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float height = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect rect = new Rect(24f, 12f, 260f, height);
+            float constrainedViewWidth = rect.x + rect.width - 60f;
+            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => constrainedViewWidth);
+
+            yield return TestIMGUIExecutor.Run(() => drawer.OnGUI(rect, _inlineProperty, label));
+
+            float paddedHeight = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect paddedRect = new Rect(rect.x, rect.y, rect.width, paddedHeight);
+
+            Assert.IsTrue(
+                WInLineEditorPropertyDrawer.SetScrollPositionForTesting(
+                    sessionKey,
+                    new Vector2(0f, 64f)
+                )
+            );
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(paddedRect, _inlineProperty, label);
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+            Assert.That(info.UsesHorizontalScroll, Is.True);
+            Assert.That(info.ScrollPosition.y, Is.EqualTo(64f).Within(0.1f));
         }
 
         [UnityTest]
@@ -411,13 +462,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             float height = drawer.GetPropertyHeight(_inlineProperty, label);
             Rect rect = new Rect(40f, 10f, 180f, height);
 
-            bool executed = false;
+            yield return TestIMGUIExecutor.Run(() => drawer.OnGUI(rect, _inlineProperty, label));
+
+            float paddedHeight = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect paddedRect = new Rect(rect.x, rect.y, rect.width, paddedHeight);
+
             yield return TestIMGUIExecutor.Run(() =>
             {
-                drawer.OnGUI(rect, _inlineProperty, label);
-                executed = true;
+                drawer.OnGUI(paddedRect, _inlineProperty, label);
             });
-            Assert.IsTrue(executed);
 
             Assert.That(
                 WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(

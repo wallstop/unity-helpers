@@ -21,6 +21,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal const float InlineInspectorRightPadding = 6f;
         private const float InlineGroupNestingPadding = 4f;
         private const float InlineGroupEdgePadding = 8f;
+        internal const float InlineHorizontalScrollbarHeight = 12f;
 
         private static readonly Color LightInlineBackground = new(0.95f, 0.95f, 0.95f, 1f);
         private static readonly Color DarkInlineBackground = new(0.17f, 0.17f, 0.17f, 1f);
@@ -28,6 +29,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static readonly Dictionary<string, InlineInspectorImGuiState> ImGuiStateCache =
             new();
+        private static readonly HashSet<string> HorizontalScrollbarReservationKeys = new();
         private static Func<float> s_ViewWidthResolver = () => EditorGUIUtility.currentViewWidth;
         private static readonly Func<Rect> DefaultVisibleRectResolver = CreateVisibleRectResolver();
         private static Func<Rect> s_VisibleRectResolver = DefaultVisibleRectResolver;
@@ -170,7 +172,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (shouldShowInline)
             {
+                bool hasReservedScrollbarSpace =
+                    !string.IsNullOrEmpty(sessionKey)
+                    && HorizontalScrollbarReservationKeys.Contains(sessionKey);
                 float inlineHeight = CalculateInlineContainerHeight(inlineAttribute);
+                if (hasReservedScrollbarSpace)
+                {
+                    inlineHeight += InlineHorizontalScrollbarHeight;
+                }
                 cursorY += verticalSpacing;
                 Rect inlineRect = ExpandToViewWidth(
                     new Rect(position.x, cursorY, width, inlineHeight),
@@ -182,8 +191,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     state,
                     inlineAttribute,
                     preferredInlineWidth,
-                    widthWasClipped
+                    widthWasClipped,
+                    hasReservedScrollbarSpace
                 );
+                TrackHorizontalScrollbarReservation(sessionKey, state.UsedHorizontalScroll);
+            }
+            else
+            {
+                TrackHorizontalScrollbarReservation(sessionKey, false);
             }
 
             EditorGUI.EndProperty();
@@ -223,10 +238,27 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
-            if (ShouldShowInlineInspector(property, inlineAttribute))
+            string sessionKey = BuildSessionKey(property);
+            bool showInline = ShouldShowInlineInspector(property, inlineAttribute);
+            if (showInline)
             {
                 height += verticalSpacing;
                 height += CalculateInlineContainerHeight(inlineAttribute);
+
+                bool reserveScrollbarSpace = ShouldReserveHorizontalScrollbarSpace(
+                    sessionKey,
+                    inlineAttribute
+                );
+                if (reserveScrollbarSpace)
+                {
+                    height += InlineHorizontalScrollbarHeight;
+                }
+
+                TrackHorizontalScrollbarReservation(sessionKey, reserveScrollbarSpace);
+            }
+            else
+            {
+                TrackHorizontalScrollbarReservation(sessionKey, false);
             }
 
             return height;
@@ -469,7 +501,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             InlineInspectorImGuiState state,
             WInLineEditorAttribute settings,
             float preferredInlineWidth,
-            bool widthWasClipped
+            bool widthWasClipped,
+            bool hasReservedScrollbarSpace
         )
         {
             Rect inlineRect = position;
@@ -502,7 +535,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     settings.inspectorHeight
                 );
                 state.LastInspectorRect = inspectorRect;
-                cursorY += settings.inspectorHeight;
+                cursorY += inspectorRect.height;
+
+                Rect scrollbarRect = default;
+                if (hasReservedScrollbarSpace)
+                {
+                    scrollbarRect = new Rect(
+                        contentRect.x,
+                        cursorY,
+                        contentRect.width,
+                        InlineHorizontalScrollbarHeight
+                    );
+                    cursorY += scrollbarRect.height;
+                }
 
                 bool hasInspector = state.CachedEditor != null;
                 float contentWidthPadding = 2f * (InlineBorderThickness + InlinePadding);
@@ -521,6 +566,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 bool needsHorizontalScroll =
                     hasInspector && preferredContentWidth - inspectorRect.width > 0.5f;
+
                 float inspectorContentWidth = needsHorizontalScroll
                     ? preferredContentWidth
                     : inspectorRect.width;
@@ -547,7 +593,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         state,
                         settings,
                         inspectorContentWidth,
-                        needsHorizontalScroll
+                        needsHorizontalScroll,
+                        scrollbarRect
                     );
                 }
 
@@ -621,7 +668,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             InlineInspectorImGuiState state,
             WInLineEditorAttribute settings,
             float contentWidth,
-            bool needsHorizontalScroll
+            bool needsHorizontalScroll,
+            Rect scrollbarRect
         )
         {
             if (!needsHorizontalScroll)
@@ -639,24 +687,61 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            Rect scrollRect = rect;
-            Rect viewRect = new Rect(0f, 0f, contentWidth, rect.height);
-            Vector2 scroll = new Vector2(state.HorizontalScrollOffset, 0f);
+            float viewportWidth = rect.width;
+            float viewportHeight = rect.height;
+            float maxScroll = Mathf.Max(0f, contentWidth - viewportWidth);
+            state.HorizontalScrollOffset = Mathf.Clamp(state.HorizontalScrollOffset, 0f, maxScroll);
 
-            scroll = GUI.BeginScrollView(scrollRect, scroll, viewRect);
-            state.HorizontalScrollOffset = scroll.x;
-
-            Rect areaRect = new Rect(0f, 0f, contentWidth, rect.height);
-            GUILayout.BeginArea(areaRect);
+            GUI.BeginGroup(rect);
             try
             {
-                DrawInspectorBody(areaRect, state, settings);
+                Rect contentRect = new Rect(
+                    -state.HorizontalScrollOffset,
+                    0f,
+                    contentWidth,
+                    viewportHeight
+                );
+                GUI.BeginGroup(contentRect);
+                try
+                {
+                    Rect areaRect = new Rect(0f, 0f, contentWidth, viewportHeight);
+                    GUILayout.BeginArea(areaRect);
+                    try
+                    {
+                        DrawInspectorBody(areaRect, state, settings);
+                    }
+                    finally
+                    {
+                        GUILayout.EndArea();
+                    }
+                }
+                finally
+                {
+                    GUI.EndGroup();
+                }
             }
             finally
             {
-                GUILayout.EndArea();
-                GUI.EndScrollView();
+                GUI.EndGroup();
             }
+
+            Rect resolvedScrollbarRect =
+                scrollbarRect.width > 0f && scrollbarRect.height > 0f
+                    ? scrollbarRect
+                    : new Rect(
+                        rect.x,
+                        rect.y + rect.height - InlineHorizontalScrollbarHeight,
+                        rect.width,
+                        InlineHorizontalScrollbarHeight
+                    );
+            float newOffset = GUI.HorizontalScrollbar(
+                resolvedScrollbarRect,
+                state.HorizontalScrollOffset,
+                viewportWidth,
+                0f,
+                Mathf.Max(viewportWidth, contentWidth)
+            );
+            state.HorizontalScrollOffset = Mathf.Clamp(newOffset, 0f, maxScroll);
         }
 
         private static void DrawInspectorBody(
@@ -873,6 +958,68 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return height;
         }
 
+        private static bool ShouldReserveHorizontalScrollbarSpace(
+            string sessionKey,
+            WInLineEditorAttribute settings
+        )
+        {
+            if (
+                settings == null
+                || settings.minInspectorWidth <= 0f
+                || string.IsNullOrEmpty(sessionKey)
+            )
+            {
+                return false;
+            }
+
+            if (HorizontalScrollbarReservationKeys.Contains(sessionKey))
+            {
+                return true;
+            }
+
+            float availableWidth = EstimateInlineAvailableWidth();
+            if (availableWidth <= 0f)
+            {
+                return false;
+            }
+
+            float padding = 2f * (InlineBorderThickness + InlinePadding);
+            float contentWidth = Mathf.Max(0f, availableWidth - padding);
+            return contentWidth < settings.minInspectorWidth - 0.5f;
+        }
+
+        private static float EstimateInlineAvailableWidth()
+        {
+            float viewWidth = ResolveViewWidth();
+            if (viewWidth <= 0f)
+            {
+                return 0f;
+            }
+
+            float reducedWidth =
+                viewWidth - InlineInspectorRightPadding - (InlineGroupEdgePadding * 2f);
+            Rect baseRect = new Rect(InlineGroupEdgePadding, 0f, Mathf.Max(0f, reducedWidth), 0f);
+            Rect indentedRect = EditorGUI.IndentedRect(baseRect);
+            return Mathf.Max(0f, indentedRect.width - InlineGroupEdgePadding);
+        }
+
+        private static void TrackHorizontalScrollbarReservation(string sessionKey, bool reserved)
+        {
+            if (string.IsNullOrEmpty(sessionKey))
+            {
+                return;
+            }
+
+            if (reserved)
+            {
+                HorizontalScrollbarReservationKeys.Add(sessionKey);
+            }
+            else
+            {
+                HorizontalScrollbarReservationKeys.Remove(sessionKey);
+            }
+        }
+
         internal static float GetInlineContainerHeightForTesting(WInLineEditorAttribute settings)
         {
             return CalculateInlineContainerHeight(settings);
@@ -929,6 +1076,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             ImGuiStateCache.Clear();
+            HorizontalScrollbarReservationKeys.Clear();
         }
 
         internal static void ResetImGuiStateCacheForTesting()
@@ -972,12 +1120,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     state.LastInspectorRect,
                     state.InspectorContentWidth,
                     state.UsedHorizontalScroll,
-                    state.HorizontalScrollOffset
+                    state.HorizontalScrollOffset,
+                    state.ScrollPosition
                 );
                 return true;
             }
 
             info = default;
+            return false;
+        }
+
+        internal static bool SetScrollPositionForTesting(string sessionKey, Vector2 scrollPosition)
+        {
+            if (ImGuiStateCache.TryGetValue(sessionKey, out InlineInspectorImGuiState state))
+            {
+                state.ScrollPosition = scrollPosition;
+                return true;
+            }
+
             return false;
         }
 
@@ -992,7 +1152,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 Rect inspectorRect,
                 float inspectorContentWidth,
                 bool usesHorizontalScroll,
-                float horizontalScrollOffset
+                float horizontalScrollOffset,
+                Vector2 scrollPosition
             )
             {
                 Target = target;
@@ -1004,6 +1165,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 InspectorContentWidth = inspectorContentWidth;
                 UsesHorizontalScroll = usesHorizontalScroll;
                 HorizontalScrollOffset = horizontalScrollOffset;
+                ScrollPosition = scrollPosition;
             }
 
             public UnityEngine.Object Target { get; }
@@ -1023,6 +1185,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public bool UsesHorizontalScroll { get; }
 
             public float HorizontalScrollOffset { get; }
+
+            public Vector2 ScrollPosition { get; }
         }
 
         private sealed class InlineInspectorImGuiState

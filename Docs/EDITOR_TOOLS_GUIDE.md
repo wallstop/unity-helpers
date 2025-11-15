@@ -1163,7 +1163,7 @@ Custom property drawers enhance the inspector with conditional display, validati
 
 **Options:** tune the presentation with constructor parameters:
 
-- `inspectorHeight` (default 200) — vertical space reserved for the inspector body.
+- `inspectorHeight` (default 200, min 160) — vertical space reserved for the inspector body.
 - `drawObjectField` — hide or show the object picker next to the label.
 - `drawHeader` — draw a bold header with a ping button.
 - `drawPreview` & `previewHeight` — render the preview area when the target editor exposes one.

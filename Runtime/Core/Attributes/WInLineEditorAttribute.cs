@@ -82,7 +82,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             this.drawHeader = drawHeader;
             this.drawPreview = drawPreview;
             this.previewHeight = previewHeight < 0f ? 0f : previewHeight;
-            this.inspectorHeight = inspectorHeight < 32f ? 32f : inspectorHeight;
+            this.inspectorHeight = inspectorHeight < 160f ? 160f : inspectorHeight;
             this.enableScrolling = enableScrolling;
             this.minInspectorWidth = minInspectorWidth < 0f ? 0f : minInspectorWidth;
         }
