@@ -479,7 +479,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Is.True
             );
 
-            Assert.That(info.UsesHorizontalScroll, Is.False);
+            Assert.That(
+                info.UsesHorizontalScroll,
+                Is.False,
+                $"Horizontal scroll still active after wide layout. Inline width: {info.InlineRect.width}, content width: {info.InspectorContentWidth}"
+            );
             float diff = heightWithScrollbar - heightWithoutScrollbar;
             Assert.That(
                 diff,

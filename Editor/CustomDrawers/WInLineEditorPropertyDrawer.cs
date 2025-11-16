@@ -33,6 +33,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             new();
         private static readonly HashSet<string> HorizontalScrollbarReservationKeys = new();
         private static float s_LastMeasuredViewWidth = DefaultViewWidthFallback;
+        private static bool s_UsingCustomViewWidthResolver;
         private static Func<float> s_ViewWidthResolver = () => EditorGUIUtility.currentViewWidth;
         private static readonly Func<Rect> DefaultVisibleRectResolver = CreateVisibleRectResolver();
         private static Func<Rect> s_VisibleRectResolver = DefaultVisibleRectResolver;
@@ -45,10 +46,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            s_LastMeasuredViewWidth = Mathf.Max(
-                DefaultViewWidthFallback,
-                position.x + position.width
-            );
+            if (!s_UsingCustomViewWidthResolver)
+            {
+                try
+                {
+                    float currentViewWidth = EditorGUIUtility.currentViewWidth;
+                    if (currentViewWidth > 0f)
+                    {
+                        s_LastMeasuredViewWidth = currentViewWidth;
+                    }
+                }
+                catch
+                {
+                    s_LastMeasuredViewWidth = Mathf.Max(
+                        DefaultViewWidthFallback,
+                        position.x + position.width
+                    );
+                }
+            }
             if (
                 !TryResolveSettings(
                     property,
@@ -545,18 +560,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 cursorY += inspectorRect.height;
 
                 bool displayHorizontalScroll = hasReservedScrollbarSpace;
-                Rect scrollbarRect = default;
-                if (displayHorizontalScroll && hasReservedScrollbarSpace)
-                {
-                    scrollbarRect = new Rect(
-                        contentRect.x,
-                        cursorY,
-                        contentRect.width,
-                        InlineHorizontalScrollbarHeight
-                    );
-                    cursorY += scrollbarRect.height;
-                }
-
                 bool hasInspector = state.CachedEditor != null;
                 float contentWidthPadding = 2f * (InlineBorderThickness + InlinePadding);
                 float preferredContentWidth = inspectorRect.width;
@@ -572,7 +575,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     preferredContentWidth = expandedContentWidth;
                 }
 
-                if (hasReservedScrollbarSpace)
+                if (!widthWasClipped)
+                {
+                    preferredContentWidth = inspectorRect.width;
+                }
+
+                float effectiveViewportWidth = Mathf.Max(0f, inspectorRect.width);
+                float widthDeficit = preferredContentWidth - effectiveViewportWidth;
+                bool requiresHorizontalScroll = hasInspector && widthDeficit > 0.5f;
+
+                if (requiresHorizontalScroll && hasReservedScrollbarSpace)
                 {
                     float stableWidth =
                         settings.minInspectorWidth + InlineHorizontalScrollHysteresis;
@@ -582,10 +594,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
 
-                float effectiveViewportWidth = Mathf.Max(0f, inspectorRect.width);
-                float widthDeficit = preferredContentWidth - effectiveViewportWidth;
-                bool requiresHorizontalScroll = hasInspector && widthDeficit > 0.5f;
                 displayHorizontalScroll = requiresHorizontalScroll || hasReservedScrollbarSpace;
+
+                Rect scrollbarRect = default;
+                if (displayHorizontalScroll && hasReservedScrollbarSpace)
+                {
+                    scrollbarRect = new Rect(
+                        contentRect.x,
+                        cursorY,
+                        contentRect.width,
+                        InlineHorizontalScrollbarHeight
+                    );
+                    cursorY += scrollbarRect.height;
+                }
 
                 float inspectorContentWidth = displayHorizontalScroll
                     ? preferredContentWidth
@@ -1127,12 +1148,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal static void SetViewWidthResolver(Func<float> resolver)
         {
             s_ViewWidthResolver = resolver ?? (() => EditorGUIUtility.currentViewWidth);
+            s_UsingCustomViewWidthResolver = resolver != null;
         }
 
         internal static void ResetViewWidthResolver()
         {
             s_ViewWidthResolver = () => EditorGUIUtility.currentViewWidth;
             s_LastMeasuredViewWidth = DefaultViewWidthFallback;
+            s_UsingCustomViewWidthResolver = false;
         }
 
         internal static void SetVisibleRectResolver(Func<Rect> resolver)
