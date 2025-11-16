@@ -418,6 +418,76 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [UnityTest]
+        public IEnumerator OnGUIHorizontalScrollDoesNotShiftInspectorOrigin()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float height = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect rect = new Rect(24f, 12f, 280f, height);
+            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => rect.x + rect.width - 60f);
+
+            yield return TestIMGUIExecutor.Run(() => drawer.OnGUI(rect, _inlineProperty, label));
+
+            float paddedHeight = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect paddedRect = new Rect(rect.x, rect.y, rect.width, paddedHeight);
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(paddedRect, _inlineProperty, label);
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+
+            Assert.That(info.UsesHorizontalScroll, Is.True);
+            Assert.That(info.InspectorRect.y, Is.EqualTo(info.ContentRect.y).Within(0.1f));
+        }
+
+        [UnityTest]
+        public IEnumerator GetPropertyHeightDropsScrollbarPaddingAfterRelease()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+
+            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => 320f);
+            float narrowHeight = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect narrowRect = new Rect(24f, 12f, 280f, narrowHeight);
+            yield return TestIMGUIExecutor.Run(() =>
+                drawer.OnGUI(narrowRect, _inlineProperty, label)
+            );
+            float heightWithScrollbar = drawer.GetPropertyHeight(_inlineProperty, label);
+
+            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => 1800f);
+            float wideHeight = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect wideRect = new Rect(24f, 12f, 720f, wideHeight);
+            yield return TestIMGUIExecutor.Run(() =>
+                drawer.OnGUI(wideRect, _inlineProperty, label)
+            );
+            float heightWithoutScrollbar = drawer.GetPropertyHeight(_inlineProperty, label);
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+
+            Assert.That(info.UsesHorizontalScroll, Is.False);
+            float diff = heightWithScrollbar - heightWithoutScrollbar;
+            Assert.That(
+                diff,
+                Is.EqualTo(WInLineEditorPropertyDrawer.InlineHorizontalScrollbarHeight).Within(0.5f)
+            );
+        }
+
+        [UnityTest]
         public IEnumerator OnGUIDoesNotForceHorizontalScrollWhenMinimumWidthDisabled()
         {
             string sessionKey = GetSessionKey(_noMinWidthProperty);
