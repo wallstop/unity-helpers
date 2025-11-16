@@ -556,6 +556,75 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [UnityTest]
+        public IEnumerator OnGUIHorizontalScrollOffsetIgnoresInternalScrollViewState()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float height = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect rect = new Rect(24f, 12f, 260f, height);
+            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => rect.x + rect.width - 120f);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(rect, _inlineProperty, label);
+            });
+
+            Assert.IsTrue(
+                WInLineEditorPropertyDrawer.SetHorizontalScrollOffsetForTesting(sessionKey, 160f)
+            );
+            Assert.IsTrue(
+                WInLineEditorPropertyDrawer.SetScrollPositionForTesting(
+                    sessionKey,
+                    new Vector2(45f, 32f)
+                )
+            );
+
+            float paddedHeight = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect paddedRect = new Rect(rect.x, rect.y, rect.width, paddedHeight);
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(paddedRect, _inlineProperty, label);
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+            Assert.That(info.HorizontalScrollOffset, Is.EqualTo(160f).Within(0.1f));
+            Assert.That(info.ScrollPosition.x, Is.EqualTo(0f).Within(0.01f));
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIUsesExternalVerticalScrollbarForTallInspectors()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float height = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect rect = new Rect(24f, 12f, 280f, height);
+            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => rect.x + rect.width);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(rect, _inlineProperty, label);
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+            Assert.That(info.UsesVerticalScroll, Is.True);
+            Assert.That(info.InspectorContentHeight, Is.GreaterThan(info.InspectorRect.height));
+        }
+
+        [UnityTest]
         public IEnumerator OnGUIClampsWidthWhenVisibleRectIsNarrower()
         {
             string sessionKey = GetSessionKey(_inlineProperty);
@@ -603,6 +672,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             public int value = 10;
             public string text = "Inline";
+            public Vector4 vector = new(1f, 2f, 3f, 4f);
+            public AnimationCurve curve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+            public Color color = Color.cyan;
+            public int[] numbers = new int[8];
+
+            [TextArea]
+            public string description =
+                "Line 1 for scrolling\nLine 2 for scrolling\nLine 3 for scrolling";
         }
 
         private sealed class TestHolder : ScriptableObject
