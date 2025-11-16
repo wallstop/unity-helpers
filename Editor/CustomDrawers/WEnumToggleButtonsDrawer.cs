@@ -54,7 +54,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static float EstimateContentWidth()
         {
-            float viewWidth = Mathf.Max(0f, EditorGUIUtility.currentViewWidth);
+            float viewWidth = 600f;
+            try
+            {
+                viewWidth = Mathf.Max(0f, EditorGUIUtility.currentViewWidth);
+            }
+            catch
+            {
+                viewWidth = 600f;
+            }
             Rect dummyRect = new Rect(0f, 0f, viewWidth, EditorGUIUtility.singleLineHeight);
             Rect indentedRect = EditorGUI.IndentedRect(dummyRect);
 
