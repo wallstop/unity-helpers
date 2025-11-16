@@ -603,6 +603,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
 
+                float adjustedPreferredInlineWidth = preferredInlineWidth;
+                if (displayVerticalScroll)
+                {
+                    adjustedPreferredInlineWidth = Mathf.Max(
+                        0f,
+                        adjustedPreferredInlineWidth - InlineVerticalScrollbarWidth
+                    );
+                }
+
                 bool displayHorizontalScroll = hasReservedScrollbarSpace;
                 float contentWidthPadding = 2f * (InlineBorderThickness + InlinePadding);
                 float preferredContentWidth = inspectorRect.width;
@@ -612,7 +621,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     preferredContentWidth = minimumContentWidth;
                 }
 
-                float expandedContentWidth = preferredInlineWidth - contentWidthPadding;
+                float expandedContentWidth = Mathf.Max(
+                    0f,
+                    adjustedPreferredInlineWidth - contentWidthPadding
+                );
                 if (expandedContentWidth > preferredContentWidth)
                 {
                     preferredContentWidth = expandedContentWidth;

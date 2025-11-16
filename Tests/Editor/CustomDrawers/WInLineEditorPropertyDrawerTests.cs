@@ -248,15 +248,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Assert.That(info.InlineRect.x, Is.EqualTo(rect.x).Within(0.1f));
             Assert.That(info.InlineRect.width, Is.EqualTo(rect.width).Within(0.1f));
-            float expectedContentWidth =
-                info.InlineRect.width
-                - (
-                    2f
-                    * (
-                        WInLineEditorPropertyDrawer.InlineBorderThickness
-                        + WInLineEditorPropertyDrawer.InlinePadding
-                    )
-                );
+            float expectedContentWidth = CalculateExpectedInspectorWidth(info);
             Assert.That(info.InspectorRect.width, Is.EqualTo(expectedContentWidth).Within(0.1f));
             Assert.That(info.UsesHorizontalScroll, Is.True);
             Assert.That(info.InspectorContentWidth, Is.GreaterThan(info.InspectorRect.width));
@@ -307,15 +299,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.That(info.InlineRect.x, Is.EqualTo(rect.x).Within(0.1f));
             Assert.That(info.InlineRect.width, Is.EqualTo(expectedWidth).Within(0.1f));
 
-            float expectedContentWidth =
-                info.InlineRect.width
-                - (
-                    2f
-                    * (
-                        WInLineEditorPropertyDrawer.InlineBorderThickness
-                        + WInLineEditorPropertyDrawer.InlinePadding
-                    )
-                );
+            float expectedContentWidth = CalculateExpectedInspectorWidth(info);
             Assert.That(info.InspectorRect.width, Is.EqualTo(expectedContentWidth).Within(0.1f));
             Assert.That(info.UsesHorizontalScroll, Is.False);
             Assert.That(
@@ -364,15 +348,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 info.InspectorRect.height,
                 Is.EqualTo(expectedInspectorHeight).Within(0.1f)
             );
-            float expectedContentWidth =
-                info.InlineRect.width
-                - (
-                    2f
-                    * (
-                        WInLineEditorPropertyDrawer.InlineBorderThickness
-                        + WInLineEditorPropertyDrawer.InlinePadding
-                    )
-                );
+            float expectedContentWidth = CalculateExpectedInspectorWidth(info);
             Assert.That(info.InspectorRect.width, Is.EqualTo(expectedContentWidth).Within(0.1f));
             Assert.That(info.UsesHorizontalScroll, Is.True);
             Assert.That(info.InspectorContentWidth, Is.GreaterThan(info.InspectorRect.width));
@@ -665,6 +641,27 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         private static string GetSessionKey(SerializedProperty property)
         {
             return $"WInLineEditor:{property.serializedObject.targetObject.GetInstanceID()}:{property.propertyPath}";
+        }
+
+        private static float CalculateExpectedInspectorWidth(
+            WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+        )
+        {
+            float width =
+                info.InlineRect.width
+                - (
+                    2f
+                    * (
+                        WInLineEditorPropertyDrawer.InlineBorderThickness
+                        + WInLineEditorPropertyDrawer.InlinePadding
+                    )
+                );
+            if (info.UsesVerticalScroll)
+            {
+                width -= WInLineEditorPropertyDrawer.InlineVerticalScrollbarWidth;
+            }
+
+            return width;
         }
 
         [CreateAssetMenu]
