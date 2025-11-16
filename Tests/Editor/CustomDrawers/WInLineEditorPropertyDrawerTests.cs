@@ -525,6 +525,37 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [UnityTest]
+        public IEnumerator OnGUIHonorsMinimumWidthEvenIfInlineRectIsNotVisiblyClipped()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float constrainedViewWidth = 420f;
+            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => constrainedViewWidth);
+            WInLineEditorPropertyDrawer.SetVisibleRectResolver(() =>
+                new Rect(0f, 0f, constrainedViewWidth, 800f)
+            );
+
+            float height = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect rect = new Rect(24f, 12f, constrainedViewWidth - 48f, height);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(rect, _inlineProperty, label);
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+            Assert.That(info.UsesHorizontalScroll, Is.True);
+            Assert.That(info.InspectorContentWidth, Is.GreaterThan(info.InspectorRect.width));
+        }
+
+        [UnityTest]
         public IEnumerator OnGUIClampsWidthWhenVisibleRectIsNarrower()
         {
             string sessionKey = GetSessionKey(_inlineProperty);

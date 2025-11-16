@@ -575,7 +575,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     preferredContentWidth = expandedContentWidth;
                 }
 
-                if (!widthWasClipped)
+                if (!widthWasClipped && preferredContentWidth <= inspectorRect.width + 0.5f)
                 {
                     preferredContentWidth = inspectorRect.width;
                 }
@@ -636,7 +636,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         inspectorContentWidth,
                         displayHorizontalScroll,
                         scrollbarRect,
-                        effectiveViewportWidth
+                        effectiveViewportWidth,
+                        hasReservedScrollbarSpace
                     );
                 }
 
@@ -712,11 +713,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float contentWidth,
             bool displayHorizontalScroll,
             Rect scrollbarRect,
-            float viewportWidth
+            float viewportWidth,
+            bool hasReservedScrollbarSpace
         )
         {
             if (!displayHorizontalScroll)
             {
+                state.EffectiveViewportWidth = Mathf.Max(0f, rect.width);
                 GUILayout.BeginArea(rect);
                 try
                 {
@@ -733,6 +736,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float viewportHeight = rect.height;
             float effectiveViewportWidth =
                 viewportWidth > 0f ? Mathf.Max(1f, viewportWidth) : Mathf.Max(1f, rect.width);
+            state.EffectiveViewportWidth = effectiveViewportWidth;
             float maxScroll = Mathf.Max(0f, contentWidth - effectiveViewportWidth);
             state.HorizontalScrollOffset = Mathf.Clamp(state.HorizontalScrollOffset, 0f, maxScroll);
 
@@ -769,23 +773,27 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 GUI.EndGroup();
             }
 
-            Rect resolvedScrollbarRect =
-                scrollbarRect.width > 0f && scrollbarRect.height > 0f
-                    ? scrollbarRect
-                    : new Rect(
-                        rect.x,
-                        rect.y + rect.height - InlineHorizontalScrollbarHeight,
-                        rect.width,
-                        InlineHorizontalScrollbarHeight
-                    );
-            float newOffset = GUI.HorizontalScrollbar(
-                resolvedScrollbarRect,
-                state.HorizontalScrollOffset,
-                effectiveViewportWidth,
-                0f,
-                Mathf.Max(effectiveViewportWidth, contentWidth)
-            );
-            state.HorizontalScrollOffset = Mathf.Clamp(newOffset, 0f, maxScroll);
+            if (displayHorizontalScroll && hasReservedScrollbarSpace)
+            {
+                Rect resolvedScrollbarRect =
+                    scrollbarRect.width > 0f && scrollbarRect.height > 0f
+                        ? scrollbarRect
+                        : new Rect(
+                            rect.x,
+                            rect.y + rect.height,
+                            rect.width,
+                            InlineHorizontalScrollbarHeight
+                        );
+
+                float newOffset = GUI.HorizontalScrollbar(
+                    resolvedScrollbarRect,
+                    state.HorizontalScrollOffset,
+                    effectiveViewportWidth,
+                    0f,
+                    Mathf.Max(effectiveViewportWidth, contentWidth)
+                );
+                state.HorizontalScrollOffset = Mathf.Clamp(newOffset, 0f, maxScroll);
+            }
         }
 
         private static void DrawInspectorBody(
@@ -1183,6 +1191,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     state.LastContentRect,
                     state.LastInspectorRect,
                     state.InspectorContentWidth,
+                    state.EffectiveViewportWidth,
                     state.UsedHorizontalScroll,
                     state.HorizontalScrollOffset,
                     state.ScrollPosition
@@ -1215,6 +1224,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 Rect contentRect,
                 Rect inspectorRect,
                 float inspectorContentWidth,
+                float effectiveViewportWidth,
                 bool usesHorizontalScroll,
                 float horizontalScrollOffset,
                 Vector2 scrollPosition
@@ -1227,6 +1237,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 ContentRect = contentRect;
                 InspectorRect = inspectorRect;
                 InspectorContentWidth = inspectorContentWidth;
+                EffectiveViewportWidth = effectiveViewportWidth;
                 UsesHorizontalScroll = usesHorizontalScroll;
                 HorizontalScrollOffset = horizontalScrollOffset;
                 ScrollPosition = scrollPosition;
@@ -1246,6 +1257,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             public float InspectorContentWidth { get; }
 
+            public float EffectiveViewportWidth { get; }
+
             public bool UsesHorizontalScroll { get; }
 
             public float HorizontalScrollOffset { get; }
@@ -1262,6 +1275,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public float HorizontalScrollOffset;
             public bool UsedHorizontalScroll;
             public float InspectorContentWidth;
+            public float EffectiveViewportWidth;
             public string ErrorMessage;
             public Rect LastInlineRect;
             public Rect LastContentRect;
@@ -1281,6 +1295,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 HorizontalScrollOffset = 0f;
                 UsedHorizontalScroll = false;
                 InspectorContentWidth = 0f;
+                EffectiveViewportWidth = 0f;
                 ErrorMessage = null;
                 LastInlineRect = default;
                 LastContentRect = default;
