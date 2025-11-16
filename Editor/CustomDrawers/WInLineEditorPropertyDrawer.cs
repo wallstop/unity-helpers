@@ -15,12 +15,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     {
         internal const float InlineBorderThickness = 1f;
         internal const float InlinePadding = 6f;
-        private const float InlineHeaderSpacing = 2f;
+        internal const float InlineHeaderSpacing = 2f;
         private const float InlinePreviewSpacing = 4f;
         private const float InlinePingButtonWidth = 58f;
         internal const float InlineInspectorRightPadding = 6f;
-        private const float InlineGroupNestingPadding = 4f;
-        private const float InlineGroupEdgePadding = 8f;
+        internal const float InlineGroupNestingPadding = 4f;
+        internal const float InlineGroupEdgePadding = 8f;
         internal const float InlineHorizontalScrollbarHeight = 12f;
         internal const float InlineVerticalScrollbarWidth = 12f;
         private const float InlineHorizontalScrollHysteresis = 12f;
@@ -937,14 +937,37 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             Rect visibleRect = ResolveVisibleRect();
+            float viewWidth = ResolveViewWidth();
+            float expandedWidth = CalculateExpandedInlineWidth(
+                rect,
+                viewWidth,
+                visibleRect,
+                out preferredWidth,
+                out widthWasClipped
+            );
+            rect.width = expandedWidth;
+            return rect;
+        }
+
+        private static float CalculateExpandedInlineWidth(
+            Rect rect,
+            float viewWidth,
+            Rect visibleRect,
+            out float preferredWidth,
+            out bool widthWasClipped
+        )
+        {
             float visibleLeftOffset =
                 visibleRect.width > 0f ? Mathf.Max(0f, rect.x - visibleRect.xMin) : 0f;
 
-            float baseRight =
-                ResolveViewWidth() - InlineInspectorRightPadding - InlineGroupEdgePadding;
-            baseRight = Mathf.Max(rect.x + InlineGroupEdgePadding, baseRight);
+            float baseRight = Mathf.Max(
+                rect.x + InlineGroupEdgePadding,
+                viewWidth - InlineInspectorRightPadding - InlineGroupEdgePadding
+            );
             float unclampedRight = baseRight;
             float adjustedRight = baseRight;
+            float clippedRight = baseRight;
+            bool clippedByVisibleBounds = false;
 
             if (visibleRect.width > 0f)
             {
@@ -952,7 +975,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     rect.x + InlineGroupEdgePadding,
                     visibleRect.xMax - InlineGroupEdgePadding
                 );
-                adjustedRight = Mathf.Min(adjustedRight, clipRight);
+                clippedRight = Mathf.Min(adjustedRight, clipRight);
+                clippedByVisibleBounds = unclampedRight - clippedRight > 0.5f;
+                adjustedRight = clippedRight;
 
                 if (visibleLeftOffset > 0f)
                 {
@@ -969,16 +994,51 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             float desiredWidth = Mathf.Max(0f, adjustedRight - rect.x);
             float expansionThreshold = Mathf.Max(24f, visibleLeftOffset * 0.5f);
-            float gain = desiredWidth - rect.width;
+            float resultWidth = rect.width;
+            float gain = desiredWidth - resultWidth;
             if (gain > expansionThreshold)
             {
-                rect.width = desiredWidth;
+                resultWidth = desiredWidth;
             }
 
-            preferredWidth = Mathf.Max(0f, unclampedRight - rect.x);
-            widthWasClipped = unclampedRight - adjustedRight > 0.5f;
+            preferredWidth = clippedByVisibleBounds
+                ? Mathf.Max(0f, unclampedRight - rect.x)
+                : resultWidth;
+            widthWasClipped = clippedByVisibleBounds;
 
-            return rect;
+            return resultWidth;
+        }
+
+        internal static float CalculateExpandedInlineWidthForTesting(
+            Rect rect,
+            float viewWidth,
+            Rect visibleRect,
+            out float preferredWidth,
+            out bool widthWasClipped
+        )
+        {
+            return CalculateExpandedInlineWidth(
+                rect,
+                viewWidth,
+                visibleRect,
+                out preferredWidth,
+                out widthWasClipped
+            );
+        }
+
+        internal static Rect ExpandRectForTesting(
+            Rect rect,
+            out float preferredWidth,
+            out bool widthWasClipped
+        )
+        {
+            return ExpandToViewWidth(rect, out preferredWidth, out widthWasClipped);
+        }
+
+        internal static bool HasHorizontalScrollbarReservationForTesting(string sessionKey)
+        {
+            return !string.IsNullOrEmpty(sessionKey)
+                && HorizontalScrollbarReservationKeys.Contains(sessionKey);
         }
 
         private static float ResolveViewWidth()

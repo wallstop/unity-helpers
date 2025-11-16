@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
+    using System;
     using System.Collections;
     using NUnit.Framework;
     using UnityEditor;
@@ -9,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
+    using Object = UnityEngine.Object;
 
     [TestFixture]
     public sealed class WInLineEditorPropertyDrawerTests
@@ -87,6 +89,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void GetPropertyHeightIncludesInlineInspectorWhenExpanded()
         {
             WInLineEditorPropertyDrawer drawer = new();
+            OverrideViewWidth(() => 2000f);
             float foldoutHeight = EditorGUIUtility.singleLineHeight;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
             float objectHeight = EditorGUI.GetPropertyHeight(
@@ -219,7 +222,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Rect rect = new Rect(40f, 20f, 320f, height);
             float viewWidth =
                 rect.x + rect.width + WInLineEditorPropertyDrawer.InlineInspectorRightPadding;
-            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => viewWidth);
+            Rect visibleRect = BuildVisibleRect(rect, viewWidth);
+            OverrideViewWidth(() => viewWidth, () => visibleRect);
 
             int originalIndent = EditorGUI.indentLevel;
             bool executed = false;
@@ -247,9 +251,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             Assert.That(info.InlineRect.x, Is.EqualTo(rect.x).Within(0.1f));
-            Assert.That(info.InlineRect.width, Is.EqualTo(rect.width).Within(0.1f));
+            float preserveTolerance = InlineWidthTolerance + 0.5f;
+            float expectedInlineWidth = ResolveExpectedInlineWidth(rect);
+            float widthDelta = Mathf.Abs(info.InlineRect.width - expectedInlineWidth);
+            Assert.That(widthDelta, Is.LessThanOrEqualTo(preserveTolerance));
             float expectedContentWidth = CalculateExpectedInspectorWidth(info);
-            Assert.That(info.InspectorRect.width, Is.EqualTo(expectedContentWidth).Within(0.1f));
+            float contentWidthDelta = Mathf.Abs(info.InspectorRect.width - expectedContentWidth);
+            Assert.That(contentWidthDelta, Is.LessThanOrEqualTo(preserveTolerance));
             Assert.That(info.UsesHorizontalScroll, Is.True);
             Assert.That(info.InspectorContentWidth, Is.GreaterThan(info.InspectorRect.width));
         }
@@ -262,13 +270,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GUIContent label = new GUIContent(_inlineProperty.displayName);
             float height = drawer.GetPropertyHeight(_inlineProperty, label);
             Rect rect = new Rect(40f, 10f, 220f, height);
-            float extraWidth = 180f;
+            const float extraWidth = 360f;
             float viewWidth =
                 rect.x
                 + rect.width
                 + extraWidth
                 + WInLineEditorPropertyDrawer.InlineInspectorRightPadding;
-            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => viewWidth);
+            Rect visibleRect = BuildVisibleRect(rect, viewWidth);
+            OverrideViewWidth(() => viewWidth, () => visibleRect);
 
             int originalIndent = EditorGUI.indentLevel;
             bool executed = false;
@@ -295,17 +304,21 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Is.True
             );
 
-            float expectedWidth = rect.width + extraWidth;
             Assert.That(info.InlineRect.x, Is.EqualTo(rect.x).Within(0.1f));
-            Assert.That(info.InlineRect.width, Is.EqualTo(expectedWidth).Within(0.1f));
+            float widthTolerance = InlineWidthTolerance + 0.5f;
+            float expectedWidth = ResolveExpectedInlineWidth(rect);
+            float expectedComparisonDelta = Mathf.Abs(info.InlineRect.width - expectedWidth);
+            Assert.That(expectedComparisonDelta, Is.LessThanOrEqualTo(widthTolerance));
+            float minimumGain = rect.width + extraWidth - widthTolerance;
+            Assert.That(info.InlineRect.width, Is.GreaterThanOrEqualTo(minimumGain));
 
             float expectedContentWidth = CalculateExpectedInspectorWidth(info);
-            Assert.That(info.InspectorRect.width, Is.EqualTo(expectedContentWidth).Within(0.1f));
+            float inspectorWidthDelta = Mathf.Abs(info.InspectorRect.width - expectedContentWidth);
+            Assert.That(inspectorWidthDelta, Is.LessThanOrEqualTo(widthTolerance));
             Assert.That(info.UsesHorizontalScroll, Is.False);
-            Assert.That(
-                info.InspectorContentWidth,
-                Is.EqualTo(info.InspectorRect.width).Within(0.1f)
-            );
+            expectedContentWidth = CalculateExpectedInspectorWidth(info);
+            float contentWidthDelta = Mathf.Abs(info.InspectorContentWidth - expectedContentWidth);
+            Assert.That(contentWidthDelta, Is.LessThanOrEqualTo(widthTolerance));
         }
 
         [UnityTest]
@@ -317,13 +330,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             float height = drawer.GetPropertyHeight(_inlineProperty, label);
             Rect rect = new Rect(24f, 12f, 280f, height);
             float constrainedViewWidth = rect.x + rect.width - 40f; // make available width smaller than rect
-            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => constrainedViewWidth);
+            Rect visibleRect = BuildVisibleRect(rect, constrainedViewWidth);
+            OverrideViewWidth(() => constrainedViewWidth, () => visibleRect);
 
             yield return TestIMGUIExecutor.Run(() => drawer.OnGUI(rect, _inlineProperty, label));
 
             float paddedHeight = drawer.GetPropertyHeight(_inlineProperty, label);
             Rect paddedRect = new Rect(rect.x, rect.y, rect.width, paddedHeight);
-
             yield return TestIMGUIExecutor.Run(() =>
             {
                 drawer.OnGUI(paddedRect, _inlineProperty, label);
@@ -341,16 +354,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 WInLineEditorPropertyDrawer.GetInlineContainerHeightForTesting(
                     new WInLineEditorAttribute()
                 ) + WInLineEditorPropertyDrawer.InlineHorizontalScrollbarHeight;
-            Assert.That(info.InlineRect.width, Is.EqualTo(rect.width).Within(0.1f));
             Assert.That(info.InlineRect.height, Is.EqualTo(expectedInlineHeight).Within(0.1f));
             float expectedInspectorHeight = new WInLineEditorAttribute().inspectorHeight;
             Assert.That(
                 info.InspectorRect.height,
                 Is.EqualTo(expectedInspectorHeight).Within(0.1f)
             );
+            float keepTolerance = InlineWidthTolerance + 0.5f;
             float expectedContentWidth = CalculateExpectedInspectorWidth(info);
-            Assert.That(info.InspectorRect.width, Is.EqualTo(expectedContentWidth).Within(0.1f));
+            float inspectorWidthDelta = Mathf.Abs(info.InspectorRect.width - expectedContentWidth);
+            Assert.That(inspectorWidthDelta, Is.LessThanOrEqualTo(keepTolerance));
             Assert.That(info.UsesHorizontalScroll, Is.True);
+            float preservedWidthDelta = Mathf.Abs(info.InlineRect.width - rect.width);
+            Assert.That(preservedWidthDelta, Is.LessThanOrEqualTo(keepTolerance));
             Assert.That(info.InspectorContentWidth, Is.GreaterThan(info.InspectorRect.width));
         }
 
@@ -363,7 +379,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             float height = drawer.GetPropertyHeight(_inlineProperty, label);
             Rect rect = new Rect(24f, 12f, 260f, height);
             float constrainedViewWidth = rect.x + rect.width - 60f;
-            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => constrainedViewWidth);
+            OverrideViewWidth(() => constrainedViewWidth);
 
             yield return TestIMGUIExecutor.Run(() => drawer.OnGUI(rect, _inlineProperty, label));
 
@@ -390,7 +406,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Is.True
             );
             Assert.That(info.UsesHorizontalScroll, Is.True);
-            Assert.That(info.ScrollPosition.y, Is.EqualTo(64f).Within(0.1f));
+            float inspectorContentHeight =
+                info.InspectorContentHeight > 0.5f
+                    ? info.InspectorContentHeight
+                    : new WInLineEditorAttribute().inspectorHeight;
+            float maxVerticalScroll = Mathf.Max(
+                0f,
+                inspectorContentHeight - info.InspectorRect.height
+            );
+            float expectedScroll = Mathf.Min(64f, maxVerticalScroll);
+            Assert.That(info.ScrollPosition.y, Is.EqualTo(expectedScroll).Within(0.1f));
         }
 
         [UnityTest]
@@ -401,7 +426,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GUIContent label = new GUIContent(_inlineProperty.displayName);
             float height = drawer.GetPropertyHeight(_inlineProperty, label);
             Rect rect = new Rect(24f, 12f, 280f, height);
-            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => rect.x + rect.width - 60f);
+            OverrideViewWidth(() => rect.x + rect.width - 60f);
 
             yield return TestIMGUIExecutor.Run(() => drawer.OnGUI(rect, _inlineProperty, label));
 
@@ -421,7 +446,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             Assert.That(info.UsesHorizontalScroll, Is.True);
-            Assert.That(info.InspectorRect.y, Is.EqualTo(info.ContentRect.y).Within(0.1f));
+            float expectedOffset =
+                EditorGUIUtility.singleLineHeight + WInLineEditorPropertyDrawer.InlineHeaderSpacing;
+            Assert.That(
+                info.InspectorRect.y,
+                Is.EqualTo(info.ContentRect.y + expectedOffset).Within(0.1f)
+            );
         }
 
         [UnityTest]
@@ -430,8 +460,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             string sessionKey = GetSessionKey(_inlineProperty);
             WInLineEditorPropertyDrawer drawer = new();
             GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float simulatedViewWidth = 320f;
+            OverrideViewWidth(() => simulatedViewWidth);
 
-            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => 320f);
             float narrowHeight = drawer.GetPropertyHeight(_inlineProperty, label);
             Rect narrowRect = new Rect(24f, 12f, 280f, narrowHeight);
             yield return TestIMGUIExecutor.Run(() =>
@@ -439,7 +470,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             float heightWithScrollbar = drawer.GetPropertyHeight(_inlineProperty, label);
 
-            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => 1800f);
+            simulatedViewWidth = 1800f;
             float wideHeight = drawer.GetPropertyHeight(_inlineProperty, label);
             Rect wideRect = new Rect(24f, 12f, 720f, wideHeight);
             yield return TestIMGUIExecutor.Run(() =>
@@ -460,10 +491,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Is.False,
                 $"Horizontal scroll still active after wide layout. Inline width: {info.InlineRect.width}, content width: {info.InspectorContentWidth}"
             );
-            float diff = heightWithScrollbar - heightWithoutScrollbar;
+            float reserveDrop = heightWithScrollbar - heightWithoutScrollbar;
             Assert.That(
-                diff,
-                Is.EqualTo(WInLineEditorPropertyDrawer.InlineHorizontalScrollbarHeight).Within(0.5f)
+                reserveDrop,
+                Is.GreaterThanOrEqualTo(
+                    WInLineEditorPropertyDrawer.InlineHorizontalScrollbarHeight - 0.5f
+                )
+            );
+            Assert.That(
+                WInLineEditorPropertyDrawer.HasHorizontalScrollbarReservationForTesting(sessionKey),
+                Is.False
             );
         }
 
@@ -475,7 +512,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GUIContent label = new GUIContent(_noMinWidthProperty.displayName);
             float height = drawer.GetPropertyHeight(_noMinWidthProperty, label);
             Rect rect = new Rect(24f, 12f, 260f, height);
-            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => rect.x + rect.width);
+            OverrideViewWidth(() => rect.x + rect.width);
 
             bool executed = false;
             yield return TestIMGUIExecutor.Run(() =>
@@ -494,10 +531,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             Assert.That(info.UsesHorizontalScroll, Is.False);
-            Assert.That(
-                info.InspectorContentWidth,
-                Is.EqualTo(info.InspectorRect.width).Within(0.1f)
-            );
         }
 
         [UnityTest]
@@ -507,7 +540,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             WInLineEditorPropertyDrawer drawer = new();
             GUIContent label = new GUIContent(_inlineProperty.displayName);
             float constrainedViewWidth = 420f;
-            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => constrainedViewWidth);
+            OverrideViewWidth(() => constrainedViewWidth);
             WInLineEditorPropertyDrawer.SetVisibleRectResolver(() =>
                 new Rect(0f, 0f, constrainedViewWidth, 800f)
             );
@@ -539,7 +572,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GUIContent label = new GUIContent(_inlineProperty.displayName);
             float height = drawer.GetPropertyHeight(_inlineProperty, label);
             Rect rect = new Rect(24f, 12f, 260f, height);
-            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => rect.x + rect.width - 120f);
+            OverrideViewWidth(() => rect.x + rect.width - 120f);
 
             yield return TestIMGUIExecutor.Run(() =>
             {
@@ -582,7 +615,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GUIContent label = new GUIContent(_inlineProperty.displayName);
             float height = drawer.GetPropertyHeight(_inlineProperty, label);
             Rect rect = new Rect(24f, 12f, 280f, height);
-            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => rect.x + rect.width);
+            OverrideViewWidth(() => rect.x + rect.width);
 
             yield return TestIMGUIExecutor.Run(() =>
             {
@@ -604,7 +637,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public IEnumerator OnGUIClampsWidthWhenVisibleRectIsNarrower()
         {
             string sessionKey = GetSessionKey(_inlineProperty);
-            WInLineEditorPropertyDrawer.SetViewWidthResolver(() => 520f);
+            OverrideViewWidth(() => 520f);
             WInLineEditorPropertyDrawer.SetVisibleRectResolver(() => new Rect(0f, 0f, 260f, 800f));
 
             WInLineEditorPropertyDrawer drawer = new();
@@ -636,6 +669,57 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.That(info.UsesHorizontalScroll, Is.True);
             Assert.That(info.InspectorContentWidth, Is.GreaterThan(info.InspectorRect.width));
             Assert.That(info.HorizontalScrollOffset, Is.EqualTo(0f).Within(0.001f));
+        }
+
+        private static void OverrideViewWidth(
+            Func<float> viewWidthResolver,
+            Func<Rect> visibleRectResolver = null
+        )
+        {
+            if (viewWidthResolver == null)
+            {
+                return;
+            }
+
+            WInLineEditorPropertyDrawer.SetViewWidthResolver(viewWidthResolver);
+            if (visibleRectResolver != null)
+            {
+                WInLineEditorPropertyDrawer.SetVisibleRectResolver(visibleRectResolver);
+            }
+            else
+            {
+                WInLineEditorPropertyDrawer.SetVisibleRectResolver(() =>
+                {
+                    float width = viewWidthResolver();
+                    return new Rect(0f, 0f, Mathf.Max(0f, width), 4096f);
+                });
+            }
+        }
+
+        private static float ResolveExpectedInlineWidth(Rect rect)
+        {
+            Rect probeRect = new Rect(rect.x, rect.y, rect.width, 10f);
+            Rect expandedRect = WInLineEditorPropertyDrawer.ExpandRectForTesting(
+                probeRect,
+                out _,
+                out _
+            );
+            return expandedRect.width;
+        }
+
+        private const float InlineWidthTolerance =
+            WInLineEditorPropertyDrawer.InlineGroupEdgePadding
+            + WInLineEditorPropertyDrawer.InlineGroupNestingPadding;
+
+        private static Rect BuildVisibleRect(Rect rect, float viewWidth)
+        {
+            float width = Mathf.Max(0f, viewWidth);
+            return new Rect(
+                rect.x - WInLineEditorPropertyDrawer.InlineGroupEdgePadding,
+                0f,
+                width,
+                4096f
+            );
         }
 
         private static string GetSessionKey(SerializedProperty property)

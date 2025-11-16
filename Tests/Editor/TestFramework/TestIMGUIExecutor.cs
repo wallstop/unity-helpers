@@ -37,7 +37,13 @@ namespace WallstopStudios.UnityHelpers.Tests.EditorFramework
 
         private void OnGUI()
         {
-            if (_hasRun || _action == null)
+            if (_action == null)
+            {
+                return;
+            }
+
+            EventType eventType = Event.current.type;
+            if (eventType != EventType.Layout && eventType != EventType.Repaint)
             {
                 return;
             }
@@ -46,9 +52,21 @@ namespace WallstopStudios.UnityHelpers.Tests.EditorFramework
             {
                 _action.Invoke();
             }
-            finally
+            catch
             {
+                _action = null;
                 _hasRun = true;
+                throw;
+            }
+
+            if (eventType == EventType.Repaint)
+            {
+                _action = null;
+                _hasRun = true;
+            }
+            else
+            {
+                Repaint();
             }
         }
     }
