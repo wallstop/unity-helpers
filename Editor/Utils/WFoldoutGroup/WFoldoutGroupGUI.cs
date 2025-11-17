@@ -139,9 +139,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup
             }
 
             float horizontalPadding = GroupGUIWidthUtility.CalculateHorizontalPadding(
-                EditorStyles.helpBox
+                EditorStyles.helpBox,
+                out float leftPadding,
+                out float rightPadding
             );
-            using (GroupGUIWidthUtility.PushContentPadding(horizontalPadding))
+            using (
+                GroupGUIWidthUtility.PushContentPadding(
+                    horizontalPadding,
+                    leftPadding,
+                    rightPadding
+                )
+            )
             {
                 AddContentPadding();
                 for (int index = 0; index < propertyCount; index++)

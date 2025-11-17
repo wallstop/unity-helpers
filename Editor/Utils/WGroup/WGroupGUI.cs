@@ -62,9 +62,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                     EditorGUI.indentLevel++;
 
                     float horizontalPadding = GroupGUIWidthUtility.CalculateHorizontalPadding(
-                        EditorStyles.helpBox
+                        EditorStyles.helpBox,
+                        out float leftPadding,
+                        out float rightPadding
                     );
-                    using (GroupGUIWidthUtility.PushContentPadding(horizontalPadding))
+                    using (
+                        GroupGUIWidthUtility.PushContentPadding(
+                            horizontalPadding,
+                            leftPadding,
+                            rightPadding
+                        )
+                    )
                     {
                         IReadOnlyList<string> propertyPaths = definition.PropertyPaths;
                         int propertyCount = propertyPaths.Count;

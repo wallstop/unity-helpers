@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using Object = UnityEngine.Object;
 
@@ -148,6 +149,48 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.That(
                 drawer.GetPropertyHeight(property, new GUIContent(property.displayName)),
                 Is.EqualTo(expected)
+            );
+        }
+
+        [Test]
+        public void ExpandRectIgnoresNestingShrinkWhenGroupPaddingActive()
+        {
+            Rect probeRect = new Rect(36f, 12f, 220f, 64f);
+            OverrideViewWidth(() => 820f, () => BuildVisibleRect(probeRect, 820f));
+
+            Rect expandedWithoutPadding = WInLineEditorPropertyDrawer.ExpandRectForTesting(
+                probeRect,
+                out float widthWithoutPadding,
+                out _
+            );
+
+            float horizontalPadding = GroupGUIWidthUtility.CalculateHorizontalPadding(
+                EditorStyles.helpBox,
+                out float leftPadding,
+                out float rightPadding
+            );
+
+            Rect expandedWithPadding;
+            using (
+                GroupGUIWidthUtility.PushContentPadding(
+                    horizontalPadding,
+                    leftPadding,
+                    rightPadding
+                )
+            )
+            {
+                expandedWithPadding = WInLineEditorPropertyDrawer.ExpandRectForTesting(
+                    probeRect,
+                    out float widthWithPadding,
+                    out _
+                );
+
+                Assert.That(widthWithPadding, Is.EqualTo(widthWithoutPadding).Within(0.001f));
+            }
+
+            Assert.That(
+                expandedWithPadding.width,
+                Is.EqualTo(expandedWithoutPadding.width).Within(0.001f)
             );
         }
 
@@ -605,6 +648,713 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             Assert.That(info.HorizontalScrollOffset, Is.EqualTo(160f).Within(0.1f));
             Assert.That(info.ScrollPosition.x, Is.EqualTo(0f).Within(0.01f));
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIHorizontalScrollOffsetRemainsStableInsideGroupPadding()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float rectWidth = 260f;
+            Rect baseRect = new Rect(32f, 16f, rectWidth, 0f);
+            OverrideViewWidth(() => baseRect.x + baseRect.width - 110f);
+
+            float totalPadding = GroupGUIWidthUtility.CalculateHorizontalPadding(
+                EditorStyles.helpBox,
+                out float leftPadding,
+                out float rightPadding
+            );
+
+            float height;
+            using (GroupGUIWidthUtility.PushContentPadding(totalPadding, leftPadding, rightPadding))
+            {
+                height = drawer.GetPropertyHeight(_inlineProperty, label);
+            }
+
+            Rect rect = new Rect(baseRect.x, baseRect.y, baseRect.width, height);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(totalPadding, leftPadding, rightPadding)
+                )
+                {
+                    drawer.OnGUI(rect, _inlineProperty, label);
+                }
+            });
+
+            Assert.IsTrue(
+                WInLineEditorPropertyDrawer.SetHorizontalScrollOffsetForTesting(sessionKey, 140f)
+            );
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(totalPadding, leftPadding, rightPadding)
+                )
+                {
+                    drawer.OnGUI(rect, _inlineProperty, label);
+                }
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+            Assert.That(info.UsesHorizontalScroll, Is.True);
+            Assert.That(info.HorizontalScrollOffset, Is.EqualTo(140f).Within(0.1f));
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIVerticalScrollOffsetPersistsInsideGroup()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            Rect baseRect = new Rect(30f, 18f, 280f, 0f);
+            OverrideViewWidth(() => baseRect.x + baseRect.width - 40f);
+
+            float horizontalPadding = GroupGUIWidthUtility.CalculateHorizontalPadding(
+                EditorStyles.helpBox,
+                out float leftPadding,
+                out float rightPadding
+            );
+
+            float height;
+            using (
+                GroupGUIWidthUtility.PushContentPadding(
+                    horizontalPadding,
+                    leftPadding,
+                    rightPadding
+                )
+            )
+            {
+                height = drawer.GetPropertyHeight(_inlineProperty, label);
+            }
+
+            Rect rect = new Rect(baseRect.x, baseRect.y, baseRect.width, height);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        leftPadding,
+                        rightPadding
+                    )
+                )
+                {
+                    drawer.OnGUI(rect, _inlineProperty, label);
+                }
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+            Assert.That(info.UsesVerticalScroll, Is.True);
+
+            Assert.IsTrue(
+                WInLineEditorPropertyDrawer.SetScrollPositionForTesting(
+                    sessionKey,
+                    new Vector2(0f, 140f)
+                )
+            );
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        leftPadding,
+                        rightPadding
+                    )
+                )
+                {
+                    drawer.OnGUI(rect, _inlineProperty, label);
+                }
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(sessionKey, out info),
+                Is.True
+            );
+            Assert.That(info.UsesVerticalScroll, Is.True);
+            Assert.That(info.ScrollPosition.y, Is.EqualTo(140f).Within(0.1f));
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIHorizontalScrollOffsetPersistsAcrossLayoutWidthFlips()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float narrowViewWidth = 320f;
+            float rectWidth = 260f;
+            OverrideViewWidth(() => narrowViewWidth);
+
+            float height = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect rect = new Rect(30f, 18f, rectWidth, height);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(rect, _inlineProperty, label);
+            });
+
+            Assert.IsTrue(
+                WInLineEditorPropertyDrawer.SetHorizontalScrollOffsetForTesting(sessionKey, 90f)
+            );
+
+            float wideViewWidth = 1200f;
+            OverrideViewWidth(() => wideViewWidth);
+            drawer.GetPropertyHeight(_inlineProperty, label);
+
+            OverrideViewWidth(() => narrowViewWidth);
+            height = drawer.GetPropertyHeight(_inlineProperty, label);
+            rect.height = height;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(rect, _inlineProperty, label);
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+            Assert.That(info.UsesHorizontalScroll, Is.True);
+            Assert.That(info.HorizontalScrollOffset, Is.EqualTo(90f).Within(0.1f));
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUILayoutPassReusesCommittedInlineWidth()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float currentViewWidth = 360f;
+            OverrideViewWidth(() => currentViewWidth);
+
+            float height = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect rect = new Rect(28f, 16f, 260f, height);
+
+            yield return TestIMGUIExecutor.Run(() => drawer.OnGUI(rect, _inlineProperty, label));
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo initialInfo
+                ),
+                Is.True
+            );
+            float initialInlineWidth = initialInfo.InlineRect.width;
+
+            float layoutMeasuredWidth = -1f;
+            float repaintMeasuredWidth = -1f;
+            currentViewWidth = 1480f;
+            height = drawer.GetPropertyHeight(_inlineProperty, label);
+            rect.height = height;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(rect, _inlineProperty, label);
+                if (
+                    !WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                        sessionKey,
+                        out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                    )
+                )
+                {
+                    return;
+                }
+
+                if (Event.current.type == EventType.Layout)
+                {
+                    layoutMeasuredWidth = info.InlineRect.width;
+                }
+                else if (Event.current.type == EventType.Repaint)
+                {
+                    repaintMeasuredWidth = info.InlineRect.width;
+                }
+            });
+
+            float preserveTolerance = InlineWidthTolerance + 0.5f;
+            Assert.That(layoutMeasuredWidth, Is.GreaterThan(0f));
+            Assert.That(
+                layoutMeasuredWidth,
+                Is.EqualTo(initialInlineWidth).Within(preserveTolerance)
+            );
+            Assert.That(
+                repaintMeasuredWidth,
+                Is.GreaterThan(layoutMeasuredWidth + InlineWidthTolerance)
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator HorizontalScrollbarReservationReleasesOnlyAfterStableRepaints()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float narrowViewWidth = 320f;
+            OverrideViewWidth(() => narrowViewWidth);
+
+            float height = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect rect = new Rect(30f, 18f, 260f, height);
+
+            yield return TestIMGUIExecutor.Run(() => drawer.OnGUI(rect, _inlineProperty, label));
+            Assert.That(
+                WInLineEditorPropertyDrawer.HasHorizontalScrollbarReservationForTesting(sessionKey),
+                Is.True
+            );
+
+            float wideViewWidth = 1600f;
+            OverrideViewWidth(() => wideViewWidth);
+            int releaseThreshold =
+                WInLineEditorPropertyDrawer.InlineHorizontalScrollbarReleaseRepaintThreshold;
+            int iterationsToHold = Math.Max(0, releaseThreshold - 1);
+
+            for (int i = 0; i < iterationsToHold; i++)
+            {
+                float wideHeight = drawer.GetPropertyHeight(_inlineProperty, label);
+                Rect wideRect = new Rect(rect.x, rect.y, rect.width, wideHeight);
+                yield return TestIMGUIExecutor.Run(() =>
+                    drawer.OnGUI(wideRect, _inlineProperty, label)
+                );
+
+                Assert.That(
+                    WInLineEditorPropertyDrawer.HasHorizontalScrollbarReservationForTesting(
+                        sessionKey
+                    ),
+                    Is.True,
+                    $"Reservation released too early on iteration {i}."
+                );
+            }
+
+            float finalHeight = drawer.GetPropertyHeight(_inlineProperty, label);
+            Rect finalRect = new Rect(rect.x, rect.y, rect.width, finalHeight);
+            yield return TestIMGUIExecutor.Run(() =>
+                drawer.OnGUI(finalRect, _inlineProperty, label)
+            );
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.HasHorizontalScrollbarReservationForTesting(sessionKey),
+                Is.False
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator DiagnosticsRecordingCapturesLayoutSamples()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            bool originalRecording = WInLineEditorDiagnostics.RecordingEnabled;
+            bool originalConsole = WInLineEditorDiagnostics.ConsoleLoggingEnabled;
+            WInLineEditorDiagnostics.ClearAllDiagnostics();
+            WInLineEditorDiagnostics.RecordingEnabled = true;
+            WInLineEditorDiagnostics.ConsoleLoggingEnabled = false;
+
+            try
+            {
+                WInLineEditorPropertyDrawer drawer = new();
+                GUIContent label = new GUIContent(_inlineProperty.displayName);
+                float viewWidth = 420f;
+                OverrideViewWidth(() => viewWidth);
+
+                float height = drawer.GetPropertyHeight(_inlineProperty, label);
+                Rect rect = new Rect(30f, 20f, 280f, height);
+
+                yield return TestIMGUIExecutor.Run(() =>
+                {
+                    drawer.OnGUI(rect, _inlineProperty, label);
+                });
+
+                Assert.That(
+                    WInLineEditorDiagnostics.TryGetLayoutSamples(sessionKey, out var samples),
+                    Is.True
+                );
+                Assert.That(samples.Length, Is.GreaterThan(0));
+                Assert.That(samples[^1].InlineRectWidth, Is.GreaterThan(0f));
+                Assert.That(samples[^1].ResolvedViewWidth, Is.GreaterThan(0f));
+                Assert.That(samples[^1].VisibleRectWidth, Is.GreaterThan(0f));
+
+                Assert.That(
+                    WInLineEditorDiagnostics.TryGetReservationSamples(
+                        sessionKey,
+                        out var reservations
+                    ),
+                    Is.True
+                );
+                Assert.That(reservations.Length, Is.GreaterThan(0));
+            }
+            finally
+            {
+                WInLineEditorDiagnostics.ClearAllDiagnostics();
+                WInLineEditorDiagnostics.RecordingEnabled = originalRecording;
+                WInLineEditorDiagnostics.ConsoleLoggingEnabled = originalConsole;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIHorizontalScrollOffsetPersistsWhenScrollbarsToggleInGroup()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float narrowViewWidth = 340f;
+            float wideViewWidth = 1020f;
+            float rectWidth = 260f;
+            Rect rect = new Rect(32f, 18f, rectWidth, 0f);
+
+            float horizontalPadding = GroupGUIWidthUtility.CalculateHorizontalPadding(
+                EditorStyles.helpBox,
+                out float leftPadding,
+                out float rightPadding
+            );
+
+            OverrideViewWidth(() => narrowViewWidth, () => BuildVisibleRect(rect, narrowViewWidth));
+
+            float height;
+            using (
+                GroupGUIWidthUtility.PushContentPadding(
+                    horizontalPadding,
+                    leftPadding,
+                    rightPadding
+                )
+            )
+            {
+                height = drawer.GetPropertyHeight(_inlineProperty, label);
+            }
+            rect.height = height;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        leftPadding,
+                        rightPadding
+                    )
+                )
+                {
+                    drawer.OnGUI(rect, _inlineProperty, label);
+                }
+            });
+
+            Assert.IsTrue(
+                WInLineEditorPropertyDrawer.SetHorizontalScrollOffsetForTesting(sessionKey, 120f)
+            );
+
+            using (
+                GroupGUIWidthUtility.PushContentPadding(
+                    horizontalPadding,
+                    leftPadding,
+                    rightPadding
+                )
+            )
+            {
+                height = drawer.GetPropertyHeight(_inlineProperty, label);
+            }
+            rect.height = height;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        leftPadding,
+                        rightPadding
+                    )
+                )
+                {
+                    drawer.OnGUI(rect, _inlineProperty, label);
+                }
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+            Assert.That(info.UsesHorizontalScroll, Is.True);
+            Assert.That(info.HorizontalScrollOffset, Is.EqualTo(120f).Within(0.1f));
+
+            OverrideViewWidth(() => wideViewWidth, () => BuildVisibleRect(rect, wideViewWidth));
+
+            using (
+                GroupGUIWidthUtility.PushContentPadding(
+                    horizontalPadding,
+                    leftPadding,
+                    rightPadding
+                )
+            )
+            {
+                height = drawer.GetPropertyHeight(_inlineProperty, label);
+            }
+            rect.height = height;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        leftPadding,
+                        rightPadding
+                    )
+                )
+                {
+                    drawer.OnGUI(rect, _inlineProperty, label);
+                }
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(sessionKey, out info),
+                Is.True
+            );
+            Assert.That(info.UsesHorizontalScroll, Is.False);
+            Assert.That(info.HorizontalScrollOffset, Is.EqualTo(120f).Within(0.1f));
+
+            OverrideViewWidth(() => narrowViewWidth, () => BuildVisibleRect(rect, narrowViewWidth));
+
+            using (
+                GroupGUIWidthUtility.PushContentPadding(
+                    horizontalPadding,
+                    leftPadding,
+                    rightPadding
+                )
+            )
+            {
+                height = drawer.GetPropertyHeight(_inlineProperty, label);
+            }
+            rect.height = height;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        leftPadding,
+                        rightPadding
+                    )
+                )
+                {
+                    drawer.OnGUI(rect, _inlineProperty, label);
+                }
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(sessionKey, out info),
+                Is.True
+            );
+            Assert.That(info.UsesHorizontalScroll, Is.True);
+            Assert.That(info.HorizontalScrollOffset, Is.EqualTo(120f).Within(0.1f));
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIHorizontalScrollContentWidthPersistsWhileOffsetPositive()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float initialViewWidth = 360f;
+            Rect rect = new Rect(26f, 18f, initialViewWidth - 48f, 0f);
+
+            float horizontalPadding = GroupGUIWidthUtility.CalculateHorizontalPadding(
+                EditorStyles.helpBox,
+                out float leftPadding,
+                out float rightPadding
+            );
+            OverrideViewWidth(
+                () => initialViewWidth,
+                () => BuildVisibleRect(rect, initialViewWidth)
+            );
+
+            float height;
+            using (
+                GroupGUIWidthUtility.PushContentPadding(
+                    horizontalPadding,
+                    leftPadding,
+                    rightPadding
+                )
+            )
+            {
+                height = drawer.GetPropertyHeight(_inlineProperty, label);
+            }
+            rect.height = height;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        leftPadding,
+                        rightPadding
+                    )
+                )
+                {
+                    drawer.OnGUI(rect, _inlineProperty, label);
+                }
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+            Assert.That(info.UsesHorizontalScroll, Is.True);
+            float firstWidth = info.InspectorContentWidth;
+            Assert.Greater(firstWidth, info.InspectorRect.width);
+
+            Assert.IsTrue(
+                WInLineEditorPropertyDrawer.SetHorizontalScrollOffsetForTesting(sessionKey, 90f)
+            );
+
+            float narrowerViewWidth = 300f;
+            OverrideViewWidth(
+                () => narrowerViewWidth,
+                () => BuildVisibleRect(rect, narrowerViewWidth)
+            );
+
+            using (
+                GroupGUIWidthUtility.PushContentPadding(
+                    horizontalPadding,
+                    leftPadding,
+                    rightPadding
+                )
+            )
+            {
+                height = drawer.GetPropertyHeight(_inlineProperty, label);
+            }
+            rect.height = height;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        leftPadding,
+                        rightPadding
+                    )
+                )
+                {
+                    drawer.OnGUI(rect, _inlineProperty, label);
+                }
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(sessionKey, out info),
+                Is.True
+            );
+            Assert.That(info.UsesHorizontalScroll, Is.True);
+            Assert.That(info.InspectorContentWidth, Is.GreaterThanOrEqualTo(firstWidth));
+            Assert.That(info.HorizontalScrollOffset, Is.EqualTo(90f).Within(0.1f));
+            Assert.That(
+                WInLineEditorPropertyDrawer.HasHorizontalScrollbarReservationForTesting(sessionKey),
+                Is.True
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIHorizontalScrollOffsetReachedMaxDoesNotBounceInsideGroup()
+        {
+            string sessionKey = GetSessionKey(_inlineProperty);
+            WInLineEditorPropertyDrawer drawer = new();
+            GUIContent label = new GUIContent(_inlineProperty.displayName);
+            float constrainedWidth = 320f;
+            Rect rect = new Rect(28f, 14f, constrainedWidth, 0f);
+
+            float horizontalPadding = GroupGUIWidthUtility.CalculateHorizontalPadding(
+                EditorStyles.helpBox,
+                out float leftPadding,
+                out float rightPadding
+            );
+
+            OverrideViewWidth(
+                () => constrainedWidth,
+                () => BuildVisibleRect(rect, constrainedWidth)
+            );
+
+            float height;
+            using (
+                GroupGUIWidthUtility.PushContentPadding(
+                    horizontalPadding,
+                    leftPadding,
+                    rightPadding
+                )
+            )
+            {
+                height = drawer.GetPropertyHeight(_inlineProperty, label);
+            }
+            rect.height = height;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        leftPadding,
+                        rightPadding
+                    )
+                )
+                {
+                    drawer.OnGUI(rect, _inlineProperty, label);
+                }
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(
+                    sessionKey,
+                    out WInLineEditorPropertyDrawer.InlineInspectorImGuiStateInfo info
+                ),
+                Is.True
+            );
+            Assert.That(info.UsesHorizontalScroll, Is.True);
+            float expectedMax = Mathf.Max(
+                0f,
+                info.InspectorContentWidth - info.EffectiveViewportWidth
+            );
+            Assert.Greater(expectedMax, 10f, "Expected horizontal scroll range to be significant.");
+
+            Assert.IsTrue(
+                WInLineEditorPropertyDrawer.SetHorizontalScrollOffsetForTesting(
+                    sessionKey,
+                    expectedMax
+                )
+            );
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        leftPadding,
+                        rightPadding
+                    )
+                )
+                {
+                    drawer.OnGUI(rect, _inlineProperty, label);
+                }
+            });
+
+            Assert.That(
+                WInLineEditorPropertyDrawer.TryGetImGuiStateInfo(sessionKey, out info),
+                Is.True
+            );
+            Assert.That(info.UsesHorizontalScroll, Is.True);
+            Assert.That(info.HorizontalScrollOffset, Is.EqualTo(expectedMax).Within(0.05f));
         }
 
         [UnityTest]
