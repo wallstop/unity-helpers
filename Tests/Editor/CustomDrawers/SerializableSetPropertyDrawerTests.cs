@@ -1,13 +1,17 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
     using System;
+    using System.Collections;
     using System.Linq;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class SerializableSetPropertyDrawerTests : CommonTestBase
@@ -914,6 +918,105 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 .ToArray();
             CollectionAssert.AreEquivalent(new[] { 10, 30 }, remaining);
             Assert.AreEqual(2, host.set.Count);
+        }
+
+        [UnityTest]
+        public IEnumerator HonorsGroupPaddingWithinGroups()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            host.set.Add(10);
+            host.set.Add(20);
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            setProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableSetPropertyDrawer drawer = new();
+            Rect controlRect = new(0f, 0f, 360f, 400f);
+            GUIContent label = new("Set");
+            const int IndentDepth = 1;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                setProperty.serializedObject.UpdateIfRequiredOrScript();
+                setProperty.isExpanded = true;
+                int previousIndent = EditorGUI.indentLevel;
+                EditorGUI.indentLevel = IndentDepth;
+                try
+                {
+                    drawer.OnGUI(controlRect, setProperty, label);
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndent;
+                }
+            });
+
+            Assert.IsTrue(
+                drawer.HasItemsContainerRect,
+                "Baseline draw should capture the rendered container."
+            );
+
+            Rect expectedBaselineRect;
+            int snapshotIndent = EditorGUI.indentLevel;
+            EditorGUI.indentLevel = IndentDepth;
+            expectedBaselineRect = EditorGUI.IndentedRect(controlRect);
+            EditorGUI.indentLevel = snapshotIndent;
+            Assert.That(
+                drawer.LastResolvedPosition.xMin,
+                Is.EqualTo(expectedBaselineRect.xMin).Within(0.0001f),
+                "Indentation should influence the resolved content rectangle."
+            );
+
+            const float LeftPadding = 16f;
+            const float RightPadding = 8f;
+            const float HorizontalPadding = LeftPadding + RightPadding;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                setProperty.serializedObject.UpdateIfRequiredOrScript();
+                setProperty.isExpanded = true;
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        HorizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    int previousIndent = EditorGUI.indentLevel;
+                    EditorGUI.indentLevel = IndentDepth;
+                    try
+                    {
+                        drawer.OnGUI(controlRect, setProperty, label);
+                    }
+                    finally
+                    {
+                        EditorGUI.indentLevel = previousIndent;
+                    }
+                }
+            });
+
+            Rect paddedRect = drawer.LastResolvedPosition;
+            Assert.That(
+                paddedRect.xMin,
+                Is.EqualTo(expectedBaselineRect.xMin + LeftPadding).Within(0.0001f),
+                "Group padding should offset the rendered content."
+            );
+            Assert.That(
+                paddedRect.width,
+                Is.EqualTo(Mathf.Max(0f, expectedBaselineRect.width - HorizontalPadding))
+                    .Within(0.0001f),
+                "Group padding should reduce usable width."
+            );
+            Assert.IsTrue(drawer.HasItemsContainerRect, "Container rect should be recorded.");
+            Assert.That(
+                drawer.LastItemsContainerRect.xMin,
+                Is.EqualTo(paddedRect.xMin).Within(0.0001f),
+                "Container rect should align with the padded content."
+            );
         }
     }
 }

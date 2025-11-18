@@ -14,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using Object = UnityEngine.Object;
 
     [CustomPropertyDrawer(typeof(SerializableDictionary<,>), true)]
@@ -29,6 +30,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private readonly Dictionary<string, DuplicateKeyState> _duplicateStates = new();
         private readonly Dictionary<string, NullKeyState> _nullKeyStates = new();
         private readonly Dictionary<string, Type> _valueTypes = new();
+        internal Rect LastResolvedPosition { get; private set; }
+        internal Rect LastListRect { get; private set; }
+        internal bool HasLastListRect { get; private set; }
         private static readonly BindingFlags ReflectionBindingFlags =
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
         private static readonly char[] PropertyPathSeparators = { '.' };
@@ -84,139 +88,195 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         /// </example>
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            EditorGUI.BeginProperty(position, label, property);
+            Rect originalPosition = position;
+            Rect contentPosition = ResolveContentRect(originalPosition);
+            LastResolvedPosition = contentPosition;
+            HasLastListRect = false;
 
-            SerializedObject serializedObject = property.serializedObject;
-            serializedObject.UpdateIfRequiredOrScript();
+            EditorGUI.BeginProperty(originalPosition, label, property);
+            int previousIndentLevel = EditorGUI.indentLevel;
 
-            SerializedProperty keysProperty = property.FindPropertyRelative(
-                SerializableDictionarySerializedPropertyNames.Keys
-            );
-            SerializedProperty valuesProperty = property.FindPropertyRelative(
-                SerializableDictionarySerializedPropertyNames.Values
-            );
-            EnsureParallelArraySizes(keysProperty, valuesProperty);
+            try
+            {
+                position = contentPosition;
 
-            if (
-                !TryResolveKeyValueTypes(
-                    fieldInfo,
-                    out Type keyType,
-                    out Type valueType,
-                    out bool isSortedDictionary
+                SerializedObject serializedObject = property.serializedObject;
+                serializedObject.UpdateIfRequiredOrScript();
+
+                SerializedProperty keysProperty = property.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Keys
+                );
+                SerializedProperty valuesProperty = property.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Values
+                );
+                EnsureParallelArraySizes(keysProperty, valuesProperty);
+
+                if (
+                    !TryResolveKeyValueTypes(
+                        fieldInfo,
+                        out Type keyType,
+                        out Type valueType,
+                        out bool isSortedDictionary
+                    )
                 )
-            )
-            {
-                EditorGUI.LabelField(position, label.text, "Unsupported dictionary type");
-                EditorGUI.EndProperty();
-                return;
-            }
+                {
+                    EditorGUI.LabelField(position, label.text, "Unsupported dictionary type");
+                    return;
+                }
 
-            string cacheKey = GetListKey(property);
-            _valueTypes[cacheKey] = valueType;
-            DuplicateKeyState duplicateState = RefreshDuplicateState(
-                cacheKey,
-                keysProperty,
-                keyType
-            );
-            NullKeyState nullKeyState = RefreshNullKeyState(cacheKey, keysProperty, keyType);
+                string cacheKey = GetListKey(property);
+                _valueTypes[cacheKey] = valueType;
+                DuplicateKeyState duplicateState = RefreshDuplicateState(
+                    cacheKey,
+                    keysProperty,
+                    keyType
+                );
+                NullKeyState nullKeyState = RefreshNullKeyState(cacheKey, keysProperty, keyType);
 
-            Rect foldoutRect = new(
-                position.x,
-                position.y,
-                position.width,
-                EditorGUIUtility.singleLineHeight
-            );
-            property.isExpanded = EditorGUI.Foldout(foldoutRect, property.isExpanded, label, true);
+                Rect foldoutRect = new(
+                    position.x,
+                    position.y,
+                    position.width,
+                    EditorGUIUtility.singleLineHeight
+                );
+                property.isExpanded = EditorGUI.Foldout(
+                    foldoutRect,
+                    property.isExpanded,
+                    label,
+                    true
+                );
 
-            float iconSize = EditorGUIUtility.singleLineHeight;
-            float iconPadding = 4f;
-            float nextIconX = Mathf.Max(position.x, position.xMax - iconSize - iconPadding);
+                float iconSize = EditorGUIUtility.singleLineHeight;
+                float iconPadding = 4f;
+                float nextIconX = Mathf.Max(position.x, position.xMax - iconSize - iconPadding);
 
-            if (duplicateState is { HasDuplicates: true })
-            {
-                Rect iconRect = new(nextIconX, foldoutRect.y, iconSize, iconSize);
-                GUI.Label(iconRect, GetDuplicateIconContent(duplicateState.SummaryTooltip));
-                nextIconX -= iconSize + iconPadding;
-            }
-
-            if (nullKeyState is { HasNullKeys: true })
-            {
-                float clampedX = Mathf.Max(position.x, nextIconX);
-                Rect iconRect = new(clampedX, foldoutRect.y, iconSize, iconSize);
-                GUI.Label(iconRect, GetNullKeyIconContent(nullKeyState.WarningMessage));
-            }
-
-            float y = foldoutRect.yMax + EditorGUIUtility.standardVerticalSpacing;
-
-            if (property.isExpanded)
-            {
-                float warningHeight = GetWarningBarHeight();
+                if (duplicateState is { HasDuplicates: true })
+                {
+                    Rect iconRect = new(nextIconX, foldoutRect.y, iconSize, iconSize);
+                    GUI.Label(iconRect, GetDuplicateIconContent(duplicateState.SummaryTooltip));
+                    nextIconX -= iconSize + iconPadding;
+                }
 
                 if (nullKeyState is { HasNullKeys: true })
                 {
-                    Rect warningRect = new(position.x, y, position.width, warningHeight);
-                    EditorGUI.HelpBox(
-                        warningRect,
-                        nullKeyState.WarningMessage,
-                        MessageType.Warning
-                    );
-                    y = warningRect.yMax + EditorGUIUtility.standardVerticalSpacing;
+                    float clampedX = Mathf.Max(position.x, nextIconX);
+                    Rect iconRect = new(clampedX, foldoutRect.y, iconSize, iconSize);
+                    GUI.Label(iconRect, GetNullKeyIconContent(nullKeyState.WarningMessage));
                 }
 
-                if (
-                    duplicateState is { HasDuplicates: true }
-                    && !string.IsNullOrEmpty(duplicateState.SummaryTooltip)
-                )
+                float y = foldoutRect.yMax + EditorGUIUtility.standardVerticalSpacing;
+
+                if (property.isExpanded)
                 {
-                    Rect warningRect = new(position.x, y, position.width, warningHeight);
-                    EditorGUI.HelpBox(
-                        warningRect,
-                        duplicateState.SummaryTooltip,
-                        MessageType.Warning
+                    float warningHeight = GetWarningBarHeight();
+
+                    if (nullKeyState is { HasNullKeys: true })
+                    {
+                        Rect warningRect = new(position.x, y, position.width, warningHeight);
+                        EditorGUI.HelpBox(
+                            warningRect,
+                            nullKeyState.WarningMessage,
+                            MessageType.Warning
+                        );
+                        y = warningRect.yMax + EditorGUIUtility.standardVerticalSpacing;
+                    }
+
+                    if (
+                        duplicateState is { HasDuplicates: true }
+                        && !string.IsNullOrEmpty(duplicateState.SummaryTooltip)
+                    )
+                    {
+                        Rect warningRect = new(position.x, y, position.width, warningHeight);
+                        EditorGUI.HelpBox(
+                            warningRect,
+                            duplicateState.SummaryTooltip,
+                            MessageType.Warning
+                        );
+                        y = warningRect.yMax + EditorGUIUtility.standardVerticalSpacing;
+                    }
+
+                    ReorderableList list = GetOrCreateList(property);
+                    PaginationState pagination = GetOrCreatePaginationState(property);
+                    PendingEntry pending = GetOrCreatePendingEntry(
+                        property,
+                        keyType,
+                        valueType,
+                        isSortedDictionary
                     );
-                    y = warningRect.yMax + EditorGUIUtility.standardVerticalSpacing;
+
+                    float pendingY = y;
+                    DrawPendingEntryUI(
+                        ref pendingY,
+                        position,
+                        pending,
+                        list,
+                        pagination,
+                        property,
+                        keysProperty,
+                        valuesProperty,
+                        keyType,
+                        valueType
+                    );
+
+                    y = pendingY + EditorGUIUtility.standardVerticalSpacing;
+
+                    Rect listRect = new(position.x, y, position.width, list.GetHeight());
+                    LastListRect = listRect;
+                    HasLastListRect = true;
+
+                    int previousIndent = EditorGUI.indentLevel;
+                    EditorGUI.indentLevel = 0;
+                    list.DoList(listRect);
+                    EditorGUI.indentLevel = previousIndent;
                 }
 
-                ReorderableList list = GetOrCreateList(property);
-                PaginationState pagination = GetOrCreatePaginationState(property);
-                PendingEntry pending = GetOrCreatePendingEntry(
-                    property,
-                    keyType,
-                    valueType,
-                    isSortedDictionary
-                );
-
-                float pendingY = y;
-                DrawPendingEntryUI(
-                    ref pendingY,
-                    position,
-                    pending,
-                    list,
-                    pagination,
-                    property,
-                    keysProperty,
-                    valuesProperty,
-                    keyType,
-                    valueType
-                );
-
-                y = pendingY + EditorGUIUtility.standardVerticalSpacing;
-
-                Rect listRect = new(position.x, y, position.width, list.GetHeight());
-
-                int previousIndent = EditorGUI.indentLevel;
-                EditorGUI.indentLevel = 0;
-                list.DoList(listRect);
-                EditorGUI.indentLevel = previousIndent;
+                bool applied = serializedObject.ApplyModifiedProperties();
+                if (applied)
+                {
+                    SyncRuntimeDictionary(property);
+                }
             }
-
-            bool applied = serializedObject.ApplyModifiedProperties();
-            if (applied)
+            finally
             {
-                SyncRuntimeDictionary(property);
+                EditorGUI.indentLevel = previousIndentLevel;
+                EditorGUI.EndProperty();
+            }
+        }
+
+        private static Rect ResolveContentRect(Rect position)
+        {
+            Rect rect = position;
+            float leftPadding = GroupGUIWidthUtility.CurrentLeftPadding;
+            float rightPadding = GroupGUIWidthUtility.CurrentRightPadding;
+            if (leftPadding > 0f || rightPadding > 0f)
+            {
+                rect.xMin += leftPadding;
+                rect.xMax -= rightPadding;
+                if (rect.width < 0f)
+                {
+                    rect.width = 0f;
+                }
             }
 
-            EditorGUI.EndProperty();
+            if (ShouldForceIndent())
+            {
+                int previousIndent = EditorGUI.indentLevel;
+                EditorGUI.indentLevel = previousIndent + 1;
+                Rect indented = EditorGUI.IndentedRect(rect);
+                EditorGUI.indentLevel = previousIndent;
+                return indented;
+            }
+
+            return EditorGUI.IndentedRect(rect);
+        }
+
+        private static bool ShouldForceIndent()
+        {
+            return EditorGUI.indentLevel <= 0
+                && (
+                    GroupGUIWidthUtility.CurrentLeftPadding > 0f
+                    || GroupGUIWidthUtility.CurrentHorizontalPadding > 0f
+                );
         }
 
         /// <summary>

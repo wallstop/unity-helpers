@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
 
     [CustomPropertyDrawer(typeof(SerializableHashSet<>), true)]
     [CustomPropertyDrawer(typeof(SerializableSortedSet<>), true)]
@@ -69,6 +70,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private readonly Dictionary<string, PaginationState> _paginationStates = new();
         private readonly Dictionary<string, DuplicateState> _duplicateStates = new();
         private readonly Dictionary<string, NullEntryState> _nullEntryStates = new();
+        internal Rect LastResolvedPosition { get; private set; }
+        internal Rect LastItemsContainerRect { get; private set; }
+        internal bool HasItemsContainerRect { get; private set; }
 
         internal sealed class PaginationState
         {
@@ -215,292 +219,343 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            SerializedObject serializedObject = property.serializedObject;
-            serializedObject.UpdateIfRequiredOrScript();
+            Rect originalPosition = position;
+            Rect contentPosition = ResolveContentRect(originalPosition);
+            LastResolvedPosition = contentPosition;
+            HasItemsContainerRect = false;
 
-            SerializedProperty itemsProperty = property.FindPropertyRelative(
-                SerializableHashSetSerializedPropertyNames.Items
-            );
+            EditorGUI.BeginProperty(originalPosition, label, property);
+            int previousIndentScope = EditorGUI.indentLevel;
 
-            bool hasItemsArray = itemsProperty is { isArray: true };
-            int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
-
-            string propertyPath = property.propertyPath;
-            string foldoutLabel = BuildFoldoutLabel(label);
-
-            EditorGUI.BeginProperty(position, label, property);
-
-            Rect foldoutRect = new(
-                position.x,
-                position.y,
-                position.width,
-                EditorGUIUtility.singleLineHeight
-            );
-
-            property.isExpanded = EditorGUI.Foldout(
-                foldoutRect,
-                property.isExpanded,
-                foldoutLabel,
-                true
-            );
-            float y = foldoutRect.yMax + SectionSpacing;
-
-            if (!property.isExpanded)
+            try
             {
-                EditorGUI.EndProperty();
-                return;
-            }
+                position = contentPosition;
 
-            PaginationState pagination = GetOrCreatePaginationState(property);
-            EnsurePaginationBounds(pagination, totalCount);
+                SerializedObject serializedObject = property.serializedObject;
+                serializedObject.UpdateIfRequiredOrScript();
 
-            bool isSortedSet = IsSortedSet(property);
-
-            int previousIndentLevel = EditorGUI.indentLevel;
-            EditorGUI.indentLevel = 0;
-
-            Rect toolbarRect = new(position.x, y, position.width, GetToolbarHeight());
-            DrawToolbar(
-                toolbarRect,
-                ref property,
-                propertyPath,
-                ref itemsProperty,
-                pagination,
-                isSortedSet
-            );
-            y = toolbarRect.yMax + SectionSpacing;
-
-            itemsProperty = property.FindPropertyRelative(
-                SerializableHashSetSerializedPropertyNames.Items
-            );
-            hasItemsArray = itemsProperty is { isArray: true };
-            totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
-            EnsurePaginationBounds(pagination, totalCount);
-            DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
-            NullEntryState nullState = EvaluateNullEntryState(property, itemsProperty);
-
-            if (nullState.hasNullEntries && !string.IsNullOrEmpty(nullState.summary))
-            {
-                float helpHeight = GetWarningBarHeight();
-                Rect helpRect = new(position.x, y, position.width, helpHeight);
-                EditorGUI.HelpBox(helpRect, nullState.summary, MessageType.Warning);
-                y = helpRect.yMax + SectionSpacing;
-            }
-
-            if (duplicateState.hasDuplicates && !string.IsNullOrEmpty(duplicateState.summary))
-            {
-                float helpHeight = GetWarningBarHeight();
-                Rect helpRect = new(position.x, y, position.width, helpHeight);
-                EditorGUI.HelpBox(helpRect, duplicateState.summary, MessageType.Warning);
-                y = helpRect.yMax + SectionSpacing;
-            }
-
-            if (!hasItemsArray || totalCount == 0)
-            {
-                float blockPadding = 6f;
-                float messageHeight = EditorGUIUtility.singleLineHeight;
-                float blockHeight = blockPadding * 2f + messageHeight;
-                Rect blockRect = new(position.x, y, position.width, blockHeight);
-                GUI.Box(blockRect, GUIContent.none, EditorStyles.helpBox);
-
-                Rect messageRect = new(
-                    blockRect.x + blockPadding,
-                    blockRect.y + blockPadding,
-                    blockRect.width - blockPadding * 2f,
-                    messageHeight
+                SerializedProperty itemsProperty = property.FindPropertyRelative(
+                    SerializableHashSetSerializedPropertyNames.Items
                 );
-                EditorGUI.LabelField(messageRect, "Set is empty.", EditorStyles.miniLabel);
-            }
-            else
-            {
-                int startIndex = pagination.page * pagination.pageSize;
-                int endIndex = Mathf.Min(startIndex + pagination.pageSize, totalCount);
-                UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
-                    UnityHelpersSettings.GetDuplicateRowAnimationMode();
-                bool highlightDuplicates =
+
+                bool hasItemsArray = itemsProperty is { isArray: true };
+                int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
+
+                string propertyPath = property.propertyPath;
+                string foldoutLabel = BuildFoldoutLabel(label);
+
+                Rect foldoutRect = new(
+                    position.x,
+                    position.y,
+                    position.width,
+                    EditorGUIUtility.singleLineHeight
+                );
+
+                property.isExpanded = EditorGUI.Foldout(
+                    foldoutRect,
+                    property.isExpanded,
+                    foldoutLabel,
+                    true
+                );
+                float y = foldoutRect.yMax + SectionSpacing;
+
+                if (!property.isExpanded)
+                {
+                    return;
+                }
+
+                PaginationState pagination = GetOrCreatePaginationState(property);
+                EnsurePaginationBounds(pagination, totalCount);
+
+                bool isSortedSet = IsSortedSet(property);
+
+                Rect toolbarRect = new(position.x, y, position.width, GetToolbarHeight());
+                DrawToolbar(
+                    toolbarRect,
+                    ref property,
+                    propertyPath,
+                    ref itemsProperty,
+                    pagination,
+                    isSortedSet
+                );
+                y = toolbarRect.yMax + SectionSpacing;
+
+                itemsProperty = property.FindPropertyRelative(
+                    SerializableHashSetSerializedPropertyNames.Items
+                );
+                hasItemsArray = itemsProperty is { isArray: true };
+                totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
+                EnsurePaginationBounds(pagination, totalCount);
+                DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
+                NullEntryState nullState = EvaluateNullEntryState(property, itemsProperty);
+
+                if (nullState.hasNullEntries && !string.IsNullOrEmpty(nullState.summary))
+                {
+                    float helpHeight = GetWarningBarHeight();
+                    Rect helpRect = new(position.x, y, position.width, helpHeight);
+                    EditorGUI.HelpBox(helpRect, nullState.summary, MessageType.Warning);
+                    y = helpRect.yMax + SectionSpacing;
+                }
+
+                if (duplicateState.hasDuplicates && !string.IsNullOrEmpty(duplicateState.summary))
+                {
+                    float helpHeight = GetWarningBarHeight();
+                    Rect helpRect = new(position.x, y, position.width, helpHeight);
+                    EditorGUI.HelpBox(helpRect, duplicateState.summary, MessageType.Warning);
+                    y = helpRect.yMax + SectionSpacing;
+                }
+
+                if (!hasItemsArray || totalCount == 0)
+                {
+                    float blockPadding = 6f;
+                    float messageHeight = EditorGUIUtility.singleLineHeight;
+                    float blockHeight = blockPadding * 2f + messageHeight;
+                    Rect blockRect = new(position.x, y, position.width, blockHeight);
+                    LastItemsContainerRect = blockRect;
+                    HasItemsContainerRect = true;
+                    GUI.Box(blockRect, GUIContent.none, EditorStyles.helpBox);
+
+                    Rect messageRect = new(
+                        blockRect.x + blockPadding,
+                        blockRect.y + blockPadding,
+                        blockRect.width - blockPadding * 2f,
+                        messageHeight
+                    );
+                    EditorGUI.LabelField(messageRect, "Set is empty.", EditorStyles.miniLabel);
+                }
+                else
+                {
+                    int startIndex = pagination.page * pagination.pageSize;
+                    int endIndex = Mathf.Min(startIndex + pagination.pageSize, totalCount);
+                    UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
+                        UnityHelpersSettings.GetDuplicateRowAnimationMode();
+                    bool highlightDuplicates =
 #pragma warning disable CS0618 // Type or member is obsolete
-                    animationMode != UnityHelpersSettings.DuplicateRowAnimationMode.None;
+                        animationMode != UnityHelpersSettings.DuplicateRowAnimationMode.None;
 #pragma warning restore CS0618 // Type or member is obsolete
-                bool animateDuplicates =
-                    animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
-                int tweenCycleLimit = UnityHelpersSettings.GetDuplicateRowTweenCycleLimit();
+                    bool animateDuplicates =
+                        animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
+                    int tweenCycleLimit = UnityHelpersSettings.GetDuplicateRowTweenCycleLimit();
 
-                List<RowRenderInfo> rows = new(endIndex - startIndex);
-                float rowsHeight = 0f;
+                    List<RowRenderInfo> rows = new(endIndex - startIndex);
+                    float rowsHeight = 0f;
 
-                for (int index = startIndex; index < endIndex; index++)
-                {
-                    SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
-                    float elementHeight = EditorGUI.GetPropertyHeight(
-                        element,
-                        GUIContent.none,
-                        true
-                    );
-
-                    bool isDuplicate = duplicateState.duplicateIndices.Contains(index);
-                    if (
-                        isDuplicate
-                        && highlightDuplicates
-                        && animateDuplicates
-                        && !duplicateState.animationStartTimes.ContainsKey(index)
-                    )
+                    for (int index = startIndex; index < endIndex; index++)
                     {
-                        duplicateState.animationStartTimes[index] =
-                            EditorApplication.timeSinceStartup;
-                    }
-
-                    float shakeOffset =
-                        isDuplicate && highlightDuplicates && animateDuplicates
-                            ? GetDuplicateShakeOffset(duplicateState, index, tweenCycleLimit)
-                            : 0f;
-
-                    bool hasNullValue =
-                        nullState.hasNullEntries && nullState.nullIndices.Contains(index);
-                    string nullTooltip = string.Empty;
-                    if (hasNullValue && !nullState.tooltips.TryGetValue(index, out nullTooltip))
-                    {
-                        nullTooltip = string.Empty;
-                    }
-
-                    RowRenderInfo info = new()
-                    {
-                        property = element.Copy(),
-                        height = elementHeight,
-                        index = index,
-                        isDuplicate = isDuplicate,
-                        isPrimaryDuplicate = duplicateState.primaryFlags.GetValueOrDefault(
-                            index,
-                            false
-                        ),
-                        isSelected = pagination.selectedIndex == index,
-                        shakeOffset = shakeOffset,
-                        hasNullValue = hasNullValue,
-                        nullTooltip = nullTooltip,
-                    };
-
-                    rows.Add(info);
-                    rowsHeight += elementHeight;
-                    if (index < endIndex - 1)
-                    {
-                        rowsHeight += RowSpacing;
-                    }
-                }
-
-                float blockPadding = 6f;
-                float blockHeight = blockPadding * 2f + rowsHeight;
-                Rect blockRect = new(position.x, y, position.width, blockHeight);
-                GUI.Box(blockRect, GUIContent.none, EditorStyles.helpBox);
-
-                float contentY = blockRect.y + blockPadding;
-                float contentX = blockRect.x + blockPadding;
-                float contentWidth = blockRect.width - blockPadding * 2f;
-
-                for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
-                {
-                    RowRenderInfo row = rows[rowIndex];
-
-                    Rect backgroundRect = new(contentX, contentY, contentWidth, row.height);
-
-                    Color baseRowColor = EditorGUIUtility.isProSkin ? DarkRowColor : LightRowColor;
-                    EditorGUI.DrawRect(backgroundRect, baseRowColor);
-
-                    Rect outlineRect = Rect.zero;
-                    bool shouldDrawOutline = false;
-                    bool outlineForNull = false;
-
-                    if (row.isDuplicate && highlightDuplicates)
-                    {
-                        Rect duplicateRect = ExpandRowRectVertically(backgroundRect);
-                        duplicateRect.x += row.shakeOffset;
-                        duplicateRect.xMin += 1f;
-                        duplicateRect.xMax -= 1f;
-                        duplicateRect.yMin += 1f;
-                        duplicateRect.yMax -= 1f;
-                        duplicateRect.height = Mathf.Max(0f, duplicateRect.height);
-
-                        Color duplicateColor = row.isPrimaryDuplicate
-                            ? DuplicatePrimaryColor
-                            : DuplicateSecondaryColor;
-                        EditorGUI.DrawRect(duplicateRect, duplicateColor);
-                        outlineRect = duplicateRect;
-                        shouldDrawOutline = true;
-                    }
-
-                    if (row.hasNullValue)
-                    {
-                        Rect nullRect = ExpandRowRectVertically(backgroundRect);
-                        nullRect.x += row.shakeOffset;
-                        nullRect.xMin += 1f;
-                        nullRect.xMax -= 1f;
-                        nullRect.yMin += 1f;
-                        nullRect.yMax -= 1f;
-                        nullRect.height = Mathf.Max(0f, nullRect.height);
-
-                        EditorGUI.DrawRect(nullRect, NullEntryHighlightColor);
-                        outlineRect = nullRect;
-                        outlineForNull = true;
-                        DrawNullEntryTooltip(nullRect, row.nullTooltip);
-                    }
-
-                    if (row.isSelected)
-                    {
-                        Rect selectionRect = ExpandRowRectVertically(backgroundRect);
-                        Color selectionColor = EditorGUIUtility.isProSkin
-                            ? DarkSelectionColor
-                            : LightSelectionColor;
-                        EditorGUI.DrawRect(selectionRect, selectionColor);
-                    }
-
-                    Rect contentRect = new(
-                        backgroundRect.x + 6f,
-                        backgroundRect.y,
-                        backgroundRect.width - 12f,
-                        row.height
-                    );
-                    if (Mathf.Abs(row.shakeOffset) > Mathf.Epsilon)
-                    {
-                        contentRect.x += row.shakeOffset;
-                        contentRect.width = Mathf.Max(
-                            0f,
-                            contentRect.width - Mathf.Abs(row.shakeOffset)
+                        SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
+                        float elementHeight = EditorGUI.GetPropertyHeight(
+                            element,
+                            GUIContent.none,
+                            true
                         );
+
+                        bool isDuplicate = duplicateState.duplicateIndices.Contains(index);
+                        if (
+                            isDuplicate
+                            && highlightDuplicates
+                            && animateDuplicates
+                            && !duplicateState.animationStartTimes.ContainsKey(index)
+                        )
+                        {
+                            duplicateState.animationStartTimes[index] =
+                                EditorApplication.timeSinceStartup;
+                        }
+
+                        float shakeOffset =
+                            isDuplicate && highlightDuplicates && animateDuplicates
+                                ? GetDuplicateShakeOffset(duplicateState, index, tweenCycleLimit)
+                                : 0f;
+
+                        bool hasNullValue =
+                            nullState.hasNullEntries && nullState.nullIndices.Contains(index);
+                        string nullTooltip = string.Empty;
+                        if (hasNullValue && !nullState.tooltips.TryGetValue(index, out nullTooltip))
+                        {
+                            nullTooltip = string.Empty;
+                        }
+
+                        RowRenderInfo info = new()
+                        {
+                            property = element.Copy(),
+                            height = elementHeight,
+                            index = index,
+                            isDuplicate = isDuplicate,
+                            isPrimaryDuplicate = duplicateState.primaryFlags.GetValueOrDefault(
+                                index,
+                                false
+                            ),
+                            isSelected = pagination.selectedIndex == index,
+                            shakeOffset = shakeOffset,
+                            hasNullValue = hasNullValue,
+                            nullTooltip = nullTooltip,
+                        };
+
+                        rows.Add(info);
+                        rowsHeight += elementHeight;
+                        if (index < endIndex - 1)
+                        {
+                            rowsHeight += RowSpacing;
+                        }
                     }
 
-                    if (
-                        Event.current.type == EventType.MouseDown
-                        && backgroundRect.Contains(Event.current.mousePosition)
-                    )
-                    {
-                        pagination.selectedIndex = row.index;
-                    }
+                    float blockPadding = 6f;
+                    float blockHeight = blockPadding * 2f + rowsHeight;
+                    Rect blockRect = new(position.x, y, position.width, blockHeight);
+                    LastItemsContainerRect = blockRect;
+                    HasItemsContainerRect = true;
+                    GUI.Box(blockRect, GUIContent.none, EditorStyles.helpBox);
 
-                    EditorGUI.PropertyField(contentRect, row.property, GUIContent.none, true);
+                    float contentY = blockRect.y + blockPadding;
+                    float contentX = blockRect.x + blockPadding;
+                    float contentWidth = blockRect.width - blockPadding * 2f;
 
-                    if (outlineForNull)
+                    for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
                     {
-                        DrawDuplicateOutline(outlineRect);
-                    }
-                    else if (shouldDrawOutline && highlightDuplicates)
-                    {
-                        DrawDuplicateOutline(outlineRect);
-                    }
+                        RowRenderInfo row = rows[rowIndex];
 
-                    contentY += row.height;
-                    if (rowIndex < rows.Count - 1)
-                    {
-                        contentY += RowSpacing;
+                        Rect backgroundRect = new(contentX, contentY, contentWidth, row.height);
+
+                        Color baseRowColor = EditorGUIUtility.isProSkin
+                            ? DarkRowColor
+                            : LightRowColor;
+                        EditorGUI.DrawRect(backgroundRect, baseRowColor);
+
+                        Rect outlineRect = Rect.zero;
+                        bool shouldDrawOutline = false;
+                        bool outlineForNull = false;
+
+                        if (row.isDuplicate && highlightDuplicates)
+                        {
+                            Rect duplicateRect = ExpandRowRectVertically(backgroundRect);
+                            duplicateRect.x += row.shakeOffset;
+                            duplicateRect.xMin += 1f;
+                            duplicateRect.xMax -= 1f;
+                            duplicateRect.yMin += 1f;
+                            duplicateRect.yMax -= 1f;
+                            duplicateRect.height = Mathf.Max(0f, duplicateRect.height);
+
+                            Color duplicateColor = row.isPrimaryDuplicate
+                                ? DuplicatePrimaryColor
+                                : DuplicateSecondaryColor;
+                            EditorGUI.DrawRect(duplicateRect, duplicateColor);
+                            outlineRect = duplicateRect;
+                            shouldDrawOutline = true;
+                        }
+
+                        if (row.hasNullValue)
+                        {
+                            Rect nullRect = ExpandRowRectVertically(backgroundRect);
+                            nullRect.x += row.shakeOffset;
+                            nullRect.xMin += 1f;
+                            nullRect.xMax -= 1f;
+                            nullRect.yMin += 1f;
+                            nullRect.yMax -= 1f;
+                            nullRect.height = Mathf.Max(0f, nullRect.height);
+
+                            EditorGUI.DrawRect(nullRect, NullEntryHighlightColor);
+                            outlineRect = nullRect;
+                            outlineForNull = true;
+                            DrawNullEntryTooltip(nullRect, row.nullTooltip);
+                        }
+
+                        if (row.isSelected)
+                        {
+                            Rect selectionRect = ExpandRowRectVertically(backgroundRect);
+                            Color selectionColor = EditorGUIUtility.isProSkin
+                                ? DarkSelectionColor
+                                : LightSelectionColor;
+                            EditorGUI.DrawRect(selectionRect, selectionColor);
+                        }
+
+                        Rect contentRect = new(
+                            backgroundRect.x + 6f,
+                            backgroundRect.y,
+                            backgroundRect.width - 12f,
+                            row.height
+                        );
+                        if (Mathf.Abs(row.shakeOffset) > Mathf.Epsilon)
+                        {
+                            contentRect.x += row.shakeOffset;
+                            contentRect.width = Mathf.Max(
+                                0f,
+                                contentRect.width - Mathf.Abs(row.shakeOffset)
+                            );
+                        }
+
+                        if (
+                            Event.current.type == EventType.MouseDown
+                            && backgroundRect.Contains(Event.current.mousePosition)
+                        )
+                        {
+                            pagination.selectedIndex = row.index;
+                        }
+
+                        EditorGUI.PropertyField(contentRect, row.property, GUIContent.none, true);
+
+                        if (outlineForNull)
+                        {
+                            DrawDuplicateOutline(outlineRect);
+                        }
+                        else if (shouldDrawOutline && highlightDuplicates)
+                        {
+                            DrawDuplicateOutline(outlineRect);
+                        }
+
+                        contentY += row.height;
+                        if (rowIndex < rows.Count - 1)
+                        {
+                            contentY += RowSpacing;
+                        }
                     }
+                }
+
+                bool applied = serializedObject.ApplyModifiedProperties();
+                if (applied)
+                {
+                    SyncRuntimeSet(property);
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentScope;
+                EditorGUI.EndProperty();
+            }
+        }
+
+        private static Rect ResolveContentRect(Rect position)
+        {
+            Rect rect = position;
+            float leftPadding = GroupGUIWidthUtility.CurrentLeftPadding;
+            float rightPadding = GroupGUIWidthUtility.CurrentRightPadding;
+            if (leftPadding > 0f || rightPadding > 0f)
+            {
+                rect.xMin += leftPadding;
+                rect.xMax -= rightPadding;
+                if (rect.width < 0f)
+                {
+                    rect.width = 0f;
                 }
             }
 
-            EditorGUI.indentLevel = previousIndentLevel;
-            EditorGUI.EndProperty();
-
-            bool applied = serializedObject.ApplyModifiedProperties();
-            if (applied)
+            if (ShouldForceIndent())
             {
-                SyncRuntimeSet(property);
+                int previousIndent = EditorGUI.indentLevel;
+                EditorGUI.indentLevel = previousIndent + 1;
+                Rect indented = EditorGUI.IndentedRect(rect);
+                EditorGUI.indentLevel = previousIndent;
+                return indented;
             }
+
+            return EditorGUI.IndentedRect(rect);
+        }
+
+        private static bool ShouldForceIndent()
+        {
+            return EditorGUI.indentLevel <= 0
+                && (
+                    GroupGUIWidthUtility.CurrentLeftPadding > 0f
+                    || GroupGUIWidthUtility.CurrentHorizontalPadding > 0f
+                );
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)

@@ -7,8 +7,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEditor;
     using UnityEditorInternal;
     using UnityEngine;
+    using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class SerializableDictionaryPropertyDrawerTests : CommonTestBase
@@ -766,6 +769,106 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty buttonColorProperty = valueElement.FindPropertyRelative("button");
             Assert.IsNotNull(buttonColorProperty);
             Assert.That(buttonColorProperty.colorValue, Is.EqualTo(Color.cyan));
+        }
+
+        [UnityTest]
+        public IEnumerator HonorsGroupPaddingWithinGroups()
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            host.dictionary.Add(1, "One");
+            host.dictionary.Add(2, "Two");
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            Rect controlRect = new(0f, 0f, 360f, 600f);
+            GUIContent label = new("Dictionary");
+            const int IndentDepth = 2;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                dictionaryProperty.isExpanded = true;
+                int previousIndent = EditorGUI.indentLevel;
+                EditorGUI.indentLevel = IndentDepth;
+                try
+                {
+                    drawer.OnGUI(controlRect, dictionaryProperty, label);
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndent;
+                }
+            });
+
+            Assert.IsTrue(
+                drawer.HasLastListRect,
+                "Baseline draw should render the reorderable list."
+            );
+
+            Rect expectedBaselineRect;
+            int snapshotIndent = EditorGUI.indentLevel;
+            EditorGUI.indentLevel = IndentDepth;
+            expectedBaselineRect = EditorGUI.IndentedRect(controlRect);
+            EditorGUI.indentLevel = snapshotIndent;
+            Assert.That(
+                drawer.LastResolvedPosition.xMin,
+                Is.EqualTo(expectedBaselineRect.xMin).Within(0.0001f),
+                "Indentation should be reflected in the resolved content rectangle."
+            );
+
+            const float LeftPadding = 18f;
+            const float RightPadding = 12f;
+            const float HorizontalPadding = LeftPadding + RightPadding;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                dictionaryProperty.isExpanded = true;
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        HorizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    int previousIndent = EditorGUI.indentLevel;
+                    EditorGUI.indentLevel = IndentDepth;
+                    try
+                    {
+                        drawer.OnGUI(controlRect, dictionaryProperty, label);
+                    }
+                    finally
+                    {
+                        EditorGUI.indentLevel = previousIndent;
+                    }
+                }
+            });
+
+            Rect paddedRect = drawer.LastResolvedPosition;
+            Assert.That(
+                paddedRect.xMin,
+                Is.EqualTo(expectedBaselineRect.xMin + LeftPadding).Within(0.0001f),
+                "Group padding should shift content by the configured left margin."
+            );
+            Assert.That(
+                paddedRect.width,
+                Is.EqualTo(Mathf.Max(0f, expectedBaselineRect.width - HorizontalPadding))
+                    .Within(0.0001f),
+                "Group padding should reduce the usable width."
+            );
+            Assert.That(
+                drawer.LastListRect.xMin,
+                Is.EqualTo(paddedRect.xMin).Within(0.0001f),
+                "List rect should align with the padded content area."
+            );
         }
     }
 }

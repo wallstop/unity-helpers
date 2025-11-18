@@ -107,6 +107,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             return new WidthPaddingScope(horizontalPadding, leftPadding, rightPadding);
         }
 
+        internal static Rect ApplyCurrentPadding(Rect rect)
+        {
+            float leftPadding = _totalLeftPadding;
+            float rightPadding = _totalRightPadding;
+            if (leftPadding <= 0f && rightPadding <= 0f)
+            {
+                return rect;
+            }
+
+            Rect adjusted = rect;
+            adjusted.xMin += leftPadding;
+            adjusted.xMax -= rightPadding;
+            if (adjusted.width < 0f || float.IsNaN(adjusted.width))
+            {
+                adjusted.width = 0f;
+            }
+            return adjusted;
+        }
+
         internal static float CalculateHorizontalPadding(GUIStyle containerStyle)
         {
             return CalculateHorizontalPadding(containerStyle, out _, out _);
