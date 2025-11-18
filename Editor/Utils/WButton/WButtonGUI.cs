@@ -277,6 +277,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                     EditorGUILayout.Space(6f);
                 }
             }
+
+            if (endIndex > startIndex)
+            {
+                EditorGUILayout.Space(2f);
+            }
         }
 
         private static void DrawPaginationControls(

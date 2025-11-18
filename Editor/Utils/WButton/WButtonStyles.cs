@@ -63,6 +63,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                     richText = false,
                     fixedHeight = ButtonHeight,
                     alignment = TextAnchor.MiddleCenter,
+                    padding = new RectOffset(6, 6, 3, 4),
                     margin = new RectOffset(1, 1, 1, 3),
                 };
                 return _baseButtonStyle;
