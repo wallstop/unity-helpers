@@ -524,38 +524,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static Rect ResolveContentRect(Rect position)
         {
-            Rect rect = position;
-            float leftPadding = GroupGUIWidthUtility.CurrentLeftPadding;
-            float rightPadding = GroupGUIWidthUtility.CurrentRightPadding;
-            if (leftPadding > 0f || rightPadding > 0f)
+            Rect padded = GroupGUIWidthUtility.ApplyCurrentPadding(position);
+            int originalIndent = EditorGUI.indentLevel;
+            if (originalIndent <= 0)
             {
-                rect.xMin += leftPadding;
-                rect.xMax -= rightPadding;
-                if (rect.width < 0f)
-                {
-                    rect.width = 0f;
-                }
-            }
-
-            if (ShouldForceIndent())
-            {
-                int previousIndent = EditorGUI.indentLevel;
-                EditorGUI.indentLevel = previousIndent + 1;
-                Rect indented = EditorGUI.IndentedRect(rect);
-                EditorGUI.indentLevel = previousIndent;
+                EditorGUI.indentLevel = 1;
+                Rect indented = EditorGUI.IndentedRect(padded);
+                EditorGUI.indentLevel = originalIndent;
                 return indented;
             }
 
-            return EditorGUI.IndentedRect(rect);
-        }
-
-        private static bool ShouldForceIndent()
-        {
-            return EditorGUI.indentLevel <= 0
-                && (
-                    GroupGUIWidthUtility.CurrentLeftPadding > 0f
-                    || GroupGUIWidthUtility.CurrentHorizontalPadding > 0f
-                );
+            return EditorGUI.IndentedRect(padded);
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
