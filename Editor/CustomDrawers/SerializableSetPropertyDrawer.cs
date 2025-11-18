@@ -28,9 +28,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIContent AddEntryContent = new("Add");
         private static readonly GUIContent ClearAllContent = new("Clear All");
         private static readonly GUIContent SortContent = new("Sort");
-        private static readonly GUIContent MoveUpContent = new("Move Up", "Move selected entry up");
+        private static readonly GUIContent MoveUpContent = new("\u2191", "Move selected entry up");
         private static readonly GUIContent MoveDownContent = new(
-            "Move Down",
+            "\u2193",
             "Move selected entry down"
         );
         private static readonly GUIContent FirstPageContent = new("<<", "First Page");
@@ -57,6 +57,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIStyle RemoveButtonStyle = CreateSolidButtonStyle(
             new Color(0.86f, 0.23f, 0.23f)
         );
+        private static readonly GUIStyle MoveButtonStyle = CreateSolidButtonStyle(
+            new Color(0.95f, 0.8f, 0.25f)
+        );
         private static readonly Color DuplicatePrimaryColor = new(0.99f, 0.82f, 0.35f, 0.55f);
         private static readonly Color DuplicateSecondaryColor = new(0.96f, 0.45f, 0.45f, 0.65f);
         private static readonly Color DuplicateOutlineColor = new(0.65f, 0.18f, 0.18f, 0.9f);
@@ -76,9 +79,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private readonly Dictionary<string, PaginationState> _paginationStates = new();
         private readonly Dictionary<string, DuplicateState> _duplicateStates = new();
         private readonly Dictionary<string, NullEntryState> _nullEntryStates = new();
+        private readonly Dictionary<string, DragState> _dragStates = new();
         internal Rect LastResolvedPosition { get; private set; }
         internal Rect LastItemsContainerRect { get; private set; }
         internal bool HasItemsContainerRect { get; private set; }
+        private static readonly int DragControlHash = "SerializableSetDragControl".GetHashCode();
 
         internal sealed class PaginationState
         {
@@ -128,6 +133,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public float shakeOffset;
             public bool hasNullValue;
             public string nullTooltip;
+            public Rect rect;
+        }
+
+        private sealed class DragState
+        {
+            public bool isDragging;
+            public int startIndex = -1;
+            public float currentMouseY;
         }
 
         private static float GetToolbarHeight()
@@ -145,6 +158,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ConfigureButtonStyle(SortActiveButtonStyle, lineHeight);
             ConfigureButtonStyle(SortInactiveButtonStyle, lineHeight);
             ConfigureButtonStyle(RemoveButtonStyle, lineHeight);
+            ConfigureButtonStyle(MoveButtonStyle, lineHeight);
             RemoveButtonStyle.fixedWidth = 0f;
             RemoveButtonStyle.padding = new RectOffset(3, 3, 1, 1);
             RemoveButtonStyle.margin = new RectOffset(0, 0, 1, 1);
@@ -295,6 +309,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
                 NullEntryState nullState = EvaluateNullEntryState(property, itemsProperty);
 
+                List<RowRenderInfo> dragRows = null;
+
                 if (nullState.hasNullEntries && !string.IsNullOrEmpty(nullState.summary))
                 {
                     float helpHeight = GetWarningBarHeight();
@@ -415,11 +431,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     float contentX = blockRect.x + blockPadding;
                     float contentWidth = blockRect.width - blockPadding * 2f;
 
+                    dragRows = rows;
+
                     for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
                     {
                         RowRenderInfo row = rows[rowIndex];
 
                         Rect backgroundRect = new(contentX, contentY, contentWidth, row.height);
+                        row.rect = backgroundRect;
 
                         Color baseRowColor = EditorGUIUtility.isProSkin
                             ? DarkRowColor
@@ -513,6 +532,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             contentY += RowSpacing;
                         }
                     }
+                }
+
+                if (dragRows != null)
+                {
+                    HandleRowDragging(
+                        ref property,
+                        propertyPath,
+                        ref itemsProperty,
+                        pagination,
+                        dragRows
+                    );
                 }
 
                 bool applied = serializedObject.ApplyModifiedProperties();
@@ -626,6 +656,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return state;
+        }
+
+        private DragState GetOrCreateDragState(string propertyPath)
+        {
+            if (_dragStates.TryGetValue(propertyPath, out DragState state))
+            {
+                return state;
+            }
+
+            DragState created = new();
+            _dragStates[propertyPath] = created;
+            return created;
         }
 
         private void EnsurePaginationBounds(PaginationState state, int totalCount)
@@ -810,7 +852,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (hasSelection && totalCount > 1)
             {
-                float moveButtonWidth = Mathf.Max(18f, PaginationButtonWidth - 8f);
+                float moveButtonWidth = Mathf.Max(20f, PaginationButtonWidth - 10f);
                 Rect moveDownRect = new(
                     rightCursor - moveButtonWidth,
                     rect.y,
@@ -819,7 +861,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
                 using (new EditorGUI.DisabledScope(pagination.selectedIndex >= totalCount - 1))
                 {
-                    if (GUI.Button(moveDownRect, MoveDownContent, RemoveButtonStyle))
+                    if (GUI.Button(moveDownRect, MoveDownContent, MoveButtonStyle))
                     {
                         TryMoveSelectedEntry(
                             ref property,
@@ -845,7 +887,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
                 using (new EditorGUI.DisabledScope(pagination.selectedIndex <= 0))
                 {
-                    if (GUI.Button(moveUpRect, MoveUpContent, RemoveButtonStyle))
+                    if (GUI.Button(moveUpRect, MoveUpContent, MoveButtonStyle))
                     {
                         TryMoveSelectedEntry(
                             ref property,
@@ -1961,6 +2003,119 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return true;
+        }
+
+        private void HandleRowDragging(
+            ref SerializedProperty property,
+            string propertyPath,
+            ref SerializedProperty itemsProperty,
+            PaginationState pagination,
+            List<RowRenderInfo> rows
+        )
+        {
+            if (rows == null || rows.Count <= 1)
+            {
+                return;
+            }
+
+            Event evt = Event.current;
+            int controlId = GUIUtility.GetControlID(DragControlHash, FocusType.Passive);
+            DragState dragState = GetOrCreateDragState(propertyPath);
+
+            switch (evt.GetTypeForControl(controlId))
+            {
+                case EventType.MouseDown:
+                    if (evt.button != 0)
+                    {
+                        break;
+                    }
+
+                    foreach (RowRenderInfo row in rows)
+                    {
+                        if (row.rect.Contains(evt.mousePosition))
+                        {
+                            GUIUtility.hotControl = controlId;
+                            dragState.isDragging = true;
+                            dragState.startIndex = row.index;
+                            dragState.currentMouseY = evt.mousePosition.y;
+                            evt.Use();
+                            break;
+                        }
+                    }
+
+                    break;
+                case EventType.MouseDrag:
+                    if (GUIUtility.hotControl == controlId && dragState.isDragging)
+                    {
+                        dragState.currentMouseY = evt.mousePosition.y;
+                        evt.Use();
+                    }
+
+                    break;
+                case EventType.MouseUp:
+                    if (GUIUtility.hotControl == controlId && dragState.isDragging)
+                    {
+                        GUIUtility.hotControl = 0;
+                        dragState.isDragging = false;
+                        evt.Use();
+
+                        if (
+                            dragState.startIndex >= 0
+                            && itemsProperty is { isArray: true }
+                            && itemsProperty.arraySize > 1
+                        )
+                        {
+                            int targetIndex = DetermineDragTargetIndex(
+                                rows,
+                                dragState.currentMouseY
+                            );
+                            targetIndex = Mathf.Clamp(targetIndex, 0, itemsProperty.arraySize - 1);
+                            if (targetIndex != dragState.startIndex)
+                            {
+                                itemsProperty.MoveArrayElement(dragState.startIndex, targetIndex);
+                                pagination.selectedIndex = targetIndex;
+                                SerializedObject serializedObject = property.serializedObject;
+                                serializedObject.ApplyModifiedProperties();
+                                SyncRuntimeSet(property);
+                                serializedObject.Update();
+                                property = serializedObject.FindProperty(propertyPath);
+                                itemsProperty = property.FindPropertyRelative(
+                                    SerializableHashSetSerializedPropertyNames.Items
+                                );
+                                EvaluateDuplicateState(property, itemsProperty, force: true);
+                                EvaluateNullEntryState(property, itemsProperty);
+                                EnsurePaginationBounds(
+                                    pagination,
+                                    itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0
+                                );
+                            }
+                        }
+
+                        dragState.startIndex = -1;
+                    }
+
+                    break;
+            }
+        }
+
+        private static int DetermineDragTargetIndex(List<RowRenderInfo> rows, float mouseY)
+        {
+            if (rows == null || rows.Count == 0)
+            {
+                return 0;
+            }
+
+            for (int i = 0; i < rows.Count; i++)
+            {
+                Rect rect = rows[i].rect;
+                float midpoint = rect.yMin + rect.height * 0.5f;
+                if (mouseY < midpoint)
+                {
+                    return rows[i].index;
+                }
+            }
+
+            return rows[^1].index;
         }
 
         internal static void SyncRuntimeSet(SerializedProperty setProperty)
