@@ -254,7 +254,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
     internal static class WGroupHeaderVisualUtility
     {
         private const float HorizontalContentPadding = 3f;
-        private const float VerticalContentPadding = 1f;
+        private const float VerticalContentPaddingTop = 1f;
+        private const float VerticalContentPaddingBottom = 1f;
 
         internal static void DrawHeaderBackground(Rect rect, Color baseColor)
         {
@@ -269,6 +270,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
         internal static Rect GetContentRect(Rect rect)
         {
+            return GetContentRect(rect, 0f, 0f);
+        }
+
+        internal static Rect GetContentRect(
+            Rect rect,
+            float additionalTopPadding,
+            float additionalBottomPadding
+        )
+        {
             if (rect.width <= 0f || rect.height <= 0f)
             {
                 return rect;
@@ -276,12 +286,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
             Rect contentRect = rect;
             float horizontal = HorizontalContentPadding;
-            float vertical = VerticalContentPadding;
+            float topPadding = VerticalContentPaddingTop + Mathf.Max(0f, additionalTopPadding);
+            float bottomPadding =
+                VerticalContentPaddingBottom + Mathf.Max(0f, additionalBottomPadding);
 
             contentRect.xMin += horizontal;
             contentRect.xMax -= horizontal;
-            contentRect.yMin += vertical;
-            contentRect.yMax -= vertical;
+            contentRect.yMin += topPadding;
+            contentRect.yMax -= bottomPadding;
 
             if (contentRect.xMax < contentRect.xMin)
             {

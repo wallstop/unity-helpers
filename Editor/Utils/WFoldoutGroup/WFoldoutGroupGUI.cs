@@ -62,14 +62,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup
                 expanded = GetFoldoutState(foldoutStates, key, definition);
 
                 GUIStyle foldoutStyle = WFoldoutGroupStyles.GetFoldoutStyle(palette.TextColor);
+                float headerHeight =
+                    EditorGUIUtility.singleLineHeight + WFoldoutGroupStyles.HeaderVerticalPadding;
                 Rect headerRect = GUILayoutUtility.GetRect(
                     GUIContent.none,
                     foldoutStyle,
-                    GUILayout.ExpandWidth(true)
+                    GUILayout.ExpandWidth(true),
+                    GUILayout.Height(headerHeight)
                 );
 
                 WFoldoutGroupStyles.DrawHeaderBackground(headerRect, palette.BackgroundColor);
-                Rect foldoutRect = WGroupHeaderVisualUtility.GetContentRect(headerRect);
+                Rect foldoutRect = WGroupHeaderVisualUtility.GetContentRect(
+                    headerRect,
+                    WFoldoutGroupStyles.HeaderTopPadding,
+                    WFoldoutGroupStyles.HeaderBottomPadding
+                );
                 foldoutRect.xMin += WFoldoutGroupStyles.HeaderContentOffset;
 
                 int originalIndent = EditorGUI.indentLevel;
@@ -243,6 +250,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup
     {
         internal const float HeaderContentOffset = 10f;
         internal const float ContentIndentPadding = 12f;
+        internal const float HeaderVerticalPadding = 6f;
+        internal const float HeaderTopPadding = 0f;
+        internal const float HeaderBottomPadding = 6f;
         private static readonly Dictionary<Color, GUIStyle> FoldoutStyles = new();
 
         internal static GUIStyle GetFoldoutStyle(Color textColor)
