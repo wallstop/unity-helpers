@@ -240,6 +240,85 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        public void SortedSetManualReorderShowsSortButton()
+        {
+            SortedSetHost host = CreateScriptableObject<SortedSetHost>();
+            host.set.Add(1);
+            host.set.Add(2);
+            host.set.Add(3);
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(SortedSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            itemsProperty.MoveArrayElement(0, 2);
+            serializedObject.ApplyModifiedProperties();
+
+            host.set.OnAfterDeserialize();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(SortedSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            bool showSort = SerializableSetPropertyDrawer.ShouldShowSortButton(
+                SerializableSetPropertyDrawer.IsSortedSet(setProperty),
+                typeof(int),
+                itemsProperty
+            );
+
+            Assert.IsTrue(showSort);
+            Assert.IsTrue(host.set.PreserveSerializedEntries);
+        }
+
+        [Test]
+        public void SetSortButtonVisibilityReflectsOrdering()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array values = Array.CreateInstance(inspector.ElementType, 2);
+            values.SetValue(5, 0);
+            values.SetValue(1, 1);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            bool showBefore = SerializableSetPropertyDrawer.ShouldShowSortButton(
+                SerializableSetPropertyDrawer.IsSortedSet(setProperty),
+                inspector.ElementType,
+                itemsProperty
+            );
+            Assert.IsTrue(showBefore);
+
+            values.SetValue(1, 0);
+            values.SetValue(5, 1);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            bool showAfter = SerializableSetPropertyDrawer.ShouldShowSortButton(
+                SerializableSetPropertyDrawer.IsSortedSet(setProperty),
+                inspector.ElementType,
+                itemsProperty
+            );
+            Assert.IsFalse(showAfter);
+        }
+
+        [Test]
         public void EditingStringSetEntryAffectsOnlyTarget()
         {
             StringSetHost host = CreateScriptableObject<StringSetHost>();

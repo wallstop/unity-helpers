@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Utils;
 
     [CustomPropertyDrawer(typeof(SerializableHashSet<>), true)]
     [CustomPropertyDrawer(typeof(SerializableSortedSet<>), true)]
@@ -27,6 +28,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIContent AddEntryContent = new("Add");
         private static readonly GUIContent ClearAllContent = new("Clear All");
         private static readonly GUIContent SortContent = new("Sort");
+        private static readonly GUIContent MoveUpContent = new("Move Up", "Move selected entry up");
+        private static readonly GUIContent MoveDownContent = new(
+            "Move Down",
+            "Move selected entry down"
+        );
         private static readonly GUIContent FirstPageContent = new("<<", "First Page");
         private static readonly GUIContent PreviousPageContent = new("<", "Previous Page");
         private static readonly GUIContent NextPageContent = new(">", "Next Page");
@@ -670,10 +676,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool isSortedSet
         )
         {
-            if (!TryGetSetInspector(property, propertyPath, out _))
+            if (
+                !TryGetSetInspector(property, propertyPath, out ISerializableSetInspector inspector)
+            )
             {
                 return;
             }
+
+            Type elementType = inspector.ElementType;
+            bool allowSort = isSortedSet || ElementSupportsManualSorting(elementType);
 
             float lineHeight = EditorGUIUtility.singleLineHeight;
 
@@ -722,15 +733,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             nextX = clearRect.xMax + ButtonSpacing;
-            if (isSortedSet)
+            bool needsSorting = ShouldShowSortButton(isSortedSet, elementType, itemsProperty);
+            if (needsSorting)
             {
                 Rect sortRect = new(nextX, firstRowRect.y, 60f, lineHeight);
-                bool canSortElements = CanSortElements(itemsProperty);
-                bool needsSorting = canSortElements && NeedsSorting(itemsProperty);
-                GUIStyle sortStyle = needsSorting ? SortActiveButtonStyle : SortInactiveButtonStyle;
-                if (GUI.Button(sortRect, SortContent, sortStyle) && needsSorting)
+                if (GUI.Button(sortRect, SortContent, SortActiveButtonStyle))
                 {
-                    if (TrySortElements(ref property, propertyPath, itemsProperty))
+                    if (
+                        NeedsSorting(itemsProperty, allowSort)
+                        && TrySortElements(ref property, propertyPath, itemsProperty)
+                    )
                     {
                         itemsProperty = property.FindPropertyRelative(
                             SerializableHashSetSerializedPropertyNames.Items
@@ -793,6 +805,62 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 rightCursor = removeRect.x - ButtonSpacing;
+                availableWidth = Mathf.Max(0f, rightCursor - rect.x);
+            }
+
+            if (hasSelection && totalCount > 1)
+            {
+                float moveButtonWidth = Mathf.Max(18f, PaginationButtonWidth - 8f);
+                Rect moveDownRect = new(
+                    rightCursor - moveButtonWidth,
+                    rect.y,
+                    moveButtonWidth,
+                    lineHeight
+                );
+                using (new EditorGUI.DisabledScope(pagination.selectedIndex >= totalCount - 1))
+                {
+                    if (GUI.Button(moveDownRect, MoveDownContent, RemoveButtonStyle))
+                    {
+                        TryMoveSelectedEntry(
+                            ref property,
+                            propertyPath,
+                            ref itemsProperty,
+                            pagination,
+                            direction: 1
+                        );
+                        totalCount = itemsProperty is { isArray: true }
+                            ? itemsProperty.arraySize
+                            : 0;
+                    }
+                }
+
+                rightCursor = moveDownRect.x - ButtonSpacing;
+                availableWidth = Mathf.Max(0f, rightCursor - rect.x);
+
+                Rect moveUpRect = new(
+                    rightCursor - moveButtonWidth,
+                    rect.y,
+                    moveButtonWidth,
+                    lineHeight
+                );
+                using (new EditorGUI.DisabledScope(pagination.selectedIndex <= 0))
+                {
+                    if (GUI.Button(moveUpRect, MoveUpContent, RemoveButtonStyle))
+                    {
+                        TryMoveSelectedEntry(
+                            ref property,
+                            propertyPath,
+                            ref itemsProperty,
+                            pagination,
+                            direction: -1
+                        );
+                        totalCount = itemsProperty is { isArray: true }
+                            ? itemsProperty.arraySize
+                            : 0;
+                    }
+                }
+
+                rightCursor = moveUpRect.x - ButtonSpacing;
                 availableWidth = Mathf.Max(0f, rightCursor - rect.x);
             }
 
@@ -1012,6 +1080,38 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             return type != null
                 && (!type.IsValueType || typeof(UnityEngine.Object).IsAssignableFrom(type));
+        }
+
+        private static bool ElementSupportsManualSorting(Type elementType)
+        {
+            if (elementType == null)
+            {
+                return false;
+            }
+
+            Type candidate = Nullable.GetUnderlyingType(elementType) ?? elementType;
+            if (typeof(UnityEngine.Object).IsAssignableFrom(candidate))
+            {
+                return true;
+            }
+
+            if (typeof(IComparable).IsAssignableFrom(candidate))
+            {
+                return true;
+            }
+
+            Type genericComparable = typeof(IComparable<>).MakeGenericType(candidate);
+            return genericComparable.IsAssignableFrom(candidate);
+        }
+
+        internal static bool ShouldShowSortButton(
+            bool isSortedSet,
+            Type elementType,
+            SerializedProperty itemsProperty
+        )
+        {
+            bool allowSort = isSortedSet || ElementSupportsManualSorting(elementType);
+            return NeedsSorting(itemsProperty, allowSort);
         }
 
         private static string BuildNullEntrySummary(List<int> indices)
@@ -1624,20 +1724,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return null;
         }
 
-        private static bool CanSortElements(SerializedProperty itemsProperty)
+        private static bool CanSortElements(SerializedProperty itemsProperty, bool allowSort)
         {
+            if (!allowSort)
+            {
+                return false;
+            }
+
             if (itemsProperty == null || !itemsProperty.isArray || itemsProperty.arraySize <= 1)
             {
                 return false;
             }
 
-            SerializedProperty element = itemsProperty.GetArrayElementAtIndex(0);
-            return SupportsSorting(element.propertyType);
+            return true;
         }
 
-        private static bool NeedsSorting(SerializedProperty itemsProperty)
+        private static bool NeedsSorting(SerializedProperty itemsProperty, bool allowSort)
         {
-            if (!CanSortElements(itemsProperty))
+            if (!CanSortElements(itemsProperty, allowSort))
             {
                 return false;
             }
@@ -1680,36 +1784,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return false;
-        }
-
-        private static bool SupportsSorting(SerializedPropertyType propertyType)
-        {
-            switch (propertyType)
-            {
-                case SerializedPropertyType.Integer:
-                case SerializedPropertyType.Boolean:
-                case SerializedPropertyType.Float:
-                case SerializedPropertyType.String:
-                case SerializedPropertyType.Enum:
-                case SerializedPropertyType.Color:
-                case SerializedPropertyType.Vector2:
-                case SerializedPropertyType.Vector3:
-                case SerializedPropertyType.Vector4:
-                case SerializedPropertyType.Rect:
-                case SerializedPropertyType.LayerMask:
-                case SerializedPropertyType.Character:
-                case SerializedPropertyType.Quaternion:
-                case SerializedPropertyType.Vector2Int:
-                case SerializedPropertyType.Vector3Int:
-                case SerializedPropertyType.RectInt:
-                case SerializedPropertyType.Bounds:
-                case SerializedPropertyType.BoundsInt:
-                case SerializedPropertyType.ObjectReference:
-                case SerializedPropertyType.Hash128:
-                    return true;
-                default:
-                    return false;
-            }
         }
 
         internal bool TryAddNewElement(
@@ -1961,6 +2035,54 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return true;
         }
 
+        private void TryMoveSelectedEntry(
+            ref SerializedProperty property,
+            string propertyPath,
+            ref SerializedProperty itemsProperty,
+            PaginationState pagination,
+            int direction
+        )
+        {
+            if (itemsProperty == null || !itemsProperty.isArray)
+            {
+                return;
+            }
+
+            int totalCount = itemsProperty.arraySize;
+            if (totalCount <= 1)
+            {
+                return;
+            }
+
+            int selectedIndex = pagination.selectedIndex;
+            if (selectedIndex < 0 || selectedIndex >= totalCount)
+            {
+                return;
+            }
+
+            int targetIndex = selectedIndex + direction;
+            if (targetIndex < 0 || targetIndex >= totalCount)
+            {
+                return;
+            }
+
+            itemsProperty.MoveArrayElement(selectedIndex, targetIndex);
+            pagination.selectedIndex = targetIndex;
+
+            SerializedObject serializedObject = property.serializedObject;
+            serializedObject.ApplyModifiedProperties();
+            SyncRuntimeSet(property);
+            serializedObject.Update();
+            property = serializedObject.FindProperty(propertyPath);
+            itemsProperty = property.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            EnsurePaginationBounds(pagination, itemsProperty?.arraySize ?? 0);
+            EvaluateDuplicateState(property, itemsProperty, force: true);
+            EvaluateNullEntryState(property, itemsProperty);
+        }
+
         private void TryRemoveSelectedEntry(
             ref SerializedProperty property,
             string propertyPath,
@@ -2006,7 +2128,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             SerializedProperty itemsProperty
         )
         {
-            if (itemsProperty == null || !itemsProperty.isArray || itemsProperty.arraySize <= 1)
+            if (
+                itemsProperty == null
+                || !itemsProperty.isArray
+                || itemsProperty.arraySize <= 1
+                || !TryGetSetInspector(
+                    property,
+                    propertyPath,
+                    out ISerializableSetInspector inspector
+                )
+            )
+            {
+                return false;
+            }
+
+            bool allowSort =
+                inspector.SupportsSorting || ElementSupportsManualSorting(inspector.ElementType);
+            if (!allowSort)
             {
                 return false;
             }
@@ -2042,16 +2180,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 WriteElementValue(elementProperty, elements[index]);
             }
 
-            if (TryGetSetInspector(property, propertyPath, out ISerializableSetInspector inspector))
+            inspector.ClearElements();
+            foreach (SetElementData element in elements)
             {
-                inspector.ClearElements();
-                foreach (SetElementData element in elements)
-                {
-                    inspector.TryAddElement(element.value, out _);
-                }
-
-                inspector.SynchronizeSerializedState();
+                inspector.TryAddElement(element.value, out object _);
             }
+
+            inspector.SynchronizeSerializedState();
 
             property.serializedObject.Update();
             property = property.serializedObject.FindProperty(propertyPath);
@@ -2439,6 +2574,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return 1;
             }
 
+            if (left is UnityEngine.Object || right is UnityEngine.Object)
+            {
+                UnityEngine.Object leftObject = left as UnityEngine.Object;
+                UnityEngine.Object rightObject = right as UnityEngine.Object;
+                return UnityObjectNameComparer<UnityEngine.Object>.Instance.Compare(
+                    leftObject,
+                    rightObject
+                );
+            }
+
             if (left is IComparable comparable)
             {
                 return comparable.CompareTo(right);
@@ -2552,10 +2697,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 case SerializedPropertyType.ObjectReference:
                     UnityEngine.Object objectReferenceValue = property.objectReferenceValue;
                     data.value = objectReferenceValue;
-                    data.comparable =
-                        objectReferenceValue != null
-                            ? objectReferenceValue.GetInstanceID()
-                            : NullComparable;
+                    data.comparable = objectReferenceValue ?? NullComparable;
                     break;
                 case SerializedPropertyType.AnimationCurve:
                     AnimationCurve curveValue = property.animationCurveValue;

@@ -274,6 +274,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// </example>
         public void OnAfterDeserialize()
         {
+            bool preserveExistingOrder = _preserveSerializedEntries;
             bool keysAndValuesPresent =
                 _keys != null && _values != null && _keys.Length == _values.Length;
 
@@ -293,6 +294,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             bool encounteredNullReference = false;
             bool keySupportsNullCheck = TypeSupportsNullReferences(typeof(TKey));
             int length = _keys.Length;
+            bool keysOutOfOrder = false;
+            IComparer<TKey> comparer = _dictionary.Comparer ?? Comparer<TKey>.Default;
+            bool hasPreviousKey = false;
+            TKey previousKey = default;
 
             for (int index = 0; index < length; index++)
             {
@@ -311,14 +316,29 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                     hasDuplicateKeys = true;
                 }
 
+                if (!keysOutOfOrder && hasPreviousKey)
+                {
+                    if (comparer.Compare(previousKey, key) > 0)
+                    {
+                        keysOutOfOrder = true;
+                    }
+                }
+
                 _dictionary[key] = value;
+                previousKey = key;
+                hasPreviousKey = true;
             }
 
-            _preserveSerializedEntries = hasDuplicateKeys || encounteredNullReference;
+            _preserveSerializedEntries =
+                preserveExistingOrder
+                || hasDuplicateKeys
+                || encounteredNullReference
+                || keysOutOfOrder;
             if (!_preserveSerializedEntries)
             {
                 _keys = null;
                 _values = null;
+                _arraysDirty = true;
             }
             else
             {

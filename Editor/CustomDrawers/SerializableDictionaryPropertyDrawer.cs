@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     [CustomPropertyDrawer(typeof(SerializableDictionary<,>), true)]
@@ -1614,22 +1615,30 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             Func<object, object, int> comparison = null;
-            bool sortEnabled = false;
-            if (isSortedDictionary && keyType != null && valueType != null)
+            if (keyType != null && valueType != null)
             {
-                object comparerInstance = ResolveComparerInstance(
-                    dictionaryProperty,
-                    dictionaryInstance,
-                    keyType
-                );
-                comparison = CreateComparisonDelegate(comparerInstance, keyType);
-                if (comparison != null)
+                if (isSortedDictionary)
                 {
-                    bool canSort = itemCount > 1;
-                    bool alreadySorted = KeysAreSorted(keysProperty, keyType, comparison);
-                    sortEnabled = canSort && !alreadySorted;
+                    object comparerInstance = ResolveComparerInstance(
+                        dictionaryProperty,
+                        dictionaryInstance,
+                        keyType
+                    );
+                    comparison = CreateComparisonDelegate(comparerInstance, keyType);
+                }
+
+                if (comparison == null && KeyTypeSupportsManualSorting(keyType))
+                {
+                    comparison = CreateManualKeyComparisonDelegate(keyType);
                 }
             }
+            bool showSort = ShouldShowDictionarySortButton(
+                keysProperty,
+                keyType,
+                itemCount,
+                comparison
+            );
+            bool sortEnabled = showSort;
 
             GUIContent clearAllContent = EditorGUIUtility.TrTextContent(
                 "Clear All",
@@ -1643,7 +1652,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             bool showRange = itemCount > 0 || rangeText == "Empty";
             bool showClear = true;
-            bool showSort = isSortedDictionary && comparison != null;
             bool showRemove = true;
 
             float requiredWidth = CalculateRequiredWidth(
@@ -2821,6 +2829,88 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
                 return result != null ? Convert.ToInt32(result, CultureInfo.InvariantCulture) : 0;
             };
+        }
+
+        private static Func<object, object, int> CreateManualKeyComparisonDelegate(Type keyType)
+        {
+            if (!KeyTypeSupportsManualSorting(keyType))
+            {
+                return null;
+            }
+
+            if (IsUnityObjectKey(keyType))
+            {
+                return CreateUnityObjectComparisonDelegate(keyType);
+            }
+
+            return CreateComparisonDelegate(null, keyType);
+        }
+
+        private static Func<object, object, int> CreateUnityObjectComparisonDelegate(Type keyType)
+        {
+            if (!IsUnityObjectKey(keyType))
+            {
+                return null;
+            }
+
+            return delegate(object left, object right)
+            {
+                Object leftObject = ConvertKeyToUnityObject(left);
+                Object rightObject = ConvertKeyToUnityObject(right);
+                return UnityObjectNameComparer<Object>.Instance.Compare(leftObject, rightObject);
+            };
+        }
+
+        private static Object ConvertKeyToUnityObject(object key)
+        {
+            return key as Object;
+        }
+
+        internal static bool ShouldShowDictionarySortButton(
+            SerializedProperty keysProperty,
+            Type keyType,
+            int itemCount,
+            Func<object, object, int> comparison
+        )
+        {
+            if (comparison == null || keyType == null || keysProperty == null)
+            {
+                return false;
+            }
+
+            if (itemCount <= 1)
+            {
+                return false;
+            }
+
+            return !KeysAreSorted(keysProperty, keyType, comparison);
+        }
+
+        private static bool KeyTypeSupportsManualSorting(Type keyType)
+        {
+            if (keyType == null)
+            {
+                return false;
+            }
+
+            if (IsUnityObjectKey(keyType))
+            {
+                return true;
+            }
+
+            Type candidate = Nullable.GetUnderlyingType(keyType) ?? keyType;
+            if (typeof(IComparable).IsAssignableFrom(candidate))
+            {
+                return true;
+            }
+
+            Type genericComparable = typeof(IComparable<>).MakeGenericType(candidate);
+            return genericComparable.IsAssignableFrom(candidate);
+        }
+
+        private static bool IsUnityObjectKey(Type keyType)
+        {
+            return keyType != null && typeof(Object).IsAssignableFrom(keyType);
         }
 
         private static object ConvertKeyForComparison(object key, Type keyType)

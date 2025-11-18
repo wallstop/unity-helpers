@@ -402,6 +402,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             bool hasDuplicates = false;
             bool encounteredNullReference = false;
             bool supportsNullCheck = TypeSupportsNullReferences(typeof(T));
+            bool trackOrdering = SupportsSorting;
+            bool itemsOutOfOrder = false;
+            IComparer<T> orderingComparer = Comparer<T>.Default;
+            if (trackOrdering && Set is SortedSet<T> sortedSet)
+            {
+                orderingComparer = sortedSet.Comparer;
+            }
+
+            bool hasPreviousValue = false;
+            T previousValue = default;
+
             for (int index = 0; index < _items.Length; index++)
             {
                 T value = _items[index];
@@ -419,10 +430,27 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 {
                     hasDuplicates = true;
                 }
+
+                if (trackOrdering && !itemsOutOfOrder)
+                {
+                    if (hasPreviousValue)
+                    {
+                        if (orderingComparer.Compare(previousValue, value) > 0)
+                        {
+                            itemsOutOfOrder = true;
+                        }
+                    }
+
+                    previousValue = value;
+                    hasPreviousValue = true;
+                }
             }
 
             _preserveSerializedEntries =
-                preserveExistingOrder || hasDuplicates || encounteredNullReference;
+                preserveExistingOrder
+                || hasDuplicates
+                || encounteredNullReference
+                || itemsOutOfOrder;
 
             if (!_preserveSerializedEntries)
             {
