@@ -32,8 +32,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             {
                 _groupStyle ??= new GUIStyle(EditorStyles.helpBox)
                 {
-                    padding = new RectOffset(12, 12, 10, 10),
-                    margin = new RectOffset(4, 4, 4, 4),
+                    padding = new RectOffset(8, 8, 6, 6),
+                    margin = new RectOffset(2, 2, 2, 2),
                 };
                 return _groupStyle;
             }
@@ -63,7 +63,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                     richText = false,
                     fixedHeight = ButtonHeight,
                     alignment = TextAnchor.MiddleCenter,
-                    margin = new RectOffset(2, 2, 2, 6),
+                    margin = new RectOffset(2, 2, 2, 4),
                 };
                 return _baseButtonStyle;
             }
@@ -92,8 +92,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 _foldoutHeaderStyle ??= new GUIStyle(EditorStyles.foldoutHeader)
                 {
                     fontStyle = FontStyle.Bold,
-                    padding = new RectOffset(18, 8, 4, 4),
-                    margin = new RectOffset(0, 4, 2, 2),
+                    padding = new RectOffset(14, 6, 3, 3),
+                    margin = new RectOffset(0, 2, 1, 1),
                 };
                 return _foldoutHeaderStyle;
             }
@@ -195,13 +195,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
         private static GUIStyle CreateFoldoutContainerStyle(bool expanded)
         {
-            RectOffset padding = expanded
-                ? new RectOffset(12, 12, 10, 10)
-                : new RectOffset(12, 12, 10, 8);
+            RectOffset padding = expanded ? new RectOffset(8, 8, 6, 6) : new RectOffset(8, 8, 6, 4);
             GUIStyle style = new(EditorStyles.helpBox)
             {
                 padding = padding,
-                margin = new RectOffset(4, 4, 6, 6),
+                margin = new RectOffset(2, 2, 4, 4),
             };
             return style;
         }
