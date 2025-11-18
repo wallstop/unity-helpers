@@ -141,11 +141,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             );
 
             WGroupStyles.DrawHeaderBackground(headerRect, palette.BackgroundColor);
+            Rect foldoutRect = WGroupHeaderVisualUtility.GetContentRect(headerRect);
 
             int originalIndent = EditorGUI.indentLevel;
             EditorGUI.indentLevel = 0;
             expanded = EditorGUI.Foldout(
-                headerRect,
+                foldoutRect,
                 expanded,
                 definition.DisplayName,
                 true,
@@ -182,7 +183,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 GUILayout.ExpandWidth(true)
             );
             WGroupStyles.DrawHeaderBackground(labelRect, palette.BackgroundColor);
-            GUI.Label(labelRect, content, labelStyle);
+            Rect contentRect = WGroupHeaderVisualUtility.GetContentRect(labelRect);
+            GUI.Label(contentRect, content, labelStyle);
             WGroupStyles.DrawHeaderBorder(labelRect, palette.BackgroundColor);
             GUILayout.Space(2f);
             return labelRect;
@@ -251,6 +253,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
     internal static class WGroupHeaderVisualUtility
     {
+        private const float HorizontalContentPadding = 3f;
+        private const float VerticalContentPadding = 1f;
+
         internal static void DrawHeaderBackground(Rect rect, Color baseColor)
         {
             if (Event.current.type != EventType.Repaint)
@@ -260,6 +265,39 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
             Color tinted = GetHeaderTint(baseColor);
             EditorGUI.DrawRect(rect, tinted);
+        }
+
+        internal static Rect GetContentRect(Rect rect)
+        {
+            if (rect.width <= 0f || rect.height <= 0f)
+            {
+                return rect;
+            }
+
+            Rect contentRect = rect;
+            float horizontal = HorizontalContentPadding;
+            float vertical = VerticalContentPadding;
+
+            contentRect.xMin += horizontal;
+            contentRect.xMax -= horizontal;
+            contentRect.yMin += vertical;
+            contentRect.yMax -= vertical;
+
+            if (contentRect.xMax < contentRect.xMin)
+            {
+                float centerX = rect.center.x;
+                contentRect.xMin = centerX;
+                contentRect.xMax = centerX;
+            }
+
+            if (contentRect.yMax < contentRect.yMin)
+            {
+                float centerY = rect.center.y;
+                contentRect.yMin = centerY;
+                contentRect.yMax = centerY;
+            }
+
+            return contentRect;
         }
 
         internal static void DrawHeaderBorder(Rect rect, Color baseColor)

@@ -69,7 +69,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup
                 );
 
                 WFoldoutGroupStyles.DrawHeaderBackground(headerRect, palette.BackgroundColor);
-                Rect foldoutRect = headerRect;
+                Rect foldoutRect = WGroupHeaderVisualUtility.GetContentRect(headerRect);
                 foldoutRect.xMin += WFoldoutGroupStyles.HeaderContentOffset;
 
                 int originalIndent = EditorGUI.indentLevel;
@@ -111,14 +111,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup
             EditorGUI.indentLevel++;
             if (!allowHeader || foldoutAnim == null)
             {
-                DrawProperties(definition, serializedObject, overrideDrawer);
+                DrawProperties(definition, serializedObject, overrideDrawer, allowHeader);
             }
             else
             {
                 bool visible = EditorGUILayout.BeginFadeGroup(foldoutAnim.faded);
                 if (visible)
                 {
-                    DrawProperties(definition, serializedObject, overrideDrawer);
+                    DrawProperties(definition, serializedObject, overrideDrawer, allowHeader);
                 }
                 EditorGUILayout.EndFadeGroup();
             }
@@ -131,7 +131,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup
         private static void DrawProperties(
             WFoldoutGroupDefinition definition,
             SerializedObject serializedObject,
-            PropertyOverride overrideDrawer
+            PropertyOverride overrideDrawer,
+            bool allowHeader
         )
         {
             IReadOnlyList<string> propertyPaths = definition.PropertyPaths;
@@ -146,6 +147,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup
                 out float leftPadding,
                 out float rightPadding
             );
+            if (allowHeader)
+            {
+                leftPadding += WFoldoutGroupStyles.ContentIndentPadding;
+            }
+            horizontalPadding = Mathf.Max(0f, leftPadding + rightPadding);
             using (
                 GroupGUIWidthUtility.PushContentPadding(
                     horizontalPadding,
@@ -236,6 +242,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup
     internal static class WFoldoutGroupStyles
     {
         internal const float HeaderContentOffset = 10f;
+        internal const float ContentIndentPadding = 12f;
         private static readonly Dictionary<Color, GUIStyle> FoldoutStyles = new();
 
         internal static GUIStyle GetFoldoutStyle(Color textColor)
