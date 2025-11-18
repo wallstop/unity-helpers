@@ -153,6 +153,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             );
             EditorGUI.indentLevel = originalIndent;
 
+            WGroupStyles.DrawHeaderBorder(headerRect, palette.BackgroundColor);
+
             if (foldoutStates != null)
             {
                 foldoutStates[key] = expanded;
@@ -181,6 +183,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             );
             WGroupStyles.DrawHeaderBackground(labelRect, palette.BackgroundColor);
             GUI.Label(labelRect, content, labelStyle);
+            WGroupStyles.DrawHeaderBorder(labelRect, palette.BackgroundColor);
             GUILayout.Space(2f);
             return labelRect;
         }
@@ -237,6 +240,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
         internal static void DrawHeaderBackground(Rect rect, Color baseColor)
         {
+            WGroupHeaderVisualUtility.DrawHeaderBackground(rect, baseColor);
+        }
+
+        internal static void DrawHeaderBorder(Rect rect, Color baseColor)
+        {
+            WGroupHeaderVisualUtility.DrawHeaderBorder(rect, baseColor);
+        }
+    }
+
+    internal static class WGroupHeaderVisualUtility
+    {
+        internal static void DrawHeaderBackground(Rect rect, Color baseColor)
+        {
             if (Event.current.type != EventType.Repaint)
             {
                 return;
@@ -246,10 +262,76 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             EditorGUI.DrawRect(rect, tinted);
         }
 
+        internal static void DrawHeaderBorder(Rect rect, Color baseColor)
+        {
+            if (Event.current.type != EventType.Repaint)
+            {
+                return;
+            }
+
+            float borderThickness = GetBorderThickness(rect);
+            if (borderThickness <= 0f)
+            {
+                return;
+            }
+
+            Color borderColor = GetHeaderBorderColor(baseColor);
+            DrawHeaderBorderRects(rect, borderThickness, borderColor);
+        }
+
         private static Color GetHeaderTint(Color baseColor)
         {
             float alpha = EditorGUIUtility.isProSkin ? 0.62f : 0.28f;
             return new Color(baseColor.r, baseColor.g, baseColor.b, alpha);
+        }
+
+        private static float GetBorderThickness(Rect rect)
+        {
+            float available = Mathf.Min(rect.width, rect.height);
+            if (available <= 0f)
+            {
+                return 0f;
+            }
+
+            float pixelsPerPoint = Mathf.Max(1f, EditorGUIUtility.pixelsPerPoint);
+            float capped = Mathf.Min(pixelsPerPoint, available * 0.5f);
+            return Mathf.Max(1f, capped);
+        }
+
+        private static void DrawHeaderBorderRects(
+            Rect rect,
+            float borderThickness,
+            Color borderColor
+        )
+        {
+            Rect topBorder = new Rect(rect.xMin, rect.yMin, rect.width, borderThickness);
+            Rect bottomBorder = new Rect(
+                rect.xMin,
+                rect.yMax - borderThickness,
+                rect.width,
+                borderThickness
+            );
+            Rect leftBorder = new Rect(rect.xMin, rect.yMin, borderThickness, rect.height);
+            Rect rightBorder = new Rect(
+                rect.xMax - borderThickness,
+                rect.yMin,
+                borderThickness,
+                rect.height
+            );
+
+            EditorGUI.DrawRect(topBorder, borderColor);
+            EditorGUI.DrawRect(bottomBorder, borderColor);
+            EditorGUI.DrawRect(leftBorder, borderColor);
+            EditorGUI.DrawRect(rightBorder, borderColor);
+        }
+
+        private static Color GetHeaderBorderColor(Color baseColor)
+        {
+            Color emphasisTarget = EditorGUIUtility.isProSkin ? Color.white : Color.black;
+            float emphasisWeight = EditorGUIUtility.isProSkin ? 0.15f : 0.4f;
+            Color emphasized = Color.Lerp(baseColor, emphasisTarget, emphasisWeight);
+            float alpha = EditorGUIUtility.isProSkin ? 0.9f : 0.8f;
+            return new Color(emphasized.r, emphasized.g, emphasized.b, alpha);
         }
     }
 #endif

@@ -69,18 +69,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup
                 );
 
                 WFoldoutGroupStyles.DrawHeaderBackground(headerRect, palette.BackgroundColor);
-                headerRect.xMin += WFoldoutGroupStyles.HeaderContentOffset;
+                Rect foldoutRect = headerRect;
+                foldoutRect.xMin += WFoldoutGroupStyles.HeaderContentOffset;
 
                 int originalIndent = EditorGUI.indentLevel;
                 EditorGUI.indentLevel = 0;
                 bool newExpanded = EditorGUI.Foldout(
-                    headerRect,
+                    foldoutRect,
                     expanded,
                     definition.DisplayName,
                     true,
                     foldoutStyle
                 );
                 EditorGUI.indentLevel = originalIndent;
+
+                WFoldoutGroupStyles.DrawHeaderBorder(headerRect, palette.BackgroundColor);
 
                 if (foldoutStates != null)
                 {
@@ -258,19 +261,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup
 
         internal static void DrawHeaderBackground(Rect rect, Color baseColor)
         {
-            if (Event.current.type != EventType.Repaint)
-            {
-                return;
-            }
-
-            Color tinted = GetHeaderTint(baseColor);
-            EditorGUI.DrawRect(rect, tinted);
+            WGroupHeaderVisualUtility.DrawHeaderBackground(rect, baseColor);
         }
 
-        private static Color GetHeaderTint(Color baseColor)
+        internal static void DrawHeaderBorder(Rect rect, Color baseColor)
         {
-            float alpha = EditorGUIUtility.isProSkin ? 0.62f : 0.28f;
-            return new Color(baseColor.r, baseColor.g, baseColor.b, alpha);
+            WGroupHeaderVisualUtility.DrawHeaderBorder(rect, baseColor);
         }
     }
 #endif
