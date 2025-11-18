@@ -19,6 +19,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
     internal static class WButtonGUI
     {
         private static readonly Dictionary<int, int> GroupCounts = new();
+        private static readonly Dictionary<int, string> GroupNames = new();
         private static readonly Dictionary<int, AnimBool> FoldoutAnimations = new();
         private static readonly GUIContent ClearHistoryContent = new("Clear History");
         private static readonly GUIContent RecentResultsHeaderContent = new("Recent Results");
@@ -65,9 +66,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
             bool anyDrawn = false;
             GroupCounts.Clear();
+            GroupNames.Clear();
             foreach (KeyValuePair<int, List<WButtonMethodContext>> entry in groups)
             {
-                GroupCounts[entry.Key] = entry.Value?.Count ?? 0;
+                List<WButtonMethodContext> groupContexts = entry.Value;
+                GroupCounts[entry.Key] = groupContexts?.Count ?? 0;
+                string resolvedGroupName = ResolveGroupName(groupContexts);
+                if (!string.IsNullOrWhiteSpace(resolvedGroupName))
+                {
+                    GroupNames[entry.Key] = resolvedGroupName;
+                }
             }
 
             foreach (KeyValuePair<int, List<WButtonMethodContext>> entry in groups)
@@ -383,6 +391,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         {
             GUIContent baseLabel =
                 drawOrder >= -1 ? WButtonStyles.TopGroupLabel : WButtonStyles.BottomGroupLabel;
+
+            if (
+                GroupNames.TryGetValue(drawOrder, out string customName)
+                && !string.IsNullOrWhiteSpace(customName)
+            )
+            {
+                return new GUIContent(customName, baseLabel.tooltip);
+            }
+
             if (GroupCounts.Count <= 1)
             {
                 return baseLabel;
@@ -395,6 +412,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
             string textWithOrder = $"{baseLabel.text} ({drawOrder})";
             return new GUIContent(textWithOrder, baseLabel.tooltip);
+        }
+
+        private static string ResolveGroupName(List<WButtonMethodContext> contexts)
+        {
+            if (contexts == null)
+            {
+                return null;
+            }
+
+            for (int index = 0; index < contexts.Count; index++)
+            {
+                WButtonMethodContext context = contexts[index];
+                string groupName = context?.Metadata?.GroupName;
+                if (!string.IsNullOrWhiteSpace(groupName))
+                {
+                    return groupName;
+                }
+            }
+
+            return null;
         }
 
         private static void DrawMethod(

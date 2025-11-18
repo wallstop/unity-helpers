@@ -14,13 +14,15 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             string displayName = null,
             int drawOrder = 0,
             int historyCapacity = UseGlobalHistory,
-            string priority = null
+            string priority = null,
+            string groupName = null
         )
         {
             DisplayName = string.IsNullOrWhiteSpace(displayName) ? null : displayName.Trim();
             DrawOrder = drawOrder;
             HistoryCapacity = historyCapacity < 0 ? UseGlobalHistory : historyCapacity;
             ColorKey = string.IsNullOrWhiteSpace(priority) ? null : priority.Trim();
+            GroupName = string.IsNullOrWhiteSpace(groupName) ? null : groupName.Trim();
         }
 
         /// <summary>
@@ -42,6 +44,12 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// Optional custom color key used to resolve palette-based styling.
         /// </summary>
         public string ColorKey { get; }
+
+        /// <summary>
+        /// Optional override for the inspector group header associated with this draw order.
+        /// The first non-empty name encountered for a draw order wins.
+        /// </summary>
+        public string GroupName { get; }
 
         /// <summary>
         /// Legacy alias for <see cref="ColorKey"/> to maintain backwards compatibility.

@@ -123,6 +123,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             DrawOrder = attribute.DrawOrder;
             HistoryCapacity = attribute.HistoryCapacity;
             ColorKey = string.IsNullOrEmpty(colorKey) ? null : colorKey;
+            GroupName = string.IsNullOrWhiteSpace(attribute.GroupName) ? null : attribute.GroupName;
         }
 
         internal Type DeclaringType { get; }
@@ -138,6 +139,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         internal int HistoryCapacity { get; }
 
         internal string ColorKey { get; }
+
+        internal string GroupName { get; }
 
         [System.Obsolete("Use ColorKey instead.")]
         internal string Priority => ColorKey;

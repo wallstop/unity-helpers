@@ -15,7 +15,7 @@ public sealed class ExampleBehaviour : MonoBehaviour
         transform.position = Vector3.zero;
     }
 
-    [WButton("Download Data", drawOrder: -2, historyCapacity: 3)]
+    [WButton("Download Data", drawOrder: -2, historyCapacity: 3, groupName: "Networking")]
     public async Task<string> FetchAsync(int id, CancellationToken token)
     {
         // long running work...
@@ -27,6 +27,7 @@ public sealed class ExampleBehaviour : MonoBehaviour
 - **Display name** (optional) customises the button text. When omitted the method name is nicified.
 - **Draw order** controls placement: values `>= -1` render above the default inspector, lower values render below it. Groups are paginated by draw order.
 - **History capacity** overrides how many results are retained (defaults to the package-wide setting).
+- **Group name** (optional) replaces the inspector header for the associated draw-order bucket. The first button that supplies a non-empty name wins, letting you rename trays to something meaningful like "Networking" or "Debug Tools".
 
 ## Parameters & Input
 

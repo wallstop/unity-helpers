@@ -93,7 +93,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 _foldoutHeaderStyle ??= new GUIStyle(EditorStyles.foldoutHeader)
                 {
                     fontStyle = FontStyle.Bold,
-                    padding = new RectOffset(12, 4, 2, 2),
+                    padding = new RectOffset(18, 4, 2, 2),
                     margin = new RectOffset(0, 1, 2, 1),
                 };
                 return _foldoutHeaderStyle;

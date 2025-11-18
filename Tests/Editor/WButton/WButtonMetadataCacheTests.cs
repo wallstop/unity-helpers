@@ -61,6 +61,18 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         }
 
         [Test]
+        public void MetadataCapturesGroupName()
+        {
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(SampleTarget)
+            );
+            WButtonMethodMetadata method = metadata.First(m =>
+                m.Method.Name == nameof(SampleTarget.NamedGroupMethod)
+            );
+            Assert.That(method.GroupName, Is.EqualTo("Utilities"));
+        }
+
+        [Test]
         public void AsyncTaskMetadataDetectsResultType()
         {
             IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
@@ -247,6 +259,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             [WButton(priority: "Critical")]
             public void PriorityMethod() { }
+
+            [WButton(drawOrder: -3, groupName: "Utilities")]
+            public void NamedGroupMethod() { }
         }
     }
 }
