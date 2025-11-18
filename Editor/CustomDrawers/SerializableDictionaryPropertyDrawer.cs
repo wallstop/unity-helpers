@@ -245,17 +245,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static Rect ResolveContentRect(Rect position)
         {
+            const float MinimumGroupIndent = 6f;
+
             Rect padded = GroupGUIWidthUtility.ApplyCurrentPadding(position);
-            int originalIndent = EditorGUI.indentLevel;
-            if (originalIndent <= 0)
+            Rect indented = EditorGUI.IndentedRect(padded);
+
+            if (EditorGUI.indentLevel <= 0)
             {
-                EditorGUI.indentLevel = 1;
-                Rect indented = EditorGUI.IndentedRect(padded);
-                EditorGUI.indentLevel = originalIndent;
-                return indented;
+                indented.xMin += MinimumGroupIndent;
+                indented.width = Mathf.Max(0f, indented.width - MinimumGroupIndent);
             }
 
-            return EditorGUI.IndentedRect(padded);
+            return indented;
         }
 
         /// <summary>
