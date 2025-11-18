@@ -32,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             {
                 _groupStyle ??= new GUIStyle(EditorStyles.helpBox)
                 {
-                    padding = new RectOffset(4, 4, 2, 4),
+                    padding = new RectOffset(4, 4, 4, 4),
                     margin = new RectOffset(1, 1, 0, 0),
                 };
                 return _groupStyle;
@@ -94,7 +94,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 {
                     fontStyle = FontStyle.Bold,
                     padding = new RectOffset(12, 4, 2, 2),
-                    margin = new RectOffset(0, 1, 1, 1),
+                    margin = new RectOffset(0, 1, 2, 1),
                 };
                 return _foldoutHeaderStyle;
             }
@@ -196,7 +196,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
         private static GUIStyle CreateFoldoutContainerStyle(bool expanded)
         {
-            RectOffset padding = expanded ? new RectOffset(4, 4, 2, 4) : new RectOffset(4, 4, 2, 3);
+            RectOffset padding = expanded ? new RectOffset(4, 4, 4, 4) : new RectOffset(4, 4, 4, 3);
             GUIStyle style = new(EditorStyles.helpBox)
             {
                 padding = padding,
