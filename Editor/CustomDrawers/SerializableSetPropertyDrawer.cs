@@ -2291,11 +2291,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
-            Rect contentRect = new(
+            Rect contentBounds = new(
                 rect.x + 16f,
-                rect.y,
+                backgroundRect.y,
                 Mathf.Max(0f, rect.width - 20f),
-                rect.height
+                Mathf.Max(0f, backgroundRect.height)
+            );
+            float propertyHeight = EditorGUI.GetPropertyHeight(element, GUIContent.none, true);
+            float verticalPadding = Mathf.Max(0f, contentBounds.height - propertyHeight) * 0.5f;
+            Rect contentRect = new(
+                contentBounds.x,
+                contentBounds.y + verticalPadding,
+                contentBounds.width,
+                propertyHeight
             );
             contentRect.x += shakeOffset;
             EditorGUI.PropertyField(contentRect, element, GUIContent.none, true);
