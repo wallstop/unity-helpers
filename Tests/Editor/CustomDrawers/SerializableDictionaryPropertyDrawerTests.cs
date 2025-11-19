@@ -3,6 +3,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Linq;
+    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEditorInternal;
@@ -965,10 +967,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
+            ForcePopulateTestDictionarySerializedData(host, dictionaryProperty);
             dictionaryProperty.isExpanded = true;
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(TestDictionaryHost),
+                nameof(TestDictionaryHost.dictionary)
+            );
             Rect controlRect = new(0f, 0f, 360f, 600f);
             GUIContent label = new("Dictionary");
             const int IndentDepth = 2;
@@ -991,7 +999,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Assert.IsTrue(
                 drawer.HasLastListRect,
-                "Baseline draw should render the reorderable list."
+                $"Baseline draw should render the reorderable list. {BuildDictionaryDrawerDiagnostics(dictionaryProperty, drawer)}"
             );
 
             Rect expectedBaselineRect;
@@ -1049,8 +1057,115 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.That(
                 drawer.LastListRect.xMin,
                 Is.EqualTo(paddedRect.xMin).Within(0.0001f),
-                "List rect should align with the padded content area."
+                $"List rect should align with the padded content area. {BuildDictionaryDrawerDiagnostics(dictionaryProperty, drawer)}"
             );
+        }
+
+        private static string BuildDictionaryDrawerDiagnostics(
+            SerializedProperty dictionaryProperty,
+            SerializableDictionaryPropertyDrawer drawer
+        )
+        {
+            if (dictionaryProperty == null)
+            {
+                return "[DictionaryProperty=null]";
+            }
+
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            string keysSummary =
+                keysProperty == null
+                    ? "keys:null"
+                    : $"keys:array={keysProperty.isArray},size={keysProperty.arraySize}";
+            string valuesSummary =
+                valuesProperty == null
+                    ? "values:null"
+                    : $"values:array={valuesProperty.isArray},size={valuesProperty.arraySize}";
+            Rect lastRect = drawer.HasLastListRect ? drawer.LastListRect : Rect.zero;
+            return $"[expanded={dictionaryProperty.isExpanded},propertyPath={dictionaryProperty.propertyPath},{keysSummary},{valuesSummary},hasLastRect={drawer.HasLastListRect},lastRect={lastRect}]";
+        }
+
+        internal static void AssignDictionaryFieldInfo(
+            SerializableDictionaryPropertyDrawer drawer,
+            Type hostType,
+            string fieldName
+        )
+        {
+            if (drawer == null || hostType == null || string.IsNullOrEmpty(fieldName))
+            {
+                return;
+            }
+
+            FieldInfo hostField = hostType.GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+            );
+            if (hostField == null)
+            {
+                return;
+            }
+
+            FieldInfo drawerField = typeof(PropertyDrawer).GetField(
+                "m_FieldInfo",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            drawerField?.SetValue(drawer, hostField);
+        }
+
+        private static void ForcePopulateTestDictionarySerializedData(
+            TestDictionaryHost host,
+            SerializedProperty dictionaryProperty
+        )
+        {
+            if (host == null || dictionaryProperty == null)
+            {
+                return;
+            }
+
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+            if (keysProperty == null || valuesProperty == null)
+            {
+                return;
+            }
+
+            List<KeyValuePair<int, string>> entries = host.dictionary.ToList();
+            keysProperty.arraySize = entries.Count;
+            valuesProperty.arraySize = entries.Count;
+
+            for (int i = 0; i < entries.Count; i++)
+            {
+                AssignKey(keysProperty.GetArrayElementAtIndex(i), entries[i].Key);
+                AssignValue(valuesProperty.GetArrayElementAtIndex(i), entries[i].Value);
+            }
+
+            dictionaryProperty.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+
+            static void AssignKey(SerializedProperty property, int value)
+            {
+                if (property != null)
+                {
+                    property.intValue = value;
+                }
+            }
+
+            static void AssignValue(SerializedProperty property, string value)
+            {
+                if (property != null)
+                {
+                    property.stringValue = value ?? string.Empty;
+                }
+            }
         }
     }
 }

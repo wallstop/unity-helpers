@@ -107,7 +107,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Assert.IsTrue(state.hasDuplicates);
             CollectionAssert.AreEquivalent(new[] { 0, 1 }, state.duplicateIndices);
-            StringAssert.Contains("Value 2", state.summary);
+            StringAssert.Contains("Duplicate entry 2", state.summary);
         }
 
         [Test]
@@ -172,7 +172,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Assert.IsTrue(state.hasDuplicates);
             CollectionAssert.AreEquivalent(new[] { 0, 1 }, state.duplicateIndices);
-            StringAssert.Contains("Value 5", state.summary);
+            StringAssert.Contains("Duplicate entry 5", state.summary);
         }
 
         [Test]
@@ -339,6 +339,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             ReorderableList list = drawer.GetOrCreateList(setProperty);
 
             Assert.IsNotNull(list.onReorderCallbackWithDetails, "Expected reorder callback.");
+            SimulateReorderableListMove(list, 0, 2);
             list.onReorderCallbackWithDetails.Invoke(list, 0, 2);
 
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
@@ -376,6 +377,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             ReorderableList list = drawer.GetOrCreateList(setProperty);
 
             Assert.IsNotNull(list.onReorderCallbackWithDetails, "Expected reorder callback.");
+            SimulateReorderableListMove(list, 2, 0);
             list.onReorderCallbackWithDetails.Invoke(list, 2, 0);
 
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
@@ -389,6 +391,36 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(30, itemsProperty.GetArrayElementAtIndex(0).intValue);
             Assert.AreEqual(10, itemsProperty.GetArrayElementAtIndex(1).intValue);
             Assert.AreEqual(20, itemsProperty.GetArrayElementAtIndex(2).intValue);
+        }
+
+        private static void SimulateReorderableListMove(
+            ReorderableList list,
+            int oldIndex,
+            int newIndex
+        )
+        {
+            if (list?.list is not IList backing || backing.Count == 0)
+            {
+                return;
+            }
+
+            if (oldIndex < 0 || oldIndex >= backing.Count)
+            {
+                return;
+            }
+
+            object element = backing[oldIndex];
+            backing.RemoveAt(oldIndex);
+
+            int clampedIndex = Mathf.Clamp(newIndex, 0, backing.Count);
+            if (clampedIndex >= backing.Count)
+            {
+                backing.Add(element);
+            }
+            else
+            {
+                backing.Insert(clampedIndex, element);
+            }
         }
 
         [Test]
