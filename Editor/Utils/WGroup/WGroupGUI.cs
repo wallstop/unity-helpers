@@ -134,14 +134,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             }
 
             GUIStyle foldoutStyle = WGroupStyles.GetFoldoutStyle(palette.TextColor);
+            float headerHeight =
+                EditorGUIUtility.singleLineHeight + WGroupStyles.HeaderVerticalPadding;
             Rect headerRect = GUILayoutUtility.GetRect(
                 GUIContent.none,
                 foldoutStyle,
-                GUILayout.ExpandWidth(true)
+                GUILayout.ExpandWidth(true),
+                GUILayout.Height(headerHeight)
             );
 
             WGroupStyles.DrawHeaderBackground(headerRect, palette.BackgroundColor);
-            Rect foldoutRect = WGroupHeaderVisualUtility.GetContentRect(headerRect);
+            Rect foldoutRect = WGroupHeaderVisualUtility.GetContentRect(
+                headerRect,
+                WGroupStyles.HeaderTopPadding,
+                WGroupStyles.HeaderBottomPadding
+            );
 
             int originalIndent = EditorGUI.indentLevel;
             EditorGUI.indentLevel = 0;
@@ -183,7 +190,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 GUILayout.ExpandWidth(true)
             );
             WGroupStyles.DrawHeaderBackground(labelRect, palette.BackgroundColor);
-            Rect contentRect = WGroupHeaderVisualUtility.GetContentRect(labelRect);
+            Rect contentRect = WGroupHeaderVisualUtility.GetContentRect(
+                labelRect,
+                WGroupStyles.HeaderTopPadding,
+                WGroupStyles.HeaderBottomPadding
+            );
             GUI.Label(contentRect, content, labelStyle);
             WGroupStyles.DrawHeaderBorder(labelRect, palette.BackgroundColor);
             GUILayout.Space(2f);
@@ -199,6 +210,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
     internal static class WGroupStyles
     {
+        internal const float HeaderTopPadding = 1f;
+        internal const float HeaderBottomPadding = 1f;
+        internal const float HeaderVerticalPadding = 4f;
         private static readonly Dictionary<Color, GUIStyle> FoldoutStyles = new();
         private static readonly Dictionary<Color, GUIStyle> HeaderStyles = new();
 
@@ -209,7 +223,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 style = new GUIStyle(EditorStyles.foldoutHeader)
                 {
                     fontStyle = FontStyle.Bold,
-                    padding = new RectOffset(16, 6, 1, 0),
+                    padding = new RectOffset(16, 6, 3, 3),
                 };
                 style.normal.textColor = textColor;
                 style.onNormal.textColor = textColor;
