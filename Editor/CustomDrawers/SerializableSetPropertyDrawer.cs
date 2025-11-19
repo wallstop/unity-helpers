@@ -27,6 +27,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const int MaxAutoAddAttempts = 256;
         internal const int MaxPageSize = 250;
         private const float PaginationLabelWidth = 80f;
+        private const float PaginationHeaderHeightPadding = 2f;
+        private const float InspectorHeightPadding = 2.5f;
 
         private static readonly GUIContent AddEntryContent = new("Add");
         private static readonly GUIContent ClearAllContent = new("Clear All");
@@ -151,6 +153,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             float lineHeight = EditorGUIUtility.singleLineHeight;
             return lineHeight + EditorGUIUtility.standardVerticalSpacing * 2f;
+        }
+
+        private static float GetPaginationHeaderHeight()
+        {
+            return EditorGUIUtility.singleLineHeight + PaginationHeaderHeightPadding;
         }
 
         private enum PaginationControlLayout
@@ -379,12 +386,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         itemsProperty,
                         pagination
                     );
-                    Rect headerRect = new(
-                        position.x,
-                        y,
-                        position.width,
-                        EditorGUIUtility.singleLineHeight
-                    );
+                    float headerHeight = GetPaginationHeaderHeight();
+                    Rect headerRect = new(position.x, y, position.width, headerHeight);
                     DrawHeaderControls(headerRect, pagination, totalCount);
                     y = headerRect.yMax + SectionSpacing;
 
@@ -451,7 +454,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (!property.isExpanded)
             {
-                return height;
+                return height + InspectorHeightPadding;
             }
 
             SerializedProperty itemsProperty = property.FindPropertyRelative(
@@ -461,7 +464,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool hasItemsArray = itemsProperty is { isArray: true };
             int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
 
-            float headerHeight = EditorGUIUtility.singleLineHeight;
+            float headerHeight = GetPaginationHeaderHeight();
             float footerHeight = GetFooterHeight();
             height += SectionSpacing + headerHeight + SectionSpacing;
 
@@ -485,7 +488,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 float blockPadding = 6f;
                 float messageHeight = EditorGUIUtility.singleLineHeight;
                 height += blockPadding * 2f + messageHeight + SectionSpacing + footerHeight;
-                return height;
+                return height + InspectorHeightPadding;
             }
             else
             {
@@ -512,7 +515,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             * Mathf.Min(totalCount, pagination.pageSize);
                 height += listHeight + SectionSpacing + footerHeight;
 
-                return height;
+                return height + InspectorHeightPadding;
             }
         }
 
