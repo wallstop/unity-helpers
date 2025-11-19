@@ -698,6 +698,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 displayRemoveButton: false
             );
             list.elementHeight = EditorGUIUtility.singleLineHeight;
+            list.headerHeight = 0f;
+            list.footerHeight = 0f;
 
             list.elementHeightCallback = index =>
                 GetSetListElementHeight(listKey, cacheProvider(), index);
