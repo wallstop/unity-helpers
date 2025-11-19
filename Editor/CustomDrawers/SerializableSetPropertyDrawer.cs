@@ -929,18 +929,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
-            string rangeText =
-                totalCount == 0
-                    ? "Empty"
-                    : $"{Mathf.Clamp(pagination.page * Mathf.Max(1, pagination.pageSize), 0, totalCount) + 1}-"
-                        + $"{Mathf.Min((pagination.page + 1) * Mathf.Max(1, pagination.pageSize), totalCount)}"
-                        + $" of {totalCount}";
+            int pageSize = Mathf.Max(1, pagination.pageSize);
+            int start =
+                totalCount == 0 ? 0 : Mathf.Clamp(pagination.page * pageSize, 0, totalCount) + 1;
+            int end = Mathf.Min((pagination.page + 1) * pageSize, totalCount);
+            string rangeText = totalCount == 0 ? "Empty" : $"{start}-{end} of {totalCount}";
             GUIStyle rangeStyle = EditorStyles.miniLabel;
             float rangeWidth = rangeStyle.CalcSize(new GUIContent(rangeText)).x;
             float availableWidth = Mathf.Max(0f, rightCursor - leftCursor);
             if (rangeWidth <= availableWidth)
             {
-                Rect rangeRect = new(leftCursor, verticalCenter, rangeWidth, lineHeight);
+                float rangeHeight = lineHeight + 4f;
+                float rangeY = rect.y + Mathf.Max(0f, (rect.height - rangeHeight) * 0.5f) - 2.5f;
+                Rect rangeRect = new(leftCursor, rangeY, rangeWidth, rangeHeight);
                 EditorGUI.LabelField(rangeRect, rangeText, rangeStyle);
             }
         }
