@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using System.Reflection;
     using System.Text;
     using UnityEditor;
+    using UnityEditorInternal;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
@@ -24,6 +25,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float PaginationButtonWidth = 28f;
         private const int DefaultPageSize = 15;
         private const int MaxAutoAddAttempts = 256;
+        internal const int MaxPageSize = 250;
 
         private static readonly GUIContent AddEntryContent = new("Add");
         private static readonly GUIContent ClearAllContent = new("Clear All");
@@ -58,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             new Color(0.86f, 0.23f, 0.23f)
         );
         private static readonly GUIStyle MoveButtonStyle = CreateSolidButtonStyle(
-            new Color(0.95f, 0.8f, 0.25f)
+            new Color(0.98f, 0.95f, 0.65f)
         );
         private static readonly Color DuplicatePrimaryColor = new(0.99f, 0.82f, 0.35f, 0.55f);
         private static readonly Color DuplicateSecondaryColor = new(0.96f, 0.45f, 0.45f, 0.65f);
@@ -79,11 +81,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private readonly Dictionary<string, PaginationState> _paginationStates = new();
         private readonly Dictionary<string, DuplicateState> _duplicateStates = new();
         private readonly Dictionary<string, NullEntryState> _nullEntryStates = new();
-        private readonly Dictionary<string, DragState> _dragStates = new();
+        private readonly Dictionary<string, ReorderableList> _lists = new();
+        private readonly Dictionary<string, ListPageCache> _pageCaches = new();
+        private readonly Dictionary<string, SetListRenderContext> _listContexts = new();
         internal Rect LastResolvedPosition { get; private set; }
         internal Rect LastItemsContainerRect { get; private set; }
         internal bool HasItemsContainerRect { get; private set; }
-        private static readonly int DragControlHash = "SerializableSetDragControl".GetHashCode();
 
         internal sealed class PaginationState
         {
@@ -122,25 +125,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public object value;
         }
 
-        private sealed class RowRenderInfo
+        private sealed class SetListRenderContext
         {
-            public SerializedProperty property;
-            public float height;
-            public int index;
-            public bool isDuplicate;
-            public bool isPrimaryDuplicate;
-            public bool isSelected;
-            public float shakeOffset;
-            public bool hasNullValue;
-            public string nullTooltip;
-            public Rect rect;
+            public SerializedProperty itemsProperty;
+            public DuplicateState duplicateState;
+            public NullEntryState nullState;
         }
 
-        private sealed class DragState
+        private sealed class ListPageCache
         {
-            public bool isDragging;
-            public int startIndex = -1;
-            public float currentMouseY;
+            public readonly List<PageEntry> entries = new();
+            public int pageIndex = -1;
+            public int pageSize = -1;
+            public int itemCount = -1;
+            public bool dirty = true;
+        }
+
+        private sealed class PageEntry
+        {
+            public int arrayIndex;
         }
 
         private static float GetToolbarHeight()
@@ -159,6 +162,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ConfigureButtonStyle(SortInactiveButtonStyle, lineHeight);
             ConfigureButtonStyle(RemoveButtonStyle, lineHeight);
             ConfigureButtonStyle(MoveButtonStyle, lineHeight);
+            SetButtonTextColor(MoveButtonStyle, Color.black);
             RemoveButtonStyle.fixedWidth = 0f;
             RemoveButtonStyle.padding = new RectOffset(3, 3, 1, 1);
             RemoveButtonStyle.margin = new RectOffset(0, 0, 1, 1);
@@ -206,6 +210,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             style.fixedHeight = lineHeight;
             style.margin = new RectOffset(1, 1, 1, 1);
             style.padding = new RectOffset(6, 6, 2, 2);
+        }
+
+        private static void SetButtonTextColor(GUIStyle style, Color color)
+        {
+            if (style == null)
+            {
+                return;
+            }
+
+            style.normal.textColor = color;
+            style.hover.textColor = color;
+            style.active.textColor = color;
+            style.focused.textColor = color;
+            style.onNormal.textColor = color;
+            style.onHover.textColor = color;
+            style.onActive.textColor = color;
+            style.onFocused.textColor = color;
         }
 
         private static Texture2D CreateSolidTexture(Color color)
@@ -309,8 +330,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
                 NullEntryState nullState = EvaluateNullEntryState(property, itemsProperty);
 
-                List<RowRenderInfo> dragRows = null;
-
                 if (nullState.hasNullEntries && !string.IsNullOrEmpty(nullState.summary))
                 {
                     float helpHeight = GetWarningBarHeight();
@@ -347,202 +366,34 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
                 else
                 {
-                    int startIndex = pagination.page * pagination.pageSize;
-                    int endIndex = Mathf.Min(startIndex + pagination.pageSize, totalCount);
-                    UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
-                        UnityHelpersSettings.GetDuplicateRowAnimationMode();
-                    bool highlightDuplicates =
-#pragma warning disable CS0618 // Type or member is obsolete
-                        animationMode != UnityHelpersSettings.DuplicateRowAnimationMode.None;
-#pragma warning restore CS0618 // Type or member is obsolete
-                    bool animateDuplicates =
-                        animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
-                    int tweenCycleLimit = UnityHelpersSettings.GetDuplicateRowTweenCycleLimit();
-
-                    List<RowRenderInfo> rows = new(endIndex - startIndex);
-                    float rowsHeight = 0f;
-
-                    for (int index = startIndex; index < endIndex; index++)
-                    {
-                        SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
-                        float elementHeight = EditorGUI.GetPropertyHeight(
-                            element,
-                            GUIContent.none,
-                            true
-                        );
-
-                        bool isDuplicate = duplicateState.duplicateIndices.Contains(index);
-                        if (
-                            isDuplicate
-                            && highlightDuplicates
-                            && animateDuplicates
-                            && !duplicateState.animationStartTimes.ContainsKey(index)
-                        )
-                        {
-                            duplicateState.animationStartTimes[index] =
-                                EditorApplication.timeSinceStartup;
-                        }
-
-                        float shakeOffset =
-                            isDuplicate && highlightDuplicates && animateDuplicates
-                                ? GetDuplicateShakeOffset(duplicateState, index, tweenCycleLimit)
-                                : 0f;
-
-                        bool hasNullValue =
-                            nullState.hasNullEntries && nullState.nullIndices.Contains(index);
-                        string nullTooltip = string.Empty;
-                        if (hasNullValue && !nullState.tooltips.TryGetValue(index, out nullTooltip))
-                        {
-                            nullTooltip = string.Empty;
-                        }
-
-                        RowRenderInfo info = new()
-                        {
-                            property = element.Copy(),
-                            height = elementHeight,
-                            index = index,
-                            isDuplicate = isDuplicate,
-                            isPrimaryDuplicate = duplicateState.primaryFlags.GetValueOrDefault(
-                                index,
-                                false
-                            ),
-                            isSelected = pagination.selectedIndex == index,
-                            shakeOffset = shakeOffset,
-                            hasNullValue = hasNullValue,
-                            nullTooltip = nullTooltip,
-                        };
-
-                        rows.Add(info);
-                        rowsHeight += elementHeight;
-                        if (index < endIndex - 1)
-                        {
-                            rowsHeight += RowSpacing;
-                        }
-                    }
-
-                    float blockPadding = 6f;
-                    float blockHeight = blockPadding * 2f + rowsHeight;
-                    Rect blockRect = new(position.x, y, position.width, blockHeight);
-                    LastItemsContainerRect = blockRect;
-                    HasItemsContainerRect = true;
-                    GUI.Box(blockRect, GUIContent.none, EditorStyles.helpBox);
-
-                    float contentY = blockRect.y + blockPadding;
-                    float contentX = blockRect.x + blockPadding;
-                    float contentWidth = blockRect.width - blockPadding * 2f;
-
-                    dragRows = rows;
-
-                    for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
-                    {
-                        RowRenderInfo row = rows[rowIndex];
-
-                        Rect backgroundRect = new(contentX, contentY, contentWidth, row.height);
-                        row.rect = backgroundRect;
-
-                        Color baseRowColor = EditorGUIUtility.isProSkin
-                            ? DarkRowColor
-                            : LightRowColor;
-                        EditorGUI.DrawRect(backgroundRect, baseRowColor);
-
-                        Rect outlineRect = Rect.zero;
-                        bool shouldDrawOutline = false;
-                        bool outlineForNull = false;
-
-                        if (row.isDuplicate && highlightDuplicates)
-                        {
-                            Rect duplicateRect = ExpandRowRectVertically(backgroundRect);
-                            duplicateRect.x += row.shakeOffset;
-                            duplicateRect.xMin += 1f;
-                            duplicateRect.xMax -= 1f;
-                            duplicateRect.yMin += 1f;
-                            duplicateRect.yMax -= 1f;
-                            duplicateRect.height = Mathf.Max(0f, duplicateRect.height);
-
-                            Color duplicateColor = row.isPrimaryDuplicate
-                                ? DuplicatePrimaryColor
-                                : DuplicateSecondaryColor;
-                            EditorGUI.DrawRect(duplicateRect, duplicateColor);
-                            outlineRect = duplicateRect;
-                            shouldDrawOutline = true;
-                        }
-
-                        if (row.hasNullValue)
-                        {
-                            Rect nullRect = ExpandRowRectVertically(backgroundRect);
-                            nullRect.x += row.shakeOffset;
-                            nullRect.xMin += 1f;
-                            nullRect.xMax -= 1f;
-                            nullRect.yMin += 1f;
-                            nullRect.yMax -= 1f;
-                            nullRect.height = Mathf.Max(0f, nullRect.height);
-
-                            EditorGUI.DrawRect(nullRect, NullEntryHighlightColor);
-                            outlineRect = nullRect;
-                            outlineForNull = true;
-                            DrawNullEntryTooltip(nullRect, row.nullTooltip);
-                        }
-
-                        if (row.isSelected)
-                        {
-                            Rect selectionRect = ExpandRowRectVertically(backgroundRect);
-                            Color selectionColor = EditorGUIUtility.isProSkin
-                                ? DarkSelectionColor
-                                : LightSelectionColor;
-                            EditorGUI.DrawRect(selectionRect, selectionColor);
-                        }
-
-                        Rect contentRect = new(
-                            backgroundRect.x + 6f,
-                            backgroundRect.y,
-                            backgroundRect.width - 12f,
-                            row.height
-                        );
-                        if (Mathf.Abs(row.shakeOffset) > Mathf.Epsilon)
-                        {
-                            contentRect.x += row.shakeOffset;
-                            contentRect.width = Mathf.Max(
-                                0f,
-                                contentRect.width - Mathf.Abs(row.shakeOffset)
-                            );
-                        }
-
-                        if (
-                            Event.current.type == EventType.MouseDown
-                            && backgroundRect.Contains(Event.current.mousePosition)
-                        )
-                        {
-                            pagination.selectedIndex = row.index;
-                        }
-
-                        EditorGUI.PropertyField(contentRect, row.property, GUIContent.none, true);
-
-                        if (outlineForNull)
-                        {
-                            DrawDuplicateOutline(outlineRect);
-                        }
-                        else if (shouldDrawOutline && highlightDuplicates)
-                        {
-                            DrawDuplicateOutline(outlineRect);
-                        }
-
-                        contentY += row.height;
-                        if (rowIndex < rows.Count - 1)
-                        {
-                            contentY += RowSpacing;
-                        }
-                    }
-                }
-
-                if (dragRows != null)
-                {
-                    HandleRowDragging(
-                        ref property,
-                        propertyPath,
-                        ref itemsProperty,
-                        pagination,
-                        dragRows
+                    string listKey = GetListKey(property);
+                    UpdateListContext(
+                        listKey,
+                        property,
+                        itemsProperty,
+                        duplicateState,
+                        nullState,
+                        pagination
                     );
+                    ReorderableList list = GetOrCreateList(
+                        listKey,
+                        property,
+                        itemsProperty,
+                        pagination
+                    );
+                    float listHeight = list.GetHeight();
+                    Rect listRect = new(position.x, y, position.width, listHeight);
+                    GUI.Box(listRect, GUIContent.none, EditorStyles.helpBox);
+                    Rect listContentRect = new(
+                        listRect.x + 2f,
+                        listRect.y + 2f,
+                        Mathf.Max(0f, listRect.width - 4f),
+                        Mathf.Max(0f, listRect.height - 4f)
+                    );
+                    LastItemsContainerRect = listRect;
+                    HasItemsContainerRect = true;
+                    list.DoList(listContentRect);
+                    y = listRect.yMax;
                 }
 
                 bool applied = serializedObject.ApplyModifiedProperties();
@@ -658,16 +509,52 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return state;
         }
 
-        private DragState GetOrCreateDragState(string propertyPath)
+        internal ReorderableList GetOrCreateList(SerializedProperty property)
         {
-            if (_dragStates.TryGetValue(propertyPath, out DragState state))
+            if (property == null)
             {
-                return state;
+                return null;
             }
 
-            DragState created = new();
-            _dragStates[propertyPath] = created;
-            return created;
+            SerializedProperty itemsProperty = property.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            PaginationState pagination = GetOrCreatePaginationState(property);
+            EnsurePaginationBounds(
+                pagination,
+                itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0
+            );
+
+            DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
+            NullEntryState nullState = EvaluateNullEntryState(property, itemsProperty);
+            string listKey = GetListKey(property);
+            UpdateListContext(
+                listKey,
+                property,
+                itemsProperty,
+                duplicateState,
+                nullState,
+                pagination
+            );
+
+            return GetOrCreateList(listKey, property, itemsProperty, pagination);
+        }
+
+        private SetListRenderContext GetOrCreateListContext(string key)
+        {
+            if (_listContexts.TryGetValue(key, out SetListRenderContext context))
+            {
+                return context;
+            }
+
+            context = new SetListRenderContext();
+            _listContexts[key] = context;
+            return context;
+        }
+
+        private static string GetListKey(SerializedProperty property)
+        {
+            return property.propertyPath;
         }
 
         private void EnsurePaginationBounds(PaginationState state, int totalCount)
@@ -707,6 +594,126 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 int selectedPage = Mathf.Clamp(state.selectedIndex / pageSize, 0, pageCount - 1);
                 state.page = selectedPage;
             }
+        }
+
+        private static bool RelativeIndexIsValid(ListPageCache cache, int relativeIndex)
+        {
+            return cache != null && relativeIndex >= 0 && relativeIndex < cache.entries.Count;
+        }
+
+        private static int GetRelativeIndex(ListPageCache cache, int globalIndex)
+        {
+            if (cache == null || globalIndex < 0)
+            {
+                return -1;
+            }
+
+            for (int i = 0; i < cache.entries.Count; i++)
+            {
+                if (cache.entries[i].arrayIndex == globalIndex)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        private static void SyncListSelectionWithPagination(
+            ReorderableList list,
+            PaginationState pagination,
+            ListPageCache cache
+        )
+        {
+            if (list == null || pagination == null || cache == null)
+            {
+                return;
+            }
+
+            int relativeIndex = GetRelativeIndex(cache, pagination.selectedIndex);
+            list.index = relativeIndex;
+        }
+
+        private void UpdateListContext(
+            string listKey,
+            SerializedProperty property,
+            SerializedProperty itemsProperty,
+            DuplicateState duplicateState,
+            NullEntryState nullState,
+            PaginationState pagination
+        )
+        {
+            SetListRenderContext context = GetOrCreateListContext(listKey);
+            context.itemsProperty = itemsProperty;
+            context.duplicateState = duplicateState;
+            context.nullState = nullState;
+        }
+
+        private ReorderableList GetOrCreateList(
+            string listKey,
+            SerializedProperty property,
+            SerializedProperty itemsProperty,
+            PaginationState pagination
+        )
+        {
+            Func<ListPageCache> cacheProvider = () =>
+                EnsurePageCache(listKey, itemsProperty, pagination);
+            ListPageCache cache = cacheProvider();
+
+            if (_lists.TryGetValue(listKey, out ReorderableList existing))
+            {
+                existing.list = cache.entries;
+                SyncListSelectionWithPagination(existing, pagination, cache);
+                return existing;
+            }
+
+            ReorderableList list = new(
+                cache.entries,
+                typeof(PageEntry),
+                draggable: true,
+                displayHeader: false,
+                displayAddButton: false,
+                displayRemoveButton: false
+            );
+            list.elementHeight = EditorGUIUtility.singleLineHeight;
+
+            list.elementHeightCallback = index =>
+                GetSetListElementHeight(listKey, cacheProvider(), index);
+
+            list.drawElementCallback = (rect, index, active, focused) =>
+            {
+                DrawSetListElement(listKey, cacheProvider(), rect, index);
+            };
+
+            list.onReorderCallbackWithDetails = (_, oldIndex, newIndex) =>
+            {
+                HandleListReorder(
+                    listKey,
+                    property,
+                    itemsProperty,
+                    pagination,
+                    cacheProvider(),
+                    oldIndex,
+                    newIndex
+                );
+                ListPageCache refreshedCache = cacheProvider();
+                SyncListSelectionWithPagination(list, pagination, refreshedCache);
+            };
+
+            list.onSelectCallback = reorderableList =>
+            {
+                if (!RelativeIndexIsValid(cacheProvider(), reorderableList.index))
+                {
+                    return;
+                }
+
+                PageEntry entry = cacheProvider().entries[reorderableList.index];
+                pagination.selectedIndex = entry.arrayIndex;
+            };
+
+            _lists[listKey] = list;
+            SyncListSelectionWithPagination(list, pagination, cache);
+            return list;
         }
 
         private void DrawToolbar(
@@ -1033,41 +1040,35 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             pagination.selectedIndex = Mathf.Clamp(pageStart, 0, totalCount - 1);
         }
 
-        private static float GetDuplicateShakeOffset(
-            DuplicateState state,
-            int index,
-            int cycleLimit
-        )
+        private static float GetDuplicatePulse(DuplicateState state, int index, int cycleLimit)
         {
             if (
-                UnityHelpersSettings.GetDuplicateRowAnimationMode()
+                state == null
+                || UnityHelpersSettings.GetDuplicateRowAnimationMode()
                     != UnityHelpersSettings.DuplicateRowAnimationMode.Tween
                 || !state.animationStartTimes.TryGetValue(index, out double startTime)
             )
             {
-                return 0f;
+                return 1f;
             }
 
             double elapsed = EditorApplication.timeSinceStartup - startTime;
             if (elapsed <= 0d)
             {
-                return 0f;
+                return 1f;
             }
-
-            float offset = (float)(
-                Math.Sin(elapsed * DuplicateShakeFrequency) * DuplicateShakeAmplitude
-            );
 
             if (cycleLimit >= 0)
             {
                 double cycles = elapsed * DuplicateShakeFrequency / (2d * Math.PI);
                 if (cycles >= cycleLimit)
                 {
-                    return 0f;
+                    state.animationStartTimes.Remove(index);
+                    return 1f;
                 }
             }
 
-            return offset;
+            return (float)(0.5 + 0.5 * Math.Sin(elapsed * DuplicateShakeFrequency));
         }
 
         internal static Rect ExpandRowRectVertically(Rect rect)
@@ -1926,6 +1927,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     pagination.selectedIndex = totalCount - 1;
                 }
+                MarkListCacheDirty(propertyPath);
                 return true;
             }
 
@@ -2001,121 +2003,96 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 pagination.selectedIndex = totalCount - 1;
             }
+            MarkListCacheDirty(propertyPath);
 
             return true;
         }
 
-        private void HandleRowDragging(
-            ref SerializedProperty property,
-            string propertyPath,
-            ref SerializedProperty itemsProperty,
-            PaginationState pagination,
-            List<RowRenderInfo> rows
+        private ListPageCache EnsurePageCache(
+            string cacheKey,
+            SerializedProperty itemsProperty,
+            PaginationState pagination
         )
         {
-            if (rows == null || rows.Count <= 1)
+            ListPageCache cache = GetOrCreatePageCache(cacheKey);
+            int itemCount = itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0;
+            if (
+                cache.dirty
+                || cache.pageIndex != pagination.page
+                || cache.pageSize != pagination.pageSize
+                || cache.itemCount != itemCount
+            )
+            {
+                RefreshPageCache(cache, itemsProperty, pagination);
+            }
+
+            return cache;
+        }
+
+        private ListPageCache GetOrCreatePageCache(string cacheKey)
+        {
+            if (_pageCaches.TryGetValue(cacheKey, out ListPageCache cache))
+            {
+                return cache;
+            }
+
+            cache = new ListPageCache();
+            _pageCaches[cacheKey] = cache;
+            return cache;
+        }
+
+        private static void RefreshPageCache(
+            ListPageCache cache,
+            SerializedProperty itemsProperty,
+            PaginationState pagination
+        )
+        {
+            cache.entries.Clear();
+
+            if (itemsProperty is not { isArray: true })
+            {
+                cache.itemCount = 0;
+                cache.pageIndex = pagination.page;
+                cache.pageSize = pagination.pageSize;
+                cache.dirty = false;
+                return;
+            }
+
+            cache.itemCount = itemsProperty.arraySize;
+            cache.pageIndex = pagination.page;
+            int effectivePageSize = Mathf.Clamp(pagination.pageSize, 1, MaxPageSize);
+            cache.pageSize = effectivePageSize;
+            pagination.pageSize = effectivePageSize;
+            cache.dirty = false;
+
+            if (cache.itemCount <= 0)
             {
                 return;
             }
 
-            Event evt = Event.current;
-            int controlId = GUIUtility.GetControlID(DragControlHash, FocusType.Passive);
-            DragState dragState = GetOrCreateDragState(propertyPath);
+            int startIndex = pagination.page * effectivePageSize;
+            startIndex = Mathf.Clamp(startIndex, 0, cache.itemCount);
+            int endIndex = Mathf.Min(startIndex + effectivePageSize, cache.itemCount);
 
-            switch (evt.GetTypeForControl(controlId))
+            for (int i = startIndex; i < endIndex; i++)
             {
-                case EventType.MouseDown:
-                    if (evt.button != 0)
-                    {
-                        break;
-                    }
-
-                    foreach (RowRenderInfo row in rows)
-                    {
-                        if (row.rect.Contains(evt.mousePosition))
-                        {
-                            GUIUtility.hotControl = controlId;
-                            dragState.isDragging = true;
-                            dragState.startIndex = row.index;
-                            dragState.currentMouseY = evt.mousePosition.y;
-                            evt.Use();
-                            break;
-                        }
-                    }
-
-                    break;
-                case EventType.MouseDrag:
-                    if (GUIUtility.hotControl == controlId && dragState.isDragging)
-                    {
-                        dragState.currentMouseY = evt.mousePosition.y;
-                        evt.Use();
-                    }
-
-                    break;
-                case EventType.MouseUp:
-                    if (GUIUtility.hotControl == controlId && dragState.isDragging)
-                    {
-                        GUIUtility.hotControl = 0;
-                        dragState.isDragging = false;
-                        evt.Use();
-
-                        if (
-                            dragState.startIndex >= 0
-                            && itemsProperty is { isArray: true }
-                            && itemsProperty.arraySize > 1
-                        )
-                        {
-                            int targetIndex = DetermineDragTargetIndex(
-                                rows,
-                                dragState.currentMouseY
-                            );
-                            targetIndex = Mathf.Clamp(targetIndex, 0, itemsProperty.arraySize - 1);
-                            if (targetIndex != dragState.startIndex)
-                            {
-                                itemsProperty.MoveArrayElement(dragState.startIndex, targetIndex);
-                                pagination.selectedIndex = targetIndex;
-                                SerializedObject serializedObject = property.serializedObject;
-                                serializedObject.ApplyModifiedProperties();
-                                SyncRuntimeSet(property);
-                                serializedObject.Update();
-                                property = serializedObject.FindProperty(propertyPath);
-                                itemsProperty = property.FindPropertyRelative(
-                                    SerializableHashSetSerializedPropertyNames.Items
-                                );
-                                EvaluateDuplicateState(property, itemsProperty, force: true);
-                                EvaluateNullEntryState(property, itemsProperty);
-                                EnsurePaginationBounds(
-                                    pagination,
-                                    itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0
-                                );
-                            }
-                        }
-
-                        dragState.startIndex = -1;
-                    }
-
-                    break;
+                PageEntry entry = new() { arrayIndex = i };
+                cache.entries.Add(entry);
             }
         }
 
-        private static int DetermineDragTargetIndex(List<RowRenderInfo> rows, float mouseY)
+        private void MarkListCacheDirty(string cacheKey)
         {
-            if (rows == null || rows.Count == 0)
-            {
-                return 0;
-            }
+            _lists.Remove(cacheKey);
 
-            for (int i = 0; i < rows.Count; i++)
+            if (_pageCaches.TryGetValue(cacheKey, out ListPageCache cache))
             {
-                Rect rect = rows[i].rect;
-                float midpoint = rect.yMin + rect.height * 0.5f;
-                if (mouseY < midpoint)
-                {
-                    return rows[i].index;
-                }
+                cache.entries.Clear();
+                cache.dirty = true;
+                cache.pageIndex = -1;
+                cache.pageSize = -1;
+                cache.itemCount = -1;
             }
-
-            return rows[^1].index;
         }
 
         internal static void SyncRuntimeSet(SerializedProperty setProperty)
@@ -2166,6 +2143,279 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             sharedSerializedObject.UpdateIfRequiredOrScript();
         }
 
+        private float GetSetListElementHeight(
+            string listKey,
+            ListPageCache cache,
+            int relativeIndex
+        )
+        {
+            if (!RelativeIndexIsValid(cache, relativeIndex))
+            {
+                return EditorGUIUtility.singleLineHeight;
+            }
+
+            if (!_listContexts.TryGetValue(listKey, out SetListRenderContext context))
+            {
+                return EditorGUIUtility.singleLineHeight;
+            }
+
+            SerializedProperty itemsProperty = context.itemsProperty;
+            if (itemsProperty == null || !itemsProperty.isArray)
+            {
+                return EditorGUIUtility.singleLineHeight;
+            }
+
+            int arrayIndex = cache.entries[relativeIndex].arrayIndex;
+            if (arrayIndex < 0 || arrayIndex >= itemsProperty.arraySize)
+            {
+                return EditorGUIUtility.singleLineHeight;
+            }
+
+            SerializedProperty element = itemsProperty.GetArrayElementAtIndex(arrayIndex);
+            float propertyHeight = EditorGUI.GetPropertyHeight(element, GUIContent.none, true);
+            return Mathf.Max(propertyHeight, EditorGUIUtility.singleLineHeight) + RowSpacing;
+        }
+
+        private void DrawSetListElement(
+            string listKey,
+            ListPageCache cache,
+            Rect rect,
+            int relativeIndex
+        )
+        {
+            if (!RelativeIndexIsValid(cache, relativeIndex))
+            {
+                return;
+            }
+
+            if (!_listContexts.TryGetValue(listKey, out SetListRenderContext context))
+            {
+                return;
+            }
+
+            SerializedProperty itemsProperty = context.itemsProperty;
+            if (itemsProperty == null || !itemsProperty.isArray)
+            {
+                return;
+            }
+
+            int arrayIndex = cache.entries[relativeIndex].arrayIndex;
+            if (arrayIndex < 0 || arrayIndex >= itemsProperty.arraySize)
+            {
+                return;
+            }
+
+            SerializedProperty element = itemsProperty.GetArrayElementAtIndex(arrayIndex);
+            bool isDuplicate =
+                context.duplicateState != null
+                && context.duplicateState.duplicateIndices.Contains(arrayIndex);
+            bool isPrimaryDuplicate =
+                context.duplicateState != null
+                && context.duplicateState.primaryFlags.GetValueOrDefault(arrayIndex, false);
+            bool hasNullValue =
+                context.nullState != null
+                && context.nullState.hasNullEntries
+                && context.nullState.nullIndices.Contains(arrayIndex);
+
+            Rect backgroundRect = new(rect.x, rect.y + 1f, rect.width, rect.height - 2f);
+            backgroundRect.x += 2f;
+            backgroundRect.width = Mathf.Max(0f, backgroundRect.width - 4f);
+
+            Color baseRowColor = EditorGUIUtility.isProSkin ? DarkRowColor : LightRowColor;
+            EditorGUI.DrawRect(backgroundRect, baseRowColor);
+
+            Rect outlineRect = Rect.zero;
+            bool shouldDrawOutline = false;
+            bool outlineForNull = false;
+
+            UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
+                UnityHelpersSettings.GetDuplicateRowAnimationMode();
+#pragma warning disable CS0618
+            bool highlightDuplicates =
+                animationMode != UnityHelpersSettings.DuplicateRowAnimationMode.None
+                && context.duplicateState != null;
+#pragma warning restore CS0618
+            bool animateDuplicates =
+                animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
+
+            if (isDuplicate && highlightDuplicates)
+            {
+                Rect duplicateRect = ExpandRowRectVertically(backgroundRect);
+                Color duplicateColor = isPrimaryDuplicate
+                    ? DuplicatePrimaryColor
+                    : DuplicateSecondaryColor;
+                if (animateDuplicates)
+                {
+                    if (!context.duplicateState.animationStartTimes.ContainsKey(arrayIndex))
+                    {
+                        context.duplicateState.animationStartTimes[arrayIndex] =
+                            EditorApplication.timeSinceStartup;
+                    }
+
+                    float pulse = GetDuplicatePulse(
+                        context.duplicateState,
+                        arrayIndex,
+                        UnityHelpersSettings.GetDuplicateRowTweenCycleLimit()
+                    );
+                    float intensity = Mathf.Lerp(0.75f, 1.05f, pulse);
+                    duplicateColor.r *= intensity;
+                    duplicateColor.g *= intensity;
+                    duplicateColor.b *= intensity;
+                }
+
+                EditorGUI.DrawRect(duplicateRect, duplicateColor);
+                outlineRect = duplicateRect;
+                shouldDrawOutline = true;
+            }
+
+            if (hasNullValue)
+            {
+                Rect nullRect = ExpandRowRectVertically(backgroundRect);
+                Color nullColor = NullEntryHighlightColor;
+                if (animateDuplicates)
+                {
+                    double elapsed = EditorApplication.timeSinceStartup + arrayIndex;
+                    float pulse = (float)(0.5 + 0.5 * Math.Sin(elapsed * DuplicateShakeFrequency));
+                    float alpha = Mathf.Lerp(0.6f, 1f, pulse);
+                    nullColor.a = Mathf.Clamp01(nullColor.a * alpha);
+                }
+
+                EditorGUI.DrawRect(nullRect, nullColor);
+                outlineRect = nullRect;
+                outlineForNull = true;
+                if (
+                    context.nullState != null
+                    && context.nullState.tooltips.TryGetValue(arrayIndex, out string tooltip)
+                )
+                {
+                    DrawNullEntryTooltip(nullRect, tooltip);
+                }
+            }
+
+            Rect contentRect = new(
+                rect.x + 16f,
+                rect.y,
+                Mathf.Max(0f, rect.width - 20f),
+                rect.height
+            );
+            EditorGUI.PropertyField(contentRect, element, GUIContent.none, true);
+
+            if (outlineForNull)
+            {
+                DrawDuplicateOutline(outlineRect);
+            }
+            else if (shouldDrawOutline)
+            {
+                DrawDuplicateOutline(outlineRect);
+            }
+        }
+
+        private void HandleListReorder(
+            string listKey,
+            SerializedProperty property,
+            SerializedProperty itemsProperty,
+            PaginationState pagination,
+            ListPageCache cache,
+            int oldIndex,
+            int newIndex
+        )
+        {
+            if (!RelativeIndexIsValid(cache, oldIndex) || cache.entries.Count == 0)
+            {
+                return;
+            }
+
+            if (itemsProperty == null || !itemsProperty.isArray)
+            {
+                return;
+            }
+
+            List<int> orderedIndices = new(cache.entries.Count);
+            foreach (PageEntry entry in cache.entries)
+            {
+                orderedIndices.Add(entry.arrayIndex);
+            }
+
+            int pageSize = Mathf.Max(1, pagination.pageSize);
+            int maxStart = Mathf.Max(0, itemsProperty.arraySize - orderedIndices.Count);
+            int pageStart = Mathf.Clamp(pagination.page * pageSize, 0, maxStart);
+
+            ApplySliceOrder(itemsProperty, orderedIndices, pageStart);
+            int relativeSelection = Mathf.Clamp(newIndex, 0, orderedIndices.Count - 1);
+            pagination.selectedIndex = pageStart + relativeSelection;
+
+            SerializedObject serializedObject = property.serializedObject;
+            serializedObject.ApplyModifiedProperties();
+            SyncRuntimeSet(property);
+            serializedObject.Update();
+
+            SerializedProperty refreshedProperty = serializedObject.FindProperty(listKey);
+            SerializedProperty refreshedItemsProperty = refreshedProperty?.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            EnsurePaginationBounds(
+                pagination,
+                refreshedItemsProperty is { isArray: true } ? refreshedItemsProperty.arraySize : 0
+            );
+
+            MarkListCacheDirty(listKey);
+            SerializedProperty finalItemsProperty = refreshedItemsProperty ?? itemsProperty;
+            ListPageCache refreshedCache = EnsurePageCache(listKey, finalItemsProperty, pagination);
+            if (_lists.TryGetValue(listKey, out ReorderableList existingList))
+            {
+                existingList.list = refreshedCache.entries;
+                SyncListSelectionWithPagination(existingList, pagination, refreshedCache);
+            }
+            GUI.changed = true;
+        }
+
+        private static void ApplySliceOrder(
+            SerializedProperty itemsProperty,
+            List<int> orderedIndices,
+            int pageStart
+        )
+        {
+            if (itemsProperty == null || orderedIndices == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < orderedIndices.Count; i++)
+            {
+                int desiredIndex = pageStart + i;
+                int currentIndex = orderedIndices[i];
+                if (currentIndex == desiredIndex)
+                {
+                    continue;
+                }
+
+                itemsProperty.MoveArrayElement(currentIndex, desiredIndex);
+
+                if (currentIndex < desiredIndex)
+                {
+                    for (int j = i + 1; j < orderedIndices.Count; j++)
+                    {
+                        if (orderedIndices[j] > currentIndex && orderedIndices[j] <= desiredIndex)
+                        {
+                            orderedIndices[j]--;
+                        }
+                    }
+                }
+                else
+                {
+                    for (int j = i + 1; j < orderedIndices.Count; j++)
+                    {
+                        if (orderedIndices[j] >= desiredIndex && orderedIndices[j] < currentIndex)
+                        {
+                            orderedIndices[j]++;
+                        }
+                    }
+                }
+
+                orderedIndices[i] = desiredIndex;
+            }
+        }
+
         private bool TryClearSet(
             ref SerializedProperty property,
             string propertyPath,
@@ -2187,6 +2437,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
             SyncRuntimeSet(property);
+            MarkListCacheDirty(propertyPath);
             return true;
         }
 
@@ -2236,6 +2487,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EnsurePaginationBounds(pagination, itemsProperty?.arraySize ?? 0);
             EvaluateDuplicateState(property, itemsProperty, force: true);
             EvaluateNullEntryState(property, itemsProperty);
+            MarkListCacheDirty(propertyPath);
         }
 
         private void TryRemoveSelectedEntry(
@@ -2275,6 +2527,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
             EnsurePaginationBounds(pagination, totalCount);
             EvaluateDuplicateState(property, itemsProperty, force: true);
+            MarkListCacheDirty(propertyPath);
         }
 
         private bool TrySortElements(
@@ -2346,6 +2599,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             property.serializedObject.Update();
             property = property.serializedObject.FindProperty(propertyPath);
             SyncRuntimeSet(property);
+            MarkListCacheDirty(propertyPath);
             return true;
         }
 

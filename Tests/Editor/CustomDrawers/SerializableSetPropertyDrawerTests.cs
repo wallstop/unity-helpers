@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using System.Linq;
     using NUnit.Framework;
     using UnityEditor;
+    using UnityEditorInternal;
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
@@ -316,6 +317,78 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 itemsProperty
             );
             Assert.IsFalse(showAfter);
+        }
+
+        [Test]
+        public void ReorderableListReordersHashSetEntries()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array values = Array.CreateInstance(inspector.ElementType, 3);
+            values.SetValue(1, 0);
+            values.SetValue(2, 1);
+            values.SetValue(3, 2);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+
+            SerializableSetPropertyDrawer drawer = new();
+            ReorderableList list = drawer.GetOrCreateList(setProperty);
+
+            Assert.IsNotNull(list.onReorderCallbackWithDetails, "Expected reorder callback.");
+            list.onReorderCallbackWithDetails.Invoke(list, 0, 2);
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.AreEqual(3, itemsProperty.arraySize);
+            Assert.AreEqual(2, itemsProperty.GetArrayElementAtIndex(0).intValue);
+            Assert.AreEqual(3, itemsProperty.GetArrayElementAtIndex(1).intValue);
+            Assert.AreEqual(1, itemsProperty.GetArrayElementAtIndex(2).intValue);
+        }
+
+        [Test]
+        public void ReorderableListReordersSortedSetEntries()
+        {
+            SortedSetHost host = CreateScriptableObject<SortedSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array values = Array.CreateInstance(inspector.ElementType, 3);
+            values.SetValue(10, 0);
+            values.SetValue(20, 1);
+            values.SetValue(30, 2);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(SortedSetHost.set)
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            ReorderableList list = drawer.GetOrCreateList(setProperty);
+
+            Assert.IsNotNull(list.onReorderCallbackWithDetails, "Expected reorder callback.");
+            list.onReorderCallbackWithDetails.Invoke(list, 2, 0);
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.AreEqual(3, itemsProperty.arraySize);
+            Assert.AreEqual(30, itemsProperty.GetArrayElementAtIndex(0).intValue);
+            Assert.AreEqual(10, itemsProperty.GetArrayElementAtIndex(1).intValue);
+            Assert.AreEqual(20, itemsProperty.GetArrayElementAtIndex(2).intValue);
         }
 
         [Test]

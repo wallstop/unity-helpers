@@ -363,12 +363,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (_lists.TryGetValue(key, out ReorderableList cached))
             {
+                cached.list = cache.entries;
                 SyncListSelectionWithPagination(cached, pagination, cache);
                 cached.drawNoneElementCallback = _ => { };
                 cached.elementHeight =
                     ResolveKeysProperty().arraySize == 0 ? emptyHeight : defaultRowHeight;
                 cached.elementHeightCallback = ResolveRowHeight;
-                cached.list = cache.entries;
                 return cached;
             }
 
@@ -648,20 +648,30 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 ListPageCache currentCache = cacheProvider();
                 if (
                     !RelativeIndexIsValid(currentCache, oldIndex)
-                    || !RelativeIndexIsValid(currentCache, newIndex)
+                    || currentCache.entries.Count == 0
                 )
                 {
                     return;
                 }
 
-                int oldGlobalIndex = currentCache.entries[oldIndex].arrayIndex;
-                int newGlobalIndex = currentCache.entries[newIndex].arrayIndex;
-                keysProperty.MoveArrayElement(oldGlobalIndex, newGlobalIndex);
-                valuesProperty.MoveArrayElement(oldGlobalIndex, newGlobalIndex);
-                pagination.selectedIndex = newGlobalIndex;
+                List<int> orderedIndices = new(currentCache.entries.Count);
+                foreach (PageEntry entry in currentCache.entries)
+                {
+                    orderedIndices.Add(entry.arrayIndex);
+                }
+
+                int pageSize = Mathf.Max(1, pagination.pageSize);
+                int maxStart = Mathf.Max(0, keysProperty.arraySize - orderedIndices.Count);
+                int pageStart = Mathf.Clamp(pagination.pageIndex * pageSize, 0, maxStart);
+
+                ApplyDictionarySliceOrder(keysProperty, valuesProperty, orderedIndices, pageStart);
+                int relativeSelection = Mathf.Clamp(list.index, 0, orderedIndices.Count - 1);
+                pagination.selectedIndex = pageStart + relativeSelection;
                 InvalidateKeyCache(key);
+                MarkListCacheDirty(key);
 
                 ListPageCache refreshedCache = EnsurePageCache(key, keysProperty, pagination);
+                list.list = refreshedCache.entries;
                 SyncListSelectionWithPagination(list, pagination, refreshedCache);
             };
 
@@ -1283,6 +1293,55 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return -1;
+        }
+
+        private static void ApplyDictionarySliceOrder(
+            SerializedProperty keysProperty,
+            SerializedProperty valuesProperty,
+            List<int> orderedIndices,
+            int pageStart
+        )
+        {
+            if (keysProperty == null || valuesProperty == null || orderedIndices == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < orderedIndices.Count; i++)
+            {
+                int desiredIndex = pageStart + i;
+                int currentIndex = orderedIndices[i];
+                if (currentIndex == desiredIndex)
+                {
+                    continue;
+                }
+
+                keysProperty.MoveArrayElement(currentIndex, desiredIndex);
+                valuesProperty.MoveArrayElement(currentIndex, desiredIndex);
+
+                if (currentIndex < desiredIndex)
+                {
+                    for (int j = i + 1; j < orderedIndices.Count; j++)
+                    {
+                        if (orderedIndices[j] > currentIndex && orderedIndices[j] <= desiredIndex)
+                        {
+                            orderedIndices[j]--;
+                        }
+                    }
+                }
+                else
+                {
+                    for (int j = i + 1; j < orderedIndices.Count; j++)
+                    {
+                        if (orderedIndices[j] >= desiredIndex && orderedIndices[j] < currentIndex)
+                        {
+                            orderedIndices[j]++;
+                        }
+                    }
+                }
+
+                orderedIndices[i] = desiredIndex;
+            }
         }
 
         private static bool RelativeIndexIsValid(ListPageCache cache, int relativeIndex)
