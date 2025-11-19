@@ -398,8 +398,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     {
                         GUIStyle listBackgroundStyle =
                             ReorderableList.defaultBehaviours.boxBackground ?? GUI.skin.box;
+                        float footerHeight = Mathf.Max(0f, list.footerHeight);
+                        float bodyHeight = Mathf.Max(0f, listRect.height - footerHeight);
+                        Rect backgroundRect = new(
+                            listRect.x,
+                            listRect.y,
+                            listRect.width,
+                            bodyHeight
+                        );
                         listBackgroundStyle.Draw(
-                            listRect,
+                            backgroundRect,
                             GUIContent.none,
                             false,
                             false,
@@ -778,7 +786,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             list.list = cache.entries;
             list.headerHeight = GetPaginationHeaderHeight();
-            list.footerHeight = Mathf.Max(0f, GetFooterHeight() - 1f);
+            list.footerHeight = GetFooterHeight();
             SerializedObject serializedObject = property.serializedObject;
             list.drawFooterCallback = rect =>
             {
