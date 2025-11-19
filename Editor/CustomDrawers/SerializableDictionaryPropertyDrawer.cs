@@ -42,6 +42,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float PendingAddButtonWidth = 110f;
         private const int DefaultPageSize = 15;
         internal const int MaxPageSize = 250;
+        private const int DuplicateSummaryDisplayLimit = 5;
         private const float PaginationButtonWidth = 28f;
         private const float PaginationLabelWidth = 80f;
         private const float PaginationControlSpacing = 4f;
@@ -4622,6 +4623,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly Dictionary<int, DuplicateKeyInfo> _duplicateLookup = new();
             private readonly Dictionary<int, double> _duplicateAnimationStartTimes = new();
             private readonly List<int> _animationKeysScratch = new();
+            private readonly List<int> _summaryIndicesScratch = new();
+            private readonly StringBuilder _summaryBuilder = new();
             private bool _lastHadDuplicates;
 
             public bool HasDuplicates { get; private set; }
@@ -4634,6 +4637,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 _duplicateLookup.Clear();
                 HasDuplicates = false;
                 SummaryTooltip = string.Empty;
+                _summaryBuilder.Clear();
 
                 if (keysProperty == null || keyType == null)
                 {
@@ -4661,6 +4665,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 int duplicateGroupCount = 0;
+                int displayedSummaryGroups = 0;
 
                 foreach (KeyValuePair<object, List<int>> entry in grouping)
                 {
@@ -4685,15 +4690,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         };
                         _duplicateLookup[arrayIndex] = info;
                     }
+
+                    if (displayedSummaryGroups < DuplicateSummaryDisplayLimit)
+                    {
+                        if (_summaryBuilder.Length > 0)
+                        {
+                            _summaryBuilder.AppendLine();
+                        }
+                        AppendDuplicateSummaryLine(formattedKey, indices);
+                        displayedSummaryGroups++;
+                    }
                 }
 
-                if (duplicateGroupCount > 0)
-                {
-                    SummaryTooltip =
-                        duplicateGroupCount == 1
-                            ? "Duplicate key detected. Resolve conflicts to prevent silent overwrites. The last entry wins at runtime."
-                            : $"{duplicateGroupCount} duplicate keys detected. Resolve conflicts to prevent silent overwrites. The last entry wins at runtime.";
-                }
+                SummaryTooltip = BuildDuplicateSummaryText(
+                    duplicateGroupCount,
+                    displayedSummaryGroups
+                );
 
                 UpdateAnimationTracking();
 
@@ -4716,6 +4728,73 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public bool TryGetInfo(int arrayIndex, out DuplicateKeyInfo info)
             {
                 return _duplicateLookup.TryGetValue(arrayIndex, out info);
+            }
+
+            private void AppendDuplicateSummaryLine(string formattedKey, List<int> indices)
+            {
+                if (string.IsNullOrEmpty(formattedKey) || indices == null || indices.Count <= 1)
+                {
+                    return;
+                }
+
+                _summaryIndicesScratch.Clear();
+                _summaryIndicesScratch.AddRange(indices);
+                _summaryIndicesScratch.Sort();
+
+                _summaryBuilder.Append("Duplicate key ");
+                _summaryBuilder.Append(formattedKey);
+                _summaryBuilder.Append(" at entries ");
+
+                for (int index = 0; index < _summaryIndicesScratch.Count; index++)
+                {
+                    if (index > 0)
+                    {
+                        _summaryBuilder.Append(", ");
+                    }
+
+                    _summaryBuilder.Append(_summaryIndicesScratch[index] + 1);
+                }
+            }
+
+            private string BuildDuplicateSummaryText(int duplicateGroupCount, int displayedGroups)
+            {
+                if (duplicateGroupCount <= 0)
+                {
+                    return string.Empty;
+                }
+
+                if (displayedGroups == 0)
+                {
+                    return duplicateGroupCount == 1
+                        ? "Duplicate key detected. Resolve conflicts to prevent silent overwrites. The last entry wins at runtime."
+                        : $"{duplicateGroupCount} duplicate keys detected. Resolve conflicts to prevent silent overwrites. The last entry wins at runtime.";
+                }
+
+                if (duplicateGroupCount > displayedGroups)
+                {
+                    if (_summaryBuilder.Length > 0)
+                    {
+                        _summaryBuilder.AppendLine();
+                    }
+
+                    int remainingGroups = duplicateGroupCount - displayedGroups;
+                    _summaryBuilder.Append(
+                        remainingGroups == 1
+                            ? "1 additional duplicate group omitted for brevity."
+                            : $"{remainingGroups} additional duplicate groups omitted for brevity."
+                    );
+                }
+
+                if (_summaryBuilder.Length > 0)
+                {
+                    _summaryBuilder.AppendLine();
+                }
+
+                _summaryBuilder.Append(
+                    "Resolve conflicts to prevent silent overwrites. The last entry wins at runtime."
+                );
+
+                return _summaryBuilder.ToString();
             }
 
             private void UpdateAnimationTracking()

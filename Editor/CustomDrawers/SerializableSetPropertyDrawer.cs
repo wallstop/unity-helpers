@@ -1406,7 +1406,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 if (duplicateGroupCount <= 5)
                 {
-                    state.summaryBuilder.Append("Value ");
+                    state.summaryBuilder.Append("Duplicate entry ");
                     state.summaryBuilder.Append(ConvertDuplicateKeyToString(groupingKey));
                     state.summaryBuilder.Append(" at indices ");
                     AppendIndexList(state.summaryBuilder, indices);
