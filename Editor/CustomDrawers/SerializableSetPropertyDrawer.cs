@@ -27,8 +27,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const int MaxAutoAddAttempts = 256;
         internal const int MaxPageSize = 250;
         private const float PaginationLabelWidth = 80f;
-        private const float PaginationHeaderHeightPadding = 2f;
+        private const float PaginationHeaderHeightPadding = 7f;
         private const float InspectorHeightPadding = 2.5f;
+        private const float PaginationLabelVerticalOffset = -2f;
+        private const float PaginationButtonsVerticalOffset = 1f;
 
         private static readonly GUIContent AddEntryContent = new("Add");
         private static readonly GUIContent ClearAllContent = new("Clear All");
@@ -389,7 +391,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     float headerHeight = GetPaginationHeaderHeight();
                     Rect headerRect = new(position.x, y, position.width, headerHeight);
                     DrawHeaderControls(headerRect, pagination, totalCount);
-                    y = headerRect.yMax + SectionSpacing;
+                    y = headerRect.yMax;
 
                     float listHeight = list.GetHeight();
                     Rect listRect = new(position.x, y, position.width, listHeight);
@@ -463,10 +465,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             bool hasItemsArray = itemsProperty is { isArray: true };
             int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
+            bool hasListItems = hasItemsArray && totalCount > 0;
 
-            float headerHeight = GetPaginationHeaderHeight();
+            float headerHeight = hasListItems ? GetPaginationHeaderHeight() : 0f;
             float footerHeight = GetFooterHeight();
-            height += SectionSpacing + headerHeight + SectionSpacing;
+            height += SectionSpacing;
 
             EnsurePaginationBounds(pagination, totalCount);
 
@@ -483,7 +486,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 height += GetWarningBarHeight() + SectionSpacing;
             }
 
-            if (!hasItemsArray || totalCount == 0)
+            if (!hasListItems)
             {
                 float blockPadding = 6f;
                 float messageHeight = EditorGUIUtility.singleLineHeight;
@@ -492,6 +495,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
             else
             {
+                height += headerHeight;
                 string listKey = GetListKey(property);
                 UpdateListContext(
                     listKey,
@@ -999,6 +1003,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 Mathf.Max(controlsWidth, 0f),
                 contentRect.height
             );
+            float labelHeight = EditorGUIUtility.singleLineHeight;
+            float labelCenterOffset = Mathf.Max(0f, (controlsRect.height - labelHeight) * 0.5f);
 
             float cursor = controlsRect.x;
             if (showLabel)
@@ -1009,7 +1015,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 int currentPage =
                     totalCount > 0 ? Mathf.Clamp(pagination.page + 1, 1, pageCount) : 0;
                 string labelText = totalCount == 0 ? "Page 0/0" : $"Page {currentPage}/{pageCount}";
-                Rect labelRect = new(cursor, rect.y, labelWidth, rect.height);
+                float labelY = controlsRect.y + labelCenterOffset + PaginationLabelVerticalOffset;
+                Rect labelRect = new(cursor, labelY, labelWidth, labelHeight);
                 EditorGUI.LabelField(labelRect, labelText, EditorStyles.miniLabel);
                 cursor = labelRect.xMax + ButtonSpacing;
             }
@@ -1019,7 +1026,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            Rect navRect = new(cursor, rect.y, navWidth, rect.height);
+            float buttonHeight = Mathf.Max(
+                0f,
+                controlsRect.height - PaginationButtonsVerticalOffset
+            );
+            float buttonY = controlsRect.y + PaginationButtonsVerticalOffset;
+            Rect navRect = new(cursor, buttonY, navWidth, buttonHeight);
             DrawPaginationButtons(navRect, pagination, totalCount);
         }
 
