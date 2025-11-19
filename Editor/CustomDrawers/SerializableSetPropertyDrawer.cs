@@ -30,7 +30,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float PaginationHeaderHeightPadding = 7f;
         private const float InspectorHeightPadding = 2.5f;
         private const float PaginationLabelVerticalOffset = -2f;
-        private const float PaginationButtonsVerticalOffset = 1f;
+        private const float PaginationButtonsVerticalOffset = 0f;
+        private const float PaginationHeaderContentPadding = 2f;
 
         private static readonly GUIContent AddEntryContent = new("Add");
         private static readonly GUIContent ClearAllContent = new("Clear All");
@@ -777,7 +778,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             list.list = cache.entries;
             list.headerHeight = GetPaginationHeaderHeight();
-            list.footerHeight = GetFooterHeight();
+            list.footerHeight = Mathf.Max(0f, GetFooterHeight() - 1f);
             SerializedObject serializedObject = property.serializedObject;
             list.drawFooterCallback = rect =>
             {
@@ -891,24 +892,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             rightCursor = addRect.x - buttonSpacing;
 
             Rect clearRect = new(rightCursor - 80f, verticalCenter, 80f, lineHeight);
-            GUIStyle clearStyle =
-                totalCount > 0 ? ClearAllActiveButtonStyle : ClearAllInactiveButtonStyle;
-            using (new EditorGUI.DisabledScope(totalCount == 0))
+            bool canClear = totalCount > 0;
+            GUIStyle clearStyle = canClear
+                ? ClearAllActiveButtonStyle
+                : ClearAllInactiveButtonStyle;
+            if (GUI.Button(clearRect, ClearAllContent, clearStyle) && canClear)
             {
-                if (GUI.Button(clearRect, ClearAllContent, clearStyle) && totalCount > 0)
+                if (TryClearSet(ref propertyRef, propertyPath, ref itemsPropertyRef))
                 {
-                    if (TryClearSet(ref propertyRef, propertyPath, ref itemsPropertyRef))
-                    {
-                        pagination.page = 0;
-                        pagination.selectedIndex = -1;
-                        itemsPropertyRef = propertyRef.FindPropertyRelative(
-                            SerializableHashSetSerializedPropertyNames.Items
-                        );
-                        totalCount = itemsPropertyRef is { isArray: true }
-                            ? itemsPropertyRef.arraySize
-                            : 0;
-                        EnsurePaginationBounds(pagination, totalCount);
-                    }
+                    pagination.page = 0;
+                    pagination.selectedIndex = -1;
+                    itemsPropertyRef = propertyRef.FindPropertyRelative(
+                        SerializableHashSetSerializedPropertyNames.Items
+                    );
+                    totalCount = itemsPropertyRef is { isArray: true }
+                        ? itemsPropertyRef.arraySize
+                        : 0;
+                    EnsurePaginationBounds(pagination, totalCount);
                 }
             }
             rightCursor = clearRect.x - buttonSpacing;
