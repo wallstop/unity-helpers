@@ -180,6 +180,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 "Tween Cycle Limit",
                 "Number of shake cycles performed when highlighting duplicate entries. Negative values loop indefinitely."
             );
+        private static readonly GUIContent SerializableSetDuplicateTweenEnabledContent =
+            EditorGUIUtility.TrTextContent(
+                "Tween Serializable Set Duplicates",
+                "Enable lateral shake animations when highlighting duplicate or invalid entries in SerializableHashSet and SerializableSortedSet inspectors."
+            );
+        private static readonly GUIContent SerializableSetDuplicateTweenCyclesContent =
+            EditorGUIUtility.TrTextContent(
+                "Set Duplicate Tween Cycles",
+                "Number of shake cycles performed for SerializableSet duplicate entries. Negative values loop indefinitely."
+            );
         private static readonly GUIContent WGroupAutoIncludeModeContent =
             EditorGUIUtility.TrTextContent(
                 "Auto Include Mode",
@@ -420,6 +430,29 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             expectedValues: new object[] { DuplicateRowAnimationMode.Tween }
         )]
         private int duplicateRowTweenCycles = DefaultDuplicateTweenCycles;
+
+        [SerializeField]
+        [Tooltip(
+            "Enable lateral shake animations when highlighting duplicate or invalid entries in SerializableSet inspectors."
+        )]
+        [WGroup(
+            "Serializable Set Tweens",
+            displayName: "Serializable Set Tweens",
+            autoIncludeCount: 2,
+            collapsible: true
+        )]
+        private bool serializableSetDuplicateTweenEnabled = true;
+
+        [SerializeField]
+        [Tooltip(
+            "When enabled, number of shake cycles to play for SerializableSet duplicate entries. Negative values loop indefinitely."
+        )]
+        [WShowIf(nameof(serializableSetDuplicateTweenEnabled))]
+        private int serializableSetDuplicateTweenCycles = DefaultDuplicateTweenCycles;
+
+        [SerializeField]
+        [HideInInspector]
+        private bool serializableSetDuplicateTweenSettingsInitialized;
 
         [SerializeField]
         [Tooltip(
@@ -1189,6 +1222,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return instance.duplicateRowTweenCycles;
         }
 
+        public static bool ShouldTweenSerializableSetDuplicates()
+        {
+            return instance.serializableSetDuplicateTweenEnabled
+                && instance.duplicateRowAnimationMode == DuplicateRowAnimationMode.Tween;
+        }
+
+        public static int GetSerializableSetDuplicateTweenCycleLimit()
+        {
+            if (!instance.serializableSetDuplicateTweenSettingsInitialized)
+            {
+                return instance.duplicateRowTweenCycles;
+            }
+
+            return instance.serializableSetDuplicateTweenCycles;
+        }
+
         /// <summary>
         /// Ensures persisted data stays within valid range.
         /// </summary>
@@ -1289,11 +1338,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             {
                 SaveSettings();
             }
+
+            bool shouldApplyRuntimeConfig = true;
             if (EnsureSerializableTypePatternDefaults())
             {
                 SaveSettings();
+                shouldApplyRuntimeConfig = false;
             }
-            else
+            if (EnsureSerializableSetTweenDefaults())
+            {
+                SaveSettings();
+                shouldApplyRuntimeConfig = false;
+            }
+            if (shouldApplyRuntimeConfig)
             {
                 ApplyRuntimeConfiguration();
             }
@@ -1372,6 +1429,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             foldoutTweenSettingsInitialized = true;
+            return true;
+        }
+
+        private bool EnsureSerializableSetTweenDefaults()
+        {
+            if (serializableSetDuplicateTweenSettingsInitialized)
+            {
+                return false;
+            }
+
+            serializableSetDuplicateTweenEnabled =
+                duplicateRowAnimationMode == DuplicateRowAnimationMode.Tween;
+            serializableSetDuplicateTweenCycles =
+                duplicateRowTweenCycles != 0
+                    ? duplicateRowTweenCycles
+                    : DefaultDuplicateTweenCycles;
+            serializableSetDuplicateTweenSettingsInitialized = true;
             return true;
         }
 
@@ -3669,6 +3743,45 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                     DuplicateTweenCyclesContent,
                                     settings.duplicateRowTweenCycles,
                                     value => settings.duplicateRowTweenCycles = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(serializableSetDuplicateTweenEnabled),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawToggleField(
+                                    SerializableSetDuplicateTweenEnabledContent,
+                                    settings.serializableSetDuplicateTweenEnabled,
+                                    value => settings.serializableSetDuplicateTweenEnabled = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(serializableSetDuplicateTweenCycles),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (!settings.serializableSetDuplicateTweenEnabled)
+                                {
+                                    return true;
+                                }
+
+                                bool changed = DrawIntField(
+                                    SerializableSetDuplicateTweenCyclesContent,
+                                    settings.serializableSetDuplicateTweenCycles,
+                                    value => settings.serializableSetDuplicateTweenCycles = value
                                 );
                                 dataChanged |= changed;
                                 return true;

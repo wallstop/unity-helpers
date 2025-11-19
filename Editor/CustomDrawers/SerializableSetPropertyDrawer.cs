@@ -1040,35 +1040,44 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             pagination.selectedIndex = Mathf.Clamp(pageStart, 0, totalCount - 1);
         }
 
-        private static float GetDuplicatePulse(DuplicateState state, int index, int cycleLimit)
+        private static float GetDuplicateShakeOffset(
+            DuplicateState state,
+            int index,
+            double currentTime,
+            int cycleLimit
+        )
         {
-            if (
-                state == null
-                || UnityHelpersSettings.GetDuplicateRowAnimationMode()
-                    != UnityHelpersSettings.DuplicateRowAnimationMode.Tween
-                || !state.animationStartTimes.TryGetValue(index, out double startTime)
-            )
+            if (state == null || cycleLimit == 0)
             {
-                return 1f;
+                return 0f;
             }
 
-            double elapsed = EditorApplication.timeSinceStartup - startTime;
-            if (elapsed <= 0d)
+            if (!state.animationStartTimes.TryGetValue(index, out double startTime))
             {
-                return 1f;
+                startTime = currentTime;
+                state.animationStartTimes[index] = startTime;
             }
 
-            if (cycleLimit >= 0)
+            if (currentTime < startTime)
             {
-                double cycles = elapsed * DuplicateShakeFrequency / (2d * Math.PI);
-                if (cycles >= cycleLimit)
+                startTime = currentTime;
+                state.animationStartTimes[index] = startTime;
+            }
+
+            if (cycleLimit > 0)
+            {
+                double cycleDuration = (2d * Math.PI) / DuplicateShakeFrequency;
+                double elapsed = currentTime - startTime;
+                double maxDuration = cycleDuration * cycleLimit;
+                if (elapsed >= maxDuration)
                 {
-                    state.animationStartTimes.Remove(index);
-                    return 1f;
+                    return 0f;
                 }
             }
 
-            return (float)(0.5 + 0.5 * Math.Sin(elapsed * DuplicateShakeFrequency));
+            float phase = (float)(currentTime * DuplicateShakeFrequency);
+            float seed = index * 0.35f;
+            return Mathf.Sin(phase + seed) * DuplicateShakeAmplitude;
         }
 
         internal static Rect ExpandRowRectVertically(Rect rect)
@@ -2224,10 +2233,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Color baseRowColor = EditorGUIUtility.isProSkin ? DarkRowColor : LightRowColor;
             EditorGUI.DrawRect(backgroundRect, baseRowColor);
 
-            Rect outlineRect = Rect.zero;
-            bool shouldDrawOutline = false;
-            bool outlineForNull = false;
-
             UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
                 UnityHelpersSettings.GetDuplicateRowAnimationMode();
 #pragma warning disable CS0618
@@ -2236,59 +2241,50 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 && context.duplicateState != null;
 #pragma warning restore CS0618
             bool animateDuplicates =
-                animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
+                highlightDuplicates && UnityHelpersSettings.ShouldTweenSerializableSetDuplicates();
+            int tweenCycleLimit = UnityHelpersSettings.GetSerializableSetDuplicateTweenCycleLimit();
+            double currentTime = animateDuplicates ? EditorApplication.timeSinceStartup : 0d;
+
+            float shakeOffset = 0f;
+            if (isDuplicate && animateDuplicates && context.duplicateState != null)
+            {
+                shakeOffset = GetDuplicateShakeOffset(
+                    context.duplicateState,
+                    arrayIndex,
+                    currentTime,
+                    tweenCycleLimit
+                );
+            }
+
+            Rect highlightRect = ExpandRowRectVertically(backgroundRect);
+            highlightRect.x += shakeOffset;
+
+            Rect insetHighlightRect = highlightRect;
+            insetHighlightRect.xMin += 1f;
+            insetHighlightRect.xMax -= 1f;
+            insetHighlightRect.yMin += 1f;
+            insetHighlightRect.yMax -= 1f;
+            insetHighlightRect.height = Mathf.Max(0f, insetHighlightRect.height);
 
             if (isDuplicate && highlightDuplicates)
             {
-                Rect duplicateRect = ExpandRowRectVertically(backgroundRect);
                 Color duplicateColor = isPrimaryDuplicate
                     ? DuplicatePrimaryColor
                     : DuplicateSecondaryColor;
-                if (animateDuplicates)
-                {
-                    if (!context.duplicateState.animationStartTimes.ContainsKey(arrayIndex))
-                    {
-                        context.duplicateState.animationStartTimes[arrayIndex] =
-                            EditorApplication.timeSinceStartup;
-                    }
-
-                    float pulse = GetDuplicatePulse(
-                        context.duplicateState,
-                        arrayIndex,
-                        UnityHelpersSettings.GetDuplicateRowTweenCycleLimit()
-                    );
-                    float intensity = Mathf.Lerp(0.75f, 1.05f, pulse);
-                    duplicateColor.r *= intensity;
-                    duplicateColor.g *= intensity;
-                    duplicateColor.b *= intensity;
-                }
-
-                EditorGUI.DrawRect(duplicateRect, duplicateColor);
-                outlineRect = duplicateRect;
-                shouldDrawOutline = true;
+                EditorGUI.DrawRect(insetHighlightRect, duplicateColor);
+                DrawDuplicateOutline(insetHighlightRect);
             }
 
             if (hasNullValue)
             {
-                Rect nullRect = ExpandRowRectVertically(backgroundRect);
-                Color nullColor = NullEntryHighlightColor;
-                if (animateDuplicates)
-                {
-                    double elapsed = EditorApplication.timeSinceStartup + arrayIndex;
-                    float pulse = (float)(0.5 + 0.5 * Math.Sin(elapsed * DuplicateShakeFrequency));
-                    float alpha = Mathf.Lerp(0.6f, 1f, pulse);
-                    nullColor.a = Mathf.Clamp01(nullColor.a * alpha);
-                }
-
-                EditorGUI.DrawRect(nullRect, nullColor);
-                outlineRect = nullRect;
-                outlineForNull = true;
+                EditorGUI.DrawRect(insetHighlightRect, NullEntryHighlightColor);
+                DrawDuplicateOutline(insetHighlightRect);
                 if (
                     context.nullState != null
                     && context.nullState.tooltips.TryGetValue(arrayIndex, out string tooltip)
                 )
                 {
-                    DrawNullEntryTooltip(nullRect, tooltip);
+                    DrawNullEntryTooltip(insetHighlightRect, tooltip);
                 }
             }
 
@@ -2298,16 +2294,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 Mathf.Max(0f, rect.width - 20f),
                 rect.height
             );
+            contentRect.x += shakeOffset;
             EditorGUI.PropertyField(contentRect, element, GUIContent.none, true);
-
-            if (outlineForNull)
-            {
-                DrawDuplicateOutline(outlineRect);
-            }
-            else if (shouldDrawOutline)
-            {
-                DrawDuplicateOutline(outlineRect);
-            }
         }
 
         private void HandleListReorder(
