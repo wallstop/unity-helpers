@@ -363,6 +363,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         messageHeight
                     );
                     EditorGUI.LabelField(messageRect, "Set is empty.", EditorStyles.miniLabel);
+                    y = blockRect.yMax + SectionSpacing;
                 }
                 else
                 {
@@ -393,7 +394,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     LastItemsContainerRect = listRect;
                     HasItemsContainerRect = true;
                     list.DoList(listContentRect);
-                    y = listRect.yMax;
+                    y = listRect.yMax + SectionSpacing;
                 }
 
                 bool applied = serializedObject.ApplyModifiedProperties();
@@ -469,26 +470,28 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
             else
             {
-                int startIndex = pagination.page * pagination.pageSize;
-                int endIndex = Mathf.Min(startIndex + pagination.pageSize, totalCount);
-                float rowsHeight = 0f;
-                for (int index = startIndex; index < endIndex; index++)
-                {
-                    SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
-                    float elementHeight = EditorGUI.GetPropertyHeight(
-                        element,
-                        GUIContent.none,
-                        true
-                    );
-                    rowsHeight += elementHeight;
-                    if (index < endIndex - 1)
-                    {
-                        rowsHeight += RowSpacing;
-                    }
-                }
+                string listKey = GetListKey(property);
+                UpdateListContext(
+                    listKey,
+                    property,
+                    itemsProperty,
+                    duplicateState,
+                    nullState,
+                    pagination
+                );
+                ReorderableList list = GetOrCreateList(
+                    listKey,
+                    property,
+                    itemsProperty,
+                    pagination
+                );
 
-                float blockPadding = 6f;
-                height += blockPadding * 2f + rowsHeight + SectionSpacing;
+                float listHeight =
+                    list != null
+                        ? list.GetHeight()
+                        : EditorGUIUtility.singleLineHeight
+                            * Mathf.Min(totalCount, pagination.pageSize);
+                height += listHeight + SectionSpacing;
 
                 return height;
             }

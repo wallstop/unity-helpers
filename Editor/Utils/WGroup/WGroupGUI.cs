@@ -209,7 +209,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 style = new GUIStyle(EditorStyles.foldoutHeader)
                 {
                     fontStyle = FontStyle.Bold,
-                    padding = new RectOffset(16, 6, 4, 4),
+                    padding = new RectOffset(16, 6, 1, 0),
                 };
                 style.normal.textColor = textColor;
                 style.onNormal.textColor = textColor;
@@ -229,7 +229,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 style = new GUIStyle(EditorStyles.boldLabel)
                 {
                     alignment = TextAnchor.MiddleLeft,
-                    padding = new RectOffset(4, 4, 2, 2),
+                    padding = new RectOffset(4, 4, 0, 0),
                 };
                 style.normal.textColor = textColor;
                 style.active.textColor = textColor;
@@ -255,7 +255,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
     {
         private const float HorizontalContentPadding = 3f;
         private const float VerticalContentPaddingTop = 1f;
-        private const float VerticalContentPaddingBottom = 1f;
+        private const float VerticalContentPaddingBottom = 3f;
 
         internal static void DrawHeaderBackground(Rect rect, Color baseColor)
         {
