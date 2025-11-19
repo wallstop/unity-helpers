@@ -26,6 +26,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const int DefaultPageSize = 15;
         private const int MaxAutoAddAttempts = 256;
         internal const int MaxPageSize = 250;
+        private const float PaginationLabelWidth = 80f;
 
         private static readonly GUIContent AddEntryContent = new("Add");
         private static readonly GUIContent ClearAllContent = new("Clear All");
@@ -150,6 +151,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             float lineHeight = EditorGUIUtility.singleLineHeight;
             return lineHeight + EditorGUIUtility.standardVerticalSpacing * 2f;
+        }
+
+        private enum PaginationControlLayout
+        {
+            None,
+            PrevNext,
+            Full,
         }
 
         static SerializableSetPropertyDrawer()
@@ -371,6 +379,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         itemsProperty,
                         pagination
                     );
+                    Rect headerRect = new(
+                        position.x,
+                        y,
+                        position.width,
+                        EditorGUIUtility.singleLineHeight
+                    );
+                    DrawHeaderControls(headerRect, pagination, totalCount);
+                    y = headerRect.yMax + SectionSpacing;
+
                     float listHeight = list.GetHeight();
                     Rect listRect = new(position.x, y, position.width, listHeight);
                     GUI.Box(listRect, GUIContent.none, EditorStyles.helpBox);
@@ -444,8 +461,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool hasItemsArray = itemsProperty is { isArray: true };
             int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
 
+            float headerHeight = EditorGUIUtility.singleLineHeight;
             float footerHeight = GetFooterHeight();
-            height += SectionSpacing;
+            height += SectionSpacing + headerHeight + SectionSpacing;
 
             EnsurePaginationBounds(pagination, totalCount);
 
@@ -909,45 +927,88 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
-            float availableWidth = Mathf.Max(0f, rightCursor - leftCursor);
-
-            float navigationWidth = PaginationButtonWidth * 4f + ButtonSpacing * 3f;
-            if (availableWidth >= navigationWidth)
-            {
-                Rect navigationRect = new(leftCursor, verticalCenter, navigationWidth, lineHeight);
-                DrawPaginationButtons(navigationRect, pagination, totalCount);
-                leftCursor = navigationRect.xMax + buttonSpacing;
-                availableWidth = Mathf.Max(0f, rightCursor - leftCursor);
-            }
-
-            GUIContent pageInfoContent = GUIContent.none;
-            if (totalCount > 0)
-            {
-                int pageSize = Mathf.Max(1, pagination.pageSize);
-                int pageCount = Mathf.Max(1, (totalCount + pageSize - 1) / pageSize);
-                int currentPage = Mathf.Clamp(pagination.page + 1, 1, pageCount);
-                pageInfoContent = new GUIContent($"Page {currentPage}/{pageCount}");
-            }
-
-            if (pageInfoContent != GUIContent.none)
-            {
-                float pageInfoWidth = EditorStyles.miniLabel.CalcSize(pageInfoContent).x;
-                if (pageInfoWidth <= availableWidth)
-                {
-                    Rect pageInfoRect = new(leftCursor, verticalCenter, pageInfoWidth, lineHeight);
-                    EditorGUI.LabelField(pageInfoRect, pageInfoContent, EditorStyles.miniLabel);
-                    leftCursor = pageInfoRect.xMax + buttonSpacing;
-                    availableWidth = Mathf.Max(0f, rightCursor - leftCursor);
-                }
-            }
-
             GUIContent entriesContent = new($"Entries: {totalCount}");
             float entriesWidth = EditorStyles.miniLabel.CalcSize(entriesContent).x;
+            float availableWidth = Mathf.Max(0f, rightCursor - leftCursor);
             if (entriesWidth <= availableWidth)
             {
                 Rect entriesRect = new(leftCursor, verticalCenter, entriesWidth, lineHeight);
                 EditorGUI.LabelField(entriesRect, entriesContent, EditorStyles.miniLabel);
             }
+        }
+
+        private void DrawHeaderControls(Rect rect, PaginationState pagination, int totalCount)
+        {
+            Event current = Event.current;
+            if (current.type == EventType.Repaint)
+            {
+                GUIStyle headerStyle = (GUIStyle)"RL Header";
+                headerStyle.Draw(rect, GUIContent.none, false, false, false, false);
+            }
+
+            Rect contentRect = new(rect.x + 8f, rect.y, rect.width - 16f, rect.height);
+            float navWidthFull = PaginationButtonWidth * 4f + ButtonSpacing * 3f;
+            float navWidthCompact = PaginationButtonWidth * 2f + ButtonSpacing;
+            float labelWidth = PaginationLabelWidth;
+
+            PaginationControlLayout layout = PaginationControlLayout.Full;
+            bool showLabel = true;
+            float navWidth = navWidthFull;
+            float controlsWidth = navWidth + labelWidth + ButtonSpacing;
+
+            if (controlsWidth > contentRect.width)
+            {
+                showLabel = false;
+                controlsWidth = navWidth;
+            }
+
+            if (controlsWidth > contentRect.width)
+            {
+                layout = PaginationControlLayout.PrevNext;
+                navWidth = navWidthCompact;
+                controlsWidth = showLabel ? navWidth + labelWidth + ButtonSpacing : navWidth;
+            }
+
+            if (controlsWidth > contentRect.width)
+            {
+                layout = PaginationControlLayout.None;
+                navWidth = 0f;
+                showLabel = false;
+            }
+
+            if (layout == PaginationControlLayout.None && !showLabel)
+            {
+                return;
+            }
+
+            Rect controlsRect = new(
+                contentRect.xMax - Mathf.Max(controlsWidth, 0f),
+                contentRect.y,
+                Mathf.Max(controlsWidth, 0f),
+                contentRect.height
+            );
+
+            float cursor = controlsRect.x;
+            if (showLabel)
+            {
+                int pageSize = Mathf.Max(1, pagination.pageSize);
+                int pageCount =
+                    totalCount > 0 ? Mathf.Max(1, (totalCount + pageSize - 1) / pageSize) : 1;
+                int currentPage =
+                    totalCount > 0 ? Mathf.Clamp(pagination.page + 1, 1, pageCount) : 0;
+                string labelText = totalCount == 0 ? "Page 0/0" : $"Page {currentPage}/{pageCount}";
+                Rect labelRect = new(cursor, rect.y, labelWidth, rect.height);
+                EditorGUI.LabelField(labelRect, labelText, EditorStyles.miniLabel);
+                cursor = labelRect.xMax + ButtonSpacing;
+            }
+
+            if (layout == PaginationControlLayout.None)
+            {
+                return;
+            }
+
+            Rect navRect = new(cursor, rect.y, navWidth, rect.height);
+            DrawPaginationButtons(navRect, pagination, totalCount);
         }
 
         private void DrawPaginationButtons(Rect rect, PaginationState pagination, int totalCount)
