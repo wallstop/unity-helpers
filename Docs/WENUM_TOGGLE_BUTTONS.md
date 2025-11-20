@@ -6,13 +6,13 @@ Working with flag-based enums or small enumerated choice sets in Unity's inspect
 
 - **Clarity for composite selections:** Individual buttons communicate state far better than a numeric mask value or checked list inside a popup.
 - **Fewer clicks for repetitive workflows:** Quick action buttons enable "All" or "None" operations without diving into menus.
-- **Consistent styling with other helpers:** The attribute integrates with `IntDropdown`, `StringInList`, and `ValueDropdown`, letting teams standardize on a single visual language for curated options.
+- **Consistent styling with other helpers:** The attribute integrates with `IntDropdown`, `StringInList`, and `WValueDropDown`, letting teams standardize on a single visual language for curated options.
 
 ## Supported Targets
 
 - `[Flags]` enums with discrete power-of-two members (plus the optional zero member).
 - Standard enums for single-value selection.
-- Fields decorated with `IntDropdown`, `StringInList`, or `ValueDropdown`, rendered as toggle groups instead of popups.
+- Fields decorated with `IntDropdown`, `StringInList`, or `WValueDropDown`, rendered as toggle groups instead of popups.
 
 ### Pagination Defaults
 
@@ -44,7 +44,7 @@ public string difficulty;
 public int targetFrameRate;
 
 [WEnumToggleButtons]
-[ValueDropdown(typeof(AudioBusLibrary), nameof(AudioBusLibrary.GetBusNames))]
+[WValueDropDown(typeof(AudioBusLibrary), nameof(AudioBusLibrary.GetBusNames))]
 public string targetBus;
 
 [WEnumToggleButtons(PageSize = 8)]

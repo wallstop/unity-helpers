@@ -14,7 +14,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// </para>
     /// <para>
     /// The attribute can also be combined with <see cref="IntDropdownAttribute"/>, <see cref="StringInListAttribute"/>, or
-    /// <see cref="ValueDropdownAttribute"/> to render those curated lists as toggle buttons instead of a popup.
+    /// <see cref="WValueDropDownAttribute"/> to render those curated lists as toggle buttons instead of a popup.
     /// In this mode only a single option is active at a time, but the visual presentation becomes much clearer for small choice sets.
     /// </para>
     /// <para>
@@ -53,7 +53,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// public int targetFrameRate;
     ///
     /// [WEnumToggleButtons]
-    /// [ValueDropdown(typeof(LocalizationCatalogue), nameof(LocalizationCatalogue.GetKnownKeys), typeof(string))]
+    /// [WValueDropDown(typeof(LocalizationCatalogue), nameof(LocalizationCatalogue.GetKnownKeys), typeof(string))]
     /// public string localizationKey;
     /// </code>
     /// </example>

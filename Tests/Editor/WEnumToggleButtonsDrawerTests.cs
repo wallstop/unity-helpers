@@ -320,7 +320,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         private sealed class ToggleDropdownAsset : ScriptableObject
         {
             [WEnumToggleButtons]
-            [ValueDropdown(typeof(DropdownProvider), nameof(DropdownProvider.GetModes))]
+            [WValueDropDown(typeof(DropdownProvider), nameof(DropdownProvider.GetModes))]
             public string mode;
         }
 

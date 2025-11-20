@@ -221,7 +221,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
-        public void ValueDropdownOptionsPopulateAndSelect()
+        public void WValueDropDownOptionsPopulateAndSelect()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
             SerializedObject serializedObject = new(asset);
@@ -247,7 +247,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
-        public void FloatValueDropdownOptionsRespectSelection()
+        public void FloatWValueDropDownOptionsRespectSelection()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
             SerializedObject serializedObject = new(asset);
@@ -585,11 +585,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public string stateName = "Idle";
 
             [WEnumToggleButtons]
-            [ValueDropdown(typeof(DropdownProvider), nameof(DropdownProvider.GetPriorityEntries))]
+            [WValueDropDown(typeof(DropdownProvider), nameof(DropdownProvider.GetPriorityEntries))]
             public int priority = 1;
 
             [WEnumToggleButtons]
-            [ValueDropdown(typeof(DropdownProvider), nameof(DropdownProvider.GetFloatEntries))]
+            [WValueDropDown(typeof(DropdownProvider), nameof(DropdownProvider.GetFloatEntries))]
             public float floatPriority = 0.5f;
 
             [WEnumToggleButtons(PageSize = 6)]

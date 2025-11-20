@@ -116,9 +116,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void ValueDropdownInlineFloatsConvertSuccessfully()
+        public void WValueDropDownInlineFloatsConvertSuccessfully()
         {
-            ValueDropdownAttribute attribute = new(typeof(float), 1, 2.5f, "3.75");
+            WValueDropDownAttribute attribute = new(typeof(float), 1, 2.5f, "3.75");
             object[] options = attribute.Options;
             Assert.AreEqual(3, options.Length);
             Assert.AreEqual(1f, options[0]);
@@ -127,9 +127,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void ValueDropdownMethodProviderHandlesDoubles()
+        public void WValueDropDownMethodProviderHandlesDoubles()
         {
-            ValueDropdownAttribute attribute = new(
+            WValueDropDownAttribute attribute = new(
                 typeof(ValueProviders),
                 nameof(ValueProviders.GetDoubles),
                 typeof(double)
@@ -141,9 +141,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void ValueDropdownTypedConstructorSupportsFloats()
+        public void WValueDropDownTypedConstructorSupportsFloats()
         {
-            ValueDropdownAttribute attribute = new(1f, 2.5f);
+            WValueDropDownAttribute attribute = new(1f, 2.5f);
             Assert.AreEqual(typeof(float), attribute.ValueType);
             object[] options = attribute.Options;
             Assert.AreEqual(2, options.Length);
@@ -152,93 +152,93 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void ValueDropdownTypedConstructorSupportsBooleans()
+        public void WValueDropDownTypedConstructorSupportsBooleans()
         {
-            ValueDropdownAttribute attribute = new(true, false, true);
+            WValueDropDownAttribute attribute = new(true, false, true);
             AssertOptions(attribute, typeof(bool), new[] { true, false, true });
         }
 
         [Test]
-        public void ValueDropdownTypedConstructorSupportsCharacters()
+        public void WValueDropDownTypedConstructorSupportsCharacters()
         {
-            ValueDropdownAttribute attribute = new('A', 'B');
+            WValueDropDownAttribute attribute = new('A', 'B');
             AssertOptions(attribute, typeof(char), new[] { 'A', 'B' });
         }
 
         [Test]
-        public void ValueDropdownTypedConstructorSupportsStrings()
+        public void WValueDropDownTypedConstructorSupportsStrings()
         {
-            ValueDropdownAttribute attribute = new("Alpha", "Beta");
+            WValueDropDownAttribute attribute = new("Alpha", "Beta");
             AssertOptions(attribute, typeof(string), new[] { "Alpha", "Beta" });
         }
 
         [Test]
-        public void ValueDropdownTypedConstructorSupportsSignedBytes()
+        public void WValueDropDownTypedConstructorSupportsSignedBytes()
         {
-            ValueDropdownAttribute attribute = new((sbyte)1, (sbyte)-2);
+            WValueDropDownAttribute attribute = new((sbyte)1, (sbyte)-2);
             AssertOptions(attribute, typeof(sbyte), new[] { (sbyte)1, (sbyte)-2 });
         }
 
         [Test]
-        public void ValueDropdownTypedConstructorSupportsUnsignedBytes()
+        public void WValueDropDownTypedConstructorSupportsUnsignedBytes()
         {
-            ValueDropdownAttribute attribute = new((byte)1, (byte)200);
+            WValueDropDownAttribute attribute = new((byte)1, (byte)200);
             AssertOptions(attribute, typeof(byte), new[] { (byte)1, (byte)200 });
         }
 
         [Test]
-        public void ValueDropdownTypedConstructorSupportsShorts()
+        public void WValueDropDownTypedConstructorSupportsShorts()
         {
-            ValueDropdownAttribute attribute = new((short)10, (short)-20);
+            WValueDropDownAttribute attribute = new((short)10, (short)-20);
             AssertOptions(attribute, typeof(short), new[] { (short)10, (short)-20 });
         }
 
         [Test]
-        public void ValueDropdownTypedConstructorSupportsUnsignedShorts()
+        public void WValueDropDownTypedConstructorSupportsUnsignedShorts()
         {
-            ValueDropdownAttribute attribute = new((ushort)10, (ushort)20);
+            WValueDropDownAttribute attribute = new((ushort)10, (ushort)20);
             AssertOptions(attribute, typeof(ushort), new[] { (ushort)10, (ushort)20 });
         }
 
         [Test]
-        public void ValueDropdownTypedConstructorSupportsIntegers()
+        public void WValueDropDownTypedConstructorSupportsIntegers()
         {
-            ValueDropdownAttribute attribute = new(10, -30, 50);
+            WValueDropDownAttribute attribute = new(10, -30, 50);
             AssertOptions(attribute, typeof(int), new[] { 10, -30, 50 });
         }
 
         [Test]
-        public void ValueDropdownTypedConstructorSupportsUnsignedIntegers()
+        public void WValueDropDownTypedConstructorSupportsUnsignedIntegers()
         {
-            ValueDropdownAttribute attribute = new(10u, 30u);
+            WValueDropDownAttribute attribute = new(10u, 30u);
             AssertOptions(attribute, typeof(uint), new[] { 10u, 30u });
         }
 
         [Test]
-        public void ValueDropdownTypedConstructorSupportsLongs()
+        public void WValueDropDownTypedConstructorSupportsLongs()
         {
-            ValueDropdownAttribute attribute = new(10L, -20L);
+            WValueDropDownAttribute attribute = new(10L, -20L);
             AssertOptions(attribute, typeof(long), new[] { 10L, -20L });
         }
 
         [Test]
-        public void ValueDropdownTypedConstructorSupportsUnsignedLongs()
+        public void WValueDropDownTypedConstructorSupportsUnsignedLongs()
         {
-            ValueDropdownAttribute attribute = new(10UL, 20UL);
+            WValueDropDownAttribute attribute = new(10UL, 20UL);
             AssertOptions(attribute, typeof(ulong), new[] { 10UL, 20UL });
         }
 
         [Test]
-        public void ValueDropdownTypedConstructorSupportsDoubles()
+        public void WValueDropDownTypedConstructorSupportsDoubles()
         {
-            ValueDropdownAttribute attribute = new(1.25d, 2.5d);
+            WValueDropDownAttribute attribute = new(1.25d, 2.5d);
             AssertOptions(attribute, typeof(double), new[] { 1.25d, 2.5d });
         }
 
         [Test]
-        public void ValueDropdownEnumConversionSupportsNames()
+        public void WValueDropDownEnumConversionSupportsNames()
         {
-            ValueDropdownAttribute attribute = new(
+            WValueDropDownAttribute attribute = new(
                 typeof(ValueProviders),
                 nameof(ValueProviders.GetEnumNames),
                 typeof(TestEnum)
@@ -250,22 +250,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void ValueDropdownInvalidConversionLogsErrorAndSkips()
+        public void WValueDropDownInvalidConversionLogsErrorAndSkips()
         {
-            Regex pattern = new Regex("ValueDropdownAttribute");
+            Regex pattern = new Regex("WValueDropDownAttribute");
             LogAssert.Expect(LogType.Error, pattern);
-            ValueDropdownAttribute attribute = new(typeof(byte), 1, 512);
+            WValueDropDownAttribute attribute = new(typeof(byte), 1, 512);
             object[] options = attribute.Options;
             Assert.AreEqual(1, options.Length);
             Assert.AreEqual((byte)1, options[0]);
         }
 
         [Test]
-        public void ValueDropdownMissingProviderLogsErrorAndReturnsEmpty()
+        public void WValueDropDownMissingProviderLogsErrorAndReturnsEmpty()
         {
-            Regex pattern = new Regex("ValueDropdownAttribute");
+            Regex pattern = new Regex("WValueDropDownAttribute");
             LogAssert.Expect(LogType.Error, pattern);
-            ValueDropdownAttribute attribute = new(
+            WValueDropDownAttribute attribute = new(
                 typeof(ValueProviders),
                 "Missing",
                 typeof(float)
@@ -274,9 +274,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void ValueDropdownProviderInfersElementType()
+        public void WValueDropDownProviderInfersElementType()
         {
-            ValueDropdownAttribute attribute = new(
+            WValueDropDownAttribute attribute = new(
                 typeof(ValueProviders),
                 nameof(ValueProviders.GetShorts)
             );
@@ -289,9 +289,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void ValueDropdownProviderSupportsCustomStructs()
+        public void WValueDropDownProviderSupportsCustomStructs()
         {
-            ValueDropdownAttribute attribute = new(
+            WValueDropDownAttribute attribute = new(
                 typeof(ValueProviders),
                 nameof(ValueProviders.GetDropdownItems)
             );
@@ -306,9 +306,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void ValueDropdownProviderSupportsCustomReferenceTypes()
+        public void WValueDropDownProviderSupportsCustomReferenceTypes()
         {
-            ValueDropdownAttribute attribute = new(
+            WValueDropDownAttribute attribute = new(
                 typeof(ValueProviders),
                 nameof(ValueProviders.GetCustomReferences)
             );
@@ -323,9 +323,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void ValueDropdownProviderSupportsArrays()
+        public void WValueDropDownProviderSupportsArrays()
         {
-            ValueDropdownAttribute attribute = new(
+            WValueDropDownAttribute attribute = new(
                 typeof(ValueProviders),
                 nameof(ValueProviders.GetDropdownItemArray)
             );
@@ -340,9 +340,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void ValueDropdownProviderReturningNullCollectionReturnsEmpty()
+        public void WValueDropDownProviderReturningNullCollectionReturnsEmpty()
         {
-            ValueDropdownAttribute attribute = new(
+            WValueDropDownAttribute attribute = new(
                 typeof(ValueProviders),
                 nameof(ValueProviders.GetNullCollection)
             );
@@ -352,11 +352,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void ValueDropdownProviderThrowingLogsErrorAndReturnsEmpty()
+        public void WValueDropDownProviderThrowingLogsErrorAndReturnsEmpty()
         {
-            Regex pattern = new Regex("ValueDropdownAttribute");
+            Regex pattern = new Regex("WValueDropDownAttribute");
             LogAssert.Expect(LogType.Error, pattern);
-            ValueDropdownAttribute attribute = new(
+            WValueDropDownAttribute attribute = new(
                 typeof(ValueProviders),
                 nameof(ValueProviders.ThrowingProvider)
             );
@@ -365,9 +365,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void ValueDropdownExplicitTypeConvertsEntries()
+        public void WValueDropDownExplicitTypeConvertsEntries()
         {
-            ValueDropdownAttribute attribute = new(
+            WValueDropDownAttribute attribute = new(
                 typeof(ValueProviders),
                 nameof(ValueProviders.GetIntList),
                 typeof(long)
@@ -382,9 +382,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void ValueDropdownProviderSupportsEnumerableOfObject()
+        public void WValueDropDownProviderSupportsEnumerableOfObject()
         {
-            ValueDropdownAttribute attribute = new(
+            WValueDropDownAttribute attribute = new(
                 typeof(ValueProviders),
                 nameof(ValueProviders.GetObjectEnumerable)
             );
@@ -398,11 +398,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void ValueDropdownProviderWithInvalidReturnLogsError()
+        public void WValueDropDownProviderWithInvalidReturnLogsError()
         {
-            Regex pattern = new Regex("ValueDropdownAttribute");
+            Regex pattern = new Regex("WValueDropDownAttribute");
             LogAssert.Expect(LogType.Error, pattern);
-            ValueDropdownAttribute attribute = new(
+            WValueDropDownAttribute attribute = new(
                 typeof(ValueProviders),
                 nameof(ValueProviders.GetInvalidProvider)
             );
@@ -411,7 +411,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         private static void AssertOptions<T>(
-            ValueDropdownAttribute attribute,
+            WValueDropDownAttribute attribute,
             Type expectedType,
             T[] expectedValues
         )

@@ -1111,13 +1111,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             FieldInfo fieldInfo
         )
         {
-            ValueDropdownAttribute valueDropdownAttribute = GetAttribute<ValueDropdownAttribute>(
+            WValueDropDownAttribute wValueDropDownAttribute = GetAttribute<WValueDropDownAttribute>(
                 fieldInfo,
                 property
             );
-            if (valueDropdownAttribute != null)
+            if (wValueDropDownAttribute != null)
             {
-                object[] values = valueDropdownAttribute.Options ?? Array.Empty<object>();
+                object[] values = wValueDropDownAttribute.Options ?? Array.Empty<object>();
                 return BuildGenericOptions(values);
             }
 

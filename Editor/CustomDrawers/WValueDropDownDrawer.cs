@@ -6,12 +6,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
-    [CustomPropertyDrawer(typeof(ValueDropdownAttribute))]
-    public sealed class ValueDropdownDrawer : PropertyDrawer
+    [CustomPropertyDrawer(typeof(WValueDropDownAttribute))]
+    public sealed class WValueDropDownDrawer : PropertyDrawer
     {
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            if (attribute is not ValueDropdownAttribute dropdownAttribute)
+            if (attribute is not WValueDropDownAttribute dropdownAttribute)
             {
                 EditorGUI.PropertyField(position, property, label);
                 return;
@@ -343,3 +343,4 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         }
     }
 }
+

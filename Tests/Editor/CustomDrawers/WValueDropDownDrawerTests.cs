@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Tests.Utils;
 
     [TestFixture]
-    public sealed class ValueDropdownDrawerTests : CommonTestBase
+    public sealed class WValueDropDownDrawerTests : CommonTestBase
     {
         [Test]
         public void ApplyOptionUpdatesFloatSerializedProperty()
@@ -65,21 +65,21 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         private static void InvokeApplyOption(SerializedProperty property, object value)
         {
-            MethodInfo applyMethod = typeof(ValueDropdownDrawer).GetMethod(
+            MethodInfo applyMethod = typeof(WValueDropDownDrawer).GetMethod(
                 "ApplyOption",
                 BindingFlags.NonPublic | BindingFlags.Static
             );
-            Assert.IsNotNull(applyMethod, "Unable to resolve ValueDropdownDrawer.ApplyOption.");
+            Assert.IsNotNull(applyMethod, "Unable to resolve WValueDropDownDrawer.ApplyOption.");
             applyMethod.Invoke(null, new object[] { property, value });
         }
 
         [Serializable]
         private sealed class FloatDropdownAsset : ScriptableObject
         {
-            [ValueDropdown(typeof(DropdownSource), nameof(DropdownSource.GetFloatValues))]
+            [WValueDropDown(typeof(DropdownSource), nameof(DropdownSource.GetFloatValues))]
             public float selection = 1f;
 
-            [ValueDropdown(typeof(DropdownSource), nameof(DropdownSource.GetDoubleValues))]
+            [WValueDropDown(typeof(DropdownSource), nameof(DropdownSource.GetDoubleValues))]
             public double preciseSelection = 2d;
         }
 
@@ -98,3 +98,4 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     }
 #endif
 }
+
