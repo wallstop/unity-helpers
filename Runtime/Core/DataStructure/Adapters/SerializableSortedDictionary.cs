@@ -138,6 +138,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => _dictionary.Values;
 
+        /// <summary>
+        /// Gets or sets the value associated with the provided key while preserving sorted order.
+        /// </summary>
+        /// <param name="key">The key to access.</param>
+        /// <returns>The stored value.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+        /// scoreboard["Alice"] = 1200;
+        /// int score = scoreboard["Alice"];
+        /// ]]></code>
+        /// </example>
         public TValue this[TKey key]
         {
             get => _dictionary[key];
@@ -148,12 +160,35 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
         }
 
+        /// <summary>
+        /// Adds a new entry to the sorted dictionary and invalidates the serialized cache.
+        /// </summary>
+        /// <param name="key">The key to insert.</param>
+        /// <param name="value">The value associated with the key.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+        /// scoreboard.Add("Alice", 1200);
+        /// ]]></code>
+        /// </example>
         public void Add(TKey key, TValue value)
         {
             _dictionary.Add(key, value);
             MarkSerializationCacheDirty();
         }
 
+        /// <summary>
+        /// Attempts to add a new entry without throwing when the key already exists.
+        /// </summary>
+        /// <param name="key">The key to insert.</param>
+        /// <param name="value">The value associated with the key.</param>
+        /// <returns><c>true</c> when the entry was added.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+        /// bool added = scoreboard.TryAdd("Alice", 1200);
+        /// ]]></code>
+        /// </example>
         public bool TryAdd(TKey key, TValue value)
         {
             bool added = _dictionary.TryAdd(key, value);
@@ -165,11 +200,33 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return added;
         }
 
+        /// <summary>
+        /// Determines whether the dictionary already contains the specified key.
+        /// </summary>
+        /// <param name="key">The key to look up.</param>
+        /// <returns><c>true</c> when the key exists.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+        /// bool hasAlice = scoreboard.ContainsKey("Alice");
+        /// ]]></code>
+        /// </example>
         public bool ContainsKey(TKey key)
         {
             return _dictionary.ContainsKey(key);
         }
 
+        /// <summary>
+        /// Removes an entry by key and marks the serialized cache as dirty when the key existed.
+        /// </summary>
+        /// <param name="key">The key to remove.</param>
+        /// <returns><c>true</c> when the entry was removed.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+        /// bool removed = scoreboard.Remove("Alice");
+        /// ]]></code>
+        /// </example>
         public bool Remove(TKey key)
         {
             bool removed = _dictionary.Remove(key);
@@ -181,6 +238,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return removed;
         }
 
+        /// <summary>
+        /// Removes an entry and outputs the value that was previously stored.
+        /// </summary>
+        /// <param name="key">The key to remove.</param>
+        /// <param name="value">Receives the removed value.</param>
+        /// <returns><c>true</c> when the key existed.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+        /// int score;
+        /// bool removed = scoreboard.Remove("Alice", out score);
+        /// ]]></code>
+        /// </example>
         public bool Remove(TKey key, out TValue value)
         {
             bool removed = _dictionary.Remove(key, out value);
@@ -192,17 +262,53 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return removed;
         }
 
+        /// <summary>
+        /// Retrieves a value without throwing when the key is missing.
+        /// </summary>
+        /// <param name="key">The key to locate.</param>
+        /// <param name="value">Outputs the value when found.</param>
+        /// <returns><c>true</c> when the key exists.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+        /// int score;
+        /// if (scoreboard.TryGetValue("Alice", out score))
+        /// {
+        ///     Debug.Log(score);
+        /// }
+        /// ]]></code>
+        /// </example>
         public bool TryGetValue(TKey key, out TValue value)
         {
             return _dictionary.TryGetValue(key, out value);
         }
 
+        /// <summary>
+        /// Removes every entry from the dictionary and clears the serialized cache.
+        /// </summary>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+        /// scoreboard.Clear();
+        /// ]]></code>
+        /// </example>
         public void Clear()
         {
             _dictionary.Clear();
             MarkSerializationCacheDirty();
         }
 
+        /// <summary>
+        /// Replaces the dictionary contents with the entries from another dictionary.
+        /// </summary>
+        /// <param name="dictionary">The source map to copy.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// IDictionary<string, int> seed = new SortedDictionary<string, int>();
+        /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+        /// scoreboard.CopyFrom(seed);
+        /// ]]></code>
+        /// </example>
         public void CopyFrom(IDictionary<TKey, TValue> dictionary)
         {
             if (dictionary == null)
@@ -420,11 +526,25 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             _arraysDirty = true;
         }
 
+        /// <summary>
+        /// Returns a struct enumerator that iterates over entries in sorted order without allocations.
+        /// </summary>
+        /// <returns>An enumerator positioned before the first entry.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+        /// foreach (KeyValuePair<string, int> entry in scoreboard)
+        /// {
+        ///     Debug.Log(entry.Key);
+        /// }
+        /// ]]></code>
+        /// </example>
         public Enumerator GetEnumerator()
         {
             return new Enumerator(_dictionary.GetEnumerator());
         }
 
+        /// <inheritdoc />
         IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<
             KeyValuePair<TKey, TValue>
         >.GetEnumerator()
@@ -432,27 +552,75 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return _dictionary.GetEnumerator();
         }
 
+        /// <inheritdoc />
         IEnumerator IEnumerable.GetEnumerator()
         {
             return _dictionary.GetEnumerator();
         }
 
+        /// <summary>
+        /// Adds an entry via the <see cref="ICollection{T}"/> interface.
+        /// </summary>
+        /// <param name="item">The entry to add.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+        /// KeyValuePair<string, int> entry = new KeyValuePair<string, int>("Alice", 1200);
+        /// scoreboard.Add(entry);
+        /// ]]></code>
+        /// </example>
         public void Add(KeyValuePair<TKey, TValue> item)
         {
             ((IDictionary<TKey, TValue>)_dictionary).Add(item);
             MarkSerializationCacheDirty();
         }
 
+        /// <summary>
+        /// Determines whether the dictionary contains the provided entry.
+        /// </summary>
+        /// <param name="item">The entry to locate.</param>
+        /// <returns><c>true</c> when both the key and value match.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+        /// KeyValuePair<string, int> entry = new KeyValuePair<string, int>("Alice", 1200);
+        /// bool present = scoreboard.Contains(entry);
+        /// ]]></code>
+        /// </example>
         public bool Contains(KeyValuePair<TKey, TValue> item)
         {
             return ((IDictionary<TKey, TValue>)_dictionary).Contains(item);
         }
 
+        /// <summary>
+        /// Copies the dictionary contents into the provided array.
+        /// </summary>
+        /// <param name="array">Destination array.</param>
+        /// <param name="arrayIndex">Index to begin writing at.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+        /// KeyValuePair<string, int>[] snapshot = new KeyValuePair<string, int>[scoreboard.Count];
+        /// scoreboard.CopyTo(snapshot, 0);
+        /// ]]></code>
+        /// </example>
         public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
         {
             ((IDictionary<TKey, TValue>)_dictionary).CopyTo(array, arrayIndex);
         }
 
+        /// <summary>
+        /// Removes the specified entry when both the key and value match.
+        /// </summary>
+        /// <param name="item">The entry to remove.</param>
+        /// <returns><c>true</c> when the entry existed.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+        /// KeyValuePair<string, int> entry = new KeyValuePair<string, int>("Alice", 1200);
+        /// bool removed = scoreboard.Remove(entry);
+        /// ]]></code>
+        /// </example>
         public bool Remove(KeyValuePair<TKey, TValue> item)
         {
             bool removed = ((IDictionary<TKey, TValue>)_dictionary).Remove(item);
@@ -464,16 +632,30 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return removed;
         }
 
+        /// <summary>
+        /// Indicates whether the non-generic <see cref="IDictionary"/> wrapper has a fixed size.
+        /// </summary>
         public bool IsFixedSize => ((IDictionary)_dictionary).IsFixedSize;
 
         ICollection IDictionary.Keys => _dictionary.Keys;
 
         ICollection IDictionary.Values => _dictionary.Values;
 
+        /// <summary>
+        /// Indicates whether access to the dictionary is synchronized.
+        /// </summary>
         public bool IsSynchronized => ((IDictionary)_dictionary).IsSynchronized;
 
+        /// <summary>
+        /// Provides an object that callers can lock on when coordinating access from multiple threads.
+        /// </summary>
         public object SyncRoot => ((IDictionary)_dictionary).SyncRoot;
 
+        /// <summary>
+        /// Gets or sets entries through the non-generic <see cref="IDictionary"/> interface.
+        /// </summary>
+        /// <param name="key">The boxed key.</param>
+        /// <returns>The boxed value.</returns>
         public object this[object key]
         {
             get => ((IDictionary)_dictionary)[key];
@@ -484,22 +666,44 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
         }
 
+        /// <summary>
+        /// Adds a boxed entry via the non-generic interface.
+        /// </summary>
+        /// <param name="key">The boxed key.</param>
+        /// <param name="value">The boxed value.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scoreboard = new SerializableSortedDictionary<string, int>(StringComparer.Ordinal);
+        /// IDictionary boxed = scoreboard;
+        /// boxed.Add((object)"Alice", 1200);
+        /// ]]></code>
+        /// </example>
         public void Add(object key, object value)
         {
             ((IDictionary)_dictionary).Add(key, value);
             MarkSerializationCacheDirty();
         }
 
+        /// <summary>
+        /// Determines whether the dictionary contains the specified boxed key.
+        /// </summary>
+        /// <param name="key">The key to locate.</param>
+        /// <returns><c>true</c> when the key exists.</returns>
         public bool Contains(object key)
         {
             return ((IDictionary)_dictionary).Contains(key);
         }
 
+        /// <inheritdoc />
         IDictionaryEnumerator IDictionary.GetEnumerator()
         {
             return _dictionary.GetEnumerator();
         }
 
+        /// <summary>
+        /// Removes a boxed entry and invalidates the serialized cache when the element existed.
+        /// </summary>
+        /// <param name="key">The boxed key to remove.</param>
         public void Remove(object key)
         {
             IDictionary dictionary = _dictionary;
@@ -511,11 +715,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
         }
 
+        /// <summary>
+        /// Copies entries into a <see cref="DictionaryEntry"/> array to satisfy <see cref="IDictionary.CopyTo"/>.
+        /// </summary>
+        /// <param name="array">Destination array.</param>
+        /// <param name="index">Destination index.</param>
         public void CopyTo(Array array, int index)
         {
             ((IDictionary)_dictionary).CopyTo(array, index);
         }
 
+        /// <summary>
+        /// Allocation-free enumerator returned by <see cref="GetEnumerator()"/>.
+        /// </summary>
         public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
         {
             private SortedDictionary<TKey, TValue>.Enumerator _enumerator;
@@ -529,16 +741,26 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
             object IEnumerator.Current => _enumerator.Current;
 
+            /// <summary>
+            /// Advances the enumerator to the next entry.
+            /// </summary>
+            /// <returns><c>true</c> when another element is available.</returns>
             public bool MoveNext()
             {
                 return _enumerator.MoveNext();
             }
 
+            /// <summary>
+            /// Releases the underlying sorted dictionary enumerator.
+            /// </summary>
             public void Dispose()
             {
                 _enumerator.Dispose();
             }
 
+            /// <summary>
+            /// Reset is not supported; enumerators follow <see cref="SortedDictionary{TKey, TValue}.Enumerator"/> semantics.
+            /// </summary>
             void IEnumerator.Reset()
             {
                 throw new NotSupportedException("Reset is not supported.");

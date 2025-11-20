@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     using System.Collections.Generic;
     using UnityEditor;
     using WallstopStudios.UnityHelpers.Editor.Settings;
-    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
     using WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup;

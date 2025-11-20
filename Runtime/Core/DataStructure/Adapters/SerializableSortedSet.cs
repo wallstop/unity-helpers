@@ -26,11 +26,23 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     {
         private sealed class StorageSet : SortedSet<T>
         {
+            /// <summary>
+            /// Initializes an empty storage set using the default comparer.
+            /// </summary>
             public StorageSet() { }
 
+            /// <summary>
+            /// Initializes the storage set with the provided collection.
+            /// </summary>
+            /// <param name="collection">Elements copied into the sorted set.</param>
             public StorageSet(IEnumerable<T> collection)
                 : base(collection ?? Array.Empty<T>()) { }
 
+            /// <summary>
+            /// Deserialization constructor used by <see cref="ISerializable"/>.
+            /// </summary>
+            /// <param name="info">Serialized data describing the set.</param>
+            /// <param name="context">Context describing the serialization source.</param>
             public StorageSet(SerializationInfo info, StreamingContext context)
                 : base(info, context) { }
         }
@@ -72,6 +84,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// <summary>
         /// Returns an enumerator that iterates through the set in sorted order.
         /// </summary>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedSet<int> highscores = new SerializableSortedSet<int>();
+        /// SortedSet<int>.Enumerator enumerator = highscores.GetEnumerator();
+        /// while (enumerator.MoveNext())
+        /// {
+        ///     Debug.Log(enumerator.Current);
+        /// }
+        /// ]]></code>
+        /// </example>
         public SortedSet<T>.Enumerator GetEnumerator()
         {
             return Set.GetEnumerator();
@@ -91,6 +113,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// Enumerates the set in descending order without allocating a copy.
         /// </summary>
         /// <returns>Lazy enumerable that yields items from greatest to least.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedSet<int> highscores = new SerializableSortedSet<int>();
+        /// foreach (int score in highscores.Reverse())
+        /// {
+        ///     Debug.Log(score);
+        /// }
+        /// ]]></code>
+        /// </example>
         public IEnumerable<T> Reverse()
         {
             return Set.Reverse();
@@ -102,16 +133,24 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// <param name="lowerValue">Inclusive lower bound.</param>
         /// <param name="upperValue">Inclusive upper bound.</param>
         /// <returns>A view that reflects mutations made to the underlying set.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedSet<int> highscores = new SerializableSortedSet<int>(new int[] { 100, 250, 420 });
+        /// SortedSet<int> topScores = highscores.GetViewBetween(200, 500);
+        /// ]]></code>
+        /// </example>
         public SortedSet<T> GetViewBetween(T lowerValue, T upperValue)
         {
             return Set.GetViewBetween(lowerValue, upperValue);
         }
 
+        /// <inheritdoc/>
         protected override int RemoveWhereInternal(Predicate<T> match)
         {
             return Set.RemoveWhere(match);
         }
 
+        /// <inheritdoc/>
         protected override bool TryGetValueCore(T equalValue, out T actualValue)
         {
             return Set.TryGetValue(equalValue, out actualValue);

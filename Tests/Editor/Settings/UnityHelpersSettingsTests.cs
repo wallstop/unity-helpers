@@ -10,7 +10,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.Settings;
-    using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
 
     public sealed class UnityHelpersSettingsTests
     {

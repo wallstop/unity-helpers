@@ -8,7 +8,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using System.Text;
     using System.Text.Json;
     using NUnit.Framework;
-    using ProtoBuf;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 
     public sealed class WGuidTests

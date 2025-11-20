@@ -5,7 +5,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using NUnit.Framework;
     using System.Reflection;
     using UnityEditor;
-    using UnityEditor.UIElements;
     using UnityEngine;
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Core.Attributes;

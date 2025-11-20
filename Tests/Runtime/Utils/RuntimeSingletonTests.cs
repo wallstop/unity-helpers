@@ -12,6 +12,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [SetUp]
         public void ResetSingletons()
         {
+            DestroyAll<TestRuntimeSingleton>();
+            DestroyAll<PreservableSingleton>();
+            DestroyAll<NonPreservableSingleton>();
+            DestroyAll<CustomAwakeSingleton>();
+            DestroyAll<CustomStartSingleton>();
+            DestroyAll<CustomDestroyableSingleton>();
+            DestroyAll<ApplicationQuitSingleton>();
+
+            // Reset test flags
+            CustomDestroyableSingleton.destroyWasCalled = false;
+            ApplicationQuitSingleton.quitWasCalled = false;
+            return;
+
             // Proactively clear any lingering singleton instances between tests
             void DestroyAll<T>()
                 where T : RuntimeSingleton<T>
@@ -24,18 +37,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     }
                 }
             }
-
-            DestroyAll<TestRuntimeSingleton>();
-            DestroyAll<PreservableSingleton>();
-            DestroyAll<NonPreservableSingleton>();
-            DestroyAll<CustomAwakeSingleton>();
-            DestroyAll<CustomStartSingleton>();
-            DestroyAll<CustomDestroyableSingleton>();
-            DestroyAll<ApplicationQuitSingleton>();
-
-            // Reset test flags
-            CustomDestroyableSingleton.destroyWasCalled = false;
-            ApplicationQuitSingleton.quitWasCalled = false;
         }
 
         private sealed class TestRuntimeSingleton : RuntimeSingleton<TestRuntimeSingleton>

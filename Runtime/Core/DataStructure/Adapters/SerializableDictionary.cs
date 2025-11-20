@@ -56,11 +56,49 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         protected class Dictionary<TKey, TValue>
             : System.Collections.Generic.Dictionary<TKey, TValue>
         {
+            /// <summary>
+            /// Creates an empty runtime dictionary that uses the default equality comparer.
+            /// </summary>
+            /// <example>
+            /// <code><![CDATA[
+            /// protected sealed class AbilityDictionary
+            ///     : SerializableDictionaryBase<string, AbilityDefinition, AbilityCache>
+            /// {
+            ///     public AbilityDictionary()
+            ///         : base(new Dictionary<string, AbilityDefinition>())
+            ///     {
+            ///     }
+            /// }
+            /// ]]></code>
+            /// </example>
             public Dictionary() { }
 
+            /// <summary>
+            /// Creates a runtime dictionary pre-populated with entries from another dictionary.
+            /// </summary>
+            /// <param name="dictionary">The source collection to copy.</param>
+            /// <example>
+            /// <code><![CDATA[
+            /// IDictionary<string, AbilityDefinition> seed = new Dictionary<string, AbilityDefinition>();
+            /// Dictionary<string, AbilityDefinition> runtimeDictionary =
+            ///     new Dictionary<string, AbilityDefinition>(seed);
+            /// ]]></code>
+            /// </example>
             public Dictionary(IDictionary<TKey, TValue> dictionary)
                 : base(dictionary) { }
 
+            /// <summary>
+            /// Rehydrates the dictionary from a <see cref="SerializationInfo"/> payload.
+            /// </summary>
+            /// <param name="serializationInfo">Serialized data describing the dictionary.</param>
+            /// <param name="streamingContext">Context about the serialization source or destination.</param>
+            /// <example>
+            /// <code><![CDATA[
+            /// SerializationInfo info = new SerializationInfo(typeof(Dictionary<string, AbilityDefinition>), new FormatterConverter());
+            /// StreamingContext context = new StreamingContext(StreamingContextStates.File);
+            /// Dictionary<string, AbilityDefinition> runtimeDictionary = new Dictionary<string, AbilityDefinition>(info, context);
+            /// ]]></code>
+            /// </example>
             public Dictionary(
                 SerializationInfo serializationInfo,
                 StreamingContext streamingContext
@@ -71,6 +109,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         [Serializable]
         public abstract class Cache { }
 
+        /// <summary>
+        /// Produces a JSON string that mirrors the serialized key and value arrays, which is useful for debugging.
+        /// </summary>
+        /// <returns>A JSON representation of the dictionary contents.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilityLookup = new AbilityDictionary();
+        /// abilityLookup["Dash"] = dashDefinition;
+        /// string preview = abilityLookup.ToString();
+        /// Debug.Log(preview);
+        /// ]]></code>
+        /// </example>
         public override string ToString()
         {
             return this.ToJson();
@@ -189,10 +239,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// Invoked automatically by Unity; call it manually only when deserializing outside of Unity's pipeline.
         /// </remarks>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// dictionary.OnAfterDeserialize();
         /// IReadOnlyDictionary<TKey, TValue> restored = dictionary;
-        /// </code>
+        /// ]]></code>
         /// </example>
         public void OnAfterDeserialize()
         {
@@ -401,6 +451,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         public bool IsReadOnly => ((IDictionary<TKey, TValue>)_dictionary).IsReadOnly;
 
+        /// <summary>
+        /// Gets or sets a value associated with the provided key in the runtime dictionary.
+        /// Updates invalidate the serialized cache so Unity and ProtoBuf can pick up the changes.
+        /// </summary>
+        /// <param name="key">The key of the entry to access.</param>
+        /// <returns>The stored value.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilityLookup = new AbilityDictionary();
+        /// abilityLookup["Dash"] = dashDefinition;
+        /// AbilityDefinition dash = abilityLookup["Dash"];
+        /// ]]></code>
+        /// </example>
         public TValue this[TKey key]
         {
             get => _dictionary[key];
@@ -411,12 +474,35 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
         }
 
+        /// <summary>
+        /// Adds a new key/value pair to the runtime dictionary and marks the serialized cache as dirty so Unity can persist the change.
+        /// </summary>
+        /// <param name="key">The key to insert.</param>
+        /// <param name="value">The value associated with the key.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// abilities.Add("Dash", dashDefinition);
+        /// ]]></code>
+        /// </example>
         public void Add(TKey key, TValue value)
         {
             _dictionary.Add(key, value);
             MarkSerializationCacheDirty();
         }
 
+        /// <summary>
+        /// Attempts to add a new entry without throwing when the key already exists.
+        /// </summary>
+        /// <param name="key">The key to insert.</param>
+        /// <param name="value">The value associated with the key.</param>
+        /// <returns><c>true</c> when the entry was added.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// bool added = abilities.TryAdd("Dash", dashDefinition);
+        /// ]]></code>
+        /// </example>
         public bool TryAdd(TKey key, TValue value)
         {
             bool added = _dictionary.TryAdd(key, value);
@@ -428,11 +514,33 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return added;
         }
 
+        /// <summary>
+        /// Determines whether the runtime dictionary already contains the specified key.
+        /// </summary>
+        /// <param name="key">The key to locate.</param>
+        /// <returns><c>true</c> when the key exists.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// bool hasDash = abilities.ContainsKey("Dash");
+        /// ]]></code>
+        /// </example>
         public bool ContainsKey(TKey key)
         {
             return _dictionary.ContainsKey(key);
         }
 
+        /// <summary>
+        /// Removes an entry by key and invalidates the serialized cache if the key existed.
+        /// </summary>
+        /// <param name="key">The key to remove.</param>
+        /// <returns><c>true</c> when an entry was removed.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// bool removed = abilities.Remove("Dash");
+        /// ]]></code>
+        /// </example>
         public bool Remove(TKey key)
         {
             bool removed = _dictionary.Remove(key);
@@ -444,6 +552,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return removed;
         }
 
+        /// <summary>
+        /// Removes an entry and outputs the value that was previously stored.
+        /// </summary>
+        /// <param name="key">The key to remove.</param>
+        /// <param name="value">Receives the removed value when successful.</param>
+        /// <returns><c>true</c> when the key was found.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// AbilityDefinition removed;
+        /// bool removedEntry = abilities.Remove("Dash", out removed);
+        /// ]]></code>
+        /// </example>
         public bool Remove(TKey key, out TValue value)
         {
             bool removed = _dictionary.Remove(key, out value);
@@ -455,33 +576,105 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return removed;
         }
 
+        /// <summary>
+        /// Retrieves a value without throwing when the key is missing.
+        /// </summary>
+        /// <param name="key">The key to locate.</param>
+        /// <param name="value">Outputs the located value.</param>
+        /// <returns><c>true</c> when the key exists.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// AbilityDefinition dash;
+        /// if (abilities.TryGetValue("Dash", out dash))
+        /// {
+        ///     dash.Activate();
+        /// }
+        /// ]]></code>
+        /// </example>
         public bool TryGetValue(TKey key, out TValue value)
         {
             return _dictionary.TryGetValue(key, out value);
         }
 
+        /// <summary>
+        /// Adds a <see cref="KeyValuePair{TKey, TValue}"/> to the dictionary via the <see cref="ICollection{T}"/> interface.
+        /// </summary>
+        /// <param name="item">The entry to add.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// KeyValuePair<string, AbilityDefinition> entry = new KeyValuePair<string, AbilityDefinition>("Dash", dashDefinition);
+        /// abilities.Add(entry);
+        /// ]]></code>
+        /// </example>
         public void Add(KeyValuePair<TKey, TValue> item)
         {
             ((IDictionary<TKey, TValue>)_dictionary).Add(item);
             MarkSerializationCacheDirty();
         }
 
+        /// <summary>
+        /// Removes all entries from the dictionary and clears the serialized arrays.
+        /// </summary>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// abilities.Clear();
+        /// ]]></code>
+        /// </example>
         public void Clear()
         {
             _dictionary.Clear();
             MarkSerializationCacheDirty();
         }
 
+        /// <summary>
+        /// Determines whether the dictionary contains the provided key/value pair.
+        /// </summary>
+        /// <param name="item">The entry to look for.</param>
+        /// <returns><c>true</c> when both the key and value match.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// KeyValuePair<string, AbilityDefinition> entry = new KeyValuePair<string, AbilityDefinition>("Dash", dashDefinition);
+        /// bool present = abilities.Contains(entry);
+        /// ]]></code>
+        /// </example>
         public bool Contains(KeyValuePair<TKey, TValue> item)
         {
             return ((IDictionary<TKey, TValue>)_dictionary).Contains(item);
         }
 
+        /// <summary>
+        /// Copies the contents of the dictionary into the provided array, which is useful when interoperating with legacy APIs.
+        /// </summary>
+        /// <param name="array">The destination array.</param>
+        /// <param name="arrayIndex">The index to start copying into.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// KeyValuePair<string, AbilityDefinition>[] snapshot = new KeyValuePair<string, AbilityDefinition>[abilities.Count];
+        /// abilities.CopyTo(snapshot, 0);
+        /// ]]></code>
+        /// </example>
         public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
         {
             ((IDictionary<TKey, TValue>)_dictionary).CopyTo(array, arrayIndex);
         }
 
+        /// <summary>
+        /// Removes the specified key/value pair only when both components match the stored entry.
+        /// </summary>
+        /// <param name="item">The entry to remove.</param>
+        /// <returns><c>true</c> when the pair existed.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// KeyValuePair<string, AbilityDefinition> entry = new KeyValuePair<string, AbilityDefinition>("Dash", dashDefinition);
+        /// bool removed = abilities.Remove(entry);
+        /// ]]></code>
+        /// </example>
         public bool Remove(KeyValuePair<TKey, TValue> item)
         {
             bool removed = ((IDictionary<TKey, TValue>)_dictionary).Remove(item);
@@ -493,11 +686,25 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return removed;
         }
 
+        /// <summary>
+        /// Returns a struct enumerator that iterates over key/value pairs without allocations.
+        /// </summary>
+        /// <returns>An enumerator positioned before the first entry.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// foreach (KeyValuePair<string, AbilityDefinition> entry in abilities)
+        /// {
+        ///     Debug.Log(entry.Key);
+        /// }
+        /// ]]></code>
+        /// </example>
         public Enumerator GetEnumerator()
         {
             return new Enumerator(_dictionary.GetEnumerator());
         }
 
+        /// <inheritdoc />
         IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<
             KeyValuePair<TKey, TValue>
         >.GetEnumerator()
@@ -505,21 +712,36 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return _dictionary.GetEnumerator();
         }
 
+        /// <inheritdoc />
         IEnumerator IEnumerable.GetEnumerator()
         {
             return _dictionary.GetEnumerator();
         }
 
+        /// <summary>
+        /// Indicates whether the non-generic <see cref="IDictionary"/> wrapper has a fixed size (it does not).
+        /// </summary>
         public bool IsFixedSize => ((IDictionary)_dictionary).IsFixedSize;
 
         ICollection IDictionary.Keys => _dictionary.Keys;
 
         ICollection IDictionary.Values => _dictionary.Values;
 
+        /// <summary>
+        /// Indicates whether access to the dictionary is synchronized (thread-safe).
+        /// </summary>
         public bool IsSynchronized => ((IDictionary)_dictionary).IsSynchronized;
 
+        /// <summary>
+        /// Provides an object that can be used to synchronize access when required by legacy APIs.
+        /// </summary>
         public object SyncRoot => ((IDictionary)_dictionary).SyncRoot;
 
+        /// <summary>
+        /// Gets or sets entries through the non-generic <see cref="IDictionary"/> interface.
+        /// </summary>
+        /// <param name="key">The boxed key.</param>
+        /// <returns>The boxed value associated with the key.</returns>
         public object this[object key]
         {
             get => ((IDictionary)_dictionary)[key];
@@ -530,22 +752,58 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
         }
 
+        /// <summary>
+        /// Adds a boxed key/value pair through the non-generic interface.
+        /// </summary>
+        /// <param name="key">The boxed key.</param>
+        /// <param name="value">The boxed value.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// IDictionary boxed = abilities;
+        /// boxed.Add((object)"Dash", dashDefinition);
+        /// ]]></code>
+        /// </example>
         public void Add(object key, object value)
         {
             ((IDictionary)_dictionary).Add(key, value);
             MarkSerializationCacheDirty();
         }
 
+        /// <summary>
+        /// Determines whether the dictionary contains the provided boxed key.
+        /// </summary>
+        /// <param name="key">The key to locate.</param>
+        /// <returns><c>true</c> when the key exists.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// IDictionary boxed = abilities;
+        /// bool hasDash = boxed.Contains((object)"Dash");
+        /// ]]></code>
+        /// </example>
         public bool Contains(object key)
         {
             return ((IDictionary)_dictionary).Contains(key);
         }
 
+        /// <inheritdoc />
         IDictionaryEnumerator IDictionary.GetEnumerator()
         {
             return _dictionary.GetEnumerator();
         }
 
+        /// <summary>
+        /// Removes a boxed entry and marks the serialized cache as dirty when something is deleted.
+        /// </summary>
+        /// <param name="key">The boxed key to remove.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// IDictionary boxed = abilities;
+        /// boxed.Remove((object)"Dash");
+        /// ]]></code>
+        /// </example>
         public void Remove(object key)
         {
             IDictionary dictionary = _dictionary;
@@ -557,6 +815,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
         }
 
+        /// <summary>
+        /// Copies the dictionary contents into a non-generic array, matching <see cref="IDictionary.CopyTo"/>.
+        /// </summary>
+        /// <param name="array">The destination array.</param>
+        /// <param name="index">The starting index inside <paramref name="array"/>.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// DictionaryEntry[] entries = new DictionaryEntry[abilities.Count];
+        /// IDictionary boxed = abilities;
+        /// boxed.CopyTo(entries, 0);
+        /// ]]></code>
+        /// </example>
         public void CopyTo(Array array, int index)
         {
             ((IDictionary)_dictionary).CopyTo(array, index);
@@ -581,6 +852,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             _dictionary.GetObjectData(info, context);
         }
 
+        /// <summary>
+        /// Allocation-free enumerator used by <see cref="SerializableDictionaryBase{TKey, TValue, TValueCache}"/>.
+        /// </summary>
+        /// <example>
+        /// <code><![CDATA[
+        /// AbilityDictionary abilities = new AbilityDictionary();
+        /// SerializableDictionary<string, AbilityDefinition>.Enumerator enumerator = abilities.GetEnumerator();
+        /// while (enumerator.MoveNext())
+        /// {
+        ///     KeyValuePair<string, AbilityDefinition> entry = enumerator.Current;
+        /// }
+        /// ]]></code>
+        /// </example>
         public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
         {
             private Dictionary<TKey, TValue>.Enumerator _enumerator;
@@ -594,16 +878,26 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
             object IEnumerator.Current => _enumerator.Current;
 
+            /// <summary>
+            /// Advances the enumerator to the next entry.
+            /// </summary>
+            /// <returns><c>true</c> when another item is available.</returns>
             public bool MoveNext()
             {
                 return _enumerator.MoveNext();
             }
 
+            /// <summary>
+            /// Disposes of the underlying dictionary enumerator.
+            /// </summary>
             public void Dispose()
             {
                 _enumerator.Dispose();
             }
 
+            /// <summary>
+            /// Reset is not supported because Unity serializable dictionaries mirror <see cref="System.Collections.Generic.Dictionary{TKey, TValue}"/> semantics.
+            /// </summary>
             void IEnumerator.Reset()
             {
                 throw new NotSupportedException("Reset is not supported.");
@@ -653,11 +947,36 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     public class SerializableDictionary<TKey, TValue>
         : SerializableDictionaryBase<TKey, TValue, TValue>
     {
+        /// <summary>
+        /// Initializes an empty serializable dictionary whose values can be written directly to Unity serialization.
+        /// </summary>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableDictionary<string, int> weights = new SerializableDictionary<string, int>();
+        /// weights["Common"] = 42;
+        /// ]]></code>
+        /// </example>
         public SerializableDictionary() { }
 
+        /// <summary>
+        /// Initializes the serializable dictionary with items copied from an existing dictionary.
+        /// </summary>
+        /// <param name="dictionary">The source entries to clone.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// Dictionary<string, int> seed = new Dictionary<string, int>();
+        /// seed["Common"] = 42;
+        /// SerializableDictionary<string, int> weights = new SerializableDictionary<string, int>(seed);
+        /// ]]></code>
+        /// </example>
         public SerializableDictionary(IDictionary<TKey, TValue> dictionary)
             : base(dictionary) { }
 
+        /// <summary>
+        /// Deserialization constructor used by <see cref="ISerializable"/> pipelines.
+        /// </summary>
+        /// <param name="serializationInfo">Serialized key/value data.</param>
+        /// <param name="streamingContext">Information about the serialization source.</param>
         protected SerializableDictionary(
             SerializationInfo serializationInfo,
             StreamingContext streamingContext
@@ -719,11 +1038,36 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         : SerializableDictionaryBase<TKey, TValue, TValueCache>
         where TValueCache : SerializableDictionary.Cache<TValue>, new()
     {
+        /// <summary>
+        /// Initializes an empty serializable dictionary whose values are stored in cache objects.
+        /// </summary>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableDictionary<string, ComplexValue, ComplexValueCache> cache =
+        ///     new SerializableDictionary<string, ComplexValue, ComplexValueCache>();
+        /// ]]></code>
+        /// </example>
         public SerializableDictionary() { }
 
+        /// <summary>
+        /// Initializes the dictionary with entries copied from an existing runtime dictionary.
+        /// </summary>
+        /// <param name="dictionary">Entries to seed the serializable dictionary with.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// Dictionary<string, ComplexValue> seed = new Dictionary<string, ComplexValue>();
+        /// SerializableDictionary<string, ComplexValue, ComplexValueCache> cache =
+        ///     new SerializableDictionary<string, ComplexValue, ComplexValueCache>(seed);
+        /// ]]></code>
+        /// </example>
         public SerializableDictionary(IDictionary<TKey, TValue> dictionary)
             : base(dictionary) { }
 
+        /// <summary>
+        /// Deserialization constructor required by the <see cref="ISerializable"/> contract.
+        /// </summary>
+        /// <param name="serializationInfo">Serialized representation of the dictionary.</param>
+        /// <param name="streamingContext">Context describing the serialization environment.</param>
         protected SerializableDictionary(
             SerializationInfo serializationInfo,
             StreamingContext streamingContext

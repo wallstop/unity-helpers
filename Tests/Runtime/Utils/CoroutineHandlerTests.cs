@@ -40,12 +40,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             bool coroutineRan = false;
 
-            IEnumerator TestCoroutine()
-            {
-                yield return null;
-                coroutineRan = true;
-            }
-
             CoroutineHandler inst = CoroutineHandler.Instance;
             Track(inst.gameObject);
             inst.StartCoroutine(TestCoroutine());
@@ -54,21 +48,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             Assert.IsTrue(coroutineRan);
+            yield break;
+
+            IEnumerator TestCoroutine()
+            {
+                yield return null;
+                coroutineRan = true;
+            }
         }
 
         [UnityTest]
         public IEnumerator CanStopCoroutine()
         {
             int counter = 0;
-
-            IEnumerator TestCoroutine()
-            {
-                while (true)
-                {
-                    counter++;
-                    yield return null;
-                }
-            }
 
             CoroutineHandler inst2 = CoroutineHandler.Instance;
             Track(inst2.gameObject);
@@ -84,6 +76,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             Assert.AreEqual(countBeforeStop, counter);
+            yield break;
+
+            IEnumerator TestCoroutine()
+            {
+                while (true)
+                {
+                    counter++;
+                    yield return null;
+                }
+            }
         }
 
         [UnityTest]
@@ -91,24 +93,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             int counter1 = 0;
             int counter2 = 0;
-
-            IEnumerator TestCoroutine1()
-            {
-                while (true)
-                {
-                    counter1++;
-                    yield return null;
-                }
-            }
-
-            IEnumerator TestCoroutine2()
-            {
-                while (true)
-                {
-                    counter2++;
-                    yield return null;
-                }
-            }
 
             CoroutineHandler inst3 = CoroutineHandler.Instance;
             Track(inst3.gameObject);
@@ -128,21 +112,31 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.AreEqual(count1BeforeStop, counter1);
             Assert.AreEqual(count2BeforeStop, counter2);
+            yield break;
+
+            IEnumerator TestCoroutine1()
+            {
+                while (true)
+                {
+                    counter1++;
+                    yield return null;
+                }
+            }
+
+            IEnumerator TestCoroutine2()
+            {
+                while (true)
+                {
+                    counter2++;
+                    yield return null;
+                }
+            }
         }
 
         [UnityTest]
         public IEnumerator CoroutineRunsOverMultipleFrames()
         {
             int frameCount = 0;
-
-            IEnumerator TestCoroutine()
-            {
-                for (int i = 0; i < 5; i++)
-                {
-                    frameCount++;
-                    yield return null;
-                }
-            }
 
             CoroutineHandler inst4 = CoroutineHandler.Instance;
             Track(inst4.gameObject);
@@ -154,6 +148,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
 
             Assert.AreEqual(5, frameCount);
+            yield break;
+
+            IEnumerator TestCoroutine()
+            {
+                for (int i = 0; i < 5; i++)
+                {
+                    frameCount++;
+                    yield return null;
+                }
+            }
         }
 
         [UnityTest]
@@ -161,12 +165,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             bool completed = false;
             float startTime = Time.time;
-
-            IEnumerator TestCoroutine()
-            {
-                yield return new WaitForSeconds(0.1f);
-                completed = true;
-            }
 
             CoroutineHandler.Instance.StartCoroutine(TestCoroutine());
 
@@ -176,6 +174,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.IsTrue(completed);
             Assert.Greater(Time.time - startTime, 0.1f);
+            yield break;
+
+            IEnumerator TestCoroutine()
+            {
+                yield return new WaitForSeconds(0.1f);
+                completed = true;
+            }
         }
 
         [UnityTest]
@@ -184,6 +189,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             bool coroutine1Completed = false;
             bool coroutine2Completed = false;
             bool coroutine3Completed = false;
+
+            CoroutineHandler.Instance.StartCoroutine(TestCoroutine1());
+            CoroutineHandler.Instance.StartCoroutine(TestCoroutine2());
+            CoroutineHandler.Instance.StartCoroutine(TestCoroutine3());
+
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(coroutine1Completed);
+            Assert.IsTrue(coroutine2Completed);
+            Assert.IsTrue(coroutine3Completed);
+            yield break;
 
             IEnumerator TestCoroutine1()
             {
@@ -202,17 +219,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 yield return null;
                 coroutine3Completed = true;
             }
-
-            CoroutineHandler.Instance.StartCoroutine(TestCoroutine1());
-            CoroutineHandler.Instance.StartCoroutine(TestCoroutine2());
-            CoroutineHandler.Instance.StartCoroutine(TestCoroutine3());
-
-            yield return null;
-            yield return null;
-
-            Assert.IsTrue(coroutine1Completed);
-            Assert.IsTrue(coroutine2Completed);
-            Assert.IsTrue(coroutine3Completed);
         }
 
         [UnityTest]
@@ -220,6 +226,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             bool innerCompleted = false;
             bool outerCompleted = false;
+
+            CoroutineHandler.Instance.StartCoroutine(OuterCoroutine());
+
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(innerCompleted);
+            Assert.IsTrue(outerCompleted);
+            yield break;
 
             IEnumerator InnerCoroutine()
             {
@@ -232,14 +247,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 yield return InnerCoroutine();
                 outerCompleted = true;
             }
-
-            CoroutineHandler.Instance.StartCoroutine(OuterCoroutine());
-
-            yield return null;
-            yield return null;
-
-            Assert.IsTrue(innerCompleted);
-            Assert.IsTrue(outerCompleted);
         }
 
         [UnityTest]
@@ -271,11 +278,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator StoppingNonexistentCoroutineDoesNotThrow()
         {
-            IEnumerator DummyCoroutine()
-            {
-                yield return null;
-            }
-
             Coroutine coroutine = CoroutineHandler.Instance.StartCoroutine(DummyCoroutine());
 
             yield return null;
@@ -286,25 +288,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             Assert.Pass();
+            yield break;
+
+            IEnumerator DummyCoroutine()
+            {
+                yield return null;
+            }
         }
 
         [UnityTest]
         public IEnumerator HandlesExceptionInCoroutine()
         {
             bool continueAfterException = false;
-
-            IEnumerator ThrowingCoroutine()
-            {
-                yield return null;
-                throw new System.Exception("Test exception");
-            }
-
-            IEnumerator SafeCoroutine()
-            {
-                yield return null;
-                yield return null;
-                continueAfterException = true;
-            }
 
             LogAssert.Expect(
                 LogType.Exception,
@@ -318,21 +313,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             Assert.IsTrue(continueAfterException);
+            yield break;
+
+            IEnumerator ThrowingCoroutine()
+            {
+                yield return null;
+                throw new System.Exception("Test exception");
+            }
+
+            IEnumerator SafeCoroutine()
+            {
+                yield return null;
+                yield return null;
+                continueAfterException = true;
+            }
         }
 
         [UnityTest]
         public IEnumerator CoroutineStopsWhenObjectDestroyed()
         {
             int counter = 0;
-
-            IEnumerator TestCoroutine()
-            {
-                while (true)
-                {
-                    counter++;
-                    yield return null;
-                }
-            }
 
             CoroutineHandler instance = CoroutineHandler.Instance;
             instance.StartCoroutine(TestCoroutine());
@@ -348,6 +348,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             Assert.AreEqual(countBeforeDestroy, counter);
+            yield break;
+
+            IEnumerator TestCoroutine()
+            {
+                while (true)
+                {
+                    counter++;
+                    yield return null;
+                }
+            }
         }
     }
 }

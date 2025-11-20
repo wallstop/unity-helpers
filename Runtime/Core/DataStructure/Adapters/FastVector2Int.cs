@@ -364,12 +364,36 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             };
         }
 
+        /// <summary>
+        /// Returns the cached hash code so this vector can be used as a deterministic key in dictionaries and sets.
+        /// </summary>
+        /// <returns>An integer hash that combines the X and Y components.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// HashSet<FastVector2Int> visitedCells = new HashSet<FastVector2Int>();
+        /// FastVector2Int cell = new FastVector2Int(2, 4);
+        /// visitedCells.Add(cell);
+        /// int hash = cell.GetHashCode();
+        /// bool contains = visitedCells.Contains(new FastVector2Int(2, 4));
+        /// ]]></code>
+        /// </example>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode()
         {
             return _hash;
         }
 
+        /// <summary>
+        /// Formats the vector as a readable string containing its X and Y components.
+        /// </summary>
+        /// <returns>A string in the form <c>(x, y)</c>.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// FastVector2Int cursor = new FastVector2Int(7, -1);
+        /// string label = cursor.ToString();
+        /// Debug.Log(label);
+        /// ]]></code>
+        /// </example>
         public override string ToString()
         {
             return $"({x}, {y})";

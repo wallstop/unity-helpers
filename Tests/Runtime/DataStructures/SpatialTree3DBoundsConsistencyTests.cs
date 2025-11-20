@@ -43,6 +43,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 (gridSize.z - 1) * 0.5f
             );
 
+            List<Bounds> specs = new()
+            {
+                Scale(new Vector3(1f, 1f, 1f)),
+                Scale(new Vector3(0.5f, 0.5f, 0.5f)),
+                Scale(new Vector3(0.25f, 0.25f, 0.25f)),
+                new Bounds(center, new Vector3(1f, 1f, 1f)),
+            };
+            return specs.ToArray();
+
             Bounds Scale(Vector3 ratio)
             {
                 Vector3 size = new(
@@ -52,15 +61,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 );
                 return new Bounds(center, size);
             }
-
-            List<Bounds> specs = new()
-            {
-                Scale(new Vector3(1f, 1f, 1f)),
-                Scale(new Vector3(0.5f, 0.5f, 0.5f)),
-                Scale(new Vector3(0.25f, 0.25f, 0.25f)),
-                new Bounds(center, new Vector3(1f, 1f, 1f)),
-            };
-            return specs.ToArray();
         }
 
         [Test]

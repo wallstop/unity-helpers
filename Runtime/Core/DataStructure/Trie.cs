@@ -30,7 +30,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         private readonly int[] _firstChild;
         private readonly int[] _nextSibling;
         private readonly bool[] _isWord;
-        private readonly StringBuilder _stringBuilder;
+        private readonly int _maxWordLength;
         private int _nodeCount;
 
         /// <summary>
@@ -73,7 +73,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             Array.Fill(_firstChild, Poison);
             Array.Fill(_nextSibling, Poison);
 
-            _stringBuilder = new StringBuilder(maxWordLength);
+            _maxWordLength = maxWordLength;
 
             _nodeCount = 1; // root node index
             for (int i = 0; i < wordList.Count; ++i)
@@ -173,14 +173,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                 node = child;
             }
-            _stringBuilder.Clear();
-            _stringBuilder.Append(prefix);
-            Collect(node, results, maxResults);
+            using PooledResource<StringBuilder> builderResource = Buffers.GetStringBuilder(
+                Mathf.Max(_maxWordLength, prefix?.Length ?? 0),
+                out StringBuilder builder
+            );
+            builder.Clear();
+            builder.Append(prefix);
+            Collect(node, results, maxResults, builder);
             return results;
         }
 
         // Recursive collection without allocations
-        private void Collect(int node, List<string> results, int maxResults)
+        private void Collect(int node, List<string> results, int maxResults, StringBuilder builder)
         {
             if (results.Count >= maxResults)
             {
@@ -189,7 +193,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             if (_isWord[node])
             {
-                results.Add(_stringBuilder.ToString());
+                results.Add(builder.ToString());
                 if (results.Count >= maxResults)
                 {
                     return;
@@ -197,9 +201,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
             for (int child = _firstChild[node]; child != Poison; child = _nextSibling[child])
             {
-                _stringBuilder.Append(_chars[child]);
-                Collect(child, results, maxResults);
-                _stringBuilder.Length--;
+                builder.Append(_chars[child]);
+                Collect(child, results, maxResults, builder);
+                builder.Length--;
                 if (results.Count >= maxResults)
                 {
                     return;

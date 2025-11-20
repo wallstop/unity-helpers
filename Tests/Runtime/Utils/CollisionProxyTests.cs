@@ -357,11 +357,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             int invokeCount = 0;
 
-            void Handler(Collider2D collider)
-            {
-                invokeCount++;
-            }
-
             proxy.OnTriggerEnter += Handler;
             proxy.OnTriggerEnter -= Handler;
 
@@ -372,6 +367,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return new WaitForFixedUpdate();
 
             Assert.AreEqual(0, invokeCount);
+            yield break;
+
+            void Handler(Collider2D collider)
+            {
+                invokeCount++;
+            }
         }
 
         [UnityTest]

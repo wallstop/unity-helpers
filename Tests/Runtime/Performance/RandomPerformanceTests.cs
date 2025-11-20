@@ -9,44 +9,105 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
     public sealed class RandomPerformanceTests
     {
         private const int NumInvocationsPerIteration = 100_000;
+        private const ulong DeterministicSeedBase = 0x6C8E9CF5709321D5UL;
+        private const ulong DeterministicSeedIncrement = 0x9E3779B97F4A7C15UL;
+        private const int GuidSeedOffset = 10_000;
 
         [Test, Timeout(0)]
         public void Benchmark()
         {
             TimeSpan timeout = TimeSpan.FromSeconds(1);
 
-            List<RandomBenchmarkResult> results = new()
+            UnityEngine.Random.State originalUnityRandomState = UnityEngine.Random.state;
+            try
             {
-                RunBenchmark(new DotNetRandom(), timeout),
-                RunBenchmark(new LinearCongruentialGenerator(), timeout),
-                RunBenchmark(new IllusionFlow(), timeout),
-                RunBenchmark(new PcgRandom(), timeout),
-                RunBenchmark(new RomuDuo(), timeout),
-                RunBenchmark(new SplitMix64(), timeout),
-                RunBenchmark(new FlurryBurstRandom(), timeout),
-                RunBenchmark(new SquirrelRandom(), timeout),
-                RunBenchmark(new SystemRandom(), timeout),
-                RunBenchmark(new UnityRandom(), timeout),
-                RunBenchmark(new WyRandom(), timeout),
-                RunBenchmark(new XorShiftRandom(), timeout),
-                RunBenchmark(new XoroShiroRandom(), timeout),
-                RunBenchmark(new PhotonSpinRandom(), timeout),
-                RunBenchmark(new StormDropRandom(), timeout),
-                RunBenchmark(new BlastCircuitRandom(), timeout),
-                RunBenchmark(new WaveSplatRandom(), timeout),
-            };
+                List<RandomBenchmarkResult> results = new();
+                foreach (IRandom random in CreateDeterministicGenerators())
+                {
+                    results.Add(RunBenchmark(random, timeout));
+                }
 
-            ApplySpeedBuckets(results);
+                ApplySpeedBuckets(results);
 
-            List<string> markdown = RandomBenchmarkMarkdownBuilder.BuildTables(results);
+                List<string> markdown = RandomBenchmarkMarkdownBuilder.BuildTables(results);
 
-            BenchmarkReadmeUpdater.UpdateSection(
-                "RANDOM_BENCHMARKS",
-                markdown,
-                "Docs/RANDOM_PERFORMANCE.md"
-            );
+                BenchmarkReadmeUpdater.UpdateSection(
+                    "RANDOM_BENCHMARKS",
+                    markdown,
+                    "Docs/RANDOM_PERFORMANCE.md"
+                );
 
-            UnityEngine.Debug.Log("Random benchmark summary generated.");
+                UnityEngine.Debug.Log("Random benchmark summary generated.");
+            }
+            finally
+            {
+                UnityEngine.Random.state = originalUnityRandomState;
+            }
+        }
+
+        private static IEnumerable<IRandom> CreateDeterministicGenerators()
+        {
+            int seedIndex = 1;
+
+            yield return new DotNetRandom(CreateGuidSeed(seedIndex++));
+            yield return new LinearCongruentialGenerator(CreateGuidSeed(seedIndex++));
+            yield return new IllusionFlow(CreateGuidSeed(seedIndex++));
+            yield return new PcgRandom(CreateGuidSeed(seedIndex++));
+            yield return new RomuDuo(CreateGuidSeed(seedIndex++));
+            yield return new SplitMix64(CreateGuidSeed(seedIndex++));
+            yield return new FlurryBurstRandom(CreateGuidSeed(seedIndex++));
+            yield return new SquirrelRandom(CreateIntSeed(seedIndex++));
+            yield return new SystemRandom(CreateIntSeed(seedIndex++));
+            yield return new UnityRandom(CreateIntSeed(seedIndex++));
+            yield return new WyRandom(CreateGuidSeed(seedIndex++));
+            yield return new XorShiftRandom(CreateGuidSeed(seedIndex++));
+            yield return new XoroShiroRandom(CreateGuidSeed(seedIndex++));
+            yield return new PhotonSpinRandom(CreateGuidSeed(seedIndex++));
+            yield return new StormDropRandom(CreateGuidSeed(seedIndex++));
+            yield return new BlastCircuitRandom(CreateGuidSeed(seedIndex++));
+            yield return new WaveSplatRandom(CreateGuidSeed(seedIndex++));
+        }
+
+        private static Guid CreateGuidSeed(int index)
+        {
+            byte[] buffer = new byte[16];
+            ulong first = DeriveSeed(index);
+            ulong second = DeriveSeed(index + GuidSeedOffset);
+            WriteUInt64LittleEndian(buffer, 0, first);
+            WriteUInt64LittleEndian(buffer, 8, second);
+            return new Guid(buffer);
+        }
+
+        private static int CreateIntSeed(int index)
+        {
+            int value = unchecked((int)(DeriveSeed(index) & int.MaxValue));
+            return value == 0 ? 1 : value;
+        }
+
+        private static ulong DeriveSeed(int index)
+        {
+            unchecked
+            {
+                ulong value = DeterministicSeedBase + ((ulong)index * DeterministicSeedIncrement);
+                value ^= value >> 30;
+                value *= 0xBF58476D1CE4E5B9UL;
+                value ^= value >> 27;
+                value *= 0x94D049BB133111EBUL;
+                value ^= value >> 31;
+                return value;
+            }
+        }
+
+        private static void WriteUInt64LittleEndian(byte[] buffer, int offset, ulong value)
+        {
+            buffer[offset + 0] = (byte)value;
+            buffer[offset + 1] = (byte)(value >> 8);
+            buffer[offset + 2] = (byte)(value >> 16);
+            buffer[offset + 3] = (byte)(value >> 24);
+            buffer[offset + 4] = (byte)(value >> 32);
+            buffer[offset + 5] = (byte)(value >> 40);
+            buffer[offset + 6] = (byte)(value >> 48);
+            buffer[offset + 7] = (byte)(value >> 56);
         }
 
         private static RandomBenchmarkResult RunBenchmark<T>(T random, TimeSpan timeout)

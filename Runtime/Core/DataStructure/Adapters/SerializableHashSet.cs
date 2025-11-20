@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using ProtoBuf;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Utils;
 #if UNITY_EDITOR
     using UnityEditor;
 #endif
@@ -147,6 +148,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         bool ICollection<T>.IsReadOnly => _set.IsReadOnly;
 
+        /// <summary>
+        /// Adds an element to the set and updates the serialized cache when the value was not already present.
+        /// </summary>
+        /// <param name="item">The element to insert.</param>
+        /// <returns><c>true</c> when the value was added.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> abilities = new SerializableHashSet<string>();
+        /// bool added = abilities.Add("Dash");
+        /// ]]></code>
+        /// </example>
         public bool Add(T item)
         {
             bool added = _set.Add(item);
@@ -163,6 +175,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             Add(item);
         }
 
+        /// <summary>
+        /// Adds all values from the provided sequence to the set.
+        /// </summary>
+        /// <param name="other">Values to union into this set.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> abilities = new SerializableHashSet<string>();
+        /// string[] unlocks = new string[] { "Dash", "Grapple" };
+        /// abilities.UnionWith(unlocks);
+        /// ]]></code>
+        /// </example>
         public void UnionWith(IEnumerable<T> other)
         {
             if (other == null)
@@ -174,6 +197,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             MarkSerializationCacheDirty();
         }
 
+        /// <summary>
+        /// Removes any element that is not contained in the provided sequence.
+        /// </summary>
+        /// <param name="other">Sequence that defines the intersection.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> abilities = new SerializableHashSet<string>();
+        /// string[] allowed = new string[] { "Dash" };
+        /// abilities.IntersectWith(allowed);
+        /// ]]></code>
+        /// </example>
         public void IntersectWith(IEnumerable<T> other)
         {
             if (other == null)
@@ -185,6 +219,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             MarkSerializationCacheDirty();
         }
 
+        /// <summary>
+        /// Removes all elements that appear in the provided sequence.
+        /// </summary>
+        /// <param name="other">Sequence whose members should be removed.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> abilities = new SerializableHashSet<string>();
+        /// string[] deprecated = new string[] { "Dash" };
+        /// abilities.ExceptWith(deprecated);
+        /// ]]></code>
+        /// </example>
         public void ExceptWith(IEnumerable<T> other)
         {
             if (other == null)
@@ -196,6 +241,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             MarkSerializationCacheDirty();
         }
 
+        /// <summary>
+        /// Modifies the set so it contains elements that appear in exactly one of the sequences.
+        /// </summary>
+        /// <param name="other">Sequence whose elements are compared against the current set.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> first = new SerializableHashSet<string>();
+        /// first.Add("Dash");
+        /// string[] second = new string[] { "Dash", "Grapple" };
+        /// first.SymmetricExceptWith(second);
+        /// ]]></code>
+        /// </example>
         public void SymmetricExceptWith(IEnumerable<T> other)
         {
             if (other == null)
@@ -207,36 +264,111 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             MarkSerializationCacheDirty();
         }
 
+        /// <summary>
+        /// Determines whether the set is a subset of the provided sequence.
+        /// </summary>
+        /// <param name="other">Sequence to compare against.</param>
+        /// <returns><c>true</c> when every element exists in the other sequence.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> storyUnlocks = new SerializableHashSet<string>();
+        /// bool subset = storyUnlocks.IsSubsetOf(new string[] { "Dash", "DoubleJump" });
+        /// ]]></code>
+        /// </example>
         public bool IsSubsetOf(IEnumerable<T> other)
         {
             return _set.IsSubsetOf(other);
         }
 
+        /// <summary>
+        /// Determines whether the set contains all values found in the provided sequence.
+        /// </summary>
+        /// <param name="other">Sequence that must be contained in the set.</param>
+        /// <returns><c>true</c> when the set is a superset.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> storyUnlocks = new SerializableHashSet<string>();
+        /// bool superset = storyUnlocks.IsSupersetOf(new string[] { "Dash" });
+        /// ]]></code>
+        /// </example>
         public bool IsSupersetOf(IEnumerable<T> other)
         {
             return _set.IsSupersetOf(other);
         }
 
+        /// <summary>
+        /// Determines whether the set strictly contains all values from the other sequence and has additional elements.
+        /// </summary>
+        /// <param name="other">Sequence that must be contained in the set.</param>
+        /// <returns><c>true</c> when the set is a proper superset.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> storyUnlocks = new SerializableHashSet<string>();
+        /// bool properSuperset = storyUnlocks.IsProperSupersetOf(new string[] { "Dash" });
+        /// ]]></code>
+        /// </example>
         public bool IsProperSupersetOf(IEnumerable<T> other)
         {
             return _set.IsProperSupersetOf(other);
         }
 
+        /// <summary>
+        /// Determines whether the set is strictly contained inside the provided sequence.
+        /// </summary>
+        /// <param name="other">Sequence that must contain every element plus at least one additional element.</param>
+        /// <returns><c>true</c> when the set is a proper subset.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> storyUnlocks = new SerializableHashSet<string>();
+        /// bool properSubset = storyUnlocks.IsProperSubsetOf(new string[] { "Dash", "Grapple" });
+        /// ]]></code>
+        /// </example>
         public bool IsProperSubsetOf(IEnumerable<T> other)
         {
             return _set.IsProperSubsetOf(other);
         }
 
+        /// <summary>
+        /// Determines whether the set shares any element with the provided sequence.
+        /// </summary>
+        /// <param name="other">Sequence to compare to.</param>
+        /// <returns><c>true</c> when at least one value is shared.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> storyUnlocks = new SerializableHashSet<string>();
+        /// bool overlaps = storyUnlocks.Overlaps(new string[] { "Dash" });
+        /// ]]></code>
+        /// </example>
         public bool Overlaps(IEnumerable<T> other)
         {
             return _set.Overlaps(other);
         }
 
+        /// <summary>
+        /// Determines whether this set and the provided sequence contain the exact same elements.
+        /// </summary>
+        /// <param name="other">Sequence to compare against.</param>
+        /// <returns><c>true</c> when both contain identical members.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> storyUnlocks = new SerializableHashSet<string>();
+        /// bool matches = storyUnlocks.SetEquals(new string[] { "Dash", "DoubleJump" });
+        /// ]]></code>
+        /// </example>
         public bool SetEquals(IEnumerable<T> other)
         {
             return _set.SetEquals(other);
         }
 
+        /// <summary>
+        /// Removes every element from the set and clears the serialized cache.
+        /// </summary>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> storyUnlocks = new SerializableHashSet<string>();
+        /// storyUnlocks.Clear();
+        /// ]]></code>
+        /// </example>
         public void Clear()
         {
             if (_set.Count == 0)
@@ -248,11 +380,35 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             MarkSerializationCacheDirty();
         }
 
+        /// <summary>
+        /// Determines whether the set contains the specified element.
+        /// </summary>
+        /// <param name="item">The element to look up.</param>
+        /// <returns><c>true</c> when the element exists.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> storyUnlocks = new SerializableHashSet<string>();
+        /// bool hasDash = storyUnlocks.Contains("Dash");
+        /// ]]></code>
+        /// </example>
         public bool Contains(T item)
         {
             return _set.Contains(item);
         }
 
+        /// <summary>
+        /// Retrieves the stored value that compares equal to the supplied value.
+        /// </summary>
+        /// <param name="equalValue">The candidate value.</param>
+        /// <param name="actualValue">Receives the canonical value from the set.</param>
+        /// <returns><c>true</c> when a matching element is found.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> storyUnlocks = new SerializableHashSet<string>();
+        /// string normalized;
+        /// bool found = storyUnlocks.TryGetValue("Dash", out normalized);
+        /// ]]></code>
+        /// </example>
         public bool TryGetValue(T equalValue, out T actualValue)
         {
             if (TryGetValueCore(equalValue, out T resolved))
@@ -275,22 +431,79 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return false;
         }
 
+        /// <summary>
+        /// Allows derived types to substitute custom lookup behavior (for example, when values are wrapped).
+        /// </summary>
+        /// <param name="equalValue">The candidate value.</param>
+        /// <param name="actualValue">Receives the resolved value.</param>
+        /// <returns><c>true</c> when the derived type resolved a match.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// protected override bool TryGetValueCore(string equalValue, out string actualValue)
+        /// {
+        ///     foreach (string stored in SerializedItems)
+        ///     {
+        ///         if (string.Equals(stored, equalValue, StringComparison.OrdinalIgnoreCase))
+        ///         {
+        ///             actualValue = stored;
+        ///             return true;
+        ///         }
+        ///     }
+        ///     actualValue = null;
+        ///     return false;
+        /// }
+        /// ]]></code>
+        /// </example>
         protected virtual bool TryGetValueCore(T equalValue, out T actualValue)
         {
             actualValue = default;
             return false;
         }
 
+        /// <summary>
+        /// Copies the elements into the provided array starting at index zero.
+        /// </summary>
+        /// <param name="array">Destination array.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> storyUnlocks = new SerializableHashSet<string>();
+        /// string[] snapshot = new string[storyUnlocks.Count];
+        /// storyUnlocks.CopyTo(snapshot);
+        /// ]]></code>
+        /// </example>
         public void CopyTo(T[] array)
         {
             CopyTo(array, 0);
         }
 
+        /// <summary>
+        /// Copies the elements into the provided array starting at the given index.
+        /// </summary>
+        /// <param name="array">Destination array.</param>
+        /// <param name="arrayIndex">Index in <paramref name="array"/> where copying begins.</param>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> storyUnlocks = new SerializableHashSet<string>();
+        /// string[] snapshot = new string[storyUnlocks.Count + 2];
+        /// storyUnlocks.CopyTo(snapshot, 1);
+        /// ]]></code>
+        /// </example>
         public void CopyTo(T[] array, int arrayIndex)
         {
             _set.CopyTo(array, arrayIndex);
         }
 
+        /// <summary>
+        /// Removes a single element from the set and updates the serialized cache.
+        /// </summary>
+        /// <param name="item">The element to remove.</param>
+        /// <returns><c>true</c> when the value existed.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> storyUnlocks = new SerializableHashSet<string>();
+        /// bool removed = storyUnlocks.Remove("Dash");
+        /// ]]></code>
+        /// </example>
         public bool Remove(T item)
         {
             bool removed = _set.Remove(item);
@@ -302,6 +515,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return removed;
         }
 
+        /// <summary>
+        /// Removes every element that satisfies the provided predicate.
+        /// </summary>
+        /// <param name="match">Condition that determines which elements are removed.</param>
+        /// <returns>The number of elements removed.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> storyUnlocks = new SerializableHashSet<string>();
+        /// int removed = storyUnlocks.RemoveWhere(id => id.Contains("Beta"));
+        /// ]]></code>
+        /// </example>
         public int RemoveWhere(Predicate<T> match)
         {
             if (match == null)
@@ -318,9 +542,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return removed;
         }
 
+        /// <summary>
+        /// Allows derived types to customize how batch removals are handled.
+        /// </summary>
+        /// <param name="match">The predicate describing which elements to remove.</param>
+        /// <returns>The number of removed elements.</returns>
         protected virtual int RemoveWhereInternal(Predicate<T> match)
         {
-            List<T> buffer = new();
+            using PooledResource<List<T>> bufferResource = Buffers<T>.List.Get(out List<T> buffer);
             foreach (T value in _set)
             {
                 if (match(value))
@@ -337,11 +566,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return buffer.Count;
         }
 
+        /// <inheritdoc />
         IEnumerator<T> IEnumerable<T>.GetEnumerator()
         {
             return _set.GetEnumerator();
         }
 
+        /// <inheritdoc />
         IEnumerator IEnumerable.GetEnumerator()
         {
             return ((IEnumerable)_set).GetEnumerator();
@@ -517,6 +748,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             _items = null;
         }
 
+        /// <summary>
+        /// Returns a JSON string describing the serialized items for quick debugging.
+        /// </summary>
+        /// <returns>A JSON representation of the set.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> storyUnlocks = new SerializableHashSet<string>();
+        /// string snapshot = storyUnlocks.ToString();
+        /// ]]></code>
+        /// </example>
         public override string ToString()
         {
             return this.ToJson();
@@ -733,14 +974,31 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     {
         private sealed class StorageSet : HashSet<T>
         {
+            /// <summary>
+            /// Initializes an empty storage set using the default comparer.
+            /// </summary>
             public StorageSet() { }
 
+            /// <summary>
+            /// Initializes an empty storage set that uses the provided comparer.
+            /// </summary>
+            /// <param name="comparer">Comparer passed to <see cref="HashSet{T}.HashSet(IEqualityComparer{T})"/>.</param>
             public StorageSet(IEqualityComparer<T> comparer)
                 : base(comparer) { }
 
+            /// <summary>
+            /// Initializes the storage set with the supplied elements and comparer.
+            /// </summary>
+            /// <param name="collection">Elements to copy into the backing set.</param>
+            /// <param name="comparer">Comparer used to determine uniqueness.</param>
             public StorageSet(IEnumerable<T> collection, IEqualityComparer<T> comparer)
                 : base(collection, comparer) { }
 
+            /// <summary>
+            /// Deserialization constructor used by <see cref="ISerializable"/>.
+            /// </summary>
+            /// <param name="info">Serialized data describing the set.</param>
+            /// <param name="context">Context describing the serialization source.</param>
             public StorageSet(SerializationInfo info, StreamingContext context)
                 : base(info, context) { }
         }

@@ -314,6 +314,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return new Vector3Int(vector.x, vector.y, vector.z);
         }
 
+        /// <summary>
+        /// Projects this fast 3D vector onto the XY plane as a Unity <see cref="Vector2Int"/> by discarding the Z component.
+        /// </summary>
+        /// <param name="vector">The fast vector to project.</param>
+        /// <returns>A <see cref="Vector2Int"/> containing the X and Y components.</returns>
+        /// <example>
+        /// <code>
+        /// Vector2Int tile = (Vector2Int)new FastVector3Int(5, 9, -2);
+        /// </code>
+        /// </example>
         public static implicit operator Vector2Int(FastVector3Int vector)
         {
             return new Vector2Int(vector.x, vector.y);
@@ -379,6 +389,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return new Vector2(vector.x, vector.y);
         }
 
+        /// <summary>
+        /// Returns the cached hash code for the vector so it can participate in hash-based collections without recomputing component hashes.
+        /// </summary>
+        /// <returns>A deterministic hash based on X, Y, and Z.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// HashSet<FastVector3Int> occupied = new HashSet<FastVector3Int>();
+        /// FastVector3Int anchor = new FastVector3Int(1, 2, 3);
+        /// occupied.Add(anchor);
+        /// int hash = anchor.GetHashCode();
+        /// bool contains = occupied.Contains(new FastVector3Int(1, 2, 3));
+        /// ]]></code>
+        /// </example>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode()
         {
@@ -421,6 +444,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return y.CompareTo(other.y);
         }
 
+        /// <summary>
+        /// Compares this vector to a Unity <see cref="Vector3Int"/> using lexicographical ordering on X, then Y, then Z.
+        /// </summary>
+        /// <param name="other">The Unity vector to compare to.</param>
+        /// <returns>A signed integer describing the ordering relationship.</returns>
+        /// <example>
+        /// <code>
+        /// FastVector3Int platform = new FastVector3Int(0, 4, 2);
+        /// bool isAbove = platform.CompareTo(new Vector3Int(0, 3, 10)) > 0;
+        /// </code>
+        /// </example>
         public int CompareTo(Vector3Int other)
         {
             int comparison = x.CompareTo(other.x);
@@ -526,13 +560,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int CompareTo(FastVector3Int other)
         {
-            var xComparison = x.CompareTo(other.x);
+            int xComparison = x.CompareTo(other.x);
             if (xComparison != 0)
             {
                 return xComparison;
             }
 
-            var yComparison = y.CompareTo(other.y);
+            int yComparison = y.CompareTo(other.y);
             if (yComparison != 0)
             {
                 return yComparison;
@@ -586,6 +620,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             };
         }
 
+        /// <summary>
+        /// Formats the vector as a string tuple containing X, Y, and Z.
+        /// </summary>
+        /// <returns>A string formatted as <c>(x, y, z)</c>.</returns>
+        /// <example>
+        /// <code>
+        /// FastVector3Int checkpoint = new FastVector3Int(-2, 8, 15);
+        /// string label = checkpoint.ToString();
+        /// </code>
+        /// </example>
         public override string ToString()
         {
             return $"({x}, {y}, {z})";

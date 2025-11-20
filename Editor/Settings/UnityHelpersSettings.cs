@@ -8,7 +8,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
     using UnityEngine.Serialization;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
-    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
     using WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup;

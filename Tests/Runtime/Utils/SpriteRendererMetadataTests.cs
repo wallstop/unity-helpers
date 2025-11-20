@@ -138,6 +138,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             SpriteRenderer spriteRenderer = metadata.GetComponent<SpriteRenderer>();
             Color color = CreateColor();
 
+            for (int i = 0; i < 100; ++i)
+            {
+                Verify();
+            }
+
+            yield break;
+
             void Verify()
             {
                 metadata.PushColor(spriteRenderer, color);
@@ -145,13 +152,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.AreEqual(color, metadata.CurrentColor);
                 Assert.AreEqual(2, metadata.Colors.Count());
             }
-
-            for (int i = 0; i < 100; ++i)
-            {
-                Verify();
-            }
-
-            yield break;
         }
 
         [UnityTest]
@@ -161,6 +161,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             SpriteRenderer spriteRenderer = metadata.GetComponent<SpriteRenderer>();
             Material material = CreateMaterial();
 
+            for (int i = 0; i < 100; ++i)
+            {
+                Verify();
+            }
+
+            yield break;
+
             void Verify()
             {
                 metadata.PushMaterial(spriteRenderer, material);
@@ -169,13 +176,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.IsTrue(metadata.Materials.Contains(spriteRenderer.material));
                 Assert.IsTrue(metadata.Materials.Contains(metadata.OriginalMaterial));
             }
-
-            for (int i = 0; i < 100; ++i)
-            {
-                Verify();
-            }
-
-            yield break;
         }
 
         [UnityTest]
@@ -187,6 +187,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Color color = CreateColor();
             metadata.PushColor(spriteRenderer, color);
 
+            for (int i = 0; i < 100; ++i)
+            {
+                Verify();
+            }
+
+            yield break;
+
             void Verify()
             {
                 metadata.PopColor(spriteRenderer);
@@ -194,13 +201,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.AreEqual(originalColor, metadata.CurrentColor);
                 Assert.AreEqual(1, metadata.Colors.Count());
             }
-
-            for (int i = 0; i < 100; ++i)
-            {
-                Verify();
-            }
-
-            yield break;
         }
 
         [UnityTest]
@@ -212,6 +212,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             metadata.PushMaterial(spriteRenderer, material);
 
+            for (int i = 0; i < 100; ++i)
+            {
+                Verify();
+            }
+
+            yield break;
+
             void Verify()
             {
                 metadata.PopMaterial(spriteRenderer);
@@ -219,13 +226,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.AreEqual(1, metadata.Materials.Count());
                 Assert.IsTrue(metadata.Materials.Contains(spriteRenderer.material));
             }
-
-            for (int i = 0; i < 100; ++i)
-            {
-                Verify();
-            }
-
-            yield break;
         }
 
         [UnityTest]

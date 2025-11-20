@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Runtime.Serialization;
     using System.Text.Json;
@@ -8,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using ProtoBuf;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// Unity-serializable alternative to <see cref="Nullable{T}"/> that supports ProtoBuf and JSON.
@@ -319,6 +321,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
     internal sealed class SerializableNullableJsonConverterFactory : JsonConverterFactory
     {
+        private static readonly ConcurrentDictionary<Type, JsonConverter> ConverterCache = new();
+
+        /// <summary>
+        /// Determines whether the provided type is a <see cref="SerializableNullable{T}"/> wrapper.
+        /// </summary>
+        /// <param name="typeToConvert">The type requested by <see cref="JsonSerializer"/>.</param>
+        /// <returns><c>true</c> when the factory can create a converter.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// JsonSerializerOptions options = new JsonSerializerOptions();
+        /// options.Converters.Add(new SerializableNullableJsonConverterFactory());
+        /// bool supported = options.GetConverter(typeof(SerializableNullable<int>)) != null;
+        /// ]]></code>
+        /// </example>
         public override bool CanConvert(Type typeToConvert)
         {
             if (!typeToConvert.IsGenericType)
@@ -330,15 +346,40 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return genericType == typeof(SerializableNullable<>);
         }
 
+        /// <summary>
+        /// Creates a concrete converter for the inner value type.
+        /// </summary>
+        /// <param name="type">The requested <see cref="SerializableNullable{T}"/> type.</param>
+        /// <param name="options">Serializer options requesting the converter.</param>
+        /// <returns>A converter instance that can read and write the wrapper.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// JsonSerializerOptions options = new JsonSerializerOptions();
+        /// options.Converters.Add(new SerializableNullableJsonConverterFactory());
+        /// JsonConverter converter = options.GetConverter(typeof(SerializableNullable<int>));
+        /// ]]></code>
+        /// </example>
         public override JsonConverter CreateConverter(Type type, JsonSerializerOptions options)
         {
+            if (type == null)
+            {
+                throw new ArgumentNullException(nameof(type));
+            }
+
             Type[] arguments = type.GetGenericArguments();
             Type valueType = arguments[0];
-            Type converterType = typeof(SerializableNullableJsonConverter<>).MakeGenericType(
-                valueType
+            return ConverterCache.GetOrAdd(
+                valueType,
+                value =>
+                {
+                    Type converterType =
+                        typeof(SerializableNullableJsonConverter<>).MakeGenericType(value);
+                    Func<object> creator = ReflectionHelpers.GetParameterlessConstructor(
+                        converterType
+                    );
+                    return (JsonConverter)creator();
+                }
             );
-            JsonConverter converter = (JsonConverter)Activator.CreateInstance(converterType);
-            return converter;
         }
     }
 
@@ -346,6 +387,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         : JsonConverter<SerializableNullable<T>>
         where T : struct
     {
+        /// <summary>
+        /// Reads a <see cref="SerializableNullable{T}"/> from JSON by delegating to the wrapped value converter.
+        /// </summary>
+        /// <example>
+        /// <code><![CDATA[
+        /// JsonSerializerOptions options = new JsonSerializerOptions();
+        /// SerializableNullable<int> value =
+        ///     JsonSerializer.Deserialize<SerializableNullable<int>>("42", options);
+        /// ]]></code>
+        /// </example>
         public override SerializableNullable<T> Read(
             ref Utf8JsonReader reader,
             Type typeToConvert,
@@ -364,6 +415,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return result;
         }
 
+        /// <summary>
+        /// Writes the wrapped value or <c>null</c> depending on <see cref="SerializableNullable{T}.HasValue"/>.
+        /// </summary>
+        /// <example>
+        /// <code><![CDATA[
+        /// JsonSerializerOptions options = new JsonSerializerOptions();
+        /// SerializableNullable<int> value = new SerializableNullable<int>(5);
+        /// string json = JsonSerializer.Serialize(value, options);
+        /// ]]></code>
+        /// </example>
         public override void Write(
             Utf8JsonWriter writer,
             SerializableNullable<T> value,

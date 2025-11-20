@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
     /// Unity serializable wrapper for <see cref="Type"/> that survives JSON, ProtoBuf, and Unity serialization by storing normalized assembly-qualified names.
@@ -175,7 +176,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return string.Equals(leftName, rightName, StringComparison.Ordinal);
         }
 
-        /// <inheritdoc/>
         /// <summary>
         /// Compares the wrapped type against a <see cref="Type"/> instance.
         /// </summary>
@@ -355,7 +355,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             if (!string.IsNullOrEmpty(fullName))
             {
                 Assembly assembly = type.Assembly;
-                string assemblyName = assembly != null ? assembly.GetName().Name : string.Empty;
+                string assemblyName = assembly.GetName().Name;
                 if (!string.IsNullOrEmpty(assemblyName))
                 {
                     return $"{fullName}, {assemblyName}";
@@ -368,7 +368,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             if (!string.IsNullOrEmpty(name))
             {
                 Assembly assembly = type.Assembly;
-                string assemblyName = assembly != null ? assembly.GetName().Name : string.Empty;
+                string assemblyName = assembly.GetName().Name;
                 if (!string.IsNullOrEmpty(assemblyName))
                 {
                     return $"{name}, {assemblyName}";
@@ -400,10 +400,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         private static readonly string[] DefaultIgnorePatternStrings =
         {
             @"^\$",
-            @"<>",
-            @"AnonymousType",
-            @"DisplayClass",
-            @"PrivateImplementationDetails",
+            "<>",
+            "AnonymousType",
+            "DisplayClass",
+            "PrivateImplementationDetails",
         };
 
         private static Regex[] _defaultIgnoreRegexes;
@@ -625,9 +625,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 return false;
             }
 
-            for (int index = 0; index < patterns.Length; index++)
+            foreach (Regex regex in patterns)
             {
-                Regex regex = patterns[index];
                 if (regex == null)
                 {
                     continue;
@@ -688,9 +687,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
 
             int matches = 0;
-            for (int index = 0; index < signatures.Length; index++)
+            foreach (TypeSignature signature in signatures)
             {
-                if (RegexMatchesSignature(signatures[index], regex))
+                if (RegexMatchesSignature(signature, regex))
                 {
                     matches++;
                 }
@@ -723,7 +722,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 return descriptor.Type;
             }
 
-            Type direct = Type.GetType(assemblyQualifiedName, false);
+            Type direct = ReflectionHelpers.TryResolveType(assemblyQualifiedName);
             if (direct != null)
             {
                 return direct;
@@ -735,7 +734,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 return null;
             }
 
-            Type fallback = ResolveByFullName(fullName);
+            Type fallback =
+                ReflectionHelpers.TryResolveType(fullName) ?? ResolveByFullName(fullName);
             return fallback;
         }
 
@@ -819,9 +819,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
 
             List<SerializableTypeDescriptor> filtered = new(source.Length);
-            for (int index = 0; index < source.Length; index++)
+            foreach (SerializableTypeDescriptor descriptor in source)
             {
-                SerializableTypeDescriptor descriptor = source[index];
                 if (descriptor.Matches(key))
                 {
                     filtered.Add(descriptor);
@@ -840,21 +839,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 return NoneDisplayName;
             }
 
-            StringBuilder builder = new();
+            using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.StringBuilder.Get(
+                out StringBuilder builder
+            );
             AppendTypeName(builder, type);
 
             Assembly assembly = type.Assembly;
-            if (assembly != null)
-            {
-                AssemblyName assemblyName = assembly.GetName();
-                if (assemblyName != null)
-                {
-                    builder.Append(" (");
-                    builder.Append(assemblyName.Name);
-                    builder.Append(')');
-                }
-            }
 
+            AssemblyName assemblyName = assembly.GetName();
+            builder.Append(" (");
+            builder.Append(assemblyName.Name);
+            builder.Append(')');
             return builder.ToString();
         }
 
@@ -877,19 +872,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                     new SerializableTypeDescriptor(null, string.Empty, NoneDisplayName),
                 };
 
-                Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-                for (int assemblyIndex = 0; assemblyIndex < assemblies.Length; assemblyIndex++)
+                IEnumerable<Assembly> assemblies = ReflectionHelpers.GetAllLoadedAssemblies();
+                foreach (Assembly assembly in assemblies)
                 {
-                    Assembly assembly = assemblies[assemblyIndex];
                     if (assembly == null || assembly.IsDynamic)
                     {
                         continue;
                     }
 
                     Type[] exportedTypes = GetAssemblyTypes(assembly);
-                    for (int typeIndex = 0; typeIndex < exportedTypes.Length; typeIndex++)
+                    foreach (Type type in exportedTypes)
                     {
-                        Type type = exportedTypes[typeIndex];
                         if (type == null)
                         {
                             continue;
@@ -932,9 +925,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                     StringComparer.Ordinal
                 );
 
-                for (int index = 0; index < _descriptors.Length; index++)
+                foreach (SerializableTypeDescriptor descriptor in _descriptors)
                 {
-                    SerializableTypeDescriptor descriptor = _descriptors[index];
                     if (
                         !_descriptorByName.ContainsKey(descriptor.AssemblyQualifiedName)
                         && !string.IsNullOrEmpty(descriptor.AssemblyQualifiedName)
@@ -956,37 +948,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         private static Type[] GetAssemblyTypes(Assembly assembly)
         {
-            try
-            {
-                return assembly.GetTypes();
-            }
-            catch (ReflectionTypeLoadException exception)
-            {
-                if (exception.Types != null)
-                {
-                    List<Type> result = new();
-                    for (int index = 0; index < exception.Types.Length; index++)
-                    {
-                        Type type = exception.Types[index];
-                        if (type != null)
-                        {
-                            result.Add(type);
-                        }
-                    }
-
-                    return result.ToArray();
-                }
-
-                return Array.Empty<Type>();
-            }
+            return ReflectionHelpers.GetTypesFromAssembly(assembly);
         }
 
         private static Type ResolveByFullName(string fullName)
         {
-            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            for (int assemblyIndex = 0; assemblyIndex < assemblies.Length; assemblyIndex++)
+            IEnumerable<Assembly> assemblies = ReflectionHelpers.GetAllLoadedAssemblies();
+            foreach (Assembly assembly in assemblies)
             {
-                Assembly assembly = assemblies[assemblyIndex];
                 if (assembly == null || assembly.IsDynamic)
                 {
                     continue;
@@ -1121,19 +1090,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 List<TypeSignature> signatures = new();
                 HashSet<string> seenTypes = new(StringComparer.Ordinal);
 
-                Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-                for (int assemblyIndex = 0; assemblyIndex < assemblies.Length; assemblyIndex++)
+                IEnumerable<Assembly> assemblies = ReflectionHelpers.GetAllLoadedAssemblies();
+                foreach (Assembly assembly in assemblies)
                 {
-                    Assembly assembly = assemblies[assemblyIndex];
                     if (assembly == null || assembly.IsDynamic)
                     {
                         continue;
                     }
 
                     Type[] exportedTypes = GetAssemblyTypes(assembly);
-                    for (int typeIndex = 0; typeIndex < exportedTypes.Length; typeIndex++)
+                    foreach (Type type in exportedTypes)
                     {
-                        Type type = exportedTypes[typeIndex];
                         if (type == null)
                         {
                             continue;
@@ -1150,7 +1117,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
                         signatures.Add(
                             new TypeSignature(
-                                type.Name ?? string.Empty,
+                                type.Name,
                                 type.FullName ?? string.Empty,
                                 assemblyQualifiedName
                             )
@@ -1167,6 +1134,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// </summary>
         internal readonly struct PatternStats
         {
+            /// <summary>
+            /// Captures the validation results for a regex ignore pattern.
+            /// </summary>
+            /// <param name="pattern">The pattern that was evaluated.</param>
+            /// <param name="isValid">Whether the pattern compiled without errors.</param>
+            /// <param name="matchCount">How many types matched the pattern.</param>
+            /// <param name="errorMessage">Compilation error message, if any.</param>
+            /// <example>
+            /// <code><![CDATA[
+            /// PatternStats stats = new PatternStats(".*Tests$", true, 12, string.Empty);
+            /// Debug.Log(stats.MatchCount);
+            /// ]]></code>
+            /// </example>
             public PatternStats(string pattern, bool isValid, int matchCount, string errorMessage)
             {
                 Pattern = pattern ?? string.Empty;
@@ -1189,6 +1169,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// </summary>
         public readonly struct SerializableTypeDescriptor
         {
+            /// <summary>
+            /// Initializes a descriptor that feeds the inspector with display and lookup data.
+            /// </summary>
+            /// <param name="type">Actual runtime type (optional).</param>
+            /// <param name="assemblyQualifiedName">Fully qualified name used for serialization.</param>
+            /// <param name="displayName">Friendly label displayed in the inspector.</param>
+            /// <example>
+            /// <code><![CDATA[
+            /// SerializableTypeDescriptor descriptor = new SerializableTypeDescriptor(
+            ///     typeof(AudioClip),
+            ///     typeof(AudioClip).AssemblyQualifiedName,
+            ///     "UnityEngine.AudioClip"
+            /// );
+            /// ]]></code>
+            /// </example>
             public SerializableTypeDescriptor(
                 Type type,
                 string assemblyQualifiedName,
@@ -1221,23 +1216,25 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                     return true;
                 }
 
-                if (Type != null)
+                if (Type == null)
                 {
-                    if (
-                        !string.IsNullOrEmpty(Type.FullName)
-                        && Type.FullName.StartsWith(search, StringComparison.OrdinalIgnoreCase)
-                    )
-                    {
-                        return true;
-                    }
+                    return false;
+                }
 
-                    if (
-                        !string.IsNullOrEmpty(Type.Name)
-                        && Type.Name.StartsWith(search, StringComparison.OrdinalIgnoreCase)
-                    )
-                    {
-                        return true;
-                    }
+                if (
+                    !string.IsNullOrEmpty(Type.FullName)
+                    && Type.FullName.StartsWith(search, StringComparison.OrdinalIgnoreCase)
+                )
+                {
+                    return true;
+                }
+
+                if (
+                    !string.IsNullOrEmpty(Type.Name)
+                    && Type.Name.StartsWith(search, StringComparison.OrdinalIgnoreCase)
+                )
+                {
+                    return true;
                 }
 
                 return false;
@@ -1261,6 +1258,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         private readonly struct TypeSignature
         {
+            /// <summary>
+            /// Snapshot of type metadata used for filtering results.
+            /// </summary>
+            /// <param name="name">Short type name.</param>
+            /// <param name="fullName">Fully qualified name.</param>
+            /// <param name="assemblyQualifiedName">String emitted during serialization.</param>
             public TypeSignature(string name, string fullName, string assemblyQualifiedName)
             {
                 Name = name ?? string.Empty;
@@ -1278,6 +1281,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
     internal sealed class SerializableTypeJsonConverter : JsonConverter<SerializableType>
     {
+        /// <summary>
+        /// Reads a <see cref="SerializableType"/> from JSON by capturing the assembly-qualified string.
+        /// </summary>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableType type = JsonSerializer.Deserialize<SerializableType>("\"UnityEngine.GameObject, UnityEngine\"");
+        /// ]]></code>
+        /// </example>
         public override SerializableType Read(
             ref Utf8JsonReader reader,
             Type typeToConvert,
@@ -1298,6 +1309,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return SerializableType.FromSerializedName(serialized);
         }
 
+        /// <summary>
+        /// Writes the assembly-qualified type string, or <c>null</c> when the value is empty.
+        /// </summary>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableType type = SerializableType.FromType(typeof(GameObject));
+        /// string json = JsonSerializer.Serialize(type);
+        /// ]]></code>
+        /// </example>
         public override void Write(
             Utf8JsonWriter writer,
             SerializableType value,

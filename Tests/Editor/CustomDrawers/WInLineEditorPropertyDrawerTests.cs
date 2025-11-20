@@ -1,18 +1,5 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
-    using System;
-    using System.Collections;
-    using NUnit.Framework;
-    using UnityEditor;
-    using UnityEngine;
-    using UnityEngine.TestTools;
-    using UnityEngine.UIElements;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
-    using WallstopStudios.UnityHelpers.Editor.Utils;
-    using WallstopStudios.UnityHelpers.Tests.EditorFramework;
-    using Object = UnityEngine.Object;
-
     // [TestFixture]
     // public sealed class WInLineEditorPropertyDrawerTests
     // {

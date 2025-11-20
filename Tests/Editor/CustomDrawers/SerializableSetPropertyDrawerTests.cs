@@ -1143,10 +1143,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 "Baseline draw should capture the rendered container."
             );
 
-            Rect expectedBaselineRect;
             int snapshotIndent = EditorGUI.indentLevel;
             EditorGUI.indentLevel = IndentDepth;
-            expectedBaselineRect = EditorGUI.IndentedRect(controlRect);
+            Rect expectedBaselineRect = EditorGUI.IndentedRect(controlRect);
             EditorGUI.indentLevel = snapshotIndent;
             Assert.That(
                 drawer.LastResolvedPosition.xMin,

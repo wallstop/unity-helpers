@@ -269,10 +269,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// <param name="format">Optional format specifier compatible with <see cref="Guid.TryFormat"/>.</param>
         /// <returns><c>true</c> when the destination buffer was large enough to receive the formatting.</returns>
         /// <example>
-        /// <code>
+        /// <code><![CDATA[
         /// Span<char> buffer = stackalloc char[36];
         /// guid.TryFormat(buffer, out int written);
-        /// </code>
+        /// ]]></code>
         /// </example>
         public bool TryFormat(
             Span<char> destination,
@@ -351,6 +351,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             };
         }
 
+        /// <summary>
+        /// Returns a hash that combines the packed 128-bit value so instances can be used inside hash sets and dictionaries.
+        /// </summary>
+        /// <returns>A stable hash derived from the underlying GUID.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// HashSet<WGuid> pending = new HashSet<WGuid>();
+        /// WGuid identifier = WGuid.NewGuid();
+        /// pending.Add(identifier);
+        /// int hash = identifier.GetHashCode();
+        /// ]]></code>
+        /// </example>
         public override int GetHashCode()
         {
             return Objects.HashCode(_low, _high);
@@ -556,7 +568,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
         private static FormatException CreateNonVersionFourException(int? detectedVersion = null)
         {
-            if (detectedVersion.HasValue && detectedVersion.Value >= 0)
+            if (detectedVersion is >= 0)
             {
                 return new FormatException(
                     $"{nameof(WGuid)} requires a version 4 {nameof(Guid)}, but found version {detectedVersion.Value}."

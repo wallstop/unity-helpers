@@ -553,21 +553,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
 
-            Func<object, object, int> comparison = delegate(object left, object right)
-            {
-                return UnityObjectNameComparer<GameObject>.Instance.Compare(
-                    left as GameObject,
-                    right as GameObject
-                );
-            };
-
             drawer.SortDictionaryEntries(
                 dictionaryProperty,
                 keysProperty,
                 valuesProperty,
                 typeof(GameObject),
                 typeof(string),
-                comparison,
+                Comparison,
                 pagination,
                 list
             );
@@ -589,6 +581,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
 
             Assert.AreEqual(expectedOrder.Length, index);
+            return;
+
+            int Comparison(object left, object right)
+            {
+                return UnityObjectNameComparer<GameObject>.Instance.Compare(
+                    left as GameObject,
+                    right as GameObject
+                );
+            }
         }
 
         [Test]
@@ -672,22 +673,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableDictionarySerializedPropertyNames.Keys
             );
 
-            Func<object, object, int> comparison = delegate(object left, object right)
-            {
-                int leftValue = left is int leftInt ? leftInt : Convert.ToInt32(left);
-                int rightValue = right is int rightInt ? rightInt : Convert.ToInt32(right);
-                return leftValue.CompareTo(rightValue);
-            };
-
             bool showSort = SerializableDictionaryPropertyDrawer.ShouldShowDictionarySortButton(
                 keysProperty,
                 typeof(int),
                 keysProperty.arraySize,
-                comparison
+                Comparison
             );
 
             Assert.IsTrue(showSort);
             Assert.IsTrue(host.dictionary.PreserveSerializedEntries);
+            return;
+
+            int Comparison(object left, object right)
+            {
+                int leftValue = left is int leftInt ? leftInt : Convert.ToInt32(left);
+                int rightValue = right is int rightInt ? rightInt : Convert.ToInt32(right);
+                return leftValue.CompareTo(rightValue);
+            }
         }
 
         [Test]
@@ -1002,10 +1004,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 $"Baseline draw should render the reorderable list. {BuildDictionaryDrawerDiagnostics(dictionaryProperty, drawer)}"
             );
 
-            Rect expectedBaselineRect;
             int snapshotIndent = EditorGUI.indentLevel;
             EditorGUI.indentLevel = IndentDepth;
-            expectedBaselineRect = EditorGUI.IndentedRect(controlRect);
+            Rect expectedBaselineRect = EditorGUI.IndentedRect(controlRect);
             EditorGUI.indentLevel = snapshotIndent;
             Assert.That(
                 drawer.LastResolvedPosition.xMin,

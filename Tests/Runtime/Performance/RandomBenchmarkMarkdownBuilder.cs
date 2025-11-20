@@ -121,7 +121,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         private static string BuildDetailRow(RandomBenchmarkResult result)
         {
             string name = HtmlEncode(result.DisplayName);
-            string Format(double value) => value.ToString("N0", CultureInfo.InvariantCulture);
 
             return $"    <tr>"
                 + $"<td>{name}</td>"
@@ -133,6 +132,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 + $"<td align=\"right\">{Format(result.NextUintRangePerSecond)}</td>"
                 + $"<td align=\"right\">{Format(result.NextIntRangePerSecond)}</td>"
                 + "</tr>";
+
+            string Format(double value) => value.ToString("N0", CultureInfo.InvariantCulture);
         }
 
         private static List<string> BuildEmptyPlaceholder()
