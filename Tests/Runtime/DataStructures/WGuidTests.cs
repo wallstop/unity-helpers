@@ -1,12 +1,20 @@
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
     using System;
+    using System.Buffers.Binary;
+    using System.IO;
+    using System.Reflection;
+    using System.Runtime.Serialization;
     using System.Text;
+    using System.Text.Json;
     using NUnit.Framework;
+    using ProtoBuf;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 
     public sealed class WGuidTests
     {
+        private const string NonVersionFourGuid = "00000000-0000-1000-8000-000000000000";
+
         [Test]
         public void DefaultValueIsEmpty()
         {
@@ -86,26 +94,69 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void TryParseRejectsNonVersion4Guid()
         {
-            string versionOneGuid = "00000000-0000-1000-8000-000000000000";
-            bool success = WGuid.TryParse(versionOneGuid, out WGuid parsed);
+            bool success = WGuid.TryParse(NonVersionFourGuid, out WGuid parsed);
             Assert.IsFalse(success);
             Assert.AreEqual(WGuid.EmptyGuid, parsed);
         }
 
         [Test]
+        public void IsValidReturnsTrueForVersionFourGuid()
+        {
+            WGuid guid = WGuid.NewGuid();
+            Assert.IsTrue(guid.IsValid);
+        }
+
+        [Test]
+        public void IsValidReturnsFalseForLegacyGuid()
+        {
+            WGuid legacy = CreateLegacyWGuid(NonVersionFourGuid);
+            Assert.IsFalse(legacy.IsValid);
+        }
+
+        [Test]
         public void StringConstructorRejectsNonVersionFourGuid()
         {
-            Assert.Throws<FormatException>(() =>
-                _ = new WGuid("00000000-0000-1000-8000-000000000000")
+            FormatException exception = Assert.Throws<FormatException>(() =>
+                _ = new WGuid(NonVersionFourGuid)
             );
+            StringAssert.Contains("version 1", exception.Message);
+        }
+
+        [Test]
+        public void GuidConstructorRejectsNonVersionFourGuid()
+        {
+            Guid invalid = Guid.Parse(NonVersionFourGuid);
+            FormatException exception = Assert.Throws<FormatException>(() =>
+                _ = new WGuid(invalid)
+            );
+            StringAssert.Contains("version 1", exception.Message);
+        }
+
+        [Test]
+        public void ByteConstructorRejectsNonVersionFourGuid()
+        {
+            Guid invalid = Guid.Parse(NonVersionFourGuid);
+            byte[] bytes = invalid.ToByteArray();
+            FormatException exception = Assert.Throws<FormatException>(() => _ = new WGuid(bytes));
+            StringAssert.Contains("version 1", exception.Message);
+        }
+
+        [Test]
+        public void HasVersionFourLayoutDetectsInvalidBytes()
+        {
+            Guid invalid = Guid.Parse(NonVersionFourGuid);
+            byte[] bytes = invalid.ToByteArray();
+            long low = unchecked((long)BinaryPrimitives.ReadUInt64LittleEndian(bytes.AsSpan(0, 8)));
+            long high = unchecked(
+                (long)BinaryPrimitives.ReadUInt64LittleEndian(bytes.AsSpan(8, 8))
+            );
+            Assert.IsFalse(WGuid.HasVersionFourLayout(low, high));
         }
 
         [Test]
         public void ParseThrowsForInvalidGuid()
         {
-            Assert.Throws<FormatException>(() =>
-                WGuid.Parse("00000000-0000-1000-8000-000000000000")
-            );
+            Assert.Throws<FormatException>(() => WGuid.Parse(NonVersionFourGuid));
         }
 
         [Test]
@@ -123,6 +174,49 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             string formattedString = new(destination.Slice(0, charsWritten));
             Assert.IsTrue(Guid.TryParse(formattedString, out Guid parsed));
             Assert.AreEqual(guid.ToGuid(), parsed);
+        }
+
+        [Test]
+        public void JsonSerializationRoundTripsGuid()
+        {
+            WGuid original = WGuid.NewGuid();
+            string json = JsonSerializer.Serialize(original);
+            WGuid roundTripped = JsonSerializer.Deserialize<WGuid>(json);
+
+            Assert.AreEqual(original, roundTripped);
+        }
+
+        [Test]
+        public void ProtoSerializationRoundTripsGuid()
+        {
+            WGuid original = WGuid.NewGuid();
+            using MemoryStream stream = new();
+            ProtoBuf.Serializer.Serialize(stream, original);
+            stream.Position = 0;
+
+            WGuid roundTripped = ProtoBuf.Serializer.Deserialize<WGuid>(stream);
+            Assert.AreEqual(original, roundTripped);
+        }
+
+        [Test]
+        public void TryParseSpanAcceptsValidGuid()
+        {
+            Guid source = Guid.NewGuid();
+            bool parsed = WGuid.TryParse(source.ToString("D").AsSpan(), out WGuid wrapper);
+
+            Assert.IsTrue(parsed);
+            Assert.AreEqual(source, wrapper.ToGuid());
+        }
+
+        [Test]
+        public void TryWriteBytesFailsWhenDestinationTooSmall()
+        {
+            WGuid guid = WGuid.NewGuid();
+            Span<byte> destination = stackalloc byte[8];
+
+            bool success = guid.TryWriteBytes(destination);
+
+            Assert.IsFalse(success);
         }
 
         [Test]
@@ -150,6 +244,30 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             byte[] bytes = Encoding.ASCII.GetBytes("too_short");
             Assert.Throws<ArgumentOutOfRangeException>(() => _ = new WGuid(bytes));
+        }
+
+        private static WGuid CreateLegacyWGuid(string value)
+        {
+            Guid legacyGuid = Guid.Parse(value);
+            byte[] bytes = legacyGuid.ToByteArray();
+            long low = unchecked((long)BinaryPrimitives.ReadUInt64LittleEndian(bytes.AsSpan(0, 8)));
+            long high = unchecked(
+                (long)BinaryPrimitives.ReadUInt64LittleEndian(bytes.AsSpan(8, 8))
+            );
+
+            object boxed = FormatterServices.GetUninitializedObject(typeof(WGuid));
+            FieldInfo lowField = typeof(WGuid).GetField(
+                "_low",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+            FieldInfo highField = typeof(WGuid).GetField(
+                "_high",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+            lowField.SetValue(boxed, low);
+            highField.SetValue(boxed, high);
+
+            return (WGuid)boxed;
         }
     }
 }

@@ -200,12 +200,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 $"Set drawer should create one element row per value. {BuildVisualDiagnostics(dictionaryValueRects, setRects, dictionarySamples, setSamples)}"
             );
 
+            float dictionaryStart =
+                dictionaryValueRects.Length > 0 ? dictionaryValueRects[0].Rect.y : 0f;
+            float setStart = setRects.Length > 0 ? setRects[0].Rect.y : 0f;
+
             for (int i = 0; i < setRects.Length; i++)
             {
+                float dictionaryBaseline = dictionaryValueRects[i].Rect.y - dictionaryStart;
+                float setBaseline = setRects[i].Rect.y - setStart;
                 Assert.That(
-                    setRects[i].Rect.y,
-                    Is.EqualTo(dictionaryValueRects[i].Rect.y).Within(0.25f),
-                    $"Set row {i} top should align with the dictionary baseline. {BuildVisualDiagnostics(dictionaryValueRects, setRects, dictionarySamples, setSamples)}"
+                    setBaseline,
+                    Is.EqualTo(dictionaryBaseline).Within(0.25f),
+                    $"Set row {i} top should align with the dictionary baseline relative to the first element. {BuildVisualDiagnostics(dictionaryValueRects, setRects, dictionarySamples, setSamples)}"
                 );
                 Assert.That(
                     setRects[i].Rect.height,

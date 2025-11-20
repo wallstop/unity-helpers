@@ -75,6 +75,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 state.warningMessage = string.Empty;
             }
 
+            if (
+                !state.hasPendingInvalid
+                && !WGuid.HasVersionFourLayout(lowProperty.longValue, highProperty.longValue)
+            )
+            {
+                state.hasPendingInvalid = true;
+                state.warningMessage = $"{nameof(WGuid)} expects a version 4 {nameof(Guid)}.";
+            }
+
             EditorGUI.BeginProperty(position, label, property);
             int previousIndent = EditorGUI.indentLevel;
             EditorGUI.indentLevel = 0;
@@ -159,19 +168,27 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            if (!WGuid.TryParse(trimmed, out WGuid parsed))
+            try
+            {
+                if (!WGuid.TryParse(trimmed, out WGuid parsed))
+                {
+                    state.hasPendingInvalid = true;
+                    state.warningMessage = $"{nameof(WGuid)} expects a version 4 {nameof(Guid)}.";
+                    return;
+                }
+
+                UpdateGuidValue(property, lowProperty, highProperty, parsed, SetUndoLabel);
+                string normalized = parsed.ToString();
+                state.displayText = normalized;
+                state.serializedText = normalized;
+                state.hasPendingInvalid = false;
+                state.warningMessage = string.Empty;
+            }
+            catch (FormatException exception)
             {
                 state.hasPendingInvalid = true;
-                state.warningMessage = $"{nameof(WGuid)} expects a version 4 {nameof(Guid)}.";
-                return;
+                state.warningMessage = exception.Message;
             }
-
-            UpdateGuidValue(property, lowProperty, highProperty, parsed, SetUndoLabel);
-            string normalized = parsed.ToString();
-            state.displayText = normalized;
-            state.serializedText = normalized;
-            state.hasPendingInvalid = false;
-            state.warningMessage = string.Empty;
         }
 
         internal static void GenerateNewGuid(

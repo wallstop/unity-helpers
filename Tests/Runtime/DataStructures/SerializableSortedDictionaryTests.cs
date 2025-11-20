@@ -350,6 +350,146 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void DuplicateSerializedKeysPreserveInspectorCache()
+        {
+            SerializableSortedDictionary<string, string> dictionary = new();
+
+            string[] serializedKeys = { "dup", "dup" };
+            string[] serializedValues = { "first", "second" };
+            dictionary._keys = serializedKeys;
+            dictionary._values = serializedValues;
+
+            dictionary.OnAfterDeserialize();
+
+            Assert.AreEqual(1, dictionary.Count);
+            Assert.AreEqual("second", dictionary["dup"]);
+
+            Assert.AreSame(serializedKeys, dictionary.SerializedKeys);
+            Assert.AreSame(serializedValues, dictionary.SerializedValues);
+            CollectionAssert.AreEqual(new[] { "dup", "dup" }, dictionary.SerializedKeys);
+            CollectionAssert.AreEqual(new[] { "first", "second" }, dictionary.SerializedValues);
+            Assert.IsTrue(
+                dictionary.PreserveSerializedEntries,
+                "Duplicate keys should preserve serialized arrays for inspector review."
+            );
+        }
+
+        [Test]
+        public void ComparerCollisionsPreserveSerializedCache()
+        {
+            SerializableSortedDictionary<CaseInsensitiveKey, string> dictionary = new();
+
+            CaseInsensitiveKey loud = new("ALPHA");
+            CaseInsensitiveKey quiet = new("alpha");
+            dictionary._keys = new CaseInsensitiveKey[] { loud, quiet };
+            dictionary._values = new string[] { "upper", "lower" };
+
+            dictionary.OnAfterDeserialize();
+
+            Assert.AreEqual(1, dictionary.Count);
+            Assert.AreEqual("lower", dictionary[quiet]);
+
+            CaseInsensitiveKey[] cachedKeys = dictionary.SerializedKeys;
+            string[] cachedValues = dictionary.SerializedValues;
+
+            Assert.IsNotNull(cachedKeys);
+            Assert.IsNotNull(cachedValues);
+            Assert.AreSame(dictionary._keys, cachedKeys);
+            Assert.AreSame(dictionary._values, cachedValues);
+            Assert.AreSame(loud, cachedKeys[0]);
+            Assert.AreSame(quiet, cachedKeys[1]);
+            CollectionAssert.AreEqual(new[] { "upper", "lower" }, cachedValues);
+            Assert.IsTrue(dictionary.PreserveSerializedEntries);
+        }
+
+        [Test]
+        public void UnitySerializationRebuildsSortedDictionaryCacheAfterDeserialization()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+
+            string[] serializedKeys = { "delta", "alpha", "charlie" };
+            int[] serializedValues = { 3, 1, 2 };
+            dictionary._keys = serializedKeys;
+            dictionary._values = serializedValues;
+
+            dictionary.OnAfterDeserialize();
+
+            Assert.IsNull(
+                dictionary._keys,
+                "Deserialization should drop serialized keys when entries can be restored without loss."
+            );
+            Assert.IsNull(
+                dictionary._values,
+                "Deserialization should drop serialized values when entries can be restored without loss."
+            );
+
+            dictionary.OnBeforeSerialize();
+
+            string[] rebuiltKeys = dictionary._keys;
+            int[] rebuiltValues = dictionary._values;
+
+            Assert.IsNotNull(rebuiltKeys);
+            Assert.IsNotNull(rebuiltValues);
+            CollectionAssert.AreEqual(
+                new string[] { "alpha", "charlie", "delta" },
+                rebuiltKeys,
+                "Serialized keys should be rewritten in sorted order."
+            );
+            CollectionAssert.AreEqual(
+                new int[] { 1, 2, 3 },
+                rebuiltValues,
+                "Serialized values should stay aligned with sorted keys."
+            );
+        }
+
+        [Test]
+        public void JsonRoundTripClearsCacheAndRebuildsSortedSnapshot()
+        {
+            SerializableSortedDictionary<int, string> original = new()
+            {
+                { 3, "three" },
+                { 1, "one" },
+                { 2, "two" },
+            };
+
+            string json = Serializer.JsonStringify(original);
+            SerializableSortedDictionary<int, string> roundTrip = Serializer.JsonDeserialize<
+                SerializableSortedDictionary<int, string>
+            >(json);
+
+            Assert.AreEqual(3, roundTrip.Count);
+            Assert.IsNull(roundTrip.SerializedKeys);
+            Assert.IsNull(roundTrip.SerializedValues);
+            Assert.IsFalse(roundTrip.PreserveSerializedEntries);
+
+            roundTrip.OnBeforeSerialize();
+
+            CollectionAssert.AreEqual(new int[] { 1, 2, 3 }, roundTrip.SerializedKeys);
+            CollectionAssert.AreEqual(
+                new string[] { "one", "two", "three" },
+                roundTrip.SerializedValues
+            );
+        }
+
+        [Test]
+        public void MismatchedSerializedArraysAreDiscardedAndMarkCacheDirty()
+        {
+            SerializableSortedDictionary<string, string> dictionary = new();
+            dictionary._keys = new string[] { "alpha" };
+            dictionary._values = new string[] { "one", "extra" };
+
+            dictionary.OnAfterDeserialize();
+
+            Assert.AreEqual(0, dictionary.Count);
+            Assert.IsNull(dictionary.SerializedKeys);
+            Assert.IsNull(dictionary.SerializedValues);
+            Assert.IsTrue(
+                dictionary.SerializationArraysDirty,
+                "Cache should be marked dirty when serialized arrays are invalid."
+            );
+        }
+
+        [Test]
         public void ProtoSerializationRoundTrips()
         {
             SerializableSortedDictionary<int, string> original = new()
@@ -374,6 +514,66 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             Assert.AreEqual(expectedKeys.Length, index);
+        }
+
+        private sealed class CaseInsensitiveKey : IComparable<CaseInsensitiveKey>, IComparable
+        {
+            public CaseInsensitiveKey(string token)
+            {
+                Token = token;
+            }
+
+            public string Token { get; }
+
+            public int CompareTo(CaseInsensitiveKey other)
+            {
+                if (other == null)
+                {
+                    return 1;
+                }
+
+                return string.Compare(Token, other.Token, StringComparison.OrdinalIgnoreCase);
+            }
+
+            int IComparable.CompareTo(object obj)
+            {
+                if (ReferenceEquals(this, obj))
+                {
+                    return 0;
+                }
+
+                if (obj is CaseInsensitiveKey candidate)
+                {
+                    return CompareTo(candidate);
+                }
+
+                return 1;
+            }
+
+            public override bool Equals(object obj)
+            {
+                if (obj is CaseInsensitiveKey other)
+                {
+                    return string.Equals(Token, other.Token, StringComparison.OrdinalIgnoreCase);
+                }
+
+                return false;
+            }
+
+            public override int GetHashCode()
+            {
+                if (Token == null)
+                {
+                    return 0;
+                }
+
+                return StringComparer.OrdinalIgnoreCase.GetHashCode(Token);
+            }
+
+            public override string ToString()
+            {
+                return Token ?? string.Empty;
+            }
         }
     }
 }

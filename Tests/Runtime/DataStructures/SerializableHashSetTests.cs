@@ -112,6 +112,27 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void ComparerDuplicatesPreserveSerializedItems()
+        {
+            SerializableHashSet<string> set = new(StringComparer.OrdinalIgnoreCase);
+            string[] serializedItems = { "ALPHA", "alpha", "beta" };
+            set._items = serializedItems;
+
+            set.OnAfterDeserialize();
+
+            Assert.AreEqual(2, set.Count);
+            Assert.IsTrue(set.Contains("alpha"));
+            Assert.IsTrue(set.Contains("beta"));
+
+            Assert.AreSame(
+                serializedItems,
+                set.SerializedItems,
+                "Comparer-driven duplicates must keep serialized cache for inspector review."
+            );
+            Assert.IsTrue(set.PreserveSerializedEntries);
+        }
+
+        [Test]
         public void UnitySerializationClearsCacheAfterMutation()
         {
             SerializableHashSet<int> set = new() { 5, 10 };
@@ -175,6 +196,48 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             {
                 Assert.IsTrue(roundTrip.Contains(token), token);
             }
+        }
+
+        [Test]
+        public void InspectorSnapshotRoundTripsSerializedItems()
+        {
+            SerializableHashSet<int> set = new();
+            ISerializableSetInspector inspector = set;
+            int[] snapshot = { 5, 10, 15 };
+
+            inspector.SetSerializedItemsSnapshot(snapshot, preserveSerializedEntries: true);
+
+            Array stored = inspector.GetSerializedItemsSnapshot();
+            CollectionAssert.AreEqual(snapshot, stored);
+            Assert.IsTrue(set.PreserveSerializedEntries);
+
+            set.OnAfterDeserialize();
+
+            Assert.AreEqual(3, set.Count);
+            Assert.IsTrue(set.Contains(5));
+            Assert.IsTrue(set.Contains(10));
+            Assert.IsTrue(set.Contains(15));
+        }
+
+        [Test]
+        public void JsonRoundTripClearsCacheAndRebuildsHashSetSnapshot()
+        {
+            SerializableHashSet<int> original = new(new[] { 9, 4, 7 });
+
+            string json = Serializer.JsonStringify(original);
+            SerializableHashSet<int> roundTrip = Serializer.JsonDeserialize<
+                SerializableHashSet<int>
+            >(json);
+
+            Assert.AreEqual(original.Count, roundTrip.Count);
+            Assert.IsNull(roundTrip.SerializedItems);
+            Assert.IsFalse(roundTrip.PreserveSerializedEntries);
+
+            roundTrip.OnBeforeSerialize();
+
+            int[] rebuiltItems = roundTrip.SerializedItems;
+            Assert.IsNotNull(rebuiltItems);
+            CollectionAssert.AreEquivalent(new[] { 4, 7, 9 }, rebuiltItems);
         }
 
         [Test]
@@ -474,6 +537,18 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void NullSerializedItemsResetStateDuringDeserialization()
+        {
+            SerializableHashSet<string> set = new() { "alpha" };
+            set._items = null;
+
+            set.OnAfterDeserialize();
+
+            Assert.AreEqual(0, set.Count);
+            Assert.IsFalse(set.PreserveSerializedEntries);
+        }
+
+        [Test]
         public void SortedSetNullEntriesAreSkippedDuringDeserialization()
         {
             SerializableSortedSet<ScriptableSample> set = new();
@@ -520,6 +595,60 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 set._items,
                 "Serialized cache should be released when no null entries or duplicates remain."
             );
+        }
+
+        [Test]
+        public void UnitySerializationRebuildsSortedSetCacheAfterDeserialization()
+        {
+            SerializableSortedSet<string> set = new();
+            string[] serializedItems = { "delta", "alpha", "charlie" };
+            set._items = serializedItems;
+
+            set.OnAfterDeserialize();
+
+            Assert.IsNull(
+                set._items,
+                "Deserialization should release serialized cache when entries can be reconstructed."
+            );
+
+            set.OnBeforeSerialize();
+
+            string[] rebuiltItems = set._items;
+
+            Assert.IsNotNull(rebuiltItems);
+            CollectionAssert.AreEqual(
+                new string[] { "alpha", "charlie", "delta" },
+                rebuiltItems,
+                "Serialization should rebuild sorted cache after cache was cleared."
+            );
+        }
+
+        [Test]
+        public void SortedSetInspectorReportsSortingSupport()
+        {
+            SerializableSortedSet<int> set = new();
+            ISerializableSetInspector inspector = set;
+
+            Assert.IsTrue(inspector.SupportsSorting);
+        }
+
+        [Test]
+        public void JsonRoundTripClearsCacheAndRebuildsSortedSetSnapshot()
+        {
+            SerializableSortedSet<int> original = new(new[] { 5, 1, 3 });
+
+            string json = Serializer.JsonStringify(original);
+            SerializableSortedSet<int> roundTrip = Serializer.JsonDeserialize<
+                SerializableSortedSet<int>
+            >(json);
+
+            Assert.AreEqual(3, roundTrip.Count);
+            Assert.IsNull(roundTrip.SerializedItems);
+            Assert.IsFalse(roundTrip.PreserveSerializedEntries);
+
+            roundTrip.OnBeforeSerialize();
+
+            CollectionAssert.AreEqual(new int[] { 1, 3, 5 }, roundTrip.SerializedItems);
         }
 
         private sealed class SortedSample : IComparable<SortedSample>, IComparable

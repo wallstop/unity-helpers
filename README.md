@@ -19,6 +19,7 @@ Unity Helpers eliminates entire categories of repetitive work with production-re
 
 **What makes this different:**
 
+- 🎨 **Professional inspector tooling** - Grouping, buttons, conditional display, toggle grids (rivals Odin Inspector, FREE)
 - ⚡ **10-15x faster** random generation than Unity.Random
 - 🔌 **Zero boilerplate** component wiring with attributes
 - 🎮 **Designer-friendly** effects system (buffs/debuffs as ScriptableObjects)
@@ -30,14 +31,15 @@ Unity Helpers eliminates entire categories of repetitive work with production-re
 
 **🗺️ Roadmap Snapshot** — See [Docs/ROADMAP.md](Docs/ROADMAP.md) for prioritized details.
 
-- Inspector tooling: inline nested editors, tabbed navigation, live instrumentation, disable-if/layer attributes.
-- Editor automation: Animation Creator v2, timeline-ready Event Editor upgrades, and new automation dashboards.
-- Random/statistics: CI statistical harness, automated quality reports, scenario samplers, job-safe stream schedulers.
-- Spatial trees: graduate the 3D variants, add incremental updates, physics-shape parity, and streaming builders.
-- UI Toolkit: control pack (dockable panes, data grids), theming samples, and performance patterns.
-- Utilities: cross-system bridges plus new math/combinatorics and service-pattern helpers.
-- Performance: automated benchmarks, Burst/Jobs rewrites of hot paths, and allocation analyzers.
-- Attributes & tags: metadata graphs, inspector visualizations, and serialization/migration guides.
+- Inspector tooling: inline nested editors, tabbed navigation, live instrumentation, disable-if/layer attributes
+- Editor automation: Animation Creator and Sprite Sheet Animation Creator enhancements, timeline-ready Event Editor upgrades, and new automation dashboards
+- Random/statistics: CI statistical harness, automated quality reports, scenario samplers, job-safe stream schedulers
+- Spatial trees: graduate the 3D variants, add incremental updates, physics-shape parity, and streaming builders
+- UI Toolkit: control pack (dockable panes, data grids), theming samples, and performance patterns
+- Utilities: cross-system bridges plus new math/combinatorics and service-pattern helpers
+- Performance: automated benchmarks, Burst/Jobs rewrites of hot paths, and allocation analyzers
+- Attributes & tags: effect visualization tools, attribute graphs, and migration/versioning helpers
+- Relational components: cached reflection, source generators, editor-time validation, and interface-based resolution
 
 ---
 
@@ -53,24 +55,79 @@ Unity Helpers eliminates entire categories of repetitive work with production-re
 
 **Pick your starting point based on your biggest pain point:**
 
-| Your Problem                         | Your Solution                                                                            | Time to Value |
-| ------------------------------------ | ---------------------------------------------------------------------------------------- | ------------- |
-| 🐌 Writing `GetComponent` everywhere | [**Relational Components**](#relational-components) - Auto-wire with attributes          | 2 minutes     |
-| 🎮 Need buffs/debuffs system         | [**Effects System**](#effects-attributes-and-tags) - Designer-friendly ScriptableObjects | 5 minutes     |
-| 🔍 Slow spatial searches             | [**Spatial Trees**](#spatial-trees) - O(log n) queries                                   | 5 minutes     |
-| 🎲 Random is too slow/limited        | [**PRNG.Instance**](#random-number-generators) - 10-15x faster, extensive API            | 1 minute      |
-| 💾 Need save/load system             | [**Serialization**](#serialization) - Unity types just work                              | 10 minutes    |
-| 🛠️ Manual sprite workflows           | [**Editor Tools**](#editor-tools) - 20+ automation tools                                 | 3 minutes     |
+| Your Problem                         | Your Solution                                                                           | Time to Value |
+| ------------------------------------ | --------------------------------------------------------------------------------------- | ------------- |
+| 🎨 Writing custom editors            | [**Inspector Tooling**](#1--professional-inspector-tooling) - Odin-level features, FREE | 2 minutes     |
+| 🐌 Writing `GetComponent` everywhere | [**Relational Components**](#2--auto-wire-components) - Auto-wire with attributes       | 2 minutes     |
+| 🎮 Need buffs/debuffs system         | [**Effects System**](#3--data-driven-effects) - Designer-friendly ScriptableObjects     | 5 minutes     |
+| 🔍 Slow spatial searches             | [**Spatial Trees**](#spatial-trees) - O(log n) queries                                  | 5 minutes     |
+| 🎲 Random is too slow/limited        | [**PRNG.Instance**](#random-number-generators) - 10-15x faster, extensive API           | 1 minute      |
+| 💾 Need save/load system             | [**Serialization**](#4--unity-aware-serialization) - Unity types just work              | 10 minutes    |
+| 🛠️ Manual sprite workflows           | [**Editor Tools**](#6-️-editor-tools-suite) - 20+ automation tools                      | 3 minutes     |
 
 **Not sure where to start?** → [Getting Started Guide](Docs/GETTING_STARTED.md) walks through the top 3 features in 5 minutes.
 
 ---
 
-## ⚡ Top 5 Time-Savers
+## ⚡ Top Time-Savers
 
 These features eliminate entire categories of repetitive work. Pick one that solves your immediate pain:
 
-### 1. 🔌 Auto-Wire Components
+### 1. 🎨 Professional Inspector Tooling
+
+#### ⏱️ 5-10 min/script × 200 scripts = 20+ hours saved on custom editors
+
+Stop writing custom PropertyDrawers and EditorGUI code. Get Odin Inspector-level features for free:
+
+```csharp
+// ❌ OLD WAY: 100+ lines of custom editor code
+[CustomEditor(typeof(CharacterStats))]
+public class CharacterStatsEditor : Editor {
+    // ... SerializedProperty declarations ...
+    // ... OnEnable setup ...
+    // ... OnInspectorGUI with EditorGUI.BeginFoldoutHeaderGroup ...
+    // ... Custom button rendering ...
+    // ... Conditional field display logic ...
+}
+
+// ✅ NEW WAY: Declarative attributes, zero custom editors
+public class CharacterStats : MonoBehaviour
+{
+    [WGroup("combat", "Combat Stats", colorKey: "Default-Dark", collapsible: true)]
+    public float maxHealth = 100f;
+    public float defense = 10f;
+    [WGroupEnd("combat")]
+
+    [WFoldoutGroup("abilities", "Abilities", startCollapsed: true)]
+    [System.Flags] public enum Powers { None = 0, Fly = 1, Strength = 2, Speed = 4 }
+    [WEnumToggleButtons(showSelectAll: true, buttonsPerRow: 3)]
+    public Powers currentPowers;
+    [WFoldoutGroupEnd("abilities")]
+
+    public enum WeaponType { Melee, Ranged, Magic }
+    public WeaponType weaponType;
+
+    [WShowIf(nameof(weaponType), WShowIfComparison.Equal, WeaponType.Ranged)]
+    public int ammoCapacity = 30;
+
+    [WButton("Heal to Full", groupName: "Debug")]
+    private void HealToFull() { maxHealth = 100f; }
+}
+```
+
+**Features:**
+
+- **[WGroup](Docs/INSPECTOR_GROUPING_ATTRIBUTES.md)** / **[WFoldoutGroup](Docs/INSPECTOR_GROUPING_ATTRIBUTES.md)** - Boxed sections with auto-inclusion, color themes, animations
+- **[WButton](Docs/INSPECTOR_BUTTON.md)** - Method buttons with history, async support, cancellation
+- **[WShowIf](Docs/INSPECTOR_CONDITIONAL_DISPLAY.md)** - Conditional visibility (9 comparison operators)
+- **[WEnumToggleButtons](Docs/INSPECTOR_SELECTION_ATTRIBUTES.md)** - Flag enums as visual toggle grids
+- **[SerializableDictionary](Docs/SERIALIZATION_TYPES.md)**, **[SerializableSet](Docs/SERIALIZATION_TYPES.md)**, **[WGuid](Docs/SERIALIZATION_TYPES.md)**, **[SerializableType](Docs/SERIALIZATION_TYPES.md)** - Collections Unity can't serialize
+
+[📖 Complete Inspector Guide](Docs/INSPECTOR_OVERVIEW.md)
+
+---
+
+### 2. 🔌 Auto-Wire Components
 
 #### ⏱️ 10-20 min/script × 100 scripts = 20+ hours saved
 
@@ -102,7 +159,7 @@ void Awake() => this.AssignRelationalComponents();
 
 ---
 
-### 2. 🎮 Data-Driven Effects
+### 3. 🎮 Data-Driven Effects
 
 #### ⏱️ 2-4 hours/effect × 50 effects = 150+ hours saved
 
@@ -131,7 +188,7 @@ player.RemoveAllEffectsWithTag("Haste");   // Batch removal
 
 ---
 
-### 3. 💾 Unity-Aware Serialization
+### 4. 💾 Unity-Aware Serialization
 
 #### ⏱️ 40+ hours on initial implementation + prevents player data loss
 
@@ -161,7 +218,7 @@ byte[] data = Serializer.JsonSerialize(saveData);
 
 ---
 
-### 4. 🎱 Professional Pooling
+### 5. 🎱 Professional Pooling
 
 #### ⏱️ Eliminates GC spikes = 5-10 FPS in complex scenes
 
@@ -194,7 +251,7 @@ void ProcessEnemies(QuadTree2D<Enemy> enemyTree) {
 
 ---
 
-### 5. 🛠️ Editor Tools Suite
+### 6. 🛠️ Editor Tools Suite
 
 #### ⏱️ 1-2 hours/operation × weekly use = 100+ hours/year
 
@@ -463,9 +520,9 @@ Create a `link.xml` file in your `Assets` folder to prevent stripping:
 
 ## Quick Start Guide
 
-> 💡 **First time?** Skip to section #1 ([Relational Components](#1--auto-wire-components)) - it has the biggest immediate impact.
+> 💡 **First time?** Skip to section #2 ([Relational Components](#2--auto-wire-components)) - it has the biggest immediate impact.
 
-Already read the [Top 5 Time-Savers](#-top-5-time-savers)? Jump directly to the [Core Features](#core-features) reference below, or check out the comprehensive [Getting Started Guide](Docs/GETTING_STARTED.md).
+Already read the [Top 5 Time-Savers](#-top-time-savers)? Jump directly to the [Core Features](#core-features) reference below, or check out the comprehensive [Getting Started Guide](Docs/GETTING_STARTED.md).
 
 ---
 

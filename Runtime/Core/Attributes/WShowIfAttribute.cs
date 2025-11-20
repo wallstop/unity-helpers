@@ -67,14 +67,43 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     }
 
     /// <summary>
-    /// Conditionally hides or shows a serialized field based on the value of another property on the same object.
+    /// Conditionally hides or shows a serialized field based on the value of another property or field on the same object.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="WShowIfAttribute"/> works with booleans, numbers, enums, strings, <see cref="UnityEngine.Object"/> references, and even custom comparable types.
+    /// You can specify comparison strategies such as <see cref="WShowIfComparison.GreaterThan"/> or <see cref="WShowIfComparison.IsNullOrEmpty"/> and
+    /// optionally pass explicit expected values for equality checks.
+    /// </para>
+    /// <para>
+    /// When multiple conditions are required, stack the attribute instance per rule or combine it with other inspector helpers such as
+    /// <see cref="WGroupAttribute"/> and <see cref="WFoldoutGroupAttribute"/> to keep complex editors manageable.
+    /// </para>
+    /// </remarks>
     /// <example>
+    /// Basic boolean toggle:
     /// <code>
     /// public bool advancedMode;
     ///
     /// [WShowIf(nameof(advancedMode))]
     /// public float advancedSetting;
+    /// </code>
+    /// Numerical comparisons:
+    /// <code>
+    /// public int upgradeLevel;
+    ///
+    /// [WShowIf(nameof(upgradeLevel), WShowIfComparison.GreaterThanOrEqual, 3)]
+    /// public Ability ultimateAbility;
+    /// </code>
+    /// Reference checks and inverse usage:
+    /// <code>
+    /// public GameObject overridePrefab;
+    ///
+    /// [WShowIf(nameof(overridePrefab), WShowIfComparison.IsNull)]
+    /// public GameObject fallbackPrefab;
+    ///
+    /// [WShowIf(nameof(overridePrefab), inverse: true)]
+    /// public AbilityOverrides overrideSettings;
     /// </code>
     /// </example>
     public sealed class WShowIfAttribute : PropertyAttribute

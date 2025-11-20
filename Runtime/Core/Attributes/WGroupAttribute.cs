@@ -3,8 +3,34 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System;
 
     /// <summary>
-    /// Declares an inspector grouping similar to Odin's BoxGroup while supporting automatic member inclusion.
+    /// Declares a boxed inspector grouping (similar to Odin's <c>BoxGroup</c>) that can automatically sweep subsequent members into the same visual section.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Use <see cref="WGroupAttribute"/> when you want to present related fields together without manually repeating the attribute on each member.
+    /// The <paramref name="autoIncludeCount"/> parameter determines how many following serialized members are automatically captured.
+    /// Combine it with <see cref="WGroupEndAttribute"/> to stop inclusion early or skip particular fields.
+    /// </para>
+    /// <para>
+    /// Groups can be toggled collapsible, assigned theme colors via palette keys, and rendered without headers for lightweight inline layouts.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// Collapsible box group with auto inclusion:
+    /// <code>
+    /// public sealed class WeaponStats : MonoBehaviour
+    /// {
+    ///     [WGroup(\"Damage\", displayName: \"Damage Settings\", autoIncludeCount: 2, collapsible: true)]
+    ///     public int lightAttackDamage;
+    ///
+    ///     public int heavyAttackDamage;
+    ///     public float critMultiplier;
+    ///
+    ///     [WGroup(\"Damage\"), WGroupEnd]
+    ///     public AnimationCurve falloff;
+    /// }
+    /// </code>
+    /// </example>
     [AttributeUsage(
         AttributeTargets.Field | AttributeTargets.Property,
         AllowMultiple = true,
@@ -12,9 +38,32 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     )]
     public sealed class WGroupAttribute : Attribute
     {
+        /// <summary>
+        /// Sentinel value instructing the drawer to keep auto including members until a matching <see cref="WGroupEndAttribute"/> is reached.
+        /// </summary>
         public const int InfiniteAutoInclude = -1;
+
+        /// <summary>
+        /// Sentinel value that tells the drawer to fall back to the global auto include count defined in the Unity Helpers settings asset.
+        /// </summary>
         public const int UseGlobalAutoInclude = -2;
 
+        /// <summary>
+        /// Creates a new grouped inspector section.
+        /// </summary>
+        /// <param name="groupName">Unique key that ties <see cref="WGroupAttribute"/> and <see cref="WGroupEndAttribute"/> entries together.</param>
+        /// <param name="displayName">Optional heading shown in the inspector. Defaults to <paramref name="groupName"/>.</param>
+        /// <param name="autoIncludeCount">
+        /// Number of serialized members after the annotated field that should automatically join the group.
+        /// Use <see cref="InfiniteAutoInclude"/> to keep including until a <see cref="WGroupEndAttribute"/> is hit.
+        /// </param>
+        /// <param name="collapsible">Set to <see langword="true"/> to draw the box with a foldout.</param>
+        /// <param name="startCollapsed">When collapsible, controls whether the group starts closed.</param>
+        /// <param name="colorKey">
+        /// Optional palette identifier consumed by <c>UnityHelpersSettings</c> to style the group background/border.
+        /// </param>
+        /// <param name="hideHeader">Set to <see langword="true"/> to draw the group body without the title bar.</param>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="groupName"/> is null or whitespace.</exception>
         public WGroupAttribute(
             string groupName,
             string displayName = null,
@@ -42,18 +91,39 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             HideHeader = hideHeader;
         }
 
+        /// <summary>
+        /// Identifier shared between the start and end attributes.
+        /// </summary>
         public string GroupName { get; }
 
+        /// <summary>
+        /// Human-readable title drawn in the inspector (defaults to <see cref="GroupName"/>).
+        /// </summary>
         public string DisplayName { get; }
 
+        /// <summary>
+        /// Number of trailing serialized members automatically swept into the group.
+        /// </summary>
         public int AutoIncludeCount { get; }
 
+        /// <summary>
+        /// Gets a value indicating whether the group can be collapsed with a foldout toggle.
+        /// </summary>
         public bool Collapsible { get; }
 
+        /// <summary>
+        /// Gets a value indicating whether a collapsible group should start closed.
+        /// </summary>
         public bool StartCollapsed { get; }
 
+        /// <summary>
+        /// Optional palette key used to resolve colors from <c>UnityHelpersSettings</c>.
+        /// </summary>
         public string ColorKey { get; }
 
+        /// <summary>
+        /// Set to <see langword="true"/> to hide the header while still wrapping the grouped fields inside the styled container.
+        /// </summary>
         public bool HideHeader { get; }
 
         private static int NormalizeAutoIncludeCount(int autoIncludeCount)

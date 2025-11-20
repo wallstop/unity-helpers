@@ -229,7 +229,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// </example>
         public static bool TryParse(string value, out WGuid guid)
         {
-            if (global::System.Guid.TryParse(value, out Guid parsed) && IsVersionFour(parsed))
+            if (
+                global::System.Guid.TryParse(value, out Guid parsed) && IsVersionFour(parsed, out _)
+            )
             {
                 guid = new WGuid(parsed);
                 return true;
@@ -247,7 +249,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// <returns><c>true</c> when parsing succeeded.</returns>
         public static bool TryParse(ReadOnlySpan<char> value, out WGuid guid)
         {
-            if (global::System.Guid.TryParse(value, out Guid parsed) && IsVersionFour(parsed))
+            if (
+                global::System.Guid.TryParse(value, out Guid parsed) && IsVersionFour(parsed, out _)
+            )
             {
                 guid = new WGuid(parsed);
                 return true;
@@ -419,8 +423,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             get
             {
                 ulong low = unchecked((ulong)_low);
-                ushort segment = (ushort)((low >> 48) & 0xFFFF);
-                return (segment >> 12) & 0x0F;
+                return ExtractVersion(low);
             }
         }
 
@@ -428,6 +431,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// Gets a value indicating whether the GUID represents a random version-4 value.
         /// </summary>
         public bool IsVersion4 => Version == 4;
+
+        /// <summary>
+        /// Gets a value indicating whether the stored value is either empty or a valid version-4 GUID.
+        /// </summary>
+        public bool IsValid => HasVersionFourLayout(_low, _high);
 
         /// <summary>
         /// Converts the wrapper back to a <see cref="Guid"/> instance.
@@ -466,6 +474,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
             ulong low = BinaryPrimitives.ReadUInt64LittleEndian(bytes.Slice(0, 8));
             ulong high = BinaryPrimitives.ReadUInt64LittleEndian(bytes.Slice(8, 8));
+            EnsureVersionFourLayout(low, high);
             _low = unchecked((long)low);
             _high = unchecked((long)high);
         }
@@ -486,17 +495,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
 
             Guid parsed = global::System.Guid.Parse(value);
-            if (!IsVersionFour(parsed))
+            if (!IsVersionFour(parsed, out int version))
             {
-                throw new FormatException($"{nameof(WGuid)} requires a version 4 {nameof(Guid)}.");
+                throw CreateNonVersionFourException(version);
             }
 
             return parsed;
         }
 
-        private static bool IsVersionFour(Guid guid)
+        private static bool IsVersionFour(Guid guid, out int version)
         {
             Span<byte> buffer = stackalloc byte[16];
+            version = -1;
             bool success = guid.TryWriteBytes(buffer);
             if (!success)
             {
@@ -504,9 +514,56 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
 
             ulong low = BinaryPrimitives.ReadUInt64LittleEndian(buffer.Slice(0, 8));
-            ushort segment = (ushort)((low >> 48) & 0xFFFF);
-            int version = (segment >> 12) & 0x0F;
+            version = ExtractVersion(low);
             return version == 4;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ExtractVersion(ulong low)
+        {
+            ushort segment = (ushort)((low >> 48) & 0xFFFF);
+            return (segment >> 12) & 0x0F;
+        }
+
+        internal static bool HasVersionFourLayout(long low, long high)
+        {
+            if (low == 0L && high == 0L)
+            {
+                return true;
+            }
+
+            return HasVersionFourBits(unchecked((ulong)low));
+        }
+
+        private static void EnsureVersionFourLayout(ulong low, ulong high)
+        {
+            if (low == 0UL && high == 0UL)
+            {
+                return;
+            }
+
+            int version = ExtractVersion(low);
+            if (version != 4)
+            {
+                throw CreateNonVersionFourException(version);
+            }
+        }
+
+        private static bool HasVersionFourBits(ulong low)
+        {
+            return ExtractVersion(low) == 4;
+        }
+
+        private static FormatException CreateNonVersionFourException(int? detectedVersion = null)
+        {
+            if (detectedVersion.HasValue && detectedVersion.Value >= 0)
+            {
+                return new FormatException(
+                    $"{nameof(WGuid)} requires a version 4 {nameof(Guid)}, but found version {detectedVersion.Value}."
+                );
+            }
+
+            return new FormatException($"{nameof(WGuid)} requires a version 4 {nameof(Guid)}.");
         }
     }
 }

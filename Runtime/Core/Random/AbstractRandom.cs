@@ -1195,22 +1195,25 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public static void SetUuidV4Bits(byte[] bytes)
         {
-            // Set version to 4 (bits 6-7 of byte 6)
+            if (bytes == null || bytes.Length < 16)
+            {
+                throw new ArgumentException(
+                    "UUID buffer must contain at least 16 bytes.",
+                    nameof(bytes)
+                );
+            }
 
-            // Clear the version bits first (clear bits 4-7)
-            byte value = bytes[6];
-            value &= 0x0f;
-            // Set version 4 (set bits 4-7 to 0100)
-            value |= 0x40;
-            bytes[6] = value;
+            // Version bits live in byte 7 (second byte of the time_hi_and_version field).
+            byte versionByte = bytes[7];
+            versionByte &= 0x0F;
+            versionByte |= 0x40;
+            bytes[7] = versionByte;
 
-            // Set variant to RFC 4122 (bits 6-7 of byte 8)
-            value = bytes[8];
-            // Clear the variant bits first (clear bits 6-7)
-            value &= 0x3f;
-            // Set RFC 4122 variant (set bits 6-7 to 10)
-            value |= 0x80;
-            bytes[8] = value;
+            // Variant bits live in byte 8 (clock_seq_hi_and_reserved).
+            byte variantByte = bytes[8];
+            variantByte &= 0x3F;
+            variantByte |= 0x80;
+            bytes[8] = variantByte;
         }
 
         public float[,] NextNoiseMap(

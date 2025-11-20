@@ -181,8 +181,14 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **Immutable Trees** - Spatial trees requiring rebuild on changes
 → [Spatial Trees 2D](SPATIAL_TREES_2D_GUIDE.md) | [Glossary](GLOSSARY.md#immutable-tree)
 
+**Inspector Settings** - Project-wide configuration for inspector features (pagination, colors, animations)
+→ [Inspector Settings](INSPECTOR_SETTINGS.md)
+
+**Inspector Tooling Overview** - Complete guide to inspector attributes and serialization types
+→ [Inspector Overview](INSPECTOR_OVERVIEW.md)
+
 **IntDropdown** - Integer dropdown property drawer
-→ [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#intdropdown-property-drawer)
+→ [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#intdropdown-property-drawer) | [Inspector Selection Attributes](INSPECTOR_SELECTION_ATTRIBUTES.md#intdropdown)
 
 **IRandom Interface** - Common interface for all RNGs
 → [README - Random Generators](../README.md#random-number-generators)
@@ -356,6 +362,18 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **SiblingComponent** - Auto-wire components on same GameObject
 → [Relational Components](RELATIONAL_COMPONENTS.md) | [README](../README.md#component-attributes)
 
+**SerializableDictionary** - Unity-friendly dictionary with key/value serialization
+→ [Serialization Types](SERIALIZATION_TYPES.md#serializabledictionary)
+
+**SerializableHashSet** / **SerializableSortedSet** - Unity-friendly set collections
+→ [Serialization Types](SERIALIZATION_TYPES.md#serializablehashset--serializablesortedset)
+
+**SerializableNullable** - Unity-friendly nullable value wrapper
+→ [Serialization Types](SERIALIZATION_TYPES.md#serializablenullable)
+
+**SerializableType** - Type reference that survives refactoring
+→ [Serialization Types](SERIALIZATION_TYPES.md#serializabletype)
+
 **Singletons** - Runtime and ScriptableObject singleton patterns
 → [Singletons Guide](SINGLETONS.md) | [README](../README.md#singleton-utilities-odin-compatible)
 
@@ -407,8 +425,8 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **String Extensions** - Casing, encoding, Levenshtein distance, Base64, analysis
 → [Math & Extensions](MATH_AND_EXTENSIONS.md#strings)
 
-**StringInList** - String dropdown property drawer
-→ [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#stringinlist-property-drawer) | [README - API Index](../README.md#api-index)
+**StringInList** - String dropdown property drawer with search and pagination
+→ [Inspector Selection Attributes](INSPECTOR_SELECTION_ATTRIBUTES.md#stringinlist) | [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#stringinlist-property-drawer)
 
 ---
 
@@ -459,14 +477,32 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **WallstopFastArrayPool<T>** - Fast array pool for short-lived arrays
 → [README - Buffering Pattern](../README.md#buffering-pattern)
 
+**WButton** - Inspector method buttons with history, async support, cancellation
+→ [Inspector Buttons](INSPECTOR_BUTTON.md) | [Inspector Overview](INSPECTOR_OVERVIEW.md)
+
+**WEnumToggleButtons** - Enum and flag enum toggle button toolbars
+→ [Inspector Selection Attributes](INSPECTOR_SELECTION_ATTRIBUTES.md#wenumtogglebuttons) | [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#wenum-toggle-buttons)
+
+**WFoldoutGroup** / **WFoldoutGroupEnd** - Collapsible foldout inspector sections
+→ [Inspector Grouping Attributes](INSPECTOR_GROUPING_ATTRIBUTES.md#wfoldoutgroup--wfoldoutgroupend)
+
+**WGuid** - Immutable version-4 GUID using two longs for fast Unity serialization
+→ [Serialization Types](SERIALIZATION_TYPES.md#wguid)
+
+**WGroup** / **WGroupEnd** - Boxed inspector sections with auto-inclusion and color themes
+→ [Inspector Grouping Attributes](INSPECTOR_GROUPING_ATTRIBUTES.md#wgroup--wgroupend)
+
 **Weighted Random** - Weighted random selection
 → [README - Random Generators](../README.md#random-number-generators)
 
 **WInLineEditor** - Inline inspector for object references
 → [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#winlineeditor-property-drawer) | [README - Relational Components](../README.md#relational-components)
 
-**WShowIf** - Conditional field display attribute
-→ [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#wshowif-property-drawer) | [README - API Index](../README.md#api-index)
+**WShowIf** - Conditional field display attribute with comparison operators
+→ [Inspector Conditional Display](INSPECTOR_CONDITIONAL_DISPLAY.md) | [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md#wshowif-property-drawer)
+
+**WValueDropDown** - Generic dropdown for any type with fixed values or providers
+→ [Inspector Selection Attributes](INSPECTOR_SELECTION_ATTRIBUTES.md#wvaluedropdown)
 
 ---
 

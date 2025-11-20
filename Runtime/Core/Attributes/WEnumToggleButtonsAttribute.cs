@@ -13,6 +13,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// This makes it significantly easier to reason about composite bitmasks in the inspector compared to Unity's built-in mask field.
     /// </para>
     /// <para>
+    /// Throughout the documentation this workflow is often referred to as <c>WEnumToggleFlags</c>; the attribute name remains
+    /// <see cref="WEnumToggleButtonsAttribute"/> but no additional setup is required—simply annotate the flagged enum field.
+    /// </para>
+    /// <para>
     /// The attribute can also be combined with <see cref="IntDropdownAttribute"/>, <see cref="StringInListAttribute"/>, or
     /// <see cref="WValueDropDownAttribute"/> to render those curated lists as toggle buttons instead of a popup.
     /// In this mode only a single option is active at a time, but the visual presentation becomes much clearer for small choice sets.

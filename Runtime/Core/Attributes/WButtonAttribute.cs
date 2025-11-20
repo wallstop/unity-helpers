@@ -3,8 +3,48 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System;
 
     /// <summary>
-    /// Marks a method for exposure as an inspector button with optional naming and ordering.
+    /// Exposes a parameterless method as a clickable inspector button for rapid authoring tools, debug hooks, or content workflows.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Apply <see cref="WButtonAttribute"/> to any method on a <see cref="UnityEngine.Object"/> derived type to surface it in the inspector.
+    /// You can override the label, group related buttons, and control the ordering so that the editor layout remains predictable.
+    /// </para>
+    /// <para>
+    /// The attribute never runs in player builds—methods execute only inside the Unity Editor when the button is pressed—making it safe for destructive
+    /// utilities such as spawning test content, clearing caches, or invoking validation passes.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// Simple editor utility buttons:
+    /// <code>
+    /// public sealed class EnemySpawner : MonoBehaviour
+    /// {
+    ///     [WButton(\"Rebuild Spawn Points\")]
+    ///     private void Rebuild()
+    ///     {
+    ///         // expensive setup logic omitted
+    ///     }
+    ///
+    ///     [WButton(drawOrder: 1, groupName: \"Debug\")]
+    ///     private void PrintSpawnCount()
+    ///     {
+    ///         Debug.Log(spawnPoints.Count);
+    ///     }
+    /// }
+    /// </code>
+    /// Grouped buttons with history overrides:
+    /// <code>
+    /// public sealed class QuestAuthoringTool : ScriptableObject
+    /// {
+    ///     [WButton(\"Generate IDs\", drawOrder: -1, historyCapacity: 5, groupName: \"Authoring\")]
+    ///     private void GenerateIds() { }
+    ///
+    ///     [WButton(\"Submit\", drawOrder: -1, historyCapacity: 1, priority: UnityHelpersSettings.HighlightColorKey)]
+    ///     private void SubmitToServer() { }
+    /// }
+    /// </code>
+    /// </example>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public sealed class WButtonAttribute : Attribute
     {

@@ -12,6 +12,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
     public sealed class SerializableTypeTests
     {
+        private const string MissingTypeName = "Missing.Type, MissingAssembly";
+
         [Test]
         public void DefaultWrapperBehavesAsEmpty()
         {
@@ -355,15 +357,41 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void TryGetValueFailsForUnknownType()
         {
-            SerializableType unresolved = SerializableType.FromSerializedName(
-                "Missing.Type, MissingAssembly"
-            );
+            SerializableType unresolved = SerializableType.FromSerializedName(MissingTypeName);
 
             bool resolved = unresolved.TryGetValue(out Type resolvedType);
             Assert.IsFalse(resolved);
             Assert.IsNull(resolvedType);
             Assert.IsNull(unresolved.Value);
             Assert.IsFalse(unresolved.IsEmpty);
+        }
+
+        [Test]
+        public void JsonSerializationPreservesMissingType()
+        {
+            SerializableType unresolved = SerializableType.FromSerializedName(MissingTypeName);
+
+            string json = JsonSerializer.Serialize(unresolved);
+            SerializableType roundTripped = JsonSerializer.Deserialize<SerializableType>(json);
+
+            Assert.IsFalse(roundTripped.IsEmpty);
+            Assert.IsNull(roundTripped.Value);
+            Assert.AreEqual(MissingTypeName, roundTripped.AssemblyQualifiedName);
+            StringAssert.Contains(MissingTypeName, roundTripped.DisplayName);
+        }
+
+        [Test]
+        public void ProtoSerializationPreservesMissingType()
+        {
+            SerializableType unresolved = SerializableType.FromSerializedName(MissingTypeName);
+            using MemoryStream stream = new();
+            Serializer.Serialize(stream, unresolved);
+            stream.Position = 0;
+
+            SerializableType roundTripped = Serializer.Deserialize<SerializableType>(stream);
+            Assert.IsFalse(roundTripped.IsEmpty);
+            Assert.IsNull(roundTripped.Value);
+            Assert.AreEqual(MissingTypeName, roundTripped.AssemblyQualifiedName);
         }
 
         [Test]

@@ -1,86 +1,99 @@
 # Unity Helpers Roadmap
 
-These priorities focus on net-new capabilities on top of the systems that are already in the package today.
+This roadmap outlines planned enhancements to Unity Helpers. All "Currently shipping" features are production-ready and available now. See the main [README](../README.md) for current capabilities.
 
 ## 1. Comprehensive Inspector Tooling
 
-**Currently shipping:** Attribute + property drawer suite covering enum toggles, dropdowns, show-if logic, and validation (`Runtime/Core/Attributes/*.cs`, `Editor/CustomDrawers/*.cs`), e.g., `WEnumToggleButtonsAttribute`, `WShowIfAttribute`, `WValueDropDownAttribute`, `NotNullAttribute`, and `ValidateAssignmentAttribute`.
+**Currently shipping:** Attribute and property drawer suite covering enum toggles, dropdowns, conditional display, grouping, buttons, and validation. Key attributes: `WEnumToggleButtons`, `WShowIf`, `WValueDropDown`, `WGroup`, `WFoldoutGroup`, `WButton`, `NotNull`, `ValidateAssignment`.
 
 **Next up:**
 
-- Inline editors for nested ScriptableObjects/components (no popup inspectors) with preview and diff affordances.
-- Tabbed/section navigation plus persistent layout bookmarks so large inspectors stay organized.
-- Visual instrumentation (progress bars, warning badges, inline state telemetry) that reflects runtime data while editing.
-- Additional attributes for disable-if, layer/sorting-layer selection, cross-field validators, and auto-generated help boxes.
+- Inline editors for nested ScriptableObjects/components with preview and diff affordances
+- Tabbed/section navigation with persistent layout bookmarks
+- Visual instrumentation (progress bars, warning badges, inline state telemetry)
+- Additional attributes: disable-if, layer/sorting-layer selection, cross-field validators, auto-generated help boxes
 
 ## 2. Expanded Editor Tooling
 
-**Currently shipping:** Animation Creator / Sprite Sheet Animation Creator (`Editor/Sprites/AnimationCreator.cs`) and Animation Event Editor (`Editor/AnimationEventEditor.cs`) plus the existing sprite, prefab, and persistence utilities documented in `Docs/EDITOR_TOOLS_GUIDE.md`.
+**Currently shipping:** Animation Creator, Sprite Sheet Animation Creator, Animation Event Editor, plus 20+ sprite/texture/prefab utilities. See [Editor Tools Guide](EDITOR_TOOLS_GUIDE.md) for full list.
 
 **Next up:**
 
-- Animation Creator enhancements: sprite sheet support, higher performance, dynamic framerate, previews, and more
-- Sprite Sheet Cutter Tool
-- Animation Event Editor refinements: timeline scrubbing, copy/paste across clips, presets, and validation overlays.
-- Additional automation surfaces (import processor builder, prefab validation rulesets, texture/animation post processors) that can run headless or inside UI Toolkit dashboards.
+- Animation Creator enhancements: higher performance, dynamic framerate, enhanced previews
+- Sprite Sheet Animation Creator enhancements: improved slicing workflow, variable frame rates per range
+- Animation Event Editor refinements: timeline scrubbing, copy/paste across clips, presets, validation overlays
+- Additional automation surfaces: import processor builder, prefab validation rulesets, headless texture/animation post-processors
 
 ## 3. Advanced Random & Statistical Testing
 
-**Currently shipping:** Dozens of RNG implementations (PCG, Xoroshiro, SplitMix64, RomuDuo, FlurryBurst, NativePcg, etc.) behind `PRNG.Instance` and `RandomUtilities` (`Runtime/Core/Random/*.cs`).
+**Currently shipping:** 15+ high-quality RNG implementations (IllusionFlow, PcgRandom, XoroShiro, SplitMix64, RomuDuo, FlurryBurst, PhotonSpin, etc.) with extensive `IRandom` API. See [Random Performance](RANDOM_PERFORMANCE.md).
 
 **Next up:**
 
-- CI-friendly statistical harness that can run PractRand/TestU01 suites and publish pass/fail artifacts automatically.
-- Automated quality reports with histograms, percentile deltas, and change detection that gate pull requests.
-- Higher-level sampling utilities (Poisson disk, stratified sampling, correlated noise, shuffled streams) plus deterministic scenario builders for QA.
-- Job/Burst aware stream schedulers (seed pools, jump-ahead APIs, reservoir/permutation helpers) with accompanying property-based tests.
+- CI-friendly statistical harness: PractRand/TestU01 suites with automated pass/fail artifacts
+- Automated quality reports: histograms, percentile deltas, change detection for PR gates
+- Higher-level sampling: Poisson disk, stratified sampling, correlated noise, shuffled streams, deterministic scenario builders
+- Job/Burst-aware stream schedulers: seed pools, jump-ahead APIs, reservoir/permutation helpers with property-based tests
 
 ## 4. Enhanced Spatial Trees
 
-**Currently shipping:** QuadTree2D, KdTree2D, RTree2D, SpatialHash2D plus experimental 3D variants (OctTree3D, KdTree3D, RTree3D, SpatialHash3D) under `Runtime/Core/DataStructure`.
+**Currently shipping:** Production 2D trees (QuadTree2D, KdTree2D, RTree2D, SpatialHash2D) and experimental 3D variants (OctTree3D, KdTree3D, RTree3D, SpatialHash3D). See [2D Performance](SPATIAL_TREE_2D_PERFORMANCE.md) and [3D Performance](SPATIAL_TREE_3D_PERFORMANCE.md).
 
 **Next up:**
 
-- Graduate the 3D trees out of experimental status with profiling data, docs, and parity with the polished 2D APIs.
-- Mutable/incremental update variants so trees can accept localized inserts/removals instead of full rebuilds.
-- Shape query parity with Unity Physics (ray/capsule/sphere casts, overlap tests) plus adapter structs to translate between PhysicsScene queries and spatial indices.
-- Streaming/sectorized builders for large worlds so trees can be incrementally loaded per tile or job.
+- Graduate 3D trees to production: profiling data, comprehensive docs, parity with 2D APIs
+- Mutable/incremental updates: localized inserts/removals without full rebuilds
+- Unity Physics parity: ray/capsule/sphere casts, overlap tests, PhysicsScene adapter structs
+- Streaming builders: tile-based loading for large worlds, job-based construction
 
 ## 5. UI Toolkit Enhancements
 
-**Currently shipping:** LayeredImage and MultiFileSelectorElement visual elements (`Runtime/Visuals/UIToolkit/*.cs`) with samples and persistence helpers.
+**Currently shipping:** LayeredImage and MultiFileSelectorElement custom visual elements with samples and persistence helpers.
 
 **Next up:**
 
-- UI Toolkit control pack with dockable panes, inspector tab bars, data tables, curve editors, and virtualized multi-column lists.
-- Theme/palette system (USS + UXML snippets) plus sample scenes showing runtime/editor parity.
-- Performance-focused patterns (batched bindings, incremental painters, list virtualization) codified as utilities + docs.
-- Wizards and dashboards built on UI Toolkit to host the automation workflows outlined above.
+- Control pack: dockable panes, inspector tab bars, data tables, curve editors, virtualized multi-column lists
+- Theme/palette system: USS/UXML snippets with runtime/editor parity samples
+- Performance patterns: batched bindings, incremental painters, list virtualization utilities with comprehensive docs
+- Automation dashboards: UI Toolkit-based wizards for workflow automation
 
 ## 6. Utility Expansion
 
-**Currently shipping:** Broad utility set covering pooling (`Runtime/Utils/Buffers.cs`), singleton patterns, animation helpers, sprite utilities, compression helpers, and more under `Runtime/Utils`.
+**Currently shipping:** Extensive utilities covering pooling (Buffers, array pools), singleton patterns, animation helpers, sprite utilities, compression, math extensions, and more. See [Helper Utilities](HELPER_UTILITIES.md).
 
 **Next up:**
 
-- Cross-system bridges (effects ↔ serialization, pooling ↔ DI containers, random ↔ spatial query fuzzers) with ready-made samples.
-- Additional math/combinatorics helpers (curve fitting, statistics, interpolation packs) and IO/localization conveniences.
-- Opinionated service patterns (task/tween schedulers, async job orchestrators, gameplay timers) wired into diagnostics.
+- Cross-system bridges: effects ↔ serialization, pooling ↔ DI containers, random ↔ spatial query fuzzers with ready-made samples
+- Math/combinatorics helpers: curve fitting, statistics, interpolation packs, IO/localization conveniences
+- Service patterns: task/tween schedulers, async job orchestrators, gameplay timers with integrated diagnostics
 
 ## 7. Performance Program
 
-**Currently shipping:** Benchmarks and guidance for random generators and spatial trees (`Docs/RANDOM_PERFORMANCE.md`, `Docs/SPATIAL_TREE_2D_PERFORMANCE.md`) plus profiling notes in README.
+**Currently shipping:** Comprehensive benchmarks for random generators, spatial trees, reflection helpers, and IList sorting. See [Random Performance](RANDOM_PERFORMANCE.md), [Spatial Tree Performance](SPATIAL_TREE_2D_PERFORMANCE.md), and [Reflection Performance](REFLECTION_PERFORMANCE.md).
 
 **Next up:**
 
-- Automated benchmark harness that can run inside CI, store baselines, and surface regressions per subsystem.
-- Burst/Jobs rewrites of hot loops (spatial queries, pooling, math helpers) along with analyzer hints that steer consumers toward the fast paths.
-- Allocation/GC audits with Roslyn analyzers + NUnit tests that lock in zero-allocation guarantees for critical APIs.
+- Automated benchmark harness: CI integration, baseline storage, regression detection per subsystem
+- Burst/Jobs optimizations: hot loop rewrites for spatial queries, pooling, math helpers with analyzer hints
+- Allocation/GC audits: Roslyn analyzers and NUnit tests enforcing zero-allocation guarantees for critical APIs
+- Safety analyzers: custom Roslyn rule that flags `SerializableNullable<T>.Value` access without a preceding `HasValue` check (Unity asmdef-friendly package)
 
 ## 8. Attribute & Tag System Evolution
 
-**Currently shipping:** Gameplay attributes/tags, effect stacks, and attribute metadata caches (`Runtime/Tags/*.cs`) with ScriptableObject-driven effect authoring.
+**Currently shipping:** Data-driven effects system with attributes, tags, effect stacks, and metadata caches. ScriptableObject-driven effect authoring with cosmetics and duration management. See [Effects System](EFFECTS_SYSTEM.md).
 
 **Next up:**
 
-- TBD enhancements
+- Effect visualization: inspector timeline for active effects, stack inspection, debug overlays
+- Attribute graphs: dependency tracking with automatic recalculation when modifiers change
+- Migration tools: schema evolution helpers for effects and attribute definitions
+
+## 9. Relational Component Enhancements
+
+**Currently shipping:** Component auto-wiring attributes (SiblingComponent, ParentComponent, ChildComponent) with DI integrations for VContainer, Zenject, and Reflex. See [Relational Components](RELATIONAL_COMPONENTS.md).
+
+**Next up:**
+
+- Performance improvements: cached reflection paths, Roslyn source generators for zero-reflection wiring
+- Enhanced validation: editor-time dependency visualization, hierarchy relationship graphs
+- Advanced querying: interface-based resolution, filtered component searches
