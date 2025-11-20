@@ -6,7 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
     {
         protected override IRandom NewRandom()
         {
-            return new PhotonSpinRandom();
+            return new PhotonSpinRandom(DeterministicSeed32);
         }
     }
 }

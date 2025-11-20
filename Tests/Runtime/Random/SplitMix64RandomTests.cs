@@ -4,6 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
 
     public sealed class SplitMix64RandomTests : RandomTestBase
     {
-        protected override IRandom NewRandom() => new SplitMix64();
+        protected override IRandom NewRandom() => new SplitMix64(DeterministicSeed64);
     }
 }

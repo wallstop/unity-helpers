@@ -4,7 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
 
     public sealed class SquirrelRandomTests : RandomTestBase
     {
-        protected override IRandom NewRandom() => new SquirrelRandom();
+        protected override IRandom NewRandom() => new SquirrelRandom(DeterministicSeedInt);
 
         protected override double GetDeviationFor(string caller)
         {

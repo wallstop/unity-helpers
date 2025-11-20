@@ -4,6 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
 
     public sealed class XorShiftRandomTests : RandomTestBase
     {
-        protected override IRandom NewRandom() => new XorShiftRandom();
+        protected override IRandom NewRandom() => new XorShiftRandom(DeterministicSeedInt);
     }
 }

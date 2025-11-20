@@ -4,6 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
 
     public sealed class PcgRandomTests : RandomTestBase
     {
-        protected override IRandom NewRandom() => new PcgRandom();
+        protected override IRandom NewRandom() => new PcgRandom(DeterministicGuid);
     }
 }

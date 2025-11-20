@@ -6,7 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
     {
         protected override IRandom NewRandom()
         {
-            return new IllusionFlow();
+            return new IllusionFlow(DeterministicGuid, DeterministicSeed32);
         }
     }
 }

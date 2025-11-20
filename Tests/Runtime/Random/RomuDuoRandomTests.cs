@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
 
     public sealed class RomuDuoRandomTests : RandomTestBase
     {
-        protected override IRandom NewRandom() => new RomuDuo();
+        protected override IRandom NewRandom() =>
+            new RomuDuo(DeterministicSeed64, DeterministicSeed64B);
     }
 }

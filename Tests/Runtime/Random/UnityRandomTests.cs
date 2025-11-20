@@ -4,6 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
 
     public sealed class UnityRandomTests : RandomTestBase
     {
-        protected override IRandom NewRandom() => UnityRandom.Instance;
+        protected override IRandom NewRandom() => new UnityRandom(DeterministicSeedInt);
     }
 }
