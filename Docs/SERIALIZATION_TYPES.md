@@ -318,6 +318,7 @@ public class UniqueItemTracker : MonoBehaviour
 - Pagination for large sets
 - Move Up/Down buttons
 - Current selection badge for items on other pages
+- **Manual Entry foldout** to stage values before adding them to the runtime set (tune its animation via **Project Settings ▸ Wallstop Studios ▸ Unity Helpers ▸ Set Foldouts**)
 
 ![Image placeholder: Set with duplicate entry highlighted in yellow]
 ![Image placeholder: Set with null entry highlighted in red]
@@ -355,6 +356,10 @@ foreach (int item in set)
     Debug.Log(item);
 }
 ```
+
+### Manual Entry Foldout
+
+Expandable "Manual Entry" controls let you configure the exact value that will be inserted, which is especially helpful for complex structs, managed references, or ScriptableObjects. The foldout supports the same field variety as the inline list and respects your duplicate/null validation. Animation for the manual entry foldout is governed by the **Serializable Set Foldouts** settings; adjust tweening and speed independently for `SerializableHashSet<T>` and `SerializableSortedSet<T>`.
 
 ---
 

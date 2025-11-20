@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEditorInternal;
@@ -51,7 +52,26 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public SerializableHashSet<TestData> set = new();
         }
 
+        private sealed class PrivateCtorSetHost : ScriptableObject
+        {
+            public SerializableHashSet<PrivateCtorElement> set = new();
+        }
+
         private sealed class TestData : ScriptableObject { }
+
+        [Serializable]
+        private sealed class PrivateCtorElement
+        {
+            [SerializeField]
+            private int magnitude;
+
+            private PrivateCtorElement()
+            {
+                magnitude = 5;
+            }
+
+            public int Magnitude => magnitude;
+        }
 
         [Test]
         public void GetPropertyHeightClampsPageSize()
@@ -78,6 +98,196 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 pagination.pageSize,
                 "Page size should track the configured Unity Helpers setting."
             );
+        }
+
+        [Test]
+        public void ManualEntryAddsElementToSet()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            pending.value = "ManualEntry";
+
+            ISerializableSetInspector inspector = host.set as ISerializableSetInspector;
+            Assert.IsNotNull(
+                inspector,
+                "Expected inspector implementation on SerializableHashSet."
+            );
+
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Manual entry should commit successfully.");
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            Assert.AreEqual(1, itemsProperty.arraySize);
+            Assert.AreEqual("ManualEntry", itemsProperty.GetArrayElementAtIndex(0).stringValue);
+            Assert.IsNull(pending.errorMessage);
+            Assert.IsFalse(pending.isExpanded);
+        }
+
+        [Test]
+        public void ManualEntryDefaultsSupportPrivateConstructors()
+        {
+            PrivateCtorSetHost host = CreateScriptableObject<PrivateCtorSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(PrivateCtorSetHost.set)
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(PrivateCtorElement),
+                isSortedSet: false
+            );
+
+            Assert.IsNotNull(pending.value);
+            Assert.IsInstanceOf<PrivateCtorElement>(pending.value);
+        }
+
+        [Test]
+        public void ManualEntryDefaultsRemainNullForUnityObjects()
+        {
+            ObjectSetHost host = CreateScriptableObject<ObjectSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(ObjectSetHost.set)
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(TestData),
+                isSortedSet: false
+            );
+
+            Assert.IsNull(
+                pending.value,
+                "UnityEngine.Object entries should start null so inspectors rely on object pickers."
+            );
+        }
+
+        [Test]
+        public void ManualEntryUsesObjectPickerForScriptableObjectValues()
+        {
+            Type pendingType = typeof(SerializableSetPropertyDrawer).GetNestedType(
+                "PendingEntry",
+                BindingFlags.NonPublic
+            );
+            Assert.IsNotNull(pendingType, "PendingEntry type should exist.");
+
+            object pending = Activator.CreateInstance(pendingType);
+            MethodInfo drawField = typeof(SerializableSetPropertyDrawer).GetMethod(
+                "DrawFieldForType",
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
+            Assert.IsNotNull(drawField, "Expected DrawFieldForType via reflection.");
+
+            object[] parameters =
+            {
+                new Rect(0f, 0f, 200f, EditorGUIUtility.singleLineHeight),
+                new GUIContent("Value"),
+                null,
+                typeof(TestData),
+                pending,
+            };
+
+            TestIMGUIExecutor.Run(() =>
+            {
+                drawField.Invoke(null, parameters);
+            });
+
+            FieldInfo valueWrapperField = pendingType.GetField(
+                "valueWrapper",
+                BindingFlags.Instance | BindingFlags.Public
+            );
+            Assert.IsNotNull(valueWrapperField, "Expected valueWrapper field.");
+            Assert.IsNull(
+                valueWrapperField.GetValue(pending),
+                "ScriptableObject values should rely on object pickers rather than PendingValueWrappers."
+            );
+        }
+
+        [Test]
+        public void ManualEntryRejectsDuplicateValues()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            ISerializableSetInspector inspector = host.set as ISerializableSetInspector;
+            Assert.IsNotNull(
+                inspector,
+                "Expected inspector implementation on SerializableHashSet."
+            );
+
+            Array snapshot = Array.CreateInstance(typeof(string), 1);
+            snapshot.SetValue("Existing", 0);
+            inspector.SetSerializedItemsSnapshot(snapshot, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            pending.value = "Existing";
+
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsFalse(committed, "Duplicate entries should be rejected.");
+            StringAssert.Contains("exists", pending.errorMessage);
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            Assert.AreEqual(1, itemsProperty.arraySize);
         }
 
         [Test]

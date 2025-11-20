@@ -119,6 +119,60 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         }
 
         [Test]
+        public void SerializableDictionaryPageSizeClampsToBounds()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            int originalDictionaryPageSize = settings.SerializableDictionaryPageSize;
+            try
+            {
+                settings.SerializableDictionaryPageSize = UnityHelpersSettings.MinPageSize - 1;
+                Assert.That(
+                    UnityHelpersSettings.GetSerializableDictionaryPageSize(),
+                    Is.EqualTo(UnityHelpersSettings.MinPageSize)
+                );
+
+                settings.SerializableDictionaryPageSize =
+                    UnityHelpersSettings.MaxSerializableDictionaryPageSize + 25;
+                Assert.That(
+                    UnityHelpersSettings.GetSerializableDictionaryPageSize(),
+                    Is.EqualTo(UnityHelpersSettings.MaxSerializableDictionaryPageSize)
+                );
+            }
+            finally
+            {
+                settings.SerializableDictionaryPageSize = originalDictionaryPageSize;
+            }
+        }
+
+        [Test]
+        public void DictionaryAndSetPaginationSettingsRemainIndependent()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            int originalDictionaryPageSize = settings.SerializableDictionaryPageSize;
+            int originalSetPageSize = settings.SerializableSetPageSize;
+
+            try
+            {
+                int dictionarySize = UnityHelpersSettings.MinPageSize + 6;
+                int setSize = UnityHelpersSettings.MaxPageSize - 10;
+
+                settings.SerializableDictionaryPageSize = dictionarySize;
+                settings.SerializableSetPageSize = setSize;
+
+                Assert.That(
+                    UnityHelpersSettings.GetSerializableDictionaryPageSize(),
+                    Is.EqualTo(dictionarySize)
+                );
+                Assert.That(UnityHelpersSettings.GetSerializableSetPageSize(), Is.EqualTo(setSize));
+            }
+            finally
+            {
+                settings.SerializableDictionaryPageSize = originalDictionaryPageSize;
+                settings.SerializableSetPageSize = originalSetPageSize;
+            }
+        }
+
+        [Test]
         public void ResolveWButtonPaletteFallsBackToDefault()
         {
             UnityHelpersSettings.WButtonPaletteEntry defaultEntry =
@@ -334,6 +388,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 UnityHelpersSettings.GetSerializableSortedDictionaryFoldoutSpeed(),
                 Is.EqualTo(UnityHelpersSettings.DefaultFoldoutSpeed)
             );
+            Assert.That(
+                UnityHelpersSettings.GetSerializableSetFoldoutSpeed(),
+                Is.EqualTo(UnityHelpersSettings.DefaultFoldoutSpeed)
+            );
+            Assert.That(
+                UnityHelpersSettings.GetSerializableSortedSetFoldoutSpeed(),
+                Is.EqualTo(UnityHelpersSettings.DefaultFoldoutSpeed)
+            );
         }
 
         [Test]
@@ -342,6 +404,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             Assert.IsTrue(UnityHelpersSettings.ShouldTweenWButtonFoldouts());
             Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableDictionaryFoldouts());
             Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableSortedDictionaryFoldouts());
+            Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableSetFoldouts());
+            Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableSortedSetFoldouts());
         }
 
         [Test]
@@ -360,6 +424,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty sortedDictionaryTweenProperty = serialized.FindProperty(
                 "serializableSortedDictionaryFoldoutTweenEnabled"
             );
+            SerializedProperty setTweenProperty = serialized.FindProperty(
+                "serializableSetFoldoutTweenEnabled"
+            );
+            SerializedProperty sortedSetTweenProperty = serialized.FindProperty(
+                "serializableSortedSetFoldoutTweenEnabled"
+            );
             SerializedProperty initializedProperty = serialized.FindProperty(
                 "foldoutTweenSettingsInitialized"
             );
@@ -367,6 +437,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             bool originalWButton = wbuttonTweenProperty.boolValue;
             bool originalDictionary = dictionaryTweenProperty.boolValue;
             bool originalSorted = sortedDictionaryTweenProperty.boolValue;
+            bool originalSet = setTweenProperty.boolValue;
+            bool originalSortedSet = sortedSetTweenProperty.boolValue;
             bool originalInitialized = initializedProperty.boolValue;
 
             try
@@ -374,6 +446,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 wbuttonTweenProperty.boolValue = false;
                 dictionaryTweenProperty.boolValue = false;
                 sortedDictionaryTweenProperty.boolValue = false;
+                setTweenProperty.boolValue = false;
+                sortedSetTweenProperty.boolValue = false;
                 initializedProperty.boolValue = false;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
@@ -389,6 +463,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 Assert.IsTrue(
                     UnityHelpersSettings.ShouldTweenSerializableSortedDictionaryFoldouts()
                 );
+                Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableSetFoldouts());
+                Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableSortedSetFoldouts());
 
                 SerializedObject verification = new(settings);
                 verification.Update();
@@ -404,6 +480,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     originalDictionary;
                 restore.FindProperty("serializableSortedDictionaryFoldoutTweenEnabled").boolValue =
                     originalSorted;
+                restore.FindProperty("serializableSetFoldoutTweenEnabled").boolValue = originalSet;
+                restore.FindProperty("serializableSortedSetFoldoutTweenEnabled").boolValue =
+                    originalSortedSet;
                 restore.FindProperty("foldoutTweenSettingsInitialized").boolValue =
                     originalInitialized;
                 restore.ApplyModifiedPropertiesWithoutUndo();
@@ -425,16 +504,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty sortedDictionaryTweenProperty = serialized.FindProperty(
                 "serializableSortedDictionaryFoldoutTweenEnabled"
             );
+            SerializedProperty setTweenProperty = serialized.FindProperty(
+                "serializableSetFoldoutTweenEnabled"
+            );
+            SerializedProperty sortedSetTweenProperty = serialized.FindProperty(
+                "serializableSortedSetFoldoutTweenEnabled"
+            );
 
             bool originalWButtonValue = wbuttonTweenProperty.boolValue;
             bool originalDictionaryValue = dictionaryTweenProperty.boolValue;
             bool originalSortedValue = sortedDictionaryTweenProperty.boolValue;
+            bool originalSetValue = setTweenProperty.boolValue;
+            bool originalSortedSetValue = sortedSetTweenProperty.boolValue;
 
             try
             {
                 wbuttonTweenProperty.boolValue = false;
                 dictionaryTweenProperty.boolValue = false;
                 sortedDictionaryTweenProperty.boolValue = false;
+                setTweenProperty.boolValue = false;
+                sortedSetTweenProperty.boolValue = false;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
                 Assert.IsFalse(UnityHelpersSettings.ShouldTweenWButtonFoldouts());
@@ -442,6 +531,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 Assert.IsFalse(
                     UnityHelpersSettings.ShouldTweenSerializableSortedDictionaryFoldouts()
                 );
+                Assert.IsFalse(UnityHelpersSettings.ShouldTweenSerializableSetFoldouts());
+                Assert.IsFalse(UnityHelpersSettings.ShouldTweenSerializableSortedSetFoldouts());
             }
             finally
             {
@@ -451,6 +542,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     originalDictionaryValue;
                 restore.FindProperty("serializableSortedDictionaryFoldoutTweenEnabled").boolValue =
                     originalSortedValue;
+                restore.FindProperty("serializableSetFoldoutTweenEnabled").boolValue =
+                    originalSetValue;
+                restore.FindProperty("serializableSortedSetFoldoutTweenEnabled").boolValue =
+                    originalSortedSetValue;
                 restore.ApplyModifiedPropertiesWithoutUndo();
                 settings.SaveSettings();
             }

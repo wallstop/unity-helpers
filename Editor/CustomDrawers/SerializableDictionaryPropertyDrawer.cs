@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using System.Collections.Generic;
     using System.Globalization;
     using System.Reflection;
+    using System.Runtime.Serialization;
     using System.Text;
     using UnityEditor;
     using UnityEditor.AnimatedValues;
@@ -41,8 +42,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private const float PendingSectionPadding = 6f;
         private const float PendingAddButtonWidth = 110f;
-        private const int DefaultPageSize = 15;
-        internal const int MaxPageSize = 250;
+        private const int DefaultPageSize =
+            UnityHelpersSettings.DefaultSerializableDictionaryPageSize;
+        internal const int MaxPageSize = UnityHelpersSettings.MaxSerializableDictionaryPageSize;
         private const int DuplicateSummaryDisplayLimit = 5;
         private const float PaginationButtonWidth = 28f;
         private const float PaginationLabelWidth = 80f;
@@ -1188,11 +1190,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal PaginationState GetOrCreatePaginationState(SerializedProperty property)
         {
             string key = GetListKey(property);
+            int configuredPageSize = UnityHelpersSettings.GetSerializableDictionaryPageSize();
             if (_paginationStates.TryGetValue(key, out PaginationState state))
             {
                 if (state.pageSize <= 0)
                 {
-                    state.pageSize = DefaultPageSize;
+                    state.pageSize = configuredPageSize > 0 ? configuredPageSize : DefaultPageSize;
+                }
+
+                if (state.pageSize != configuredPageSize && configuredPageSize > 0)
+                {
+                    state.pageSize = configuredPageSize;
+                    state.pageIndex = 0;
                 }
 
                 return state;
@@ -1201,7 +1210,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             PaginationState newState = new()
             {
                 pageIndex = 0,
-                pageSize = DefaultPageSize,
+                pageSize = configuredPageSize > 0 ? configuredPageSize : DefaultPageSize,
                 selectedIndex = -1,
             };
             _paginationStates[key] = newState;
@@ -3607,6 +3616,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 pending == null
                 || !TypeSupportsComplexEditing(type)
                 || (type.IsValueType && !typeof(Object).IsAssignableFrom(type))
+                || typeof(Object).IsAssignableFrom(type)
                 || type == typeof(string)
             )
             {
@@ -3809,16 +3819,108 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
+            Func<object> factory = TryResolveConstructorFactory(type);
+            if (factory != null)
+            {
+                ParameterlessConstructorCache[type] = factory;
+                instance = factory();
+                if (instance != null)
+                {
+                    return true;
+                }
+            }
+
+            if (TryInstantiateWithoutConstructor(type, out instance))
+            {
+                return true;
+            }
+
+            UnsupportedParameterlessTypes[type] = 0;
+            return false;
+        }
+
+        private static Func<object> TryResolveConstructorFactory(Type type)
+        {
             try
             {
-                Func<object> ctor = ReflectionHelpers.GetParameterlessConstructor(type);
-                ParameterlessConstructorCache[type] = ctor;
-                instance = ctor();
+                return ReflectionHelpers.GetParameterlessConstructor(type);
+            }
+            catch (ArgumentException)
+            {
+                ConstructorInfo ctor = type.GetConstructor(
+                    BindingFlags.Instance | BindingFlags.NonPublic,
+                    binder: null,
+                    Type.EmptyTypes,
+                    modifiers: null
+                );
+                if (ctor == null)
+                {
+                    return null;
+                }
+
+                return () =>
+                {
+                    try
+                    {
+                        return ctor.Invoke(null);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                };
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static bool TryInstantiateWithoutConstructor(Type type, out object instance)
+        {
+            try
+            {
+                instance = Activator.CreateInstance(type, nonPublic: true);
+                if (instance != null)
+                {
+                    ParameterlessConstructorCache[type] = () =>
+                    {
+                        try
+                        {
+                            return Activator.CreateInstance(type, nonPublic: true);
+                        }
+                        catch
+                        {
+                            return null;
+                        }
+                    };
+                    return true;
+                }
+            }
+            catch
+            {
+                // Continue to FormatterServices fallback
+            }
+
+            try
+            {
+                instance = FormatterServices.GetUninitializedObject(type);
+                ParameterlessConstructorCache[type] = () =>
+                {
+                    try
+                    {
+                        return FormatterServices.GetUninitializedObject(type);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                };
                 return instance != null;
             }
             catch
             {
-                UnsupportedParameterlessTypes[type] = 0;
+                instance = null;
                 return false;
             }
         }

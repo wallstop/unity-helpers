@@ -22,6 +22,7 @@ Unity-native serializable generic collections with custom property drawers:
 - **`SerializableHashSet<T>`** - Hash set with custom drawer, duplicate detection, and order preservation for inspector display
 - **`SerializableSortedDictionary<TKey, TValue>`** - Sorted dictionary maintaining key order
 - **`SerializableSortedSet<T>`** - Sorted set with custom drawer
+- **SerializableSet manual entry foldouts** - Hash sets and sorted sets now include a "Manual Entry" foldout with configurable tweening (Project Settings ▸ Unity Helpers ▸ Set Foldouts) so you can stage complex values before adding them
 - **`SerializableNullable<T>`** - Nullable value types in inspector
 - **`SerializableType`** - Type references with assembly-qualified names, type filtering, and custom drawer
 - All collections support nested types, complex value types, and proper Unity serialization

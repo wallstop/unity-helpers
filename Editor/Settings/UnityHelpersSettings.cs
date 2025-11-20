@@ -26,8 +26,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
     {
         public const int MinPageSize = 5;
         public const int MaxPageSize = 500;
+        public const int MaxSerializableDictionaryPageSize = 250;
         public const int DefaultStringInListPageSize = 25;
         public const int DefaultSerializableSetPageSize = 15;
+        public const int DefaultSerializableDictionaryPageSize = 15;
         public const int DefaultEnumToggleButtonsPageSize = 15;
         public const int DefaultWButtonPageSize = 6;
         public const int DefaultWButtonHistorySize = 5;
@@ -98,6 +100,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 "Serializable Set Page Size",
                 "Number of entries displayed per page in SerializableHashSet and SerializableSortedSet inspectors."
             );
+        private static readonly GUIContent SerializableDictionaryPageSizeContent =
+            EditorGUIUtility.TrTextContent(
+                "Serializable Dictionary Page Size",
+                "Number of entries displayed per page in SerializableDictionary and SerializableSortedDictionary inspectors."
+            );
         private static readonly GUIContent EnumToggleButtonsPageSizeContent =
             EditorGUIUtility.TrTextContent(
                 "WEnum Toggle Buttons Page Size",
@@ -109,7 +116,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         );
         private static readonly GUIContent WButtonHistorySizeContent =
             EditorGUIUtility.TrTextContent(
-                "WButton History Size",
+                "WButton Histroy Size",
                 "Number of recent results remembered per WButton method for each inspected object."
             );
         private static readonly GUIContent WButtonPlacementContent = EditorGUIUtility.TrTextContent(
@@ -123,7 +130,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             );
         private static readonly GUIContent WButtonFoldoutTweenEnabledContent =
             EditorGUIUtility.TrTextContent(
-                "Tween WButton Foldouts",
+                "WButton Foldout Tween Enabled",
                 "Enable animated transitions when expanding or collapsing WButton action groups."
             );
         private static readonly GUIContent WButtonFoldoutSpeedContent =
@@ -168,6 +175,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             EditorGUIUtility.TrTextContent(
                 "Sorted Dictionary Foldout Speed",
                 "Animation speed used when expanding or collapsing SerializableSortedDictionary pending entries."
+            );
+        private static readonly GUIContent SetFoldoutTweenEnabledContent =
+            EditorGUIUtility.TrTextContent(
+                "Tween Serializable Set Foldouts",
+                "Enable animated transitions when expanding or collapsing SerializableHashSet manual entry foldouts."
+            );
+        private static readonly GUIContent SetFoldoutSpeedContent = EditorGUIUtility.TrTextContent(
+            "Serializable Set Foldout Speed",
+            "Animation speed used when expanding or collapsing SerializableHashSet manual entry foldouts."
+        );
+        private static readonly GUIContent SortedSetFoldoutTweenEnabledContent =
+            EditorGUIUtility.TrTextContent(
+                "Tween Serializable Sorted Set Foldouts",
+                "Enable animated transitions when expanding or collapsing SerializableSortedSet manual entry foldouts."
+            );
+        private static readonly GUIContent SortedSetFoldoutSpeedContent =
+            EditorGUIUtility.TrTextContent(
+                "Serializable Sorted Set Foldout Speed",
+                "Animation speed used when expanding or collapsing SerializableSortedSet manual entry foldouts."
             );
         private static readonly GUIContent DuplicateAnimationModeContent =
             EditorGUIUtility.TrTextContent(
@@ -327,6 +353,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         [SerializeField]
         [Tooltip(
+            "Maximum number of entries shown per page when drawing SerializableDictionary/SerializableSortedDictionary inspectors."
+        )]
+        [Range(MinPageSize, MaxSerializableDictionaryPageSize)]
+        private int serializableDictionaryPageSize = DefaultSerializableDictionaryPageSize;
+
+        [SerializeField]
+        [Tooltip(
             "Maximum number of toggle buttons shown per page when drawing WEnumToggleButtons groups."
         )]
         [Range(MinPageSize, MaxPageSize)]
@@ -335,6 +368,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [SerializeField]
         [Tooltip("Maximum number of WButton actions displayed per page in inspector trays.")]
         [Range(MinPageSize, MaxPageSize)]
+        [WGroup(
+            "WButton Actions",
+            displayName: "WButton Actions",
+            autoIncludeCount: 2,
+            collapsible: true
+        )]
         private int wbuttonPageSize = DefaultWButtonPageSize;
 
         [SerializeField]
@@ -406,6 +445,36 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [WShowIf(nameof(serializableSortedDictionaryFoldoutTweenEnabled))]
         [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
         private float serializableSortedDictionaryFoldoutSpeed = DefaultFoldoutSpeed;
+
+        [SerializeField]
+        [Tooltip(
+            "Enable animated transitions when expanding or collapsing SerializableHashSet manual entry foldouts."
+        )]
+        [WGroup(
+            "Set Foldouts",
+            displayName: "Set Foldouts",
+            autoIncludeCount: 4,
+            collapsible: true
+        )]
+        private bool serializableSetFoldoutTweenEnabled = true;
+
+        [SerializeField]
+        [Tooltip("Animation speed used when toggling SerializableHashSet manual entry foldouts.")]
+        [WShowIf(nameof(serializableSetFoldoutTweenEnabled))]
+        [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
+        private float serializableSetFoldoutSpeed = DefaultFoldoutSpeed;
+
+        [SerializeField]
+        [Tooltip(
+            "Enable animated transitions when expanding or collapsing SerializableSortedSet manual entry foldouts."
+        )]
+        private bool serializableSortedSetFoldoutTweenEnabled = true;
+
+        [SerializeField]
+        [Tooltip("Animation speed used when toggling SerializableSortedSet manual entry foldouts.")]
+        [WShowIf(nameof(serializableSortedSetFoldoutTweenEnabled))]
+        [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
+        private float serializableSortedSetFoldoutSpeed = DefaultFoldoutSpeed;
 
         [SerializeField]
         [Tooltip(
@@ -873,6 +942,30 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         }
 
         /// <summary>
+        /// Retrieves the configured page size for SerializableDictionary inspectors.
+        /// </summary>
+        public int SerializableDictionaryPageSize
+        {
+            get =>
+                Mathf.Clamp(
+                    serializableDictionaryPageSize,
+                    MinPageSize,
+                    MaxSerializableDictionaryPageSize
+                );
+            set
+            {
+                int clamped = Mathf.Clamp(value, MinPageSize, MaxSerializableDictionaryPageSize);
+                if (clamped == serializableDictionaryPageSize)
+                {
+                    return;
+                }
+
+                serializableDictionaryPageSize = clamped;
+                SaveSettings();
+            }
+        }
+
+        /// <summary>
         /// Gets the configured page size for WEnumToggleButtons groups.
         /// </summary>
         public int EnumToggleButtonsPageSize
@@ -1054,6 +1147,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return Mathf.Clamp(instance.SerializableSetPageSize, MinPageSize, MaxPageSize);
         }
 
+        public static int GetSerializableDictionaryPageSize()
+        {
+            return Mathf.Clamp(
+                instance.SerializableDictionaryPageSize,
+                MinPageSize,
+                MaxSerializableDictionaryPageSize
+            );
+        }
+
         public static int GetEnumToggleButtonsPageSize()
         {
             return Mathf.Clamp(instance.EnumToggleButtonsPageSize, MinPageSize, MaxPageSize);
@@ -1211,6 +1313,34 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             );
         }
 
+        public static bool ShouldTweenSerializableSetFoldouts()
+        {
+            return instance.serializableSetFoldoutTweenEnabled;
+        }
+
+        public static float GetSerializableSetFoldoutSpeed()
+        {
+            return Mathf.Clamp(
+                instance.serializableSetFoldoutSpeed,
+                MinFoldoutSpeed,
+                MaxFoldoutSpeed
+            );
+        }
+
+        public static bool ShouldTweenSerializableSortedSetFoldouts()
+        {
+            return instance.serializableSortedSetFoldoutTweenEnabled;
+        }
+
+        public static float GetSerializableSortedSetFoldoutSpeed()
+        {
+            return Mathf.Clamp(
+                instance.serializableSortedSetFoldoutSpeed,
+                MinFoldoutSpeed,
+                MaxFoldoutSpeed
+            );
+        }
+
         public static DuplicateRowAnimationMode GetDuplicateRowAnimationMode()
         {
             return instance.duplicateRowAnimationMode;
@@ -1253,6 +1383,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     : serializableSetPageSize,
                 MinPageSize,
                 MaxPageSize
+            );
+            serializableDictionaryPageSize = Mathf.Clamp(
+                serializableDictionaryPageSize <= 0
+                    ? DefaultSerializableDictionaryPageSize
+                    : serializableDictionaryPageSize,
+                MinPageSize,
+                MaxSerializableDictionaryPageSize
             );
             enumToggleButtonsPageSize = Mathf.Clamp(
                 enumToggleButtonsPageSize <= 0
@@ -1314,6 +1451,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 serializableSortedDictionaryFoldoutSpeed <= 0f
                     ? DefaultFoldoutSpeed
                     : serializableSortedDictionaryFoldoutSpeed,
+                MinFoldoutSpeed,
+                MaxFoldoutSpeed
+            );
+            serializableSetFoldoutSpeed = Mathf.Clamp(
+                serializableSetFoldoutSpeed <= 0f
+                    ? DefaultFoldoutSpeed
+                    : serializableSetFoldoutSpeed,
+                MinFoldoutSpeed,
+                MaxFoldoutSpeed
+            );
+            serializableSortedSetFoldoutSpeed = Mathf.Clamp(
+                serializableSortedSetFoldoutSpeed <= 0f
+                    ? DefaultFoldoutSpeed
+                    : serializableSortedSetFoldoutSpeed,
                 MinFoldoutSpeed,
                 MaxFoldoutSpeed
             );
@@ -1425,6 +1576,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             if (!serializableSortedDictionaryFoldoutTweenEnabled)
             {
                 serializableSortedDictionaryFoldoutTweenEnabled = true;
+            }
+
+            if (!serializableSetFoldoutTweenEnabled)
+            {
+                serializableSetFoldoutTweenEnabled = true;
+            }
+
+            if (!serializableSortedSetFoldoutTweenEnabled)
+            {
+                serializableSortedSetFoldoutTweenEnabled = true;
             }
 
             foldoutTweenSettingsInitialized = true;
@@ -3395,6 +3556,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
+                                    nameof(serializableDictionaryPageSize),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawIntSliderField(
+                                    SerializableDictionaryPageSizeContent,
+                                    settings.serializableDictionaryPageSize,
+                                    MinPageSize,
+                                    MaxSerializableDictionaryPageSize,
+                                    value => settings.serializableDictionaryPageSize = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
                                     nameof(enumToggleButtonsPageSize),
                                     System.StringComparison.Ordinal
                                 )
@@ -3461,6 +3641,40 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                     WButtonPlacementContent,
                                     settings.wbuttonActionsPlacement,
                                     value => settings.wbuttonActionsPlacement = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wbuttonFoldoutBehavior),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawEnumPopupField(
+                                    WButtonFoldoutBehaviorContent,
+                                    settings.wbuttonFoldoutBehavior,
+                                    value => settings.wbuttonFoldoutBehavior = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wbuttonFoldoutTweenEnabled),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawToggleField(
+                                    WButtonFoldoutTweenEnabledContent,
+                                    settings.wbuttonFoldoutTweenEnabled,
+                                    value => settings.wbuttonFoldoutTweenEnabled = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -3699,6 +3913,91 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                     MaxFoldoutSpeed,
                                     value =>
                                         settings.serializableSortedDictionaryFoldoutSpeed = value,
+                                    true
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(serializableSetFoldoutTweenEnabled),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawToggleField(
+                                    SetFoldoutTweenEnabledContent,
+                                    settings.serializableSetFoldoutTweenEnabled,
+                                    value => settings.serializableSetFoldoutTweenEnabled = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(serializableSetFoldoutSpeed),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (!settings.serializableSetFoldoutTweenEnabled)
+                                {
+                                    return true;
+                                }
+
+                                bool changed = DrawFloatSliderField(
+                                    SetFoldoutSpeedContent,
+                                    settings.serializableSetFoldoutSpeed,
+                                    MinFoldoutSpeed,
+                                    MaxFoldoutSpeed,
+                                    value => settings.serializableSetFoldoutSpeed = value,
+                                    true
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(serializableSortedSetFoldoutTweenEnabled),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawToggleField(
+                                    SortedSetFoldoutTweenEnabledContent,
+                                    settings.serializableSortedSetFoldoutTweenEnabled,
+                                    value =>
+                                        settings.serializableSortedSetFoldoutTweenEnabled = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(serializableSortedSetFoldoutSpeed),
+                                    System.StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (!settings.serializableSortedSetFoldoutTweenEnabled)
+                                {
+                                    return true;
+                                }
+
+                                bool changed = DrawFloatSliderField(
+                                    SortedSetFoldoutSpeedContent,
+                                    settings.serializableSortedSetFoldoutSpeed,
+                                    MinFoldoutSpeed,
+                                    MaxFoldoutSpeed,
+                                    value => settings.serializableSortedSetFoldoutSpeed = value,
                                     true
                                 );
                                 dataChanged |= changed;

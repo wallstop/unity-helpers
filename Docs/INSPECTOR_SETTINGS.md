@@ -59,7 +59,7 @@ public string sceneName;  // Uses StringInListPageSize
 ### SerializableSetPageSize
 
 **Default:** 15
-**Range:** 5 - 100
+**Range:** 5 - 500
 **Applies to:** `SerializableHashSet<T>`, `SerializableSortedSet<T>`
 
 **Description:** Number of set elements shown per page in the inspector.
@@ -69,6 +69,60 @@ public string sceneName;  // Uses StringInListPageSize
 ```csharp
 public SerializableHashSet<string> items;  // Uses SerializableSetPageSize
 ```
+
+---
+
+### SerializableDictionaryPageSize
+
+**Default:** 15
+**Range:** 5 - 250
+**Applies to:** `SerializableDictionary<TKey, TValue>`, `SerializableSortedDictionary<TKey, TValue>`
+
+**Description:** Number of dictionary entries shown per page in the inspector.
+
+**Usage:**
+
+```csharp
+public SerializableDictionary<string, GameObject> prefabs;  // Uses SerializableDictionaryPageSize
+```
+
+---
+
+### SerializableSetFoldoutTweenEnabled
+
+**Default:** On  
+**Applies to:** `SerializableHashSet<T>`
+
+**Description:** Controls whether the manual entry foldout in SerializableSet inspectors animates when expanding or collapsing.
+
+---
+
+### SerializableSetFoldoutSpeed
+
+**Default:** 2  
+**Range:** 2 - 12  
+**Applies to:** `SerializableHashSet<T>`
+
+**Description:** Animation speed for the SerializableSet manual entry foldout when `SerializableSetFoldoutTweenEnabled` is enabled.
+
+---
+
+### SerializableSortedSetFoldoutTweenEnabled
+
+**Default:** On  
+**Applies to:** `SerializableSortedSet<T>`
+
+**Description:** Controls whether the manual entry foldout in SerializableSortedSet inspectors animates when expanding or collapsing.
+
+---
+
+### SerializableSortedSetFoldoutSpeed
+
+**Default:** 2  
+**Range:** 2 - 12  
+**Applies to:** `SerializableSortedSet<T>`
+
+**Description:** Animation speed for the SerializableSortedSet manual entry foldout when `SerializableSortedSetFoldoutTweenEnabled` is enabled.
 
 ---
 

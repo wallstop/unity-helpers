@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
+    using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using WallstopStudios.UnityHelpers.Tests.Utils;
@@ -34,6 +35,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public StringComplexDictionary dictionary = new();
         }
 
+        private sealed class ScriptableObjectDictionaryHost : ScriptableObject
+        {
+            public StringScriptableDictionary dictionary = new();
+        }
+
         private sealed class PrivateComplexDictionaryHost : ScriptableObject
         {
             public PrivateComplexDictionary dictionary = new();
@@ -54,6 +60,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public GameObjectStringDictionary dictionary = new();
         }
 
+        private sealed class PrivateCtorDictionaryHost : ScriptableObject
+        {
+            public PrivateCtorDictionary dictionary = new();
+        }
+
         [Serializable]
         private sealed class IntStringDictionary : SerializableDictionary<int, string> { }
 
@@ -63,6 +74,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Serializable]
         private sealed class StringComplexDictionary
             : SerializableDictionary<string, ComplexValue> { }
+
+        [Serializable]
+        private sealed class StringScriptableDictionary
+            : SerializableDictionary<string, SampleScriptableObject> { }
 
         [Serializable]
         private sealed class PrivateComplexDictionary
@@ -78,6 +93,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public Color button;
             public Color text;
         }
+
+        [Serializable]
+        private sealed class SampleScriptableObject : ScriptableObject { }
 
         [Serializable]
         private sealed class PrivateComplexValue
@@ -104,6 +122,39 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Serializable]
         private sealed class RectIntDictionary : SerializableDictionary<Rect, int> { }
 
+        [Serializable]
+        private sealed class PrivateCtorDictionary
+            : SerializableDictionary<PrivateCtorKey, PrivateCtorValue> { }
+
+        [Serializable]
+        private sealed class PrivateCtorKey
+        {
+            [SerializeField]
+            private string token;
+
+            public string Token => token;
+
+            private PrivateCtorKey()
+            {
+                token = Guid.NewGuid().ToString();
+            }
+        }
+
+        [Serializable]
+        private sealed class PrivateCtorValue
+        {
+            [SerializeField]
+            private Color accent = Color.magenta;
+
+            [SerializeField]
+            private float intensity = 1f;
+
+            private PrivateCtorValue() { }
+
+            public Color Accent => accent;
+            public float Intensity => intensity;
+        }
+
         [Test]
         public void PageSizeClampPreventsExcessiveCacheGrowth()
         {
@@ -128,6 +179,92 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             drawer.GetOrCreateList(dictionaryProperty);
 
             Assert.AreEqual(SerializableDictionaryPropertyDrawer.MaxPageSize, pagination.pageSize);
+        }
+
+        [Test]
+        public void PaginationStateUsesSerializableDictionaryPageSizeSetting()
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            for (int i = 0; i < 64; i++)
+            {
+                host.dictionary.Add(i, $"Value {i}");
+            }
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            int originalPageSize = settings.SerializableDictionaryPageSize;
+
+            try
+            {
+                int configuredSize = UnityHelpersSettings.MinPageSize + 7;
+                settings.SerializableDictionaryPageSize = configuredSize;
+
+                SerializableDictionaryPropertyDrawer drawer = new();
+                SerializableDictionaryPropertyDrawer.PaginationState pagination =
+                    drawer.GetOrCreatePaginationState(dictionaryProperty);
+
+                Assert.AreEqual(
+                    UnityHelpersSettings.GetSerializableDictionaryPageSize(),
+                    pagination.pageSize,
+                    "Pagination should respect the configured SerializableDictionary page size."
+                );
+            }
+            finally
+            {
+                settings.SerializableDictionaryPageSize = originalPageSize;
+            }
+        }
+
+        [Test]
+        public void PaginationStateResetsIndexWhenPageSizeChanges()
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            for (int i = 0; i < 120; i++)
+            {
+                host.dictionary.Add(i, $"Value {i}");
+            }
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            int originalPageSize = settings.SerializableDictionaryPageSize;
+
+            try
+            {
+                settings.SerializableDictionaryPageSize = 20;
+
+                SerializableDictionaryPropertyDrawer drawer = new();
+                SerializableDictionaryPropertyDrawer.PaginationState pagination =
+                    drawer.GetOrCreatePaginationState(dictionaryProperty);
+                pagination.pageIndex = 3;
+
+                settings.SerializableDictionaryPageSize = 30;
+
+                pagination = drawer.GetOrCreatePaginationState(dictionaryProperty);
+
+                Assert.AreEqual(
+                    UnityHelpersSettings.GetSerializableDictionaryPageSize(),
+                    pagination.pageSize
+                );
+                Assert.AreEqual(
+                    0,
+                    pagination.pageIndex,
+                    "Changing the global page size should reset the cached pagination index."
+                );
+            }
+            finally
+            {
+                settings.SerializableDictionaryPageSize = originalPageSize;
+            }
         }
 
         [Test]
@@ -842,6 +979,20 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        public void GetDefaultValueReturnsNullForUnityObjectTypes()
+        {
+            object gameObjectDefault = SerializableDictionaryPropertyDrawer.GetDefaultValue(
+                typeof(GameObject)
+            );
+            object scriptableDefault = SerializableDictionaryPropertyDrawer.GetDefaultValue(
+                typeof(SampleScriptableObject)
+            );
+
+            Assert.IsNull(gameObjectDefault);
+            Assert.IsNull(scriptableDefault);
+        }
+
+        [Test]
         public void CommitEntryAddsPrivateComplexValue()
         {
             PrivateComplexDictionaryHost host =
@@ -901,6 +1052,132 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             host.dictionary.EditorAfterDeserialize();
             Assert.That(host.dictionary.Count, Is.EqualTo(1));
             Assert.That(host.dictionary.ContainsKey("Accent"), Is.True);
+        }
+
+        [Test]
+        public void GetDefaultValueSupportsTypesWithPrivateConstructors()
+        {
+            object keyDefault = SerializableDictionaryPropertyDrawer.GetDefaultValue(
+                typeof(PrivateCtorKey)
+            );
+            object valueDefault = SerializableDictionaryPropertyDrawer.GetDefaultValue(
+                typeof(PrivateCtorValue)
+            );
+
+            Assert.IsInstanceOf<PrivateCtorKey>(keyDefault);
+            Assert.IsInstanceOf<PrivateCtorValue>(valueDefault);
+        }
+
+        [Test]
+        public void PendingEntryDefaultsIncludePrivateConstructorTypes()
+        {
+            PrivateCtorDictionaryHost host = CreateScriptableObject<PrivateCtorDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(PrivateCtorDictionaryHost.dictionary)
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            object pending = GetPendingEntryViaReflection(
+                drawer,
+                dictionaryProperty,
+                typeof(PrivateCtorKey),
+                typeof(PrivateCtorValue),
+                isSortedDictionary: false
+            );
+
+            Type pendingType = pending.GetType();
+            object keyInstance = pendingType
+                .GetField("key", BindingFlags.Instance | BindingFlags.Public)
+                ?.GetValue(pending);
+            object valueInstance = pendingType
+                .GetField("value", BindingFlags.Instance | BindingFlags.Public)
+                ?.GetValue(pending);
+
+            Assert.IsInstanceOf<PrivateCtorKey>(
+                keyInstance,
+                "Pending key should use private constructor default."
+            );
+            Assert.IsInstanceOf<PrivateCtorValue>(
+                valueInstance,
+                "Pending value should use private constructor default."
+            );
+        }
+
+        [Test]
+        public void PendingEntryDefaultsRemainNullForUnityObjects()
+        {
+            ScriptableObjectDictionaryHost host =
+                CreateScriptableObject<ScriptableObjectDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ScriptableObjectDictionaryHost.dictionary)
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            object pending = GetPendingEntryViaReflection(
+                drawer,
+                dictionaryProperty,
+                typeof(string),
+                typeof(SampleScriptableObject),
+                isSortedDictionary: false
+            );
+
+            Type pendingType = pending.GetType();
+            object valueInstance = pendingType
+                .GetField("value", BindingFlags.Instance | BindingFlags.Public)
+                ?.GetValue(pending);
+
+            Assert.IsNull(
+                valueInstance,
+                "UnityEngine.Object values should remain null so the object picker can be used."
+            );
+        }
+
+        [Test]
+        public void ManualEntryUsesObjectPickerForScriptableObjectKeys()
+        {
+            Type pendingType = typeof(SerializableDictionaryPropertyDrawer).GetNestedType(
+                "PendingEntry",
+                BindingFlags.NonPublic
+            );
+            Assert.IsNotNull(pendingType, "PendingEntry type should be discoverable.");
+
+            object pending = Activator.CreateInstance(pendingType);
+            MethodInfo drawField = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
+                "DrawFieldForType",
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
+            Assert.IsNotNull(drawField, "Expected DrawFieldForType via reflection.");
+
+            object[] parameters =
+            {
+                new Rect(0f, 0f, 200f, EditorGUIUtility.singleLineHeight),
+                "Key",
+                null,
+                typeof(SampleScriptableObject),
+                pending,
+                false,
+            };
+
+            TestIMGUIExecutor.Run(() =>
+            {
+                drawField.Invoke(null, parameters);
+            });
+
+            FieldInfo keyWrapperField = pendingType.GetField(
+                "keyWrapper",
+                BindingFlags.Instance | BindingFlags.Public
+            );
+            Assert.IsNotNull(keyWrapperField, "Expected keyWrapper field.");
+            Assert.IsNull(
+                keyWrapperField.GetValue(pending),
+                "ScriptableObject keys should not allocate PendingValueWrappers."
+            );
         }
 
         [Test]
@@ -1202,6 +1479,28 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
 
             return string.Join(", ", values);
+        }
+
+        private static object GetPendingEntryViaReflection(
+            SerializableDictionaryPropertyDrawer drawer,
+            SerializedProperty dictionaryProperty,
+            Type keyType,
+            Type valueType,
+            bool isSortedDictionary
+        )
+        {
+            MethodInfo method = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
+                "GetOrCreatePendingEntry",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            Assert.IsNotNull(method, "Expected GetOrCreatePendingEntry via reflection.");
+
+            object pending = method.Invoke(
+                drawer,
+                new object[] { dictionaryProperty, keyType, valueType, isSortedDictionary }
+            );
+            Assert.IsNotNull(pending, "Pending entry instance should not be null.");
+            return pending;
         }
     }
 }
