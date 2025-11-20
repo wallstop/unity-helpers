@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
     using System;
     using System.Collections;
+    using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
     using UnityEditor;
@@ -260,6 +261,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             itemsProperty.MoveArrayElement(0, 2);
             serializedObject.ApplyModifiedProperties();
 
+            bool beforeDeserialize = SerializableSetPropertyDrawer.ShouldShowSortButton(
+                SerializableSetPropertyDrawer.IsSortedSet(setProperty),
+                typeof(int),
+                itemsProperty
+            );
+            Assert.IsTrue(
+                beforeDeserialize,
+                $"Sort button should be visible before the sorted set rehydrates. Items: {DumpIntArray(itemsProperty)}"
+            );
+
             host.set.OnAfterDeserialize();
             serializedObject.Update();
             setProperty = serializedObject.FindProperty(nameof(SortedSetHost.set));
@@ -273,8 +284,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 itemsProperty
             );
 
-            Assert.IsTrue(showSort);
-            Assert.IsTrue(host.set.PreserveSerializedEntries);
+            Assert.IsFalse(
+                showSort,
+                $"Sorted sets reorder entries immediately. Items: {DumpIntArray(itemsProperty)}"
+            );
+            Assert.IsFalse(
+                host.set.PreserveSerializedEntries,
+                "Sorted set should clear PreserveSerializedEntries once it reorders elements automatically."
+            );
         }
 
         [Test]
@@ -1200,6 +1217,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Is.EqualTo(paddedRect.xMin).Within(0.0001f),
                 "Container rect should align with the padded content."
             );
+        }
+
+        private static string DumpIntArray(SerializedProperty property)
+        {
+            if (property == null || !property.isArray)
+            {
+                return "<null>";
+            }
+
+            List<int> values = new(property.arraySize);
+            for (int i = 0; i < property.arraySize; i++)
+            {
+                SerializedProperty element = property.GetArrayElementAtIndex(i);
+                values.Add(element?.intValue ?? 0);
+            }
+
+            return string.Join(", ", values);
         }
     }
 }

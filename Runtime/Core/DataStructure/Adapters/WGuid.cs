@@ -122,7 +122,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// WGuid wrapped = new WGuid(data);
         /// </code>
         /// </example>
-        public WGuid(byte[] guidBytes)
+        public WGuid(ReadOnlySpan<byte> guidBytes)
         {
             if (guidBytes == null)
             {

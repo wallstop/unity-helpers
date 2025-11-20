@@ -11,7 +11,7 @@ Professional inspector attributes rivaling Odin Inspector - completely free:
 - **`[WFoldoutGroup]` / `[WFoldoutGroupEnd]`** - Collapsible sections with persistent state, nesting support, and custom styling
 - **`[WShowIf]`** - Conditional field display based on other field values (enum, bool, numeric comparisons)
 - **`[WEnumToggleButtons]`** - Display enums as toggle button grids instead of dropdowns
-- **Settings System** - `UnityHelpersSettings` for global configuration via Project Settings
+- **Settings System** - `Project Settings > Wallstop Studios > Unity Helpers` for global configuration via Project Settings
 - Comprehensive documentation in `Docs/INSPECTOR_*.md` guides
 
 ### 💾 Serializable Collections (NEW)
@@ -128,16 +128,7 @@ Unity-native serializable generic collections with custom property drawers:
 
 **StringInList → StringInListAttribute:**
 
-```csharp
-// Before
-public StringInList myString;
-
-// After
-[StringInList(nameof(GetValidStrings))]
-public string myString;
-// Currently must be static!
-private static string[] GetValidStrings() => new[] { "Option1", "Option2" };
-```
+No change, C# automatically omits `Attribute`.
 
 **KVector2 Removal:**
 

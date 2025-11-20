@@ -664,6 +664,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             valuesProperty.MoveArrayElement(0, 2);
             serializedObject.ApplyModifiedProperties();
 
+            bool beforeDeserialize =
+                SerializableDictionaryPropertyDrawer.ShouldShowDictionarySortButton(
+                    keysProperty,
+                    typeof(int),
+                    keysProperty.arraySize,
+                    Comparison
+                );
+            Assert.IsTrue(
+                beforeDeserialize,
+                $"Sort button should be visible before the sorted dictionary rehydrates. Keys: {DumpIntArray(keysProperty)}"
+            );
+
             host.dictionary.OnAfterDeserialize();
             serializedObject.Update();
             dictionaryProperty = serializedObject.FindProperty(
@@ -680,8 +692,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Comparison
             );
 
-            Assert.IsTrue(showSort);
-            Assert.IsTrue(host.dictionary.PreserveSerializedEntries);
+            Assert.IsFalse(
+                showSort,
+                $"Sorted dictionaries reorder entries immediately. Keys: {DumpIntArray(keysProperty)}"
+            );
+            Assert.IsFalse(
+                host.dictionary.PreserveSerializedEntries,
+                "Sorted dictionary should not preserve serialized entries after it reorders keys automatically."
+            );
             return;
 
             int Comparison(object left, object right)
@@ -1167,6 +1185,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     property.stringValue = value ?? string.Empty;
                 }
             }
+        }
+
+        private static string DumpIntArray(SerializedProperty property)
+        {
+            if (property == null || !property.isArray)
+            {
+                return "<null>";
+            }
+
+            List<int> values = new(property.arraySize);
+            for (int i = 0; i < property.arraySize; i++)
+            {
+                SerializedProperty element = property.GetArrayElementAtIndex(i);
+                values.Add(element?.intValue ?? 0);
+            }
+
+            return string.Join(", ", values);
         }
     }
 }

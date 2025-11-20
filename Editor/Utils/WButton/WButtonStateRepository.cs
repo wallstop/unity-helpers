@@ -159,7 +159,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
             if (parameterType.IsValueType)
             {
-                return Activator.CreateInstance(parameterType);
+                if (WButtonValueUtility.TryCreateInstance(parameterType, out object created))
+                {
+                    return created;
+                }
+                return null;
             }
 
             if (parameterType == typeof(string))

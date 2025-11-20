@@ -622,7 +622,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 {
                     if (parameter.ParameterType.IsValueType && !parameter.IsOptional)
                     {
-                        value = Activator.CreateInstance(parameter.ParameterType);
+                        if (
+                            !WButtonValueUtility.TryCreateInstance(
+                                parameter.ParameterType,
+                                out object createdValue
+                            )
+                        )
+                        {
+                            value = null;
+                        }
+                        else
+                        {
+                            value = createdValue;
+                        }
                     }
                     else if (parameter.IsParamsArray)
                     {

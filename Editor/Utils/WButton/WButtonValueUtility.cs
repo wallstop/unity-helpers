@@ -2,10 +2,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 {
 #if UNITY_EDITOR
     using System;
+    using System.Collections.Concurrent;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     internal static class WButtonValueUtility
     {
+        private static readonly ConcurrentDictionary<Type, Func<object>> ParameterlessFactoryCache =
+            new();
+        private static readonly ConcurrentDictionary<Type, byte> UnsupportedFactoryTypes = new();
+
         internal static object CloneValue(object value)
         {
             if (value is Array array)
@@ -59,6 +65,39 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             }
 
             return true;
+        }
+
+        internal static bool TryCreateInstance(Type type, out object value)
+        {
+            value = null;
+            if (type == null)
+            {
+                return false;
+            }
+
+            if (ParameterlessFactoryCache.TryGetValue(type, out Func<object> cached))
+            {
+                value = cached();
+                return value != null;
+            }
+
+            if (UnsupportedFactoryTypes.ContainsKey(type))
+            {
+                return false;
+            }
+
+            try
+            {
+                Func<object> factory = ReflectionHelpers.GetParameterlessConstructor(type);
+                ParameterlessFactoryCache[type] = factory;
+                value = factory();
+                return value != null;
+            }
+            catch (ArgumentException)
+            {
+                UnsupportedFactoryTypes[type] = 0;
+                return false;
+            }
         }
     }
 #endif

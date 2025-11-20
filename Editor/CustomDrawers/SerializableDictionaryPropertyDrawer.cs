@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
     using System;
     using System.Collections;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Globalization;
     using System.Reflection;
@@ -58,6 +59,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Color ThemeOverwriteColor = new(0.98f, 0.82f, 0.27f, 1f);
         private static readonly Color ThemeResetColor = new(0.7f, 0.7f, 0.7f, 1f);
         private static readonly Color ThemeDisabledColor = new(0.6f, 0.6f, 0.6f, 1f);
+        private static readonly ConcurrentDictionary<
+            Type,
+            Func<object>
+        > ParameterlessConstructorCache = new();
+        private static readonly ConcurrentDictionary<Type, byte> UnsupportedParameterlessTypes =
+            new();
         private static readonly Color DuplicatePrimaryColor = new(0.99f, 0.82f, 0.35f, 0.55f);
         private static readonly Color DuplicateSecondaryColor = new(0.96f, 0.45f, 0.45f, 0.65f);
         private static readonly Color DuplicateOutlineColor = new(0.65f, 0.18f, 0.18f, 0.9f);
@@ -1045,7 +1052,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return string.Empty;
             }
 
-            List<int> sorted = new(indices);
+            using PooledResource<List<int>> sortedLease = Buffers<int>.GetList(
+                indices.Count,
+                out List<int> sorted
+            );
+            sorted.AddRange(indices);
             sorted.Sort();
 
             if (sorted.Count == 1)
@@ -1056,7 +1067,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             const int maxDisplay = 5;
             int displayCount = Math.Min(sorted.Count, maxDisplay);
 
-            StringBuilder summaryBuilder = new();
+            using PooledResource<StringBuilder> builderLease = Buffers.GetStringBuilder(
+                Math.Max(sorted.Count * 6 + 64, 64),
+                out StringBuilder summaryBuilder
+            );
+            summaryBuilder.Clear();
             summaryBuilder.Append("Null keys detected at indices ");
 
             for (int i = 0; i < displayCount; i++)
@@ -1694,12 +1709,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     comparison = CreateManualKeyComparisonDelegate(keyType);
                 }
             }
-            bool showSort = ShouldShowDictionarySortButton(
-                keysProperty,
-                keyType,
-                itemCount,
-                comparison
-            );
+            bool showSort =
+                comparison != null
+                && keyType != null
+                && keysProperty != null
+                && itemCount > 1
+                && !KeysAreSorted(keysProperty, keyType, comparison);
             bool sortEnabled = showSort;
 
             GUIContent clearAllContent = EditorGUIUtility.TrTextContent(
@@ -2935,12 +2950,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Func<object, object, int> comparison
         )
         {
-            if (comparison == null || keyType == null || keysProperty == null)
-            {
-                return false;
-            }
-
-            if (itemCount <= 1)
+            if (comparison == null || keyType == null || keysProperty == null || itemCount <= 1)
             {
                 return false;
             }
@@ -3780,6 +3790,39 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
+        private static bool TryInvokeParameterlessConstructor(Type type, out object instance)
+        {
+            instance = null;
+            if (type == null)
+            {
+                return false;
+            }
+
+            if (ParameterlessConstructorCache.TryGetValue(type, out Func<object> cached))
+            {
+                instance = cached();
+                return instance != null;
+            }
+
+            if (UnsupportedParameterlessTypes.ContainsKey(type))
+            {
+                return false;
+            }
+
+            try
+            {
+                Func<object> ctor = ReflectionHelpers.GetParameterlessConstructor(type);
+                ParameterlessConstructorCache[type] = ctor;
+                instance = ctor();
+                return instance != null;
+            }
+            catch
+            {
+                UnsupportedParameterlessTypes[type] = 0;
+                return false;
+            }
+        }
+
         private static bool TryCreateDefaultInstance(Type type, out object instance)
         {
             instance = null;
@@ -3798,15 +3841,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
-            try
-            {
-                instance = Activator.CreateInstance(type, true);
-                return instance != null;
-            }
-            catch
-            {
-                return false;
-            }
+            return TryInvokeParameterlessConstructor(type, out instance);
         }
 
         private static object CloneComplexValue(object source, Type type)
@@ -3820,7 +3855,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 if (type.IsValueType)
                 {
-                    return Activator.CreateInstance(type);
+                    return TryInvokeParameterlessConstructor(type, out object value) ? value : null;
                 }
 
                 return null;
@@ -4482,7 +4517,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (type.IsValueType)
             {
-                return Activator.CreateInstance(type);
+                return TryInvokeParameterlessConstructor(type, out object value) ? value : null;
             }
 
             if (TryCreateDefaultInstance(type, out object instance))
@@ -4626,7 +4661,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly Dictionary<int, double> _duplicateAnimationStartTimes = new();
             private readonly List<int> _animationKeysScratch = new();
             private readonly List<int> _summaryIndicesScratch = new();
-            private readonly StringBuilder _summaryBuilder = new();
+            private StringBuilder _summaryBuilder;
             private bool _lastHadDuplicates;
 
             public bool HasDuplicates { get; private set; }
@@ -4639,7 +4674,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 _duplicateLookup.Clear();
                 HasDuplicates = false;
                 SummaryTooltip = string.Empty;
-                _summaryBuilder.Clear();
 
                 if (keysProperty == null || keyType == null)
                 {
@@ -4654,6 +4688,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 int count = keysProperty.arraySize;
                 Dictionary<object, List<int>> grouping = new(new KeyEqualityComparer());
+
+                using PooledResource<StringBuilder> summaryBuilderLease = Buffers.GetStringBuilder(
+                    Math.Max(count * 8, 64),
+                    out StringBuilder summaryBuilder
+                );
+                _summaryBuilder = summaryBuilder;
+                _summaryBuilder.Clear();
 
                 for (int index = 0; index < count; index++)
                 {
@@ -4709,6 +4750,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     displayedSummaryGroups
                 );
 
+                _summaryBuilder = null;
+
                 UpdateAnimationTracking();
 
                 bool changed = HasDuplicates != _lastHadDuplicates;
@@ -4739,6 +4782,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return;
                 }
 
+                if (_summaryBuilder == null)
+                {
+                    return;
+                }
+
                 _summaryIndicesScratch.Clear();
                 _summaryIndicesScratch.AddRange(indices);
                 _summaryIndicesScratch.Sort();
@@ -4760,6 +4808,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private string BuildDuplicateSummaryText(int duplicateGroupCount, int displayedGroups)
             {
+                if (_summaryBuilder == null)
+                {
+                    return string.Empty;
+                }
+
                 if (duplicateGroupCount <= 0)
                 {
                     return string.Empty;

@@ -85,7 +85,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
             if (resolvedValue == null && parameter.ParameterType.IsValueType)
             {
-                resolvedValue = Activator.CreateInstance(parameter.ParameterType);
+                if (
+                    !WButtonValueUtility.TryCreateInstance(
+                        parameter.ParameterType,
+                        out object createdValue
+                    )
+                )
+                {
+                    resolvedValue = null;
+                }
+                else
+                {
+                    resolvedValue = createdValue;
+                }
             }
 
             value = resolvedValue;

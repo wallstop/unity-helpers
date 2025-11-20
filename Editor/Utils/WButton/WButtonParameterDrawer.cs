@@ -78,7 +78,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                     return null;
                 }
 
-                currentValue ??= Activator.CreateInstance(effectiveType);
+                if (
+                    currentValue == null
+                    && WButtonValueUtility.TryCreateInstance(effectiveType, out object createdValue)
+                )
+                {
+                    currentValue = createdValue;
+                }
             }
 
             if (effectiveType == typeof(bool))

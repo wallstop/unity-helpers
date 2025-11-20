@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
     using System;
     using System.Collections;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Globalization;
     using System.Reflection;
@@ -11,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
@@ -83,6 +85,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Dictionary<string, Type> PropertyTypeResolutionCache = new(
             StringComparer.Ordinal
         );
+        private static readonly ConcurrentDictionary<Type, Func<object>> ParameterlessFactoryCache =
+            new();
+        private static readonly ConcurrentDictionary<Type, byte> UnsupportedParameterlessTypes =
+            new();
 
         private readonly Dictionary<string, PaginationState> _paginationStates = new();
         private readonly Dictionary<string, DuplicateState> _duplicateStates = new();
@@ -110,7 +116,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public readonly Dictionary<int, bool> primaryFlags = new();
             public readonly Dictionary<object, List<int>> grouping = new();
             public readonly Stack<List<int>> listPool = new();
-            public readonly StringBuilder summaryBuilder = new();
             public readonly List<int> animationKeysScratch = new();
             public readonly List<object> groupingKeysScratch = new();
         }
@@ -976,7 +981,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             Type elementType = inspector.ElementType;
-            bool allowSort = isSortedSet || ElementSupportsManualSorting(elementType);
             int totalCount = itemsPropertyRef is { isArray: true } ? itemsPropertyRef.arraySize : 0;
             float padding = 4f;
             float lineHeight = EditorGUIUtility.singleLineHeight;
@@ -1030,12 +1034,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
             rightCursor = clearRect.x - buttonSpacing;
 
-            bool showSort = ShouldShowSortButton(isSortedSet, elementType, itemsPropertyRef);
+            bool allowSort = isSortedSet || ElementSupportsManualSorting(elementType);
+            bool needsSorting = NeedsSorting(itemsPropertyRef, allowSort);
+            bool showSort = needsSorting;
             Rect sortRect = default;
             if (showSort)
             {
                 sortRect = new(rightCursor - 60f, verticalCenter, 60f, lineHeight);
-                bool canSort = NeedsSorting(itemsPropertyRef, allowSort);
+                bool canSort = needsSorting;
                 using (new EditorGUI.DisabledScope(!canSort))
                 {
                     if (GUI.Button(sortRect, SortContent, SortActiveButtonStyle) && canSort)
@@ -1461,7 +1467,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             const int maxDisplay = 5;
             int displayCount = Math.Min(indices.Count, maxDisplay);
 
-            StringBuilder builder = new();
+            using PooledResource<StringBuilder> builderLease = Buffers.GetStringBuilder(
+                Math.Max(indices.Count * 6 + 64, 64),
+                out StringBuilder builder
+            );
+            builder.Clear();
             builder.Append("Null entries detected at indices ");
 
             for (int i = 0; i < displayCount; i++)
@@ -1614,7 +1624,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             state.duplicateIndices.Clear();
             state.primaryFlags.Clear();
-            state.summaryBuilder.Clear();
             state.summary = string.Empty;
             state.hasDuplicates = false;
 
@@ -1625,6 +1634,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             int count = itemsProperty.arraySize;
+            using PooledResource<StringBuilder> summaryBuilderLease = Buffers.GetStringBuilder(
+                Math.Max(count * 8, 64),
+                out StringBuilder summaryBuilder
+            );
+            summaryBuilder.Clear();
+
             for (int index = 0; index < count; index++)
             {
                 SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
@@ -1686,17 +1701,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
 
-                if (state.summaryBuilder.Length > 0)
+                if (summaryBuilder.Length > 0)
                 {
-                    state.summaryBuilder.AppendLine();
+                    summaryBuilder.AppendLine();
                 }
 
                 if (duplicateGroupCount <= 5)
                 {
-                    state.summaryBuilder.Append("Duplicate entry ");
-                    state.summaryBuilder.Append(ConvertDuplicateKeyToString(groupingKey));
-                    state.summaryBuilder.Append(" at indices ");
-                    AppendIndexList(state.summaryBuilder, indices);
+                    summaryBuilder.Append("Duplicate entry ");
+                    summaryBuilder.Append(ConvertDuplicateKeyToString(groupingKey));
+                    summaryBuilder.Append(" at indices ");
+                    AppendIndexList(summaryBuilder, indices);
                 }
 
                 indices.Clear();
@@ -1708,12 +1723,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (duplicateGroupCount > 5)
             {
-                if (state.summaryBuilder.Length > 0)
+                if (summaryBuilder.Length > 0)
                 {
-                    state.summaryBuilder.AppendLine();
+                    summaryBuilder.AppendLine();
                 }
 
-                state.summaryBuilder.Append("Additional duplicate groups omitted for brevity.");
+                summaryBuilder.Append("Additional duplicate groups omitted for brevity.");
             }
 
             if (state.animationStartTimes.Count > 0)
@@ -1738,8 +1753,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (state.hasDuplicates)
             {
                 state.summary =
-                    state.summaryBuilder.Length > 0
-                        ? state.summaryBuilder.ToString()
+                    summaryBuilder.Length > 0
+                        ? summaryBuilder.ToString()
                         : "Duplicate values detected.";
             }
             else
@@ -1775,6 +1790,38 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     builder.Append(", ");
                 }
                 builder.Append(indices[i]);
+            }
+        }
+
+        private static bool TryGetParameterlessFactory(Type type, out Func<object> factory)
+        {
+            factory = null;
+            if (type == null)
+            {
+                return false;
+            }
+
+            if (ParameterlessFactoryCache.TryGetValue(type, out factory))
+            {
+                return factory != null;
+            }
+
+            if (UnsupportedParameterlessTypes.ContainsKey(type))
+            {
+                return false;
+            }
+
+            try
+            {
+                Func<object> created = ReflectionHelpers.GetParameterlessConstructor(type);
+                ParameterlessFactoryCache[type] = created;
+                factory = created;
+                return true;
+            }
+            catch (ArgumentException)
+            {
+                UnsupportedParameterlessTypes[type] = 0;
+                return false;
             }
         }
 
@@ -3105,18 +3152,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 yield break;
             }
 
-            if (!elementType.IsAbstract && elementType.GetConstructor(Type.EmptyTypes) != null)
+            if (
+                !elementType.IsAbstract
+                && TryGetParameterlessFactory(elementType, out Func<object> elementFactory)
+            )
             {
                 for (int i = 0; i < MaxAutoAddAttempts; i++)
                 {
-                    yield return Activator.CreateInstance(elementType);
+                    yield return elementFactory();
                 }
                 yield break;
             }
 
-            if (elementType.IsValueType)
+            if (
+                elementType.IsValueType
+                && TryGetParameterlessFactory(elementType, out Func<object> valueFactory)
+            )
             {
-                yield return Activator.CreateInstance(elementType);
+                yield return valueFactory();
             }
             else
             {

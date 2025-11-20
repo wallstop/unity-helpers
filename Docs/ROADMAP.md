@@ -42,7 +42,7 @@ This roadmap outlines planned enhancements to Unity Helpers. All "Currently ship
 **Next up:**
 
 - Graduate 3D trees to production: profiling data, comprehensive docs, parity with 2D APIs
-- Mutable/incremental updates: localized inserts/removals without full rebuilds
+- Mutable/incremental updates/variants: localized inserts/removals without full rebuilds
 - Unity Physics parity: ray/capsule/sphere casts, overlap tests, PhysicsScene adapter structs
 - Streaming builders: tile-based loading for large worlds, job-based construction
 

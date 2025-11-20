@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
+    using WallstopStudios.UnityHelpers.Utils;
 
     [CustomPropertyDrawer(typeof(WEnumToggleButtonsAttribute))]
     public sealed class WEnumToggleButtonsDrawer : PropertyDrawer
@@ -529,33 +530,45 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             int endIndex = startIndex + visibleCount;
-            List<string> outOfView = null;
-            IReadOnlyList<ToggleOption> options = toggleSet.Options;
-            for (int index = 0; index < options.Count; index += 1)
+            PooledResource<List<string>> outOfViewLease = default;
+            try
             {
-                ToggleOption option = options[index];
-                if (!WEnumToggleButtonsUtility.IsOptionActive(property, toggleSet, option))
+                List<string> outOfView = null;
+                IReadOnlyList<ToggleOption> options = toggleSet.Options;
+                for (int index = 0; index < options.Count; index += 1)
                 {
-                    continue;
+                    ToggleOption option = options[index];
+                    if (!WEnumToggleButtonsUtility.IsOptionActive(property, toggleSet, option))
+                    {
+                        continue;
+                    }
+
+                    if (index >= startIndex && index < endIndex)
+                    {
+                        continue;
+                    }
+
+                    if (outOfView == null)
+                    {
+                        outOfViewLease = Buffers<string>.List.Get(out outOfView);
+                    }
+
+                    outOfView.Add(option.Label);
                 }
 
-                if (index >= startIndex && index < endIndex)
+                if (outOfView == null || outOfView.Count == 0)
                 {
-                    continue;
+                    return SelectionSummary.None;
                 }
 
-                outOfView ??= new List<string>();
-                outOfView.Add(option.Label);
+                string joined = string.Join(", ", outOfView);
+                string text = $"Current (out of view): {joined}";
+                return new SelectionSummary(true, new GUIContent(text));
             }
-
-            if (outOfView == null || outOfView.Count == 0)
+            finally
             {
-                return SelectionSummary.None;
+                outOfViewLease.Dispose();
             }
-
-            string joined = string.Join(", ", outOfView.ToArray());
-            string text = $"Current (out of view): {joined}";
-            return new SelectionSummary(true, new GUIContent(text));
         }
 
         private static ButtonSegment ResolveButtonSegment(int index, int total, int columns)
