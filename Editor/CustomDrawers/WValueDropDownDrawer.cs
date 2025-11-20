@@ -343,4 +343,3 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         }
     }
 }
-

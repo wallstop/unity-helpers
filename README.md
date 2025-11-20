@@ -28,6 +28,19 @@ Unity Helpers eliminates entire categories of repetitive work with production-re
 
 ---
 
+**🗺️ Roadmap Snapshot** — See [Docs/ROADMAP.md](Docs/ROADMAP.md) for prioritized details.
+
+- Inspector tooling: inline nested editors, tabbed navigation, live instrumentation, disable-if/layer attributes.
+- Editor automation: Animation Creator v2, timeline-ready Event Editor upgrades, and new automation dashboards.
+- Random/statistics: CI statistical harness, automated quality reports, scenario samplers, job-safe stream schedulers.
+- Spatial trees: graduate the 3D variants, add incremental updates, physics-shape parity, and streaming builders.
+- UI Toolkit: control pack (dockable panes, data grids), theming samples, and performance patterns.
+- Utilities: cross-system bridges plus new math/combinatorics and service-pattern helpers.
+- Performance: automated benchmarks, Burst/Jobs rewrites of hot paths, and allocation analyzers.
+- Attributes & tags: metadata graphs, inspector visualizations, and serialization/migration guides.
+
+---
+
 **📚 New to Unity Helpers?** Start here: [Getting Started Guide](Docs/GETTING_STARTED.md)
 
 **🔍 Looking for something specific?** Check the [Feature Index](Docs/INDEX.md)

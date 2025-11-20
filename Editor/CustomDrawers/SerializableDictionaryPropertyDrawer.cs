@@ -206,6 +206,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         isSortedDictionary
                     );
 
+                    Rect listRect = new(position.x, y, position.width, list.GetHeight());
+                    LastListRect = listRect;
+                    HasLastListRect = true;
+
+                    int previousIndent = EditorGUI.indentLevel;
+                    EditorGUI.indentLevel = 0;
+                    list.DoList(listRect);
+                    EditorGUI.indentLevel = previousIndent;
+
+                    y = listRect.yMax + EditorGUIUtility.standardVerticalSpacing;
+
                     float pendingY = y;
                     DrawPendingEntryUI(
                         ref pendingY,
@@ -221,15 +232,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     );
 
                     y = pendingY + EditorGUIUtility.standardVerticalSpacing;
-
-                    Rect listRect = new(position.x, y, position.width, list.GetHeight());
-                    LastListRect = listRect;
-                    HasLastListRect = true;
-
-                    int previousIndent = EditorGUI.indentLevel;
-                    EditorGUI.indentLevel = 0;
-                    list.DoList(listRect);
-                    EditorGUI.indentLevel = previousIndent;
                 }
 
                 bool applied = serializedObject.ApplyModifiedProperties();

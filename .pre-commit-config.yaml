@@ -27,7 +27,7 @@ repos:
     hooks:
       - id: prettier
         name: Prettier (Markdown, JSON, asmdef, asmref, YAML)
-        entry: npx --yes prettier --write
+        entry: pwsh -NoProfile -File scripts/format-staged-prettier.ps1
         language: system
         files: '(?i)\.(md|markdown|json|asmdef|asmref|ya?ml)$'
         description: Use the repo's Prettier version from package.json.
@@ -36,7 +36,7 @@ repos:
     hooks:
       - id: markdownlint
         name: markdownlint (respect repo config)
-        entry: npx --yes markdownlint --config .markdownlint.json --ignore-path .markdownlintignore
+        entry: pwsh -NoProfile -File scripts/lint-staged-markdown.ps1
         language: system
         files: '(?i)\.(md|markdown)$'
 
