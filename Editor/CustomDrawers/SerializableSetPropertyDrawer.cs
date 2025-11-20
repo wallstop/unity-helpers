@@ -272,14 +272,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EditorGUI.DrawRect(rect, borderColor);
         }
 
-        private static void DrawSetBodyBottomBorder(Rect rect)
-        {
-            Color borderColor = EditorGUIUtility.isProSkin
-                ? new Color(0.2f, 0.2f, 0.2f, 1f)
-                : new Color(0.75f, 0.75f, 0.75f, 1f);
-            EditorGUI.DrawRect(rect, borderColor);
-        }
-
         private enum PaginationControlLayout
         {
             None,
@@ -981,9 +973,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     ReorderableList.defaultBehaviours.footerBackground ?? "RL Footer";
                 footerStyle.Draw(rect, GUIContent.none, false, false, false, false);
                 DrawSetBodyTopBorder(new Rect(rect.x, rect.y, rect.width, 1f));
-                DrawSetBodyBottomBorder(
-                    new Rect(rect.x, rect.yMax - 1f, rect.width, Mathf.Min(1f, rect.height))
-                );
             }
 
             Type elementType = inspector.ElementType;
