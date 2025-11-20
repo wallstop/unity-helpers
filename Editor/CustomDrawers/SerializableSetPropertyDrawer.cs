@@ -163,6 +163,107 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return EditorGUIUtility.singleLineHeight + PaginationHeaderHeightPadding;
         }
 
+        private void DrawEmptySetDrawer(
+            Rect rect,
+            SerializedProperty property,
+            string propertyPath,
+            SerializedProperty itemsProperty,
+            PaginationState pagination
+        )
+        {
+            GUI.Box(rect, GUIContent.none, EditorStyles.helpBox);
+
+            float padding = 6f;
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            float verticalSpacing = EditorGUIUtility.standardVerticalSpacing;
+
+            Rect messageRect = new(
+                rect.x + padding,
+                rect.y + padding,
+                rect.width - padding * 2f,
+                lineHeight
+            );
+            EditorGUI.LabelField(messageRect, "List is empty.", EditorStyles.miniLabel);
+
+            Rect buttonsRect = new(
+                messageRect.x,
+                messageRect.yMax + verticalSpacing,
+                messageRect.width,
+                lineHeight
+            );
+
+            SerializedProperty propertyRef = property;
+            SerializedProperty itemsPropertyRef = itemsProperty;
+            if (!TryGetSetInspector(propertyRef, propertyPath, out _))
+            {
+                return;
+            }
+
+            if (itemsPropertyRef == null)
+            {
+                return;
+            }
+
+            int totalCount = itemsPropertyRef is { isArray: true } ? itemsPropertyRef.arraySize : 0;
+            float rightCursor = buttonsRect.xMax;
+
+            Rect addRect = new(rightCursor - 60f, buttonsRect.y, 60f, lineHeight);
+            if (GUI.Button(addRect, AddEntryContent, AddButtonStyle))
+            {
+                if (
+                    TryAddNewElement(
+                        ref propertyRef,
+                        propertyPath,
+                        ref itemsPropertyRef,
+                        pagination
+                    )
+                )
+                {
+                    itemsPropertyRef = propertyRef.FindPropertyRelative(
+                        SerializableHashSetSerializedPropertyNames.Items
+                    );
+                    totalCount = itemsPropertyRef is { isArray: true }
+                        ? itemsPropertyRef.arraySize
+                        : 0;
+                    EnsurePaginationBounds(pagination, totalCount);
+                }
+            }
+            rightCursor = addRect.x - ButtonSpacing;
+
+            Rect clearRect = new(rightCursor - 80f, buttonsRect.y, 80f, lineHeight);
+            bool canClear = totalCount > 0;
+            GUIStyle clearStyle = canClear
+                ? ClearAllActiveButtonStyle
+                : ClearAllInactiveButtonStyle;
+            using (new EditorGUI.DisabledScope(!canClear))
+            {
+                if (GUI.Button(clearRect, ClearAllContent, clearStyle) && canClear)
+                {
+                    if (TryClearSet(ref propertyRef, propertyPath, ref itemsPropertyRef))
+                    {
+                        pagination.page = 0;
+                        pagination.selectedIndex = -1;
+                        itemsPropertyRef = propertyRef.FindPropertyRelative(
+                            SerializableHashSetSerializedPropertyNames.Items
+                        );
+                        totalCount = itemsPropertyRef is { isArray: true }
+                            ? itemsPropertyRef.arraySize
+                            : 0;
+                        EnsurePaginationBounds(pagination, totalCount);
+                    }
+                }
+            }
+        }
+
+        private static float GetEmptySetDrawerHeight()
+        {
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            float padding = 6f;
+            float verticalSpacing = EditorGUIUtility.standardVerticalSpacing;
+            float contentHeight = lineHeight + verticalSpacing + lineHeight;
+            return padding * 2f + contentHeight;
+        }
+
         private static void DrawSetBodyTopBorder(Rect rect)
         {
             Color borderColor = EditorGUIUtility.isProSkin
@@ -349,7 +450,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
                 hasItemsArray = itemsProperty is { isArray: true };
                 totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
-                bool hasListItems = hasItemsArray && totalCount > 0;
                 EnsurePaginationBounds(pagination, totalCount);
                 DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
                 NullEntryState nullState = EvaluateNullEntryState(property, itemsProperty);
@@ -370,28 +470,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     y = helpRect.yMax + SectionSpacing;
                 }
 
-                if (!hasListItems)
+                if (totalCount <= 0)
                 {
-                    if (Event.current.type == EventType.Repaint)
-                    {
-                        DrawSetBodyTopBorder(new Rect(position.x, y, position.width, 1f));
-                    }
-                    float blockPadding = 6f;
-                    float messageHeight = EditorGUIUtility.singleLineHeight;
-                    float blockHeight = blockPadding * 2f + messageHeight;
-                    Rect blockRect = new(position.x, y, position.width, blockHeight);
-                    LastItemsContainerRect = blockRect;
+                    float emptyHeight = GetEmptySetDrawerHeight();
+                    Rect emptyRect = new(position.x, y, position.width, emptyHeight);
+                    LastItemsContainerRect = emptyRect;
                     HasItemsContainerRect = true;
-                    GUI.Box(blockRect, GUIContent.none, EditorStyles.helpBox);
-
-                    Rect messageRect = new(
-                        blockRect.x + blockPadding,
-                        blockRect.y + blockPadding,
-                        blockRect.width - blockPadding * 2f,
-                        messageHeight
+                    DrawEmptySetDrawer(
+                        emptyRect,
+                        property,
+                        propertyPath,
+                        itemsProperty,
+                        pagination
                     );
-                    EditorGUI.LabelField(messageRect, "Set is empty.", EditorStyles.miniLabel);
-                    y = blockRect.yMax - 7.5f;
+                    y = emptyRect.yMax + SectionSpacing;
                 }
                 else
                 {
@@ -412,9 +504,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         propertyPath,
                         isSortedSet
                     );
-                    float listHeight = list.GetHeight();
+                    float listHeight =
+                        list != null
+                            ? list.GetHeight()
+                            : GetPaginationHeaderHeight()
+                                + EditorGUIUtility.singleLineHeight
+                                    * Mathf.Max(1, Mathf.Min(totalCount, pagination.pageSize))
+                                + GetFooterHeight();
                     Rect listRect = new(position.x, y, position.width, listHeight);
-                    if (Event.current.type == EventType.Repaint)
+                    if (list != null && Event.current.type == EventType.Repaint)
                     {
                         GUIStyle listBackgroundStyle =
                             ReorderableList.defaultBehaviours.boxBackground ?? GUI.skin.box;
@@ -447,22 +545,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                     LastItemsContainerRect = listRect;
                     HasItemsContainerRect = true;
-                    list.DoList(listRect);
+                    if (list != null)
+                    {
+                        list.DoList(listRect);
+                    }
+                    else
+                    {
+                        GUI.Box(listRect, GUIContent.none, EditorStyles.helpBox);
+                    }
                     y = listRect.yMax + SectionSpacing;
-                }
-
-                if (!hasListItems)
-                {
-                    Rect footerRect = new(position.x, y, position.width, GetFooterHeight());
-                    DrawFooterControls(
-                        footerRect,
-                        property,
-                        propertyPath,
-                        itemsProperty,
-                        pagination,
-                        isSortedSet
-                    );
-                    y = footerRect.yMax + SectionSpacing;
                 }
 
                 bool applied = serializedObject.ApplyModifiedProperties();
@@ -511,7 +602,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             bool hasItemsArray = itemsProperty is { isArray: true };
             int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
-            bool hasListItems = hasItemsArray && totalCount > 0;
 
             float footerHeight = GetFooterHeight();
             height += SectionSpacing;
@@ -533,45 +623,41 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             bool isSortedSet = IsSortedSet(property);
 
-            if (!hasListItems)
+            if (totalCount <= 0)
             {
-                float blockPadding = 6f;
-                float messageHeight = EditorGUIUtility.singleLineHeight;
-                height += blockPadding * 2f + messageHeight + SectionSpacing + footerHeight;
+                height += GetEmptySetDrawerHeight() + SectionSpacing;
                 return height + InspectorHeightPadding;
             }
-            else
-            {
-                string listKey = GetListKey(property);
-                string propertyPath = property.propertyPath;
-                UpdateListContext(
-                    listKey,
-                    property,
-                    itemsProperty,
-                    duplicateState,
-                    nullState,
-                    pagination
-                );
-                ReorderableList list = GetOrCreateList(
-                    listKey,
-                    property,
-                    itemsProperty,
-                    pagination,
-                    propertyPath,
-                    isSortedSet
-                );
 
-                float listHeight =
-                    list != null
-                        ? list.GetHeight()
-                        : GetPaginationHeaderHeight()
-                            + EditorGUIUtility.singleLineHeight
-                                * Mathf.Max(1, Mathf.Min(totalCount, pagination.pageSize))
-                            + footerHeight;
-                height += listHeight + SectionSpacing;
+            string listKey = GetListKey(property);
+            string propertyPath = property.propertyPath;
+            UpdateListContext(
+                listKey,
+                property,
+                itemsProperty,
+                duplicateState,
+                nullState,
+                pagination
+            );
+            ReorderableList list = GetOrCreateList(
+                listKey,
+                property,
+                itemsProperty,
+                pagination,
+                propertyPath,
+                isSortedSet
+            );
 
-                return height + InspectorHeightPadding;
-            }
+            float listHeight =
+                list != null
+                    ? list.GetHeight()
+                    : GetPaginationHeaderHeight()
+                        + EditorGUIUtility.singleLineHeight
+                            * Mathf.Max(1, Mathf.Min(totalCount, pagination.pageSize))
+                        + footerHeight;
+            height += listHeight + SectionSpacing;
+
+            return height + InspectorHeightPadding;
         }
 
         internal PaginationState GetOrCreatePaginationState(SerializedProperty property)
