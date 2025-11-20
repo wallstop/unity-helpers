@@ -163,6 +163,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return EditorGUIUtility.singleLineHeight + PaginationHeaderHeightPadding;
         }
 
+        private static void DrawSetBodyTopBorder(Rect rect)
+        {
+            Color borderColor = EditorGUIUtility.isProSkin
+                ? new Color(0.25f, 0.25f, 0.25f, 1f)
+                : new Color(0.7f, 0.7f, 0.7f, 1f);
+            EditorGUI.DrawRect(rect, borderColor);
+        }
+
+        private static void DrawSetBodyBottomBorder(Rect rect)
+        {
+            Color borderColor = EditorGUIUtility.isProSkin
+                ? new Color(0.2f, 0.2f, 0.2f, 1f)
+                : new Color(0.75f, 0.75f, 0.75f, 1f);
+            EditorGUI.DrawRect(rect, borderColor);
+        }
+
         private enum PaginationControlLayout
         {
             None,
@@ -356,6 +372,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 if (!hasListItems)
                 {
+                    if (Event.current.type == EventType.Repaint)
+                    {
+                        DrawSetBodyTopBorder(new Rect(position.x, y, position.width, 1f));
+                    }
                     float blockPadding = 6f;
                     float messageHeight = EditorGUIUtility.singleLineHeight;
                     float blockHeight = blockPadding * 2f + messageHeight;
@@ -371,7 +391,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         messageHeight
                     );
                     EditorGUI.LabelField(messageRect, "Set is empty.", EditorStyles.miniLabel);
-                    y = blockRect.yMax + SectionSpacing;
+                    y = blockRect.yMax - 7.5f;
                 }
                 else
                 {
@@ -398,22 +418,32 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     {
                         GUIStyle listBackgroundStyle =
                             ReorderableList.defaultBehaviours.boxBackground ?? GUI.skin.box;
+                        float headerHeight = Mathf.Max(0f, list.headerHeight);
                         float footerHeight = Mathf.Max(0f, list.footerHeight);
-                        float bodyHeight = Mathf.Max(0f, listRect.height - footerHeight);
-                        Rect backgroundRect = new(
-                            listRect.x,
-                            listRect.y,
-                            listRect.width,
-                            bodyHeight
+                        float bodyHeight = Mathf.Max(
+                            0f,
+                            listRect.height - headerHeight - footerHeight
                         );
-                        listBackgroundStyle.Draw(
-                            backgroundRect,
-                            GUIContent.none,
-                            false,
-                            false,
-                            false,
-                            false
-                        );
+                        if (bodyHeight > 0f)
+                        {
+                            float overlap = Mathf.Min(5f, bodyHeight);
+                            float bodyTop = listRect.y + headerHeight - overlap;
+                            float adjustedHeight = bodyHeight + overlap;
+                            Rect bodyRect = new(
+                                listRect.x,
+                                bodyTop,
+                                listRect.width,
+                                adjustedHeight
+                            );
+                            listBackgroundStyle.Draw(
+                                bodyRect,
+                                GUIContent.none,
+                                false,
+                                false,
+                                false,
+                                false
+                            );
+                        }
                     }
                     LastItemsContainerRect = listRect;
                     HasItemsContainerRect = true;
@@ -864,6 +894,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 GUIStyle footerStyle =
                     ReorderableList.defaultBehaviours.footerBackground ?? "RL Footer";
                 footerStyle.Draw(rect, GUIContent.none, false, false, false, false);
+                DrawSetBodyTopBorder(new Rect(rect.x, rect.y, rect.width, 1f));
+                DrawSetBodyBottomBorder(
+                    new Rect(rect.x, rect.yMax - 1f, rect.width, Mathf.Min(1f, rect.height))
+                );
             }
 
             Type elementType = inspector.ElementType;
