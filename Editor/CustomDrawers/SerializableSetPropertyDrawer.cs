@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using System.Collections.Generic;
     using System.Globalization;
     using System.Reflection;
+    using System.Runtime.CompilerServices;
     using System.Runtime.Serialization;
     using System.Text;
     using UnityEditor;
@@ -86,11 +87,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float ManualEntryButtonWidth = 110f;
         private const float ManualEntryResetWidth = 70f;
         private static readonly GUIContent ManualEntryFoldoutContent =
-            EditorGUIUtility.TrTextContent("Manual Entry");
+            EditorGUIUtility.TrTextContent("New Entry");
         private static readonly GUIContent ManualEntryValueContent = EditorGUIUtility.TrTextContent(
             "Value"
         );
-        private static readonly GUIContent ManualEntryAddContent = new("Add Entry");
+        private static readonly GUIContent ManualEntryAddContent = EditorGUIUtility.TrTextContent(
+            "Add"
+        );
         private static readonly GUIContent ManualEntryResetContent = new("Reset");
         private const float DuplicateShakeAmplitude = 2f;
         private const float DuplicateShakeFrequency = 7f;
@@ -502,20 +505,54 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     y = helpRect.yMax + SectionSpacing;
                 }
 
-                if (totalCount <= 0)
+                bool drewPendingEntry = false;
+                if (hasInspector && elementType != null)
                 {
-                    float emptyHeight = GetEmptySetDrawerHeight();
-                    Rect emptyRect = new(position.x, y, position.width, emptyHeight);
-                    LastItemsContainerRect = emptyRect;
-                    HasItemsContainerRect = true;
-                    DrawEmptySetDrawer(
-                        emptyRect,
+                    PendingEntry pendingEntry = GetOrCreatePendingEntry(
                         property,
                         propertyPath,
-                        itemsProperty,
-                        pagination
+                        elementType,
+                        isSortedSet
                     );
-                    y = emptyRect.yMax + SectionSpacing;
+                    DrawPendingEntryUI(
+                        ref y,
+                        position,
+                        pendingEntry,
+                        property,
+                        propertyPath,
+                        ref itemsProperty,
+                        pagination,
+                        inspector,
+                        elementType
+                    );
+                    y += SectionSpacing;
+                    drewPendingEntry = true;
+                }
+
+                if (totalCount <= 0)
+                {
+                    if (drewPendingEntry)
+                    {
+                        float infoHeight = GetWarningBarHeight();
+                        Rect infoRect = new(position.x, y, position.width, infoHeight);
+                        EditorGUI.HelpBox(infoRect, "No entries yet.", MessageType.Info);
+                        y = infoRect.yMax + SectionSpacing;
+                    }
+                    else
+                    {
+                        float emptyHeight = GetEmptySetDrawerHeight();
+                        Rect emptyRect = new(position.x, y, position.width, emptyHeight);
+                        LastItemsContainerRect = emptyRect;
+                        HasItemsContainerRect = true;
+                        DrawEmptySetDrawer(
+                            emptyRect,
+                            property,
+                            propertyPath,
+                            itemsProperty,
+                            pagination
+                        );
+                        y = emptyRect.yMax + SectionSpacing;
+                    }
                 }
                 else
                 {
@@ -586,28 +623,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         GUI.Box(listRect, GUIContent.none, EditorStyles.helpBox);
                     }
                     y = listRect.yMax + SectionSpacing;
-                }
-
-                if (hasInspector && elementType != null)
-                {
-                    PendingEntry pendingEntry = GetOrCreatePendingEntry(
-                        property,
-                        propertyPath,
-                        elementType,
-                        isSortedSet
-                    );
-                    DrawPendingEntryUI(
-                        ref y,
-                        position,
-                        pendingEntry,
-                        property,
-                        propertyPath,
-                        ref itemsProperty,
-                        pagination,
-                        inspector,
-                        elementType
-                    );
-                    y += SectionSpacing;
                 }
 
                 bool applied = serializedObject.ApplyModifiedProperties();
@@ -698,12 +713,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (totalCount <= 0)
             {
-                height += GetEmptySetDrawerHeight() + SectionSpacing;
                 if (shouldDrawPendingEntry)
                 {
                     height += pendingHeightWithSpacing;
+                    height += GetWarningBarHeight() + SectionSpacing;
+                    return height + InspectorHeightPadding;
                 }
 
+                height += GetEmptySetDrawerHeight() + SectionSpacing;
                 return height + InspectorHeightPadding;
             }
 
@@ -745,7 +762,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         internal PaginationState GetOrCreatePaginationState(SerializedProperty property)
         {
-            string key = property.propertyPath;
+            string key = GetPropertyCacheKey(property);
             PaginationState state = _paginationStates.GetOrAdd(key);
 
             int configuredPageSize = UnityHelpersSettings.GetSerializableSetPageSize();
@@ -810,9 +827,56 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return context;
         }
 
+        private static string GetPropertyCacheKey(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return string.Empty;
+            }
+
+            SerializedObject serializedObject = property.serializedObject;
+            string propertyPath = property.propertyPath ?? string.Empty;
+
+            if (serializedObject == null)
+            {
+                return propertyPath;
+            }
+
+            Object[] targets = serializedObject.targetObjects;
+            if (targets == null || targets.Length == 0)
+            {
+                int fallbackId = RuntimeHelpers.GetHashCode(serializedObject);
+                return $"{fallbackId}_{propertyPath}";
+            }
+
+            if (targets.Length == 1 && targets[0] != null)
+            {
+                return $"{targets[0].GetInstanceID()}_{propertyPath}";
+            }
+
+            using PooledResource<StringBuilder> keyBuilderLease = Buffers.GetStringBuilder(
+                propertyPath.Length + Math.Max(32, targets.Length * 12),
+                out StringBuilder keyBuilder
+            );
+            keyBuilder.Append(propertyPath);
+            keyBuilder.Append('|');
+
+            for (int index = 0; index < targets.Length; index++)
+            {
+                int id = targets[index] != null ? targets[index].GetInstanceID() : 0;
+                keyBuilder.Append(id);
+                if (index < targets.Length - 1)
+                {
+                    keyBuilder.Append(',');
+                }
+            }
+
+            return keyBuilder.ToString();
+        }
+
         private static string GetListKey(SerializedProperty property)
         {
-            return property.propertyPath;
+            return GetPropertyCacheKey(property);
         }
 
         private void EnsurePaginationBounds(PaginationState state, int totalCount)
@@ -1412,9 +1476,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float rowHeight = EditorGUIUtility.singleLineHeight;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
 
-            float containerY = HasItemsContainerRect
-                ? Mathf.Max(y, LastItemsContainerRect.yMax + SectionSpacing)
-                : y;
+            float containerY = y;
             float containerX = fullPosition.x;
             float containerWidth = fullPosition.width;
 
@@ -1503,7 +1565,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
             }
 
-            EditorGUI.BeginChangeCheck();
+            object previousValue = pending.value;
             object updatedValue = DrawFieldForType(
                 new Rect(innerX, innerY, innerWidth, rowHeight),
                 ManualEntryValueContent,
@@ -1511,14 +1573,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 elementType,
                 pending
             );
-            if (EditorGUI.EndChangeCheck())
+            object normalizedValue = CloneComplexValue(updatedValue, elementType);
+            bool valueChanged = !ValuesEqual(previousValue, normalizedValue);
+            if (valueChanged)
             {
-                pending.value = CloneComplexValue(updatedValue, elementType);
+                pending.value = normalizedValue;
                 pending.errorMessage = null;
             }
             else
             {
-                pending.value = updatedValue;
+                pending.value = normalizedValue;
             }
             innerY += rowHeight + spacing;
 
@@ -1549,30 +1613,42 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 elementType
             );
 
-            using (new EditorGUI.DisabledScope(!canCommit))
+            bool addEnabled = canCommit;
+            using (new EditorGUI.DisabledScope(!addEnabled))
             {
-                if (GUI.Button(addRect, ManualEntryAddContent))
-                {
-                    if (
-                        TryCommitPendingEntry(
-                            pending,
-                            property,
-                            propertyPath,
-                            ref itemsProperty,
-                            pagination,
-                            inspector
-                        )
+                GUIStyle addStyle = SolidButtonStyles.GetSolidButtonStyle("Add", addEnabled);
+                if (
+                    GUI.Button(addRect, ManualEntryAddContent, addStyle)
+                    && TryCommitPendingEntry(
+                        pending,
+                        property,
+                        propertyPath,
+                        ref itemsProperty,
+                        pagination,
+                        inspector
                     )
-                    {
-                        duplicateExists = false;
-                    }
+                )
+                {
+                    duplicateExists = false;
                 }
             }
 
-            if (GUI.Button(resetRect, ManualEntryResetContent))
+            object defaultElementValue =
+                elementType != null
+                    ? SerializableDictionaryPropertyDrawer.GetDefaultValue(elementType)
+                    : null;
+            bool resetEnabled =
+                elementType != null && !ValuesEqual(pending.value, defaultElementValue);
+            bool parentGuiEnabled = GUI.enabled;
+            using (new EditorGUI.DisabledScope(!resetEnabled))
             {
-                ResetPendingEntry(pending);
-                SyncPendingWrapperValue(pending);
+                bool styleEnabled = resetEnabled && parentGuiEnabled;
+                GUIStyle resetStyle = SolidButtonStyles.GetSolidButtonStyle("Reset", styleEnabled);
+                if (GUI.Button(resetRect, ManualEntryResetContent, resetStyle))
+                {
+                    ResetPendingEntry(pending, collapseFoldout: false);
+                    SyncPendingWrapperValue(pending);
+                }
             }
 
             if (infoWidth > 0f && !string.IsNullOrEmpty(infoMessage))
@@ -1635,7 +1711,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool isSortedSet
         )
         {
-            PendingEntry entry = _pendingEntries.GetOrAdd(propertyPath);
+            string pendingKey = GetPropertyCacheKey(property);
+            PendingEntry entry = _pendingEntries.GetOrAdd(pendingKey);
             entry.isSorted = isSortedSet;
 
             if (entry.elementType != elementType)
@@ -1669,7 +1746,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return entry;
         }
 
-        private static void ResetPendingEntry(PendingEntry pending)
+        private static void ResetPendingEntry(PendingEntry pending, bool collapseFoldout = true)
         {
             if (pending == null)
             {
@@ -1689,7 +1766,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             pending.errorMessage = null;
-            pending.isExpanded = false;
+            if (collapseFoldout)
+            {
+                pending.isExpanded = false;
+            }
             SyncPendingWrapperValue(pending);
         }
 
@@ -1848,10 +1928,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 pagination.selectedIndex = totalCount - 1;
             }
 
-            MarkListCacheDirty(propertyPath);
+            MarkListCacheDirty(GetPropertyCacheKey(property));
             pending.errorMessage = null;
-            pending.isExpanded = false;
+            bool wasExpanded = pending.isExpanded;
             ResetPendingEntry(pending);
+            pending.isExpanded = wasExpanded;
             RequestRepaint();
             return true;
         }
@@ -2257,6 +2338,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return false;
         }
 
+        private static bool ShouldDeepClone(Type type)
+        {
+            return type != null
+                && !type.IsValueType
+                && type != typeof(string)
+                && !typeof(Object).IsAssignableFrom(type);
+        }
+
         private static object CloneComplexValue(object source, Type type)
         {
             if (source == null)
@@ -2274,7 +2363,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return null;
             }
 
-            if (type == null || type.IsValueType || typeof(Object).IsAssignableFrom(type))
+            if (
+                type == null
+                || type.IsValueType
+                || type == typeof(string)
+                || typeof(Object).IsAssignableFrom(type)
+            )
+            {
+                return source;
+            }
+
+            if (!ShouldDeepClone(type))
             {
                 return source;
             }
@@ -2580,7 +2679,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             SerializedProperty itemsProperty
         )
         {
-            string key = property.propertyPath;
+            string key = GetPropertyCacheKey(property);
             NullEntryState state = _nullEntryStates.GetOrAdd(key);
 
             bool hasEvent = Event.current != null;
@@ -2649,7 +2748,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool force = false
         )
         {
-            string key = property.propertyPath;
+            string key = GetPropertyCacheKey(property);
             DuplicateState state = _duplicateStates.GetOrAdd(key);
 
             if (state.grouping.Count > 0)
@@ -3377,7 +3476,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     pagination.selectedIndex = totalCount - 1;
                 }
-                MarkListCacheDirty(propertyPath);
+                MarkListCacheDirty(GetPropertyCacheKey(property));
                 return true;
             }
 
@@ -3453,7 +3552,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 pagination.selectedIndex = totalCount - 1;
             }
-            MarkListCacheDirty(propertyPath);
+            MarkListCacheDirty(GetPropertyCacheKey(property));
 
             return true;
         }
@@ -3874,7 +3973,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
             SyncRuntimeSet(property);
-            MarkListCacheDirty(propertyPath);
+            MarkListCacheDirty(GetPropertyCacheKey(property));
             return true;
         }
 
@@ -3924,7 +4023,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EnsurePaginationBounds(pagination, itemsProperty?.arraySize ?? 0);
             EvaluateDuplicateState(property, itemsProperty, force: true);
             EvaluateNullEntryState(property, itemsProperty);
-            MarkListCacheDirty(propertyPath);
+            MarkListCacheDirty(GetPropertyCacheKey(property));
         }
 
         private void TryRemoveSelectedEntry(
@@ -3964,7 +4063,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
             EnsurePaginationBounds(pagination, totalCount);
             EvaluateDuplicateState(property, itemsProperty, force: true);
-            MarkListCacheDirty(propertyPath);
+            MarkListCacheDirty(GetPropertyCacheKey(property));
         }
 
         private bool TrySortElements(
@@ -4036,7 +4135,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             property.serializedObject.Update();
             property = property.serializedObject.FindProperty(propertyPath);
             SyncRuntimeSet(property);
-            MarkListCacheDirty(propertyPath);
+            MarkListCacheDirty(GetPropertyCacheKey(property));
             return true;
         }
 

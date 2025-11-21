@@ -52,12 +52,25 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public SerializableHashSet<TestData> set = new();
         }
 
+        private sealed class DualStringSetHost : ScriptableObject
+        {
+            public SerializableHashSet<string> firstSet = new();
+            public SerializableHashSet<string> secondSet = new();
+        }
+
         private sealed class PrivateCtorSetHost : ScriptableObject
         {
             public SerializableHashSet<PrivateCtorElement> set = new();
         }
 
         private sealed class TestData : ScriptableObject { }
+
+        [Serializable]
+        private sealed class CloneableSample
+        {
+            public int number = 5;
+            public string label = "alpha";
+        }
 
         [Serializable]
         private sealed class PrivateCtorElement
@@ -235,6 +248,123 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 valueWrapperField.GetValue(pending),
                 "ScriptableObject values should rely on object pickers rather than PendingValueWrappers."
             );
+        }
+
+        [Test]
+        public void CloneComplexValueReturnsSameReferenceForStrings()
+        {
+            MethodInfo cloneMethod = typeof(SerializableSetPropertyDrawer).GetMethod(
+                "CloneComplexValue",
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
+            Assert.IsNotNull(cloneMethod, "Expected CloneComplexValue via reflection.");
+
+            string original = Guid.NewGuid().ToString();
+            object clone = cloneMethod.Invoke(null, new object[] { original, typeof(string) });
+
+            Assert.AreSame(
+                original,
+                clone,
+                "Strings should bypass deep cloning to preserve edits."
+            );
+        }
+
+        [Test]
+        public void CloneComplexValueDeepClonesSerializableReferenceTypes()
+        {
+            MethodInfo cloneMethod = typeof(SerializableSetPropertyDrawer).GetMethod(
+                "CloneComplexValue",
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
+            Assert.IsNotNull(cloneMethod, "Expected CloneComplexValue via reflection.");
+
+            CloneableSample sample = new() { number = 42, label = "sample" };
+            CloneableSample clone =
+                cloneMethod.Invoke(null, new object[] { sample, typeof(CloneableSample) })
+                as CloneableSample;
+
+            Assert.IsNotNull(clone, "Deep clone should produce an instance of the same type.");
+            Assert.AreNotSame(sample, clone, "Clone should not reference the original object.");
+            Assert.AreEqual(sample.number, clone.number);
+            Assert.AreEqual(sample.label, clone.label);
+
+            sample.number = 99;
+            sample.label = "mutated";
+
+            Assert.AreEqual(42, clone.number, "Deep clone should decouple numeric fields.");
+            Assert.AreEqual("sample", clone.label, "Deep clone should decouple string fields.");
+        }
+
+        [Test]
+        public void PendingEntryRetainsStringValueAcrossFrames()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                SerializableSetPropertyDrawer.IsSortedSet(setProperty)
+            );
+
+            pending.value = "Alpha";
+            SerializableSetPropertyDrawer.PendingEntry fetched = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                SerializableSetPropertyDrawer.IsSortedSet(setProperty)
+            );
+
+            Assert.AreEqual("Alpha", fetched.value);
+        }
+
+        [Test]
+        public void PendingEntriesAreIsolatedPerProperty()
+        {
+            DualStringSetHost host = CreateScriptableObject<DualStringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty firstSet = serializedObject.FindProperty(
+                nameof(DualStringSetHost.firstSet)
+            );
+            SerializedProperty secondSet = serializedObject.FindProperty(
+                nameof(DualStringSetHost.secondSet)
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+
+            SerializableSetPropertyDrawer.PendingEntry firstPending =
+                drawer.GetOrCreatePendingEntry(
+                    firstSet,
+                    firstSet.propertyPath,
+                    typeof(string),
+                    SerializableSetPropertyDrawer.IsSortedSet(firstSet)
+                );
+            SerializableSetPropertyDrawer.PendingEntry secondPending =
+                drawer.GetOrCreatePendingEntry(
+                    secondSet,
+                    secondSet.propertyPath,
+                    typeof(string),
+                    SerializableSetPropertyDrawer.IsSortedSet(secondSet)
+                );
+
+            Assert.IsFalse(
+                ReferenceEquals(firstPending, secondPending),
+                "Each serialized property should have a dedicated pending entry."
+            );
+
+            firstPending.value = "alpha";
+            secondPending.value = "beta";
+
+            Assert.AreEqual("alpha", firstPending.value);
+            Assert.AreEqual("beta", secondPending.value);
         }
 
         [Test]

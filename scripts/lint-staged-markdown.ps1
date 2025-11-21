@@ -43,6 +43,8 @@ if (-not $npx) {
 
 $npxArgs = @(
   '--yes',
+  '--package',
+  'markdownlint-cli',
   'markdownlint',
   '--config',
   '.markdownlint.json',

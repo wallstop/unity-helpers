@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using System.Collections.Generic;
     using System.Globalization;
     using System.Reflection;
+    using System.Runtime.CompilerServices;
     using System.Runtime.Serialization;
     using System.Text;
     using UnityEditor;
@@ -56,11 +57,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Color DarkRowColor = new(0.16f, 0.16f, 0.16f, 0.45f);
         private static readonly Color LightSelectionColor = new(0.33f, 0.62f, 0.95f, 0.65f);
         private static readonly Color DarkSelectionColor = new(0.2f, 0.45f, 0.85f, 0.7f);
-        private static readonly Color ThemeRemoveColor = new(0.92f, 0.29f, 0.33f, 1f);
-        private static readonly Color ThemeAddColor = new(0.25f, 0.68f, 0.38f, 1f);
-        private static readonly Color ThemeOverwriteColor = new(0.98f, 0.82f, 0.27f, 1f);
-        private static readonly Color ThemeResetColor = new(0.7f, 0.7f, 0.7f, 1f);
-        private static readonly Color ThemeDisabledColor = new(0.6f, 0.6f, 0.6f, 1f);
         private static readonly ConcurrentDictionary<
             Type,
             Func<object>
@@ -71,8 +67,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Color DuplicateSecondaryColor = new(0.96f, 0.45f, 0.45f, 0.65f);
         private static readonly Color DuplicateOutlineColor = new(0.65f, 0.18f, 0.18f, 0.9f);
         private static readonly Color NullKeyHighlightColor = new(0.84f, 0.2f, 0.2f, 0.6f);
-        private static readonly Dictionary<string, GUIStyle> ButtonStyleCache = new();
-        private static readonly Dictionary<Color, Texture2D> ColorTextureCache = new();
         private static readonly GUIContent DuplicateTooltipContent = new();
         private static readonly GUIContent DuplicateIconContentCache = new();
         private static readonly GUIContent NullKeyTooltipContent = new();
@@ -215,17 +209,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         isSortedDictionary
                     );
 
-                    Rect listRect = new(position.x, y, position.width, list.GetHeight());
-                    LastListRect = listRect;
-                    HasLastListRect = true;
-
-                    int previousIndent = EditorGUI.indentLevel;
-                    EditorGUI.indentLevel = 0;
-                    list.DoList(listRect);
-                    EditorGUI.indentLevel = previousIndent;
-
-                    y = listRect.yMax + EditorGUIUtility.standardVerticalSpacing;
-
                     float pendingY = y;
                     DrawPendingEntryUI(
                         ref pendingY,
@@ -239,8 +222,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         keyType,
                         valueType
                     );
-
                     y = pendingY + EditorGUIUtility.standardVerticalSpacing;
+
+                    Rect listRect = new(position.x, y, position.width, list.GetHeight());
+                    LastListRect = listRect;
+                    HasLastListRect = true;
+
+                    int previousIndent = EditorGUI.indentLevel;
+                    EditorGUI.indentLevel = 0;
+                    list.DoList(listRect);
+                    EditorGUI.indentLevel = previousIndent;
+
+                    y = listRect.yMax + EditorGUIUtility.standardVerticalSpacing;
                 }
 
                 bool applied = serializedObject.ApplyModifiedProperties();
@@ -2058,10 +2051,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Action onClick
         )
         {
-            GUIStyle style = GetSolidButtonStyle(actionKey, enabled);
+            GUIStyle style = SolidButtonStyles.GetSolidButtonStyle(actionKey, enabled);
             if (!enabled)
             {
-                EditorGUI.DrawRect(rect, ThemeDisabledColor);
+                EditorGUI.DrawRect(rect, SolidButtonStyles.DisabledColor);
                 GUI.Label(rect, content, style);
                 return;
             }
@@ -2362,7 +2355,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     existingIndex >= 0 ? "Overwrite"
                     : isBlankStringKey ? "AddEmpty"
                     : "Add";
-                GUIStyle addStyle = GetSolidButtonStyle(styleKey, GUI.enabled);
+                GUIStyle addStyle = SolidButtonStyles.GetSolidButtonStyle(styleKey, GUI.enabled);
 
                 if (GUI.Button(addRect, addContent, addStyle))
                 {
@@ -2406,7 +2399,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             );
             using (new EditorGUI.DisabledScope(isPendingDefault))
             {
-                GUIStyle resetStyle = GetSolidButtonStyle("Reset", GUI.enabled);
+                GUIStyle resetStyle = SolidButtonStyles.GetSolidButtonStyle("Reset", GUI.enabled);
                 if (GUI.Button(resetRect, resetContent, resetStyle))
                 {
                     ResetPendingEntryToDefault(pending, keyType, valueType);
@@ -2477,120 +2470,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             pending.value = GetDefaultValue(valueType);
             ReleasePendingWrapper(pending, false);
             ReleasePendingWrapper(pending, true);
-        }
-
-        private static GUIStyle GetSolidButtonStyle(string action, bool enabled)
-        {
-            if (string.IsNullOrEmpty(action))
-            {
-                action = "Default";
-            }
-
-            string cacheKey = $"{action}_{(enabled ? "Enabled" : "Disabled")}";
-            if (ButtonStyleCache.TryGetValue(cacheKey, out GUIStyle cached))
-            {
-                return cached;
-            }
-
-            GUIStyle baseStyle = new(GUI.skin.button)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                margin = new RectOffset(0, 0, 0, 0),
-                padding = new RectOffset(8, 8, 3, 3),
-            };
-
-            Color baseColor = enabled ? GetActionColor(action) : ThemeDisabledColor;
-            Color hoverColor = enabled ? AdjustValue(baseColor, 0.08f) : baseColor;
-            Color pressedColor = enabled ? AdjustValue(baseColor, -0.08f) : baseColor;
-            Color textColor = enabled
-                ? GetLegibleTextColor(baseColor)
-                : AdjustAlpha(GetLegibleTextColor(baseColor), 0.6f);
-
-            Texture2D normalTexture = GetSolidTexture(baseColor);
-            Texture2D hoverTexture = GetSolidTexture(hoverColor);
-            Texture2D pressedTexture = GetSolidTexture(pressedColor);
-
-            baseStyle.normal.background = normalTexture;
-            baseStyle.hover.background = hoverTexture;
-            baseStyle.active.background = pressedTexture;
-            baseStyle.focused.background = normalTexture;
-            baseStyle.onNormal.background = normalTexture;
-            baseStyle.onHover.background = hoverTexture;
-            baseStyle.onActive.background = pressedTexture;
-            baseStyle.onFocused.background = normalTexture;
-
-            baseStyle.normal.textColor = textColor;
-            baseStyle.hover.textColor = textColor;
-            baseStyle.active.textColor = textColor;
-            baseStyle.focused.textColor = textColor;
-            baseStyle.onNormal.textColor = textColor;
-            baseStyle.onHover.textColor = textColor;
-            baseStyle.onActive.textColor = textColor;
-            baseStyle.onFocused.textColor = textColor;
-
-            ButtonStyleCache[cacheKey] = baseStyle;
-            return baseStyle;
-        }
-
-        private static Color GetActionColor(string action)
-        {
-            switch (action)
-            {
-                case "Add":
-                    return ThemeAddColor;
-                case "Overwrite":
-                    return ThemeOverwriteColor;
-                case "AddEmpty":
-                    return ThemeOverwriteColor;
-                case "Reset":
-                    return ThemeResetColor;
-                case "Sort":
-                    return ThemeAddColor;
-                case "Remove":
-                case "ClearAll":
-                    return ThemeRemoveColor;
-                default:
-                    return ThemeResetColor;
-            }
-        }
-
-        private static Color AdjustValue(Color color, float delta)
-        {
-            Color.RGBToHSV(color, out float h, out float s, out float v);
-            v = Mathf.Clamp01(v + delta);
-            Color result = Color.HSVToRGB(h, s, v);
-            result.a = color.a;
-            return result;
-        }
-
-        private static Color AdjustAlpha(Color color, float multiplier)
-        {
-            color.a *= multiplier;
-            return color;
-        }
-
-        private static Color GetLegibleTextColor(Color background)
-        {
-            float luminance = 0.299f * background.r + 0.587f * background.g + 0.114f * background.b;
-            return luminance > 0.55f ? Color.black : Color.white;
-        }
-
-        private static Texture2D GetSolidTexture(Color color)
-        {
-            if (ColorTextureCache.TryGetValue(color, out Texture2D cached))
-            {
-                return cached;
-            }
-
-            Texture2D texture = new(1, 1)
-            {
-                hideFlags = HideFlags.HideAndDontSave,
-                wrapMode = TextureWrapMode.Clamp,
-            };
-            texture.SetPixel(0, 0, color);
-            texture.Apply();
-            ColorTextureCache[color] = texture;
-            return texture;
         }
 
         private static float GetPendingSectionHeight(float foldoutProgress)
@@ -3251,11 +3130,54 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         internal static string GetListKey(SerializedProperty property)
         {
-            int targetId =
-                property.serializedObject.targetObject != null
-                    ? property.serializedObject.targetObject.GetInstanceID()
-                    : 0;
-            return $"{targetId}_{property.propertyPath}";
+            return BuildPropertyCacheKey(property);
+        }
+
+        private static string BuildPropertyCacheKey(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return string.Empty;
+            }
+
+            SerializedObject serializedObject = property.serializedObject;
+            string propertyPath = property.propertyPath ?? string.Empty;
+
+            if (serializedObject == null)
+            {
+                return propertyPath;
+            }
+
+            Object[] targets = serializedObject.targetObjects;
+            if (targets == null || targets.Length == 0)
+            {
+                int fallbackId = RuntimeHelpers.GetHashCode(serializedObject);
+                return $"{fallbackId}_{propertyPath}";
+            }
+
+            if (targets.Length == 1 && targets[0] != null)
+            {
+                return $"{targets[0].GetInstanceID()}_{propertyPath}";
+            }
+
+            using PooledResource<StringBuilder> keyBuilderLease = Buffers.GetStringBuilder(
+                propertyPath.Length + Math.Max(32, targets.Length * 12),
+                out StringBuilder keyBuilder
+            );
+            keyBuilder.Append(propertyPath);
+            keyBuilder.Append('|');
+
+            for (int index = 0; index < targets.Length; index++)
+            {
+                int id = targets[index] != null ? targets[index].GetInstanceID() : 0;
+                keyBuilder.Append(id);
+                if (index < targets.Length - 1)
+                {
+                    keyBuilder.Append(',');
+                }
+            }
+
+            return keyBuilder.ToString();
         }
 
         private static bool KeyIsValid(Type keyType, object keyValue)
