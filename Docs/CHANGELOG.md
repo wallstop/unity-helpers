@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.1.4
+## 2.2.0
 
 ### 🎨 Inspector Tooling (NEW)
 
