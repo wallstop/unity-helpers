@@ -169,16 +169,48 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
 
             SerializableDictionaryPropertyDrawer drawer = new();
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            int originalPageSize = settings.SerializableDictionaryPageSize;
 
-            SerializableDictionaryPropertyDrawer.PaginationState pagination =
-                drawer.GetOrCreatePaginationState(dictionaryProperty);
-            pagination.pageSize = 512;
+            try
+            {
+                int configuredSize = UnityHelpersSettings.MinPageSize + 23;
+                settings.SerializableDictionaryPageSize = configuredSize;
 
-            drawer.GetOrCreateList(dictionaryProperty);
+                SerializableDictionaryPropertyDrawer.PaginationState pagination =
+                    drawer.GetOrCreatePaginationState(dictionaryProperty);
+                drawer.GetOrCreateList(dictionaryProperty);
 
-            Assert.AreEqual(SerializableDictionaryPropertyDrawer.MaxPageSize, pagination.pageSize);
+                string listKey = SerializableDictionaryPropertyDrawer.GetListKey(
+                    dictionaryProperty
+                );
+                SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
+                    listKey,
+                    keysProperty,
+                    pagination
+                );
+
+                int expectedSize = UnityHelpersSettings.GetSerializableDictionaryPageSize();
+                Assert.AreEqual(
+                    expectedSize,
+                    pagination.pageSize,
+                    "Pagination state should mirror the configured page size."
+                );
+                Assert.That(
+                    cache.entries.Count,
+                    Is.EqualTo(Mathf.Min(expectedSize, keysProperty.arraySize)),
+                    "List cache should never allocate more entries than the configured page size."
+                );
+            }
+            finally
+            {
+                settings.SerializableDictionaryPageSize = originalPageSize;
+            }
         }
 
         [Test]
@@ -392,45 +424,58 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableDictionarySerializedPropertyNames.Keys
             );
 
-            SerializableDictionaryPropertyDrawer drawer = new();
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            int originalPageSize = settings.SerializableDictionaryPageSize;
 
-            SerializableDictionaryPropertyDrawer.PaginationState pagination =
-                drawer.GetOrCreatePaginationState(dictionaryProperty);
-            pagination.pageSize = 10;
-            pagination.pageIndex = 0;
+            try
+            {
+                settings.SerializableDictionaryPageSize = 10;
 
-            ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
+                SerializableDictionaryPropertyDrawer drawer = new();
 
-            string listKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
+                SerializableDictionaryPropertyDrawer.PaginationState pagination =
+                    drawer.GetOrCreatePaginationState(dictionaryProperty);
+                pagination.pageIndex = 0;
 
-            SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
-                listKey,
-                keysProperty,
-                pagination
-            );
+                ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
 
-            pagination.selectedIndex = 25;
-            pagination.pageIndex = 2;
-            cache = drawer.EnsurePageCache(listKey, keysProperty, pagination);
-            SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
-                list,
-                pagination,
-                cache
-            );
+                string listKey = SerializableDictionaryPropertyDrawer.GetListKey(
+                    dictionaryProperty
+                );
 
-            Assert.AreEqual(5, list.index);
-            Assert.AreEqual(25, pagination.selectedIndex);
+                SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
+                    listKey,
+                    keysProperty,
+                    pagination
+                );
 
-            pagination.pageIndex = 0;
-            cache = drawer.EnsurePageCache(listKey, keysProperty, pagination);
-            SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
-                list,
-                pagination,
-                cache
-            );
+                pagination.selectedIndex = 25;
+                pagination.pageIndex = 2;
+                cache = drawer.EnsurePageCache(listKey, keysProperty, pagination);
+                SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
+                    list,
+                    pagination,
+                    cache
+                );
 
-            Assert.AreEqual(0, list.index);
-            Assert.AreEqual(0, pagination.selectedIndex);
+                Assert.AreEqual(5, list.index);
+                Assert.AreEqual(25, pagination.selectedIndex);
+
+                pagination.pageIndex = 0;
+                cache = drawer.EnsurePageCache(listKey, keysProperty, pagination);
+                SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
+                    list,
+                    pagination,
+                    cache
+                );
+
+                Assert.AreEqual(0, list.index);
+                Assert.AreEqual(0, pagination.selectedIndex);
+            }
+            finally
+            {
+                settings.SerializableDictionaryPageSize = originalPageSize;
+            }
         }
 
         [Test]
@@ -497,47 +542,217 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableDictionarySerializedPropertyNames.Values
             );
 
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            int originalPageSize = settings.SerializableDictionaryPageSize;
+
+            try
+            {
+                settings.SerializableDictionaryPageSize = 10;
+
+                SerializableDictionaryPropertyDrawer drawer = new();
+
+                SerializableDictionaryPropertyDrawer.PaginationState pagination =
+                    drawer.GetOrCreatePaginationState(dictionaryProperty);
+                pagination.pageIndex = 2;
+                pagination.selectedIndex = 25;
+
+                ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
+
+                string listKey = SerializableDictionaryPropertyDrawer.GetListKey(
+                    dictionaryProperty
+                );
+                SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
+                    listKey,
+                    keysProperty,
+                    pagination
+                );
+                SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
+                    list,
+                    pagination,
+                    cache
+                );
+
+                drawer.RemoveEntryAtIndex(
+                    25,
+                    list,
+                    dictionaryProperty,
+                    keysProperty,
+                    valuesProperty,
+                    pagination
+                );
+
+                cache = drawer.EnsurePageCache(listKey, keysProperty, pagination);
+                SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
+                    list,
+                    pagination,
+                    cache
+                );
+
+                Assert.AreEqual(25, pagination.selectedIndex);
+                Assert.AreEqual(5, list.index);
+                Assert.AreEqual(2, pagination.pageIndex);
+            }
+            finally
+            {
+                settings.SerializableDictionaryPageSize = originalPageSize;
+            }
+        }
+
+        [Test]
+        public void PageCacheRebuildsWhenGlobalPageSizeChanges()
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            for (int i = 0; i < 40; i++)
+            {
+                host.dictionary.Add(i, $"Item {i}");
+            }
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+
             SerializableDictionaryPropertyDrawer drawer = new();
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            int originalPageSize = settings.SerializableDictionaryPageSize;
 
-            SerializableDictionaryPropertyDrawer.PaginationState pagination =
-                drawer.GetOrCreatePaginationState(dictionaryProperty);
-            pagination.pageSize = 10;
-            pagination.pageIndex = 2;
-            pagination.selectedIndex = 25;
+            try
+            {
+                int initialPageSize = UnityHelpersSettings.MinPageSize + 10;
+                int reducedPageSize = UnityHelpersSettings.MinPageSize + 2;
+                settings.SerializableDictionaryPageSize = initialPageSize;
 
-            ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
+                SerializableDictionaryPropertyDrawer.PaginationState pagination =
+                    drawer.GetOrCreatePaginationState(dictionaryProperty);
+                string listKey = SerializableDictionaryPropertyDrawer.GetListKey(
+                    dictionaryProperty
+                );
 
-            string listKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
-            SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
-                listKey,
-                keysProperty,
-                pagination
+                SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
+                    listKey,
+                    keysProperty,
+                    pagination
+                );
+                Assert.AreEqual(
+                    UnityHelpersSettings.GetSerializableDictionaryPageSize(),
+                    pagination.pageSize,
+                    "Initial pagination should use the configured size."
+                );
+                Assert.That(cache.entries.Count, Is.EqualTo(initialPageSize));
+
+                settings.SerializableDictionaryPageSize = reducedPageSize;
+
+                pagination = drawer.GetOrCreatePaginationState(dictionaryProperty);
+                cache = drawer.EnsurePageCache(listKey, keysProperty, pagination);
+
+                Assert.AreEqual(
+                    UnityHelpersSettings.GetSerializableDictionaryPageSize(),
+                    pagination.pageSize,
+                    "Pagination should refresh when the global size changes."
+                );
+                Assert.That(cache.entries.Count, Is.EqualTo(reducedPageSize));
+                Assert.AreEqual(
+                    0,
+                    pagination.pageIndex,
+                    "Page index should reset after a size change."
+                );
+            }
+            finally
+            {
+                settings.SerializableDictionaryPageSize = originalPageSize;
+            }
+        }
+
+        [Test]
+        public void RemoveEntryBacktracksToPreviousPageWhenLastPageIsRemoved()
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            for (int i = 0; i < 21; i++)
+            {
+                host.dictionary.Add(i, $"Item {i}");
+            }
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
             );
-            SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
-                list,
-                pagination,
-                cache
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
             );
 
-            drawer.RemoveEntryAtIndex(
-                25,
-                list,
-                dictionaryProperty,
-                keysProperty,
-                valuesProperty,
-                pagination
-            );
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            int originalPageSize = settings.SerializableDictionaryPageSize;
 
-            cache = drawer.EnsurePageCache(listKey, keysProperty, pagination);
-            SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
-                list,
-                pagination,
-                cache
-            );
+            try
+            {
+                settings.SerializableDictionaryPageSize = 10;
 
-            Assert.AreEqual(25, pagination.selectedIndex);
-            Assert.AreEqual(5, list.index);
-            Assert.AreEqual(2, pagination.pageIndex);
+                SerializableDictionaryPropertyDrawer drawer = new();
+                SerializableDictionaryPropertyDrawer.PaginationState pagination =
+                    drawer.GetOrCreatePaginationState(dictionaryProperty);
+                pagination.pageIndex = 2;
+                pagination.selectedIndex = 20;
+
+                ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
+                string listKey = SerializableDictionaryPropertyDrawer.GetListKey(
+                    dictionaryProperty
+                );
+
+                SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
+                    listKey,
+                    keysProperty,
+                    pagination
+                );
+                SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
+                    list,
+                    pagination,
+                    cache
+                );
+
+                drawer.RemoveEntryAtIndex(
+                    20,
+                    list,
+                    dictionaryProperty,
+                    keysProperty,
+                    valuesProperty,
+                    pagination
+                );
+
+                cache = drawer.EnsurePageCache(listKey, keysProperty, pagination);
+                SerializableDictionaryPropertyDrawer.SyncListSelectionWithPagination(
+                    list,
+                    pagination,
+                    cache
+                );
+
+                Assert.AreEqual(
+                    1,
+                    pagination.pageIndex,
+                    "Removing the lone element on the last page should move to the previous page."
+                );
+                Assert.AreEqual(
+                    19,
+                    pagination.selectedIndex,
+                    "Selection should clamp to the new last element."
+                );
+                Assert.AreEqual(
+                    9,
+                    list.index,
+                    "Relative list selection should point to the last item on the page."
+                );
+            }
+            finally
+            {
+                settings.SerializableDictionaryPageSize = originalPageSize;
+            }
         }
 
         [Test]
