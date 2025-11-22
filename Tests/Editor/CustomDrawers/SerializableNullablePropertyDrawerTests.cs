@@ -14,7 +14,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void HeightCollapsesWhenEmpty()
         {
             NullableContainer container = CreateScriptableObject<NullableContainer>();
-            SerializedObject serializedObject = new(container);
+            using SerializedObject serializedObject = new SerializedObject(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -34,7 +34,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             NullableContainer container = CreateScriptableObject<NullableContainer>();
             container.integerValue.SetValue(10);
 
-            SerializedObject serializedObject = new(container);
+            using SerializedObject serializedObject = new SerializedObject(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(

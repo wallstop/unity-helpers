@@ -16,50 +16,36 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void ApplyOptionUpdatesFloatSerializedProperty()
         {
             FloatDropdownAsset asset = CreateScriptableObject<FloatDropdownAsset>();
-            try
-            {
-                SerializedObject serializedObject = new(asset);
-                serializedObject.Update();
+            using SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
 
-                SerializedProperty property = serializedObject.FindProperty(
-                    nameof(FloatDropdownAsset.selection)
-                );
-                Assert.IsNotNull(property, "Failed to locate float selection property.");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(FloatDropdownAsset.selection)
+            );
+            Assert.IsNotNull(property, "Failed to locate float selection property.");
 
-                InvokeApplyOption(property, 2.5f);
-                serializedObject.ApplyModifiedProperties();
+            InvokeApplyOption(property, 2.5f);
+            serializedObject.ApplyModifiedProperties();
 
-                Assert.That(asset.selection, Is.EqualTo(2.5f).Within(0.0001f));
-            }
-            finally
-            {
-                ScriptableObject.DestroyImmediate(asset);
-            }
+            Assert.That(asset.selection, Is.EqualTo(2.5f).Within(0.0001f));
         }
 
         [Test]
         public void ApplyOptionUpdatesDoubleSerializedProperty()
         {
             FloatDropdownAsset asset = CreateScriptableObject<FloatDropdownAsset>();
-            try
-            {
-                SerializedObject serializedObject = new(asset);
-                serializedObject.Update();
+            using SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
 
-                SerializedProperty property = serializedObject.FindProperty(
-                    nameof(FloatDropdownAsset.preciseSelection)
-                );
-                Assert.IsNotNull(property, "Failed to locate double selection property.");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(FloatDropdownAsset.preciseSelection)
+            );
+            Assert.IsNotNull(property, "Failed to locate double selection property.");
 
-                InvokeApplyOption(property, 5.25);
-                serializedObject.ApplyModifiedProperties();
+            InvokeApplyOption(property, 5.25);
+            serializedObject.ApplyModifiedProperties();
 
-                Assert.That(asset.preciseSelection, Is.EqualTo(5.25d).Within(0.000001d));
-            }
-            finally
-            {
-                ScriptableObject.DestroyImmediate(asset);
-            }
+            Assert.That(asset.preciseSelection, Is.EqualTo(5.25d).Within(0.000001d));
         }
 
         private static void InvokeApplyOption(SerializedProperty property, object value)

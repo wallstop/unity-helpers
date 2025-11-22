@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Core.Serialization;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     [DataContract]
     public sealed class TestDataObject
@@ -29,12 +30,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         public List<Type> TypeProperties { get; set; } = new();
     }
 
-    public sealed class JsonSerializationTest
+    public sealed class JsonSerializationTest : CommonTestBase
     {
         [Test]
         public void UnityEngineObjectSerializationWorks()
         {
-            GameObject testGo = new("Test GameObject", typeof(SpriteRenderer));
+            GameObject testGo = Track(new GameObject("Test GameObject", typeof(SpriteRenderer)));
             int expectedId = testGo.GetInstanceID();
             string json = testGo.ToJson();
             Assert.IsFalse(string.IsNullOrWhiteSpace(json), json);
@@ -58,7 +59,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             string json = testGo.ToJson();
             Assert.AreEqual("null", json);
 
-            testGo = new GameObject();
+            testGo = Track(new GameObject());
             testGo.Destroy();
             yield return null; // allow Unity to nullify destroyed object
             Assert.IsTrue(testGo == null);
@@ -69,7 +70,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void TransformSerializationWorks()
         {
-            GameObject testGo = new("Test GameObject", typeof(SpriteRenderer));
+            GameObject testGo = Track(new GameObject("Test GameObject", typeof(SpriteRenderer)));
             Transform transform = testGo.transform;
             string json = transform.ToJson();
             Assert.AreEqual("[]", json);

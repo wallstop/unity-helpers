@@ -1340,13 +1340,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
         }
 
-        [Test]
-        public void ManualEntryUsesObjectPickerForScriptableObjectKeys()
+        [UnityTest]
+        public IEnumerator ManualEntryUsesObjectPickerForScriptableObjectKeys()
         {
             SerializableDictionaryPropertyDrawer.PendingEntry pending = new();
             Rect rect = new(0f, 0f, 200f, EditorGUIUtility.singleLineHeight);
 
-            TestIMGUIExecutor.Run(() =>
+            yield return TestIMGUIExecutor.Run(() =>
             {
                 SerializableDictionaryPropertyDrawer.DrawFieldForType(
                     rect,

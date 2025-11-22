@@ -208,13 +208,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
         }
 
-        [Test]
-        public void ManualEntryUsesObjectPickerForScriptableObjectValues()
+        [UnityTest]
+        public IEnumerator ManualEntryUsesObjectPickerForScriptableObjectValues()
         {
             SerializableSetPropertyDrawer.PendingEntry pending = new();
             Rect rect = new(0f, 0f, 200f, EditorGUIUtility.singleLineHeight);
 
-            TestIMGUIExecutor.Run(() =>
+            yield return TestIMGUIExecutor.Run(() =>
             {
                 SerializableSetPropertyDrawer.DrawFieldForType(
                     rect,

@@ -113,7 +113,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         public IEnumerator GetPropertyHeightUsesCachedLayoutWhenAvailable()
         {
             ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -165,7 +165,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         public void CreateToggleSetHandlesMissingFieldInfo()
         {
             ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -187,7 +187,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         public IEnumerator GetPropertyHeightIgnoresExternalIndentation()
         {
             ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -241,7 +241,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         public void GetPropertyHeightRespectsGroupPaddingContext()
         {
             ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(

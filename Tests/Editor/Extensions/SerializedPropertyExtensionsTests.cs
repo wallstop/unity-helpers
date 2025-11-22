@@ -58,7 +58,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetEnclosingObjectSimpleFieldReturnsOwnerAndFieldInfo()
         {
-            SerializedObject so = CreateSo(out TestContainer container);
+            using SerializedObject so = CreateSo(out TestContainer container);
             SerializedProperty prop = so.FindProperty(nameof(TestContainer.publicInt));
             Assert.NotNull(prop, "SerializedProperty for publicInt should not be null");
 
@@ -73,7 +73,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetTargetObjectWithFieldSimpleFieldReturnsValue()
         {
-            SerializedObject so = CreateSo(out _);
+            using SerializedObject so = CreateSo(out _);
             SerializedProperty prop = so.FindProperty(nameof(TestContainer.publicInt));
             Assert.NotNull(prop);
 
@@ -87,7 +87,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetTargetObjectWithFieldNestedFieldReturnsFinalValue()
         {
-            SerializedObject so = CreateSo(out _);
+            using SerializedObject so = CreateSo(out _);
             // Unity serializes nested [Serializable] types with dot-separated path
             SerializedProperty prop = so.FindProperty(
                 $"{nameof(TestContainer.nested)}.{nameof(Nested.f)}"
@@ -105,7 +105,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetTargetObjectWithFieldArrayElementReturnsElement()
         {
-            SerializedObject so = CreateSo(out _);
+            using SerializedObject so = CreateSo(out _);
             SerializedProperty prop = so.FindProperty(
                 $"{nameof(TestContainer.intArray)}.Array.data[1]"
             );
@@ -123,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetEnclosingObjectArrayElementReturnsRootOwnerAndArrayFieldInfo()
         {
-            SerializedObject so = CreateSo(out TestContainer container);
+            using SerializedObject so = CreateSo(out TestContainer container);
             SerializedProperty prop = so.FindProperty(
                 $"{nameof(TestContainer.intList)}.Array.data[2]"
             );
@@ -143,7 +143,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void GetTargetObjectWithFieldListElementFollowedByNestedFieldReturnsFinal()
         {
             // Build a list of nested, then access a field on an element: nestedList[1].f
-            SerializedObject so = CreateSo(out TestContainer container);
+            using SerializedObject so = CreateSo(out TestContainer container);
             container.nested = new Nested();
             container.intList = new List<int> { 4, 5, 6 };
             container.nested = new Nested();
@@ -170,7 +170,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetEnclosingObjectPrivateSerializedFieldReturnsOwnerAndFieldInfo()
         {
-            SerializedObject so = CreateSo(out TestContainer container);
+            using SerializedObject so = CreateSo(out TestContainer container);
             SerializedProperty prop = so.FindProperty(nameof(TestContainer.privateString));
             Assert.NotNull(prop, "private serialized field should be discoverable");
 

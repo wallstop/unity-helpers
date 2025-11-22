@@ -4,11 +4,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
+    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class IListExtensionTests
+    public sealed class IListExtensionTests : CommonTestBase
     {
         private const int NumTries = 1_000;
 
@@ -993,114 +995,69 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void SortByNameSingleElement()
         {
-            UnityEngine.GameObject obj = new("SingleObject");
-            try
-            {
-                List<UnityEngine.GameObject> list = new() { obj };
-                list.SortByName();
-                Assert.That(list, Has.Count.EqualTo(1));
-                Assert.That(list[0].name, Is.EqualTo("SingleObject"));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(obj);
-            }
+            GameObject obj = Track(new GameObject("SingleObject"));
+            List<GameObject> list = new() { obj };
+            list.SortByName();
+            Assert.That(list, Has.Count.EqualTo(1));
+            Assert.That(list[0].name, Is.EqualTo("SingleObject"));
         }
 
         [Test]
         public void SortByNameArray()
         {
-            UnityEngine.GameObject obj1 = new("Zebra");
-            UnityEngine.GameObject obj2 = new("Alpha");
-            UnityEngine.GameObject obj3 = new("Bravo");
-            try
-            {
-                UnityEngine.GameObject[] array = { obj1, obj2, obj3 };
-                array.SortByName();
-                Assert.That(array[0].name, Is.EqualTo("Alpha"));
-                Assert.That(array[1].name, Is.EqualTo("Bravo"));
-                Assert.That(array[2].name, Is.EqualTo("Zebra"));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(obj1);
-                UnityEngine.Object.DestroyImmediate(obj2);
-                UnityEngine.Object.DestroyImmediate(obj3);
-            }
+            GameObject obj1 = Track(new GameObject("Zebra"));
+            GameObject obj2 = Track(new GameObject("Alpha"));
+            GameObject obj3 = Track(new GameObject("Bravo"));
+
+            GameObject[] array = { obj1, obj2, obj3 };
+            array.SortByName();
+            Assert.That(array[0].name, Is.EqualTo("Alpha"));
+            Assert.That(array[1].name, Is.EqualTo("Bravo"));
+            Assert.That(array[2].name, Is.EqualTo("Zebra"));
         }
 
         [Test]
         public void SortByNameList()
         {
-            UnityEngine.GameObject obj1 = new("Zebra");
-            UnityEngine.GameObject obj2 = new("Alpha");
-            UnityEngine.GameObject obj3 = new("Bravo");
-            UnityEngine.GameObject obj4 = new("Charlie");
-            try
-            {
-                List<UnityEngine.GameObject> list = new() { obj1, obj2, obj3, obj4 };
-                list.SortByName();
-                Assert.That(list[0].name, Is.EqualTo("Alpha"));
-                Assert.That(list[1].name, Is.EqualTo("Bravo"));
-                Assert.That(list[2].name, Is.EqualTo("Charlie"));
-                Assert.That(list[3].name, Is.EqualTo("Zebra"));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(obj1);
-                UnityEngine.Object.DestroyImmediate(obj2);
-                UnityEngine.Object.DestroyImmediate(obj3);
-                UnityEngine.Object.DestroyImmediate(obj4);
-            }
+            GameObject obj1 = Track(new GameObject("Zebra"));
+            GameObject obj2 = Track(new GameObject("Alpha"));
+            GameObject obj3 = Track(new GameObject("Bravo"));
+            GameObject obj4 = Track(new GameObject("Charlie"));
+
+            List<GameObject> list = new() { obj1, obj2, obj3, obj4 };
+            list.SortByName();
+            Assert.That(list[0].name, Is.EqualTo("Alpha"));
+            Assert.That(list[1].name, Is.EqualTo("Bravo"));
+            Assert.That(list[2].name, Is.EqualTo("Charlie"));
+            Assert.That(list[3].name, Is.EqualTo("Zebra"));
         }
 
         [Test]
         public void SortByNameCustomIList()
         {
-            UnityEngine.GameObject obj1 = new("Zebra");
-            UnityEngine.GameObject obj2 = new("Alpha");
-            UnityEngine.GameObject obj3 = new("Bravo");
-            try
-            {
-                IList<UnityEngine.GameObject> list = new CustomList<UnityEngine.GameObject>
-                {
-                    obj1,
-                    obj2,
-                    obj3,
-                };
-                list.SortByName();
-                Assert.That(list[0].name, Is.EqualTo("Alpha"));
-                Assert.That(list[1].name, Is.EqualTo("Bravo"));
-                Assert.That(list[2].name, Is.EqualTo("Zebra"));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(obj1);
-                UnityEngine.Object.DestroyImmediate(obj2);
-                UnityEngine.Object.DestroyImmediate(obj3);
-            }
+            GameObject obj1 = Track(new GameObject("Zebra"));
+            GameObject obj2 = Track(new GameObject("Alpha"));
+            GameObject obj3 = Track(new GameObject("Bravo"));
+
+            IList<GameObject> list = new CustomList<GameObject> { obj1, obj2, obj3 };
+            list.SortByName();
+            Assert.That(list[0].name, Is.EqualTo("Alpha"));
+            Assert.That(list[1].name, Is.EqualTo("Bravo"));
+            Assert.That(list[2].name, Is.EqualTo("Zebra"));
         }
 
         [Test]
         public void SortByNameDuplicateNames()
         {
-            UnityEngine.GameObject obj1 = new("Same");
-            UnityEngine.GameObject obj2 = new("Same");
-            UnityEngine.GameObject obj3 = new("Alpha");
-            try
-            {
-                List<UnityEngine.GameObject> list = new() { obj1, obj2, obj3 };
-                list.SortByName();
-                Assert.That(list[0].name, Is.EqualTo("Alpha"));
-                Assert.That(list[1].name, Is.EqualTo("Same"));
-                Assert.That(list[2].name, Is.EqualTo("Same"));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(obj1);
-                UnityEngine.Object.DestroyImmediate(obj2);
-                UnityEngine.Object.DestroyImmediate(obj3);
-            }
+            GameObject obj1 = Track(new GameObject("Same"));
+            GameObject obj2 = Track(new GameObject("Same"));
+            GameObject obj3 = Track(new GameObject("Alpha"));
+
+            List<GameObject> list = new() { obj1, obj2, obj3 };
+            list.SortByName();
+            Assert.That(list[0].name, Is.EqualTo("Alpha"));
+            Assert.That(list[1].name, Is.EqualTo("Same"));
+            Assert.That(list[2].name, Is.EqualTo("Same"));
         }
 
         private sealed class CustomList<T> : IList<T>

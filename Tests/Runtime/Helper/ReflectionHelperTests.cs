@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using CategoryAttribute = System.ComponentModel.CategoryAttribute;
     using DescriptionAttribute = System.ComponentModel.DescriptionAttribute;
 
@@ -350,7 +351,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
     }
 
-    public sealed class ReflectionHelperTests
+    public sealed class ReflectionHelperTests : CommonTestBase
     {
         private const int NumTries = 1_000;
 
@@ -1495,21 +1496,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void IsComponentEnabledCoversMonoBehaviourAndScriptableObject()
         {
-            GameObject go = new("probe");
-            try
-            {
-                EnabledProbe probe = go.AddComponent<EnabledProbe>();
-                Assert.IsTrue(probe.IsComponentEnabled());
-                probe.enabled = false;
-                Assert.IsFalse(probe.IsComponentEnabled());
+            GameObject go = Track(new GameObject("probe"));
+            EnabledProbe probe = go.AddComponent<EnabledProbe>();
+            Assert.IsTrue(probe.IsComponentEnabled());
+            probe.enabled = false;
+            Assert.IsFalse(probe.IsComponentEnabled());
 
-                ScriptableObject so = ScriptableObject.CreateInstance<ScriptableObject>();
-                Assert.IsTrue(so.IsComponentEnabled());
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(go);
-            }
+            ScriptableObject so = Track(ScriptableObject.CreateInstance<ScriptableObject>());
+            Assert.IsTrue(so.IsComponentEnabled());
         }
 
         [Test]
@@ -2754,22 +2748,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void IsActiveAndEnabledChecksGameObjectState()
         {
-            GameObject go = new("probe2");
-            try
-            {
-                EnabledProbe probe = go.AddComponent<EnabledProbe>();
-                go.SetActive(false);
-                Assert.IsFalse(probe.IsActiveAndEnabled());
-                go.SetActive(true);
-                probe.enabled = true;
-                Assert.IsTrue(probe.IsActiveAndEnabled());
-                probe.enabled = false;
-                Assert.IsFalse(probe.IsActiveAndEnabled());
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(go);
-            }
+            GameObject go = Track(new GameObject("probe2"));
+            EnabledProbe probe = go.AddComponent<EnabledProbe>();
+            go.SetActive(false);
+            Assert.IsFalse(probe.IsActiveAndEnabled());
+            go.SetActive(true);
+            probe.enabled = true;
+            Assert.IsTrue(probe.IsActiveAndEnabled());
+            probe.enabled = false;
+            Assert.IsFalse(probe.IsActiveAndEnabled());
         }
 
         [Test]

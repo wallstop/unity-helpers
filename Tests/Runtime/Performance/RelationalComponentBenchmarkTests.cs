@@ -7,8 +7,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class RelationalComponentBenchmarkTests
+    public sealed class RelationalComponentBenchmarkTests : CommonTestBase
     {
         private const int NumIterations = 10_000;
 
@@ -17,20 +18,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
         private static readonly TimeSpan BenchmarkDuration = TimeSpan.FromSeconds(1);
 
-        private static readonly Func<ScenarioResult>[] ScenarioFactories =
+        private static readonly Func<
+            RelationalComponentBenchmarkTests,
+            ScenarioResult
+        >[] ScenarioFactories =
         {
-            RunParentSingleScenario,
-            RunParentArrayScenario,
-            RunParentListScenario,
-            RunParentHashSetScenario,
-            RunChildSingleScenario,
-            RunChildArrayScenario,
-            RunChildListScenario,
-            RunChildHashSetScenario,
-            RunSiblingSingleScenario,
-            RunSiblingArrayScenario,
-            RunSiblingListScenario,
-            RunSiblingHashSetScenario,
+            test => test.RunParentSingleScenario(),
+            test => test.RunParentArrayScenario(),
+            test => test.RunParentListScenario(),
+            test => test.RunParentHashSetScenario(),
+            test => test.RunChildSingleScenario(),
+            test => test.RunChildArrayScenario(),
+            test => test.RunChildListScenario(),
+            test => test.RunChildHashSetScenario(),
+            test => test.RunSiblingSingleScenario(),
+            test => test.RunSiblingArrayScenario(),
+            test => test.RunSiblingListScenario(),
+            test => test.RunSiblingHashSetScenario(),
         };
 
         [Test]
@@ -38,9 +42,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         public void Benchmark()
         {
             List<ScenarioResult> results = new();
-            foreach (Func<ScenarioResult> factory in ScenarioFactories)
+            foreach (
+                Func<RelationalComponentBenchmarkTests, ScenarioResult> factory in ScenarioFactories
+            )
             {
-                ScenarioResult result = factory();
+                ScenarioResult result = factory(this);
                 results.Add(result);
             }
 
@@ -82,7 +88,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             BenchmarkReadmeUpdater.UpdateSection(sectionName, sectionLines, DocumentPath);
         }
 
-        private static ScenarioResult RunParentSingleScenario()
+        private ScenarioResult RunParentSingleScenario()
         {
             GameObject root = CreateGameObject("ParentSingleRoot");
             root.AddComponent<BoxCollider>();
@@ -99,13 +105,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 () => manual.Assign()
             );
 
-            DestroyImmediate(child);
-            DestroyImmediate(root);
-
             return result;
         }
 
-        private static ScenarioResult RunParentArrayScenario()
+        private ScenarioResult RunParentArrayScenario()
         {
             GameObject grandParent = CreateGameObject("ParentArrayGrand");
             grandParent.AddComponent<BoxCollider>();
@@ -126,14 +129,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 () => manual.Assign()
             );
 
-            DestroyImmediate(child);
-            DestroyImmediate(parent);
-            DestroyImmediate(grandParent);
-
             return result;
         }
 
-        private static ScenarioResult RunParentListScenario()
+        private ScenarioResult RunParentListScenario()
         {
             GameObject grandParent = CreateGameObject("ParentListGrand");
             grandParent.AddComponent<BoxCollider>();
@@ -154,14 +153,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 () => manual.Assign()
             );
 
-            DestroyImmediate(child);
-            DestroyImmediate(parent);
-            DestroyImmediate(grandParent);
-
             return result;
         }
 
-        private static ScenarioResult RunParentHashSetScenario()
+        private ScenarioResult RunParentHashSetScenario()
         {
             GameObject grandParent = CreateGameObject("ParentHashGrand");
             grandParent.AddComponent<BoxCollider>();
@@ -182,14 +177,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 () => manual.Assign()
             );
 
-            DestroyImmediate(child);
-            DestroyImmediate(parent);
-            DestroyImmediate(grandParent);
-
             return result;
         }
 
-        private static ScenarioResult RunChildSingleScenario()
+        private ScenarioResult RunChildSingleScenario()
         {
             GameObject parent = CreateGameObject("ChildSingleParent");
 
@@ -206,20 +197,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 () => manual.Assign()
             );
 
-            DestroyImmediate(child);
-            DestroyImmediate(parent);
-
             return result;
         }
 
-        private static ScenarioResult RunChildArrayScenario()
+        private ScenarioResult RunChildArrayScenario()
         {
             GameObject parent = CreateGameObject("ChildArrayParent");
 
             ChildArrayRelational relational = parent.AddComponent<ChildArrayRelational>();
             ChildArrayManual manual = parent.AddComponent<ChildArrayManual>();
 
-            List<GameObject> children = CreateChildColliders(parent, 6);
+            CreateChildColliders(parent, 6);
 
             ScenarioResult result = ExecuteScenario(
                 "Child - Array",
@@ -227,20 +215,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 () => manual.Assign()
             );
 
-            DestroyChildren(children);
-            DestroyImmediate(parent);
-
             return result;
         }
 
-        private static ScenarioResult RunChildListScenario()
+        private ScenarioResult RunChildListScenario()
         {
             GameObject parent = CreateGameObject("ChildListParent");
 
             ChildListRelational relational = parent.AddComponent<ChildListRelational>();
             ChildListManual manual = parent.AddComponent<ChildListManual>();
 
-            List<GameObject> children = CreateChildColliders(parent, 8);
+            CreateChildColliders(parent, 8);
 
             ScenarioResult result = ExecuteScenario(
                 "Child - List",
@@ -248,20 +233,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 () => manual.Assign()
             );
 
-            DestroyChildren(children);
-            DestroyImmediate(parent);
-
             return result;
         }
 
-        private static ScenarioResult RunChildHashSetScenario()
+        private ScenarioResult RunChildHashSetScenario()
         {
             GameObject parent = CreateGameObject("ChildHashParent");
 
             ChildHashSetRelational relational = parent.AddComponent<ChildHashSetRelational>();
             ChildHashSetManual manual = parent.AddComponent<ChildHashSetManual>();
 
-            List<GameObject> children = CreateChildColliders(parent, 8);
+            CreateChildColliders(parent, 8);
 
             ScenarioResult result = ExecuteScenario(
                 "Child - HashSet",
@@ -269,13 +251,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 () => manual.Assign()
             );
 
-            DestroyChildren(children);
-            DestroyImmediate(parent);
-
             return result;
         }
 
-        private static ScenarioResult RunSiblingSingleScenario()
+        private ScenarioResult RunSiblingSingleScenario()
         {
             GameObject host = CreateGameObject("SiblingSingleHost");
 
@@ -290,12 +269,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 () => manual.Assign()
             );
 
-            DestroyImmediate(host);
-
             return result;
         }
 
-        private static ScenarioResult RunSiblingArrayScenario()
+        private ScenarioResult RunSiblingArrayScenario()
         {
             GameObject host = CreateGameObject("SiblingArrayHost");
 
@@ -310,12 +287,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 () => manual.Assign()
             );
 
-            DestroyImmediate(host);
-
             return result;
         }
 
-        private static ScenarioResult RunSiblingListScenario()
+        private ScenarioResult RunSiblingListScenario()
         {
             GameObject host = CreateGameObject("SiblingListHost");
 
@@ -330,12 +305,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 () => manual.Assign()
             );
 
-            DestroyImmediate(host);
-
             return result;
         }
 
-        private static ScenarioResult RunSiblingHashSetScenario()
+        private ScenarioResult RunSiblingHashSetScenario()
         {
             GameObject host = CreateGameObject("SiblingHashHost");
 
@@ -349,8 +322,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 () => relational.Assign(),
                 () => manual.Assign()
             );
-
-            DestroyImmediate(host);
             return result;
         }
 
@@ -448,23 +419,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             return value.ToString("0.00", CultureInfo.InvariantCulture);
         }
 
-        private static GameObject CreateGameObject(string name)
+        private GameObject CreateGameObject(string name)
         {
-            return new GameObject(name);
+            return Track(new GameObject(name));
         }
 
-        private static List<GameObject> CreateChildColliders(GameObject parent, int count)
+        private void CreateChildColliders(GameObject parent, int count)
         {
-            List<GameObject> children = new(count);
             for (int i = 0; i < count; ++i)
             {
                 GameObject child = CreateGameObject($"Child_{i}");
                 child.AddComponent<BoxCollider>();
                 child.transform.SetParent(parent.transform, false);
-                children.Add(child);
             }
-
-            return children;
         }
 
         private static void AddSiblingColliders(GameObject host, int count)
@@ -472,27 +439,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             for (int i = 0; i < count; ++i)
             {
                 host.AddComponent<BoxCollider>();
-            }
-        }
-
-        private static void DestroyChildren(IEnumerable<GameObject> children)
-        {
-            if (children == null)
-            {
-                return;
-            }
-
-            foreach (GameObject child in children)
-            {
-                DestroyImmediate(child);
-            }
-        }
-
-        private static void DestroyImmediate(UnityEngine.Object obj)
-        {
-            if (obj != null)
-            {
-                UnityEngine.Object.DestroyImmediate(obj);
             }
         }
 

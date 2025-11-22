@@ -23,7 +23,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             IntDropdownTestAsset asset = CreateScriptableObject<IntDropdownTestAsset>();
             asset.missingValue = 999;
 
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -51,7 +51,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             IntDropdownTestAsset asset = CreateScriptableObject<IntDropdownTestAsset>();
             asset.validValue = 10;
 
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(

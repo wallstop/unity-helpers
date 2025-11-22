@@ -25,7 +25,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
 
             try
             {
-                SerializedObject serializedSettings = new(settings);
+                using SerializedObject serializedSettings = new SerializedObject(settings);
                 SerializedProperty patternsProperty = serializedSettings.FindProperty(
                     UnityHelpersSettings.SerializedPropertyNames.SerializableTypeIgnorePatterns
                 );
@@ -56,7 +56,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             }
             finally
             {
-                SerializedObject restore = new(settings);
+                using SerializedObject restore = new SerializedObject(settings);
                 SerializedProperty patternsProperty = restore.FindProperty(
                     UnityHelpersSettings.SerializedPropertyNames.SerializableTypeIgnorePatterns
                 );
@@ -233,7 +233,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         public void LegacyPaletteMigratesIntoCustomColors()
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            SerializedObject serialized = new(settings);
+            using SerializedObject serialized = new SerializedObject(settings);
             serialized.Update();
 
             SerializedProperty legacyPalette = serialized.FindProperty(
@@ -452,7 +452,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         public void FoldoutTweenDefaultsRepairWhenUninitialized()
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            SerializedObject serialized = new(settings);
+            using SerializedObject serialized = new SerializedObject(settings);
             serialized.Update();
 
             SerializedProperty wbuttonTweenProperty = serialized.FindProperty(
@@ -507,7 +507,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableSetFoldouts());
                 Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableSortedSetFoldouts());
 
-                SerializedObject verification = new(settings);
+                using SerializedObject verification = new SerializedObject(settings);
                 verification.Update();
                 Assert.IsTrue(
                     verification
@@ -521,7 +521,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             }
             finally
             {
-                SerializedObject restore = new(settings);
+                using SerializedObject restore = new SerializedObject(settings);
                 restore
                     .FindProperty(
                         UnityHelpersSettings.SerializedPropertyNames.WButtonFoldoutTweenEnabled
@@ -569,7 +569,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         public void FoldoutTweenTogglesAffectBehavior()
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            SerializedObject serialized = new(settings);
+            using SerializedObject serialized = new SerializedObject(settings);
             SerializedProperty wbuttonTweenProperty = serialized.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonFoldoutTweenEnabled
             );
@@ -617,7 +617,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             }
             finally
             {
-                SerializedObject restore = new(settings);
+                using SerializedObject restore = new SerializedObject(settings);
                 restore
                     .FindProperty(
                         UnityHelpersSettings.SerializedPropertyNames.WButtonFoldoutTweenEnabled
@@ -756,7 +756,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
 
             try
             {
-                SerializedObject serialized = new(settings);
+                using SerializedObject serialized = new SerializedObject(settings);
                 SerializedProperty enabledProperty = serialized.FindProperty(
                     UnityHelpersSettings.SerializedPropertyNames.WFoldoutGroupTweenEnabled
                 );
@@ -788,7 +788,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             }
             finally
             {
-                SerializedObject restore = new(settings);
+                using SerializedObject restore = new SerializedObject(settings);
                 restore
                     .FindProperty(
                         UnityHelpersSettings.SerializedPropertyNames.WFoldoutGroupTweenEnabled
@@ -837,7 +837,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             }
             finally
             {
-                SerializedObject serialized = new(settings);
+                using SerializedObject serialized = new SerializedObject(settings);
                 SerializedProperty groupDictionary = serialized.FindProperty(
                     UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColors
                 );

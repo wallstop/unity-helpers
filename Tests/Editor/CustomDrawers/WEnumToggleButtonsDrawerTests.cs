@@ -24,7 +24,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void FlagEnumOptionsIncludeDiscreteValues()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -69,7 +69,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void FlagEnumToggleMutatesMask()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -97,7 +97,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void FlagEnumSelectAllAndNoneOperate()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -136,7 +136,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void StandardEnumHonorsSingleSelection()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -172,7 +172,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void IntDropdownOptionsRespectSelection()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -198,7 +198,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void StringInListOptionsRespectSelection()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -224,7 +224,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void WValueDropDownOptionsPopulateAndSelect()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -250,7 +250,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void FloatWValueDropDownOptionsRespectSelection()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -276,7 +276,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void PaginationStateClampsIndicesAndUpdatesVisibleCount()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -334,7 +334,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void DisablePaginationAttributePreventsPagination()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -365,7 +365,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
             asset.paginatedInt = 8;
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -411,7 +411,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
             asset.paginatedInt = 2;
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -431,7 +431,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
             asset.paginatedInt = 8;
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(

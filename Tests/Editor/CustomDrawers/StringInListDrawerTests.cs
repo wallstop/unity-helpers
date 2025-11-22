@@ -19,7 +19,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void CreatePropertyGUIWithoutOptionsReturnsHelpBox()
         {
             NoOptionsAsset asset = CreateScriptableObject<NoOptionsAsset>();
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -38,7 +38,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             StringOptionsAsset asset = CreateScriptableObject<StringOptionsAsset>();
             asset.state = "Run";
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -66,7 +66,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             IntegerOptionsAsset asset = CreateScriptableObject<IntegerOptionsAsset>();
             asset.selection = 0;
-            SerializedObject serializedObject = new(asset);
+            using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(

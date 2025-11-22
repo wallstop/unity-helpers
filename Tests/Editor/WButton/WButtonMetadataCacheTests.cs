@@ -13,9 +13,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     [TestFixture]
-    public sealed class WButtonMetadataCacheTests
+    public sealed class WButtonMetadataCacheTests : CommonTestBase
     {
         [Test]
         public void MetadataSortedByDrawOrder()
@@ -100,36 +101,26 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         [Test]
         public void ParameterStatesInitializeWithDefaults()
         {
-            SampleTarget asset = ScriptableObject.CreateInstance<SampleTarget>();
-            try
-            {
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(SampleTarget)
-                );
-                WButtonMethodMetadata method = metadata.First(m =>
-                    m.Method.Name == nameof(SampleTarget.MethodWithDefaults)
-                );
+            SampleTarget asset = Track(ScriptableObject.CreateInstance<SampleTarget>());
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(SampleTarget)
+            );
+            WButtonMethodMetadata method = metadata.First(m =>
+                m.Method.Name == nameof(SampleTarget.MethodWithDefaults)
+            );
 
-                WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(asset);
-                WButtonMethodState methodState = targetState.GetOrCreateMethodState(method);
-                Assert.That(methodState.Parameters.Length, Is.EqualTo(2));
-                Assert.That(methodState.Parameters[0].CurrentValue, Is.EqualTo(7));
-                Assert.That(methodState.Parameters[1].CurrentValue, Is.EqualTo("hello"));
-            }
-            finally
-            {
-                if (asset != null)
-                {
-                    UnityEngine.Object.DestroyImmediate(asset);
-                }
-            }
+            WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(asset);
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(method);
+            Assert.That(methodState.Parameters.Length, Is.EqualTo(2));
+            Assert.That(methodState.Parameters[0].CurrentValue, Is.EqualTo(7));
+            Assert.That(methodState.Parameters[1].CurrentValue, Is.EqualTo("hello"));
         }
 
         [Test]
         public void ResolveCustomColorReturnsDefaultsAndOverrides()
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            SerializedObject serialized = new(settings);
+            using SerializedObject serialized = new SerializedObject(settings);
             SerializedProperty palette = serialized.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );

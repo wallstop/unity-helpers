@@ -27,7 +27,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void HandleTextChangeClearsGuidWhenInputEmpty()
         {
             GuidContainer container = CreateScriptableObject<GuidContainer>();
-            SerializedObject serializedObject = new(container);
+            using SerializedObject serializedObject = new SerializedObject(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
@@ -58,7 +58,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void HandleTextChangeAppliesValidGuid()
         {
             GuidContainer container = CreateScriptableObject<GuidContainer>();
-            SerializedObject serializedObject = new(container);
+            using SerializedObject serializedObject = new SerializedObject(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
@@ -86,7 +86,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void HandleTextChangeRejectsInvalidGuid()
         {
             GuidContainer container = CreateScriptableObject<GuidContainer>();
-            SerializedObject serializedObject = new(container);
+            using SerializedObject serializedObject = new SerializedObject(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
@@ -118,7 +118,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void HandleTextChangeRejectsNonVersionFourGuid()
         {
             GuidContainer container = CreateScriptableObject<GuidContainer>();
-            SerializedObject serializedObject = new(container);
+            using SerializedObject serializedObject = new SerializedObject(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
@@ -147,7 +147,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void GenerateNewGuidProducesVersionFourValue()
         {
             GuidContainer container = CreateScriptableObject<GuidContainer>();
-            SerializedObject serializedObject = new(container);
+            using SerializedObject serializedObject = new SerializedObject(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
@@ -169,7 +169,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void GetPropertyHeightIncludesWarningSpaceWhenInvalid()
         {
             GuidContainer container = CreateScriptableObject<GuidContainer>();
-            SerializedObject serializedObject = new(container);
+            using SerializedObject serializedObject = new SerializedObject(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
