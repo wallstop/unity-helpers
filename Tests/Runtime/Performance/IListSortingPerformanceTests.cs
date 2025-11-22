@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         private const string DocumentPath = "Docs/ILIST_SORTING_PERFORMANCE.md";
         private const string SectionPrefix = "ILIST_SORT_";
         private const int NearlySortedSwapPercentage = 50;
+        private const int BenchmarkTimeoutMilliseconds = 300_000;
 
         private static readonly DatasetSizeSpec[] DatasetSizeSpecs =
         {
@@ -48,7 +49,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         };
 
         [Test]
-        [Timeout(0)]
+        [Timeout(BenchmarkTimeoutMilliseconds)]
         public void Benchmark()
         {
             string operatingSystemToken = GetOperatingSystemToken();

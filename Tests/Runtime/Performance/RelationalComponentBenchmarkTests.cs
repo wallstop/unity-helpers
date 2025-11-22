@@ -16,6 +16,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         private const string DocumentPath = "Docs/RELATIONAL_COMPONENT_PERFORMANCE.md";
         private const string SectionPrefix = "RELATIONAL_COMPONENTS_";
 
+        // Provide ample room for the per-scenario 1s timers plus GC/setup overhead.
+        private const int BenchmarkTimeoutMilliseconds = 120_000;
+
         private static readonly TimeSpan BenchmarkDuration = TimeSpan.FromSeconds(1);
 
         private static readonly Func<
@@ -38,7 +41,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         };
 
         [Test]
-        [Timeout(0)]
+        [Timeout(BenchmarkTimeoutMilliseconds)]
         public void Benchmark()
         {
             List<ScenarioResult> results = new();

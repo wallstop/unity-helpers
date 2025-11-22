@@ -14,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
     public sealed class SpatialTree2DPerformanceTests
     {
         private const float PointBoundsSize = 0.001f;
+        private const int BenchmarkTimeoutMilliseconds = 180_000;
 
         private static readonly TimeSpan BenchmarkDuration = TimeSpan.FromSeconds(1);
 
@@ -113,7 +114,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         }
 
         [UnityTest]
-        [Timeout(0)]
+        [Timeout(BenchmarkTimeoutMilliseconds)]
         public IEnumerator Benchmark()
         {
             TreeSpec[] treeSpecs = BuildTreeSpecs();

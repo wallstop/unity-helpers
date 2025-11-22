@@ -11,11 +11,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
     public sealed class ReflectionPerformanceTests
     {
         private const int BatchSize = 256;
+        private const int BenchmarkTimeoutMilliseconds = 120_000;
         private static readonly TimeSpan BenchmarkDuration = TimeSpan.FromMilliseconds(250);
         private static int sink;
 
         [Test]
-        [Timeout(0)]
+        [Timeout(BenchmarkTimeoutMilliseconds)]
         public void Benchmark()
         {
             StrategyConfig[] strategies =
