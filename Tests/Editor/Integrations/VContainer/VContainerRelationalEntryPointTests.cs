@@ -51,7 +51,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             cache.SetMetadata(
                 System.Array.Empty<string>(),
                 System.Array.Empty<AttributeMetadataCache.TypeFieldMetadata>(),
-                new[] { relationalMetadata }
+                new[] { relationalMetadata },
+                System.Array.Empty<AttributeMetadataCache.AutoLoadSingletonEntry>()
             );
             cache.ForceRebuildForTests();
             yield return null;

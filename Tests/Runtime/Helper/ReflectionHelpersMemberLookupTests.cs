@@ -21,7 +21,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     public sealed class RuntimeMarkerTarget
     {
         [RuntimeMarker]
-        public int MarkedField;
+        public int markedField;
 
         [RuntimeMarker]
         public int MarkedProperty { get; set; }
@@ -60,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                     typeof(RuntimeMarkerTarget)
                 );
             FieldInfo fi = fields.FirstOrDefault(f =>
-                f.Name == nameof(RuntimeMarkerTarget.MarkedField)
+                f.Name == nameof(RuntimeMarkerTarget.markedField)
             );
             Assert.IsNotNull(fi, "Expected MarkedField to be discovered.");
         }
@@ -96,14 +96,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             bool ok = ReflectionHelpers.TryGetField(
                 typeof(RuntimeMarkerTarget),
-                nameof(RuntimeMarkerTarget.MarkedField),
+                nameof(RuntimeMarkerTarget.markedField),
                 out FieldInfo fi
             );
             Assert.IsTrue(ok, "TryGetField should succeed.");
             Assert.IsNotNull(fi);
             bool ok2 = ReflectionHelpers.TryGetField(
                 typeof(RuntimeMarkerTarget),
-                nameof(RuntimeMarkerTarget.MarkedField),
+                nameof(RuntimeMarkerTarget.markedField),
                 out FieldInfo fi2
             );
             Assert.IsTrue(ok2);

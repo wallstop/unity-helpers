@@ -2,61 +2,280 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
     using System.Collections.Generic;
-    using System.Threading;
+    using System.Reflection;
     using UnityEngine;
+    using Utils;
+    using WallstopStudios.UnityHelpers.Tags;
 
+    /// <summary>
+    /// Reflection-driven auto-loader that instantiates opt-in singletons during specific Unity load phases.
+    /// </summary>
     internal static class SingletonAutoLoader
     {
-        private static int _executed;
+        private static readonly Dictionary<string, Action> _cachedLoaders = new(
+            StringComparer.Ordinal
+        );
+        private static readonly HashSet<RuntimeInitializeLoadType> _executedLoadTypes = new();
+        private static readonly object _executionLock = new();
+        private static readonly Dictionary<Type, PropertyInfo> _runtimeInstanceProperties = new();
+        private static readonly Dictionary<Type, PropertyInfo> _scriptableInstanceProperties =
+            new();
+        private static readonly object _loaderBuildLock = new();
+#if UNITY_INCLUDE_TESTS
+        private static bool? _testPlayModeOverride;
+#endif
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void AutoLoadSubsystemRegistration() =>
+            ExecuteForLoadType(RuntimeInitializeLoadType.SubsystemRegistration);
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
+        private static void AutoLoadAfterAssemblies() =>
+            ExecuteForLoadType(RuntimeInitializeLoadType.AfterAssembliesLoaded);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
-        private static void AutoLoadBeforeSplash()
+        private static void AutoLoadBeforeSplashScreen() =>
+            ExecuteForLoadType(RuntimeInitializeLoadType.BeforeSplashScreen);
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void AutoLoadBeforeSceneLoad() =>
+            ExecuteForLoadType(RuntimeInitializeLoadType.BeforeSceneLoad);
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void AutoLoadAfterSceneLoad() =>
+            ExecuteForLoadType(RuntimeInitializeLoadType.AfterSceneLoad);
+
+        private static void ExecuteForLoadType(RuntimeInitializeLoadType loadType)
         {
-            ExecuteDescriptors(SingletonAutoLoadManifest.Entries);
+            AttributeMetadataCache cache = AttributeMetadataCache.Instance;
+            AttributeMetadataCache.AutoLoadSingletonEntry[] entries =
+                cache?.AutoLoadSingletons
+                ?? Array.Empty<AttributeMetadataCache.AutoLoadSingletonEntry>();
+
+            ExecuteEntries(entries, loadType, enforceSingleExecution: true, requirePlayMode: true);
         }
 
-        private static void ExecuteDescriptors(
-            IReadOnlyList<SingletonAutoLoadDescriptor> descriptors,
-            bool enforceSingleExecution = true
+        private static void ExecuteEntries(
+            IReadOnlyList<AttributeMetadataCache.AutoLoadSingletonEntry> entries,
+            RuntimeInitializeLoadType loadType,
+            bool enforceSingleExecution,
+            bool requirePlayMode
         )
         {
-            if (descriptors == null || descriptors.Count == 0)
+            if (entries == null || entries.Count == 0)
+            {
+                return;
+            }
+
+            bool isPlayMode = Application.isPlaying;
+#if UNITY_INCLUDE_TESTS
+            if (_testPlayModeOverride.HasValue)
+            {
+                isPlayMode = _testPlayModeOverride.Value;
+            }
+#endif
+
+            if (requirePlayMode && !isPlayMode)
             {
                 return;
             }
 
             if (enforceSingleExecution)
             {
-                if (Interlocked.Exchange(ref _executed, 1) == 1)
+                lock (_executionLock)
                 {
-                    return;
+                    if (!_executedLoadTypes.Add(loadType))
+                    {
+                        return;
+                    }
                 }
             }
-            else
-            {
-                _executed = 0;
-            }
 
-            for (int i = 0; i < descriptors.Count; i++)
+            for (int i = 0; i < entries.Count; i++)
             {
-                SingletonAutoLoadDescriptor descriptor = descriptors[i];
+                AttributeMetadataCache.AutoLoadSingletonEntry entry = entries[i];
+                if (entry == null || entry.loadType != loadType)
+                {
+                    continue;
+                }
+
                 try
                 {
-                    descriptor.Invoke();
+                    Action loader = GetOrCreateLoader(entry);
+                    loader?.Invoke();
                 }
                 catch (Exception ex)
                 {
                     Debug.LogError(
-                        $"SingletonAutoLoader: Failed to auto-load {descriptor.TypeName}. {ex}"
+                        $"SingletonAutoLoader: Failed to auto-load '{entry.typeName}'. {ex}"
                     );
                 }
             }
         }
 
-#if UNITY_INCLUDE_TESTS
-        internal static void ExecuteForTests(params SingletonAutoLoadDescriptor[] descriptors)
+        private static Action GetOrCreateLoader(AttributeMetadataCache.AutoLoadSingletonEntry entry)
         {
-            ExecuteDescriptors(descriptors, enforceSingleExecution: false);
+            if (entry == null || string.IsNullOrWhiteSpace(entry.typeName))
+            {
+                return null;
+            }
+
+            if (_cachedLoaders.TryGetValue(entry.typeName, out Action cached))
+            {
+                return cached;
+            }
+
+            lock (_loaderBuildLock)
+            {
+                if (_cachedLoaders.TryGetValue(entry.typeName, out cached))
+                {
+                    return cached;
+                }
+
+                Action loader = BuildLoader(entry);
+                _cachedLoaders[entry.typeName] = loader;
+                return loader;
+            }
+        }
+
+        private static Action BuildLoader(AttributeMetadataCache.AutoLoadSingletonEntry entry)
+        {
+            Type singletonType = ReflectionHelpers.TryResolveType(entry.typeName);
+            if (singletonType == null)
+            {
+                Debug.LogWarning(
+                    $"SingletonAutoLoader: Unable to resolve type '{entry.typeName}' for auto-load."
+                );
+                return null;
+            }
+
+            switch (entry.kind)
+            {
+                case SingletonAutoLoadKind.Runtime:
+                    return BuildRuntimeLoader(singletonType);
+                case SingletonAutoLoadKind.ScriptableObject:
+                    return BuildScriptableLoader(singletonType);
+                default:
+                    Debug.LogWarning(
+                        $"SingletonAutoLoader: Unsupported singleton kind '{entry.kind}' for type '{entry.typeName}'."
+                    );
+                    return null;
+            }
+        }
+
+        private static Action BuildRuntimeLoader(Type singletonType)
+        {
+            PropertyInfo instanceProperty = GetRuntimeInstanceProperty(singletonType);
+            if (instanceProperty == null)
+            {
+                Debug.LogWarning(
+                    $"SingletonAutoLoader: {singletonType.FullName} does not derive from RuntimeSingleton<>."
+                );
+                return null;
+            }
+
+            return () =>
+            {
+                _ = instanceProperty.GetValue(null);
+            };
+        }
+
+        private static Action BuildScriptableLoader(Type singletonType)
+        {
+            PropertyInfo instanceProperty = GetScriptableInstanceProperty(singletonType);
+            if (instanceProperty == null)
+            {
+                Debug.LogWarning(
+                    $"SingletonAutoLoader: {singletonType.FullName} does not derive from ScriptableObjectSingleton<>."
+                );
+                return null;
+            }
+
+            return () =>
+            {
+                _ = instanceProperty.GetValue(null);
+            };
+        }
+
+        private static PropertyInfo GetRuntimeInstanceProperty(Type singletonType)
+        {
+            lock (_loaderBuildLock)
+            {
+                if (_runtimeInstanceProperties.TryGetValue(singletonType, out PropertyInfo cached))
+                {
+                    return cached;
+                }
+
+                PropertyInfo property = ResolveInstanceProperty(
+                    singletonType,
+                    typeof(RuntimeSingleton<>)
+                );
+                _runtimeInstanceProperties[singletonType] = property;
+                return property;
+            }
+        }
+
+        private static PropertyInfo GetScriptableInstanceProperty(Type singletonType)
+        {
+            lock (_loaderBuildLock)
+            {
+                if (
+                    _scriptableInstanceProperties.TryGetValue(
+                        singletonType,
+                        out PropertyInfo cached
+                    )
+                )
+                {
+                    return cached;
+                }
+
+                PropertyInfo property = ResolveInstanceProperty(
+                    singletonType,
+                    typeof(ScriptableObjectSingleton<>)
+                );
+                _scriptableInstanceProperties[singletonType] = property;
+                return property;
+            }
+        }
+
+        private static PropertyInfo ResolveInstanceProperty(
+            Type singletonType,
+            Type openGenericBase
+        )
+        {
+            try
+            {
+                Type closed = openGenericBase.MakeGenericType(singletonType);
+                return closed.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+#if UNITY_INCLUDE_TESTS
+        internal static void ExecuteEntriesForTests(
+            bool simulatePlayMode,
+            RuntimeInitializeLoadType loadType,
+            params AttributeMetadataCache.AutoLoadSingletonEntry[] entries
+        )
+        {
+            bool? previousOverride = _testPlayModeOverride;
+            try
+            {
+                _testPlayModeOverride = simulatePlayMode;
+                ExecuteEntries(
+                    entries,
+                    loadType,
+                    enforceSingleExecution: false,
+                    requirePlayMode: true
+                );
+            }
+            finally
+            {
+                _testPlayModeOverride = previousOverride;
+            }
         }
 #endif
     }

@@ -4,7 +4,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using UnityEngine;
 
     /// <summary>
-    /// Marks a RuntimeSingleton or ScriptableObjectSingleton to be auto-loaded during startup.
+    /// Marks a <see cref="WallstopStudios.UnityHelpers.Utils.RuntimeSingleton{T}"/> or
+    /// <see cref="WallstopStudios.UnityHelpers.Utils.ScriptableObjectSingleton{T}"/> so it is automatically instantiated during Unity start-up.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
     public sealed class AutoLoadSingletonAttribute : Attribute
@@ -23,7 +24,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         }
 
         /// <summary>
-        /// Gets the Unity load phase that should trigger instantiation.
+        /// Gets the Unity load phase that should trigger instantiation. The editor serializes this into <see cref="Tags.AttributeMetadataCache"/>
+        /// so <see cref="Core.Helper.SingletonAutoLoader"/> can reflectively touch the singleton at runtime.
         /// </summary>
         public RuntimeInitializeLoadType LoadType { get; }
     }

@@ -20,14 +20,17 @@ This package includes two lightweight, production‑ready singleton helpers that
 ## Auto-loading singletons
 
 - Add `[AutoLoadSingleton]` to any `RuntimeSingleton<T>` or `ScriptableObjectSingleton<T>` to have it instantiated automatically.
-- The editor scans for the attribute and generates `Runtime/Generated/SingletonAutoLoadManifest.g.cs`, which lists each participating type.
-- At runtime, `SingletonAutoLoader` reads that manifest and touches every singleton’s `Instance` during the specified `RuntimeInitializeLoadType` (default `BeforeSplashScreen`) with no reflection or string lookups on device.
+- The editor’s Attribute Metadata generator discovers those attributes (via `TypeCache`) and serializes the type name + load phase into `AttributeMetadataCache`. No manual registration or code-generation is required.
+- At runtime (play mode only), `SingletonAutoLoader` reads the serialized entries and uses reflection to touch each singleton’s `Instance` during the configured `RuntimeInitializeLoadType` (default `BeforeSplashScreen`).
 - Prefer auto-loading only for global services/data that every scene requires; optional or level-specific systems should still call `Instance` manually.
 - Example:
 
 ```csharp
 [AutoLoadSingleton(RuntimeInitializeLoadType.BeforeSceneLoad)]
-public sealed class UnityMainThreadDispatcher : RuntimeSingleton<UnityMainThreadDispatcher> { }
+public sealed class GlobalAudioSettings : ScriptableObjectSingleton<GlobalAudioSettings>
+{
+    public float masterVolume = 0.8f;
+}
 ```
 
 Quick decision guide

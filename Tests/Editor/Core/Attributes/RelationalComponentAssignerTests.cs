@@ -45,7 +45,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
             cache.SetMetadata(
                 System.Array.Empty<string>(),
                 System.Array.Empty<AttributeMetadataCache.TypeFieldMetadata>(),
-                new[] { relationalMetadata }
+                new[] { relationalMetadata },
+                System.Array.Empty<AttributeMetadataCache.AutoLoadSingletonEntry>()
             );
             cache.ForceRebuildForTests();
 
@@ -83,7 +84,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
             cache.SetMetadata(
                 System.Array.Empty<string>(),
                 System.Array.Empty<AttributeMetadataCache.TypeFieldMetadata>(),
-                new[] { relationalMetadata }
+                new[] { relationalMetadata },
+                System.Array.Empty<AttributeMetadataCache.AutoLoadSingletonEntry>()
             );
             cache.ForceRebuildForTests();
 

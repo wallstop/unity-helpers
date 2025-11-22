@@ -6,8 +6,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
     using System.Reflection;
     using global::UnityEditor;
     using global::UnityEngine;
+    using UnityEditor;
     using UnityHelpers.Core.Attributes;
     using UnityHelpers.Tags;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using static UnityHelpers.Tags.AttributeMetadataCache;
     using ReflectionHelpers = WallstopStudios.UnityHelpers.Core.Helper.ReflectionHelpers;
 
@@ -67,6 +69,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                 // Scan for relational attributes
                 List<RelationalTypeMetadata> relationalMetadataList = ScanRelationalAttributes();
 
+                AutoLoadSingletonEntry[] autoLoadEntries = BuildAutoLoadSingletonEntries();
+
                 // Get or create the cache asset
                 AttributeMetadataCache cache = GetOrCreateCache();
 
@@ -74,7 +78,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                 cache.SetMetadata(
                     sortedAttributeNames,
                     typeMetadataList.ToArray(),
-                    relationalMetadataList.ToArray()
+                    relationalMetadataList.ToArray(),
+                    autoLoadEntries
                 );
 
                 // Save the asset
@@ -246,6 +251,93 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             }
 
             return result;
+        }
+
+        private static AutoLoadSingletonEntry[] BuildAutoLoadSingletonEntries()
+        {
+            List<AutoLoadSingletonEntry> entries = new();
+            foreach (
+                Type type in UnityEditor.TypeCache.GetTypesWithAttribute<AutoLoadSingletonAttribute>()
+            )
+            {
+                if (type == null || type.IsAbstract || type.ContainsGenericParameters)
+                {
+                    continue;
+                }
+
+                AutoLoadSingletonAttribute attribute =
+                    System
+                        .Attribute.GetCustomAttributes(
+                            type,
+                            typeof(AutoLoadSingletonAttribute),
+                            inherit: false
+                        )
+                        .FirstOrDefault() as AutoLoadSingletonAttribute;
+                if (attribute == null)
+                {
+                    continue;
+                }
+
+                SingletonAutoLoadKind? kind = ResolveSingletonKind(type);
+                if (!kind.HasValue)
+                {
+                    Debug.LogWarning(
+                        $"AttributeMetadataCacheGenerator: {type.FullName} is marked with [AutoLoadSingleton] but does not derive from RuntimeSingleton<> or ScriptableObjectSingleton<>."
+                    );
+                    continue;
+                }
+
+                string typeName = GetAssemblyQualifiedTypeName(type);
+                if (string.IsNullOrWhiteSpace(typeName))
+                {
+                    continue;
+                }
+
+                entries.Add(new AutoLoadSingletonEntry(typeName, kind.Value, attribute.LoadType));
+            }
+
+            entries.Sort((left, right) => string.CompareOrdinal(left.typeName, right.typeName));
+            return entries.ToArray();
+        }
+
+        private static SingletonAutoLoadKind? ResolveSingletonKind(Type type)
+        {
+            if (
+                IsSubclassOfRawGeneric(
+                    type,
+                    typeof(WallstopStudios.UnityHelpers.Utils.RuntimeSingleton<>)
+                )
+            )
+            {
+                return SingletonAutoLoadKind.Runtime;
+            }
+
+            if (
+                IsSubclassOfRawGeneric(
+                    type,
+                    typeof(WallstopStudios.UnityHelpers.Utils.ScriptableObjectSingleton<>)
+                )
+            )
+            {
+                return SingletonAutoLoadKind.ScriptableObject;
+            }
+
+            return null;
+        }
+
+        private static bool IsSubclassOfRawGeneric(Type derived, Type openGeneric)
+        {
+            Type current = derived;
+            while (current != null && current != typeof(object))
+            {
+                if (current.IsGenericType && current.GetGenericTypeDefinition() == openGeneric)
+                {
+                    return true;
+                }
+
+                current = current.BaseType;
+            }
+            return false;
         }
 
         private static string GetAssemblyQualifiedTypeName(Type type)

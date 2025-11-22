@@ -15,7 +15,7 @@
   - Added `Runtime/Core/Helper/UnityMainThreadGuard.cs` and updated both `RuntimeSingleton<T>` and `ScriptableObjectSingleton<T>` so first-time creation on worker threads throws a descriptive error while pre-bootstrapping `UnityMainThreadDispatcher` (runtime + editor attributes) keeps the dispatcher available for background logging.
   - `UnityMainThreadDispatcher` now enforces a configurable queue limit (with warning + drop semantics), exposes `TryRunOnMainThread`, and provides cancellation-aware `RunAsync(Func<CancellationToken, Task>)` alongside more robust `Post/RunAsync` completions.
   - New tests in `Tests/Runtime/Helper/UnityMainThreadDispatcherTests.cs`, `Tests/Runtime/Utils/RuntimeSingletonTests.cs`, and `Tests/Editor/Utils/ScriptableObjectSingletonTests.cs` exercise multi-thread access, queue overflow handling, and cancellation to guard against regressions.
-  - Introduced `[AutoLoadSingleton]` plus the editor-generated `SingletonAutoLoadManifest` so runtime + ScriptableObject singletons can opt into reflection-free auto-loading at startup, backed by `SingletonAutoLoader` tests (`Tests/Runtime/Helper/SingletonAutoLoaderTests.cs`).
+  - Introduced `[AutoLoadSingleton]` with editor-time capture into `AttributeMetadataCache`, and taught `SingletonAutoLoader` to reflectively hydrate the serialized entries at runtime (play-mode only), with coverage in `Tests/Runtime/Helper/SingletonAutoLoaderTests.cs`.
 
 ### 2. Remove legacy `BinaryFormatter` surface area (Correctness, Maintainability)
 

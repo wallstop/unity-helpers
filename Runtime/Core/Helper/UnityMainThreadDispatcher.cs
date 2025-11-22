@@ -7,7 +7,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System.Threading.Tasks;
     using UnityEngine;
     using Utils;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
 #if UNITY_EDITOR
     using UnityEditor;
@@ -20,7 +19,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     /// Works in both edit mode and play mode. Use for marshalling callbacks from tasks/threads to main thread.
     /// </remarks>
     [ExecuteAlways]
-    [AutoLoadSingleton]
     public sealed class UnityMainThreadDispatcher : RuntimeSingleton<UnityMainThreadDispatcher>
     {
         private readonly ConcurrentQueue<Action> _actions = new();

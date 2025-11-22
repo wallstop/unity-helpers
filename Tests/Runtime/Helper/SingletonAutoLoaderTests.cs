@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tags;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Utils;
 
@@ -19,20 +20,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
         private sealed class AutoRuntimeSingleton : RuntimeSingleton<AutoRuntimeSingleton>
         {
-            public static int awakenCount;
+            public static int AwakenCount;
 
             protected override void Awake()
             {
                 base.Awake();
-                awakenCount++;
+                AwakenCount++;
             }
 
             public static void ClearForTests()
             {
-                awakenCount = 0;
+                AwakenCount = 0;
                 if (HasInstance)
                 {
-                    Object.DestroyImmediate(_instance.gameObject);
+                    DestroyImmediate(_instance.gameObject);
                 }
                 _instance = null;
             }
@@ -41,11 +42,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         private sealed class AutoScriptableSingleton
             : ScriptableObjectSingleton<AutoScriptableSingleton>
         {
-            public static int createdCount;
+            public static int CreatedCount;
 
             private AutoScriptableSingleton()
             {
-                createdCount++;
+                CreatedCount++;
             }
 
             public static void ClearForTests()
@@ -57,16 +58,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator AutoLoaderInitializesRuntimeSingletons()
         {
-            SingletonAutoLoader.ExecuteForTests(
-                SingletonAutoLoadDescriptor.Runtime<AutoRuntimeSingleton>(
-                    RuntimeInitializeLoadType.BeforeSplashScreen
-                )
+            SingletonAutoLoader.ExecuteEntriesForTests(
+                simulatePlayMode: true,
+                RuntimeInitializeLoadType.BeforeSplashScreen,
+                CreateRuntimeEntry<AutoRuntimeSingleton>()
             );
 
             yield return null;
 
             Assert.IsTrue(AutoRuntimeSingleton.HasInstance);
-            Assert.GreaterOrEqual(AutoRuntimeSingleton.awakenCount, 1);
+            Assert.GreaterOrEqual(AutoRuntimeSingleton.AwakenCount, 1);
             Track(AutoRuntimeSingleton.Instance.gameObject);
         }
 
@@ -79,16 +80,49 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             instance.hideFlags = HideFlags.DontSave;
             Track(instance);
 
-            SingletonAutoLoader.ExecuteForTests(
-                SingletonAutoLoadDescriptor.ScriptableObject<AutoScriptableSingleton>(
-                    RuntimeInitializeLoadType.BeforeSplashScreen
-                )
+            SingletonAutoLoader.ExecuteEntriesForTests(
+                simulatePlayMode: true,
+                RuntimeInitializeLoadType.BeforeSplashScreen,
+                CreateScriptableEntry<AutoScriptableSingleton>()
             );
 
             yield return null;
 
             Assert.IsTrue(AutoScriptableSingleton.HasInstance);
-            Assert.GreaterOrEqual(AutoScriptableSingleton.createdCount, 1);
+            Assert.GreaterOrEqual(AutoScriptableSingleton.CreatedCount, 1);
+        }
+
+        [UnityTest]
+        public IEnumerator AutoLoaderSkipsWhenNotPlaying()
+        {
+            SingletonAutoLoader.ExecuteEntriesForTests(
+                simulatePlayMode: false,
+                RuntimeInitializeLoadType.BeforeSplashScreen,
+                CreateRuntimeEntry<AutoRuntimeSingleton>()
+            );
+
+            yield return null;
+
+            Assert.IsFalse(AutoRuntimeSingleton.HasInstance);
+            Assert.AreEqual(0, AutoRuntimeSingleton.AwakenCount);
+        }
+
+        private static AttributeMetadataCache.AutoLoadSingletonEntry CreateRuntimeEntry<T>()
+        {
+            return new AttributeMetadataCache.AutoLoadSingletonEntry(
+                typeof(T).AssemblyQualifiedName,
+                SingletonAutoLoadKind.Runtime,
+                RuntimeInitializeLoadType.BeforeSplashScreen
+            );
+        }
+
+        private static AttributeMetadataCache.AutoLoadSingletonEntry CreateScriptableEntry<T>()
+        {
+            return new AttributeMetadataCache.AutoLoadSingletonEntry(
+                typeof(T).AssemblyQualifiedName,
+                SingletonAutoLoadKind.ScriptableObject,
+                RuntimeInitializeLoadType.BeforeSplashScreen
+            );
         }
     }
 }

@@ -236,13 +236,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
     public sealed class TestPropertyClass
     {
-        private static int _StaticValue = 50;
+        private static int _staticValue = 50;
         private int _instanceValue = 25;
 
         public static int StaticProperty
         {
-            get => _StaticValue;
-            set => _StaticValue = value;
+            get => _staticValue;
+            set => _staticValue = value;
         }
 
         public int InstanceProperty
@@ -264,7 +264,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     {
         public object ObjectProperty { get; set; } = "instance";
         public static object StaticObjectProperty { get; set; } = "static";
-        public object ObjectField = "instance-field";
+        public object objectField = "instance-field";
         public static object StaticObjectField = "static-field";
     }
 
@@ -284,11 +284,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
     public sealed class IndexerClass
     {
-        private readonly int[] data = new int[10];
+        private readonly int[] _data = new int[10];
         public int this[int i]
         {
-            get => data[i];
-            set => data[i] = value;
+            get => _data[i];
+            set => _data[i] = value;
         }
     }
 
@@ -1631,7 +1631,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Type testType = typeof(TestAttributeClass);
 
-            bool found = ReflectionHelpers.TryGetAttributeSafe<ReflectionTestAttribute>(
+            bool found = ReflectionHelpers.TryGetAttributeSafe(
                 testType,
                 out ReflectionTestAttribute attribute
             );
@@ -1639,14 +1639,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assert.IsNotNull(attribute);
             Assert.AreEqual("ClassLevel", attribute.Name);
 
-            bool missing = ReflectionHelpers.TryGetAttributeSafe<ObsoleteAttribute>(
+            bool missing = ReflectionHelpers.TryGetAttributeSafe(
                 testType,
                 out ObsoleteAttribute missingAttribute
             );
             Assert.IsFalse(missing);
             Assert.IsNull(missingAttribute);
 
-            bool nullProvider = ReflectionHelpers.TryGetAttributeSafe<ReflectionTestAttribute>(
+            bool nullProvider = ReflectionHelpers.TryGetAttributeSafe(
                 null,
                 out ReflectionTestAttribute nullAttribute
             );
@@ -2383,9 +2383,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void TypedFieldGetterCastsReferenceTypes()
         {
-            VariantPropertyClass instance = new() { ObjectField = "hello" };
+            VariantPropertyClass instance = new() { objectField = "hello" };
             FieldInfo field = typeof(VariantPropertyClass).GetField(
-                nameof(VariantPropertyClass.ObjectField)
+                nameof(VariantPropertyClass.objectField)
             );
             Func<VariantPropertyClass, string> getter = ReflectionHelpers.GetFieldGetter<
                 VariantPropertyClass,
@@ -2465,14 +2465,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             VariantPropertyClass instance = new();
             FieldInfo field = typeof(VariantPropertyClass).GetField(
-                nameof(VariantPropertyClass.ObjectField)
+                nameof(VariantPropertyClass.objectField)
             );
             FieldSetter<VariantPropertyClass, string> setter = ReflectionHelpers.GetFieldSetter<
                 VariantPropertyClass,
                 string
             >(field);
             setter(ref instance, "updated");
-            Assert.AreEqual("updated", instance.ObjectField);
+            Assert.AreEqual("updated", instance.objectField);
         }
 
         [Test]

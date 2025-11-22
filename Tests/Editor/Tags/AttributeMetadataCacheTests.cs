@@ -94,7 +94,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
                 alphaTypeMetadata,
             };
 
-            cache.SetMetadata(attributeNames, typeMetadata, relationalMetadata);
+            cache.SetMetadata(
+                attributeNames,
+                typeMetadata,
+                relationalMetadata,
+                Array.Empty<AttributeMetadataCache.AutoLoadSingletonEntry>()
+            );
 
             string[] storedAttributeNames = cache.SerializedAttributeNames;
             Assert.That(storedAttributeNames, Is.EqualTo(new[] { "Alpha", "Beta", "Gamma" }));

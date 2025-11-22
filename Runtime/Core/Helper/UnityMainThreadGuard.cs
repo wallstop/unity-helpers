@@ -10,7 +10,27 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
 
     /// <summary>
-    /// Captures Unity's main thread context and exposes guard helpers so runtime code can throw when called off thread.
+    /// Captures Unity’s main-thread context and exposes guard helpers for APIs that must run on that thread.
+    /// This prevents accidental background-thread access to Unity APIs.
+    /// <para>
+    /// Typical usage inside getters or event handlers:
+    /// <code>
+    /// public T Instance
+    /// {
+    ///     get
+    ///     {
+    ///         UnityMainThreadGuard.EnsureMainThread();
+    ///         return _instance;
+    ///     }
+    /// }
+    ///
+    /// public void RefreshUI()
+    /// {
+    ///     UnityMainThreadGuard.EnsureMainThread("Refreshing UI");
+    ///     // safe to interact with Unity objects here
+    /// }
+    /// </code>
+    /// </para>
     /// </summary>
     internal static class UnityMainThreadGuard
     {
@@ -60,6 +80,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 #endif
 
+        /// <summary>
+        /// Captures the provided thread as the main thread and stores its <see cref="SynchronizationContext"/>.
+        /// Normally invoked automatically via <see cref="RuntimeInitializeOnLoadMethodAttribute"/> /
+        /// <see cref="InitializeOnLoadMethodAttribute"/>.
+        /// </summary>
+        /// <param name="thread">Thread to treat as the Unity main thread.</param>
         internal static void Capture(Thread thread)
         {
             if (thread == null)
@@ -72,6 +98,27 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             Interlocked.Exchange(ref _initialized, 1);
         }
 
+        /// <summary>
+        /// Throws an <see cref="InvalidOperationException"/> when invoked on a non-main thread.
+        /// Caller metadata is captured automatically via compiler attributes so the resulting message
+        /// pinpoints the offending member and source location.
+        /// <para>
+        /// Example:
+        /// <code>
+        /// void Update()
+        /// {
+        ///     UnityMainThreadGuard.EnsureMainThread();
+        ///     // Update logic...
+        /// }
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="context">
+        /// Optional label describing why the guard is required, appended to the error message.
+        /// </param>
+        /// <param name="memberName">Populated automatically with <see cref="CallerMemberNameAttribute"/>.</param>
+        /// <param name="callerFilePath">Populated automatically with <see cref="CallerFilePathAttribute"/>.</param>
+        /// <param name="callerLineNumber">Populated automatically with <see cref="CallerLineNumberAttribute"/>.</param>
         internal static void EnsureMainThread(
             string context = null,
             [CallerMemberName] string memberName = null,
@@ -101,7 +148,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
 
             string message =
-                $"{location} must be accessed on Unity's main thread (called from {fileLabel}:{callerLineNumber}). Use UnityMainThreadDispatcher.RunOnMainThread to marshal work safely.";
+                $"{location} must be accessed on Unity's main thread (called from {fileLabel}:{callerLineNumber}). Use UnityMainThreadDispatcher.Instance.RunOnMainThread to marshal work safely.";
 
             throw new InvalidOperationException(message);
         }

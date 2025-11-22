@@ -368,15 +368,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             Color borderColor
         )
         {
-            Rect topBorder = new Rect(rect.xMin, rect.yMin, rect.width, borderThickness);
-            Rect bottomBorder = new Rect(
+            Rect topBorder = new(rect.xMin, rect.yMin, rect.width, borderThickness);
+            Rect bottomBorder = new(
                 rect.xMin,
                 rect.yMax - borderThickness,
                 rect.width,
                 borderThickness
             );
-            Rect leftBorder = new Rect(rect.xMin, rect.yMin, borderThickness, rect.height);
-            Rect rightBorder = new Rect(
+            Rect leftBorder = new(rect.xMin, rect.yMin, borderThickness, rect.height);
+            Rect rightBorder = new(
                 rect.xMax - borderThickness,
                 rect.yMin,
                 borderThickness,

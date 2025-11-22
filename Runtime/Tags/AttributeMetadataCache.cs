@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     using System;
     using System.Collections.Generic;
     using Core.Attributes;
+    using Core.Helper;
     using UnityEngine;
     using Utils;
     using WallstopStudios.UnityHelpers.Core.Helper;
@@ -138,6 +139,31 @@ namespace WallstopStudios.UnityHelpers.Tags
         internal RelationalTypeMetadata[] _relationalTypeMetadata =
             Array.Empty<RelationalTypeMetadata>();
 
+        [Serializable]
+        public sealed class AutoLoadSingletonEntry
+        {
+            public string typeName;
+            public SingletonAutoLoadKind kind;
+            public RuntimeInitializeLoadType loadType;
+
+            public AutoLoadSingletonEntry() { }
+
+            public AutoLoadSingletonEntry(
+                string typeName,
+                SingletonAutoLoadKind kind,
+                RuntimeInitializeLoadType loadType
+            )
+            {
+                this.typeName = typeName;
+                this.kind = kind;
+                this.loadType = loadType;
+            }
+        }
+
+        [SerializeField]
+        private AutoLoadSingletonEntry[] _autoLoadSingletons =
+            Array.Empty<AutoLoadSingletonEntry>();
+
         internal string[] SerializedAttributeNames => _allAttributeNames ?? Array.Empty<string>();
 
         internal TypeFieldMetadata[] SerializedTypeMetadata =>
@@ -145,6 +171,9 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         internal RelationalTypeMetadata[] SerializedRelationalTypeMetadata =>
             _relationalTypeMetadata ?? Array.Empty<RelationalTypeMetadata>();
+
+        internal AutoLoadSingletonEntry[] SerializedAutoLoadSingletons =>
+            _autoLoadSingletons ?? Array.Empty<AutoLoadSingletonEntry>();
 
         // Compound key for element type lookup
         private readonly struct ElementTypeKey : IEquatable<ElementTypeKey>
@@ -216,6 +245,8 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return _computedAllAttributeNames;
             }
         }
+
+        public AutoLoadSingletonEntry[] AutoLoadSingletons => SerializedAutoLoadSingletons;
 
         private void OnEnable()
         {
@@ -488,7 +519,8 @@ namespace WallstopStudios.UnityHelpers.Tags
         public void SetMetadata(
             string[] allAttributeNames,
             TypeFieldMetadata[] typeMetadata,
-            RelationalTypeMetadata[] relationalTypeMetadata
+            RelationalTypeMetadata[] relationalTypeMetadata,
+            AutoLoadSingletonEntry[] autoLoadSingletons
         )
         {
             string[] normalizedAttributeNames = SortAttributeNames(allAttributeNames);
@@ -496,10 +528,14 @@ namespace WallstopStudios.UnityHelpers.Tags
             RelationalTypeMetadata[] normalizedRelationalMetadata = SortRelationalTypeMetadata(
                 relationalTypeMetadata
             );
+            AutoLoadSingletonEntry[] normalizedAutoLoad = SortAutoLoadSingletonEntries(
+                autoLoadSingletons
+            );
 
             _allAttributeNames = normalizedAttributeNames;
             _typeMetadata = normalizedTypeMetadata;
             _relationalTypeMetadata = normalizedRelationalMetadata;
+            _autoLoadSingletons = normalizedAutoLoad;
             _computedAllAttributeNames = null;
             _computedAllAttributeNamesIncludesTests = false;
             _typeFieldsLookup = null;
@@ -810,6 +846,35 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             return left.isInterface ? -1 : 1;
+        }
+
+        private static AutoLoadSingletonEntry[] SortAutoLoadSingletonEntries(
+            AutoLoadSingletonEntry[] entries
+        )
+        {
+            if (entries == null || entries.Length == 0)
+            {
+                return Array.Empty<AutoLoadSingletonEntry>();
+            }
+
+            List<AutoLoadSingletonEntry> result = new(entries.Length);
+            foreach (AutoLoadSingletonEntry entry in entries)
+            {
+                if (entry == null || string.IsNullOrWhiteSpace(entry.typeName))
+                {
+                    continue;
+                }
+
+                result.Add(new AutoLoadSingletonEntry(entry.typeName, entry.kind, entry.loadType));
+            }
+
+            if (result.Count == 0)
+            {
+                return Array.Empty<AutoLoadSingletonEntry>();
+            }
+
+            result.Sort((left, right) => string.CompareOrdinal(left.typeName, right.typeName));
+            return result.ToArray();
         }
 #endif
     }

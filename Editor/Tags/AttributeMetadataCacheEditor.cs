@@ -32,7 +32,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                 cache.SetMetadata(
                     Array.Empty<string>(),
                     Array.Empty<AttributeMetadataCache.TypeFieldMetadata>(),
-                    Array.Empty<AttributeMetadataCache.RelationalTypeMetadata>()
+                    Array.Empty<AttributeMetadataCache.RelationalTypeMetadata>(),
+                    Array.Empty<AttributeMetadataCache.AutoLoadSingletonEntry>()
                 );
 
                 AssetDatabase.SaveAssets();
