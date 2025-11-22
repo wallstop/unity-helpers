@@ -30,15 +30,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
             bool assertionMade = false;
             yield return TestIMGUIExecutor.Run(() =>
             {
-                WEnumToggleButtonsPagination.PaginationState state =
-                    new WEnumToggleButtonsPagination.PaginationState
-                    {
-                        PageSize = 5,
-                        TotalItems = 10,
-                        PageIndex = 0,
-                    };
+                WEnumToggleButtonsPagination.PaginationState state = new()
+                {
+                    PageSize = 5,
+                    TotalItems = 10,
+                    PageIndex = 0,
+                };
 
-                Rect rect = new Rect(0f, 0f, 200f, EditorGUIUtility.singleLineHeight);
+                Rect rect = new(0f, 0f, 200f, EditorGUIUtility.singleLineHeight);
 
                 bool originalEnabled = GUI.enabled;
                 GUI.enabled = true;
@@ -62,9 +61,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         [Test]
         public void ResolveWEnumToggleButtonsPaletteReturnsExpectedDefaults()
         {
-            Color expectedSelected = new Color(0.243f, 0.525f, 0.988f, 1f);
-            Color expectedLightInactive = new Color(0.78f, 0.78f, 0.78f, 1f);
-            Color expectedDarkInactive = new Color(0.35f, 0.35f, 0.35f, 1f);
+            Color expectedSelected = new(0.243f, 0.525f, 0.988f, 1f);
+            Color expectedLightInactive = new(0.78f, 0.78f, 0.78f, 1f);
+            Color expectedDarkInactive = new(0.35f, 0.35f, 0.35f, 1f);
 
             UnityHelpersSettings.WEnumToggleButtonsPaletteEntry lightPalette =
                 UnityHelpersSettings.ResolveWEnumToggleButtonsPalette(
@@ -114,7 +113,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         public IEnumerator GetPropertyHeightUsesCachedLayoutWhenAvailable()
         {
             ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -135,10 +134,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
                 "Expected WEnumToggleButtonsAttribute on test field."
             );
 
-            WEnumToggleButtonsDrawer drawer = new WEnumToggleButtonsDrawer();
+            WEnumToggleButtonsDrawer drawer = new();
             ConfigureDrawer(drawer, fieldInfo, toggleAttribute);
 
-            GUIContent label = new GUIContent("Mode");
+            GUIContent label = new("Mode");
 
             bool assertionMade = false;
             yield return TestIMGUIExecutor.Run(() =>
@@ -146,7 +145,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
                 float baselineHeight = drawer.GetPropertyHeight(property, label);
                 Assert.Greater(baselineHeight, 0f, "Baseline height should be positive.");
 
-                Rect position = new Rect(0f, 0f, 400f, baselineHeight + 40f);
+                Rect position = new(0f, 0f, 400f, baselineHeight + 40f);
                 drawer.OnGUI(position, property, label);
 
                 float cachedHeight = drawer.GetPropertyHeight(property, label);
@@ -166,7 +165,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         public void CreateToggleSetHandlesMissingFieldInfo()
         {
             ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -188,7 +187,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         public IEnumerator GetPropertyHeightIgnoresExternalIndentation()
         {
             ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -206,10 +205,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
                 fieldInfo.GetCustomAttribute<WEnumToggleButtonsAttribute>();
             Assert.IsNotNull(toggleAttribute);
 
-            WEnumToggleButtonsDrawer drawer = new WEnumToggleButtonsDrawer();
+            WEnumToggleButtonsDrawer drawer = new();
             ConfigureDrawer(drawer, fieldInfo, toggleAttribute);
 
-            GUIContent label = new GUIContent("Mode");
+            GUIContent label = new("Mode");
 
             bool assertionMade = false;
             yield return TestIMGUIExecutor.Run(() =>
@@ -242,7 +241,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         public void GetPropertyHeightRespectsGroupPaddingContext()
         {
             ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -260,10 +259,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
                 fieldInfo.GetCustomAttribute<WEnumToggleButtonsAttribute>();
             Assert.IsNotNull(toggleAttribute);
 
-            WEnumToggleButtonsDrawer drawer = new WEnumToggleButtonsDrawer();
+            WEnumToggleButtonsDrawer drawer = new();
             ConfigureDrawer(drawer, fieldInfo, toggleAttribute);
 
-            GUIContent label = new GUIContent("Mode");
+            GUIContent label = new("Mode");
 
             float baselineHeight = drawer.GetPropertyHeight(property, label);
             Assert.Greater(baselineHeight, 0f);

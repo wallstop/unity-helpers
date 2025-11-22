@@ -23,7 +23,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             IntDropdownTestAsset asset = CreateScriptableObject<IntDropdownTestAsset>();
             asset.missingValue = 999;
 
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -31,10 +31,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             Assert.IsNotNull(property, "Failed to locate missing value property.");
 
-            IntDropdownDrawer drawer = new IntDropdownDrawer();
+            IntDropdownDrawer drawer = new();
             AssignAttribute(drawer, new IntDropdownAttribute(5, 10, 15));
-            Rect position = new Rect(0f, 0f, 240f, EditorGUIUtility.singleLineHeight);
-            GUIContent label = new GUIContent("Missing");
+            Rect position = new(0f, 0f, 240f, EditorGUIUtility.singleLineHeight);
+            GUIContent label = new("Missing");
 
             yield return TestIMGUIExecutor.Run(() =>
             {
@@ -51,7 +51,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             IntDropdownTestAsset asset = CreateScriptableObject<IntDropdownTestAsset>();
             asset.validValue = 10;
 
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -59,10 +59,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             Assert.IsNotNull(property, "Failed to locate valid value property.");
 
-            IntDropdownDrawer drawer = new IntDropdownDrawer();
+            IntDropdownDrawer drawer = new();
             AssignAttribute(drawer, new IntDropdownAttribute(5, 10, 15));
-            Rect position = new Rect(0f, 0f, 240f, EditorGUIUtility.singleLineHeight);
-            GUIContent label = new GUIContent("Valid");
+            Rect position = new(0f, 0f, 240f, EditorGUIUtility.singleLineHeight);
+            GUIContent label = new("Valid");
 
             yield return TestIMGUIExecutor.Run(() =>
             {

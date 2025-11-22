@@ -263,13 +263,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup
                 {
                     fontStyle = FontStyle.Bold,
                     padding = new RectOffset(16, 6, 4, 4),
+                    normal = { textColor = textColor },
+                    onNormal = { textColor = textColor },
+                    active = { textColor = textColor },
+                    onActive = { textColor = textColor },
+                    focused = { textColor = textColor },
+                    onFocused = { textColor = textColor },
                 };
-                style.normal.textColor = textColor;
-                style.onNormal.textColor = textColor;
-                style.active.textColor = textColor;
-                style.onActive.textColor = textColor;
-                style.focused.textColor = textColor;
-                style.onFocused.textColor = textColor;
                 FoldoutStyles[textColor] = style;
             }
 

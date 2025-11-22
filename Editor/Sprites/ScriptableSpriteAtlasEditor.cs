@@ -981,7 +981,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
 
             SerializedObject so = new(config);
-            SerializedProperty spritesListProp = so.FindProperty("spritesToPack");
+            SerializedProperty spritesListProp = so.FindProperty(
+                nameof(ScriptableSpriteAtlas.spritesToPack)
+            );
 
             Undo.RecordObject(config, "Remove Unfound Sprites from Atlas Config");
 

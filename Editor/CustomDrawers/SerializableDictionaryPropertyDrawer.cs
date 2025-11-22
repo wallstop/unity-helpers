@@ -45,7 +45,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float PendingAddButtonWidth = 110f;
         private const int DefaultPageSize =
             UnityHelpersSettings.DefaultSerializableDictionaryPageSize;
-        internal const int MaxPageSize = UnityHelpersSettings.MaxSerializableDictionaryPageSize;
+
+        private const int MaxPageSize = UnityHelpersSettings.MaxSerializableDictionaryPageSize;
         private const int DuplicateSummaryDisplayLimit = 5;
         private const float PaginationButtonWidth = 28f;
         private const float PaginationLabelWidth = 80f;
@@ -232,8 +233,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     EditorGUI.indentLevel = 0;
                     list.DoList(listRect);
                     EditorGUI.indentLevel = previousIndent;
-
-                    y = listRect.yMax + EditorGUIUtility.standardVerticalSpacing;
                 }
 
                 bool applied = serializedObject.ApplyModifiedProperties();
@@ -648,7 +647,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
             };
 
-            list.onReorderCallbackWithDetails = (_, oldIndex, newIndex) =>
+            list.onReorderCallbackWithDetails = (_, oldIndex, _) =>
             {
                 ListPageCache currentCache = cacheProvider();
                 if (
@@ -803,7 +802,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return state;
         }
 
-        internal NullKeyState RefreshNullKeyState(
+        private NullKeyState RefreshNullKeyState(
             string cacheKey,
             SerializedProperty keysProperty,
             Type keyType
@@ -1150,7 +1149,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return $"Duplicate key \"{formattedKey}\" is assigned to entries {joinedPositions}. The last entry will be used at runtime.";
         }
 
-        private PendingEntry GetOrCreatePendingEntry(
+        internal PendingEntry GetOrCreatePendingEntry(
             SerializedProperty property,
             Type keyType,
             Type valueType,
@@ -3376,7 +3375,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return _footerLabelStyle;
         }
 
-        private static object DrawFieldForType(
+        internal static object DrawFieldForType(
             Rect rect,
             string label,
             object current,
@@ -3461,6 +3460,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (type == typeof(Vector2Int))
             {
+                // ReSharper disable once InconsistentNaming
                 Vector2Int value = current is Vector2Int v2int ? v2int : default;
                 Vector2Int newValue = EditorGUI.Vector2IntField(rect, label, value);
                 return newValue;
@@ -3468,6 +3468,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (type == typeof(Vector3Int))
             {
+                // ReSharper disable once InconsistentNaming
                 Vector3Int value = current is Vector3Int v3int ? v3int : default;
                 Vector3Int newValue = EditorGUI.Vector3IntField(rect, label, value);
                 return newValue;
@@ -4132,9 +4133,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private sealed class PendingValueWrapper : ScriptableObject
+        internal sealed class PendingValueWrapper : ScriptableObject
         {
-            internal const string PropertyName = "boxedValue";
+            private const string PropertyName = nameof(boxedValue);
 
             [SerializeReference]
             private object boxedValue;
@@ -4565,7 +4566,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Full,
         }
 
-        private sealed class PendingEntry
+        internal sealed class PendingEntry
         {
             public object key;
             public object value;

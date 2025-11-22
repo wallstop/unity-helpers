@@ -1,7 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.Tags
 {
     using System;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Tags;
@@ -17,7 +16,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
 
             try
             {
-                string[] attributeNames = new string[] { "Gamma", "Alpha", "Beta" };
+                string[] attributeNames = new[] { "Gamma", "Alpha", "Beta" };
 
                 string alphaAttributesTypeName =
                     typeof(AlphaAttributesComponent).AssemblyQualifiedName ?? string.Empty;
@@ -26,12 +25,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
 
                 AttributeMetadataCache.TypeFieldMetadata alphaTypeMetadata = new(
                     alphaAttributesTypeName,
-                    new string[] { "gammaField", "betaField" }
+                    new[] { "gammaField", "betaField" }
                 );
 
                 AttributeMetadataCache.TypeFieldMetadata bravoTypeMetadata = new(
                     bravoAttributesTypeName,
-                    new string[] { "zetaField", "alphaField" }
+                    new[] { "zetaField", "alphaField" }
                 );
 
                 string alphaRelationalTypeName =
@@ -82,58 +81,40 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
                     {
                         new(
                             bravoRelationalTypeName,
-                            new AttributeMetadataCache.RelationalFieldMetadata[]
-                            {
-                                bravoRelationalFields[0],
-                                null,
-                                bravoRelationalFields[1],
-                            }
+                            new[] { bravoRelationalFields[0], null, bravoRelationalFields[1] }
                         ),
                         null,
                         new(alphaRelationalTypeName, alphaRelationalFields),
                     };
 
-                AttributeMetadataCache.TypeFieldMetadata[] typeMetadata =
-                    new AttributeMetadataCache.TypeFieldMetadata[]
-                    {
-                        bravoTypeMetadata,
-                        null,
-                        alphaTypeMetadata,
-                    };
+                AttributeMetadataCache.TypeFieldMetadata[] typeMetadata = new[]
+                {
+                    bravoTypeMetadata,
+                    null,
+                    alphaTypeMetadata,
+                };
 
                 cache.SetMetadata(attributeNames, typeMetadata, relationalMetadata);
 
-                string[] storedAttributeNames = GetPrivateField<string[]>(
-                    cache,
-                    "_allAttributeNames"
-                );
-                Assert.That(
-                    storedAttributeNames,
-                    Is.EqualTo(new string[] { "Alpha", "Beta", "Gamma" })
-                );
+                string[] storedAttributeNames = cache.SerializedAttributeNames;
+                Assert.That(storedAttributeNames, Is.EqualTo(new[] { "Alpha", "Beta", "Gamma" }));
 
                 AttributeMetadataCache.TypeFieldMetadata[] storedTypeMetadata =
-                    GetPrivateField<AttributeMetadataCache.TypeFieldMetadata[]>(
-                        cache,
-                        "_typeMetadata"
-                    );
+                    cache.SerializedTypeMetadata;
                 Assert.That(storedTypeMetadata.Length, Is.EqualTo(2));
                 Assert.That(storedTypeMetadata[0].typeName, Is.EqualTo(alphaAttributesTypeName));
                 Assert.That(
                     storedTypeMetadata[0].fieldNames,
-                    Is.EqualTo(new string[] { "betaField", "gammaField" })
+                    Is.EqualTo(new[] { "betaField", "gammaField" })
                 );
                 Assert.That(storedTypeMetadata[1].typeName, Is.EqualTo(bravoAttributesTypeName));
                 Assert.That(
                     storedTypeMetadata[1].fieldNames,
-                    Is.EqualTo(new string[] { "alphaField", "zetaField" })
+                    Is.EqualTo(new[] { "alphaField", "zetaField" })
                 );
 
                 AttributeMetadataCache.RelationalTypeMetadata[] storedRelationalMetadata =
-                    GetPrivateField<AttributeMetadataCache.RelationalTypeMetadata[]>(
-                        cache,
-                        "_relationalTypeMetadata"
-                    );
+                    cache.SerializedRelationalTypeMetadata;
                 Assert.That(storedRelationalMetadata.Length, Is.EqualTo(2));
                 Assert.That(
                     storedRelationalMetadata[0].typeName,
@@ -166,19 +147,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             {
                 UnityEngine.Object.DestroyImmediate(cache);
             }
-        }
-
-        private static T GetPrivateField<T>(AttributeMetadataCache cache, string fieldName)
-        {
-            BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.NonPublic;
-            FieldInfo field = typeof(AttributeMetadataCache).GetField(fieldName, bindingFlags);
-            if (field == null)
-            {
-                throw new InvalidOperationException($"Field '{fieldName}' was not found.");
-            }
-
-            object value = field.GetValue(cache);
-            return value is T castValue ? castValue : default;
         }
 
         private sealed class AlphaAttributesComponent : AttributesComponent { }

@@ -461,32 +461,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             bool usePagination
         )
         {
-            MethodInfo method = typeof(WEnumToggleButtonsDrawer).GetMethod(
-                "BuildSelectionSummary",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.NotNull(method, "Unable to reflect BuildSelectionSummary.");
-
-            object summaryInstance = method.Invoke(
-                null,
-                new object[] { toggleSet, property, startIndex, visibleCount, usePagination }
-            );
-            Type summaryType = method.ReturnType;
-            PropertyInfo hasSummaryProperty = summaryType.GetProperty(
-                "HasSummary",
-                BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            PropertyInfo contentProperty = summaryType.GetProperty(
-                "Content",
-                BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.NotNull(hasSummaryProperty);
-            Assert.NotNull(contentProperty);
-
-            bool hasSummary = (bool)hasSummaryProperty.GetValue(summaryInstance);
-            GUIContent content =
-                (GUIContent)contentProperty.GetValue(summaryInstance) ?? GUIContent.none;
-            return new SummaryResult(hasSummary, content);
+            WEnumToggleButtonsDrawer.SelectionSummary summary =
+                WEnumToggleButtonsDrawer.BuildSelectionSummary(
+                    toggleSet,
+                    property,
+                    startIndex,
+                    visibleCount,
+                    usePagination
+                );
+            return new SummaryResult(summary.HasSummary, summary.Content ?? GUIContent.none);
         }
 
         private static ToggleOption GetFlagOption(

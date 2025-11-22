@@ -381,8 +381,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             CaseInsensitiveKey loud = new("ALPHA");
             CaseInsensitiveKey quiet = new("alpha");
-            dictionary._keys = new CaseInsensitiveKey[] { loud, quiet };
-            dictionary._values = new string[] { "upper", "lower" };
+            dictionary._keys = new[] { loud, quiet };
+            dictionary._values = new[] { "upper", "lower" };
 
             dictionary.OnAfterDeserialize();
 
@@ -431,12 +431,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsNotNull(rebuiltKeys);
             Assert.IsNotNull(rebuiltValues);
             CollectionAssert.AreEqual(
-                new string[] { "alpha", "charlie", "delta" },
+                new[] { "alpha", "charlie", "delta" },
                 rebuiltKeys,
                 "Serialized keys should be rewritten in sorted order."
             );
             CollectionAssert.AreEqual(
-                new int[] { 1, 2, 3 },
+                new[] { 1, 2, 3 },
                 rebuiltValues,
                 "Serialized values should stay aligned with sorted keys."
             );
@@ -464,19 +464,18 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             roundTrip.OnBeforeSerialize();
 
-            CollectionAssert.AreEqual(new int[] { 1, 2, 3 }, roundTrip.SerializedKeys);
-            CollectionAssert.AreEqual(
-                new string[] { "one", "two", "three" },
-                roundTrip.SerializedValues
-            );
+            CollectionAssert.AreEqual(new[] { 1, 2, 3 }, roundTrip.SerializedKeys);
+            CollectionAssert.AreEqual(new[] { "one", "two", "three" }, roundTrip.SerializedValues);
         }
 
         [Test]
         public void MismatchedSerializedArraysAreDiscardedAndMarkCacheDirty()
         {
-            SerializableSortedDictionary<string, string> dictionary = new();
-            dictionary._keys = new string[] { "alpha" };
-            dictionary._values = new string[] { "one", "extra" };
+            SerializableSortedDictionary<string, string> dictionary = new()
+            {
+                _keys = new[] { "alpha" },
+                _values = new[] { "one", "extra" },
+            };
 
             dictionary.OnAfterDeserialize();
 
@@ -527,12 +526,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             public int CompareTo(CaseInsensitiveKey other)
             {
-                if (other == null)
-                {
-                    return 1;
-                }
-
-                return string.Compare(Token, other.Token, StringComparison.OrdinalIgnoreCase);
+                return other == null
+                    ? 1
+                    : string.Compare(Token, other.Token, StringComparison.OrdinalIgnoreCase);
             }
 
             int IComparable.CompareTo(object obj)

@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Reflection;
     using System.Runtime.Serialization;
     using System.Text.Json;
     using System.Text.Json.Serialization;
@@ -310,6 +311,29 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         {
             internal const string HasValue = nameof(_hasValue);
             internal const string Value = nameof(_value);
+        }
+
+        internal void ForceStateForTesting(bool hasValue, T rawValue)
+        {
+            _hasValue = hasValue;
+            _value = rawValue;
+        }
+
+        internal static bool TryGetValueFieldAttribute(out WShowIfAttribute attribute)
+        {
+            attribute = ValueFieldAttribute ??= ResolveValueFieldAttribute();
+            return attribute != null;
+        }
+
+        private static WShowIfAttribute ValueFieldAttribute;
+
+        private static WShowIfAttribute ResolveValueFieldAttribute()
+        {
+            FieldInfo valueField = typeof(SerializableNullable<T>).GetField(
+                SerializedPropertyNames.Value,
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            return valueField?.GetCustomAttribute<WShowIfAttribute>(inherit: false);
         }
     }
 

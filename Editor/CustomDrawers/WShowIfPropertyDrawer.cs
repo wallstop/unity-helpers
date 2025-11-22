@@ -50,7 +50,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return attribute as WShowIfAttribute;
         }
 
-        private bool ShouldShow(SerializedProperty property)
+        internal bool ShouldShow(SerializedProperty property)
         {
             WShowIfAttribute showIf = ResolveAttribute();
             if (showIf == null)
@@ -259,8 +259,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 steps.Add(memberAccessor.Getter);
-                currentType =
-                    memberAccessor.ValueType != null ? memberAccessor.ValueType : typeof(object);
+                currentType = memberAccessor.ValueType ?? typeof(object);
 
                 if (segment.Indices.Length == 0)
                 {
@@ -286,10 +285,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
 
                     steps.Add(indexAccessor.Getter);
-                    currentType =
-                        indexAccessor.ElementType != null
-                            ? indexAccessor.ElementType
-                            : typeof(object);
+                    currentType = indexAccessor.ElementType ?? typeof(object);
                 }
             }
 

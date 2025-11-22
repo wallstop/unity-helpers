@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -28,14 +27,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             {
                 SerializedObject serializedSettings = new(settings);
                 SerializedProperty patternsProperty = serializedSettings.FindProperty(
-                    "serializableTypeIgnorePatterns"
+                    UnityHelpersSettings.SerializedPropertyNames.SerializableTypeIgnorePatterns
                 );
                 patternsProperty.ClearArray();
                 patternsProperty.InsertArrayElementAtIndex(0);
                 SerializedProperty patternElement = patternsProperty.GetArrayElementAtIndex(0);
-                patternElement.FindPropertyRelative("pattern").stringValue = "^System\\.Int32$";
+                patternElement
+                    .FindPropertyRelative(
+                        UnityHelpersSettings.SerializedPropertyNames.SerializableTypePattern
+                    )
+                    .stringValue = "^System\\.Int32$";
                 SerializedProperty initializedProperty = serializedSettings.FindProperty(
-                    "serializableTypePatternsInitialized"
+                    UnityHelpersSettings.SerializedPropertyNames.SerializableTypePatternsInitialized
                 );
                 initializedProperty.boolValue = true;
                 serializedSettings.ApplyModifiedPropertiesWithoutUndo();
@@ -55,18 +58,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             {
                 SerializedObject restore = new(settings);
                 SerializedProperty patternsProperty = restore.FindProperty(
-                    "serializableTypeIgnorePatterns"
+                    UnityHelpersSettings.SerializedPropertyNames.SerializableTypeIgnorePatterns
                 );
                 patternsProperty.ClearArray();
                 for (int index = 0; index < backup.Length; index++)
                 {
                     patternsProperty.InsertArrayElementAtIndex(index);
                     SerializedProperty element = patternsProperty.GetArrayElementAtIndex(index);
-                    element.FindPropertyRelative("pattern").stringValue = backup[index];
+                    element
+                        .FindPropertyRelative(
+                            UnityHelpersSettings.SerializedPropertyNames.SerializableTypePattern
+                        )
+                        .stringValue = backup[index];
                 }
 
                 SerializedProperty initializedProperty = restore.FindProperty(
-                    "serializableTypePatternsInitialized"
+                    UnityHelpersSettings.SerializedPropertyNames.SerializableTypePatternsInitialized
                 );
                 initializedProperty.boolValue = true;
                 restore.ApplyModifiedPropertiesWithoutUndo();
@@ -230,9 +237,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             serialized.Update();
 
             SerializedProperty legacyPalette = serialized.FindProperty(
-                "legacyWButtonPriorityColors"
+                UnityHelpersSettings.SerializedPropertyNames.LegacyWButtonPriorityColors
             );
-            SerializedProperty customPalette = serialized.FindProperty("wbuttonCustomColors");
+            SerializedProperty customPalette = serialized.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
             SerializedProperty keys = customPalette.FindPropertyRelative(
                 SerializableDictionarySerializedPropertyNames.Keys
             );
@@ -246,10 +255,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 SerializedProperty keyProperty = keys.GetArrayElementAtIndex(index);
                 SerializedProperty valueProperty = values.GetArrayElementAtIndex(index);
                 SerializedProperty buttonColorProperty = valueProperty.FindPropertyRelative(
-                    "buttonColor"
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton
                 );
                 SerializedProperty textColorProperty = valueProperty.FindPropertyRelative(
-                    "textColor"
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
                 );
                 originalEntries.Add(
                     (
@@ -268,12 +277,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 for (int index = 0; index < legacyPalette.arraySize; index++)
                 {
                     SerializedProperty element = legacyPalette.GetArrayElementAtIndex(index);
-                    SerializedProperty keyProperty = element.FindPropertyRelative("priority");
+                    SerializedProperty keyProperty = element.FindPropertyRelative(
+                        UnityHelpersSettings.SerializedPropertyNames.WButtonPriority
+                    );
                     SerializedProperty buttonColorProperty = element.FindPropertyRelative(
-                        "buttonColor"
+                        UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton
                     );
                     SerializedProperty textColorProperty = element.FindPropertyRelative(
-                        "textColor"
+                        UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
                     );
                     legacyEntries.Add(
                         (
@@ -297,9 +308,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 {
                     legacyPalette.arraySize = 1;
                     SerializedProperty element = legacyPalette.GetArrayElementAtIndex(0);
-                    element.FindPropertyRelative("priority").stringValue = "LegacyKey";
-                    element.FindPropertyRelative("buttonColor").colorValue = legacyButton;
-                    element.FindPropertyRelative("textColor").colorValue = Color.clear;
+                    element
+                        .FindPropertyRelative(
+                            UnityHelpersSettings.SerializedPropertyNames.WButtonPriority
+                        )
+                        .stringValue = "LegacyKey";
+                    element
+                        .FindPropertyRelative(
+                            UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton
+                        )
+                        .colorValue = legacyButton;
+                    element
+                        .FindPropertyRelative(
+                            UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+                        )
+                        .colorValue = Color.clear;
                 }
 
                 keys.arraySize = 0;
@@ -307,11 +330,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
 
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
-                MethodInfo onEnable = typeof(UnityHelpersSettings).GetMethod(
-                    "OnEnable",
-                    BindingFlags.Instance | BindingFlags.NonPublic
-                );
-                onEnable.Invoke(settings, null);
+                settings.OnEnable();
 
                 UnityHelpersSettings.WButtonPaletteEntry migrated =
                     UnityHelpersSettings.ResolveWButtonPalette("LegacyKey");
@@ -331,10 +350,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                         (string Key, Color Button, Color Text) originalLegacy = legacyEntries[
                             index
                         ];
-                        element.FindPropertyRelative("priority").stringValue = originalLegacy.Key;
-                        element.FindPropertyRelative("buttonColor").colorValue =
-                            originalLegacy.Button;
-                        element.FindPropertyRelative("textColor").colorValue = originalLegacy.Text;
+                        element
+                            .FindPropertyRelative(
+                                UnityHelpersSettings.SerializedPropertyNames.WButtonPriority
+                            )
+                            .stringValue = originalLegacy.Key;
+                        element
+                            .FindPropertyRelative(
+                                UnityHelpersSettings
+                                    .SerializedPropertyNames
+                                    .WButtonCustomColorButton
+                            )
+                            .colorValue = originalLegacy.Button;
+                        element
+                            .FindPropertyRelative(
+                                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+                            )
+                            .colorValue = originalLegacy.Text;
                     }
                 }
 
@@ -346,8 +378,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     SerializedProperty keyProperty = keys.GetArrayElementAtIndex(index);
                     keyProperty.stringValue = original.Key;
                     SerializedProperty valueProperty = values.GetArrayElementAtIndex(index);
-                    valueProperty.FindPropertyRelative("buttonColor").colorValue = original.Button;
-                    valueProperty.FindPropertyRelative("textColor").colorValue = original.Text;
+                    valueProperty
+                        .FindPropertyRelative(
+                            UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton
+                        )
+                        .colorValue = original.Button;
+                    valueProperty
+                        .FindPropertyRelative(
+                            UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+                        )
+                        .colorValue = original.Text;
                 }
 
                 serialized.ApplyModifiedPropertiesWithoutUndo();
@@ -416,22 +456,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             serialized.Update();
 
             SerializedProperty wbuttonTweenProperty = serialized.FindProperty(
-                "wbuttonFoldoutTweenEnabled"
+                UnityHelpersSettings.SerializedPropertyNames.WButtonFoldoutTweenEnabled
             );
             SerializedProperty dictionaryTweenProperty = serialized.FindProperty(
-                "serializableDictionaryFoldoutTweenEnabled"
+                UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableDictionaryFoldoutTweenEnabled
             );
             SerializedProperty sortedDictionaryTweenProperty = serialized.FindProperty(
-                "serializableSortedDictionaryFoldoutTweenEnabled"
+                UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableSortedDictionaryFoldoutTweenEnabled
             );
             SerializedProperty setTweenProperty = serialized.FindProperty(
-                "serializableSetFoldoutTweenEnabled"
+                UnityHelpersSettings.SerializedPropertyNames.SerializableSetFoldoutTweenEnabled
             );
             SerializedProperty sortedSetTweenProperty = serialized.FindProperty(
-                "serializableSortedSetFoldoutTweenEnabled"
+                UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableSortedSetFoldoutTweenEnabled
             );
             SerializedProperty initializedProperty = serialized.FindProperty(
-                "foldoutTweenSettingsInitialized"
+                UnityHelpersSettings.SerializedPropertyNames.FoldoutTweenSettingsInitialized
             );
 
             bool originalWButton = wbuttonTweenProperty.boolValue;
@@ -451,12 +497,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 initializedProperty.boolValue = false;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
-                MethodInfo onEnable = typeof(UnityHelpersSettings).GetMethod(
-                    "OnEnable",
-                    BindingFlags.Instance | BindingFlags.NonPublic
-                );
-                Assert.IsNotNull(onEnable, "Unable to locate UnityHelpersSettings.OnEnable.");
-                onEnable?.Invoke(settings, null);
+                settings.OnEnable();
 
                 Assert.IsTrue(UnityHelpersSettings.ShouldTweenWButtonFoldouts());
                 Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableDictionaryFoldouts());
@@ -469,22 +510,56 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 SerializedObject verification = new(settings);
                 verification.Update();
                 Assert.IsTrue(
-                    verification.FindProperty("foldoutTweenSettingsInitialized").boolValue
+                    verification
+                        .FindProperty(
+                            UnityHelpersSettings
+                                .SerializedPropertyNames
+                                .FoldoutTweenSettingsInitialized
+                        )
+                        .boolValue
                 );
             }
             finally
             {
                 SerializedObject restore = new(settings);
-                restore.FindProperty("wbuttonFoldoutTweenEnabled").boolValue = originalWButton;
-                restore.FindProperty("serializableDictionaryFoldoutTweenEnabled").boolValue =
-                    originalDictionary;
-                restore.FindProperty("serializableSortedDictionaryFoldoutTweenEnabled").boolValue =
-                    originalSorted;
-                restore.FindProperty("serializableSetFoldoutTweenEnabled").boolValue = originalSet;
-                restore.FindProperty("serializableSortedSetFoldoutTweenEnabled").boolValue =
-                    originalSortedSet;
-                restore.FindProperty("foldoutTweenSettingsInitialized").boolValue =
-                    originalInitialized;
+                restore
+                    .FindProperty(
+                        UnityHelpersSettings.SerializedPropertyNames.WButtonFoldoutTweenEnabled
+                    )
+                    .boolValue = originalWButton;
+                restore
+                    .FindProperty(
+                        UnityHelpersSettings
+                            .SerializedPropertyNames
+                            .SerializableDictionaryFoldoutTweenEnabled
+                    )
+                    .boolValue = originalDictionary;
+                restore
+                    .FindProperty(
+                        UnityHelpersSettings
+                            .SerializedPropertyNames
+                            .SerializableSortedDictionaryFoldoutTweenEnabled
+                    )
+                    .boolValue = originalSorted;
+                restore
+                    .FindProperty(
+                        UnityHelpersSettings
+                            .SerializedPropertyNames
+                            .SerializableSetFoldoutTweenEnabled
+                    )
+                    .boolValue = originalSet;
+                restore
+                    .FindProperty(
+                        UnityHelpersSettings
+                            .SerializedPropertyNames
+                            .SerializableSortedSetFoldoutTweenEnabled
+                    )
+                    .boolValue = originalSortedSet;
+                restore
+                    .FindProperty(
+                        UnityHelpersSettings.SerializedPropertyNames.FoldoutTweenSettingsInitialized
+                    )
+                    .boolValue = originalInitialized;
                 restore.ApplyModifiedPropertiesWithoutUndo();
                 settings.SaveSettings();
             }
@@ -496,19 +571,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
             SerializedObject serialized = new(settings);
             SerializedProperty wbuttonTweenProperty = serialized.FindProperty(
-                "wbuttonFoldoutTweenEnabled"
+                UnityHelpersSettings.SerializedPropertyNames.WButtonFoldoutTweenEnabled
             );
             SerializedProperty dictionaryTweenProperty = serialized.FindProperty(
-                "serializableDictionaryFoldoutTweenEnabled"
+                UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableDictionaryFoldoutTweenEnabled
             );
             SerializedProperty sortedDictionaryTweenProperty = serialized.FindProperty(
-                "serializableSortedDictionaryFoldoutTweenEnabled"
+                UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableSortedDictionaryFoldoutTweenEnabled
             );
             SerializedProperty setTweenProperty = serialized.FindProperty(
-                "serializableSetFoldoutTweenEnabled"
+                UnityHelpersSettings.SerializedPropertyNames.SerializableSetFoldoutTweenEnabled
             );
             SerializedProperty sortedSetTweenProperty = serialized.FindProperty(
-                "serializableSortedSetFoldoutTweenEnabled"
+                UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableSortedSetFoldoutTweenEnabled
             );
 
             bool originalWButtonValue = wbuttonTweenProperty.boolValue;
@@ -537,15 +618,39 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             finally
             {
                 SerializedObject restore = new(settings);
-                restore.FindProperty("wbuttonFoldoutTweenEnabled").boolValue = originalWButtonValue;
-                restore.FindProperty("serializableDictionaryFoldoutTweenEnabled").boolValue =
-                    originalDictionaryValue;
-                restore.FindProperty("serializableSortedDictionaryFoldoutTweenEnabled").boolValue =
-                    originalSortedValue;
-                restore.FindProperty("serializableSetFoldoutTweenEnabled").boolValue =
-                    originalSetValue;
-                restore.FindProperty("serializableSortedSetFoldoutTweenEnabled").boolValue =
-                    originalSortedSetValue;
+                restore
+                    .FindProperty(
+                        UnityHelpersSettings.SerializedPropertyNames.WButtonFoldoutTweenEnabled
+                    )
+                    .boolValue = originalWButtonValue;
+                restore
+                    .FindProperty(
+                        UnityHelpersSettings
+                            .SerializedPropertyNames
+                            .SerializableDictionaryFoldoutTweenEnabled
+                    )
+                    .boolValue = originalDictionaryValue;
+                restore
+                    .FindProperty(
+                        UnityHelpersSettings
+                            .SerializedPropertyNames
+                            .SerializableSortedDictionaryFoldoutTweenEnabled
+                    )
+                    .boolValue = originalSortedValue;
+                restore
+                    .FindProperty(
+                        UnityHelpersSettings
+                            .SerializedPropertyNames
+                            .SerializableSetFoldoutTweenEnabled
+                    )
+                    .boolValue = originalSetValue;
+                restore
+                    .FindProperty(
+                        UnityHelpersSettings
+                            .SerializedPropertyNames
+                            .SerializableSortedSetFoldoutTweenEnabled
+                    )
+                    .boolValue = originalSortedSetValue;
                 restore.ApplyModifiedPropertiesWithoutUndo();
                 settings.SaveSettings();
             }
@@ -653,10 +758,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             {
                 SerializedObject serialized = new(settings);
                 SerializedProperty enabledProperty = serialized.FindProperty(
-                    "wfoldoutGroupTweenEnabled"
+                    UnityHelpersSettings.SerializedPropertyNames.WFoldoutGroupTweenEnabled
                 );
                 SerializedProperty speedProperty = serialized.FindProperty(
-                    "wfoldoutGroupTweenSpeed"
+                    UnityHelpersSettings.SerializedPropertyNames.WFoldoutGroupTweenSpeed
                 );
 
                 enabledProperty.boolValue = newEnabled;
@@ -684,8 +789,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             finally
             {
                 SerializedObject restore = new(settings);
-                restore.FindProperty("wfoldoutGroupTweenEnabled").boolValue = originalEnabled;
-                restore.FindProperty("wfoldoutGroupTweenSpeed").floatValue = originalSpeed;
+                restore
+                    .FindProperty(
+                        UnityHelpersSettings.SerializedPropertyNames.WFoldoutGroupTweenEnabled
+                    )
+                    .boolValue = originalEnabled;
+                restore
+                    .FindProperty(
+                        UnityHelpersSettings.SerializedPropertyNames.WFoldoutGroupTweenSpeed
+                    )
+                    .floatValue = originalSpeed;
                 restore.ApplyModifiedPropertiesWithoutUndo();
                 settings.SaveSettings();
             }
@@ -725,10 +838,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             finally
             {
                 SerializedObject serialized = new(settings);
-                SerializedProperty groupDictionary = serialized.FindProperty("wgroupCustomColors");
+                SerializedProperty groupDictionary = serialized.FindProperty(
+                    UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColors
+                );
                 RemoveDictionaryEntry(groupDictionary, wgroupKey);
                 SerializedProperty foldoutDictionary = serialized.FindProperty(
-                    "wfoldoutGroupCustomColors"
+                    UnityHelpersSettings.SerializedPropertyNames.WFoldoutGroupCustomColors
                 );
                 RemoveDictionaryEntry(foldoutDictionary, wfoldoutKey);
                 serialized.ApplyModifiedPropertiesWithoutUndo();

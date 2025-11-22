@@ -19,7 +19,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void CreatePropertyGUIWithoutOptionsReturnsHelpBox()
         {
             NoOptionsAsset asset = CreateScriptableObject<NoOptionsAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -27,7 +27,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             Assert.IsNotNull(property, "Failed to locate string property.");
 
-            StringInListDrawer drawer = new StringInListDrawer();
+            StringInListDrawer drawer = new();
             AssignAttribute(drawer, new StringInListAttribute());
             VisualElement element = drawer.CreatePropertyGUI(property);
             Assert.IsInstanceOf<HelpBox>(element);
@@ -38,7 +38,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             StringOptionsAsset asset = CreateScriptableObject<StringOptionsAsset>();
             asset.state = "Run";
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -46,7 +46,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             Assert.IsNotNull(property, "Failed to locate state property.");
 
-            StringInListDrawer drawer = new StringInListDrawer();
+            StringInListDrawer drawer = new();
             AssignAttribute(drawer, new StringInListAttribute("Idle", "Run", "Jump"));
             VisualElement element = drawer.CreatePropertyGUI(property);
             Assert.IsInstanceOf<BaseField<string>>(element);
@@ -66,7 +66,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             IntegerOptionsAsset asset = CreateScriptableObject<IntegerOptionsAsset>();
             asset.selection = 0;
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -74,7 +74,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             Assert.IsNotNull(property, "Failed to locate integer-backed dropdown.");
 
-            StringInListDrawer drawer = new StringInListDrawer();
+            StringInListDrawer drawer = new();
             AssignAttribute(drawer, new StringInListAttribute("Low", "Medium", "High"));
             VisualElement element = drawer.CreatePropertyGUI(property);
             DropdownField dropdown = element.Q<DropdownField>();

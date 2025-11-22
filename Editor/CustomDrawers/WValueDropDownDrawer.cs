@@ -231,7 +231,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return option.ToString();
         }
 
-        private static void ApplyOption(SerializedProperty property, object selectedOption)
+        internal static void ApplyOption(SerializedProperty property, object selectedOption)
         {
             switch (property.propertyType)
             {

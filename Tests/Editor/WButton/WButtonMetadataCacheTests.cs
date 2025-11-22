@@ -130,7 +130,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
             SerializedObject serialized = new(settings);
-            SerializedProperty palette = serialized.FindProperty("wbuttonCustomColors");
+            SerializedProperty palette = serialized.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
             SerializedProperty keys = palette.FindPropertyRelative(
                 SerializableDictionarySerializedPropertyNames.Keys
             );

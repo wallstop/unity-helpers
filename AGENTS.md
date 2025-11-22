@@ -34,6 +34,7 @@
 - Expose shared editor/runtime helpers via `internal` members and use `InternalsVisibleTo` for the assemblies that need access.
 - Prefer `nameof(...)` (or constants defined in one place) instead of magic strings, especially in property drawers, custom inspectors, editor utilities, and tests.
 - If a Unity serialization hook requires string references, centralize them in a single source of truth and document why reflection is unavoidable.
+- Editor and runtime test code should not rely on reflection to reach helpers we own; adjust visibility (typically `internal` + `InternalsVisibleTo`) so tests exercise real APIs, and reserve reflection for Unity/third-party surfaces or when reflection behavior is the subject under test.
 
 ## Testing Guidelines
 

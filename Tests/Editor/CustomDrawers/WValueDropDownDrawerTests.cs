@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
 #if UNITY_EDITOR
     using System;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -19,7 +18,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             FloatDropdownAsset asset = CreateScriptableObject<FloatDropdownAsset>();
             try
             {
-                SerializedObject serializedObject = new SerializedObject(asset);
+                SerializedObject serializedObject = new(asset);
                 serializedObject.Update();
 
                 SerializedProperty property = serializedObject.FindProperty(
@@ -44,7 +43,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             FloatDropdownAsset asset = CreateScriptableObject<FloatDropdownAsset>();
             try
             {
-                SerializedObject serializedObject = new SerializedObject(asset);
+                SerializedObject serializedObject = new(asset);
                 serializedObject.Update();
 
                 SerializedProperty property = serializedObject.FindProperty(
@@ -65,12 +64,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         private static void InvokeApplyOption(SerializedProperty property, object value)
         {
-            MethodInfo applyMethod = typeof(WValueDropDownDrawer).GetMethod(
-                "ApplyOption",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.IsNotNull(applyMethod, "Unable to resolve WValueDropDownDrawer.ApplyOption.");
-            applyMethod.Invoke(null, new object[] { property, value });
+            WValueDropDownDrawer.ApplyOption(property, value);
         }
 
         [Serializable]

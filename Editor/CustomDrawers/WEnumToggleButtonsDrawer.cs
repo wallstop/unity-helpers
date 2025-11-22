@@ -516,7 +516,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             property.serializedObject.ApplyModifiedProperties();
         }
 
-        private static SelectionSummary BuildSelectionSummary(
+        internal static SelectionSummary BuildSelectionSummary(
             ToggleSet toggleSet,
             SerializedProperty property,
             int startIndex,
@@ -700,7 +700,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return texture;
         }
 
-        private readonly struct SelectionSummary
+        internal readonly struct SelectionSummary
         {
             internal static SelectionSummary None { get; } = new(false, GUIContent.none);
 
@@ -723,7 +723,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Right = 3,
         }
 
-        private readonly struct ButtonStyleCacheKey : System.IEquatable<ButtonStyleCacheKey>
+        private readonly struct ButtonStyleCacheKey : IEquatable<ButtonStyleCacheKey>
         {
             internal ButtonStyleCacheKey(
                 ButtonSegment segment,

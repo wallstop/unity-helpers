@@ -42,7 +42,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             FiniteGroupAsset asset = CreateScriptableObject<FiniteGroupAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -75,7 +75,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             InfiniteGroupAsset asset = CreateScriptableObject<InfiniteGroupAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -106,7 +106,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             NamedEndGroupAsset asset = CreateScriptableObject<NamedEndGroupAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -149,7 +149,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             MultipleSegmentAsset asset = CreateScriptableObject<MultipleSegmentAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -193,7 +193,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             CollapsibleAsset asset = CreateScriptableObject<CollapsibleAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -220,7 +220,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             ColorKeyAsset asset = CreateScriptableObject<ColorKeyAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -244,7 +244,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void FoldoutGroupProducesDefinitionAndOperation()
         {
             FoldoutGroupAsset asset = CreateScriptableObject<FoldoutGroupAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -279,7 +279,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             FoldoutFiniteAsset asset = CreateScriptableObject<FoldoutFiniteAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -308,7 +308,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void FoldoutHideHeaderMetadataIsPreserved()
         {
             HiddenHeaderFoldoutAsset asset = CreateScriptableObject<HiddenHeaderFoldoutAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -329,7 +329,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             FoldoutEndDefaultAsset asset = CreateScriptableObject<FoldoutEndDefaultAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -381,7 +381,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             FoldoutEndIncludeAsset asset = CreateScriptableObject<FoldoutEndIncludeAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -426,7 +426,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             FoldoutNamedEndAsset asset = CreateScriptableObject<FoldoutNamedEndAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -483,7 +483,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             MixedGroupFoldoutAsset asset = CreateScriptableObject<MixedGroupFoldoutAsset>();
-            SerializedObject serializedObject = new SerializedObject(asset);
+            SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");

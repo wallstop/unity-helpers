@@ -1415,7 +1415,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             addStr(strSetObj, "a");
             addStr(strSetObj, "a");
             Assert.IsTrue(((HashSet<string>)strSetObj).Contains(null));
-            Assert.That((HashSet<string>)strSetObj, Is.EquivalentTo(new string[] { null, "a" }));
+            Assert.That((HashSet<string>)strSetObj, Is.EquivalentTo(new[] { null, "a" }));
         }
 
         [Test]

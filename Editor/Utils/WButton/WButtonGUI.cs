@@ -102,6 +102,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             return anyDrawn;
         }
 
+        internal static Dictionary<int, int> GetGroupCountsForTesting()
+        {
+            return GroupCounts;
+        }
+
+        internal static Dictionary<int, string> GetGroupNamesForTesting()
+        {
+            return GroupNames;
+        }
+
         private static List<WButtonMethodContext> BuildContexts(
             IReadOnlyList<WButtonMethodMetadata> metadataList,
             UnityEngine.Object[] targets
@@ -387,7 +397,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             InternalEditorUtility.RepaintAllViews();
         }
 
-        private static GUIContent BuildGroupHeader(int drawOrder)
+        internal static GUIContent BuildGroupHeader(int drawOrder)
         {
             GUIContent baseLabel =
                 drawOrder >= -1 ? WButtonStyles.TopGroupLabel : WButtonStyles.BottomGroupLabel;

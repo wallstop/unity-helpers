@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 #if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.Serialization;
@@ -65,7 +66,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             1f
         );
 
-        [System.Obsolete("Use DefaultWButtonColorKey instead.")]
+        [Obsolete("Use DefaultWButtonColorKey instead.")]
         public const string DefaultWButtonPriority = DefaultWButtonColorKey;
         public const int DefaultDuplicateTweenCycles = 3;
         public const float DefaultFoldoutSpeed = 2f;
@@ -324,10 +325,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         public enum DuplicateRowAnimationMode
         {
-            [System.Obsolete(
-                "Disable duplicate duplicate-row animations only when required.",
-                false
-            )]
+            [Obsolete("Disable duplicate duplicate-row animations only when required.", false)]
             None = 0,
             Static = 1,
             Tween = 2,
@@ -606,11 +604,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [HideInInspector]
         private bool serializableTypePatternsInitialized;
 
-        [System.Serializable]
-        private sealed class SerializableTypeIgnorePattern
+        [Serializable]
+        internal sealed class SerializableTypeIgnorePattern
         {
             [SerializeField]
-            private string pattern = string.Empty;
+            internal string pattern = string.Empty;
 
             public SerializableTypeIgnorePattern() { }
 
@@ -626,14 +624,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
         }
 
-        [System.Serializable]
+        [Serializable]
         private sealed class WButtonCustomColor
         {
             [SerializeField]
-            private Color buttonColor = Color.white;
+            internal Color buttonColor = Color.white;
 
             [SerializeField]
-            private Color textColor = Color.black;
+            internal Color textColor = Color.black;
 
             public Color ButtonColor
             {
@@ -656,7 +654,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
         }
 
-        [System.Serializable]
+        [Serializable]
         private sealed class WButtonCustomColorDictionary
             : SerializableDictionary<string, WButtonCustomColor> { }
 
@@ -770,7 +768,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         }
 #endif
 
-        [System.Serializable]
+        [Serializable]
         private sealed class WGroupCustomColor
         {
             [SerializeField]
@@ -800,15 +798,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
         }
 
-        [System.Serializable]
+        [Serializable]
         private sealed class WGroupCustomColorDictionary
             : SerializableDictionary<string, WGroupCustomColor> { }
 
-        [System.Serializable]
+        [Serializable]
         private sealed class WFoldoutGroupCustomColorDictionary
             : SerializableDictionary<string, WGroupCustomColor> { }
 
-        [System.Serializable]
+        [Serializable]
         private sealed class WEnumToggleButtonsCustomColor
         {
             [SerializeField]
@@ -865,7 +863,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
         }
 
-        [System.Serializable]
+        [Serializable]
         private sealed class WEnumToggleButtonsCustomColorDictionary
             : SerializableDictionary<string, WEnumToggleButtonsCustomColor> { }
 
@@ -984,12 +982,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
         }
 
-        [System.Serializable]
-        [System.Obsolete("Use WButtonCustomColorDictionary for serialization instead.")]
+        [Serializable]
+        [Obsolete("Use WButtonCustomColorDictionary for serialization instead.")]
         private sealed class WButtonPriorityColor
         {
             [SerializeField]
-            private string priority = DefaultWButtonColorKey;
+            internal string priority = DefaultWButtonColorKey;
 
             [SerializeField]
             private Color buttonColor = Color.white;
@@ -1107,7 +1105,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         {
             if (serializableTypeIgnorePatterns == null || serializableTypeIgnorePatterns.Count == 0)
             {
-                return System.Array.Empty<string>();
+                return Array.Empty<string>();
             }
 
             List<string> patterns = new(serializableTypeIgnorePatterns.Count);
@@ -1367,10 +1365,53 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return instance.serializableSetDuplicateTweenCycles;
         }
 
+        internal static class SerializedPropertyNames
+        {
+            internal const string SerializableTypeIgnorePatterns = nameof(
+                serializableTypeIgnorePatterns
+            );
+            internal const string SerializableTypePatternsInitialized = nameof(
+                serializableTypePatternsInitialized
+            );
+            internal const string SerializableTypePattern = nameof(
+                SerializableTypeIgnorePattern.pattern
+            );
+            internal const string LegacyWButtonPriorityColors = nameof(legacyWButtonPriorityColors);
+            internal const string WButtonCustomColors = nameof(wbuttonCustomColors);
+            internal const string WGroupCustomColors = nameof(wgroupCustomColors);
+            internal const string WFoldoutGroupCustomColors = nameof(wfoldoutGroupCustomColors);
+            internal const string WEnumToggleButtonsCustomColors = nameof(
+                wenumToggleButtonsCustomColors
+            );
+            internal const string WButtonFoldoutTweenEnabled = nameof(wbuttonFoldoutTweenEnabled);
+            internal const string SerializableDictionaryFoldoutTweenEnabled = nameof(
+                serializableDictionaryFoldoutTweenEnabled
+            );
+            internal const string SerializableSortedDictionaryFoldoutTweenEnabled = nameof(
+                serializableSortedDictionaryFoldoutTweenEnabled
+            );
+            internal const string SerializableSetFoldoutTweenEnabled = nameof(
+                serializableSetFoldoutTweenEnabled
+            );
+            internal const string SerializableSortedSetFoldoutTweenEnabled = nameof(
+                serializableSortedSetFoldoutTweenEnabled
+            );
+            internal const string FoldoutTweenSettingsInitialized = nameof(
+                foldoutTweenSettingsInitialized
+            );
+            internal const string WFoldoutGroupTweenEnabled = nameof(wfoldoutGroupTweenEnabled);
+            internal const string WFoldoutGroupTweenSpeed = nameof(wfoldoutGroupTweenSpeed);
+#pragma warning disable CS0618 // Type or member is obsolete
+            internal const string WButtonPriority = nameof(WButtonPriorityColor.priority);
+#pragma warning restore CS0618 // Type or member is obsolete
+            internal const string WButtonCustomColorButton = nameof(WButtonCustomColor.buttonColor);
+            internal const string WButtonCustomColorText = nameof(WButtonCustomColor.textColor);
+        }
+
         /// <summary>
         /// Ensures persisted data stays within valid range.
         /// </summary>
-        private void OnEnable()
+        internal void OnEnable()
         {
             stringInListPageSize = Mathf.Clamp(
                 stringInListPageSize <= 0 ? DefaultStringInListPageSize : stringInListPageSize,
@@ -1408,16 +1449,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 MinWButtonHistorySize,
                 MaxWButtonHistorySize
             );
-            if (!System.Enum.IsDefined(typeof(WButtonActionsPlacement), wbuttonActionsPlacement))
+            if (!Enum.IsDefined(typeof(WButtonActionsPlacement), wbuttonActionsPlacement))
             {
                 wbuttonActionsPlacement = WButtonActionsPlacement.Top;
             }
 
-            if (!System.Enum.IsDefined(typeof(WButtonFoldoutBehavior), wbuttonFoldoutBehavior))
+            if (!Enum.IsDefined(typeof(WButtonFoldoutBehavior), wbuttonFoldoutBehavior))
             {
                 wbuttonFoldoutBehavior = WButtonFoldoutBehavior.StartExpanded;
             }
-            if (!System.Enum.IsDefined(typeof(WGroupAutoIncludeMode), wgroupAutoIncludeMode))
+            if (!Enum.IsDefined(typeof(WGroupAutoIncludeMode), wgroupAutoIncludeMode))
             {
                 wgroupAutoIncludeMode = WGroupAutoIncludeMode.Infinite;
             }
@@ -1611,10 +1652,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         private bool EnsureWButtonCustomColorDefaults()
         {
-            if (wbuttonCustomColors == null)
-            {
-                wbuttonCustomColors = new WButtonCustomColorDictionary();
-            }
+            wbuttonCustomColors ??= new WButtonCustomColorDictionary();
 
             bool changed = false;
             changed |= MigrateLegacyWButtonPalette();
@@ -1659,7 +1697,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             );
 
             int paletteIndex = 0;
-            foreach (KeyValuePair<string, WButtonCustomColor> entry in wbuttonCustomColors)
+            foreach (
+                KeyValuePair<string, WButtonCustomColor> entry in wbuttonCustomColors.ToArray()
+            )
             {
                 WButtonCustomColor value = entry.Value;
                 if (value == null)
@@ -1739,26 +1779,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return true;
             }
 
-            return string.Equals(
-                    key,
-                    DefaultWButtonColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
-                )
-                || string.Equals(
-                    key,
-                    WButtonLightThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
-                )
-                || string.Equals(
-                    key,
-                    WButtonDarkThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
-                )
-                || string.Equals(
-                    key,
-                    WButtonLegacyColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
-                );
+            return string.Equals(key, DefaultWButtonColorKey, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, WButtonLightThemeColorKey, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, WButtonDarkThemeColorKey, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, WButtonLegacyColorKey, StringComparison.OrdinalIgnoreCase);
         }
 
         private bool MigrateLegacyWButtonPalette()
@@ -1770,9 +1794,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             bool changed = false;
-            for (int index = 0; index < legacyWButtonPriorityColors.Count; index++)
+            foreach (WButtonPriorityColor legacy in legacyWButtonPriorityColors)
             {
-                WButtonPriorityColor legacy = legacyWButtonPriorityColors[index];
 #pragma warning restore CS0618 // Type or member is obsolete
                 if (legacy == null)
                 {
@@ -1798,10 +1821,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         private bool EnsureWGroupCustomColorDefaults()
         {
-            if (wgroupCustomColors == null)
-            {
-                wgroupCustomColors = new WGroupCustomColorDictionary();
-            }
+            wgroupCustomColors ??= new WGroupCustomColorDictionary();
 
             bool changed = false;
 
@@ -2105,26 +2125,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return true;
             }
 
-            return string.Equals(
-                    key,
-                    DefaultWGroupColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
-                )
-                || string.Equals(
-                    key,
-                    WGroupLightThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
-                )
-                || string.Equals(
-                    key,
-                    WGroupDarkThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
-                )
-                || string.Equals(
-                    key,
-                    WGroupLegacyColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
-                );
+            return string.Equals(key, DefaultWGroupColorKey, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, WGroupLightThemeColorKey, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, WGroupDarkThemeColorKey, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, WGroupLegacyColorKey, StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsReservedWEnumToggleButtonsColorKey(string key)
@@ -2137,17 +2141,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return string.Equals(
                     key,
                     DefaultWEnumToggleButtonsColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
                 || string.Equals(
                     key,
                     WEnumToggleButtonsLightThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
                 || string.Equals(
                     key,
                     WEnumToggleButtonsDarkThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 );
         }
 
@@ -2174,13 +2178,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
             foreach (string existingKey in wbuttonCustomColors.Keys)
             {
-                if (
-                    string.Equals(
-                        existingKey,
-                        normalized,
-                        System.StringComparison.OrdinalIgnoreCase
-                    )
-                )
+                if (string.Equals(existingKey, normalized, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
@@ -2210,13 +2208,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
             foreach (string existingKey in wenumToggleButtonsCustomColors.Keys)
             {
-                if (
-                    string.Equals(
-                        existingKey,
-                        normalized,
-                        System.StringComparison.OrdinalIgnoreCase
-                    )
-                )
+                if (string.Equals(existingKey, normalized, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
@@ -2238,7 +2230,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     string.Equals(
                         colorKey,
                         WButtonLightThemeColorKey,
-                        System.StringComparison.OrdinalIgnoreCase
+                        StringComparison.OrdinalIgnoreCase
                     )
                 )
                 {
@@ -2249,7 +2241,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     string.Equals(
                         colorKey,
                         WButtonDarkThemeColorKey,
-                        System.StringComparison.OrdinalIgnoreCase
+                        StringComparison.OrdinalIgnoreCase
                     )
                 )
                 {
@@ -2260,7 +2252,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     string.Equals(
                         colorKey,
                         WButtonLegacyColorKey,
-                        System.StringComparison.OrdinalIgnoreCase
+                        StringComparison.OrdinalIgnoreCase
                     )
                 )
                 {
@@ -2276,13 +2268,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             {
                 foreach (string existingKey in wbuttonCustomColors.Keys)
                 {
-                    if (
-                        string.Equals(
-                            existingKey,
-                            normalized,
-                            System.StringComparison.OrdinalIgnoreCase
-                        )
-                    )
+                    if (string.Equals(existingKey, normalized, StringComparison.OrdinalIgnoreCase))
                     {
                         return existingKey;
                     }
@@ -2305,7 +2291,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     string.Equals(
                         colorKey,
                         WEnumToggleButtonsLightThemeColorKey,
-                        System.StringComparison.OrdinalIgnoreCase
+                        StringComparison.OrdinalIgnoreCase
                     )
                 )
                 {
@@ -2316,7 +2302,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     string.Equals(
                         colorKey,
                         WEnumToggleButtonsDarkThemeColorKey,
-                        System.StringComparison.OrdinalIgnoreCase
+                        StringComparison.OrdinalIgnoreCase
                     )
                 )
                 {
@@ -2330,13 +2316,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             {
                 foreach (string existingKey in wenumToggleButtonsCustomColors.Keys)
                 {
-                    if (
-                        string.Equals(
-                            existingKey,
-                            colorKey,
-                            System.StringComparison.OrdinalIgnoreCase
-                        )
-                    )
+                    if (string.Equals(existingKey, colorKey, StringComparison.OrdinalIgnoreCase))
                     {
                         return existingKey;
                     }
@@ -2356,7 +2336,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 string.Equals(
                     normalized,
                     DefaultWButtonColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -2367,7 +2347,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 string.Equals(
                     normalized,
                     WButtonLightThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -2382,7 +2362,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 string.Equals(
                     normalized,
                     WButtonDarkThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -2394,11 +2374,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             if (
-                string.Equals(
-                    normalized,
-                    WButtonLegacyColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
-                )
+                string.Equals(normalized, WButtonLegacyColorKey, StringComparison.OrdinalIgnoreCase)
             )
             {
                 if (
@@ -2419,34 +2395,29 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return new WButtonPaletteEntry(fallbackButton, fallbackText);
             }
 
-            if (wbuttonCustomColors != null && wbuttonCustomColors.Count > 0)
+            if (wbuttonCustomColors is not { Count: > 0 })
+            {
+                return GetThemeAwareDefaultWButtonPalette();
+            }
+
+            if (
+                wbuttonCustomColors.TryGetValue(normalized, out WButtonCustomColor directValue)
+                && directValue != null
+            )
+            {
+                directValue.EnsureReadableText();
+                return new WButtonPaletteEntry(directValue.ButtonColor, directValue.TextColor);
+            }
+
+            foreach (KeyValuePair<string, WButtonCustomColor> entry in wbuttonCustomColors)
             {
                 if (
-                    wbuttonCustomColors.TryGetValue(normalized, out WButtonCustomColor directValue)
-                    && directValue != null
+                    string.Equals(entry.Key, normalized, StringComparison.OrdinalIgnoreCase)
+                    && entry.Value != null
                 )
                 {
-                    directValue.EnsureReadableText();
-                    return new WButtonPaletteEntry(directValue.ButtonColor, directValue.TextColor);
-                }
-
-                foreach (KeyValuePair<string, WButtonCustomColor> entry in wbuttonCustomColors)
-                {
-                    if (
-                        string.Equals(
-                            entry.Key,
-                            normalized,
-                            System.StringComparison.OrdinalIgnoreCase
-                        )
-                        && entry.Value != null
-                    )
-                    {
-                        entry.Value.EnsureReadableText();
-                        return new WButtonPaletteEntry(
-                            entry.Value.ButtonColor,
-                            entry.Value.TextColor
-                        );
-                    }
+                    entry.Value.EnsureReadableText();
+                    return new WButtonPaletteEntry(entry.Value.ButtonColor, entry.Value.TextColor);
                 }
             }
 
@@ -2543,10 +2514,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return;
             }
 
-            if (wgroupCustomColors == null)
-            {
-                wgroupCustomColors = new WGroupCustomColorDictionary();
-            }
+            wgroupCustomColors ??= new WGroupCustomColorDictionary();
 
             if (ContainsWGroupColorKey(normalizedKey))
             {
@@ -2571,10 +2539,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return;
             }
 
-            if (wfoldoutGroupCustomColors == null)
-            {
-                wfoldoutGroupCustomColors = new WFoldoutGroupCustomColorDictionary();
-            }
+            wfoldoutGroupCustomColors ??= new WFoldoutGroupCustomColorDictionary();
 
             if (ContainsWFoldoutGroupColorKey(normalizedKey))
             {
@@ -2613,13 +2578,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
             foreach (string existingKey in wgroupCustomColors.Keys)
             {
-                if (
-                    string.Equals(
-                        existingKey,
-                        normalized,
-                        System.StringComparison.OrdinalIgnoreCase
-                    )
-                )
+                if (string.Equals(existingKey, normalized, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
@@ -2636,11 +2595,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             if (
-                string.Equals(
-                    key,
-                    DefaultWFoldoutGroupColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
-                )
+                string.Equals(key, DefaultWFoldoutGroupColorKey, StringComparison.OrdinalIgnoreCase)
             )
             {
                 return true;
@@ -2650,7 +2605,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 string.Equals(
                     key,
                     WFoldoutGroupLightThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -2661,7 +2616,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 string.Equals(
                     key,
                     WFoldoutGroupDarkThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -2692,13 +2647,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
             foreach (string existingKey in wfoldoutGroupCustomColors.Keys)
             {
-                if (
-                    string.Equals(
-                        existingKey,
-                        normalized,
-                        System.StringComparison.OrdinalIgnoreCase
-                    )
-                )
+                if (string.Equals(existingKey, normalized, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
@@ -2720,7 +2669,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     string.Equals(
                         colorKey,
                         WGroupLightThemeColorKey,
-                        System.StringComparison.OrdinalIgnoreCase
+                        StringComparison.OrdinalIgnoreCase
                     )
                 )
                 {
@@ -2731,7 +2680,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     string.Equals(
                         colorKey,
                         WGroupDarkThemeColorKey,
-                        System.StringComparison.OrdinalIgnoreCase
+                        StringComparison.OrdinalIgnoreCase
                     )
                 )
                 {
@@ -2742,7 +2691,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     string.Equals(
                         colorKey,
                         WGroupLegacyColorKey,
-                        System.StringComparison.OrdinalIgnoreCase
+                        StringComparison.OrdinalIgnoreCase
                     )
                 )
                 {
@@ -2760,7 +2709,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         string.Equals(
                             existingKey,
                             colorKey.Trim(),
-                            System.StringComparison.OrdinalIgnoreCase
+                            StringComparison.OrdinalIgnoreCase
                         )
                     )
                     {
@@ -2785,7 +2734,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     string.Equals(
                         colorKey,
                         WFoldoutGroupLightThemeColorKey,
-                        System.StringComparison.OrdinalIgnoreCase
+                        StringComparison.OrdinalIgnoreCase
                     )
                 )
                 {
@@ -2796,7 +2745,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     string.Equals(
                         colorKey,
                         WFoldoutGroupDarkThemeColorKey,
-                        System.StringComparison.OrdinalIgnoreCase
+                        StringComparison.OrdinalIgnoreCase
                     )
                 )
                 {
@@ -2814,7 +2763,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         string.Equals(
                             existingKey,
                             colorKey.Trim(),
-                            System.StringComparison.OrdinalIgnoreCase
+                            StringComparison.OrdinalIgnoreCase
                         )
                     )
                     {
@@ -2870,11 +2819,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             string normalized = NormalizeWGroupColorKey(colorKey);
 
             if (
-                string.Equals(
-                    normalized,
-                    DefaultWGroupColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
-                )
+                string.Equals(normalized, DefaultWGroupColorKey, StringComparison.OrdinalIgnoreCase)
             )
             {
                 return GetThemeAwareDefaultGroupPalette();
@@ -2884,7 +2829,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 string.Equals(
                     normalized,
                     WGroupLightThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -2899,7 +2844,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 string.Equals(
                     normalized,
                     WGroupDarkThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -2925,11 +2870,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 foreach (KeyValuePair<string, WGroupCustomColor> entry in wgroupCustomColors)
                 {
                     if (
-                        string.Equals(
-                            entry.Key,
-                            normalized,
-                            System.StringComparison.OrdinalIgnoreCase
-                        )
+                        string.Equals(entry.Key, normalized, StringComparison.OrdinalIgnoreCase)
                         && entry.Value != null
                     )
                     {
@@ -2992,7 +2933,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 string.Equals(
                     normalized,
                     DefaultWFoldoutGroupColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -3003,7 +2944,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 string.Equals(
                     normalized,
                     WFoldoutGroupLightThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -3018,7 +2959,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 string.Equals(
                     normalized,
                     WFoldoutGroupDarkThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -3050,11 +2991,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 foreach (KeyValuePair<string, WGroupCustomColor> entry in wfoldoutGroupCustomColors)
                 {
                     if (
-                        string.Equals(
-                            entry.Key,
-                            normalized,
-                            System.StringComparison.OrdinalIgnoreCase
-                        )
+                        string.Equals(entry.Key, normalized, StringComparison.OrdinalIgnoreCase)
                         && entry.Value != null
                     )
                     {
@@ -3080,7 +3017,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 string.Equals(
                     normalized,
                     DefaultWEnumToggleButtonsColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -3091,7 +3028,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 string.Equals(
                     normalized,
                     WEnumToggleButtonsLightThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -3108,7 +3045,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 string.Equals(
                     normalized,
                     WEnumToggleButtonsDarkThemeColorKey,
-                    System.StringComparison.OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -3149,11 +3086,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 )
                 {
                     if (
-                        string.Equals(
-                            entry.Key,
-                            normalized,
-                            System.StringComparison.OrdinalIgnoreCase
-                        )
+                        string.Equals(entry.Key, normalized, StringComparison.OrdinalIgnoreCase)
                         && entry.Value != null
                     )
                     {
@@ -3421,7 +3354,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             TEnum currentValue,
             Action<TEnum> setter
         )
-            where TEnum : System.Enum
+            where TEnum : Enum
         {
             EditorGUI.BeginChangeCheck();
             TEnum newValue = (TEnum)EditorGUILayout.EnumPopup(content, currentValue);
@@ -3434,7 +3367,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return false;
         }
 
-        private readonly struct LabelWidthScope : System.IDisposable
+        private readonly struct LabelWidthScope : IDisposable
         {
             private readonly float _previousWidth;
 
@@ -3477,7 +3410,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         );
                         SerializedProperty patternsInitializedProperty =
                             serializedSettings.FindProperty(
-                                nameof(UnityHelpersSettings.serializableTypePatternsInitialized)
+                                nameof(serializableTypePatternsInitialized)
                             );
 
                         if (scriptProperty != null)
@@ -3503,7 +3436,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(serializableTypeIgnorePatterns),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3519,7 +3452,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(stringInListPageSize),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3538,7 +3471,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(serializableSetPageSize),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3557,7 +3490,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(serializableDictionaryPageSize),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3576,7 +3509,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(enumToggleButtonsPageSize),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3595,7 +3528,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(wbuttonPageSize),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3614,7 +3547,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(wbuttonHistorySize),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3633,7 +3566,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(wbuttonActionsPlacement),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3650,7 +3583,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(wbuttonFoldoutBehavior),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3667,7 +3600,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(wbuttonFoldoutTweenEnabled),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3684,7 +3617,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(wbuttonFoldoutSpeed),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3709,7 +3642,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(wfoldoutGroupTweenEnabled),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3726,7 +3659,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(wfoldoutGroupTweenSpeed),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3751,7 +3684,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(wbuttonCustomColors),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3772,7 +3705,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(wgroupCustomColors),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3793,7 +3726,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(wfoldoutGroupCustomColors),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3814,7 +3747,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(wenumToggleButtonsCustomColors),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3835,7 +3768,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(serializableDictionaryFoldoutTweenEnabled),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3853,7 +3786,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(serializableDictionaryFoldoutSpeed),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3878,7 +3811,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(serializableSortedDictionaryFoldoutTweenEnabled),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3897,7 +3830,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(serializableSortedDictionaryFoldoutSpeed),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3923,7 +3856,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(serializableSetFoldoutTweenEnabled),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3940,7 +3873,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(serializableSetFoldoutSpeed),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3965,7 +3898,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(serializableSortedSetFoldoutTweenEnabled),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -3983,7 +3916,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(serializableSortedSetFoldoutSpeed),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -4008,7 +3941,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(duplicateRowAnimationMode),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -4025,7 +3958,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(duplicateRowTweenCycles),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -4050,7 +3983,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(serializableSetDuplicateTweenEnabled),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -4067,7 +4000,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(serializableSetDuplicateTweenCycles),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -4089,7 +4022,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(wgroupAutoIncludeMode),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -4106,7 +4039,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     property.propertyPath,
                                     nameof(wgroupAutoIncludeRowCount),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -4131,8 +4064,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
                         EditorGUI.BeginChangeCheck();
 
-                        string scriptPropertyPath =
-                            scriptProperty != null ? scriptProperty.propertyPath : null;
+                        string scriptPropertyPath = scriptProperty?.propertyPath;
                         WGroupLayout layout = WGroupLayoutBuilder.Build(
                             serializedSettings,
                             scriptPropertyPath
@@ -4188,22 +4120,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 string.Equals(
                                     propertyPath,
                                     nameof(foldoutTweenSettingsInitialized),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                                 || string.Equals(
                                     propertyPath,
                                     nameof(serializableTypePatternsInitialized),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                                 || string.Equals(
                                     propertyPath,
                                     nameof(legacyWButtonPriorityColors),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                                 || string.Equals(
                                     propertyPath,
                                     nameof(serializableTypeIgnorePatterns),
-                                    System.StringComparison.Ordinal
+                                    StringComparison.Ordinal
                                 )
                             )
                             {
@@ -4216,11 +4148,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
                     bool guiChanged = EditorGUI.EndChangeCheck();
                     bool applied = serializedSettings.ApplyModifiedPropertiesWithoutUndo();
-                    if (dataChanged || guiChanged || applied)
+                    if (!dataChanged && !guiChanged && !applied)
                     {
-                        settings.SaveSettings();
-                        serializedSettings.UpdateIfRequiredOrScript();
+                        return;
                     }
+
+                    settings.SaveSettings();
+                    serializedSettings.UpdateIfRequiredOrScript();
                 },
                 keywords = new[]
                 {

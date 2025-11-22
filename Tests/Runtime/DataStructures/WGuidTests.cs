@@ -3,8 +3,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using System;
     using System.Buffers.Binary;
     using System.IO;
-    using System.Reflection;
-    using System.Runtime.Serialization;
     using System.Text;
     using System.Text.Json;
     using NUnit.Framework;
@@ -253,20 +251,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             long high = unchecked(
                 (long)BinaryPrimitives.ReadUInt64LittleEndian(bytes.AsSpan(8, 8))
             );
-
-            object boxed = FormatterServices.GetUninitializedObject(typeof(WGuid));
-            FieldInfo lowField = typeof(WGuid).GetField(
-                "_low",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
-            FieldInfo highField = typeof(WGuid).GetField(
-                "_high",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
-            lowField.SetValue(boxed, low);
-            highField.SetValue(boxed, high);
-
-            return (WGuid)boxed;
+            return WGuid.CreateUnchecked(low, high);
         }
     }
 }

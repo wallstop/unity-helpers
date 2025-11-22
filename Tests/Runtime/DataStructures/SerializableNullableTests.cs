@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
     using System;
     using System.IO;
-    using System.Reflection;
     using System.Text.Json;
     using NUnit.Framework;
     using ProtoBuf;
@@ -240,72 +239,37 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void OnBeforeSerializeClearsStaleValueWhenEmpty()
         {
             SerializableNullable<int> wrapped = default;
-            object boxed = wrapped;
-            FieldInfo hasValueField = typeof(SerializableNullable<int>).GetField(
-                "_hasValue",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            FieldInfo valueField = typeof(SerializableNullable<int>).GetField(
-                "_value",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
+            wrapped.ForceStateForTesting(hasValue: false, rawValue: 99);
 
-            hasValueField?.SetValue(boxed, false);
-            valueField?.SetValue(boxed, 99);
-
-            ISerializationCallbackReceiver receiver = (ISerializationCallbackReceiver)boxed;
+            ISerializationCallbackReceiver receiver = wrapped;
             receiver.OnBeforeSerialize();
 
-            Assert.AreEqual(0, valueField?.GetValue(boxed));
-            wrapped = (SerializableNullable<int>)boxed;
-            Assert.IsFalse(wrapped.HasValue);
-            Assert.AreEqual(0, wrapped.GetValueOrDefault());
+            SerializableNullable<int> result = (SerializableNullable<int>)receiver;
+            Assert.IsFalse(result.HasValue);
+            Assert.AreEqual(0, result.GetValueOrDefault());
         }
 
         [Test]
         public void OnAfterDeserializeClearsStaleValueWhenEmpty()
         {
             SerializableNullable<int> wrapped = default;
-            object boxed = wrapped;
-            FieldInfo hasValueField = typeof(SerializableNullable<int>).GetField(
-                "_hasValue",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            FieldInfo valueField = typeof(SerializableNullable<int>).GetField(
-                "_value",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
+            wrapped.ForceStateForTesting(hasValue: false, rawValue: 123);
 
-            hasValueField?.SetValue(boxed, false);
-            valueField?.SetValue(boxed, 123);
-
-            ISerializationCallbackReceiver receiver = (ISerializationCallbackReceiver)boxed;
+            ISerializationCallbackReceiver receiver = wrapped;
             receiver.OnAfterDeserialize();
 
-            Assert.AreEqual(0, valueField?.GetValue(boxed));
-            wrapped = (SerializableNullable<int>)boxed;
-            Assert.IsFalse(wrapped.HasValue);
-            Assert.AreEqual(0, wrapped.GetValueOrDefault());
+            SerializableNullable<int> result = (SerializableNullable<int>)receiver;
+            Assert.IsFalse(result.HasValue);
+            Assert.AreEqual(0, result.GetValueOrDefault());
         }
 
         [Test]
         public void ValueFieldIncludesWShowIfAttribute()
         {
-            Type type = typeof(SerializableNullable<int>);
-            string fieldName = SerializableNullable<int>.SerializedPropertyNames.Value;
-            FieldInfo valueField = type.GetField(
-                fieldName,
-                BindingFlags.Instance | BindingFlags.NonPublic
+            bool resolved = SerializableNullable<int>.TryGetValueFieldAttribute(
+                out WShowIfAttribute attribute
             );
-            Assert.IsNotNull(valueField);
-
-            object[] attributes = valueField.GetCustomAttributes(
-                typeof(WShowIfAttribute),
-                inherit: false
-            );
-            Assert.IsNotEmpty(attributes);
-
-            WShowIfAttribute attribute = (WShowIfAttribute)attributes[0];
+            Assert.IsTrue(resolved);
             Assert.AreEqual(
                 SerializableNullable<int>.SerializedPropertyNames.HasValue,
                 attribute.conditionField

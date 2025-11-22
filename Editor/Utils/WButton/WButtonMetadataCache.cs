@@ -154,7 +154,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
         internal string GroupName { get; }
 
-        [System.Obsolete("Use ColorKey instead.")]
+        [Obsolete("Use ColorKey instead.")]
         internal string Priority => ColorKey;
 
         internal WButtonParameterMetadata[] Parameters { get; }

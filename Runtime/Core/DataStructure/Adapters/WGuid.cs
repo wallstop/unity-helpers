@@ -169,6 +169,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             return new WGuid(guid);
         }
 
+        internal static WGuid CreateUnchecked(long low, long high)
+        {
+            WGuid guid = default;
+            guid._low = low;
+            guid._high = high;
+            return guid;
+        }
+
         /// <summary>
         /// Determines equality between two wrappers by comparing their packed representations.
         /// </summary>

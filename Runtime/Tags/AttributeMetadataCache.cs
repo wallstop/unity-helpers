@@ -137,6 +137,14 @@ namespace WallstopStudios.UnityHelpers.Tags
         internal RelationalTypeMetadata[] _relationalTypeMetadata =
             Array.Empty<RelationalTypeMetadata>();
 
+        internal string[] SerializedAttributeNames => _allAttributeNames ?? Array.Empty<string>();
+
+        internal TypeFieldMetadata[] SerializedTypeMetadata =>
+            _typeMetadata ?? Array.Empty<TypeFieldMetadata>();
+
+        internal RelationalTypeMetadata[] SerializedRelationalTypeMetadata =>
+            _relationalTypeMetadata ?? Array.Empty<RelationalTypeMetadata>();
+
         // Compound key for element type lookup
         private readonly struct ElementTypeKey : IEquatable<ElementTypeKey>
         {

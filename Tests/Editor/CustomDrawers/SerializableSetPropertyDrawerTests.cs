@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEditorInternal;
@@ -212,40 +211,22 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void ManualEntryUsesObjectPickerForScriptableObjectValues()
         {
-            Type pendingType = typeof(SerializableSetPropertyDrawer).GetNestedType(
-                "PendingEntry",
-                BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(pendingType, "PendingEntry type should exist.");
-
-            object pending = Activator.CreateInstance(pendingType);
-            MethodInfo drawField = typeof(SerializableSetPropertyDrawer).GetMethod(
-                "DrawFieldForType",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.IsNotNull(drawField, "Expected DrawFieldForType via reflection.");
-
-            object[] parameters =
-            {
-                new Rect(0f, 0f, 200f, EditorGUIUtility.singleLineHeight),
-                new GUIContent("Value"),
-                null,
-                typeof(TestData),
-                pending,
-            };
+            SerializableSetPropertyDrawer.PendingEntry pending = new();
+            Rect rect = new(0f, 0f, 200f, EditorGUIUtility.singleLineHeight);
 
             TestIMGUIExecutor.Run(() =>
             {
-                drawField.Invoke(null, parameters);
+                SerializableSetPropertyDrawer.DrawFieldForType(
+                    rect,
+                    new GUIContent("Value"),
+                    null,
+                    typeof(TestData),
+                    pending
+                );
             });
 
-            FieldInfo valueWrapperField = pendingType.GetField(
-                "valueWrapper",
-                BindingFlags.Instance | BindingFlags.Public
-            );
-            Assert.IsNotNull(valueWrapperField, "Expected valueWrapper field.");
             Assert.IsNull(
-                valueWrapperField.GetValue(pending),
+                pending.valueWrapper,
                 "ScriptableObject values should rely on object pickers rather than PendingValueWrappers."
             );
         }
@@ -253,14 +234,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void CloneComplexValueReturnsSameReferenceForStrings()
         {
-            MethodInfo cloneMethod = typeof(SerializableSetPropertyDrawer).GetMethod(
-                "CloneComplexValue",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.IsNotNull(cloneMethod, "Expected CloneComplexValue via reflection.");
-
             string original = Guid.NewGuid().ToString();
-            object clone = cloneMethod.Invoke(null, new object[] { original, typeof(string) });
+            object clone = SerializableSetPropertyDrawer.CloneComplexValue(
+                original,
+                typeof(string)
+            );
 
             Assert.AreSame(
                 original,
@@ -272,15 +250,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void CloneComplexValueDeepClonesSerializableReferenceTypes()
         {
-            MethodInfo cloneMethod = typeof(SerializableSetPropertyDrawer).GetMethod(
-                "CloneComplexValue",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.IsNotNull(cloneMethod, "Expected CloneComplexValue via reflection.");
-
             CloneableSample sample = new() { number = 42, label = "sample" };
             CloneableSample clone =
-                cloneMethod.Invoke(null, new object[] { sample, typeof(CloneableSample) })
+                SerializableSetPropertyDrawer.CloneComplexValue(sample, typeof(CloneableSample))
                 as CloneableSample;
 
             Assert.IsNotNull(clone, "Deep clone should produce an instance of the same type.");
@@ -371,13 +343,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void ManualEntryRejectsDuplicateValues()
         {
             StringSetHost host = CreateScriptableObject<StringSetHost>();
-            ISerializableSetInspector inspector = host.set as ISerializableSetInspector;
+            ISerializableSetInspector inspector = host.set;
             Assert.IsNotNull(
                 inspector,
                 "Expected inspector implementation on SerializableHashSet."
             );
 
-            Array snapshot = Array.CreateInstance(typeof(string), 1);
+            Array snapshot = new string[1];
             snapshot.SetValue("Existing", 0);
             inspector.SetSerializedItemsSnapshot(snapshot, preserveSerializedEntries: true);
             inspector.SynchronizeSerializedState();

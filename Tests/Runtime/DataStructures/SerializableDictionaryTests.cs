@@ -211,9 +211,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             string[] valuesCopy = new string[serializedValues.Length];
             Array.Copy(serializedValues, valuesCopy, serializedValues.Length);
 
-            SerializableDictionary<int, string> roundTripped = new();
-            roundTripped._keys = keysCopy;
-            roundTripped._values = valuesCopy;
+            SerializableDictionary<int, string> roundTripped = new()
+            {
+                _keys = keysCopy,
+                _values = valuesCopy,
+            };
 
             roundTripped.OnAfterDeserialize();
 
@@ -492,9 +494,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void MismatchedSerializedArraysAreDiscarded()
         {
-            SerializableDictionary<int, string> dictionary = new();
-            dictionary._keys = new int[] { 1, 2 };
-            dictionary._values = new string[] { "one" };
+            SerializableDictionary<int, string> dictionary = new()
+            {
+                _keys = new[] { 1, 2 },
+                _values = new[] { "one" },
+            };
 
             dictionary.OnAfterDeserialize();
 

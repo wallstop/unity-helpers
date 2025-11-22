@@ -140,7 +140,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             int[] serializedBefore = set._items;
             Assert.IsNotNull(serializedBefore);
-            CollectionAssert.AreEquivalent(new int[] { 5, 10 }, serializedBefore);
+            CollectionAssert.AreEquivalent(new[] { 5, 10 }, serializedBefore);
 
             set.OnAfterDeserialize();
             object cachedAfterDeserialize = set._items;
@@ -152,13 +152,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             set.OnBeforeSerialize();
             int[] serializedAfterMutation = set._items;
             Assert.IsNotNull(serializedAfterMutation);
-            CollectionAssert.AreEquivalent(new int[] { 5, 10, 20 }, serializedAfterMutation);
+            CollectionAssert.AreEquivalent(new[] { 5, 10, 20 }, serializedAfterMutation);
         }
 
         [Test]
         public void ProtoSerializationRoundTripsValues()
         {
-            SerializableHashSet<int> original = new(new int[] { 1, 3, 5 });
+            SerializableHashSet<int> original = new(new[] { 1, 3, 5 });
             byte[] payload = Serializer.ProtoSerialize(original);
 
             object cachedItems = original._items;
@@ -184,7 +184,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void JsonSerializationRoundTripsValues()
         {
-            SerializableHashSet<string> original = new(new string[] { "delta", "alpha", "gamma" });
+            SerializableHashSet<string> original = new(new[] { "delta", "alpha", "gamma" });
 
             string json = Serializer.JsonStringify(original);
             SerializableHashSet<string> roundTrip = Serializer.JsonDeserialize<
@@ -243,8 +243,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void UnionWithPopulatesSetWithoutDuplicates()
         {
-            SerializableHashSet<int> set = new(new int[] { 1, 3, 5 });
-            set.UnionWith(new int[] { 3, 5, 7, 9 });
+            SerializableHashSet<int> set = new(new[] { 1, 3, 5 });
+            set.UnionWith(new[] { 3, 5, 7, 9 });
 
             Assert.AreEqual(5, set.Count);
             int[] expected = { 1, 3, 5, 7, 9 };
@@ -287,8 +287,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EnumeratorIsValueTypeAndSupportsForEach()
         {
-            SerializableHashSet<int> set = new(new int[] { 1, 2, 3 });
-            HashSet<int>.Enumerator enumerator = set.GetEnumerator();
+            SerializableHashSet<int> set = new(new[] { 1, 2, 3 });
+            using HashSet<int>.Enumerator enumerator = set.GetEnumerator();
 
             Assert.IsTrue(enumerator.GetType().IsValueType);
 
@@ -308,8 +308,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EnumeratorThrowsAfterMutationLikeHashSet()
         {
-            SerializableHashSet<int> set = new(new int[] { 1, 2, 3 });
-            HashSet<int>.Enumerator enumerator = set.GetEnumerator();
+            SerializableHashSet<int> set = new(new[] { 1, 2, 3 });
+            using HashSet<int>.Enumerator enumerator = set.GetEnumerator();
 
             Assert.IsTrue(enumerator.MoveNext());
             set.Add(4);
@@ -334,9 +334,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void CopyToWithCountMatchesSystemHashSet()
         {
-            SerializableHashSet<int> serializable = new(new int[] { 5, 7, 11, 13, 17 });
+            SerializableHashSet<int> serializable = new(new[] { 5, 7, 11, 13, 17 });
 
-            HashSet<int> baseline = new(new int[] { 5, 7, 11, 13, 17 });
+            HashSet<int> baseline = new(new[] { 5, 7, 11, 13, 17 });
 
             int[] serializableTarget = new int[8];
             int[] baselineTarget = new int[8];
@@ -350,8 +350,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void SetOperationsMatchSystemHashSet()
         {
-            SerializableHashSet<int> serializable = new(new int[] { 1, 3, 5, 7 });
-            HashSet<int> baseline = new(new int[] { 1, 3, 5, 7 });
+            SerializableHashSet<int> serializable = new(new[] { 1, 3, 5, 7 });
+            HashSet<int> baseline = new(new[] { 1, 3, 5, 7 });
 
             int[] unionSource = { 5, 6, 9 };
             serializable.UnionWith(unionSource);
@@ -376,7 +376,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void ProtoSerializationProducesIndependentCopy()
         {
-            SerializableHashSet<int> original = new(new int[] { 2, 4, 6 });
+            SerializableHashSet<int> original = new(new[] { 2, 4, 6 });
 
             byte[] payload = Serializer.ProtoSerialize(original);
 
@@ -397,7 +397,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void JsonSerializationProducesIndependentCopy()
         {
-            SerializableHashSet<string> original = new(new string[] { "alpha", "beta", "delta" });
+            SerializableHashSet<string> original = new(new[] { "alpha", "beta", "delta" });
 
             string json = Serializer.JsonStringify(original);
 
@@ -475,7 +475,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void SortedHashSetProtoRoundTripRetainsOrdering()
         {
-            SerializableSortedSet<string> original = new(new string[] { "kiwi", "apple", "mango" });
+            SerializableSortedSet<string> original = new(new[] { "kiwi", "apple", "mango" });
 
             byte[] payload = Serializer.ProtoSerialize(original);
             SerializableSortedSet<string> roundTrip = Serializer.ProtoDeserialize<
@@ -523,14 +523,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void UnityDeserializationPreservesDuplicateSerializedEntries()
         {
-            SerializableSortedSet<int> set = new();
-            set._items = new int[] { 1, 1, 2 };
+            SerializableSortedSet<int> set = new() { _items = new[] { 1, 1, 2 } };
             set.OnAfterDeserialize();
 
             int[] cached = set.SerializedItems;
             Assert.IsNotNull(cached, "Duplicate entries must keep serialized cache for inspector.");
 
-            CollectionAssert.AreEqual(new int[] { 1, 1, 2 }, cached);
+            CollectionAssert.AreEqual(new[] { 1, 1, 2 }, cached);
             Assert.AreEqual(2, set.Count);
             Assert.IsTrue(set.Contains(1));
             Assert.IsTrue(set.Contains(2));
@@ -553,7 +552,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             SerializableSortedSet<ScriptableSample> set = new();
             ScriptableSample valid = ScriptableObject.CreateInstance<ScriptableSample>();
-            set._items = new ScriptableSample[] { null, valid };
+            set._items = new[] { null, valid };
 
             LogAssert.Expect(
                 LogType.Error,
@@ -568,7 +567,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             object cached = set._items;
             Assert.IsNotNull(cached, "Serialized cache should be preserved for inspector review.");
             ScriptableSample[] cachedValues = (ScriptableSample[])cached;
-            CollectionAssert.AreEqual(new ScriptableSample[] { null, valid }, cachedValues);
+            CollectionAssert.AreEqual(new[] { null, valid }, cachedValues);
 
             LogAssert.NoUnexpectedReceived();
 
@@ -617,7 +616,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.IsNotNull(rebuiltItems);
             CollectionAssert.AreEqual(
-                new string[] { "alpha", "charlie", "delta" },
+                new[] { "alpha", "charlie", "delta" },
                 rebuiltItems,
                 "Serialization should rebuild sorted cache after cache was cleared."
             );
@@ -648,7 +647,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             roundTrip.OnBeforeSerialize();
 
-            CollectionAssert.AreEqual(new int[] { 1, 3, 5 }, roundTrip.SerializedItems);
+            CollectionAssert.AreEqual(new[] { 1, 3, 5 }, roundTrip.SerializedItems);
         }
 
         private sealed class SortedSample : IComparable<SortedSample>, IComparable
@@ -732,7 +731,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             SerializableSortedSet<int> set = new() { 4, 1, 9 };
 
-            SortedSet<int>.Enumerator enumerator = set.GetEnumerator();
+            using SortedSet<int>.Enumerator enumerator = set.GetEnumerator();
             Assert.IsTrue(enumerator.GetType().IsValueType);
 
             List<int> values = new();
@@ -741,7 +740,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 values.Add(enumerator.Current);
             }
 
-            CollectionAssert.AreEqual(new int[] { 1, 4, 9 }, values);
+            CollectionAssert.AreEqual(new[] { 1, 4, 9 }, values);
         }
 
         [Test]
@@ -749,7 +748,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             SerializableSortedSet<int> set = new() { 2, 5 };
 
-            SortedSet<int>.Enumerator enumerator = set.GetEnumerator();
+            using SortedSet<int>.Enumerator enumerator = set.GetEnumerator();
             Assert.IsTrue(enumerator.MoveNext());
 
             set.Add(7);

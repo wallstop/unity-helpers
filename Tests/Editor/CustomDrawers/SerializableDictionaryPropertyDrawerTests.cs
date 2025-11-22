@@ -1295,7 +1295,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             SerializableDictionaryPropertyDrawer drawer = new();
-            object pending = GetPendingEntryViaReflection(
+            SerializableDictionaryPropertyDrawer.PendingEntry pending = GetPendingEntry(
                 drawer,
                 dictionaryProperty,
                 typeof(PrivateCtorKey),
@@ -1303,20 +1303,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 isSortedDictionary: false
             );
 
-            Type pendingType = pending.GetType();
-            object keyInstance = pendingType
-                .GetField("key", BindingFlags.Instance | BindingFlags.Public)
-                ?.GetValue(pending);
-            object valueInstance = pendingType
-                .GetField("value", BindingFlags.Instance | BindingFlags.Public)
-                ?.GetValue(pending);
-
             Assert.IsInstanceOf<PrivateCtorKey>(
-                keyInstance,
+                pending.key,
                 "Pending key should use private constructor default."
             );
             Assert.IsInstanceOf<PrivateCtorValue>(
-                valueInstance,
+                pending.value,
                 "Pending value should use private constructor default."
             );
         }
@@ -1334,7 +1326,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             SerializableDictionaryPropertyDrawer drawer = new();
-            object pending = GetPendingEntryViaReflection(
+            SerializableDictionaryPropertyDrawer.PendingEntry pending = GetPendingEntry(
                 drawer,
                 dictionaryProperty,
                 typeof(string),
@@ -1342,13 +1334,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 isSortedDictionary: false
             );
 
-            Type pendingType = pending.GetType();
-            object valueInstance = pendingType
-                .GetField("value", BindingFlags.Instance | BindingFlags.Public)
-                ?.GetValue(pending);
-
             Assert.IsNull(
-                valueInstance,
+                pending.value,
                 "UnityEngine.Object values should remain null so the object picker can be used."
             );
         }
@@ -1356,41 +1343,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void ManualEntryUsesObjectPickerForScriptableObjectKeys()
         {
-            Type pendingType = typeof(SerializableDictionaryPropertyDrawer).GetNestedType(
-                "PendingEntry",
-                BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(pendingType, "PendingEntry type should be discoverable.");
-
-            object pending = Activator.CreateInstance(pendingType);
-            MethodInfo drawField = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                "DrawFieldForType",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.IsNotNull(drawField, "Expected DrawFieldForType via reflection.");
-
-            object[] parameters =
-            {
-                new Rect(0f, 0f, 200f, EditorGUIUtility.singleLineHeight),
-                "Key",
-                null,
-                typeof(SampleScriptableObject),
-                pending,
-                false,
-            };
+            SerializableDictionaryPropertyDrawer.PendingEntry pending = new();
+            Rect rect = new(0f, 0f, 200f, EditorGUIUtility.singleLineHeight);
 
             TestIMGUIExecutor.Run(() =>
             {
-                drawField.Invoke(null, parameters);
+                SerializableDictionaryPropertyDrawer.DrawFieldForType(
+                    rect,
+                    "Key",
+                    null,
+                    typeof(SampleScriptableObject),
+                    pending,
+                    isValueField: false
+                );
             });
 
-            FieldInfo keyWrapperField = pendingType.GetField(
-                "keyWrapper",
-                BindingFlags.Instance | BindingFlags.Public
-            );
-            Assert.IsNotNull(keyWrapperField, "Expected keyWrapper field.");
             Assert.IsNull(
-                keyWrapperField.GetValue(pending),
+                pending.keyWrapper,
                 "ScriptableObject keys should not allocate PendingValueWrappers."
             );
         }
@@ -1696,7 +1665,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             return string.Join(", ", values);
         }
 
-        private static object GetPendingEntryViaReflection(
+        private static SerializableDictionaryPropertyDrawer.PendingEntry GetPendingEntry(
             SerializableDictionaryPropertyDrawer drawer,
             SerializedProperty dictionaryProperty,
             Type keyType,
@@ -1704,16 +1673,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             bool isSortedDictionary
         )
         {
-            MethodInfo method = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                "GetOrCreatePendingEntry",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(method, "Expected GetOrCreatePendingEntry via reflection.");
-
-            object pending = method.Invoke(
-                drawer,
-                new object[] { dictionaryProperty, keyType, valueType, isSortedDictionary }
-            );
+            SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                drawer.GetOrCreatePendingEntry(
+                    dictionaryProperty,
+                    keyType,
+                    valueType,
+                    isSortedDictionary
+                );
             Assert.IsNotNull(pending, "Pending entry instance should not be null.");
             return pending;
         }

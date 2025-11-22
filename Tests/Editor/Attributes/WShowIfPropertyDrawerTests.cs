@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System;
     using System.Collections.Generic;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -51,7 +50,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void NotEqualComparisonWithoutExpectedInvertsBoolean()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            SerializedObject serializedObject = new SerializedObject(container);
+            SerializedObject serializedObject = new(container);
             serializedObject.Update();
 
             SerializedProperty dependentProperty = serializedObject.FindProperty(
@@ -833,7 +832,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
         private static WShowIfPropertyDrawer CreateDrawer(WShowIfAttribute attribute)
         {
-            WShowIfPropertyDrawer drawer = new WShowIfPropertyDrawer();
+            WShowIfPropertyDrawer drawer = new();
             drawer.InitializeForTesting(attribute);
             return drawer;
         }
@@ -843,12 +842,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             SerializedProperty property
         )
         {
-            MethodInfo method = typeof(WShowIfPropertyDrawer).GetMethod(
-                "ShouldShow",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.NotNull(method);
-            return (bool)method.Invoke(drawer, new object[] { property });
+            return drawer.ShouldShow(property);
         }
 
         private static SerializedProperty RefreshProperty(
@@ -913,7 +907,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             [WShowIf(nameof(stringCondition), WShowIfComparison.IsNullOrEmpty)]
             public int stringNullOrEmptyDependent;
 
-            public List<int> listCondition = new List<int>();
+            public List<int> listCondition = new();
 
             [WShowIf(nameof(listCondition), WShowIfComparison.IsNullOrEmpty)]
             public int listDependent;
@@ -923,7 +917,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             [WShowIf(nameof(referenceCondition), WShowIfComparison.IsNull)]
             public int referenceDependent;
 
-            public NestedData nested = new NestedData();
+            public NestedData nested = new();
 
             [WShowIf(
                 nameof(nested) + "." + nameof(NestedData.child) + "." + nameof(NestedChild.value),
@@ -932,7 +926,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             )]
             public int nestedDependent;
 
-            public GenericComparableHolder genericComparableHolder = new GenericComparableHolder();
+            public GenericComparableHolder genericComparableHolder = new();
 
             public int genericComparableDependent;
 
@@ -946,7 +940,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             [Serializable]
             public sealed class NestedData
             {
-                public NestedChild child = new NestedChild();
+                public NestedChild child = new();
             }
 
             [Serializable]
@@ -958,7 +952,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             [Serializable]
             public sealed class GenericComparableHolder
             {
-                public GenericComparable value = new GenericComparable();
+                public GenericComparable value = new();
             }
 
             [Serializable]

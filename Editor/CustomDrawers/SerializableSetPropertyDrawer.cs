@@ -574,12 +574,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         isSortedSet
                     );
                     float listHeight =
-                        list != null
-                            ? list.GetHeight()
-                            : GetPaginationHeaderHeight()
-                                + EditorGUIUtility.singleLineHeight
-                                    * Mathf.Max(1, Mathf.Min(totalCount, pagination.pageSize))
-                                + GetFooterHeight();
+                        list?.GetHeight()
+                        ?? GetPaginationHeaderHeight()
+                            + EditorGUIUtility.singleLineHeight
+                                * Mathf.Max(1, Mathf.Min(totalCount, pagination.pageSize))
+                            + GetFooterHeight();
                     Rect listRect = new(position.x, y, position.width, listHeight);
                     if (list != null && Event.current.type == EventType.Repaint)
                     {
@@ -744,12 +743,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             );
 
             float listHeight =
-                list != null
-                    ? list.GetHeight()
-                    : GetPaginationHeaderHeight()
-                        + EditorGUIUtility.singleLineHeight
-                            * Mathf.Max(1, Mathf.Min(totalCount, pagination.pageSize))
-                        + footerHeight;
+                list?.GetHeight()
+                ?? GetPaginationHeaderHeight()
+                    + EditorGUIUtility.singleLineHeight
+                        * Mathf.Max(1, Mathf.Min(totalCount, pagination.pageSize))
+                    + footerHeight;
             height += listHeight + SectionSpacing;
 
             if (shouldDrawPendingEntry)
@@ -1006,16 +1004,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     displayHeader: true,
                     displayAddButton: false,
                     displayRemoveButton: false
-                );
-                list.elementHeight = EditorGUIUtility.singleLineHeight;
-                list.footerHeight = 0f;
-
-                list.elementHeightCallback = index =>
-                    GetSetListElementHeight(listKey, cacheProvider(), index);
-
-                list.drawElementCallback = (rect, index, active, focused) =>
+                )
                 {
-                    DrawSetListElement(listKey, cacheProvider(), rect, index);
+                    elementHeight = EditorGUIUtility.singleLineHeight,
+                    footerHeight = 0f,
+                    elementHeightCallback = index =>
+                        GetSetListElementHeight(listKey, cacheProvider(), index),
+                    drawElementCallback = (rect, index, active, focused) =>
+                    {
+                        DrawSetListElement(listKey, cacheProvider(), rect, index);
+                    },
                 };
 
                 list.onReorderCallbackWithDetails = (_, oldIndex, newIndex) =>
@@ -2035,7 +2033,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             InternalEditorUtility.RepaintAllViews();
         }
 
-        private static object DrawFieldForType(
+        internal static object DrawFieldForType(
             Rect rect,
             GUIContent content,
             object current,
@@ -2346,7 +2344,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 && !typeof(Object).IsAssignableFrom(type);
         }
 
-        private static object CloneComplexValue(object source, Type type)
+        internal static object CloneComplexValue(object source, Type type)
         {
             if (source == null)
             {
@@ -2568,8 +2566,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static bool ElementTypeSupportsNull(Type type)
         {
-            return type != null
-                && (!type.IsValueType || typeof(UnityEngine.Object).IsAssignableFrom(type));
+            return type != null && (!type.IsValueType || typeof(Object).IsAssignableFrom(type));
         }
 
         private static bool ElementSupportsManualSorting(Type elementType)
@@ -2580,7 +2577,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             Type candidate = Nullable.GetUnderlyingType(elementType) ?? elementType;
-            if (typeof(UnityEngine.Object).IsAssignableFrom(candidate))
+            if (typeof(Object).IsAssignableFrom(candidate))
             {
                 return true;
             }
@@ -2930,7 +2927,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             return key switch
             {
-                UnityEngine.Object obj => obj != null ? obj.name : "null object",
+                Object obj => obj != null ? obj.name : "null object",
                 _ => key.ToString(),
             };
         }
@@ -3080,7 +3077,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 SerializedObject serializedObject = property.serializedObject;
                 if (serializedObject != null)
                 {
-                    UnityEngine.Object target = serializedObject.targetObject;
+                    Object target = serializedObject.targetObject;
                     if (target != null)
                     {
                         instance = GetMemberValue(target, property.name);
@@ -3110,7 +3107,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return null;
             }
 
-            UnityEngine.Object targetObject = serializedObject.targetObject;
+            Object targetObject = serializedObject.targetObject;
             if (targetObject == null)
             {
                 return null;
@@ -3652,10 +3649,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             SerializedObject sharedSerializedObject = setProperty.serializedObject;
-            UnityEngine.Object[] targets = sharedSerializedObject.targetObjects;
+            Object[] targets = sharedSerializedObject.targetObjects;
             string propertyPath = setProperty.propertyPath;
 
-            foreach (UnityEngine.Object target in targets)
+            foreach (Object target in targets)
             {
                 using SerializedObject targetSerializedObject = new(target);
                 targetSerializedObject.UpdateIfRequiredOrScript();
@@ -4361,7 +4358,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 yield break;
             }
 
-            if (typeof(UnityEngine.Object).IsAssignableFrom(elementType))
+            if (typeof(Object).IsAssignableFrom(elementType))
             {
                 yield return null;
                 yield break;
@@ -4525,14 +4522,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return 1;
             }
 
-            if (left is UnityEngine.Object || right is UnityEngine.Object)
+            if (left is Object || right is Object)
             {
-                UnityEngine.Object leftObject = left as UnityEngine.Object;
-                UnityEngine.Object rightObject = right as UnityEngine.Object;
-                return UnityObjectNameComparer<UnityEngine.Object>.Instance.Compare(
-                    leftObject,
-                    rightObject
-                );
+                Object leftObject = left as Object;
+                Object rightObject = right as Object;
+                return UnityObjectNameComparer<Object>.Instance.Compare(leftObject, rightObject);
             }
 
             if (left is IComparable comparable)
@@ -4646,7 +4640,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     data.comparable = quaternionValue;
                     break;
                 case SerializedPropertyType.ObjectReference:
-                    UnityEngine.Object objectReferenceValue = property.objectReferenceValue;
+                    Object objectReferenceValue = property.objectReferenceValue;
                     data.value = objectReferenceValue;
                     data.comparable = objectReferenceValue ?? NullComparable;
                     break;
@@ -4816,7 +4810,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     property.hash128Value = data.value is Hash128 hash ? hash : default;
                     break;
                 case SerializedPropertyType.ObjectReference:
-                    property.objectReferenceValue = data.value as UnityEngine.Object;
+                    property.objectReferenceValue = data.value as Object;
                     break;
                 case SerializedPropertyType.AnimationCurve:
                     property.animationCurveValue = data.value as AnimationCurve;
