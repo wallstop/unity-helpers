@@ -4,32 +4,21 @@ param(
   [string[]]$Paths
 )
 
-$git = Get-Command git -ErrorAction SilentlyContinue
-if (-not $git) {
-  Write-Error "git not found; cannot inspect or stage files."
+$helpersPath = Join-Path -Path $PSScriptRoot -ChildPath 'git-staging-helpers.ps1'
+. $helpersPath
+
+try {
+  Assert-GitAvailable | Out-Null
+  $repositoryInfo = Get-GitRepositoryInfo
+} catch {
+  Write-Error $_.Exception.Message
   exit 1
 }
 
 $markdownGlobs = @('*.md', '*.markdown')
-if (-not $Paths -or $Paths.Count -eq 0) {
-  $gitDiffArgs = @('diff', '--cached', '--name-only', '--diff-filter=ACM', '--')
-  $gitDiffArgs += $markdownGlobs
-  $Paths = & git @gitDiffArgs
-  if ($LASTEXITCODE -ne 0 -or -not $Paths) {
-    exit 0
-  }
-}
+$Paths = Get-StagedPathsForGlobs -DefaultPaths $Paths -Globs $markdownGlobs
 
-$existingPaths = @()
-foreach ($path in $Paths) {
-  if ([string]::IsNullOrWhiteSpace($path)) {
-    continue
-  }
-
-  if (Test-Path -LiteralPath $path) {
-    $existingPaths += $path
-  }
-}
+$existingPaths = Get-ExistingPaths -Candidates $Paths
 
 if ($existingPaths.Count -eq 0) {
   exit 0
@@ -59,10 +48,8 @@ if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }
 
-$gitArgs = @('add', '--')
-$gitArgs += $existingPaths
-& git @gitArgs
-if ($LASTEXITCODE -ne 0) {
-  Write-Error "git add failed with exit code $LASTEXITCODE."
-  exit $LASTEXITCODE
+$gitAddExitCode = Invoke-GitAddWithRetry -Items $existingPaths -IndexLockPath $repositoryInfo.IndexLockPath
+if ($gitAddExitCode -ne 0) {
+  Write-Error "git add failed with exit code $gitAddExitCode."
+  exit $gitAddExitCode
 }

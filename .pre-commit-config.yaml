@@ -31,6 +31,7 @@ repos:
         language: system
         files: '(?i)\.(md|markdown|json|asmdef|asmref|ya?ml)$'
         description: Use the repo's Prettier version from package.json.
+        require_serial: true
 
   - repo: local
     hooks:
@@ -39,6 +40,7 @@ repos:
         entry: pwsh -NoProfile -File scripts/lint-staged-markdown.ps1
         language: system
         files: '(?i)\.(md|markdown)$'
+        require_serial: true
 
   - repo: local
     hooks:

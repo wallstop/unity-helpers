@@ -11,8 +11,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
     public sealed class UnityLogTagFormatterEdgeTests : CommonTestBase
     {
-        [Test]
-        public void UnknownTagFallsBack()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void UnknownTagFallsBack(bool pretty)
         {
             GameObject go = Track(
                 new GameObject(nameof(UnknownTagFallsBack), typeof(SpriteRenderer))
@@ -26,26 +27,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             try
             {
                 int expectedLogCount = 0;
-                foreach (bool pretty in new[] { true, false })
+                assertion = message =>
                 {
-                    assertion = message =>
+                    if (pretty)
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(UnknownTagFallsBack)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(message.Contains("Hello world"), message);
-                        }
-                        else
-                        {
-                            Assert.AreEqual("Hello world", message);
-                        }
-                    };
+                        Assert.IsTrue(message.Contains(nameof(UnknownTagFallsBack)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(message.Contains("Hello world"), message);
+                    }
+                    else
+                    {
+                        Assert.AreEqual("Hello world", message);
+                    }
+                };
 
-                    go.Log($"Hello {"world":does_not_exist}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-                }
+                go.Log($"Hello {"world":does_not_exist}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
             }
             finally
             {
@@ -69,8 +67,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
         }
 
-        [Test]
-        public void RepeatedSeparatorsAreIgnored()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void RepeatedSeparatorsAreIgnored(bool pretty)
         {
             GameObject go = Track(
                 new GameObject(nameof(RepeatedSeparatorsAreIgnored), typeof(SpriteRenderer))
@@ -84,29 +83,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             try
             {
                 int expectedLogCount = 0;
-                foreach (bool pretty in new[] { true, false })
+                assertion = message =>
                 {
-                    assertion = message =>
+                    if (pretty)
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(
-                                message.Contains(nameof(RepeatedSeparatorsAreIgnored)),
-                                message
-                            );
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(message.Contains("<b>value</b>"), message);
-                        }
-                        else
-                        {
-                            Assert.AreEqual("<b>value</b>", message);
-                        }
-                    };
+                        Assert.IsTrue(
+                            message.Contains(nameof(RepeatedSeparatorsAreIgnored)),
+                            message
+                        );
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(message.Contains("<b>value</b>"), message);
+                    }
+                    else
+                    {
+                        Assert.AreEqual("<b>value</b>", message);
+                    }
+                };
 
-                    go.Log($"{"value":b,,,,,}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-                }
+                go.Log($"{"value":b,,,,,}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
             }
             finally
             {

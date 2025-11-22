@@ -505,8 +505,8 @@ Unity Helpers automatically detects which one you're using.
 
 **Unity Helpers Documentation:**
 
-- [Relational Components Guide](../../Docs/RELATIONAL_COMPONENTS.md) - Complete attribute reference and recipes
-- [Getting Started](../../Docs/GETTING_STARTED.md) - Unity Helpers quick start guide
+- [Relational Components Guide](../../Docs/features/relational-components/relational-components.md) - Complete attribute reference and recipes
+- [Getting Started](../../Docs/overview/getting-started.md) - Unity Helpers quick start guide
 - [Main README](../../README.md) - Full feature overview
 
 **Zenject Documentation:**
@@ -516,8 +516,8 @@ Unity Helpers automatically detects which one you're using.
 
 **Troubleshooting:**
 
-- [Relational Components Troubleshooting](../../Docs/RELATIONAL_COMPONENTS.md#troubleshooting) - Detailed solutions
-- [DI Integration Testing Guide](../../Docs/RELATIONAL_COMPONENTS.md#di-integrations-testing-and-edge-cases) - Advanced scenarios
+- [Relational Components Troubleshooting](../../Docs/features/relational-components/relational-components.md#troubleshooting) - Detailed solutions
+- [DI Integration Testing Guide](../../Docs/features/relational-components/relational-components.md#di-integrations-testing-and-edge-cases) - Advanced scenarios
 
 ---
 
@@ -526,7 +526,7 @@ Unity Helpers automatically detects which one you're using.
 1. **Try the sample scene:** Open `Zenject_Sample.unity` and press Play
 2. **Read the scripts:** See how `SpawnerZenject` and `RelationalConsumer` work
 3. **Add to your project:** Add `RelationalComponentsInstaller` to your `SceneContext`
-4. **Explore attributes:** Check out the [Relational Components Guide](../../Docs/RELATIONAL_COMPONENTS.md) for all options
+4. **Explore attributes:** Check out the [Relational Components Guide](../../Docs/features/relational-components/relational-components.md) for all options
 
 ---
 
