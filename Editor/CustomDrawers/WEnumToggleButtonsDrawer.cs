@@ -883,7 +883,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return ToggleSet.Empty;
                 }
 
-                bool isFlags = enumType.IsDefined(typeof(FlagsAttribute), true);
+                bool isFlags = ReflectionHelpers.HasAttributeSafe<FlagsAttribute>(
+                    enumType,
+                    inherit: true
+                );
                 ToggleOption[] enumOptions = BuildEnumOptions(enumType, isFlags);
                 if (enumOptions.Length == 0)
                 {
@@ -1486,19 +1489,34 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
             where TAttribute : Attribute
         {
-            TAttribute attribute = ReflectionHelpers.GetAttributeSafe<TAttribute>(fieldInfo, true);
-            if (attribute != null || property == null)
+            TAttribute attribute;
+            if (
+                ReflectionHelpers.TryGetAttributeSafe<TAttribute>(
+                    fieldInfo,
+                    out attribute,
+                    inherit: true
+                )
+                || property == null
+            )
             {
                 return attribute;
             }
 
             property.GetEnclosingObject(out FieldInfo inferredFieldInfo);
-            if (inferredFieldInfo != null && inferredFieldInfo != fieldInfo)
+            if (
+                inferredFieldInfo != null
+                && inferredFieldInfo != fieldInfo
+                && ReflectionHelpers.TryGetAttributeSafe<TAttribute>(
+                    inferredFieldInfo,
+                    out attribute,
+                    inherit: true
+                )
+            )
             {
-                attribute = ReflectionHelpers.GetAttributeSafe<TAttribute>(inferredFieldInfo, true);
+                return attribute;
             }
 
-            return attribute;
+            return null;
         }
     }
 

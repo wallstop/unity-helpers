@@ -17,6 +17,19 @@ This package includes two lightweight, production‑ready singleton helpers that
 - Choose between a scene‑resident component or a project asset for settings/data.
 - No manual setup: instances auto‑create on first use; ScriptableObject assets auto‑create/move under `Resources/` in the Editor.
 
+## Auto-loading singletons
+
+- Add `[AutoLoadSingleton]` to any `RuntimeSingleton<T>` or `ScriptableObjectSingleton<T>` to have it instantiated automatically.
+- The editor scans for the attribute and generates `Runtime/Generated/SingletonAutoLoadManifest.g.cs`, which lists each participating type.
+- At runtime, `SingletonAutoLoader` reads that manifest and touches every singleton’s `Instance` during the specified `RuntimeInitializeLoadType` (default `BeforeSplashScreen`) with no reflection or string lookups on device.
+- Prefer auto-loading only for global services/data that every scene requires; optional or level-specific systems should still call `Instance` manually.
+- Example:
+
+```csharp
+[AutoLoadSingleton(RuntimeInitializeLoadType.BeforeSceneLoad)]
+public sealed class UnityMainThreadDispatcher : RuntimeSingleton<UnityMainThreadDispatcher> { }
+```
+
 Quick decision guide
 
 - Need a behaviour that runs (Update, events, coroutines) and may persist across scenes? Use `RuntimeSingleton<T>`.

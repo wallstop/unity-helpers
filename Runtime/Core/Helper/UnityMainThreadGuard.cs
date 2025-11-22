@@ -1,0 +1,109 @@
+namespace WallstopStudios.UnityHelpers.Core.Helper
+{
+    using System;
+    using System.IO;
+    using System.Runtime.CompilerServices;
+    using System.Threading;
+    using UnityEngine;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
+
+    /// <summary>
+    /// Captures Unity's main thread context and exposes guard helpers so runtime code can throw when called off thread.
+    /// </summary>
+    internal static class UnityMainThreadGuard
+    {
+        private static int _mainThreadId;
+        private static SynchronizationContext _mainThreadContext;
+        private static int _initialized;
+
+        internal static bool IsInitialized => _initialized == 1;
+
+        internal static SynchronizationContext MainThreadContext => _mainThreadContext;
+
+        internal static bool IsMainThread
+        {
+            get
+            {
+                if (!IsInitialized)
+                {
+                    return true;
+                }
+
+                if (_mainThreadId == 0)
+                {
+                    return true;
+                }
+
+                int currentId = Thread.CurrentThread.ManagedThreadId;
+                return currentId == _mainThreadId;
+            }
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void CaptureRuntimeThread()
+        {
+            Capture(Thread.CurrentThread);
+        }
+
+#if UNITY_EDITOR
+        [InitializeOnLoadMethod]
+        private static void CaptureEditorThread()
+        {
+            if (Application.isPlaying)
+            {
+                return;
+            }
+
+            Capture(Thread.CurrentThread);
+        }
+#endif
+
+        internal static void Capture(Thread thread)
+        {
+            if (thread == null)
+            {
+                return;
+            }
+
+            _mainThreadId = thread.ManagedThreadId;
+            _mainThreadContext = SynchronizationContext.Current ?? new SynchronizationContext();
+            Interlocked.Exchange(ref _initialized, 1);
+        }
+
+        internal static void EnsureMainThread(
+            string context = null,
+            [CallerMemberName] string memberName = null,
+            [CallerFilePath] string callerFilePath = null,
+            [CallerLineNumber] int callerLineNumber = 0
+        )
+        {
+            if (IsMainThread)
+            {
+                return;
+            }
+
+            string fileBaseName = string.IsNullOrWhiteSpace(callerFilePath)
+                ? "UnknownFile"
+                : Path.GetFileNameWithoutExtension(callerFilePath);
+            string fileLabel = string.IsNullOrWhiteSpace(callerFilePath)
+                ? "UnknownFile"
+                : Path.GetFileName(callerFilePath);
+
+            string location = string.IsNullOrEmpty(memberName)
+                ? fileBaseName
+                : $"{fileBaseName}.{memberName}";
+
+            if (!string.IsNullOrEmpty(context))
+            {
+                location = $"{location} ({context})";
+            }
+
+            string message =
+                $"{location} must be accessed on Unity's main thread (called from {fileLabel}:{callerLineNumber}). Use UnityMainThreadDispatcher.RunOnMainThread to marshal work safely.";
+
+            throw new InvalidOperationException(message);
+        }
+    }
+}

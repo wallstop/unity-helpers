@@ -1627,6 +1627,73 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
 
         [Test]
+        public void TryGetAttributeSafeGeneric()
+        {
+            Type testType = typeof(TestAttributeClass);
+
+            bool found = ReflectionHelpers.TryGetAttributeSafe<ReflectionTestAttribute>(
+                testType,
+                out ReflectionTestAttribute attribute
+            );
+            Assert.IsTrue(found);
+            Assert.IsNotNull(attribute);
+            Assert.AreEqual("ClassLevel", attribute.Name);
+
+            bool missing = ReflectionHelpers.TryGetAttributeSafe<ObsoleteAttribute>(
+                testType,
+                out ObsoleteAttribute missingAttribute
+            );
+            Assert.IsFalse(missing);
+            Assert.IsNull(missingAttribute);
+
+            bool nullProvider = ReflectionHelpers.TryGetAttributeSafe<ReflectionTestAttribute>(
+                null,
+                out ReflectionTestAttribute nullAttribute
+            );
+            Assert.IsFalse(nullProvider);
+            Assert.IsNull(nullAttribute);
+        }
+
+        [Test]
+        public void TryGetAttributeSafeNonGeneric()
+        {
+            Type testType = typeof(TestAttributeClass);
+
+            bool found = ReflectionHelpers.TryGetAttributeSafe(
+                testType,
+                typeof(ReflectionTestAttribute),
+                out Attribute attribute
+            );
+            Assert.IsTrue(found);
+            Assert.IsNotNull(attribute);
+            Assert.IsInstanceOf<ReflectionTestAttribute>(attribute);
+
+            bool missing = ReflectionHelpers.TryGetAttributeSafe(
+                testType,
+                typeof(ObsoleteAttribute),
+                out Attribute missingAttribute
+            );
+            Assert.IsFalse(missing);
+            Assert.IsNull(missingAttribute);
+
+            bool nullProvider = ReflectionHelpers.TryGetAttributeSafe(
+                null,
+                typeof(ReflectionTestAttribute),
+                out Attribute nullAttribute
+            );
+            Assert.IsFalse(nullProvider);
+            Assert.IsNull(nullAttribute);
+
+            bool nullType = ReflectionHelpers.TryGetAttributeSafe(
+                testType,
+                null,
+                out Attribute nullTypeAttribute
+            );
+            Assert.IsFalse(nullType);
+            Assert.IsNull(nullTypeAttribute);
+        }
+
+        [Test]
         public void GetAllAttributesSafe()
         {
             Type testType = typeof(TestAttributeClass);

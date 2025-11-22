@@ -188,9 +188,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
         private static string GetResourcesSubFolder(Type type)
         {
-            ScriptableSingletonPathAttribute attribute =
-                type.GetCustomAttribute<ScriptableSingletonPathAttribute>();
-            if (attribute == null)
+            if (
+                !ReflectionHelpers.TryGetAttributeSafe<ScriptableSingletonPathAttribute>(
+                    type,
+                    out ScriptableSingletonPathAttribute attribute,
+                    inherit: false
+                )
+            )
             {
                 return string.Empty;
             }

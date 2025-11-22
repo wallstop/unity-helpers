@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
     using System.Reflection;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// Coarse statistical quality ratings for RNG implementations.
@@ -69,10 +70,13 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 return RandomGeneratorMetadata.Empty;
             }
 
-            RandomGeneratorMetadataAttribute attribute =
-                randomType.GetCustomAttribute<RandomGeneratorMetadataAttribute>(inherit: false);
-
-            if (attribute == null)
+            if (
+                !ReflectionHelpers.TryGetAttributeSafe<RandomGeneratorMetadataAttribute>(
+                    randomType,
+                    out RandomGeneratorMetadataAttribute attribute,
+                    inherit: false
+                )
+            )
             {
                 return new RandomGeneratorMetadata(
                     randomType,

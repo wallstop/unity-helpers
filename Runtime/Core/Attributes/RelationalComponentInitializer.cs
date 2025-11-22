@@ -253,15 +253,19 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                 AttributeMetadataCache.RelationalAttributeKind kindMeta;
 
-                if (f.IsDefined(typeof(ParentComponentAttribute), false))
+                if (ReflectionHelpers.HasAttributeSafe<ParentComponentAttribute>(f, inherit: false))
                 {
                     kindMeta = AttributeMetadataCache.RelationalAttributeKind.Parent;
                 }
-                else if (f.IsDefined(typeof(ChildComponentAttribute), false))
+                else if (
+                    ReflectionHelpers.HasAttributeSafe<ChildComponentAttribute>(f, inherit: false)
+                )
                 {
                     kindMeta = AttributeMetadataCache.RelationalAttributeKind.Child;
                 }
-                else if (f.IsDefined(typeof(SiblingComponentAttribute), false))
+                else if (
+                    ReflectionHelpers.HasAttributeSafe<SiblingComponentAttribute>(f, inherit: false)
+                )
                 {
                     kindMeta = AttributeMetadataCache.RelationalAttributeKind.Sibling;
                 }

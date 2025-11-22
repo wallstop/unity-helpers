@@ -333,7 +333,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 SerializedPropertyNames.Value,
                 BindingFlags.Instance | BindingFlags.NonPublic
             );
-            return valueField?.GetCustomAttribute<WShowIfAttribute>(inherit: false);
+            return ReflectionHelpers.TryGetAttributeSafe<WShowIfAttribute>(
+                valueField,
+                out WShowIfAttribute attribute,
+                inherit: false
+            )
+                ? attribute
+                : null;
         }
     }
 

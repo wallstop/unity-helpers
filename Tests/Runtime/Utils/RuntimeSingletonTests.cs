@@ -1,11 +1,14 @@
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
+    using System;
     using System.Collections;
+    using System.Threading.Tasks;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Utils;
+    using Object = UnityEngine.Object;
 
     public sealed class RuntimeSingletonTests : CommonTestBase
     {
@@ -762,6 +765,42 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.IsTrue(instance.gameObject.name.Contains("TestRuntimeSingleton"));
             Assert.IsTrue(instance.gameObject.name.Contains("Singleton"));
+        }
+
+        [Test]
+        public void InstanceThrowsWhenCreatedFromBackgroundThread()
+        {
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            {
+                Task.Run(() =>
+                    {
+                        TestRuntimeSingleton singleton = TestRuntimeSingleton.Instance;
+                    })
+                    .GetAwaiter()
+                    .GetResult();
+            });
+
+            Assert.IsNotNull(exception);
+            StringAssert.Contains("main thread", exception.Message);
+            Assert.IsFalse(TestRuntimeSingleton.HasInstance);
+        }
+
+        [Test]
+        public void BackgroundThreadCanAccessInstanceAfterMainThreadCreation()
+        {
+            TestRuntimeSingleton instance = TestRuntimeSingleton.Instance;
+            Track(instance.gameObject);
+
+            TestRuntimeSingleton backgroundInstance = null;
+
+            Task.Run(() =>
+                {
+                    backgroundInstance = TestRuntimeSingleton.Instance;
+                })
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.AreSame(instance, backgroundInstance);
         }
     }
 }

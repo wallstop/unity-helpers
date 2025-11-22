@@ -1,7 +1,9 @@
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
 #if UNITY_EDITOR
+    using System;
     using System.Collections;
+    using System.Threading.Tasks;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -9,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
+    using Object = UnityEngine.Object;
 
     public sealed class ScriptableObjectSingletonTests : CommonTestBase
     {
@@ -49,21 +52,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
         private static void EnsureFolder(string folderPath)
         {
-            if (!AssetDatabase.IsValidFolder(folderPath))
+            if (AssetDatabase.IsValidFolder(folderPath))
             {
-                string[] parts = folderPath.Split('/');
-                string current = parts[0];
-                for (int i = 1; i < parts.Length; i++)
+                return;
+            }
+
+            string[] parts = folderPath.Split('/');
+            string current = parts[0];
+            for (int i = 1; i < parts.Length; i++)
+            {
+                string next = current + "/" + parts[i];
+                if (!AssetDatabase.IsValidFolder(next))
                 {
-                    string next = current + "/" + parts[i];
-                    if (!AssetDatabase.IsValidFolder(next))
-                    {
-                        AssetDatabase.CreateFolder(current, parts[i]);
-                        AssetDatabase.SaveAssets();
-                        AssetDatabase.Refresh();
-                    }
-                    current = next;
+                    AssetDatabase.CreateFolder(current, parts[i]);
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
                 }
+                current = next;
             }
         }
 
@@ -96,19 +101,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
 
             string[] subFolders = AssetDatabase.GetSubFolders(folderPath);
-            if (subFolders != null && subFolders.Length > 0)
+            if (subFolders is { Length: > 0 })
             {
                 return;
             }
 
             string[] assetGuids = AssetDatabase.FindAssets(string.Empty, new[] { folderPath });
-            for (int i = 0; i < assetGuids.Length; i++)
+            foreach (string guid in assetGuids)
             {
-                string guid = assetGuids[i];
                 string assetPath = AssetDatabase.GUIDToAssetPath(guid);
                 if (
                     !string.IsNullOrEmpty(assetPath)
-                    && !string.Equals(assetPath, folderPath, System.StringComparison.Ordinal)
+                    && !string.Equals(assetPath, folderPath, StringComparison.Ordinal)
                 )
                 {
                     return;
@@ -169,9 +173,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             CreatedAssetPaths.Clear();
             // Destroy any in-memory instances created as a fallback
-            for (int i = 0; i < InMemoryInstances.Count; i++)
+            foreach (ScriptableObject obj in InMemoryInstances)
             {
-                ScriptableObject obj = InMemoryInstances[i];
                 if (obj != null)
                 {
                     Object.DestroyImmediate(obj);
@@ -435,9 +438,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator LazyInstanceDoesNotChangeAfterCreation()
         {
-            System.Lazy<TestSingleton> lazy1 = TestSingleton.LazyInstance;
+            Lazy<TestSingleton> lazy1 = TestSingleton.LazyInstance;
             TestSingleton instance = TestSingleton.Instance;
-            System.Lazy<TestSingleton> lazy2 = TestSingleton.LazyInstance;
+            Lazy<TestSingleton> lazy2 = TestSingleton.LazyInstance;
 
             Assert.AreSame(lazy1, lazy2);
             yield break;
@@ -501,6 +504,50 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.IsTrue(resolved != null);
             Assert.AreSame(created, resolved);
             yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator OffThreadCreationThrowsDescriptiveException()
+        {
+            TestSingleton.ClearInstance();
+            yield return null;
+
+            Task task = Task.Run(() =>
+            {
+                _ = TestSingleton.Instance;
+            });
+
+            while (!task.IsCompleted)
+            {
+                yield return null;
+            }
+
+            Assert.IsTrue(task.IsFaulted);
+            AggregateException aggregate = task.Exception;
+            Assert.IsNotNull(aggregate);
+            AggregateException flattened = aggregate.Flatten();
+            Assert.IsTrue(flattened.InnerExceptions.Count > 0);
+            InvalidOperationException exception =
+                flattened.InnerExceptions[0] as InvalidOperationException;
+            Assert.IsNotNull(exception);
+            StringAssert.Contains("main thread", exception.Message);
+            Assert.IsFalse(TestSingleton.HasInstance);
+        }
+
+        [UnityTest]
+        public IEnumerator BackgroundThreadCanReadInstanceAfterCreation()
+        {
+            TestSingleton instance = TestSingleton.Instance;
+
+            Task<TestSingleton> task = Task.Run(() => TestSingleton.Instance);
+
+            while (!task.IsCompleted)
+            {
+                yield return null;
+            }
+
+            Assert.IsFalse(task.IsFaulted);
+            Assert.AreSame(instance, task.Result);
         }
     }
 #endif

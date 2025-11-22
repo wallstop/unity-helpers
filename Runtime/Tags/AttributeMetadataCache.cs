@@ -14,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// reflection helpers before the first scene loads to avoid first-use stalls.
     /// </summary>
     [ScriptableSingletonPath("Wallstop Studios/AttributeMetadataCache")]
+    [AutoLoadSingleton(RuntimeInitializeLoadType.BeforeSceneLoad)]
     public sealed class AttributeMetadataCache : ScriptableObjectSingleton<AttributeMetadataCache>
     {
         [Header("Initialization")]

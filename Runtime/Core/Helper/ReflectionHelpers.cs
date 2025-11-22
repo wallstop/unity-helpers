@@ -3505,31 +3505,105 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        public static bool TryGetAttributeSafe<TAttribute>(
+            ICustomAttributeProvider provider,
+            out TAttribute attribute,
+            bool inherit = true
+        )
+            where TAttribute : Attribute
+        {
+            attribute = default;
+            if (provider == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (!provider.IsDefined(typeof(TAttribute), inherit))
+                {
+                    return false;
+                }
+
+                object[] attributes = provider.GetCustomAttributes(typeof(TAttribute), inherit);
+                if (attributes == null || attributes.Length == 0)
+                {
+                    return false;
+                }
+
+                for (int index = 0; index < attributes.Length; index++)
+                {
+                    if (attributes[index] is TAttribute typed)
+                    {
+                        attribute = typed;
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                attribute = default;
+                return false;
+            }
+
+            attribute = default;
+            return false;
+        }
+
+        public static bool TryGetAttributeSafe(
+            ICustomAttributeProvider provider,
+            Type attributeType,
+            out Attribute attribute,
+            bool inherit = true
+        )
+        {
+            attribute = null;
+            if (provider == null || attributeType == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (!provider.IsDefined(attributeType, inherit))
+                {
+                    return false;
+                }
+
+                object[] attributes = provider.GetCustomAttributes(attributeType, inherit);
+                if (attributes == null || attributes.Length == 0)
+                {
+                    return false;
+                }
+
+                for (int index = 0; index < attributes.Length; index++)
+                {
+                    if (attributes[index] is Attribute typed)
+                    {
+                        attribute = typed;
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                attribute = null;
+                return false;
+            }
+
+            attribute = null;
+            return false;
+        }
+
         public static TAttribute GetAttributeSafe<TAttribute>(
             ICustomAttributeProvider provider,
             bool inherit = true
         )
             where TAttribute : Attribute
         {
-            if (provider == null)
-            {
-                return default;
-            }
-
-            try
-            {
-                if (provider.IsDefined(typeof(TAttribute), inherit))
-                {
-                    object[] attributes = provider.GetCustomAttributes(typeof(TAttribute), inherit);
-                    return attributes.Length > 0 ? attributes[0] as TAttribute : default;
-                }
-            }
-            catch
-            {
-                // Swallow
-            }
-
-            return default;
+            return TryGetAttributeSafe(provider, out TAttribute attribute, inherit)
+                ? attribute
+                : default;
         }
 
         public static Attribute GetAttributeSafe(
@@ -3538,25 +3612,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             bool inherit = true
         )
         {
-            if (provider == null || attributeType == null)
-            {
-                return null;
-            }
-
-            try
-            {
-                if (provider.IsDefined(attributeType, inherit))
-                {
-                    object[] attributes = provider.GetCustomAttributes(attributeType, inherit);
-                    return attributes.Length > 0 ? attributes[0] as Attribute : null;
-                }
-            }
-            catch
-            {
-                // Swallow
-            }
-
-            return null;
+            return TryGetAttributeSafe(provider, attributeType, out Attribute attribute, inherit)
+                ? attribute
+                : null;
         }
 
         public static TAttribute[] GetAllAttributesSafe<TAttribute>(

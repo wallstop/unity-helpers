@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
     using UnityHelpers.Core.Attributes;
     using UnityHelpers.Tags;
     using static UnityHelpers.Tags.AttributeMetadataCache;
+    using ReflectionHelpers = WallstopStudios.UnityHelpers.Core.Helper.ReflectionHelpers;
 
     /// <summary>
     /// Editor script that generates AttributeMetadataCache at edit-time using TypeCache.
@@ -88,10 +89,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
         private static List<Type> FindAttributeComponentTypes()
         {
             // Primary: fast TypeCache-based discovery
-            List<Type> types = WallstopStudios
-                .UnityHelpers.Core.Helper.ReflectionHelpers.GetTypesDerivedFrom<AttributesComponent>(
-                    includeAbstract: false
-                )
+            List<Type> types = ReflectionHelpers
+                .GetTypesDerivedFrom<AttributesComponent>(includeAbstract: false)
                 .Where(AttributeMetadataFilters.ShouldSerialize)
                 .ToList();
 
@@ -102,9 +101,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
 
             // Fallback: reflection-based scan via ReflectionHelpers
             HashSet<Type> results = new();
-            foreach (
-                Type t in WallstopStudios.UnityHelpers.Core.Helper.ReflectionHelpers.GetAllLoadedTypes()
-            )
+            foreach (Type t in ReflectionHelpers.GetAllLoadedTypes())
             {
                 if (
                     t is { IsAbstract: false, IsGenericTypeDefinition: false }
@@ -123,10 +120,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             List<RelationalTypeMetadata> result = new();
 
             // Get all Component types using TypeCache with a reflection fallback for robustness
-            List<Type> componentTypes = WallstopStudios
-                .UnityHelpers.Core.Helper.ReflectionHelpers.GetTypesDerivedFrom<Component>(
-                    includeAbstract: false
-                )
+            List<Type> componentTypes = ReflectionHelpers
+                .GetTypesDerivedFrom<Component>(includeAbstract: false)
                 .Where(type => !type.IsGenericType)
                 .Where(AttributeMetadataFilters.ShouldSerialize)
                 .ToList();
@@ -134,9 +129,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             if (componentTypes.Count == 0)
             {
                 HashSet<Type> results = new();
-                foreach (
-                    Type t in WallstopStudios.UnityHelpers.Core.Helper.ReflectionHelpers.GetAllLoadedTypes()
-                )
+                foreach (Type t in ReflectionHelpers.GetAllLoadedTypes())
                 {
                     if (
                         t != null
@@ -162,15 +155,30 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                 foreach (FieldInfo field in fields)
                 {
                     RelationalAttributeKind? attributeKind = null;
-                    if (field.IsDefined(typeof(ParentComponentAttribute), false))
+                    if (
+                        ReflectionHelpers.HasAttributeSafe<ParentComponentAttribute>(
+                            field,
+                            inherit: false
+                        )
+                    )
                     {
                         attributeKind = RelationalAttributeKind.Parent;
                     }
-                    else if (field.IsDefined(typeof(ChildComponentAttribute), false))
+                    else if (
+                        ReflectionHelpers.HasAttributeSafe<ChildComponentAttribute>(
+                            field,
+                            inherit: false
+                        )
+                    )
                     {
                         attributeKind = RelationalAttributeKind.Child;
                     }
-                    else if (field.IsDefined(typeof(SiblingComponentAttribute), false))
+                    else if (
+                        ReflectionHelpers.HasAttributeSafe<SiblingComponentAttribute>(
+                            field,
+                            inherit: false
+                        )
+                    )
                     {
                         attributeKind = RelationalAttributeKind.Sibling;
                     }

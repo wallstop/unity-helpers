@@ -3242,10 +3242,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static Type FindTypeByUnityName(string typeName)
         {
-            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            for (int index = 0; index < assemblies.Length; index++)
+            foreach (Assembly assembly in ReflectionHelpers.GetAllLoadedAssemblies())
             {
-                Assembly assembly = assemblies[index];
                 Type match = FindTypeByName(assembly, typeName);
                 if (match != null)
                 {
@@ -3266,15 +3264,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string trimmedName = typeName.Replace("+", ".").Trim();
             bool hasNamespace = typeName.Contains(".");
 
-            Type[] types;
-            try
-            {
-                types = assembly.GetTypes();
-            }
-            catch (ReflectionTypeLoadException exception)
-            {
-                types = exception.Types;
-            }
+            Type[] types = ReflectionHelpers.GetTypesFromAssembly(assembly) ?? Array.Empty<Type>();
 
             if (types == null)
             {

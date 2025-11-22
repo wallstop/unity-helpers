@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
     using UnityEditor;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Extensions;
     using WallstopStudios.UnityHelpers.Editor.Settings;
 
@@ -327,21 +328,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 return new List<TAttribute>();
             }
 
-            object[] raw = fieldInfo.GetCustomAttributes(typeof(TAttribute), true);
-            if (raw.Length == 0)
+            TAttribute[] attributes = fieldInfo.GetAllAttributesSafe<TAttribute>(inherit: true);
+            if (attributes == null || attributes.Length == 0)
             {
                 return new List<TAttribute>();
             }
 
-            List<TAttribute> attributes = new(raw.Length);
-            foreach (object rawAttribute in raw)
-            {
-                if (rawAttribute is TAttribute attribute)
-                {
-                    attributes.Add(attribute);
-                }
-            }
-            return attributes;
+            return new List<TAttribute>(attributes);
         }
 
         private static AutoIncludeConfiguration ConvertConfiguration(

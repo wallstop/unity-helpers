@@ -41,9 +41,13 @@ namespace WallstopStudios.UnityHelpers.Utils
         private static string GetResourcesPath()
         {
             Type type = typeof(T);
-            ScriptableSingletonPathAttribute attribute =
-                ReflectionHelpers.GetAttributeSafe<ScriptableSingletonPathAttribute>(type);
-            if (attribute != null && !string.IsNullOrWhiteSpace(attribute.resourcesPath))
+            if (
+                ReflectionHelpers.TryGetAttributeSafe<ScriptableSingletonPathAttribute>(
+                    type,
+                    out ScriptableSingletonPathAttribute attribute,
+                    inherit: false
+                ) && !string.IsNullOrWhiteSpace(attribute.resourcesPath)
+            )
             {
                 return attribute.resourcesPath;
             }
@@ -220,6 +224,18 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// float volume = AudioSettings.Instance.musicVolume;
         /// </code>
         /// </example>
-        public static T Instance => LazyInstance.Value;
+        public static T Instance
+        {
+            get
+            {
+                if (LazyInstance.IsValueCreated)
+                {
+                    return LazyInstance.Value;
+                }
+
+                UnityMainThreadGuard.EnsureMainThread();
+                return LazyInstance.Value;
+            }
+        }
     }
 }

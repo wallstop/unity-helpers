@@ -21,7 +21,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 SerializableTypeCatalog.GetActiveIgnorePatterns(),
                 SerializableTypeCatalog.GetDefaultIgnorePatterns()
             );
-            string[] backup = originalPatterns?.ToArray() ?? System.Array.Empty<string>();
+            string[] backup = originalPatterns?.ToArray() ?? Array.Empty<string>();
 
             try
             {

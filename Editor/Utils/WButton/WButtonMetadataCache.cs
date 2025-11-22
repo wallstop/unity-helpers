@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
     using System.Threading.Tasks;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     internal enum WButtonExecutionKind
     {
@@ -32,7 +33,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
             ParameterType = parameterType ?? typeof(object);
             IsCancellationToken = ParameterType == typeof(CancellationToken);
-            IsParamsArray = parameter.IsDefined(typeof(ParamArrayAttribute), false);
+            IsParamsArray = ReflectionHelpers.HasAttributeSafe<ParamArrayAttribute>(
+                parameter,
+                inherit: false
+            );
             IsOptional = parameter.IsOptional;
             HasDefaultValue = TryGetDefaultValue(parameter, out object defaultValue);
             DefaultValue = defaultValue;
@@ -215,8 +219,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                         continue;
                     }
 
-                    WButtonAttribute attribute = method.GetCustomAttribute<WButtonAttribute>(true);
-                    if (attribute == null)
+                    if (
+                        !ReflectionHelpers.TryGetAttributeSafe<WButtonAttribute>(
+                            method,
+                            out WButtonAttribute attribute,
+                            inherit: true
+                        )
+                    )
                     {
                         continue;
                     }

@@ -1248,7 +1248,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 return true;
             }
 
-            if (type.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false))
+            if (
+                ReflectionHelpers.HasAttributeSafe<CompilerGeneratedAttribute>(type, inherit: false)
+            )
             {
                 return true;
             }

@@ -77,6 +77,8 @@ namespace WallstopStudios.UnityHelpers.Utils
                     return _instance;
                 }
 
+                UnityMainThreadGuard.EnsureMainThread();
+
                 _instance = FindAnyObjectByType<T>(FindObjectsInactive.Exclude);
                 if (_instance != null)
                 {

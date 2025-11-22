@@ -97,7 +97,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             try
             {
-                foreach (object attribute in assembly.GetCustomAttributes(inherit: false))
+                foreach (Attribute attribute in assembly.GetAllAttributesSafe(inherit: false))
                 {
                     Type attributeType = attribute?.GetType();
                     if (attributeType == null)
