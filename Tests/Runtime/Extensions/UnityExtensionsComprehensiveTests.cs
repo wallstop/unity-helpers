@@ -52,6 +52,116 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             return points;
         }
 
+        private static List<FastVector3Int> CreateFastVectorList(params (int x, int y)[] coords)
+        {
+            List<FastVector3Int> list = new(coords.Length);
+            for (int i = 0; i < coords.Length; ++i)
+            {
+                (int x, int y) coord = coords[i];
+                list.Add(new FastVector3Int(coord.x, coord.y, 0));
+            }
+
+            return list;
+        }
+
+        private static List<Vector2> ConvertToVector2(IEnumerable<FastVector3Int> points)
+        {
+            List<Vector2> converted = new List<Vector2>();
+            foreach (FastVector3Int point in points)
+            {
+                converted.Add(new Vector2(point.x, point.y));
+            }
+
+            return converted;
+        }
+
+        private static bool HasSelfIntersection(IList<Vector2> polygon)
+        {
+            if (polygon == null || polygon.Count < 4)
+            {
+                return false;
+            }
+
+            int count = polygon.Count;
+            for (int i = 0; i < count; ++i)
+            {
+                Vector2 a1 = polygon[i];
+                Vector2 a2 = polygon[(i + 1) % count];
+                for (int j = i + 2; j < count; ++j)
+                {
+                    if (j == i || (j + 1) % count == i)
+                    {
+                        continue;
+                    }
+                    Vector2 b1 = polygon[j];
+                    Vector2 b2 = polygon[(j + 1) % count];
+                    if (Intersects(a1, a2, b1, b2))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static bool Intersects(Vector2 a1, Vector2 a2, Vector2 b1, Vector2 b2)
+        {
+            float d = (a2.x - a1.x) * (b2.y - b1.y) - (a2.y - a1.y) * (b2.x - b1.x);
+            if (Mathf.Approximately(d, 0f))
+            {
+                return false;
+            }
+
+            float u = ((b1.x - a1.x) * (b2.y - b1.y) - (b1.y - a1.y) * (b2.x - b1.x)) / d;
+            float v = ((b1.x - a1.x) * (a2.y - a1.y) - (b1.y - a1.y) * (a2.x - a1.x)) / d;
+            return u > 0f && u < 1f && v > 0f && v < 1f;
+        }
+
+        private static float ComputeSignedArea(IList<Vector2> polygon)
+        {
+            if (polygon == null || polygon.Count < 3)
+            {
+                return 0f;
+            }
+
+            float area = 0f;
+            for (int i = 0; i < polygon.Count; ++i)
+            {
+                Vector2 current = polygon[i];
+                Vector2 next = polygon[(i + 1) % polygon.Count];
+                area += current.x * next.y - next.x * current.y;
+            }
+
+            return area * 0.5f;
+        }
+
+        private static void AssertHullCoversExpectedCorners(
+            IEnumerable<FastVector3Int> hull,
+            HashSet<FastVector3Int> expectedCorners,
+            HashSet<FastVector3Int> inputSet,
+            string label
+        )
+        {
+            HashSet<FastVector3Int> hullSet = new HashSet<FastVector3Int>(hull);
+
+            foreach (FastVector3Int vertex in hullSet)
+            {
+                Assert.IsTrue(
+                    inputSet.Contains(vertex),
+                    $"{label} hull should not introduce new vertices (saw {vertex})."
+                );
+            }
+
+            foreach (FastVector3Int corner in expectedCorners)
+            {
+                Assert.IsTrue(
+                    hullSet.Contains(corner),
+                    $"{label} hull should contain expected corner {corner}."
+                );
+            }
+        }
+
         private Grid CreateGrid(out GameObject owner)
         {
             owner = Track(new GameObject("Grid", typeof(Grid)));
@@ -765,6 +875,340 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             CollectionAssert.AreEquivalent(convexRect, concaveRect);
 
             yield return null;
+        }
+
+        [Test]
+        public void ConcaveHullJarvisFallbackMatchesConvexHullForVector2()
+        {
+            List<Vector2> points = new()
+            {
+                new Vector2(0f, 0f),
+                new Vector2(1.5f, 2f),
+                new Vector2(-2f, 1.5f),
+                new Vector2(3.25f, -1f),
+                new Vector2(-1.5f, -2.25f),
+                new Vector2(2.25f, 1.25f),
+            };
+
+            List<Vector2> expected = points.BuildConvexHull(includeColinearPoints: false);
+            List<Vector2> fallback = InvokeVectorJarvisFallback(
+                points,
+                includeColinearPoints: false
+            );
+
+            CollectionAssert.AreEquivalent(expected, fallback);
+        }
+
+        [Test]
+        public void ConcaveHullJarvisFallbackMatchesConvexHullForGrid()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+            List<FastVector3Int> points = new()
+            {
+                new FastVector3Int(0, 0, 0),
+                new FastVector3Int(2, 3, 0),
+                new FastVector3Int(-3, 1, 0),
+                new FastVector3Int(4, -2, 0),
+                new FastVector3Int(-2, -3, 0),
+                new FastVector3Int(1, 4, 0),
+            };
+
+            List<FastVector3Int> expected = points.BuildConvexHull(grid);
+            List<FastVector3Int> fallback = InvokeGridJarvisFallback(
+                points,
+                grid,
+                includeColinearPoints: false
+            );
+
+            CollectionAssert.AreEquivalent(expected, fallback);
+        }
+
+        [Test]
+        public void FastVectorConcaveHullGridlessMatchesGridKnn()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+            List<FastVector3Int> points = GenerateRandomPointsSquare(32, 8);
+
+            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
+            {
+                Strategy = UnityExtensions.ConcaveHullStrategy.Knn,
+                NearestNeighbors = 6,
+            };
+
+            List<FastVector3Int> gridHull = points.BuildConcaveHull(grid, options);
+            List<FastVector3Int> gridlessHull = points.BuildConcaveHull(options);
+
+            CollectionAssert.AreEquivalent(gridHull, gridlessHull);
+        }
+
+        [Test]
+        public void FastVectorConcaveHullGridlessHandlesMinimalPointCounts()
+        {
+            List<FastVector3Int> empty = new();
+            CollectionAssert.IsEmpty(
+                empty.BuildConcaveHullKnn(),
+                "Empty input should produce empty concave hull (k-NN)."
+            );
+            CollectionAssert.IsEmpty(
+                empty.BuildConcaveHullEdgeSplit(),
+                "Empty input should produce empty concave hull (edge-split)."
+            );
+
+            List<FastVector3Int> single = CreateFastVectorList((0, 0));
+            CollectionAssert.AreEquivalent(
+                single,
+                single.BuildConcaveHullKnn(),
+                "Single-point hull should echo original input (k-NN)."
+            );
+            CollectionAssert.AreEquivalent(
+                single,
+                single.BuildConcaveHullEdgeSplit(),
+                "Single-point hull should echo original input (edge-split)."
+            );
+
+            List<FastVector3Int> twoPoints = CreateFastVectorList((0, 0), (2, 0));
+            List<FastVector3Int> twoKnn = twoPoints.BuildConcaveHullKnn();
+            List<FastVector3Int> twoEdge = twoPoints.BuildConcaveHullEdgeSplit();
+            CollectionAssert.AreEquivalent(twoPoints, twoKnn);
+            CollectionAssert.AreEquivalent(twoPoints, twoEdge);
+
+            List<FastVector3Int> triangle = CreateFastVectorList((0, 0), (2, 0), (1, 2));
+            List<FastVector3Int> triKnn = triangle.BuildConcaveHullKnn();
+            List<FastVector3Int> triEdge = triangle.BuildConcaveHullEdgeSplit();
+            CollectionAssert.AreEquivalent(triangle, triKnn);
+            CollectionAssert.AreEquivalent(triangle, triEdge);
+        }
+
+        [Test]
+        public void FastVectorConcaveHullGridlessHandlesDuplicatesAndColinear()
+        {
+            List<FastVector3Int> points = new()
+            {
+                new FastVector3Int(0, 0, 0),
+                new FastVector3Int(0, 0, 0),
+                new FastVector3Int(4, 0, 0),
+                new FastVector3Int(2, 0, 0),
+                new FastVector3Int(4, 4, 0),
+                new FastVector3Int(0, 4, 0),
+                new FastVector3Int(0, 4, 0),
+                new FastVector3Int(1, 3, 0),
+            };
+
+            List<FastVector3Int> expectedCorners = CreateFastVectorList(
+                (0, 0),
+                (4, 0),
+                (4, 4),
+                (0, 4)
+            );
+            HashSet<FastVector3Int> expectedSet = new HashSet<FastVector3Int>(expectedCorners);
+            HashSet<FastVector3Int> inputSet = new HashSet<FastVector3Int>(points);
+
+            List<FastVector3Int> gridlessKnn = points.BuildConcaveHullKnn();
+            List<FastVector3Int> gridlessEdge = points.BuildConcaveHullEdgeSplit();
+
+            AssertHullCoversExpectedCorners(gridlessKnn, expectedSet, inputSet, "k-NN");
+            AssertHullCoversExpectedCorners(gridlessEdge, expectedSet, inputSet, "edge-split");
+        }
+
+        [Test]
+        public void FastVectorConcaveHullGridlessRandomCloudsRemainInsideConvexHull()
+        {
+            System.Random rng = new(1234);
+            for (int trial = 0; trial < 5; ++trial)
+            {
+                int count = rng.Next(10, 40);
+                List<FastVector3Int> points = new(count);
+                for (int i = 0; i < count; ++i)
+                {
+                    points.Add(
+                        new FastVector3Int(rng.Next(-10, 11), rng.Next(-10, 11), rng.Next(-2, 3))
+                    );
+                }
+
+                List<FastVector3Int> convex = points.BuildConvexHull(includeColinearPoints: false);
+                List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn();
+                List<FastVector3Int> concaveEdge = points.BuildConcaveHullEdgeSplit();
+                List<FastVector3Int> concaveUnified = points.BuildConcaveHull(
+                    new UnityExtensions.ConcaveHullOptions
+                    {
+                        Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                        BucketSize = 32,
+                        AngleThreshold = 85f,
+                    }
+                );
+
+                HashSet<FastVector3Int> input = new(points);
+                Assert.IsTrue(concaveKnn.All(input.Contains));
+                Assert.IsTrue(concaveEdge.All(input.Contains));
+                Assert.IsTrue(concaveUnified.All(input.Contains));
+
+                List<Vector2> convexVector = ConvertToVector2(convex);
+                List<Vector2> concaveKnnVector = ConvertToVector2(concaveKnn);
+                List<Vector2> concaveEdgeVector = ConvertToVector2(concaveEdge);
+                List<Vector2> concaveUnifiedVector = ConvertToVector2(concaveUnified);
+
+                Assert.IsTrue(
+                    convexVector.IsConvexHullInsideConvexHull(concaveKnnVector),
+                    "Gridless k-NN concave hull must be inside convex hull."
+                );
+                Assert.IsTrue(
+                    convexVector.IsConvexHullInsideConvexHull(concaveEdgeVector),
+                    "Gridless edge-split concave hull must be inside convex hull."
+                );
+                Assert.IsTrue(
+                    convexVector.IsConvexHullInsideConvexHull(concaveUnifiedVector),
+                    "Unified concave hull must be inside convex hull."
+                );
+            }
+        }
+
+        [Test]
+        public void FastVectorConcaveHullGridlessHandlesNearColinearNoise()
+        {
+            List<FastVector3Int> points = new List<FastVector3Int>();
+            System.Random rng = new System.Random(555);
+            for (int i = 0; i < 24; ++i)
+            {
+                double jitter = (rng.NextDouble() - 0.5) * 0.02;
+                points.Add(new FastVector3Int(i, (int)System.Math.Round(jitter), 0));
+            }
+            points.Add(new FastVector3Int(10, 12, 0));
+            points.Add(new FastVector3Int(15, -10, 0));
+
+            List<FastVector3Int> hull = points.BuildConcaveHullKnn();
+            HashSet<FastVector3Int> input = new HashSet<FastVector3Int>(points);
+            Assert.IsTrue(
+                hull.All(input.Contains),
+                "Hull vertices should originate from input points."
+            );
+        }
+
+        [Test]
+        public void FastVectorConcaveHullGridlessRejectsSelfIntersections()
+        {
+            List<FastVector3Int> bowtie = new List<FastVector3Int>
+            {
+                new FastVector3Int(-3, 0, 0),
+                new FastVector3Int(-1, 2, 0),
+                new FastVector3Int(1, -2, 0),
+                new FastVector3Int(3, 0, 0),
+                new FastVector3Int(1, 2, 0),
+                new FastVector3Int(-1, -2, 0),
+            };
+
+            List<FastVector3Int> hull = bowtie.BuildConcaveHullKnn(nearestNeighbors: 6);
+            Assert.IsFalse(
+                HasSelfIntersection(ConvertToVector2(hull)),
+                "FastVector concave hull should avoid self-intersection."
+            );
+        }
+
+        [Test]
+        public void FastVectorConvexHullGridlessMaintainsWinding()
+        {
+            List<FastVector3Int> ring = new List<FastVector3Int>();
+            const int count = 48;
+            for (int i = 0; i < count; ++i)
+            {
+                double angle = 2.0 * System.Math.PI * i / count;
+                ring.Add(
+                    new FastVector3Int(
+                        (int)System.Math.Round(System.Math.Cos(angle) * 10),
+                        (int)System.Math.Round(System.Math.Sin(angle) * 10),
+                        0
+                    )
+                );
+            }
+
+            List<FastVector3Int> hull = ring.BuildConvexHull(includeColinearPoints: false);
+            float area = ComputeSignedArea(ConvertToVector2(hull));
+            Assert.Greater(
+                area,
+                0f,
+                "FastVector convex hull should use counter-clockwise winding."
+            );
+        }
+
+        [Test]
+        public void FastVectorConvexHullGridlessHandlesColinearToggles()
+        {
+            List<FastVector3Int> points = CreateFastVectorList(
+                (0, 0),
+                (2, 0),
+                (4, 0),
+                (4, 3),
+                (0, 3),
+                (2, 3)
+            );
+
+            List<FastVector3Int> include = points.BuildConvexHull(includeColinearPoints: true);
+            List<FastVector3Int> exclude = points.BuildConvexHull(includeColinearPoints: false);
+
+            CollectionAssert.AreEquivalent(points.Distinct().ToList(), include);
+            CollectionAssert.AreEquivalent(
+                CreateFastVectorList((0, 0), (4, 0), (4, 3), (0, 3)),
+                exclude
+            );
+        }
+
+        [Test]
+        public void FastVectorConcaveHullGridlessMatchesGridEdgeSplit()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+            List<FastVector3Int> points = GenerateRandomPointsSquare(24, 6);
+
+            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
+            {
+                Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                BucketSize = 32,
+                AngleThreshold = 80f,
+            };
+
+            List<FastVector3Int> gridHull = points.BuildConcaveHull(grid, options);
+            List<FastVector3Int> gridlessHull = points.BuildConcaveHull(options);
+
+            CollectionAssert.AreEquivalent(gridHull, gridlessHull);
+        }
+
+        [Test]
+        public void FastVectorConvexHullGridlessMatchesGrid()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+            List<FastVector3Int> points = GenerateRandomPointsSquare(40, 10);
+
+            List<FastVector3Int> gridHull = points.BuildConvexHull(
+                grid,
+                includeColinearPoints: false
+            );
+            List<FastVector3Int> gridlessHull = points.BuildConvexHull(
+                includeColinearPoints: false
+            );
+
+            CollectionAssert.AreEquivalent(gridHull, gridlessHull);
+        }
+
+        [Test]
+        public void FastVectorConvexHullJarvisGridlessMatchesGrid()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+            List<FastVector3Int> points = GenerateRandomPointsSquare(28, 6);
+
+            List<FastVector3Int> gridHull = points.BuildConvexHull(
+                grid,
+                includeColinearPoints: false,
+                UnityExtensions.ConvexHullAlgorithm.Jarvis
+            );
+            List<FastVector3Int> gridlessHull = points.BuildConvexHull(
+                includeColinearPoints: false,
+                UnityExtensions.ConvexHullAlgorithm.Jarvis
+            );
+
+            CollectionAssert.AreEquivalent(gridHull, gridlessHull);
         }
 
         [UnityTest]
@@ -1606,6 +2050,55 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             );
 
             yield return null;
+        }
+
+        private static List<Vector2> InvokeVectorJarvisFallback(
+            List<Vector2> points,
+            bool includeColinearPoints
+        )
+        {
+            int count = points?.Count ?? 0;
+            List<Vector2> hullBuffer = new(count);
+            List<int> scratchIndices = new(count);
+            float[] scratchDistances = new float[Math.Max(1, count)];
+            bool[] membership = new bool[Math.Max(1, count)];
+
+            return UnityExtensions.BuildConvexHullJarvisFallback(
+                points,
+                hullBuffer,
+                includeColinearPoints,
+                scratchIndices,
+                scratchDistances,
+                membership
+            );
+        }
+
+        private static List<FastVector3Int> InvokeGridJarvisFallback(
+            List<FastVector3Int> points,
+            Grid grid,
+            bool includeColinearPoints
+        )
+        {
+            int count = points?.Count ?? 0;
+            List<FastVector3Int> hullBuffer = new(count);
+            List<int> scratchIndices = new(count);
+            float[] scratchDistances = new float[Math.Max(1, count)];
+            bool[] membership = new bool[Math.Max(1, count)];
+            Vector2[] worldPositions = new Vector2[count];
+            for (int i = 0; i < count; ++i)
+            {
+                worldPositions[i] = grid.CellToWorld(points[i]);
+            }
+
+            return UnityExtensions.BuildGridConvexHullJarvisFallback(
+                points,
+                worldPositions,
+                hullBuffer,
+                includeColinearPoints,
+                scratchIndices,
+                scratchDistances,
+                membership
+            );
         }
 
 #if UNITY_EDITOR

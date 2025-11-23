@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
     using UnityEngine;
     using UnityEngine.SceneManagement;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using Object = UnityEngine.Object;
 
     /// <summary>
@@ -16,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
     /// </summary>
     public abstract class CommonTestBase
     {
+        private UnityMainThreadDispatcher.AutoCreationScope _dispatcherScope;
+
         /// <summary>
         /// Ensures ReflexSettings singleton is present when the Reflex package is installed so tests do not hit assertions.
         /// </summary>
@@ -25,9 +28,7 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
 #if REFLEX_PRESENT
             ReflexTestSupport.EnsureReflexSettings();
 #endif
-            UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
-            UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
-            UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
+            InitializeDispatcherScope();
         }
 
         // Per-test tracked UnityEngine.Objects
@@ -214,7 +215,7 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
                 _trackedObjects.Clear();
             }
 
-            UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
+            DisposeDispatcherScope();
         }
 
         /// <summary>
@@ -258,7 +259,7 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
                 _trackedObjects.Clear();
             }
 
-            UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
+            DisposeDispatcherScope();
         }
 
         /// <summary>
@@ -315,8 +316,25 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
                 _trackedAsyncDisposals.Clear();
             }
 
-            UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
-            UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
+            DisposeDispatcherScope();
+            UnityMainThreadDispatcher.SetAutoCreationEnabled(true);
+        }
+
+        private void InitializeDispatcherScope()
+        {
+            DisposeDispatcherScope();
+            _dispatcherScope = UnityMainThreadDispatcher.CreateTestScope(destroyImmediate: true);
+        }
+
+        private void DisposeDispatcherScope()
+        {
+            if (_dispatcherScope == null)
+            {
+                return;
+            }
+
+            _dispatcherScope.Dispose();
+            _dispatcherScope = null;
         }
     }
 }

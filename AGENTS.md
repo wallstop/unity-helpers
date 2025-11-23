@@ -31,10 +31,12 @@
 ## Reflection & API Access
 
 - Avoid runtime reflection wherever possible in favor of explicit APIs and compiler-checked contracts.
+- Prefer promoting private helpers to `internal` (with `[InternalsVisibleTo]`) rather than poking at them via reflection when tests or tooling need access.
+- Use `nameof(...)` (or shared constants) instead of magic strings whenever referencing members; stringify identifiers only when Unity serialization mandates it and document why.
 - Expose shared editor/runtime helpers via `internal` members and use `InternalsVisibleTo` for the assemblies that need access.
-- Prefer `nameof(...)` (or constants defined in one place) instead of magic strings, especially in property drawers, custom inspectors, editor utilities, and tests.
 - If a Unity serialization hook requires string references, centralize them in a single source of truth and document why reflection is unavoidable.
 - Editor and runtime test code should not rely on reflection to reach helpers we own; adjust visibility (typically `internal` + `InternalsVisibleTo`) so tests exercise real APIs, and reserve reflection for Unity/third-party surfaces or when reflection behavior is the subject under test.
+- Reflection should be avoided at all costs in shipping/runtime code. If an unavoidable scenario arises (e.g., Unity serialization callbacks), document the reason and constrain it to the narrowest surface possible.
 
 ## Testing Guidelines
 

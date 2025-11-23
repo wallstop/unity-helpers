@@ -80,11 +80,11 @@ internal static class UnityMainThreadDispatcherEditorTestBootstrap
 
 ### Re-enabling per Test
 
-`CommonTestBase` demonstrates the intended per-test lifecycle:
+The runtime and editor `CommonTestBase` fixtures demonstrate the intended per-test lifecycle via `UnityMainThreadDispatcher.AutoCreationScope`:
 
-1. Destroy any stray dispatcher (`UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists`).
-2. Re-enable auto-creation so the test can request `UnityMainThreadDispatcher.Instance` on demand.
-3. During `TearDown`/`UnityTearDown` call `DestroyDispatcherIfExists` again so later suites inherit a clean environment.
+1. At `[SetUp]` it grabs `UnityMainThreadDispatcher.CreateTestScope(destroyImmediate: true)` which internally disables auto-creation, destroys stragglers, and then re-enables auto-creation so the test can access `Instance` normally.
+2. Production code can create/destroy the dispatcher freely; the scope tracks everything automatically.
+3. During every teardown stage it disposes the scope, restoring the previous auto-creation flag and destroying any dispatcher created while the test ran—no manual try/finally blocks required.
 
 Downstream packages can copy the exact pattern:
 

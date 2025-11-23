@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine;
     using UnityEngine.SceneManagement;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using Object = UnityEngine.Object;
 
     /// <summary>
@@ -18,6 +19,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     /// </summary>
     public abstract class CommonTestBase
     {
+        private UnityMainThreadDispatcher.AutoCreationScope _dispatcherScope;
+
         [SetUp]
         public virtual void BaseSetUp()
         {
@@ -32,6 +35,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             );
             ensureMethod?.Invoke(null, null);
 #endif
+            InitializeDispatcherScope();
         }
 
         protected readonly List<Object> _trackedObjects = new();
@@ -171,6 +175,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
                 _trackedObjects.Clear();
             }
+
+            DisposeDispatcherScope();
         }
 
         [UnityTearDown]
@@ -190,6 +196,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
                 _trackedObjects.Clear();
             }
+
+            DisposeDispatcherScope();
         }
 
         [OneTimeTearDown]
@@ -260,6 +268,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
                 _trackedDisposables.Clear();
             }
+
+            DisposeDispatcherScope();
+            UnityMainThreadDispatcher.SetAutoCreationEnabled(true);
+        }
+
+        private void InitializeDispatcherScope()
+        {
+            DisposeDispatcherScope();
+            _dispatcherScope = UnityMainThreadDispatcher.CreateTestScope(destroyImmediate: true);
+        }
+
+        private void DisposeDispatcherScope()
+        {
+            if (_dispatcherScope == null)
+            {
+                return;
+            }
+
+            _dispatcherScope.Dispose();
+            _dispatcherScope = null;
         }
     }
 }

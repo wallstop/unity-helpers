@@ -43,3 +43,19 @@ Illustration:
 - Preprocess: remove duplicate points and optionally simplify clusters.
 - Postprocess: enforce clockwise/CCW winding and run self-intersection checks for concave hulls.
 - Numerical stability: add small epsilons for colinear checks; include or exclude boundary points consistently.
+
+## API Reference (Grid vs Gridless)
+
+All hull helpers now offer both grid-aware (`Grid` + `FastVector3Int`) and gridless variants so you can work directly with `Vector2`/`FastVector3Int` data:
+
+- Convex hull
+  - `points.BuildConvexHull(includeColinearPoints: false)` for pure `Vector2`.
+  - `fastPoints.BuildConvexHull(includeColinearPoints: false)` for `FastVector3Int` without a `Grid`.
+  - `fastPoints.BuildConvexHull(grid, includeColinearPoints: false)` when you need `Grid.CellToWorld` conversions.
+  - Algorithm selection via `ConvexHullAlgorithm` is available for both gridful and gridless overloads.
+- Concave hull
+  - `vectorPoints.BuildConcaveHull(options)` / `BuildConcaveHullKnn` / `BuildConcaveHullEdgeSplit` for `Vector2`.
+  - `fastPoints.BuildConcaveHull(options)` plus the `Knn`/`EdgeSplit` helpers for `FastVector3Int` without requiring a `Grid`.
+  - `fastPoints.BuildConcaveHull(grid, options)` remains available when your data lives in grid space.
+
+Because the new overloads reuse the pooled implementations under the hood, behaviour (winding, pruning, GC profile) matches the grid versions—pick whichever signature best matches your data source.

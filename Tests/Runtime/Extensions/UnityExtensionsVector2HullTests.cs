@@ -289,5 +289,221 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 );
             }
         }
+
+        [Test]
+        public void ConcaveHullVector2LargePointCloudAllocationsStayBounded()
+        {
+            const int width = 64;
+            const int height = 64;
+            List<Vector2> points = new(width * height);
+            for (int y = 0; y < height; ++y)
+            {
+                for (int x = 0; x < width; ++x)
+                {
+                    points.Add(new Vector2(x, y));
+                }
+            }
+
+            long allocated = GCAssert.MeasureAllocatedBytes(
+                () =>
+                {
+                    List<Vector2> hull = points.BuildConcaveHullKnn(nearestNeighbors: 12);
+                    Assert.IsNotNull(hull);
+                    Assert.GreaterOrEqual(hull.Count, 4);
+                },
+                warmupIterations: 2,
+                measuredIterations: 1
+            );
+
+            Assert.LessOrEqual(
+                allocated,
+                16_384,
+                $"Vector2 concave hull should allocate no more than the hull list (measured {allocated} bytes)."
+            );
+        }
+
+        [Test]
+        public void ConvexHullVector2HandlesNearColinearNoise()
+        {
+            List<Vector2> baseLine = new List<Vector2>();
+            for (int i = 0; i <= 20; ++i)
+            {
+                baseLine.Add(new Vector2(i, 0f));
+            }
+
+            List<Vector2> noisyLine = AddJitter(baseLine, 0.02f);
+            noisyLine.Add(new Vector2(5f, 10f));
+            noisyLine.Add(new Vector2(10f, -10f));
+
+            List<Vector2> hull = noisyLine.BuildConvexHull(includeColinearPoints: false);
+
+            Assert.IsTrue(
+                ContainsApprox(hull, new Vector2(0f, 0f)),
+                "Hull should include leftmost point."
+            );
+            Assert.IsTrue(
+                ContainsApprox(hull, new Vector2(10f, -10f)),
+                "Hull should include bottom-right point."
+            );
+            Assert.IsTrue(
+                ContainsApprox(hull, new Vector2(5f, 10f)),
+                "Hull should include top point."
+            );
+        }
+
+        [Test]
+        public void ConvexHullVector2HandlesNearColinearNoiseRandomSeeds()
+        {
+            float[] seeds = { 2f, 11f, 42f, 137f };
+            foreach (float seed in seeds)
+            {
+                List<Vector2> line = new List<Vector2>();
+                for (int i = 0; i <= 30; ++i)
+                {
+                    line.Add(new Vector2(i, 0f));
+                }
+
+                List<Vector2> jittered = AddJitter(line, 0.05f + seed * 0.0001f);
+                jittered.Add(new Vector2(0f, -5f));
+                jittered.Add(new Vector2(15f, 7f));
+
+                List<Vector2> hull = jittered.BuildConvexHull(includeColinearPoints: false);
+
+                Assert.IsTrue(
+                    ContainsApprox(hull, new Vector2(0f, -5f)),
+                    $"Hull should contain extreme lower point for seed {seed}."
+                );
+                Assert.IsTrue(
+                    ContainsApprox(hull, new Vector2(15f, 7f)),
+                    $"Hull should contain extreme upper point for seed {seed}."
+                );
+            }
+        }
+
+        [Test]
+        public void ConcaveHullVector2RejectsSelfIntersection()
+        {
+            List<Vector2> sShape = new List<Vector2>
+            {
+                new Vector2(-4f, -1f),
+                new Vector2(-2f, 1.5f),
+                new Vector2(0f, -1f),
+                new Vector2(2f, 1.5f),
+                new Vector2(4f, -1f),
+                new Vector2(2f, -3f),
+                new Vector2(0f, -0.5f),
+                new Vector2(-2f, -3f),
+            };
+
+            List<Vector2> hull = sShape.BuildConcaveHullKnn(nearestNeighbors: 6);
+            Assert.IsFalse(HasSelfIntersection(hull), "Concave hull should not self-intersect.");
+        }
+
+        [Test]
+        public void ConvexHullVector2MaintainsCounterClockwiseWinding()
+        {
+            List<Vector2> circle = new List<Vector2>();
+            const int count = 32;
+            for (int i = 0; i < count; ++i)
+            {
+                float angle = (float)(2 * System.Math.PI * i / count);
+                circle.Add(new Vector2(System.MathF.Cos(angle), System.MathF.Sin(angle)));
+            }
+
+            List<Vector2> hull = circle.BuildConvexHull(includeColinearPoints: false);
+            float area = ComputeSignedArea(hull);
+            Assert.Greater(area, 0f, "Convex hull should use counter-clockwise winding.");
+        }
+
+        private static bool HasSelfIntersection(IList<Vector2> polygon)
+        {
+            if (polygon == null || polygon.Count < 4)
+            {
+                return false;
+            }
+
+            int count = polygon.Count;
+            for (int i = 0; i < count; ++i)
+            {
+                Vector2 a1 = polygon[i];
+                Vector2 a2 = polygon[(i + 1) % count];
+                for (int j = i + 2; j < count; ++j)
+                {
+                    if (j == i || (j + 1) % count == i)
+                    {
+                        continue;
+                    }
+                    Vector2 b1 = polygon[j];
+                    Vector2 b2 = polygon[(j + 1) % count];
+                    if (Intersects(a1, a2, b1, b2))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static bool Intersects(Vector2 a1, Vector2 a2, Vector2 b1, Vector2 b2)
+        {
+            float d = (a2.x - a1.x) * (b2.y - b1.y) - (a2.y - a1.y) * (b2.x - b1.x);
+            if (Mathf.Approximately(d, 0f))
+            {
+                return false;
+            }
+
+            float u = ((b1.x - a1.x) * (b2.y - b1.y) - (b1.y - a1.y) * (b2.x - b1.x)) / d;
+            float v = ((b1.x - a1.x) * (a2.y - a1.y) - (b1.y - a1.y) * (a2.x - a1.x)) / d;
+            return u > 0f && u < 1f && v > 0f && v < 1f;
+        }
+
+        private static float ComputeSignedArea(IList<Vector2> polygon)
+        {
+            if (polygon == null || polygon.Count < 3)
+            {
+                return 0f;
+            }
+
+            float area = 0f;
+            for (int i = 0; i < polygon.Count; ++i)
+            {
+                Vector2 current = polygon[i];
+                Vector2 next = polygon[(i + 1) % polygon.Count];
+                area += current.x * next.y - next.x * current.y;
+            }
+
+            return area * 0.5f;
+        }
+
+        private static List<Vector2> AddJitter(IEnumerable<Vector2> points, float maxDeviation)
+        {
+            System.Random random = new System.Random(1337);
+            List<Vector2> jittered = new List<Vector2>();
+            foreach (Vector2 point in points)
+            {
+                float deviation = (float)(random.NextDouble() - 0.5) * maxDeviation;
+                jittered.Add(new Vector2(point.x, point.y + deviation));
+            }
+
+            return jittered;
+        }
+
+        private static bool ContainsApprox(
+            IEnumerable<Vector2> collection,
+            Vector2 target,
+            float epsilon = 0.05f
+        )
+        {
+            foreach (Vector2 candidate in collection)
+            {
+                if (Vector2.Distance(candidate, target) <= epsilon)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 }

@@ -200,6 +200,35 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
 
         [UnityTest]
+        public IEnumerator CreateTestScopeReEnablesAutoCreationAndCleansUp()
+        {
+            UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
+            UnityMainThreadDispatcher.SetAutoCreationEnabled(true);
+            Assert.IsTrue(UnityMainThreadDispatcher.AutoCreationEnabled);
+
+            UnityMainThreadDispatcher.AutoCreationScope scope =
+                UnityMainThreadDispatcher.CreateTestScope(destroyImmediate: true);
+            Assert.IsNotNull(scope);
+            Assert.IsTrue(UnityMainThreadDispatcher.AutoCreationEnabled);
+
+            UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
+            Assert.IsNotNull(dispatcher);
+            Track(dispatcher.gameObject);
+            Assert.IsTrue(UnityMainThreadDispatcher.HasInstance);
+
+            scope.Dispose();
+
+            Assert.IsTrue(UnityMainThreadDispatcher.AutoCreationEnabled);
+            Assert.IsFalse(UnityMainThreadDispatcher.HasInstance);
+
+            int guard = 5;
+            while (UnityMainThreadDispatcher.HasInstance && guard-- > 0)
+            {
+                yield return null;
+            }
+        }
+
+        [UnityTest]
         public IEnumerator RunOnMainThreadLogsExceptions()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;

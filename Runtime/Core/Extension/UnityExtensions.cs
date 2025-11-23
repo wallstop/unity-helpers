@@ -524,6 +524,411 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return availableCount;
         }
 
+        internal static List<Vector2> BuildConvexHullJarvisFallback(
+            List<Vector2> points,
+            List<Vector2> hull,
+            bool includeColinearPoints,
+            List<int> scratchIndices,
+            float[] scratchDistances,
+            bool[] membershipFlags
+        )
+        {
+            if (hull == null)
+            {
+                hull = new List<Vector2>();
+            }
+
+            hull.Clear();
+            int pointCount = points?.Count ?? 0;
+            if (pointCount == 0)
+            {
+                return hull;
+            }
+
+            if (pointCount <= 2)
+            {
+                hull.AddRange(points);
+                return hull;
+            }
+
+            ResetBooleanFlags(membershipFlags, pointCount);
+
+            int startIndex = FindLowestPointIndex(points);
+            if (startIndex < 0)
+            {
+                hull.AddRange(points);
+                return hull;
+            }
+
+            int currentIndex = startIndex;
+            int guard = 0;
+            int guardMax = Math.Max(8, pointCount * 8);
+
+            do
+            {
+                Vector2 current = points[currentIndex];
+                hull.Add(current);
+                if (membershipFlags != null && membershipFlags.Length > currentIndex)
+                {
+                    membershipFlags[currentIndex] = true;
+                }
+
+                int candidateIndex = -1;
+                for (int i = 0; i < pointCount; ++i)
+                {
+                    if (i == currentIndex)
+                    {
+                        continue;
+                    }
+
+                    candidateIndex = i;
+                    break;
+                }
+
+                if (candidateIndex < 0)
+                {
+                    break;
+                }
+
+                for (int i = 0; i < pointCount; ++i)
+                {
+                    if (i == currentIndex || i == candidateIndex)
+                    {
+                        continue;
+                    }
+
+                    Vector2 candidate = points[candidateIndex];
+                    Vector2 point = points[i];
+                    float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(
+                        current,
+                        candidate,
+                        point
+                    );
+                    if (relation > ConvexHullRelationEpsilon)
+                    {
+                        candidateIndex = i;
+                        continue;
+                    }
+
+                    if (Mathf.Abs(relation) <= ConvexHullRelationEpsilon)
+                    {
+                        float candidateDistance = (candidate - current).sqrMagnitude;
+                        float pointDistance = (point - current).sqrMagnitude;
+                        if (pointDistance > candidateDistance)
+                        {
+                            candidateIndex = i;
+                        }
+                    }
+                }
+
+                if (includeColinearPoints && scratchIndices != null)
+                {
+                    scratchIndices.Clear();
+                    for (int i = 0; i < pointCount; ++i)
+                    {
+                        if (i == currentIndex || i == candidateIndex)
+                        {
+                            continue;
+                        }
+
+                        float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(
+                            current,
+                            points[candidateIndex],
+                            points[i]
+                        );
+                        if (Mathf.Abs(relation) <= ConvexHullRelationEpsilon)
+                        {
+                            scratchIndices.Add(i);
+                        }
+                    }
+
+                    SortIndicesByDistance(points, current, scratchIndices, scratchDistances);
+                    if (scratchIndices.Count > 0)
+                    {
+                        for (int i = 0; i < scratchIndices.Count; ++i)
+                        {
+                            int index = scratchIndices[i];
+                            if (membershipFlags != null && membershipFlags[index])
+                            {
+                                continue;
+                            }
+                            hull.Add(points[index]);
+                            if (membershipFlags != null && membershipFlags.Length > index)
+                            {
+                                membershipFlags[index] = true;
+                            }
+                        }
+                    }
+                }
+
+                currentIndex = candidateIndex;
+                if (++guard > guardMax)
+                {
+                    break;
+                }
+            } while (currentIndex != startIndex);
+
+            if (!includeColinearPoints && hull.Count > 2)
+            {
+                PruneColinearOnHull(hull);
+            }
+
+            return hull;
+        }
+
+        internal static List<FastVector3Int> BuildGridConvexHullJarvisFallback(
+            List<FastVector3Int> points,
+            Vector2[] worldPositions,
+            List<FastVector3Int> hull,
+            bool includeColinearPoints,
+            List<int> scratchIndices,
+            float[] scratchDistances,
+            bool[] membershipFlags
+        )
+        {
+            if (hull == null)
+            {
+                hull = new List<FastVector3Int>();
+            }
+
+            hull.Clear();
+            int pointCount = points?.Count ?? 0;
+            if (pointCount == 0)
+            {
+                return hull;
+            }
+
+            if (pointCount <= 2)
+            {
+                hull.AddRange(points);
+                return hull;
+            }
+
+            ResetBooleanFlags(membershipFlags, pointCount);
+
+            int startIndex = FindLowestWorldPositionIndex(worldPositions, pointCount);
+            if (startIndex < 0)
+            {
+                hull.AddRange(points);
+                return hull;
+            }
+
+            int currentIndex = startIndex;
+            int guard = 0;
+            int guardMax = Math.Max(8, pointCount * 8);
+
+            do
+            {
+                hull.Add(points[currentIndex]);
+                if (membershipFlags != null && membershipFlags.Length > currentIndex)
+                {
+                    membershipFlags[currentIndex] = true;
+                }
+
+                int candidateIndex = -1;
+                for (int i = 0; i < pointCount; ++i)
+                {
+                    if (i == currentIndex)
+                    {
+                        continue;
+                    }
+
+                    candidateIndex = i;
+                    break;
+                }
+
+                if (candidateIndex < 0)
+                {
+                    break;
+                }
+
+                for (int i = 0; i < pointCount; ++i)
+                {
+                    if (i == currentIndex || i == candidateIndex)
+                    {
+                        continue;
+                    }
+
+                    Vector2 candidate = worldPositions[candidateIndex];
+                    Vector2 point = worldPositions[i];
+                    float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(
+                        worldPositions[currentIndex],
+                        candidate,
+                        point
+                    );
+                    if (relation > ConvexHullRelationEpsilon)
+                    {
+                        candidateIndex = i;
+                        continue;
+                    }
+
+                    if (Mathf.Abs(relation) <= ConvexHullRelationEpsilon)
+                    {
+                        float candidateDistance = (
+                            candidate - worldPositions[currentIndex]
+                        ).sqrMagnitude;
+                        float pointDistance = (point - worldPositions[currentIndex]).sqrMagnitude;
+                        if (pointDistance > candidateDistance)
+                        {
+                            candidateIndex = i;
+                        }
+                    }
+                }
+
+                if (includeColinearPoints && scratchIndices != null)
+                {
+                    scratchIndices.Clear();
+                    for (int i = 0; i < pointCount; ++i)
+                    {
+                        if (i == currentIndex || i == candidateIndex)
+                        {
+                            continue;
+                        }
+
+                        float relation = Geometry.IsAPointLeftOfVectorOrOnTheLine(
+                            worldPositions[currentIndex],
+                            worldPositions[candidateIndex],
+                            worldPositions[i]
+                        );
+                        if (Mathf.Abs(relation) <= ConvexHullRelationEpsilon)
+                        {
+                            scratchIndices.Add(i);
+                        }
+                    }
+
+                    SortIndicesByDistance(
+                        worldPositions,
+                        worldPositions[currentIndex],
+                        scratchIndices,
+                        scratchDistances
+                    );
+                    if (scratchIndices.Count > 0)
+                    {
+                        for (int i = 0; i < scratchIndices.Count; ++i)
+                        {
+                            int index = scratchIndices[i];
+                            if (membershipFlags != null && membershipFlags[index])
+                            {
+                                continue;
+                            }
+
+                            hull.Add(points[index]);
+                            if (membershipFlags != null && membershipFlags.Length > index)
+                            {
+                                membershipFlags[index] = true;
+                            }
+                        }
+                    }
+                }
+
+                currentIndex = candidateIndex;
+                if (++guard > guardMax)
+                {
+                    break;
+                }
+            } while (currentIndex != startIndex);
+
+            if (!includeColinearPoints && hull.Count > 2)
+            {
+                PruneColinearOnHull(hull);
+            }
+
+            return hull;
+        }
+
+        private static int FindLowestWorldPositionIndex(Vector2[] worldPositions, int count)
+        {
+            if (worldPositions == null || count <= 0)
+            {
+                return -1;
+            }
+
+            int lowestIndex = -1;
+            float lowestY = float.MaxValue;
+            float lowestX = float.MaxValue;
+            for (int i = 0; i < count; ++i)
+            {
+                Vector2 candidate = worldPositions[i];
+                if (
+                    lowestIndex < 0
+                    || candidate.y < lowestY
+                    || (Mathf.Approximately(candidate.y, lowestY) && candidate.x < lowestX)
+                )
+                {
+                    lowestIndex = i;
+                    lowestY = candidate.y;
+                    lowestX = candidate.x;
+                }
+            }
+
+            return lowestIndex;
+        }
+
+        private static void ResetBooleanFlags(bool[] flags, int count)
+        {
+            if (flags == null || count <= 0)
+            {
+                return;
+            }
+
+            int length = Math.Min(flags.Length, count);
+            Array.Clear(flags, 0, length);
+        }
+
+        private static void SortIndicesByDistance(
+            List<Vector2> points,
+            Vector2 origin,
+            List<int> indices,
+            float[] scratchDistances
+        )
+        {
+            if (indices == null || scratchDistances == null)
+            {
+                return;
+            }
+
+            int count = indices.Count;
+            if (count <= 1)
+            {
+                return;
+            }
+
+            for (int i = 0; i < count; ++i)
+            {
+                int pointIndex = indices[i];
+                scratchDistances[i] = (points[pointIndex] - origin).sqrMagnitude;
+            }
+
+            SelectionSort(indices, scratchDistances, count);
+        }
+
+        private static void SortIndicesByDistance(
+            Vector2[] worldPositions,
+            Vector2 origin,
+            List<int> indices,
+            float[] scratchDistances
+        )
+        {
+            if (worldPositions == null || indices == null || scratchDistances == null)
+            {
+                return;
+            }
+
+            int count = indices.Count;
+            if (count <= 1)
+            {
+                return;
+            }
+
+            for (int i = 0; i < count; ++i)
+            {
+                int pointIndex = indices[i];
+                scratchDistances[i] = (worldPositions[pointIndex] - origin).sqrMagnitude;
+            }
+
+            SelectionSort(indices, scratchDistances, count);
+        }
+
         private static void InsertNeighborCandidate(
             List<int> neighborIndices,
             float[] neighborDistances,
@@ -590,6 +995,84 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             neighborIndices[replacePosition] = candidateIndex;
         }
 
+        private static void PopulateVectorBuffers(
+            IEnumerable<FastVector3Int> source,
+            List<Vector2> vectorPoints,
+            Dictionary<Vector2, FastVector3Int> mapping,
+            out int fallbackZ
+        )
+        {
+            if (vectorPoints == null)
+            {
+                throw new ArgumentNullException(nameof(vectorPoints));
+            }
+
+            if (mapping == null)
+            {
+                throw new ArgumentNullException(nameof(mapping));
+            }
+
+            vectorPoints.Clear();
+            mapping.Clear();
+            fallbackZ = 0;
+            bool fallbackAssigned = false;
+
+            if (source is ICollection<FastVector3Int> collection)
+            {
+                if (vectorPoints.Capacity < collection.Count)
+                {
+                    vectorPoints.Capacity = collection.Count;
+                }
+            }
+
+            foreach (FastVector3Int point in source)
+            {
+                Vector2 vectorPoint = new Vector2(point.x, point.y);
+                vectorPoints.Add(vectorPoint);
+                if (!mapping.ContainsKey(vectorPoint))
+                {
+                    mapping.Add(vectorPoint, point);
+                }
+
+                if (!fallbackAssigned)
+                {
+                    fallbackZ = point.z;
+                    fallbackAssigned = true;
+                }
+            }
+        }
+
+        private static List<FastVector3Int> ConvertVector2HullToFastVector3(
+            IList<Vector2> vectorHull,
+            Dictionary<Vector2, FastVector3Int> mapping,
+            int fallbackZ
+        )
+        {
+            if (vectorHull == null)
+            {
+                return new List<FastVector3Int>();
+            }
+
+            List<FastVector3Int> converted = new List<FastVector3Int>(vectorHull.Count);
+            for (int i = 0; i < vectorHull.Count; ++i)
+            {
+                Vector2 vertex = vectorHull[i];
+                FastVector3Int point;
+                if (!mapping.TryGetValue(vertex, out point))
+                {
+                    point = new FastVector3Int(
+                        Mathf.RoundToInt(vertex.x),
+                        Mathf.RoundToInt(vertex.y),
+                        fallbackZ
+                    );
+                }
+
+                converted.Add(point);
+            }
+
+            return converted;
+        }
+
         public enum ConcaveHullStrategy
         {
             [Obsolete("Do not use default value; specify a strategy explicitly.")]
@@ -642,6 +1125,32 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
         }
 
+        public static List<FastVector3Int> BuildConcaveHull(
+            this IReadOnlyCollection<FastVector3Int> positions,
+            ConcaveHullOptions options
+        )
+        {
+            if (positions == null)
+            {
+                throw new ArgumentNullException(nameof(positions));
+            }
+
+            options ??= new ConcaveHullOptions();
+            using PooledResource<List<Vector2>> vectorPointsResource = Buffers<Vector2>.List.Get(
+                out List<Vector2> vectorPoints
+            );
+            using PooledResource<Dictionary<Vector2, FastVector3Int>> mappingResource =
+                DictionaryBuffer<Vector2, FastVector3Int>.Dictionary.Get(
+                    out Dictionary<Vector2, FastVector3Int> mapping
+                );
+
+            int fallbackZ;
+            PopulateVectorBuffers(positions, vectorPoints, mapping, out fallbackZ);
+
+            List<Vector2> vectorHull = vectorPoints.BuildConcaveHull(options);
+            return ConvertVector2HullToFastVector3(vectorHull, mapping, fallbackZ);
+        }
+
         public static List<FastVector3Int> BuildConcaveHullKnn(
             this IReadOnlyCollection<FastVector3Int> gridPositions,
             Grid grid,
@@ -651,6 +1160,19 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 #pragma warning disable CS0618 // Type or member is obsolete
             return BuildConcaveHull2(gridPositions, grid, nearestNeighbors);
 #pragma warning restore CS0618 // Type or member is obsolete
+        }
+
+        public static List<FastVector3Int> BuildConcaveHullKnn(
+            this IReadOnlyCollection<FastVector3Int> positions,
+            int nearestNeighbors = 3
+        )
+        {
+            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
+            {
+                Strategy = UnityExtensions.ConcaveHullStrategy.Knn,
+                NearestNeighbors = Math.Max(3, nearestNeighbors),
+            };
+            return positions.BuildConcaveHull(options);
         }
 
         public static List<FastVector3Int> BuildConcaveHullEdgeSplit(
@@ -663,6 +1185,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 #pragma warning disable CS0618 // Type or member is obsolete
             return BuildConcaveHull3(gridPositions, grid, bucketSize, angleThreshold);
 #pragma warning restore CS0618 // Type or member is obsolete
+        }
+
+        public static List<FastVector3Int> BuildConcaveHullEdgeSplit(
+            this IReadOnlyCollection<FastVector3Int> positions,
+            int bucketSize = 40,
+            float angleThreshold = 90f
+        )
+        {
+            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
+            {
+                Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                BucketSize = Math.Max(1, bucketSize),
+                AngleThreshold = angleThreshold,
+            };
+            return positions.BuildConcaveHull(options);
         }
 
         private static List<Vector2> BuildConvexHullJarvis(
@@ -1503,6 +2040,31 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return BuildConvexHullMonotoneChain(pointsSet, grid, includeColinearPoints);
         }
 
+        public static List<FastVector3Int> BuildConvexHull(
+            this IEnumerable<FastVector3Int> pointsSet,
+            bool includeColinearPoints = false
+        )
+        {
+            if (pointsSet == null)
+            {
+                throw new ArgumentNullException(nameof(pointsSet));
+            }
+
+            using PooledResource<List<Vector2>> vectorPointsResource = Buffers<Vector2>.List.Get(
+                out List<Vector2> vectorPoints
+            );
+            using PooledResource<Dictionary<Vector2, FastVector3Int>> mappingResource =
+                DictionaryBuffer<Vector2, FastVector3Int>.Dictionary.Get(
+                    out Dictionary<Vector2, FastVector3Int> mapping
+                );
+
+            int fallbackZ;
+            PopulateVectorBuffers(pointsSet, vectorPoints, mapping, out fallbackZ);
+
+            List<Vector2> vectorHull = BuildConvexHull(vectorPoints, includeColinearPoints);
+            return ConvertVector2HullToFastVector3(vectorHull, mapping, fallbackZ);
+        }
+
         // Disambiguation overload to ensure List<FastVector3Int> resolves here (not via implicit Vector3Int)
         public static List<FastVector3Int> BuildConvexHull(
             this List<FastVector3Int> pointsSet,
@@ -1526,6 +2088,27 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     return BuildConvexHullMonotoneChain(pointsSet, grid, includeColinearPoints);
                 case ConvexHullAlgorithm.Jarvis:
                     return BuildConvexHullJarvis(pointsSet, grid, includeColinearPoints);
+                default:
+                    throw new InvalidEnumArgumentException(
+                        nameof(algorithm),
+                        (int)algorithm,
+                        typeof(ConvexHullAlgorithm)
+                    );
+            }
+        }
+
+        public static List<FastVector3Int> BuildConvexHull(
+            this IEnumerable<FastVector3Int> pointsSet,
+            bool includeColinearPoints,
+            ConvexHullAlgorithm algorithm
+        )
+        {
+            switch (algorithm)
+            {
+                case ConvexHullAlgorithm.MonotoneChain:
+                    return pointsSet.BuildConvexHull(includeColinearPoints);
+                case ConvexHullAlgorithm.Jarvis:
+                    return BuildFastVectorJarvisHull(pointsSet, includeColinearPoints);
                 default:
                     throw new InvalidEnumArgumentException(
                         nameof(algorithm),
@@ -2030,6 +2613,49 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 PruneColinearOnHull(hull);
             }
             return hull;
+        }
+
+        private static List<FastVector3Int> BuildFastVectorJarvisHull(
+            IEnumerable<FastVector3Int> pointsSet,
+            bool includeColinearPoints
+        )
+        {
+            using PooledResource<List<Vector2>> vectorPointsResource = Buffers<Vector2>.List.Get(
+                out List<Vector2> vectorPoints
+            );
+            using PooledResource<Dictionary<Vector2, FastVector3Int>> mappingResource =
+                DictionaryBuffer<Vector2, FastVector3Int>.Dictionary.Get(
+                    out Dictionary<Vector2, FastVector3Int> mapping
+                );
+
+            int fallbackZ;
+            PopulateVectorBuffers(pointsSet, vectorPoints, mapping, out fallbackZ);
+
+            using PooledResource<List<Vector2>> hullResource = Buffers<Vector2>.List.Get(
+                out List<Vector2> hullBuffer
+            );
+            using PooledResource<List<int>> indicesResource = Buffers<int>.List.Get(
+                out List<int> scratchIndices
+            );
+            using PooledResource<float[]> distancesResource = WallstopFastArrayPool<float>.Get(
+                Math.Max(1, vectorPoints.Count)
+            );
+            float[] scratchDistances = distancesResource.resource;
+            using PooledResource<bool[]> membershipResource = WallstopFastArrayPool<bool>.Get(
+                Math.Max(1, vectorPoints.Count)
+            );
+            bool[] membership = membershipResource.resource;
+
+            List<Vector2> vectorHull = BuildConvexHullJarvisFallback(
+                vectorPoints,
+                hullBuffer,
+                includeColinearPoints,
+                scratchIndices,
+                scratchDistances,
+                membership
+            );
+
+            return ConvertVector2HullToFastVector3(vectorHull, mapping, fallbackZ);
         }
 
         private static void PruneColinearOnHull(List<Vector3Int> hull)
@@ -3121,7 +3747,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
                 if (attemptNearestNeighbors >= maximumNearestNeighbors)
                 {
-                    return input.BuildConvexHull(includeColinearPoints: false);
+                    return BuildConvexHullJarvisFallback(
+                        dataSet,
+                        hull,
+                        includeColinearPoints: false,
+                        neighborIndices,
+                        neighborDistances,
+                        availability
+                    );
                 }
 
                 ++attemptNearestNeighbors;
@@ -3258,7 +3891,15 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
                 if (attemptNearestNeighbors >= maximumNearestNeighbors)
                 {
-                    return gridPositions.BuildConvexHull(grid);
+                    return BuildGridConvexHullJarvisFallback(
+                        dataSet,
+                        worldPositions,
+                        hull,
+                        includeColinearPoints: false,
+                        neighborIndices,
+                        neighborDistances,
+                        availability
+                    );
                 }
 
                 ++attemptNearestNeighbors;

@@ -298,6 +298,41 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        /// <summary>
+        /// Creates a dispatcher test scope that follows the recommended pattern: disable auto-creation, destroy lingering instances immediately, re-enable auto-creation for the test body, and clean everything up on dispose.
+        /// </summary>
+        /// <param name="destroyImmediate">When <c>true</c>, uses <see cref="Object.DestroyImmediate(Object)"/> for cleanup. Set to <c>false</c> in play mode so Unity can process destruction safely.</param>
+        /// <returns>An <see cref="AutoCreationScope"/> that automatically restores the previous auto-creation state when disposed.</returns>
+        /// <example>
+        /// <code>
+        /// private UnityMainThreadDispatcher.AutoCreationScope _scope;
+        ///
+        /// [SetUp]
+        /// public void SetUp()
+        /// {
+        ///     _scope = UnityMainThreadDispatcher.CreateTestScope(destroyImmediate: true);
+        /// }
+        ///
+        /// [TearDown]
+        /// public void TearDown()
+        /// {
+        ///     _scope?.Dispose();
+        ///     _scope = null;
+        /// }
+        /// </code>
+        /// </example>
+        public static AutoCreationScope CreateTestScope(bool destroyImmediate = true)
+        {
+            AutoCreationScope scope = AutoCreationScope.Disabled(
+                destroyExistingInstanceOnEnter: true,
+                destroyInstancesOnDispose: true,
+                destroyImmediate: destroyImmediate
+            );
+
+            SetAutoCreationEnabled(true);
+            return scope;
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
         private static void EnsureDispatcherBootstrap()
         {
