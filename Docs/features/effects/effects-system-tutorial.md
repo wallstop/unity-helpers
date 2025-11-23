@@ -510,7 +510,7 @@ if (player.HasTag("Invulnerable"))
 
 - [Effects System Full Guide](effects-system.md) - Complete API reference and advanced patterns
 - [Getting Started](../../overview/getting-started.md) - Your first 5 minutes with Unity Helpers
-- [Main README](../README.md) - Complete feature overview
+- [Main README](../../../README.md) - Complete feature overview
 
 **Related Features:**
 

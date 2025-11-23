@@ -6,7 +6,7 @@
 - `Editor/`: Editor-only tooling and UIElements/USS.
 - `Tests/Runtime`, `Tests/Editor`: NUnit/UTF tests mirroring source folders (e.g., `Attributes`, `Extensions`).
 - `Shaders/`, `Styles/`, `URP/`: Rendering assets with accompanying `.meta` files.
-- `Docs/` and top-level guides: Developer guides and references.
+- `docs/` and top-level guides: Developer guides and references.
 - `package.json`: Unity package metadata + helper scripts; `.editorconfig` defines formatting.
 
 ## Build, Test, and Development Commands

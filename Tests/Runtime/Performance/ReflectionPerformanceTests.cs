@@ -153,7 +153,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             BenchmarkReadmeUpdater.UpdateSection(
                 token,
                 outputLines,
-                "Docs/REFLECTION_PERFORMANCE.md"
+                "docs/performance/reflection-performance.md"
             );
         }
 

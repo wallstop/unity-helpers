@@ -447,7 +447,7 @@ If you import Zenject/VContainer/Reflex as source code, .unitypackage, or raw DL
   - `_resolver.AssignRelationalHierarchy(existingRoot, includeInactiveChildren: true)`
   - `RelationalObjectPools.CreatePoolWithRelations(...)` + `pool.GetWithRelations(resolver)`
 
-- **Full walkthrough**: [DI – VContainer sample](Samples~/DI%20-%20VContainer/README.md)
+- **Full walkthrough**: [DI – VContainer sample](../../../Samples~/DI%20-%20VContainer/README.md)
 
 ### Zenject at a Glance
 
@@ -461,7 +461,7 @@ If you import Zenject/VContainer/Reflex as source code, .unitypackage, or raw DL
   - `_container.AssignRelationalHierarchy(existingRoot, includeInactiveChildren: true)`
   - Subclass `RelationalMemoryPool<T>` to hydrate pooled items on spawn.
 
-- **Full walkthrough**: [DI – Zenject sample](Samples~/DI%20-%20Zenject/README.md)
+- **Full walkthrough**: [DI – Zenject sample](../../../Samples~/DI%20-%20Zenject/README.md)
 
 ### Reflex at a Glance
 
@@ -475,7 +475,7 @@ If you import Zenject/VContainer/Reflex as source code, .unitypackage, or raw DL
   - `_container.InstantiateGameObjectWithRelations(rootPrefab, parent, includeInactiveChildren: true)` for full hierarchies.
   - `_container.AssignRelationalHierarchy(existingRoot, includeInactiveChildren: true)` to hydrate arbitrary hierarchies after manual instantiation.
 
-- **Full walkthrough**: [DI – Reflex sample](Samples~/DI%20-%20Reflex/README.md)
+- **Full walkthrough**: [DI – Reflex sample](../../../Samples~/DI%20-%20Reflex/README.md)
 
 - Reflex shares the same fallback behaviour: if the assigner is not bound, the helpers call `AssignRelationalComponents()` directly so you can adopt incrementally.
 
@@ -603,7 +603,7 @@ Common pitfalls and how to avoid them
 **Core Guides:**
 
 - [Getting Started](../../overview/getting-started.md) - Your first 5 minutes with Unity Helpers
-- [Main README](../README.md) - Complete feature overview
+- [Main README](../../../README.md) - Complete feature overview
 - [Feature Index](../../overview/index.md) - Alphabetical reference
 
 **Related Features:**
@@ -614,8 +614,8 @@ Common pitfalls and how to avoid them
 
 **DI Integration Samples:**
 
-- [VContainer Integration](../Samples~/DI%20-%20VContainer/README.md) - Complete VContainer setup guide
-- [Zenject Integration](../Samples~/DI%20-%20Zenject/README.md) - Complete Zenject setup guide
-- [Reflex Integration](../Samples~/DI%20-%20Reflex/README.md) - Complete Reflex setup guide
+- [VContainer Integration](../../../Samples~/DI%20-%20VContainer/README.md) - Complete VContainer setup guide
+- [Zenject Integration](../../../Samples~/DI%20-%20Zenject/README.md) - Complete Zenject setup guide
+- [Reflex Integration](../../../Samples~/DI%20-%20Reflex/README.md) - Complete Reflex setup guide
 
 **Need help?** [Open an issue](https://github.com/wallstop/unity-helpers/issues) | [Troubleshooting](#troubleshooting)

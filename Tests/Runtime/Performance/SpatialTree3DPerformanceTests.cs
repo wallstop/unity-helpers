@@ -266,7 +266,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             BenchmarkReadmeUpdater.UpdateSection(
                 "SPATIAL_TREE_3D_BENCHMARKS",
                 finalReadmeLines,
-                "Docs/SPATIAL_TREE_3D_PERFORMANCE.md"
+                "docs/performance/spatial-tree-3d-performance.md"
             );
 
             yield break;

@@ -12,7 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
     public sealed class IListSortingPerformanceTests
     {
-        private const string DocumentPath = "Docs/ILIST_SORTING_PERFORMANCE.md";
+        private const string DocumentPath = "docs/performance/ilist-sorting-performance.md";
         private const string SectionPrefix = "ILIST_SORT_";
         private const int NearlySortedSwapPercentage = 50;
         private const int BenchmarkTimeoutMilliseconds = 300_000;

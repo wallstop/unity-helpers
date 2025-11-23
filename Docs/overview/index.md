@@ -36,7 +36,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Effects System](../features/effects/effects-system.md)
 
 **AttributesComponent** - Base class for modifiable attributes
-→ [Effects System](../features/effects/effects-system.md) | [README](../README.md#effects-attributes-and-tags)
+→ [Effects System](../features/effects/effects-system.md) | [README](../../README.md#effects-attributes-and-tags)
 
 ---
 
@@ -46,13 +46,13 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Data Structures](../features/utilities/data-structures.md#binary-heap-priority-queue)
 
 **BitSet** - Compact boolean storage with bitwise operations
-→ [Data Structures](../features/utilities/data-structures.md#bitset) | [README](../README.md#data-structures)
+→ [Data Structures](../features/utilities/data-structures.md#bitset) | [README](../../README.md#data-structures)
 
 **Buffering Pattern** - Reusable collections for zero-allocation queries
-→ [README - Buffering Pattern](../README.md#buffering-pattern) | [Glossary](glossary.md#buffering-pattern)
+→ [README - Buffering Pattern](../../README.md#buffering-pattern) | [Glossary](glossary.md#buffering-pattern)
 
 **Buffers<T>** - Pooled collections (List/Stack/Queue/HashSet)
-→ [README - Buffering Pattern](../README.md#buffering-pattern)
+→ [README - Buffering Pattern](../../README.md#buffering-pattern)
 
 ---
 
@@ -65,7 +65,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Utility Components](../features/inspector/utility-components.md#centerpointoffset)
 
 **ChildComponent** - Auto-wire components from children
-→ [Relational Components](../features/relational-components/relational-components.md) | [README](../README.md#component-attributes)
+→ [Relational Components](../features/relational-components/relational-components.md) | [README](../../README.md#component-attributes)
 
 **ChildSpawner** - Conditional prefab instantiation with environment filtering
 → [Utility Components](../features/inspector/utility-components.md#childspawner)
@@ -86,36 +86,36 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Effects System](../features/effects/effects-system.md)
 
 **Cyclic Buffer** - Fixed-capacity ring buffer
-→ [Data Structures](../features/utilities/data-structures.md#cyclic-buffer-ring-buffer) | [README](../README.md#data-structures)
+→ [Data Structures](../features/utilities/data-structures.md#cyclic-buffer-ring-buffer) | [README](../../README.md#data-structures)
 
 ---
 
 ## D
 
 **Data Structures** - Heaps, tries, sparse sets, and more
-→ [Data Structures Guide](../features/utilities/data-structures.md) | [README](../README.md#data-structures)
+→ [Data Structures Guide](../features/utilities/data-structures.md) | [README](../../README.md#data-structures)
 
 **Deque** - Double-ended queue
-→ [Data Structures](../features/utilities/data-structures.md#deque-double-ended-queue) | [README](../README.md#data-structures)
+→ [Data Structures](../features/utilities/data-structures.md#deque-double-ended-queue) | [README](../../README.md#data-structures)
 
 **Dictionary Extensions** - GetOrAdd, GetOrElse, Merge, ContentEquals
 → [Math & Extensions](../features/utilities/math-and-extensions.md#collections)
 
 **Disjoint Set** - Union-find for connectivity
-→ [Data Structures](../features/utilities/data-structures.md#disjoint-set-union-find) | [README](../README.md#data-structures)
+→ [Data Structures](../features/utilities/data-structures.md#disjoint-set-union-find) | [README](../../README.md#data-structures)
 
 **Douglas-Peucker** - Polyline simplification algorithm
 → [Math & Extensions](../features/utilities/math-and-extensions.md#geometry) | [Glossary](glossary.md#douglas-peucker-algorithm)
 
 **DxReadOnly** - Read-only inspector display attribute
-→ [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#dxreadonly-property-drawer) | [README](../README.md#component-attributes)
+→ [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#dxreadonly-property-drawer) | [README](../../README.md#component-attributes)
 
 ---
 
 ## E
 
 **Editor Tools** - 20+ tools for sprites, animations, validation
-→ [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md) | [README](../README.md#editor-tools)
+→ [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md) | [README](../../README.md#editor-tools)
 
 **EffectHandle** - Identifier for effect application instances
 → [Effects System](../features/effects/effects-system.md) | [Glossary](glossary.md#handle-effect-handle)
@@ -124,7 +124,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Effects System](../features/effects/effects-system.md)
 
 **Effects System** - Data-driven buffs/debuffs/status effects
-→ [Effects System Guide](../features/effects/effects-system.md) | [README](../README.md#effects-attributes-and-tags)
+→ [Effects System Guide](../features/effects/effects-system.md) | [README](../../README.md#effects-attributes-and-tags)
 
 **EnhancedImage** - Unity Image with HDR color and shape masks
 → [Visual Components](../features/inspector/visual-components.md#enhancedimage-ugui) | [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#enhancedimage-editor)
@@ -140,14 +140,14 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#fit-texture-size)
 
 **FlurryBurstRandom** - Six-word ARX generator (FlurryBurst32 port)
-→ [README - Random Generators](../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
+→ [README - Random Generators](../../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
 
 ---
 
 ## G
 
 **Gaussian Distribution** - Normal distribution random values
-→ [README - Random Generators](../README.md#random-number-generators)
+→ [README - Random Generators](../../README.md#random-number-generators)
 
 **Geometry Helpers** - Lines, ranges, parabolas, convex hulls
 → [Math & Extensions](../features/utilities/math-and-extensions.md#geometry)
@@ -160,10 +160,10 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 ## H
 
 **Heap** - Binary heap for priority queues
-→ [Data Structures](../features/utilities/data-structures.md#binary-heap-priority-queue) | [README](../README.md#data-structures)
+→ [Data Structures](../features/utilities/data-structures.md#binary-heap-priority-queue) | [README](../../README.md#data-structures)
 
 **Helpers Class** - General utilities (layers, sprites, components)
-→ [Helper Utilities](../features/utilities/helper-utilities.md#gameplay-helpers) | [README - Helpers & Extensions](../README.md#helpers--extensions)
+→ [Helper Utilities](../features/utilities/helper-utilities.md#gameplay-helpers) | [README - Helpers & Extensions](../../README.md#helpers--extensions)
 
 **Hulls** - Convex vs concave hull algorithms
 → [Hulls Guide](../features/spatial/hulls.md)
@@ -173,7 +173,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 ## I
 
 **IllusionFlow** - Default recommended PRNG
-→ [README - Random Generators](../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
+→ [README - Random Generators](../../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
 
 **Image Blur Tool** - Gaussian blur for textures
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#image-blur-tool)
@@ -191,7 +191,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#intdropdown-property-drawer) | [Inspector Selection Attributes](../features/inspector/inspector-selection-attributes.md#intdropdown)
 
 **IRandom Interface** - Common interface for all RNGs
-→ [README - Random Generators](../README.md#random-number-generators)
+→ [README - Random Generators](../../README.md#random-number-generators)
 
 ---
 
@@ -214,17 +214,17 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Math & Extensions](../features/utilities/math-and-extensions.md#geometry)
 
 **LineHelper** - Douglas-Peucker simplification
-→ [Math & Extensions](../features/utilities/math-and-extensions.md#geometry) | [README](../README.md#core-math--extensions)
+→ [Math & Extensions](../features/utilities/math-and-extensions.md#geometry) | [README](../../README.md#core-math--extensions)
 
 **LZMA Compression** - Compression utilities
-→ [README - Serialization](../README.md#serialization)
+→ [README - Serialization](../../README.md#serialization)
 
 ---
 
 ## M
 
 **Math Helpers** - Positive modulo, wrapped arithmetic, geometry
-→ [Math & Extensions Guide](../features/utilities/math-and-extensions.md) | [README](../README.md#core-math--extensions)
+→ [Math & Extensions Guide](../features/utilities/math-and-extensions.md) | [README](../../README.md#core-math--extensions)
 
 **MatchColliderToSprite** - Sync collider shape to sprite
 → [Utility Components](../features/inspector/utility-components.md#matchcollidertosprite) | [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#matchcollidertosprite-editor)
@@ -237,10 +237,10 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 ## N
 
 **Noise Maps** - Perlin noise generation
-→ [README - Random Generators](../README.md#random-number-generators)
+→ [README - Random Generators](../../README.md#random-number-generators)
 
 **NotNull Attribute** - Inspector validation attribute
-→ [README - Component Attributes](../README.md#component-attributes)
+→ [README - Component Attributes](../../README.md#component-attributes)
 
 **Numeric Helpers** - PositiveMod, Clamp, Approximately
 → [Math & Extensions](../features/utilities/math-and-extensions.md#numeric-helpers)
@@ -266,13 +266,13 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Math & Extensions](../features/utilities/math-and-extensions.md#geometry)
 
 **ParentComponent** - Auto-wire components from parents
-→ [Relational Components](../features/relational-components/relational-components.md) | [README](../README.md#component-attributes)
+→ [Relational Components](../features/relational-components/relational-components.md) | [README](../../README.md#component-attributes)
 
 **PcgRandom** - High-quality PCG random generator
-→ [README - Random Generators](../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
+→ [README - Random Generators](../../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
 
 **PhotonSpinRandom** - SHISHUA-inspired bulk generator
-→ [README - Random Generators](../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
+→ [README - Random Generators](../../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
 
 **Point-in-Polygon** - 2D/3D containment tests
 → [Math & Extensions](../features/utilities/math-and-extensions.md#geometry)
@@ -284,7 +284,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Helper Utilities](../features/utilities/helper-utilities.md#predictive-aiming)
 
 **Pooled Buffers** - Reusable memory allocations
-→ [README - Buffering Pattern](../README.md#buffering-pattern) | [Glossary](glossary.md#pooled-buffers)
+→ [README - Buffering Pattern](../../README.md#buffering-pattern) | [Glossary](glossary.md#pooled-buffers)
 
 **Positive Modulo** - Non-negative modulo operation
 → [Math & Extensions](../features/utilities/math-and-extensions.md#numeric-helpers) | [Glossary](glossary.md#positive-modulo)
@@ -293,10 +293,10 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#prefab-checker)
 
 **PriorityQueue** - Min/max heap-based priority queue
-→ [Data Structures](../features/utilities/data-structures.md#binary-heap-priority-queue) | [README](../README.md#data-structures)
+→ [Data Structures](../features/utilities/data-structures.md#binary-heap-priority-queue) | [README](../../README.md#data-structures)
 
 **PRNG.Instance** - Thread-local default random generator
-→ [README - Random Generators](../README.md#random-number-generators)
+→ [README - Random Generators](../../README.md#random-number-generators)
 
 **Property Drawers** - Custom inspector rendering
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#property-drawers--attributes)
@@ -319,7 +319,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Math & Extensions](../features/utilities/math-and-extensions.md#random-generators)
 
 **Random Generators** - 15 high-performance PRNG implementations
-→ [README - Random Generators](../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
+→ [README - Random Generators](../../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
 
 **Range<T>** - Inclusive/exclusive range helper
 → [Math & Extensions](../features/utilities/math-and-extensions.md#geometry)
@@ -331,10 +331,10 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Math & Extensions](../features/utilities/math-and-extensions.md#unity-extensions)
 
 **Reflection Helpers** - High-performance cached reflection
-→ [README - API Index](../README.md#api-index) | [Reflection Helpers](../features/utilities/reflection-helpers.md)
+→ [README - API Index](../../README.md#api-index) | [Reflection Helpers](../features/utilities/reflection-helpers.md)
 
 **Relational Components** - Auto-wire hierarchy components
-→ [Relational Components Guide](../features/relational-components/relational-components.md) | [README](../README.md#component-attributes)
+→ [Relational Components Guide](../features/relational-components/relational-components.md) | [README](../../README.md#component-attributes)
 → [Relational Component Performance Benchmarks](../performance/relational-components-performance.md)
 
 **RTree2D** - 2D R-tree for bounding boxes
@@ -344,23 +344,23 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [3D Spatial Trees](../features/spatial/spatial-trees-3d-guide.md) | [3D Performance](../performance/spatial-tree-3d-performance.md)
 
 **RuntimeSingleton<T>** - Component singleton pattern
-→ [Singletons Guide](../features/utilities/singletons.md) | [README](../README.md#singleton-utilities-odin-compatible)
+→ [Singletons Guide](../features/utilities/singletons.md) | [README](../../README.md#singleton-utilities-odin-compatible)
 
 ---
 
 ## S
 
 **ScriptableObject Singleton** - Settings/data singleton pattern
-→ [Singletons Guide](../features/utilities/singletons.md) | [README](../README.md#singleton-utilities-odin-compatible)
+→ [Singletons Guide](../features/utilities/singletons.md) | [README](../../README.md#singleton-utilities-odin-compatible)
 
 **ScriptableObject Singleton Creator** - Auto-create singleton assets
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#scriptableobject-singleton-creator)
 
 **Serialization** - JSON, Protobuf, BinaryFormatter support
-→ [Serialization Guide](../features/serialization/serialization.md) | [README](../README.md#serialization)
+→ [Serialization Guide](../features/serialization/serialization.md) | [README](../../README.md#serialization)
 
 **SiblingComponent** - Auto-wire components on same GameObject
-→ [Relational Components](../features/relational-components/relational-components.md) | [README](../README.md#component-attributes)
+→ [Relational Components](../features/relational-components/relational-components.md) | [README](../../README.md#component-attributes)
 
 **SerializableDictionary** - Unity-friendly dictionary with key/value serialization
 → [Serialization Types](../features/serialization/serialization-types.md#serializabledictionary)
@@ -375,16 +375,16 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Serialization Types](../features/serialization/serialization-types.md#serializabletype)
 
 **Singletons** - Runtime and ScriptableObject singleton patterns
-→ [Singletons Guide](../features/utilities/singletons.md) | [README](../README.md#singleton-utilities-odin-compatible)
+→ [Singletons Guide](../features/utilities/singletons.md) | [README](../../README.md#singleton-utilities-odin-compatible)
 
 **StormDropRandom** - Large-buffer ARX generator
-→ [README - Random Generators](../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
+→ [README - Random Generators](../../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
 
 **Sparse Set** - O(1) membership with dense iteration
-→ [Data Structures](../features/utilities/data-structures.md#sparse-set) | [README](../README.md#data-structures)
+→ [Data Structures](../features/utilities/data-structures.md#sparse-set) | [README](../../README.md#data-structures)
 
 **Spatial Hash 2D/3D** - Grid-based spatial structure
-→ [README - Choosing Spatial Structures](../README.md#choosing-spatial-structures)
+→ [README - Choosing Spatial Structures](../../README.md#choosing-spatial-structures)
 
 **Spatial Trees** - Fast spatial queries (QuadTree, KdTree, RTree, OctTree)
 → [2D Guide](../features/spatial/spatial-trees-2d-guide.md) | [3D Guide](../features/spatial/spatial-trees-3d-guide.md)
@@ -442,14 +442,14 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#texture-settings-applier)
 
 **Trie** - Prefix tree for autocomplete
-→ [Data Structures](../features/utilities/data-structures.md#trie-prefix-tree) | [README](../README.md#data-structures)
+→ [Data Structures](../features/utilities/data-structures.md#trie-prefix-tree) | [README](../../README.md#data-structures)
 
 ---
 
 ## U
 
 **Unity Extensions** - Rect/Bounds, Camera, Rigidbody2D, Grid helpers
-→ [Math & Extensions](../features/utilities/math-and-extensions.md#unity-extensions) | [README - API Index](../README.md#api-index)
+→ [Math & Extensions](../features/utilities/math-and-extensions.md#unity-extensions) | [README - API Index](../../README.md#api-index)
 
 **UnityMainThreadDispatcher** - Execute work on main thread from background threads
 → [Helper Utilities](../features/utilities/helper-utilities.md#threading)
@@ -459,23 +459,23 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 ## V
 
 **ValidateAssignment** - Inspector validation attribute
-→ [README - Component Attributes](../README.md#component-attributes)
+→ [README - Component Attributes](../../README.md#component-attributes)
 
 **Vector Extensions** - Random vectors, noise detection
-→ [README - API Index](../README.md#api-index)
+→ [README - API Index](../../README.md#api-index)
 
 ---
 
 ## W
 
 **WallMath** - Positive modulo, wrapped arithmetic
-→ [Math & Extensions](../features/utilities/math-and-extensions.md#numeric-helpers) | [README - API Index](../README.md#api-index)
+→ [Math & Extensions](../features/utilities/math-and-extensions.md#numeric-helpers) | [README - API Index](../../README.md#api-index)
 
 **WallstopArrayPool<T>** - Pooled array rental
-→ [README - Buffering Pattern](../README.md#buffering-pattern)
+→ [README - Buffering Pattern](../../README.md#buffering-pattern)
 
 **WallstopFastArrayPool<T>** - Fast array pool for short-lived arrays
-→ [README - Buffering Pattern](../README.md#buffering-pattern)
+→ [README - Buffering Pattern](../../README.md#buffering-pattern)
 
 **WButton** - Inspector method buttons with history, async support, cancellation
 → [Inspector Buttons](../features/inspector/inspector-button.md) | [Inspector Overview](../features/inspector/inspector-overview.md)
@@ -493,10 +493,10 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Inspector Grouping Attributes](../features/inspector/inspector-grouping-attributes.md#wgroup--wgroupend)
 
 **Weighted Random** - Weighted random selection
-→ [README - Random Generators](../README.md#random-number-generators)
+→ [README - Random Generators](../../README.md#random-number-generators)
 
 **WInLineEditor** - Inline inspector for object references
-→ [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#winlineeditor-property-drawer) | [README - Relational Components](../README.md#relational-components)
+→ [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#winlineeditor-property-drawer) | [README - Relational Components](../../README.md#relational-components)
 
 **WShowIf** - Conditional field display attribute with comparison operators
 → [Inspector Conditional Display](../features/inspector/inspector-conditional-display.md) | [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#wshowif-property-drawer)
@@ -509,10 +509,10 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 ## X
 
 **XorShift Random** - Fast XorShift PRNG
-→ [README - Random Generators](../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
+→ [README - Random Generators](../../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
 
 **XoroShiro Random** - Fast XoroShiro PRNG
-→ [README - Random Generators](../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
+→ [README - Random Generators](../../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
 
 ---
 
@@ -520,4 +520,4 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 
 - [Glossary](glossary.md) - Term definitions
 - [Getting Started Guide](getting-started.md) - Quick start guide
-- [Main Documentation](../README.md) - Main documentation
+- [Main Documentation](../../README.md) - Main documentation

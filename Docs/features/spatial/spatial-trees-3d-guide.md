@@ -167,7 +167,7 @@ void Update()
 }
 ```
 
-See [Buffering Pattern](../README.md#buffering-pattern) for the complete guide and [Pooling Utilities](../README.md#pooling-utilities) for more pooling options.
+See [Buffering Pattern](../../../README.md#buffering-pattern) for the complete guide and [Pooling Utilities](../../../README.md#pooling-utilities) for more pooling options.
 
 ## Structures
 

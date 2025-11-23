@@ -13,7 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
     {
         private const int NumIterations = 10_000;
 
-        private const string DocumentPath = "Docs/RELATIONAL_COMPONENT_PERFORMANCE.md";
+        private const string DocumentPath = "docs/performance/relational-components-performance.md";
         private const string SectionPrefix = "RELATIONAL_COMPONENTS_";
 
         // Provide ample room for the per-scenario 1s timers plus GC/setup overhead.

@@ -313,19 +313,26 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         )
         {
 #if ENABLE_UBERLOGGING || DEBUG_LOGGING || WARN_LOGGING || ERROR_LOGGING
-            string contextLabel = ReferenceEquals(component, null)
-                ? "null"
-                : component.GetType().Name;
-            string formattedMessage = message?.ToString() ?? string.Empty;
-            if (exception != null)
+            try
             {
-                formattedMessage = $"{formattedMessage} :: {exception}";
-            }
+                string contextLabel = ReferenceEquals(component, null)
+                    ? "null"
+                    : component.GetType().Name;
+                string formattedMessage = message?.ToString() ?? string.Empty;
+                if (exception != null)
+                {
+                    formattedMessage = $"{formattedMessage} :: {exception}";
+                }
 
-            Debug.unityLogger.Log(
-                type,
-                $"[WallstopMainThreadLogger:{contextLabel}] {formattedMessage}"
-            );
+                Debug.unityLogger.Log(
+                    type,
+                    $"[WallstopMainThreadLogger:{contextLabel}] {formattedMessage}"
+                );
+            }
+            catch
+            {
+                // Swallow
+            }
 #endif
         }
     }

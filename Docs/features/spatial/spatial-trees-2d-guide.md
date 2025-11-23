@@ -177,7 +177,7 @@ void Update()
 }
 ```
 
-See [Buffering Pattern](../README.md#buffering-pattern) for the complete guide and [Pooling Utilities](../README.md#pooling-utilities) for more pooling options.
+See [Buffering Pattern](../../../README.md#buffering-pattern) for the complete guide and [Pooling Utilities](../../../README.md#pooling-utilities) for more pooling options.
 
 ## Structures
 
@@ -247,7 +247,7 @@ START: Do your objects move frequently?
 - **Nearest neighbors on static points:** KDTree2D (Balanced)
 - **Fast builds with good-enough queries:** KDTree2D (Unbalanced)
 - **Objects with area; bounds queries primary:** RTree2D
-- **Very frequent movement (every frame):** SpatialHash2D (see [README](../README.md#choosing-spatial-structures))
+- **Very frequent movement (every frame):** SpatialHash2D (see [README](../../../README.md#choosing-spatial-structures))
 
 ## Query Semantics
 

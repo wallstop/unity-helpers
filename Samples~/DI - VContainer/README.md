@@ -485,8 +485,8 @@ Only call `AssignRelationalComponents()` manually if you're not using the DI int
 
 **Unity Helpers Documentation:**
 
-- [Relational Components Guide](../../Docs/features/relational-components/relational-components.md) - Complete attribute reference and recipes
-- [Getting Started](../../Docs/overview/getting-started.md) - Unity Helpers quick start guide
+- [Relational Components Guide](../../docs/features/relational-components/relational-components.md) - Complete attribute reference and recipes
+- [Getting Started](../../docs/overview/getting-started.md) - Unity Helpers quick start guide
 - [Main README](../../README.md) - Full feature overview
 
 **VContainer Documentation:**
@@ -496,8 +496,8 @@ Only call `AssignRelationalComponents()` manually if you're not using the DI int
 
 **Troubleshooting:**
 
-- [Relational Components Troubleshooting](../../Docs/features/relational-components/relational-components.md#troubleshooting) - Detailed solutions
-- [DI Integration Testing Guide](../../Docs/features/relational-components/relational-components.md#di-integrations-testing-and-edge-cases) - Advanced scenarios
+- [Relational Components Troubleshooting](../../docs/features/relational-components/relational-components.md#troubleshooting) - Detailed solutions
+- [DI Integration Testing Guide](../../docs/features/relational-components/relational-components.md#di-integrations-testing-and-edge-cases) - Advanced scenarios
 
 ---
 
@@ -506,7 +506,7 @@ Only call `AssignRelationalComponents()` manually if you're not using the DI int
 1. **Try the sample scene:** Open `VContainer_Sample.unity` and press Play
 2. **Read the scripts:** See how `GameLifetimeScope` and `Spawner` work
 3. **Add to your project:** Copy the pattern to your own LifetimeScope
-4. **Explore attributes:** Check out the [Relational Components Guide](../../Docs/features/relational-components/relational-components.md) for all options
+4. **Explore attributes:** Check out the [Relational Components Guide](../../docs/features/relational-components/relational-components.md) for all options
 
 ---
 

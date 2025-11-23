@@ -488,6 +488,18 @@ async Task<string> GetTextFromMainThread()
 }
 ```
 
+---
+
+## Logging
+
+Use the [Logging Extensions guide](../logging/logging-extensions.md) for:
+
+- Rich text tags applied directly inside interpolated strings (`$"{value:b,color=red}"`)
+- Thread-aware logging helpers (`this.Log`, `this.LogWarn`, `this.LogError`, `this.LogDebug`)
+- Tips for registering custom decorations and gating logs per-object or globally
+
+These helpers rely on the same dispatcher utilities above, so logging from jobs/background threads stays safe.
+
 **Fire-and-forget on main thread:**
 
 ```csharp

@@ -34,7 +34,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 BenchmarkReadmeUpdater.UpdateSection(
                     "RANDOM_BENCHMARKS",
                     markdown,
-                    "Docs/RANDOM_PERFORMANCE.md"
+                    "docs/performance/random-performance.md"
                 );
 
                 UnityEngine.Debug.Log("Random benchmark summary generated.");

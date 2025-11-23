@@ -13,6 +13,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         private const int DefaultHeight = 16;
         private const long Vector2AllocationBudgetBytes = 8_192;
         private const long GridAllocationBudgetBytes = 12_288;
+        private const int LargeWidth = 128;
+        private const int LargeHeight = 128;
+        private const long LargeVector2AllocationBudgetBytes = Vector2AllocationBudgetBytes * 8;
+        private const long LargeGridAllocationBudgetBytes = GridAllocationBudgetBytes * 8;
 
         [Test]
         public void BuildConcaveHullKnnVector2AllocationsStayBounded()
@@ -34,6 +38,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 allocated,
                 Vector2AllocationBudgetBytes,
                 $"Vector2 concave hull should allocate no more than the hull list (measured {allocated} bytes)."
+            );
+        }
+
+        [Test]
+        public void BuildConcaveHullKnnVector2AllocationsStayBoundedForLargePointCloud()
+        {
+            List<Vector2> points = CreateVectorPointCloud(LargeWidth, LargeHeight);
+
+            long allocated = GCAssert.MeasureAllocatedBytes(
+                () =>
+                {
+                    List<Vector2> hull = points.BuildConcaveHullKnn(nearestNeighbors: 8);
+                    Assert.IsNotNull(hull);
+                    Assert.GreaterOrEqual(hull.Count, 3);
+                },
+                warmupIterations: 2,
+                measuredIterations: 1
+            );
+
+            Assert.LessOrEqual(
+                allocated,
+                LargeVector2AllocationBudgetBytes,
+                $"Vector2 concave hull (>10k points) should stay within hull list allocations (measured {allocated} bytes)."
             );
         }
 
@@ -62,6 +89,34 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 allocated,
                 GridAllocationBudgetBytes,
                 $"Grid concave hull should allocate no more than the hull list (measured {allocated} bytes)."
+            );
+        }
+
+        [Test]
+        public void BuildConcaveHullKnnGridAllocationsStayBoundedForLargePointCloud()
+        {
+            List<FastVector3Int> points = CreateGridPointCloud(LargeWidth, LargeHeight);
+            Grid grid = new GameObject("ConcaveHullGridLarge").AddComponent<Grid>();
+            Track(grid.gameObject);
+
+            long allocated = GCAssert.MeasureAllocatedBytes(
+                () =>
+                {
+                    List<FastVector3Int> hull = points.BuildConcaveHullKnn(
+                        grid,
+                        nearestNeighbors: 8
+                    );
+                    Assert.IsNotNull(hull);
+                    Assert.GreaterOrEqual(hull.Count, 3);
+                },
+                warmupIterations: 2,
+                measuredIterations: 1
+            );
+
+            Assert.LessOrEqual(
+                allocated,
+                LargeGridAllocationBudgetBytes,
+                $"Grid concave hull (>10k points) should stay within hull list allocations (measured {allocated} bytes)."
             );
         }
 
