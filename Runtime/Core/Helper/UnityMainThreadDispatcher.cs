@@ -90,6 +90,19 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        /// <summary>
+        /// Gets the singleton dispatcher, creating it automatically when auto-creation is enabled.
+        /// When auto-creation is disabled (for example inside tests) this simply returns the existing instance, which may be <c>null</c>.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
+        /// if (dispatcher != null)
+        /// {
+        ///     dispatcher.RunOnMainThread(() => Debug.Log("Marshalled to main thread"));
+        /// }
+        /// </code>
+        /// </example>
         public static new UnityMainThreadDispatcher Instance
         {
             get
@@ -106,6 +119,183 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         internal static void SetAutoCreationEnabled(bool enabled)
         {
             AutoCreationEnabled = enabled;
+        }
+
+        internal static bool DestroyExistingDispatcher(bool immediate)
+        {
+            bool destroyed = false;
+
+            if (TryGetInstance(out UnityMainThreadDispatcher dispatcher) && dispatcher != null)
+            {
+                destroyed |= DestroyDispatcherObject(dispatcher, immediate);
+            }
+
+            UnityMainThreadDispatcher[] allDispatchers =
+                Resources.FindObjectsOfTypeAll<UnityMainThreadDispatcher>();
+            if (allDispatchers is { Length: > 0 })
+            {
+                foreach (UnityMainThreadDispatcher localDispatcher in allDispatchers)
+                {
+                    destroyed |= DestroyDispatcherObject(localDispatcher, immediate);
+                }
+            }
+
+            return destroyed;
+        }
+
+        private static bool DestroyDispatcherObject(
+            UnityMainThreadDispatcher dispatcher,
+            bool immediate
+        )
+        {
+            if (dispatcher == null)
+            {
+                return false;
+            }
+
+            GameObject dispatcherObject = dispatcher.gameObject;
+            if (dispatcherObject == null)
+            {
+                return false;
+            }
+
+            if (immediate || !Application.isPlaying)
+            {
+                DestroyImmediate(dispatcherObject);
+            }
+            else
+            {
+                Destroy(dispatcherObject);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Disposable helper that temporarily overrides <see cref="AutoCreationEnabled"/> and (optionally) destroys dispatcher instances on enter/exit.
+        /// Use this to keep tests and integration setups deterministic without hand-written <c>try/finally</c> blocks.
+        /// </summary>
+        /// <remarks>
+        /// The scope records the previous <see cref="AutoCreationEnabled"/> value, switches to the desired state, and restores the original value on dispose.
+        /// It also exposes knobs for destroying existing dispatcher GameObjects immediately (ideal for EditMode tests) or on dispose.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// using UnityMainThreadDispatcher.AutoCreationScope scope =
+        ///     UnityMainThreadDispatcher.AutoCreationScope.Disabled(
+        ///         destroyExistingInstanceOnEnter: true,
+        ///         destroyInstancesOnDispose: true,
+        ///         destroyImmediate: true);
+        ///
+        /// // Inside the scope auto-creation is off, so tests can create/destroy the dispatcher manually.
+        /// UnityMainThreadDispatcher.SetAutoCreationEnabled(true);
+        /// UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
+        /// </code>
+        /// </example>
+        public sealed class AutoCreationScope : IDisposable
+        {
+            private readonly bool _previousState;
+            private readonly bool _destroyOnDispose;
+            private readonly bool _destroyImmediate;
+            private bool _disposed;
+
+            private AutoCreationScope(
+                bool desiredAutoCreationState,
+                bool destroyExistingInstance,
+                bool destroyInstancesOnDispose,
+                bool destroyImmediate
+            )
+            {
+                _previousState = AutoCreationEnabled;
+                _destroyOnDispose = destroyInstancesOnDispose;
+                _destroyImmediate = destroyImmediate;
+
+                SetAutoCreationEnabled(desiredAutoCreationState);
+
+                if (destroyExistingInstance)
+                {
+                    DestroyExistingDispatcher(destroyImmediate);
+                }
+            }
+
+            /// <summary>
+            /// Creates a scope that disables auto-creation and (by default) destroys dispatcher instances both when entering and leaving the scope.
+            /// </summary>
+            /// <param name="destroyExistingInstanceOnEnter">Set to <c>false</c> if the caller wants to keep the current dispatcher alive while auto-creation is disabled.</param>
+            /// <param name="destroyInstancesOnDispose">When <c>true</c>, any dispatcher created while the scope was active is destroyed as soon as the scope is disposed.</param>
+            /// <param name="destroyImmediate">
+            /// Uses <see cref="UnityEngine.Object.DestroyImmediate(UnityEngine.Object)"/> when <c>true</c> (ideal for EditMode tests) and <see cref="UnityEngine.Object.Destroy(UnityEngine.Object)"/> otherwise.
+            /// </param>
+            /// <returns>A disposable scope that restores the previous <see cref="AutoCreationEnabled"/> value on dispose.</returns>
+            /// <example>
+            /// <code>
+            /// using UnityMainThreadDispatcher.AutoCreationScope scope =
+            ///     UnityMainThreadDispatcher.AutoCreationScope.Disabled(destroyImmediate: Application.isEditor);
+            /// // Perform work that must not auto-create the dispatcher.
+            /// </code>
+            /// </example>
+            public static AutoCreationScope Disabled(
+                bool destroyExistingInstanceOnEnter = true,
+                bool destroyInstancesOnDispose = true,
+                bool destroyImmediate = true
+            )
+            {
+                return new AutoCreationScope(
+                    desiredAutoCreationState: false,
+                    destroyExistingInstance: destroyExistingInstanceOnEnter,
+                    destroyInstancesOnDispose: destroyInstancesOnDispose,
+                    destroyImmediate: destroyImmediate
+                );
+            }
+
+            /// <summary>
+            /// Creates a scope that forces auto-creation on even if callers disabled it previously.
+            /// This is useful for integration tests that temporarily require the dispatcher before restoring the prior state.
+            /// </summary>
+            /// <param name="destroyExistingInstanceOnEnter">Destroy the dispatcher before enabling auto-creation (rare).</param>
+            /// <param name="destroyInstancesOnDispose">Destroy any instances created during the scope once it ends.</param>
+            /// <param name="destroyImmediate">Choose between <see cref="UnityEngine.Object.DestroyImmediate(UnityEngine.Object)"/> and <see cref="UnityEngine.Object.Destroy(UnityEngine.Object)"/> for cleanup.</param>
+            /// <returns>A scope that restores <see cref="AutoCreationEnabled"/> to its previous value when disposed.</returns>
+            /// <example>
+            /// <code>
+            /// using UnityMainThreadDispatcher.AutoCreationScope scope =
+            ///     UnityMainThreadDispatcher.AutoCreationScope.Enabled();
+            /// // Dispatcher is guaranteed to auto-create when accessed here.
+            /// </code>
+            /// </example>
+            public static AutoCreationScope Enabled(
+                bool destroyExistingInstanceOnEnter = false,
+                bool destroyInstancesOnDispose = false,
+                bool destroyImmediate = true
+            )
+            {
+                return new AutoCreationScope(
+                    desiredAutoCreationState: true,
+                    destroyExistingInstance: destroyExistingInstanceOnEnter,
+                    destroyInstancesOnDispose: destroyInstancesOnDispose,
+                    destroyImmediate: destroyImmediate
+                );
+            }
+
+            /// <summary>
+            /// Restores the previously captured <see cref="AutoCreationEnabled"/> value and optionally destroys dispatcher instances created inside the scope.
+            /// </summary>
+            public void Dispose()
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _disposed = true;
+
+                SetAutoCreationEnabled(_previousState);
+
+                if (_destroyOnDispose)
+                {
+                    DestroyExistingDispatcher(_destroyImmediate);
+                }
+            }
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
@@ -166,7 +356,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <code>
         /// Task.Run(async () =>
         /// {
-        ///     var data = await FetchAsync();
+        ///     string data = await FetchAsync();
         ///     UnityMainThreadDispatcher.Instance.RunOnMainThread(() => Apply(data));
         /// });
         /// </code>
@@ -180,6 +370,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// Attempts to enqueue an action to execute on the main thread without logging overflow warnings.
         /// Returns <c>true</c> when successfully queued; otherwise <c>false</c>.
         /// </summary>
+        /// <remarks>Use this when overflow is expected and callers want to silently drop work (for example telemetry callbacks).</remarks>
+        /// <example>
+        /// <code>
+        /// UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
+        /// string status = BuildStatus();
+        /// bool queued = dispatcher.TryRunOnMainThread(() => UpdateUi(status));
+        /// if (!queued)
+        /// {
+        ///     Debug.LogWarning("UI update dropped because dispatcher queue is full.");
+        /// }
+        /// </code>
+        /// </example>
         public bool TryRunOnMainThread(Action action)
         {
             return Enqueue(action, logOverflow: false);
@@ -311,8 +513,20 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         }
 
         /// <summary>
-        /// Posts an action to run on the main thread and returns a Task that completes after execution.
+        /// Posts an action to run on the main thread and returns a <see cref="Task"/> that completes after execution.
         /// </summary>
+        /// <example>
+        /// <code>
+        /// UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
+        /// PlayerController player = GetPlayer();
+        /// Animator playerAnimator = player.Animator;
+        /// await dispatcher.RunAsync(() =>
+        /// {
+        ///     player.Health = 0;
+        ///     playerAnimator.Play("Die");
+        /// });
+        /// </code>
+        /// </example>
         public Task RunAsync(Action action)
         {
             if (action == null)
@@ -353,6 +567,17 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <summary>
         /// Posts an asynchronous delegate that receives a <see cref="CancellationToken"/> and completes when the returned Task does.
         /// </summary>
+        /// <example>
+        /// <code>
+        /// UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
+        /// CanvasGroup canvasGroup = GetLoadingOverlay();
+        /// using CancellationTokenSource timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        /// await dispatcher.RunAsync(async token =>
+        /// {
+        ///     await FadeCanvasGroupAsync(canvasGroup, 0f, token);
+        /// }, timeout.Token);
+        /// </code>
+        /// </example>
         public Task RunAsync(
             Func<CancellationToken, Task> action,
             CancellationToken cancellationToken = default

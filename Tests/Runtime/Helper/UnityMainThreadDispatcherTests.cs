@@ -42,6 +42,163 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assert.IsTrue(executed);
         }
 
+        [Test]
+        public void AutoCreationScopeDisabledRestoresPreviousState()
+        {
+            UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
+            bool initialState = UnityMainThreadDispatcher.AutoCreationEnabled;
+
+            using (
+                UnityMainThreadDispatcher.AutoCreationScope scope =
+                    UnityMainThreadDispatcher.AutoCreationScope.Disabled(
+                        destroyExistingInstanceOnEnter: false,
+                        destroyInstancesOnDispose: false
+                    )
+            )
+            {
+                Assert.IsFalse(UnityMainThreadDispatcher.AutoCreationEnabled);
+            }
+
+            Assert.AreEqual(initialState, UnityMainThreadDispatcher.AutoCreationEnabled);
+        }
+
+        [UnityTest]
+        public IEnumerator AutoCreationScopeDestroysInstancesWhenConfigured()
+        {
+            UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
+            UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
+
+            UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
+            Assert.IsNotNull(dispatcher);
+            Assert.IsTrue(UnityMainThreadDispatcher.HasInstance);
+
+            using (
+                UnityMainThreadDispatcher.AutoCreationScope scope =
+                    UnityMainThreadDispatcher.AutoCreationScope.Disabled(
+                        destroyExistingInstanceOnEnter: true,
+                        destroyInstancesOnDispose: true,
+                        destroyImmediate: true
+                    )
+            )
+            {
+                Assert.IsFalse(UnityMainThreadDispatcher.HasInstance);
+                Assert.IsFalse(UnityMainThreadDispatcher.AutoCreationEnabled);
+
+                UnityMainThreadDispatcher.SetAutoCreationEnabled(true);
+                dispatcher = UnityMainThreadDispatcher.Instance;
+                Assert.IsNotNull(dispatcher);
+                Assert.IsTrue(UnityMainThreadDispatcher.HasInstance);
+            }
+
+            yield return null;
+
+            Assert.IsFalse(UnityMainThreadDispatcher.HasInstance);
+            Assert.IsTrue(UnityMainThreadDispatcher.AutoCreationEnabled);
+        }
+
+        [UnityTest]
+        public IEnumerator InstanceDoesNotAutoCreateWhenDisabled()
+        {
+            UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
+            UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
+
+            UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
+            Assert.IsNotNull(dispatcher);
+            Track(dispatcher.gameObject);
+
+            using (
+                UnityMainThreadDispatcher.AutoCreationScope scope =
+                    UnityMainThreadDispatcher.AutoCreationScope.Disabled(
+                        destroyExistingInstanceOnEnter: true,
+                        destroyInstancesOnDispose: true,
+                        destroyImmediate: true
+                    )
+            )
+            {
+                Assert.IsFalse(UnityMainThreadDispatcher.AutoCreationEnabled);
+                Assert.IsFalse(UnityMainThreadDispatcher.HasInstance);
+                Assert.IsNull(UnityMainThreadDispatcher.Instance);
+            }
+
+            UnityMainThreadDispatcher recreated = UnityMainThreadDispatcher.Instance;
+            Assert.IsNotNull(recreated);
+            Track(recreated.gameObject);
+
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator AutoCreationScopeEnabledRestoresFlagAndCleansUp()
+        {
+            UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
+            UnityMainThreadDispatcher.SetAutoCreationEnabled(false);
+            Assert.IsFalse(UnityMainThreadDispatcher.AutoCreationEnabled);
+            Assert.IsNull(UnityMainThreadDispatcher.Instance);
+            Assert.IsFalse(UnityMainThreadDispatcher.HasInstance);
+
+            using (
+                UnityMainThreadDispatcher.AutoCreationScope scope =
+                    UnityMainThreadDispatcher.AutoCreationScope.Enabled(
+                        destroyExistingInstanceOnEnter: false,
+                        destroyInstancesOnDispose: true,
+                        destroyImmediate: true
+                    )
+            )
+            {
+                Assert.IsTrue(UnityMainThreadDispatcher.AutoCreationEnabled);
+                UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
+                Assert.IsNotNull(dispatcher);
+                Track(dispatcher.gameObject);
+                Assert.IsTrue(UnityMainThreadDispatcher.HasInstance);
+            }
+
+            Assert.IsFalse(UnityMainThreadDispatcher.AutoCreationEnabled);
+            Assert.IsFalse(UnityMainThreadDispatcher.HasInstance);
+            Assert.IsNull(UnityMainThreadDispatcher.Instance);
+
+            UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
+
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator DestroyExistingDispatcherUsesDestroy()
+        {
+            UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
+            UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
+
+            UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
+            Assert.IsNotNull(dispatcher);
+            Track(dispatcher.gameObject);
+
+            bool destroyed = UnityMainThreadDispatcher.DestroyExistingDispatcher(immediate: false);
+            Assert.IsTrue(destroyed);
+
+            int guard = 10;
+            while (UnityMainThreadDispatcher.HasInstance && guard-- > 0)
+            {
+                yield return null;
+            }
+
+            Assert.IsFalse(UnityMainThreadDispatcher.HasInstance);
+            Assert.AreEqual(
+                0,
+                UnityEngine.Object.FindObjectsOfType<UnityMainThreadDispatcher>().Length
+            );
+        }
+
+        [Test]
+        public void DestroyExistingDispatcherReturnsFalseWhenMissing()
+        {
+            UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
+
+            bool destroyed = UnityMainThreadDispatcher.DestroyExistingDispatcher(immediate: true);
+
+            Assert.IsFalse(destroyed);
+
+            UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
+        }
+
         [UnityTest]
         public IEnumerator RunOnMainThreadLogsExceptions()
         {
