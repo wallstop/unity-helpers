@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
     using System.Reflection;
     using global::UnityEditor;
     using global::UnityEngine;
-    using UnityEditor;
     using UnityHelpers.Core.Attributes;
     using UnityHelpers.Tags;
     using WallstopStudios.UnityHelpers.Core.Helper;

@@ -1,7 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
     using System.Collections.Generic;
-    using UnityEditor;
     using UnityEngine;
 
     /// <summary>

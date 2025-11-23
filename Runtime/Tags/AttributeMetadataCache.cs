@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Tags
     using Core.Helper;
     using UnityEngine;
     using Utils;
-    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// Serialized cache of attribute metadata to avoid runtime reflection.

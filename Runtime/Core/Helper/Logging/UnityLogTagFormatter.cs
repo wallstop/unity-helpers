@@ -2,12 +2,19 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Text;
+    using System.Threading;
     using Extension;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using Debug = UnityEngine.Debug;
     using Object = UnityEngine.Object;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
+
 
     /// <summary>
     /// Default supported formats:
@@ -66,6 +73,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
         private readonly StringBuilder _cachedStringBuilder = new();
         private readonly List<string> _cachedDecorators = new();
         private readonly HashSet<string> _appliedTags = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly Stopwatch FallbackStopwatch = Stopwatch.StartNew();
+        private static int _unityMainThreadId;
+        private static string _unityMainThreadLabel = "unity-main";
+        private static int _mainThreadCaptured;
 
         public UnityLogTagFormatter()
             : this(true) { }
@@ -321,6 +332,79 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
             return rendered;
         }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void CaptureRuntimeMainThread()
+        {
+            CaptureUnityMainThread(Thread.CurrentThread, "unity-main");
+        }
+
+#if UNITY_EDITOR
+        [InitializeOnLoadMethod]
+        private static void CaptureEditorMainThread()
+        {
+            if (Application.isPlaying)
+            {
+                return;
+            }
+
+            CaptureUnityMainThread(Thread.CurrentThread, "editor-main");
+        }
+#endif
+
+        private static void EnsureMainThreadCaptured()
+        {
+            if (_mainThreadCaptured == 1)
+            {
+                return;
+            }
+
+            string label = Application.isPlaying ? "unity-main" : "editor-main";
+            CaptureUnityMainThread(Thread.CurrentThread, label);
+        }
+
+        private static void CaptureUnityMainThread(Thread thread, string label)
+        {
+            if (thread == null)
+            {
+                return;
+            }
+
+            _unityMainThreadId = thread.ManagedThreadId;
+            _unityMainThreadLabel = string.IsNullOrWhiteSpace(label)
+                ? thread.Name ?? "unity-main"
+                : label;
+            Interlocked.Exchange(ref _mainThreadCaptured, 1);
+        }
+
+        private static string BuildThreadLabel()
+        {
+            EnsureMainThreadCaptured();
+            int currentId = Thread.CurrentThread.ManagedThreadId;
+
+            if (_mainThreadCaptured == 1 && currentId == _unityMainThreadId)
+            {
+                return $"{_unityMainThreadLabel}#{currentId}";
+            }
+
+            string threadName = Thread.CurrentThread.Name;
+            if (!string.IsNullOrWhiteSpace(threadName))
+            {
+                return $"{threadName}#{currentId}";
+            }
+
+            return $"worker#{currentId}";
+        }
+
+        private static float GetTimestamp()
+        {
+            if (UnityMainThreadGuard.IsMainThread)
+            {
+                return Time.time;
+            }
+
+            return (float)FallbackStopwatch.Elapsed.TotalSeconds;
+        }
+
         /// <summary>
         /// Attempts to add a decoration.
         /// </summary>
@@ -517,7 +601,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
                     : message.ToString(this);
             }
 
-            float now = Time.time;
+            float now = GetTimestamp();
+            string threadLabel = BuildThreadLabel();
             string componentType;
             string gameObjectName;
             if (unityObject != null)
@@ -532,8 +617,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
             }
 
             return e != null
-                ? $"{now}|{gameObjectName}[{componentType}]|{message.ToString(this)}{NewLine}    {e}"
-                : $"{now}|{gameObjectName}[{componentType}]|{message.ToString(this)}";
+                ? $"{now}|{threadLabel}|{gameObjectName}[{componentType}]|{message.ToString(this)}{NewLine}    {e}"
+                : $"{now}|{threadLabel}|{gameObjectName}[{componentType}]|{message.ToString(this)}";
         }
     }
 }

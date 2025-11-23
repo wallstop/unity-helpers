@@ -35,6 +35,561 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             Jarvis = 2,
         }
 
+        private static int FindLowestGridPointIndex(List<FastVector3Int> points, Grid grid)
+        {
+            if (points == null || points.Count == 0)
+            {
+                return -1;
+            }
+
+            if (grid == null)
+            {
+                throw new ArgumentNullException(nameof(grid));
+            }
+
+            int lowestIndex = -1;
+            float lowestY = float.MaxValue;
+            for (int i = 0; i < points.Count; ++i)
+            {
+                Vector2 candidateWorld = grid.CellToWorld(points[i]);
+                if (lowestIndex < 0 || candidateWorld.y < lowestY)
+                {
+                    lowestIndex = i;
+                    lowestY = candidateWorld.y;
+                }
+            }
+
+            return lowestIndex;
+        }
+
+        private static bool TryBuildGridConcaveHullAttempt(
+            List<FastVector3Int> points,
+            List<FastVector3Int> hull,
+            Grid grid,
+            bool[] availability,
+            List<int> neighborIndices,
+            float[] neighborDistances,
+            Vector2[] worldPositions,
+            int nearestNeighbors,
+            int firstIndex,
+            FastVector3Int firstPoint,
+            int maxSteps
+        )
+        {
+            int totalPoints = points.Count;
+            int availableCount = ResetAvailabilityFlags(availability, totalPoints, firstIndex);
+
+            int step = 2;
+            float previousAngle = 0f;
+            Vector2 currentWorld = worldPositions[firstIndex];
+            bool includeFirstCandidate = false;
+
+            while (availableCount > 0)
+            {
+                if (!includeFirstCandidate && step == 5)
+                {
+                    includeFirstCandidate = true;
+                }
+
+                FillNearestNeighborIndices(
+                    availability,
+                    neighborIndices,
+                    neighborDistances,
+                    worldPositions,
+                    totalPoints,
+                    nearestNeighbors,
+                    currentWorld,
+                    includeFirstCandidate,
+                    firstIndex
+                );
+
+                if (neighborIndices.Count == 0)
+                {
+                    break;
+                }
+
+                SortByRightHandTurnIndices(
+                    neighborIndices,
+                    worldPositions,
+                    currentWorld,
+                    previousAngle
+                );
+
+                bool intersects = true;
+                int neighborOffset = -1;
+                while (intersects && neighborOffset < neighborIndices.Count - 1)
+                {
+                    ++neighborOffset;
+                    int candidateIndex = neighborIndices[neighborOffset];
+                    FastVector3Int candidate = points[candidateIndex];
+                    int lastPoint = candidate == firstPoint ? 1 : 0;
+                    int j = 2;
+                    intersects = false;
+                    Vector2 lhsTo = worldPositions[candidateIndex];
+                    while (!intersects && j < hull.Count - lastPoint)
+                    {
+                        Vector2 lhsFrom = grid.CellToWorld(hull[step - 2]);
+                        Vector2 rhsFrom = grid.CellToWorld(hull[step - 2 - j]);
+                        Vector2 rhsTo = grid.CellToWorld(hull[step - 1 - j]);
+                        intersects = Intersects(lhsFrom, lhsTo, rhsFrom, rhsTo);
+                        ++j;
+                    }
+                }
+
+                if (intersects)
+                {
+                    return RemainingPointsInside(points, availability, hull, grid);
+                }
+
+                int nextIndex = neighborIndices[neighborOffset];
+                if (nextIndex == firstIndex)
+                {
+                    break;
+                }
+
+                FastVector3Int nextPoint = points[nextIndex];
+                hull.Add(nextPoint);
+                if (availability[nextIndex])
+                {
+                    availability[nextIndex] = false;
+                    --availableCount;
+                }
+
+                currentWorld = worldPositions[nextIndex];
+                previousAngle = CalculateAngle(
+                    grid.CellToWorld(hull[step - 1]),
+                    grid.CellToWorld(hull[step - 2])
+                );
+                ++step;
+                if (step > maxSteps)
+                {
+                    break;
+                }
+            }
+
+            return RemainingPointsInside(points, availability, hull, grid);
+        }
+
+        private static void FillNearestNeighborIndices(
+            bool[] availability,
+            List<int> neighborIndices,
+            float[] neighborDistances,
+            Vector2[] worldPositions,
+            int totalPoints,
+            int nearestNeighbors,
+            Vector2 currentWorld,
+            bool includeFirstCandidate,
+            int firstIndex
+        )
+        {
+            neighborIndices.Clear();
+            if (nearestNeighbors <= 0 || worldPositions == null || totalPoints <= 0)
+            {
+                return;
+            }
+
+            int storedCount = 0;
+            for (int i = 0; i < totalPoints; ++i)
+            {
+                if (!availability[i])
+                {
+                    continue;
+                }
+
+                Vector2 candidateWorld = worldPositions[i];
+                float distance = (candidateWorld - currentWorld).sqrMagnitude;
+                InsertNeighborCandidate(
+                    neighborIndices,
+                    neighborDistances,
+                    i,
+                    distance,
+                    ref storedCount,
+                    nearestNeighbors
+                );
+            }
+
+            if (includeFirstCandidate)
+            {
+                Vector2 firstWorld = worldPositions[firstIndex];
+                float firstDistance = (firstWorld - currentWorld).sqrMagnitude;
+                InsertNeighborCandidate(
+                    neighborIndices,
+                    neighborDistances,
+                    firstIndex,
+                    firstDistance,
+                    ref storedCount,
+                    nearestNeighbors
+                );
+            }
+        }
+
+        private static void SortByRightHandTurnIndices(
+            List<int> neighborIndices,
+            Vector2[] worldPositions,
+            Vector2 currentWorld,
+            float previousAngle
+        )
+        {
+            int count = neighborIndices.Count;
+            if (count <= 1)
+            {
+                return;
+            }
+
+            using PooledResource<float[]> angleBufferResource = WallstopFastArrayPool<float>.Get(
+                count
+            );
+            float[] angles = angleBufferResource.resource;
+            for (int i = 0; i < count; ++i)
+            {
+                Vector2 candidatePoint = worldPositions[neighborIndices[i]];
+                float candidateAngle = CalculateAngle(currentWorld, candidatePoint);
+                angles[i] = -AngleDifference(previousAngle, candidateAngle);
+            }
+
+            SelectionSort(neighborIndices, angles, count);
+        }
+
+        private static bool RemainingPointsInside(
+            List<FastVector3Int> points,
+            bool[] availability,
+            List<FastVector3Int> hull,
+            Grid grid
+        )
+        {
+            for (int i = 0; i < points.Count; ++i)
+            {
+                if (!availability[i])
+                {
+                    continue;
+                }
+
+                if (!IsPositionInside(hull, points[i], grid))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static int FindLowestPointIndex(List<Vector2> points)
+        {
+            if (points == null || points.Count == 0)
+            {
+                return -1;
+            }
+
+            int lowestIndex = -1;
+            float lowestY = float.MaxValue;
+            Vector2 lowestPoint = default;
+            for (int i = 0; i < points.Count; ++i)
+            {
+                Vector2 candidate = points[i];
+                if (
+                    lowestIndex < 0
+                    || candidate.y < lowestY
+                    || (Mathf.Approximately(candidate.y, lowestY) && candidate.x < lowestPoint.x)
+                )
+                {
+                    lowestIndex = i;
+                    lowestY = candidate.y;
+                    lowestPoint = candidate;
+                }
+            }
+
+            return lowestIndex;
+        }
+
+        private static bool TryBuildConcaveHull2Attempt(
+            List<Vector2> points,
+            List<Vector2> hull,
+            bool[] availability,
+            List<int> neighborIndices,
+            float[] neighborDistances,
+            int nearestNeighbors,
+            int firstIndex,
+            Vector2 firstPoint,
+            int maxSteps
+        )
+        {
+            int totalPoints = points.Count;
+            int availableCount = ResetAvailabilityFlags(availability, totalPoints, firstIndex);
+
+            int step = 2;
+            float previousAngle = 0f;
+            Vector2 currentPoint = firstPoint;
+            bool includeFirstCandidate = false;
+
+            while (availableCount > 0)
+            {
+                if (!includeFirstCandidate && step == 5)
+                {
+                    includeFirstCandidate = true;
+                }
+
+                FillNearestNeighborIndices(
+                    points,
+                    availability,
+                    neighborIndices,
+                    neighborDistances,
+                    nearestNeighbors,
+                    currentPoint,
+                    includeFirstCandidate,
+                    firstIndex
+                );
+
+                if (neighborIndices.Count == 0)
+                {
+                    break;
+                }
+
+                SortByRightHandTurnIndices(neighborIndices, points, currentPoint, previousAngle);
+
+                bool intersects = true;
+                int neighborOffset = -1;
+                while (intersects && neighborOffset < neighborIndices.Count - 1)
+                {
+                    ++neighborOffset;
+                    Vector2 candidate = points[neighborIndices[neighborOffset]];
+                    int lastPoint = candidate == firstPoint ? 1 : 0;
+                    int j = 2;
+                    intersects = false;
+                    Vector2 lhsTo = candidate;
+                    while (!intersects && j < hull.Count - lastPoint)
+                    {
+                        Vector2 lhsFrom = hull[step - 2];
+                        Vector2 rhsFrom = hull[step - 2 - j];
+                        Vector2 rhsTo = hull[step - 1 - j];
+                        intersects = Intersects(lhsFrom, lhsTo, rhsFrom, rhsTo);
+                        ++j;
+                    }
+                }
+
+                if (intersects)
+                {
+                    return RemainingPointsInside(points, availability, hull);
+                }
+
+                int nextIndex = neighborIndices[neighborOffset];
+                if (nextIndex == firstIndex)
+                {
+                    break;
+                }
+
+                Vector2 nextPoint = points[nextIndex];
+                hull.Add(nextPoint);
+                if (availability[nextIndex])
+                {
+                    availability[nextIndex] = false;
+                    --availableCount;
+                }
+
+                currentPoint = nextPoint;
+                previousAngle = CalculateAngle(hull[step - 1], hull[step - 2]);
+                ++step;
+                if (step > maxSteps)
+                {
+                    break;
+                }
+            }
+
+            return RemainingPointsInside(points, availability, hull);
+        }
+
+        private static void FillNearestNeighborIndices(
+            List<Vector2> points,
+            bool[] availability,
+            List<int> neighborIndices,
+            float[] neighborDistances,
+            int nearestNeighbors,
+            Vector2 currentPoint,
+            bool includeFirstCandidate,
+            int firstIndex
+        )
+        {
+            neighborIndices.Clear();
+            if (nearestNeighbors <= 0 || points.Count == 0)
+            {
+                return;
+            }
+
+            int storedCount = 0;
+            int totalPoints = points.Count;
+            for (int i = 0; i < totalPoints; ++i)
+            {
+                if (!availability[i])
+                {
+                    continue;
+                }
+
+                Vector2 candidate = points[i];
+                float distance = (candidate - currentPoint).sqrMagnitude;
+                InsertNeighborCandidate(
+                    neighborIndices,
+                    neighborDistances,
+                    i,
+                    distance,
+                    ref storedCount,
+                    nearestNeighbors
+                );
+            }
+
+            if (includeFirstCandidate)
+            {
+                Vector2 firstPoint = points[firstIndex];
+                float firstDistance = (firstPoint - currentPoint).sqrMagnitude;
+                InsertNeighborCandidate(
+                    neighborIndices,
+                    neighborDistances,
+                    firstIndex,
+                    firstDistance,
+                    ref storedCount,
+                    nearestNeighbors
+                );
+            }
+        }
+
+        private static void SortByRightHandTurnIndices(
+            List<int> neighborIndices,
+            List<Vector2> points,
+            Vector2 currentPoint,
+            float previousAngle
+        )
+        {
+            int count = neighborIndices.Count;
+            if (count <= 1)
+            {
+                return;
+            }
+
+            using PooledResource<float[]> angleBufferResource = WallstopFastArrayPool<float>.Get(
+                count
+            );
+            float[] angles = angleBufferResource.resource;
+            for (int i = 0; i < count; ++i)
+            {
+                Vector2 candidatePoint = points[neighborIndices[i]];
+                float candidateAngle = CalculateAngle(currentPoint, candidatePoint);
+                angles[i] = -AngleDifference(previousAngle, candidateAngle);
+            }
+
+            SelectionSort(neighborIndices, angles, count);
+        }
+
+        private static bool RemainingPointsInside(
+            List<Vector2> points,
+            bool[] availability,
+            List<Vector2> hull
+        )
+        {
+            for (int i = 0; i < points.Count; ++i)
+            {
+                if (!availability[i])
+                {
+                    continue;
+                }
+
+                if (!IsPositionInside(hull, points[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static int ResetAvailabilityFlags(
+            bool[] availability,
+            int totalPoints,
+            int skipIndex
+        )
+        {
+            if (availability == null)
+            {
+                return 0;
+            }
+
+            int availableCount = 0;
+            for (int i = 0; i < totalPoints; ++i)
+            {
+                bool available = i != skipIndex;
+                availability[i] = available;
+                if (available)
+                {
+                    ++availableCount;
+                }
+            }
+
+            return availableCount;
+        }
+
+        private static void InsertNeighborCandidate(
+            List<int> neighborIndices,
+            float[] neighborDistances,
+            int candidateIndex,
+            float candidateDistance,
+            ref int storedCount,
+            int maximumCount
+        )
+        {
+            if (maximumCount <= 0)
+            {
+                return;
+            }
+
+            if (neighborIndices == null || neighborDistances == null)
+            {
+                return;
+            }
+
+            if (neighborDistances.Length < maximumCount)
+            {
+                throw new ArgumentException(
+                    "Neighbor distance buffer must be at least as large as maximumCount.",
+                    nameof(neighborDistances)
+                );
+            }
+
+            if (storedCount < maximumCount)
+            {
+                neighborIndices.Add(candidateIndex);
+                neighborDistances[storedCount] = candidateDistance;
+                int insertPosition = storedCount;
+                while (
+                    insertPosition > 0 && candidateDistance < neighborDistances[insertPosition - 1]
+                )
+                {
+                    neighborDistances[insertPosition] = neighborDistances[insertPosition - 1];
+                    neighborIndices[insertPosition] = neighborIndices[insertPosition - 1];
+                    --insertPosition;
+                }
+
+                neighborDistances[insertPosition] = candidateDistance;
+                neighborIndices[insertPosition] = candidateIndex;
+                ++storedCount;
+                return;
+            }
+
+            if (candidateDistance >= neighborDistances[storedCount - 1])
+            {
+                return;
+            }
+
+            int replacePosition = storedCount - 1;
+            while (
+                replacePosition > 0 && candidateDistance < neighborDistances[replacePosition - 1]
+            )
+            {
+                neighborDistances[replacePosition] = neighborDistances[replacePosition - 1];
+                neighborIndices[replacePosition] = neighborIndices[replacePosition - 1];
+                --replacePosition;
+            }
+
+            neighborDistances[replacePosition] = candidateDistance;
+            neighborIndices[replacePosition] = candidateIndex;
+        }
+
         public enum ConcaveHullStrategy
         {
             [Obsolete("Do not use default value; specify a strategy explicitly.")]
@@ -1036,24 +1591,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             points.Sort(
                 (lhs, rhs) =>
                 {
-                    Vector2 a = grid.CellToWorld(lhs);
-                    Vector2 b = grid.CellToWorld(rhs);
-                    int cmp = a.x.CompareTo(b.x);
-                    return cmp != 0 ? cmp : a.y.CompareTo(b.y);
+                    int cmp = lhs.x.CompareTo(rhs.x);
+                    return cmp != 0 ? cmp : lhs.y.CompareTo(rhs.y);
                 }
             );
 
             // Degenerate: all points are colinear → return endpoints (or all if requested)
             if (points.Count >= 2)
             {
-                Vector2 firstW = grid.CellToWorld(points[0]);
-                Vector2 lastW = grid.CellToWorld(points[^1]);
+                Vector3Int first = points[0];
+                Vector3Int last = points[^1];
                 bool allColinear = true;
                 for (int i = 1; i < points.Count - 1; ++i)
                 {
-                    Vector2 pi = grid.CellToWorld(points[i]);
-                    float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(firstW, lastW, pi);
-                    if (Mathf.Abs(cross) > ConvexHullRelationEpsilon)
+                    long cross = Turn(first, last, points[i]);
+                    if (cross != 0)
                     {
                         allColinear = false;
                         break;
@@ -1083,9 +1635,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 while (lower.Count >= 2)
                 {
-                    float cross = Turn(lower[^2], lower[^1], p);
-                    // Keep colinear points during construction; prune later if needed
-                    if (cross < -ConvexHullRelationEpsilon)
+                    long cross = Turn(lower[^2], lower[^1], p);
+                    bool isRightTurn = cross < 0;
+                    bool isColinear = cross == 0;
+                    if (isRightTurn || (!includeColinearPoints && isColinear))
                     {
                         lower.RemoveAt(lower.Count - 1);
                         continue;
@@ -1100,9 +1653,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 Vector3Int p = points[i];
                 while (upper.Count >= 2)
                 {
-                    float cross = Turn(upper[^2], upper[^1], p);
-                    // Keep colinear points during construction; prune later if needed
-                    if (cross < -ConvexHullRelationEpsilon)
+                    long cross = Turn(upper[^2], upper[^1], p);
+                    bool isRightTurn = cross < 0;
+                    bool isColinear = cross == 0;
+                    if (isRightTurn || (!includeColinearPoints && isColinear))
                     {
                         upper.RemoveAt(upper.Count - 1);
                         continue;
@@ -1123,16 +1677,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
             if (!includeColinearPoints && hull.Count > 2)
             {
-                PruneColinearOnHull(hull, grid);
+                PruneColinearOnHull(hull);
             }
             return hull;
 
-            float Turn(Vector3Int a, Vector3Int b, Vector3Int c)
+            long Turn(Vector3Int a, Vector3Int b, Vector3Int c)
             {
-                Vector2 aw = grid.CellToWorld(a);
-                Vector2 bw = grid.CellToWorld(b);
-                Vector2 cw = grid.CellToWorld(c);
-                return Geometry.IsAPointLeftOfVectorOrOnTheLine(aw, bw, cw);
+                long abx = (long)b.x - a.x;
+                long aby = (long)b.y - a.y;
+                long acx = (long)c.x - a.x;
+                long acy = (long)c.y - a.y;
+                return abx * acy - aby * acx;
             }
         }
 
@@ -1161,24 +1716,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             points.Sort(
                 (lhs, rhs) =>
                 {
-                    Vector2 a = grid.CellToWorld(lhs);
-                    Vector2 b = grid.CellToWorld(rhs);
-                    int cmp = a.x.CompareTo(b.x);
-                    return cmp != 0 ? cmp : a.y.CompareTo(b.y);
+                    int cmp = lhs.x.CompareTo(rhs.x);
+                    return cmp != 0 ? cmp : lhs.y.CompareTo(rhs.y);
                 }
             );
 
             // Degenerate: all points are colinear → return endpoints (or all if requested)
             if (points.Count >= 2)
             {
-                Vector2 firstW = grid.CellToWorld(points[0]);
-                Vector2 lastW = grid.CellToWorld(points[^1]);
+                FastVector3Int first = points[0];
+                FastVector3Int last = points[^1];
                 bool allColinear = true;
                 for (int i = 1; i < points.Count - 1; ++i)
                 {
-                    Vector2 pi = grid.CellToWorld(points[i]);
-                    float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(firstW, lastW, pi);
-                    if (Mathf.Abs(cross) > ConvexHullRelationEpsilon)
+                    long cross = Turn(first, last, points[i]);
+                    if (cross != 0)
                     {
                         allColinear = false;
                         break;
@@ -1208,9 +1760,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 while (lower.Count >= 2)
                 {
-                    float cross = Turn(lower[^2], lower[^1], p);
-                    // Keep colinear points during construction; prune later if needed
-                    if (cross < -ConvexHullRelationEpsilon)
+                    long cross = Turn(lower[^2], lower[^1], p);
+                    bool isRightTurn = cross < 0;
+                    bool isColinear = cross == 0;
+                    if (isRightTurn || (!includeColinearPoints && isColinear))
                     {
                         lower.RemoveAt(lower.Count - 1);
                         continue;
@@ -1225,9 +1778,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 FastVector3Int p = points[i];
                 while (upper.Count >= 2)
                 {
-                    float cross = Turn(upper[^2], upper[^1], p);
-                    // Keep colinear points during construction; prune later if needed
-                    if (cross < -ConvexHullRelationEpsilon)
+                    long cross = Turn(upper[^2], upper[^1], p);
+                    bool isRightTurn = cross < 0;
+                    bool isColinear = cross == 0;
+                    if (isRightTurn || (!includeColinearPoints && isColinear))
                     {
                         upper.RemoveAt(upper.Count - 1);
                         continue;
@@ -1248,16 +1802,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
             if (!includeColinearPoints && hull.Count > 2)
             {
-                PruneColinearOnHull(hull, grid);
+                PruneColinearOnHull(hull);
             }
             return hull;
 
-            float Turn(FastVector3Int a, FastVector3Int b, FastVector3Int c)
+            long Turn(FastVector3Int a, FastVector3Int b, FastVector3Int c)
             {
-                Vector2 aw = grid.CellToWorld(a);
-                Vector2 bw = grid.CellToWorld(b);
-                Vector2 cw = grid.CellToWorld(c);
-                return Geometry.IsAPointLeftOfVectorOrOnTheLine(aw, bw, cw);
+                long abx = (long)b.x - a.x;
+                long aby = (long)b.y - a.y;
+                long acx = (long)c.x - a.x;
+                long acy = (long)c.y - a.y;
+                return abx * acy - aby * acx;
             }
         }
 
@@ -1290,14 +1845,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             // Find leftmost (then lowest Y) start
             FastVector3Int start = points[0];
-            Vector2 startW = grid.CellToWorld(start);
             for (int i = 1; i < points.Count; ++i)
             {
-                Vector2 w = grid.CellToWorld(points[i]);
-                if (w.x < startW.x || (Mathf.Approximately(w.x, startW.x) && w.y < startW.y))
+                FastVector3Int w = points[i];
+                if (w.x < start.x || (w.x == start.x && w.y < start.y))
                 {
-                    start = points[i];
-                    startW = w;
+                    start = w;
                 }
             }
 
@@ -1319,12 +1872,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 {
                     continue;
                 }
-                float rel = Geometry.IsAPointLeftOfVectorOrOnTheLine(
-                    grid.CellToWorld(start),
-                    grid.CellToWorld(anyOther),
-                    grid.CellToWorld(p)
-                );
-                if (Mathf.Abs(rel) > ConvexHullRelationEpsilon)
+                if (Cross(start, anyOther, p) != 0)
                 {
                     allColinear = false;
                     break;
@@ -1337,33 +1885,27 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     points.Sort(
                         (a, b) =>
                         {
-                            Vector2 aw = grid.CellToWorld(a);
-                            Vector2 bw = grid.CellToWorld(b);
-                            int cmp = aw.x.CompareTo(bw.x);
-                            return cmp != 0 ? cmp : aw.y.CompareTo(bw.y);
+                            int cmp = a.x.CompareTo(b.x);
+                            return cmp != 0 ? cmp : a.y.CompareTo(b.y);
                         }
                     );
                     return points;
                 }
                 else
                 {
-                    // Return endpoints by min/max world
+                    // Return endpoints by min/max grid position
                     FastVector3Int min = start;
                     FastVector3Int max = start;
-                    Vector2 minW = grid.CellToWorld(min);
-                    Vector2 maxW = minW;
                     for (int i = 0; i < points.Count; ++i)
                     {
-                        Vector2 w = grid.CellToWorld(points[i]);
-                        if (w.x < minW.x || (Mathf.Approximately(w.x, minW.x) && w.y < minW.y))
+                        FastVector3Int w = points[i];
+                        if (w.x < min.x || (w.x == min.x && w.y < min.y))
                         {
-                            min = points[i];
-                            minW = w;
+                            min = w;
                         }
-                        if (w.x > maxW.x || (Mathf.Approximately(w.x, maxW.x) && w.y > maxW.y))
+                        if (w.x > max.x || (w.x == max.x && w.y > max.y))
                         {
-                            max = points[i];
-                            maxW = w;
+                            max = w;
                         }
                     }
                     return new List<FastVector3Int> { min, max };
@@ -1377,7 +1919,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             do
             {
                 hull.Add(current);
-                Vector2 worldPoint = grid.CellToWorld(current);
 
                 // Phase 1: Find the most counterclockwise point
                 FastVector3Int candidate =
@@ -1389,20 +1930,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     {
                         continue;
                     }
-                    Vector2 pW = grid.CellToWorld(p);
-                    Vector2 cW = grid.CellToWorld(candidate);
-                    float rel = Geometry.IsAPointLeftOfVectorOrOnTheLine(worldPoint, cW, pW);
-
-                    if (rel > ConvexHullRelationEpsilon)
+                    long rel = Cross(current, candidate, p);
+                    if (rel > 0)
                     {
                         // p is more counterclockwise
                         candidate = p;
                     }
-                    else if (Mathf.Abs(rel) <= ConvexHullRelationEpsilon)
+                    else if (rel == 0)
                     {
                         // p is collinear with candidate, prefer the farther one
-                        float distCandidate = (cW - worldPoint).sqrMagnitude;
-                        float distP = (pW - worldPoint).sqrMagnitude;
+                        long distCandidate = DistanceSquared(current, candidate);
+                        long distP = DistanceSquared(current, p);
                         if (distP > distCandidate)
                         {
                             candidate = p;
@@ -1417,7 +1955,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> colinear);
                     colinear.Clear();
 
-                    Vector2 candidateW = grid.CellToWorld(candidate);
                     for (int i = 0; i < points.Count; ++i)
                     {
                         FastVector3Int p = points[i];
@@ -1426,14 +1963,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         {
                             continue;
                         }
-                        Vector2 pW = grid.CellToWorld(p);
-                        float rel = Geometry.IsAPointLeftOfVectorOrOnTheLine(
-                            worldPoint,
-                            candidateW,
-                            pW
-                        );
-
-                        if (Mathf.Abs(rel) <= ConvexHullRelationEpsilon)
+                        long rel = Cross(current, candidate, p);
+                        if (rel == 0)
                         {
                             colinear.Add(p);
                         }
@@ -1442,7 +1973,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     if (colinear.Count > 0)
                     {
                         // Sort by distance and add all (excluding duplicates)
-                        SortByDistanceAscending(colinear, grid, worldPoint);
+                        using PooledResource<float[]> distancesRes =
+                            WallstopFastArrayPool<float>.Get(colinear.Count);
+                        float[] distances = distancesRes.resource;
+                        for (int i = 0; i < colinear.Count; ++i)
+                        {
+                            distances[i] = (float)DistanceSquared(current, colinear[i]);
+                        }
+                        SelectionSort(colinear, distances, colinear.Count);
 
                         using PooledResource<HashSet<FastVector3Int>> hullSetRes =
                             Buffers<FastVector3Int>.HashSet.Get(
@@ -1489,58 +2027,204 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             if (!includeColinearPoints && hull.Count > 2)
             {
                 // Final pruning of any accidental colinear triples
-                PruneColinearOnHull(hull, grid);
+                PruneColinearOnHull(hull);
             }
             return hull;
         }
 
-        private static void PruneColinearOnHull(List<Vector3Int> hull, Grid grid)
+        private static void PruneColinearOnHull(List<Vector3Int> hull)
         {
-            int i = 0;
-            while (i < hull.Count)
+            if (hull == null || hull.Count <= 2)
             {
-                int prev = (i - 1 + hull.Count) % hull.Count;
-                int next = (i + 1) % hull.Count;
-                Vector2 a = grid.CellToWorld(hull[prev]);
-                Vector2 b = grid.CellToWorld(hull[i]);
-                Vector2 c = grid.CellToWorld(hull[next]);
-                float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(a, b, c);
-                if (Mathf.Abs(cross) <= ConvexHullRelationEpsilon)
+                return;
+            }
+
+            bool removed;
+            do
+            {
+                removed = false;
+                for (int i = 0; hull.Count > 2 && i < hull.Count; ++i)
                 {
-                    hull.RemoveAt(i);
-                    if (hull.Count < 3)
+                    int prevIndex = (i - 1 + hull.Count) % hull.Count;
+                    int nextIndex = (i + 1) % hull.Count;
+                    Vector3Int prevPoint = hull[prevIndex];
+                    Vector3Int currentPoint = hull[i];
+                    Vector3Int nextPoint = hull[nextIndex];
+
+                    if (IsColinear(prevPoint, currentPoint, nextPoint))
                     {
+                        hull.RemoveAt(i);
+                        removed = true;
                         break;
                     }
-                    // Stay at same index to re-evaluate after removal
-                    continue;
                 }
-                ++i;
-            }
+            } while (removed);
         }
 
-        private static void PruneColinearOnHull(List<FastVector3Int> hull, Grid grid)
+        private static void PruneColinearOnHull(List<FastVector3Int> hull)
         {
-            int i = 0;
-            while (i < hull.Count)
+            if (hull == null || hull.Count <= 2)
             {
-                int prev = (i - 1 + hull.Count) % hull.Count;
-                int next = (i + 1) % hull.Count;
-                Vector2 a = grid.CellToWorld(hull[prev]);
-                Vector2 b = grid.CellToWorld(hull[i]);
-                Vector2 c = grid.CellToWorld(hull[next]);
-                float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(a, b, c);
-                if (Mathf.Abs(cross) <= ConvexHullRelationEpsilon)
+                return;
+            }
+
+            bool removed;
+            do
+            {
+                removed = false;
+                for (int i = 0; hull.Count > 2 && i < hull.Count; ++i)
                 {
-                    hull.RemoveAt(i);
-                    if (hull.Count < 3)
+                    int prevIndex = (i - 1 + hull.Count) % hull.Count;
+                    int nextIndex = (i + 1) % hull.Count;
+                    FastVector3Int prevPoint = hull[prevIndex];
+                    FastVector3Int currentPoint = hull[i];
+                    FastVector3Int nextPoint = hull[nextIndex];
+
+                    if (IsColinear(prevPoint, currentPoint, nextPoint))
                     {
+                        hull.RemoveAt(i);
+                        removed = true;
                         break;
                     }
+                }
+            } while (removed);
+        }
+
+        private static long Cross(Vector3Int origin, Vector3Int first, Vector3Int second)
+        {
+            long firstX = (long)first.x - origin.x;
+            long firstY = (long)first.y - origin.y;
+            long secondX = (long)second.x - origin.x;
+            long secondY = (long)second.y - origin.y;
+            return firstX * secondY - firstY * secondX;
+        }
+
+        private static long Cross(
+            FastVector3Int origin,
+            FastVector3Int first,
+            FastVector3Int second
+        )
+        {
+            long firstX = (long)first.x - origin.x;
+            long firstY = (long)first.y - origin.y;
+            long secondX = (long)second.x - origin.x;
+            long secondY = (long)second.y - origin.y;
+            return firstX * secondY - firstY * secondX;
+        }
+
+        private static long DistanceSquared(Vector3Int a, Vector3Int b)
+        {
+            long dx = (long)b.x - a.x;
+            long dy = (long)b.y - a.y;
+            return dx * dx + dy * dy;
+        }
+
+        private static long DistanceSquared(FastVector3Int a, FastVector3Int b)
+        {
+            long dx = (long)b.x - a.x;
+            long dy = (long)b.y - a.y;
+            return dx * dx + dy * dy;
+        }
+
+        private static bool IsPointOnSegment(Vector3Int start, Vector3Int end, Vector3Int point)
+        {
+            if (Cross(start, end, point) != 0)
+            {
+                return false;
+            }
+
+            long dot =
+                ((long)point.x - start.x) * ((long)end.x - start.x)
+                + ((long)point.y - start.y) * ((long)end.y - start.y);
+            if (dot < 0)
+            {
+                return false;
+            }
+
+            long segmentLengthSquared = DistanceSquared(start, end);
+            return dot <= segmentLengthSquared;
+        }
+
+        private static bool IsPointOnSegment(
+            FastVector3Int start,
+            FastVector3Int end,
+            FastVector3Int point
+        )
+        {
+            if (Cross(start, end, point) != 0)
+            {
+                return false;
+            }
+
+            long dot =
+                ((long)point.x - start.x) * ((long)end.x - start.x)
+                + ((long)point.y - start.y) * ((long)end.y - start.y);
+            if (dot < 0)
+            {
+                return false;
+            }
+
+            long segmentLengthSquared = DistanceSquared(start, end);
+            return dot <= segmentLengthSquared;
+        }
+
+        private static bool AreAllPointsOnHullEdges(
+            IEnumerable<FastVector3Int> points,
+            List<FastVector3Int> convexHull
+        )
+        {
+            if (points == null)
+            {
+                return true;
+            }
+
+            int hullCount = convexHull?.Count ?? 0;
+            if (hullCount < 2)
+            {
+                return true;
+            }
+
+            foreach (FastVector3Int point in points)
+            {
+                bool isCorner = convexHull.Contains(point);
+                if (isCorner)
+                {
                     continue;
                 }
-                ++i;
+
+                bool onEdge = false;
+                for (int i = 0; i < hullCount; ++i)
+                {
+                    FastVector3Int start = convexHull[i];
+                    FastVector3Int end = convexHull[(i + 1) % hullCount];
+                    if (IsPointOnSegment(start, end, point))
+                    {
+                        onEdge = true;
+                        break;
+                    }
+                }
+
+                if (!onEdge)
+                {
+                    return false;
+                }
             }
+
+            return true;
+        }
+
+        private static bool IsColinear(Vector3Int prev, Vector3Int current, Vector3Int next)
+        {
+            return Cross(prev, current, next) == 0;
+        }
+
+        private static bool IsColinear(
+            FastVector3Int prev,
+            FastVector3Int current,
+            FastVector3Int next
+        )
+        {
+            return Cross(prev, current, next) == 0;
         }
 
         // ===================== Vector2 Convex Hull Containment =====================
@@ -2112,6 +2796,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     return new List<FastVector3Int>(convexHull);
                 }
             }
+
+            if (AreAllPointsOnHullEdges(originalGridPositions, convexHull))
+            {
+                return new List<FastVector3Int>(convexHull);
+            }
             using PooledResource<List<HullEdge>> concaveHullEdgesResource =
                 Buffers<HullEdge>.List.Get();
             List<HullEdge> concaveHullEdges = concaveHullEdgesResource.resource;
@@ -2334,6 +3023,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 concaveHull.Add(current.from);
             }
 
+            PruneColinearOnHull(concaveHull);
             return concaveHull;
 
             Vector2 CellToWorld(FastVector3Int cell) => grid.CellToWorld(cell);
@@ -2359,146 +3049,82 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             );
             original.AddRange(input);
 
-            foreach (Vector2 p in original)
+            foreach (Vector2 point in original)
             {
-                if (unique.Add(p))
+                if (unique.Add(point))
                 {
-                    dataSet.Add(p);
+                    dataSet.Add(point);
                 }
             }
-            int maximumNearestNeighbors = dataSet.Count;
-            if (dataSet.Count <= 4)
+
+            int totalPoints = dataSet.Count;
+            if (totalPoints <= 4)
             {
                 return input.BuildConvexHull(includeColinearPoints: false);
             }
-            nearestNeighbors = Math.Min(dataSet.Count, nearestNeighbors);
 
-            Vector2 first = default;
-            bool firstInit = false;
-            float lowestY = float.MaxValue;
-            foreach (Vector2 p in dataSet)
-            {
-                if (
-                    !firstInit
-                    || p.y < lowestY
-                    || (Mathf.Approximately(p.y, lowestY) && p.x < first.x)
-                )
-                {
-                    first = p;
-                    lowestY = p.y;
-                    firstInit = true;
-                }
-            }
-            if (!firstInit)
+            int maximumNearestNeighbors = totalPoints;
+            int attemptNearestNeighbors = Math.Min(totalPoints, nearestNeighbors);
+
+            int firstIndex = FindLowestPointIndex(dataSet);
+            if (firstIndex < 0)
             {
                 return new List<Vector2>(dataSet);
             }
 
-            List<Vector2> hull = new(dataSet.Count) { first };
-            int step = 2;
-            int maxSteps = Math.Max(16, dataSet.Count * 6);
-            float previousAngle = 0f;
-            Vector2 current = first;
-            _ = dataSet.Remove(current);
+            Vector2 firstPoint = dataSet[firstIndex];
+            int maxSteps = Math.Max(16, totalPoints * 6);
 
-            using PooledResource<List<Vector2>> clockwisePointsRes = Buffers<Vector2>.List.Get(
-                out List<Vector2> clockwisePoints
+            using PooledResource<bool[]> availabilityResource = WallstopFastArrayPool<bool>.Get(
+                totalPoints
             );
-            while (0 < dataSet.Count)
+            bool[] availability = availabilityResource.resource;
+
+            using PooledResource<List<int>> neighborIndicesRes = Buffers<int>.List.Get(
+                out List<int> neighborIndices
+            );
+
+            using PooledResource<float[]> distanceBufferRes = WallstopFastArrayPool<float>.Get(
+                totalPoints
+            );
+            float[] neighborDistances = distanceBufferRes.resource;
+
+            List<Vector2> hull = new(totalPoints);
+
+            while (true)
             {
-                if (step == 5)
+                hull.Clear();
+                hull.Add(firstPoint);
+
+                if (neighborIndices.Capacity < attemptNearestNeighbors)
                 {
-                    dataSet.Add(first);
+                    neighborIndices.Capacity = attemptNearestNeighbors;
                 }
 
-                FindNearestNeighborsAndPutInClockwisePoints();
-                SortByRightHandTurn(clockwisePoints, current, previousAngle);
+                bool success = TryBuildConcaveHull2Attempt(
+                    dataSet,
+                    hull,
+                    availability,
+                    neighborIndices,
+                    neighborDistances,
+                    attemptNearestNeighbors,
+                    firstIndex,
+                    firstPoint,
+                    maxSteps
+                );
 
-                bool intersects = true;
-                int i = -1;
-                while (intersects && i < clockwisePoints.Count - 1)
+                if (success)
                 {
-                    ++i;
-                    Vector2 indexedPoint = clockwisePoints[i];
-                    int lastPoint = indexedPoint == first ? 1 : 0;
-                    int j = 2;
-                    intersects = false;
-                    Vector2 lhsTo = indexedPoint;
-                    while (!intersects && j < hull.Count - lastPoint)
-                    {
-                        Vector2 lhsFrom = hull[step - 2];
-                        Vector2 rhsFrom = hull[step - 2 - j];
-                        Vector2 rhsTo = hull[step - 1 - j];
-                        intersects = Intersects(lhsFrom, lhsTo, rhsFrom, rhsTo);
-                        ++j;
-                    }
-                }
-
-                if (intersects)
-                {
-                    for (i = dataSet.Count - 1; 0 <= i; --i)
-                    {
-                        if (!IsPositionInside(hull, dataSet[i]))
-                        {
-                            if (nearestNeighbors >= maximumNearestNeighbors)
-                            {
-                                return input.BuildConvexHull(includeColinearPoints: false);
-                            }
-                            return BuildConcaveHull2(input, nearestNeighbors + 1);
-                        }
-                    }
+                    PruneColinearOnHull(hull);
                     return hull;
                 }
 
-                current = clockwisePoints[i];
-                if (current != first)
+                if (attemptNearestNeighbors >= maximumNearestNeighbors)
                 {
-                    hull.Add(current);
-                }
-                else
-                {
-                    break;
+                    return input.BuildConvexHull(includeColinearPoints: false);
                 }
 
-                int currentIndex = dataSet.IndexOf(current);
-                if (0 <= currentIndex)
-                {
-                    dataSet.RemoveAtSwapBack(currentIndex);
-                }
-
-                previousAngle = CalculateAngle(hull[step - 1], hull[step - 2]);
-                ++step;
-                if (step > maxSteps)
-                {
-                    break;
-                }
-            }
-
-            for (int i = dataSet.Count - 1; 0 <= i; --i)
-            {
-                if (!IsPositionInside(hull, dataSet[i]))
-                {
-                    if (nearestNeighbors >= maximumNearestNeighbors)
-                    {
-                        return input.BuildConvexHull(includeColinearPoints: false);
-                    }
-                    return BuildConcaveHull2(input, nearestNeighbors + 1);
-                }
-            }
-            return hull;
-
-            void FindNearestNeighborsAndPutInClockwisePoints()
-            {
-                clockwisePoints.Clear();
-                clockwisePoints.AddRange(dataSet);
-                SortByDistanceAscending(clockwisePoints, current);
-                if (nearestNeighbors < clockwisePoints.Count)
-                {
-                    clockwisePoints.RemoveRange(
-                        nearestNeighbors,
-                        clockwisePoints.Count - nearestNeighbors
-                    );
-                }
+                ++attemptNearestNeighbors;
             }
         }
 
@@ -2532,6 +3158,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             const int minimumNearestNeighbors = 3;
             nearestNeighbors = Math.Max(minimumNearestNeighbors, nearestNeighbors);
+            if (grid == null)
+            {
+                throw new ArgumentNullException(nameof(grid));
+            }
             using PooledResource<List<FastVector3Int>> dataSetResource =
                 Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> dataSet);
             using PooledResource<HashSet<FastVector3Int>> uniquePositionsResource =
@@ -2548,149 +3178,90 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     dataSet.Add(gridPosition);
                 }
             }
-            int maximumNearestNeighbors = dataSet.Count;
-            if (dataSet.Count <= 4)
+            int totalPoints = dataSet.Count;
+            if (totalPoints <= 4)
             {
                 return gridPositions.BuildConvexHull(grid);
             }
 
-            nearestNeighbors = Math.Min(dataSet.Count, nearestNeighbors);
-
-            FastVector3Int? maybeFirst = null;
-            float lowestY = float.MaxValue;
-            foreach (FastVector3Int gridPosition in dataSet)
+            List<FastVector3Int> convexHullSnapshot = dataSet.BuildConvexHull(grid);
+            if (AreAllPointsOnHullEdges(dataSet, convexHullSnapshot))
             {
-                float candidateY = grid.CellToWorld(gridPosition).y;
-                if (maybeFirst == null || candidateY < lowestY)
-                {
-                    maybeFirst = gridPosition;
-                    lowestY = candidateY;
-                }
+                return new List<FastVector3Int>(convexHullSnapshot);
             }
 
-            if (maybeFirst == null)
+            int maximumNearestNeighbors = totalPoints;
+            int attemptNearestNeighbors = Math.Min(totalPoints, nearestNeighbors);
+
+            int firstIndex = FindLowestGridPointIndex(dataSet, grid);
+            if (firstIndex < 0)
             {
                 return new List<FastVector3Int>(dataSet);
             }
 
-            FastVector3Int first = maybeFirst.Value;
-            List<FastVector3Int> hull = new(dataSet.Count) { first };
-            int step = 2;
+            FastVector3Int firstPoint = dataSet[firstIndex];
             int maxSteps = Math.Max(16, dataSet.Count * 6);
-            float previousAngle = 0f;
-            FastVector3Int current = first;
-            _ = dataSet.Remove(current);
 
-            using PooledResource<List<FastVector3Int>> clockwisePointsResource =
-                Buffers<FastVector3Int>.List.Get();
-            List<FastVector3Int> clockwisePoints = clockwisePointsResource.resource;
+            using PooledResource<bool[]> availabilityResource = WallstopFastArrayPool<bool>.Get(
+                totalPoints
+            );
+            bool[] availability = availabilityResource.resource;
 
-            while (0 < dataSet.Count)
+            using PooledResource<List<int>> neighborIndicesResource = Buffers<int>.List.Get(
+                out List<int> neighborIndices
+            );
+
+            using PooledResource<float[]> distanceBufferResource = WallstopFastArrayPool<float>.Get(
+                totalPoints
+            );
+            float[] neighborDistances = distanceBufferResource.resource;
+
+            using PooledResource<Vector2[]> worldPositionsResource =
+                WallstopFastArrayPool<Vector2>.Get(totalPoints);
+            Vector2[] worldPositions = worldPositionsResource.resource;
+            for (int i = 0; i < totalPoints; ++i)
             {
-                if (step == 5)
+                worldPositions[i] = grid.CellToWorld(dataSet[i]);
+            }
+
+            List<FastVector3Int> hull = new(totalPoints);
+
+            while (true)
+            {
+                hull.Clear();
+                hull.Add(firstPoint);
+
+                if (neighborIndices.Capacity < attemptNearestNeighbors)
                 {
-                    dataSet.Add(first);
+                    neighborIndices.Capacity = attemptNearestNeighbors;
                 }
 
-                FindNearestNeighborsAndPutInClockwisePoints();
-                SortByRightHandTurn(clockwisePoints, grid, current, previousAngle);
+                bool success = TryBuildGridConcaveHullAttempt(
+                    dataSet,
+                    hull,
+                    grid,
+                    availability,
+                    neighborIndices,
+                    neighborDistances,
+                    worldPositions,
+                    attemptNearestNeighbors,
+                    firstIndex,
+                    firstPoint,
+                    maxSteps
+                );
 
-                bool intersects = true;
-                int i = -1;
-                while (intersects && i < clockwisePoints.Count - 1)
+                if (success)
                 {
-                    ++i;
-
-                    FastVector3Int indexedPoint = clockwisePoints[i];
-                    int lastPoint = indexedPoint == first ? 1 : 0;
-                    int j = 2;
-                    intersects = false;
-                    Vector2 lhsTo = grid.CellToWorld(indexedPoint);
-                    while (!intersects && j < hull.Count - lastPoint)
-                    {
-                        Vector2 lhsFrom = grid.CellToWorld(hull[step - 2]);
-                        Vector2 rhsFrom = grid.CellToWorld(hull[step - 2 - j]);
-                        Vector2 rhsTo = grid.CellToWorld(hull[step - 1 - j]);
-                        intersects = Intersects(lhsFrom, lhsTo, rhsFrom, rhsTo);
-                        ++j;
-                    }
-                }
-
-                if (intersects)
-                {
-                    for (i = dataSet.Count - 1; 0 <= i; --i)
-                    {
-                        if (!IsPositionInside(hull, dataSet[i], grid))
-                        {
-                            if (nearestNeighbors >= maximumNearestNeighbors)
-                            {
-                                return gridPositions.BuildConvexHull(grid);
-                            }
-
-                            return BuildConcaveHull2(gridPositions, grid, nearestNeighbors + 1);
-                        }
-                    }
-
+                    PruneColinearOnHull(hull);
                     return hull;
                 }
 
-                current = clockwisePoints[i];
-                if (current != first)
+                if (attemptNearestNeighbors >= maximumNearestNeighbors)
                 {
-                    hull.Add(current);
-                }
-                else
-                {
-                    break;
+                    return gridPositions.BuildConvexHull(grid);
                 }
 
-                int currentIndex = dataSet.IndexOf(current);
-                if (0 <= currentIndex)
-                {
-                    dataSet.RemoveAtSwapBack(currentIndex);
-                }
-
-                previousAngle = CalculateAngle(
-                    grid.CellToWorld(hull[step - 1]),
-                    grid.CellToWorld(hull[step - 2])
-                );
-                ++step;
-                if (step > maxSteps)
-                {
-                    // Safety break to avoid potential infinite loop; fall through to final containment check
-                    break;
-                }
-            }
-
-            for (int i = dataSet.Count - 1; 0 <= i; --i)
-            {
-                if (!IsPositionInside(hull, dataSet[i], grid))
-                {
-                    if (nearestNeighbors >= maximumNearestNeighbors)
-                    {
-                        return gridPositions.BuildConvexHull(grid);
-                    }
-
-                    return BuildConcaveHull2(gridPositions, grid, nearestNeighbors + 1);
-                }
-            }
-
-            return hull;
-
-            // TODO: Remove allocations
-            void FindNearestNeighborsAndPutInClockwisePoints()
-            {
-                clockwisePoints.Clear();
-                clockwisePoints.AddRange(dataSet);
-                Vector2 currentPointWorld = grid.CellToWorld(current);
-                SortByDistanceAscending(clockwisePoints, grid, currentPointWorld);
-                if (nearestNeighbors < clockwisePoints.Count)
-                {
-                    clockwisePoints.RemoveRange(
-                        nearestNeighbors,
-                        clockwisePoints.Count - nearestNeighbors
-                    );
-                }
+                ++attemptNearestNeighbors;
             }
         }
 

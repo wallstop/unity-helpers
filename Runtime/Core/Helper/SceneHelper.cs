@@ -101,6 +101,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 result,
                 async () =>
                 {
+                    if (!UnityMainThreadDispatcher.HasInstance)
+                    {
+                        await sceneScope.DisposeAsync();
+                        return;
+                    }
+
                     TaskCompletionSource<bool> disposalComplete = new();
                     UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
                         _ = sceneScope

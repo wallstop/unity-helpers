@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using System;
     using System.Text.RegularExpressions;
+    using System.Threading;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
@@ -337,6 +338,90 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             string formatted = formatter.Log($"{"value":demo}", pretty: false);
             Assert.AreEqual("value", formatted);
+        }
+
+        [Test]
+        public void PrettyLogIncludesMainThreadMetadata()
+        {
+            UnityLogTagFormatter formatter = new();
+
+            int logCount = 0;
+            Exception exception = null;
+            Action<string> assertion = null;
+            Application.logMessageReceived += HandleMessageReceived;
+
+            try
+            {
+                int expectedLogCount = 0;
+                assertion = message =>
+                {
+                    StringAssert.IsMatch(@"\|(unity|editor)-main#\d+\|", message);
+                    Assert.IsTrue(message.Contains("Hello"), message);
+                };
+
+                formatter.Log($"Hello", pretty: true);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
+            }
+            finally
+            {
+                Application.logMessageReceived -= HandleMessageReceived;
+            }
+
+            return;
+
+            void HandleMessageReceived(string message, string stackTrace, LogType type)
+            {
+                ++logCount;
+                try
+                {
+                    assertion?.Invoke(message);
+                }
+                catch (Exception e)
+                {
+                    exception = e;
+                    throw;
+                }
+            }
+        }
+
+        [Test]
+        public void PrettyLogIncludesWorkerThreadMetadata()
+        {
+            using ManualResetEventSlim completed = new(false);
+
+            string loggedMessage = null;
+            int workerThreadId = -1;
+            Thread worker = new Thread(() =>
+            {
+                UnityLogTagFormatter workerFormatter = new();
+                workerThreadId = Thread.CurrentThread.ManagedThreadId;
+                loggedMessage = workerFormatter.Log($"Worker", pretty: true);
+                completed.Set();
+            })
+            {
+                IsBackground = true,
+            };
+
+            try
+            {
+                worker.Start();
+                Assert.IsTrue(
+                    completed.Wait(TimeSpan.FromSeconds(5)),
+                    "Timed out waiting for worker thread log."
+                );
+                worker.Join();
+
+                Assert.IsNotNull(loggedMessage, "Worker log was not captured.");
+                StringAssert.Contains($"worker#{workerThreadId}", loggedMessage);
+            }
+            finally
+            {
+                if (worker.IsAlive)
+                {
+                    worker.Join();
+                }
+            }
         }
     }
 }

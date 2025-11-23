@@ -837,7 +837,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public IEnumerator ConvexHullWithDuplicatesAndFourCornersReturnsCornersConcaveMatches()
         {
             Grid grid = CreateGrid(out GameObject owner);
-
             List<FastVector3Int> points = new()
             {
                 new FastVector3Int(0, 0, 0),
@@ -855,6 +854,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             };
 
             List<FastVector3Int> convex = points.BuildConvexHull(grid);
+            List<FastVector3Int> concaveEdgeSplit = points.BuildConcaveHullEdgeSplit(grid);
+            List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
+            List<FastVector3Int> concave = points.BuildConcaveHull(
+                grid,
+                new UnityExtensions.ConcaveHullOptions
+                {
+                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                }
+            );
+
             CollectionAssert.AreEquivalent(
                 new[]
                 {
@@ -865,19 +874,213 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 },
                 convex
             );
-
-            List<FastVector3Int> concaveEdgeSplit = points.BuildConcaveHullEdgeSplit(grid);
-            List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
-            List<FastVector3Int> concave = points.BuildConcaveHull(
-                grid,
-                new UnityExtensions.ConcaveHullOptions
-                {
-                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                }
-            );
             CollectionAssert.AreEquivalent(convex, concaveEdgeSplit);
             CollectionAssert.AreEquivalent(convex, concaveKnn);
             CollectionAssert.AreEquivalent(convex, concave);
+
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator ConvexHullWithDuplicatesJarvisMatchesMonotoneChain()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+
+            List<FastVector3Int> points = new()
+            {
+                new FastVector3Int(0, 0, 0),
+                new FastVector3Int(5, 0, 0),
+                new FastVector3Int(5, 5, 0),
+                new FastVector3Int(0, 5, 0),
+                new FastVector3Int(2, 0, 0),
+                new FastVector3Int(3, 0, 0),
+                new FastVector3Int(5, 3, 0),
+                new FastVector3Int(5, 2, 0),
+            };
+
+            FastVector3Int[] expected = { new(0, 0, 0), new(5, 0, 0), new(5, 5, 0), new(0, 5, 0) };
+
+            List<FastVector3Int> chain = points.BuildConvexHull(grid);
+            List<FastVector3Int> jarvis = points.BuildConvexHull(
+                grid,
+                includeColinearPoints: false,
+                UnityExtensions.ConvexHullAlgorithm.Jarvis
+            );
+
+            CollectionAssert.AreEquivalent(expected, chain);
+            CollectionAssert.AreEquivalent(expected, jarvis);
+
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator ConvexHullWithDuplicatesOnScaledGridReturnsCorners()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            grid.transform.position = new Vector3(12345.5f, -9876.25f, 0f);
+            grid.transform.localScale = new Vector3(0.03125f, 0.125f, 1f);
+            grid.transform.rotation = Quaternion.Euler(0f, 0f, 27.5f);
+            grid.cellSize = new Vector3(0.03125f, 0.125f, 1f);
+
+            List<FastVector3Int> points = new()
+            {
+                new FastVector3Int(0, 0, 0),
+                new FastVector3Int(0, 0, 0),
+                new FastVector3Int(5, 0, 0),
+                new FastVector3Int(5, 0, 0),
+                new FastVector3Int(5, 5, 0),
+                new FastVector3Int(0, 5, 0),
+                new FastVector3Int(2, 0, 0),
+                new FastVector3Int(3, 0, 0),
+                new FastVector3Int(5, 3, 0),
+                new FastVector3Int(5, 2, 0),
+            };
+
+            List<FastVector3Int> hull = points.BuildConvexHull(grid);
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(5, 0, 0),
+                    new FastVector3Int(5, 5, 0),
+                    new FastVector3Int(0, 5, 0),
+                },
+                hull
+            );
+
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator ConvexHullWithDuplicatesLargeTransformStillDropsEdges()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            grid.transform.position = new Vector3(750000f, -125000f, 0f);
+            grid.transform.localScale = new Vector3(0.0005f, 0.00025f, 1f);
+            grid.cellSize = new Vector3(0.0005f, 0.00025f, 1f);
+
+            List<FastVector3Int> points = new()
+            {
+                new FastVector3Int(0, 0, 0),
+                new FastVector3Int(5, 0, 0),
+                new FastVector3Int(5, 5, 0),
+                new FastVector3Int(0, 5, 0),
+                new FastVector3Int(2, 0, 0),
+                new FastVector3Int(3, 0, 0),
+                new FastVector3Int(5, 3, 0),
+                new FastVector3Int(5, 2, 0),
+            };
+
+            List<FastVector3Int> hull = points.BuildConvexHull(grid);
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(5, 0, 0),
+                    new FastVector3Int(5, 5, 0),
+                    new FastVector3Int(0, 5, 0),
+                },
+                hull
+            );
+
+            List<FastVector3Int> hullWithEdges = points.BuildConvexHull(
+                grid,
+                includeColinearPoints: true
+            );
+            CollectionAssert.IsSupersetOf(
+                hullWithEdges,
+                new[]
+                {
+                    new FastVector3Int(2, 0, 0),
+                    new FastVector3Int(3, 0, 0),
+                    new FastVector3Int(5, 2, 0),
+                    new FastVector3Int(5, 3, 0),
+                }
+            );
+
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator ConvexHullDenseEdgeSamplesExcludeColinearWhenDisabled()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+
+            List<FastVector3Int> perimeter = new()
+            {
+                new FastVector3Int(0, 0, 0),
+                new FastVector3Int(1, 0, 0),
+                new FastVector3Int(2, 0, 0),
+                new FastVector3Int(3, 0, 0),
+                new FastVector3Int(5, 0, 0),
+                new FastVector3Int(5, 1, 0),
+                new FastVector3Int(5, 2, 0),
+                new FastVector3Int(5, 3, 0),
+                new FastVector3Int(5, 5, 0),
+                new FastVector3Int(0, 5, 0),
+            };
+
+            List<FastVector3Int> hull = perimeter.BuildConvexHull(
+                grid,
+                includeColinearPoints: false
+            );
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(5, 0, 0),
+                    new FastVector3Int(5, 5, 0),
+                    new FastVector3Int(0, 5, 0),
+                },
+                hull
+            );
+
+            List<FastVector3Int> hullWithEdges = perimeter.BuildConvexHull(
+                grid,
+                includeColinearPoints: true
+            );
+            CollectionAssert.IsSupersetOf(
+                hullWithEdges,
+                new[]
+                {
+                    new FastVector3Int(1, 0, 0),
+                    new FastVector3Int(2, 0, 0),
+                    new FastVector3Int(3, 0, 0),
+                    new FastVector3Int(5, 2, 0),
+                }
+            );
+
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator ConvexHullDenseSamplesOnAllEdgesCollapseToCorners()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+
+            List<FastVector3Int> samples = new();
+            for (int x = 0; x <= 5; ++x)
+            {
+                samples.Add(new FastVector3Int(x, 0, 0));
+                samples.Add(new FastVector3Int(x, 5, 0));
+            }
+            for (int y = 1; y < 5; ++y)
+            {
+                samples.Add(new FastVector3Int(0, y, 0));
+                samples.Add(new FastVector3Int(5, y, 0));
+            }
+
+            List<FastVector3Int> hull = samples.BuildConvexHull(grid, includeColinearPoints: false);
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    new FastVector3Int(0, 0, 0),
+                    new FastVector3Int(5, 0, 0),
+                    new FastVector3Int(5, 5, 0),
+                    new FastVector3Int(0, 5, 0),
+                },
+                hull
+            );
 
             yield return null;
         }
