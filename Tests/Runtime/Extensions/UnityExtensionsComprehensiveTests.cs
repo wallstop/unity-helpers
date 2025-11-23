@@ -1529,6 +1529,35 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             yield return null;
         }
 
+        [Test]
+        public void Vector2ConvexHullDenseSamplesCollapseToCorners()
+        {
+            List<Vector2> samples = new();
+            for (int x = 0; x <= 5; ++x)
+            {
+                samples.Add(new Vector2(x, 0));
+                samples.Add(new Vector2(x, 5));
+            }
+
+            for (int y = 1; y < 5; ++y)
+            {
+                samples.Add(new Vector2(0, y));
+                samples.Add(new Vector2(5, y));
+            }
+
+            List<Vector2> hull = samples.BuildConvexHull(includeColinearPoints: false);
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    new Vector2(0, 0),
+                    new Vector2(5, 0),
+                    new Vector2(5, 5),
+                    new Vector2(0, 5),
+                },
+                hull
+            );
+        }
+
         [UnityTest]
         public IEnumerator LargePointCloudConcaveHullsInsideConvexHull()
         {

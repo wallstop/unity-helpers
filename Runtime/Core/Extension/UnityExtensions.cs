@@ -27,6 +27,102 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         private const float ConvexHullRelationEpsilon = 1e-5f;
         private const double ConvexHullOrientationEpsilon = 1e-8d;
 
+        private static readonly Comparison<Vector2> Vector2LexicographicalComparison = (lhs, rhs) =>
+        {
+            int cmp = lhs.x.CompareTo(rhs.x);
+            return cmp != 0 ? cmp : lhs.y.CompareTo(rhs.y);
+        };
+
+        private static bool AreVector2PointsEquivalent(Vector2 lhs, Vector2 rhs)
+        {
+            return Mathf.Abs(lhs.x - rhs.x) <= ConvexHullRelationEpsilon
+                && Mathf.Abs(lhs.y - rhs.y) <= ConvexHullRelationEpsilon;
+        }
+
+        private static void DeduplicateSortedVector2(List<Vector2> points)
+        {
+            if (points == null || points.Count <= 1)
+            {
+                return;
+            }
+
+            int writeIndex = 1;
+            for (int readIndex = 1; readIndex < points.Count; ++readIndex)
+            {
+                Vector2 previous = points[writeIndex - 1];
+                Vector2 current = points[readIndex];
+                if (!AreVector2PointsEquivalent(previous, current))
+                {
+                    if (writeIndex != readIndex)
+                    {
+                        points[writeIndex] = current;
+                    }
+                    ++writeIndex;
+                }
+            }
+
+            if (writeIndex < points.Count)
+            {
+                points.RemoveRange(writeIndex, points.Count - writeIndex);
+            }
+        }
+
+        private static void DeduplicateSortedVector3Int(List<Vector3Int> points)
+        {
+            if (points == null || points.Count <= 1)
+            {
+                return;
+            }
+
+            int writeIndex = 1;
+            for (int readIndex = 1; readIndex < points.Count; ++readIndex)
+            {
+                Vector3Int previous = points[writeIndex - 1];
+                Vector3Int current = points[readIndex];
+                if (previous != current)
+                {
+                    if (writeIndex != readIndex)
+                    {
+                        points[writeIndex] = current;
+                    }
+                    ++writeIndex;
+                }
+            }
+
+            if (writeIndex < points.Count)
+            {
+                points.RemoveRange(writeIndex, points.Count - writeIndex);
+            }
+        }
+
+        private static void DeduplicateSortedFastVector3Int(List<FastVector3Int> points)
+        {
+            if (points == null || points.Count <= 1)
+            {
+                return;
+            }
+
+            int writeIndex = 1;
+            for (int readIndex = 1; readIndex < points.Count; ++readIndex)
+            {
+                FastVector3Int previous = points[writeIndex - 1];
+                FastVector3Int current = points[readIndex];
+                if (previous != current)
+                {
+                    if (writeIndex != readIndex)
+                    {
+                        points[writeIndex] = current;
+                    }
+                    ++writeIndex;
+                }
+            }
+
+            if (writeIndex < points.Count)
+            {
+                points.RemoveRange(writeIndex, points.Count - writeIndex);
+            }
+        }
+
         public enum ConvexHullAlgorithm
         {
             [Obsolete("Do not use default value; specify an algorithm explicitly.")]
@@ -572,6 +668,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 {
                     membershipFlags[currentIndex] = true;
                 }
+                if (!includeColinearPoints)
+                {
+                    TrimTailColinear(hull);
+                }
 
                 int candidateIndex = -1;
                 for (int i = 0; i < pointCount; ++i)
@@ -723,6 +823,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 if (membershipFlags != null && membershipFlags.Length > currentIndex)
                 {
                     membershipFlags[currentIndex] = true;
+                }
+                if (!includeColinearPoints)
+                {
+                    TrimTailColinear(hull);
                 }
 
                 int candidateIndex = -1;
@@ -1208,34 +1312,20 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         )
         {
             using PooledResource<List<Vector2>> ptsRes = Buffers<Vector2>.List.Get(
-                out List<Vector2> pts
+                out List<Vector2> points
             );
-            pts.AddRange(pointsSet);
-
-            using PooledResource<HashSet<Vector2>> uniqRes = Buffers<Vector2>.HashSet.Get(
-                out HashSet<Vector2> uniq
-            );
-            foreach (Vector2 p in pts)
-            {
-                uniq.Add(p);
-            }
-            List<Vector2> points = new(uniq);
+            points.AddRange(pointsSet);
             if (points.Count == 0)
             {
                 return new List<Vector2>();
             }
+
+            points.Sort(Vector2LexicographicalComparison);
+            DeduplicateSortedVector2(points);
             if (points.Count <= 2)
             {
                 return new List<Vector2>(points);
             }
-
-            points.Sort(
-                (a, b) =>
-                {
-                    int cmp = a.x.CompareTo(b.x);
-                    return cmp != 0 ? cmp : a.y.CompareTo(b.y);
-                }
-            );
             Vector2 start = points[0];
 
             bool allColinear = true;
@@ -1278,6 +1368,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             do
             {
                 hull.Add(current);
+                if (!includeColinearPoints)
+                {
+                    TrimTailColinear(hull);
+                }
 
                 Vector2 candidate =
                     points[0] == current && points.Count > 1 ? points[1] : points[0];
@@ -1370,26 +1464,77 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         private static void PruneColinearOnHull(List<Vector2> hull)
         {
-            int i = 0;
-            while (i < hull.Count)
+            if (hull == null || hull.Count <= 2)
             {
-                int prev = (i - 1 + hull.Count) % hull.Count;
-                int next = (i + 1) % hull.Count;
+                return;
+            }
+
+            bool removed;
+            do
+            {
+                removed = false;
+                for (int i = 0; hull.Count > 2 && i < hull.Count; ++i)
+                {
+                    int prev = (i - 1 + hull.Count) % hull.Count;
+                    int next = (i + 1) % hull.Count;
+                    float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(
+                        hull[prev],
+                        hull[i],
+                        hull[next]
+                    );
+                    if (Mathf.Abs(cross) <= ConvexHullRelationEpsilon)
+                    {
+                        hull.RemoveAt(i);
+                        removed = true;
+                        break;
+                    }
+                }
+            } while (removed);
+        }
+
+        private static void TrimTailColinear(List<Vector2> hull)
+        {
+            if (hull == null)
+            {
+                return;
+            }
+
+            while (hull.Count >= 3)
+            {
+                int count = hull.Count;
                 float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(
-                    hull[prev],
-                    hull[i],
-                    hull[next]
+                    hull[count - 3],
+                    hull[count - 2],
+                    hull[count - 1]
                 );
                 if (Mathf.Abs(cross) <= ConvexHullRelationEpsilon)
                 {
-                    hull.RemoveAt(i);
-                    if (hull.Count < 3)
-                    {
-                        break;
-                    }
+                    hull.RemoveAt(count - 2);
                     continue;
                 }
-                ++i;
+                break;
+            }
+        }
+
+        private static void TrimTailColinear(List<FastVector3Int> hull)
+        {
+            if (hull == null)
+            {
+                return;
+            }
+
+            while (hull.Count >= 3)
+            {
+                int count = hull.Count;
+                FastVector3Int a = hull[count - 3];
+                FastVector3Int b = hull[count - 2];
+                FastVector3Int c = hull[count - 1];
+                if (Cross(a, b, c) == 0)
+                {
+                    hull.RemoveAt(count - 2);
+                    continue;
+                }
+                break;
             }
         }
 
@@ -1403,26 +1548,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             );
             points.AddRange(pointsSet);
 
-            using PooledResource<HashSet<Vector2>> uniqueRes = Buffers<Vector2>.HashSet.Get(
-                out HashSet<Vector2> unique
-            );
-            foreach (Vector2 p in points)
-            {
-                unique.Add(p);
-            }
-            points = new List<Vector2>(unique);
+            points.Sort(Vector2LexicographicalComparison);
+            DeduplicateSortedVector2(points);
             if (points.Count <= 1)
             {
                 return new List<Vector2>(points);
             }
-
-            points.Sort(
-                (a, b) =>
-                {
-                    int cmp = a.x.CompareTo(b.x);
-                    return cmp != 0 ? cmp : a.y.CompareTo(b.y);
-                }
-            );
 
             if (points.Count >= 2)
             {
@@ -1463,7 +1594,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 while (lower.Count >= 2)
                 {
                     float cross = Turn(lower[^2], lower[^1], p);
-                    if (cross < -ConvexHullRelationEpsilon)
+                    bool isRightTurn = cross < -ConvexHullRelationEpsilon;
+                    bool isColinear = Mathf.Abs(cross) <= ConvexHullRelationEpsilon;
+                    if (isRightTurn || (!includeColinearPoints && isColinear))
                     {
                         lower.RemoveAt(lower.Count - 1);
                         continue;
@@ -1479,7 +1612,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 while (upper.Count >= 2)
                 {
                     float cross = Turn(upper[^2], upper[^1], p);
-                    if (cross < -ConvexHullRelationEpsilon)
+                    bool isRightTurn = cross < -ConvexHullRelationEpsilon;
+                    bool isColinear = Mathf.Abs(cross) <= ConvexHullRelationEpsilon;
+                    if (isRightTurn || (!includeColinearPoints && isColinear))
                     {
                         upper.RemoveAt(upper.Count - 1);
                         continue;
@@ -2163,13 +2298,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             );
             points.AddRange(pointsSet);
 
-            // Deduplicate
-            points = new List<Vector3Int>(new HashSet<Vector3Int>(points));
-            if (points.Count <= 1)
-            {
-                return new List<Vector3Int>(points);
-            }
-
             // Sort by world-space X then Y
             points.Sort(
                 (lhs, rhs) =>
@@ -2178,6 +2306,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     return cmp != 0 ? cmp : lhs.y.CompareTo(rhs.y);
                 }
             );
+            DeduplicateSortedVector3Int(points);
+            if (points.Count <= 1)
+            {
+                return new List<Vector3Int>(points);
+            }
 
             // Degenerate: all points are colinear → return endpoints (or all if requested)
             if (points.Count >= 2)
@@ -2284,18 +2417,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> points);
             points.AddRange(pointsSet);
 
-            using PooledResource<HashSet<FastVector3Int>> uniqueBuffer =
-                Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> unique);
-            foreach (FastVector3Int p in points)
-            {
-                unique.Add(p);
-            }
-            points = new List<FastVector3Int>(unique);
-            if (points.Count <= 1)
-            {
-                return new List<FastVector3Int>(points);
-            }
-
             points.Sort(
                 (lhs, rhs) =>
                 {
@@ -2303,6 +2424,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     return cmp != 0 ? cmp : lhs.y.CompareTo(rhs.y);
                 }
             );
+            DeduplicateSortedFastVector3Int(points);
+            if (points.Count <= 1)
+            {
+                return new List<FastVector3Int>(points);
+            }
 
             // Degenerate: all points are colinear → return endpoints (or all if requested)
             if (points.Count >= 2)
@@ -2406,17 +2532,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         )
         {
             using PooledResource<List<FastVector3Int>> ptsRes = Buffers<FastVector3Int>.List.Get(
-                out List<FastVector3Int> pts
+                out List<FastVector3Int> points
             );
-            pts.AddRange(pointsSet);
-            // Deduplicate
-            using PooledResource<HashSet<FastVector3Int>> uniqRes =
-                Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> uniq);
-            foreach (FastVector3Int p in pts)
+            points.AddRange(pointsSet);
+            if (points.Count == 0)
             {
-                uniq.Add(p);
+                return new List<FastVector3Int>();
             }
-            List<FastVector3Int> points = new(uniq);
+
+            points.Sort(
+                (lhs, rhs) =>
+                {
+                    int cmp = lhs.x.CompareTo(rhs.x);
+                    return cmp != 0 ? cmp : lhs.y.CompareTo(rhs.y);
+                }
+            );
+            DeduplicateSortedFastVector3Int(points);
             if (points.Count == 0)
             {
                 return new List<FastVector3Int>();
@@ -2502,6 +2633,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             do
             {
                 hull.Add(current);
+                if (!includeColinearPoints)
+                {
+                    TrimTailColinear(hull);
+                }
 
                 // Phase 1: Find the most counterclockwise point
                 FastVector3Int candidate =
@@ -2658,7 +2793,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return ConvertVector2HullToFastVector3(vectorHull, mapping, fallbackZ);
         }
 
-        private static void PruneColinearOnHull(List<Vector3Int> hull)
+        private static void PruneColinearOnHull(List<Vector3Int> hull, Grid grid = null)
         {
             if (hull == null || hull.Count <= 2)
             {
@@ -2677,7 +2812,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     Vector3Int currentPoint = hull[i];
                     Vector3Int nextPoint = hull[nextIndex];
 
-                    if (IsColinear(prevPoint, currentPoint, nextPoint))
+                    if (
+                        IsColinear(prevPoint, currentPoint, nextPoint)
+                        || (
+                            grid != null
+                            && AreWorldColinear(grid, prevPoint, currentPoint, nextPoint)
+                        )
+                    )
                     {
                         hull.RemoveAt(i);
                         removed = true;
@@ -2687,7 +2828,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             } while (removed);
         }
 
-        private static void PruneColinearOnHull(List<FastVector3Int> hull)
+        private static void PruneColinearOnHull(List<FastVector3Int> hull, Grid grid = null)
         {
             if (hull == null || hull.Count <= 2)
             {
@@ -2706,7 +2847,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     FastVector3Int currentPoint = hull[i];
                     FastVector3Int nextPoint = hull[nextIndex];
 
-                    if (IsColinear(prevPoint, currentPoint, nextPoint))
+                    if (
+                        IsColinear(prevPoint, currentPoint, nextPoint)
+                        || (
+                            grid != null
+                            && AreWorldColinear(grid, prevPoint, currentPoint, nextPoint)
+                        )
+                    )
                     {
                         hull.RemoveAt(i);
                         removed = true;
@@ -2736,6 +2883,18 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             long secondX = (long)second.x - origin.x;
             long secondY = (long)second.y - origin.y;
             return firstX * secondY - firstY * secondX;
+        }
+
+        private static Vector2 ToWorld2D(Grid grid, Vector3Int cell)
+        {
+            Vector3 world = grid.CellToWorld(cell);
+            return new Vector2(world.x, world.y);
+        }
+
+        private static Vector2 ToWorld2D(Grid grid, FastVector3Int cell)
+        {
+            Vector3 world = grid.CellToWorld((Vector3Int)cell);
+            return new Vector2(world.x, world.y);
         }
 
         private static long DistanceSquared(Vector3Int a, Vector3Int b)
@@ -2851,6 +3010,52 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         )
         {
             return Cross(prev, current, next) == 0;
+        }
+
+        private static bool AreWorldColinear(
+            Grid grid,
+            Vector3Int prev,
+            Vector3Int current,
+            Vector3Int next
+        )
+        {
+            if (grid == null)
+            {
+                return false;
+            }
+
+            Vector2 prevWorld = ToWorld2D(grid, prev);
+            Vector2 currentWorld = ToWorld2D(grid, current);
+            Vector2 nextWorld = ToWorld2D(grid, next);
+            float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(
+                prevWorld,
+                currentWorld,
+                nextWorld
+            );
+            return Mathf.Abs(cross) <= ConvexHullRelationEpsilon;
+        }
+
+        private static bool AreWorldColinear(
+            Grid grid,
+            FastVector3Int prev,
+            FastVector3Int current,
+            FastVector3Int next
+        )
+        {
+            if (grid == null)
+            {
+                return false;
+            }
+
+            Vector2 prevWorld = ToWorld2D(grid, prev);
+            Vector2 currentWorld = ToWorld2D(grid, current);
+            Vector2 nextWorld = ToWorld2D(grid, next);
+            float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(
+                prevWorld,
+                currentWorld,
+                nextWorld
+            );
+            return Mathf.Abs(cross) <= ConvexHullRelationEpsilon;
         }
 
         // ===================== Vector2 Convex Hull Containment =====================
