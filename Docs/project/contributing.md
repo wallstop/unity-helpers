@@ -43,6 +43,8 @@ What does not auto‑fix:
 - Format C#: `dotnet tool run CSharpier format`
 - Check docs/JSON/YAML: `npm run validate:content`
 - Enforce EOL/encoding: `npm run eol:check`
+- Verify Markdown/code links: `npm run lint:doc-links` (runs the PowerShell script with verbose logging)
+  - This script validates intra-repo Markdown links _and_ any `docs/...` references inside source files or scripts. The `lint-doc-links` GitHub Actions workflow runs it on every PR, so run it locally before pushing large doc updates.
 
 ## Style and Naming
 
