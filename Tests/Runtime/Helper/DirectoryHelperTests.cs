@@ -5,8 +5,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class DirectoryHelperTests
+    public sealed class DirectoryHelperTests : CommonTestBase
     {
         [Test]
         public void EnsureDirectoryExistsWithNullDoesNothing()

@@ -5,9 +5,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using System.Linq;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class IEnumerableExtensionsTests
+    public sealed class IEnumerableExtensionsTests : CommonTestBase
     {
         [Test]
         public void ToLinkedListPreservesOrder()

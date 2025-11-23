@@ -3,8 +3,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class FormattingHelpersTests
+    public sealed class FormattingHelpersTests : CommonTestBase
     {
         private const int NumTries = 1_000;
 

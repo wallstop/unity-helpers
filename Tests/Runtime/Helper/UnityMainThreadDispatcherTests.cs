@@ -2,22 +2,36 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System;
     using System.Collections;
+    using System.Runtime.CompilerServices;
     using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     public sealed class UnityMainThreadDispatcherTests : CommonTestBase
     {
+        [SetUp]
+        public override void BaseSetUp()
+        {
+            base.BaseSetUp();
+            UnityMainThreadDispatcher dispatcher;
+            if (!UnityMainThreadDispatcher.TryGetInstance(out dispatcher))
+            {
+                dispatcher = UnityMainThreadDispatcher.Instance;
+            }
+
+            Track(dispatcher.gameObject);
+        }
+
         [UnityTest]
         public IEnumerator RunOnMainThreadExecutesQueuedActions()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Track(dispatcher.gameObject);
             bool executed = false;
 
             dispatcher.RunOnMainThread(() => executed = true);
@@ -51,7 +65,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator QueueOverflowDropsExcessActions()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Track(dispatcher.gameObject);
             dispatcher.PendingActionLimit = 1;
 
             bool firstExecuted = false;
@@ -77,7 +90,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator TryRunOnMainThreadReturnsFalseWhenQueueFull()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Track(dispatcher.gameObject);
             dispatcher.PendingActionLimit = 1;
 
             dispatcher.RunOnMainThread(() => { });
@@ -94,25 +106,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assert.AreEqual(0, dispatcher.PendingActionCount);
         }
 
-        [Test]
-        public void RunOnMainThreadNullThrows()
+        [UnityTest]
+        public IEnumerator RunOnMainThreadNullThrows()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
             Assert.Throws<ArgumentNullException>(() => dispatcher.RunOnMainThread(null));
+            yield break;
         }
 
-        [Test]
-        public void TryRunOnMainThreadNullThrows()
+        [UnityTest]
+        public IEnumerator TryRunOnMainThreadNullThrows()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
             Assert.Throws<ArgumentNullException>(() => dispatcher.TryRunOnMainThread(null));
+            yield break;
         }
 
         [UnityTest]
         public IEnumerator PendingActionLimitZeroIsUnbounded()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Track(dispatcher.gameObject);
             dispatcher.PendingActionLimit = 0;
 
             bool executed = false;
@@ -129,7 +142,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator OverflowWarningThrottledPerFrame()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Track(dispatcher.gameObject);
             dispatcher.PendingActionLimit = 1;
 
             dispatcher.RunOnMainThread(() => { });
@@ -161,7 +173,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator RunAsyncFuncThrowsSynchronous()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Track(dispatcher.gameObject);
 
             Task task = dispatcher.RunAsync(() =>
                 throw new InvalidOperationException("Sync throw")
@@ -180,7 +191,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator RunAsyncFuncReturnsNull()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Track(dispatcher.gameObject);
 
             Task task = dispatcher.RunAsync(token => null);
 
@@ -200,7 +210,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator InstanceAccessibleFromWorkerThreadAfterBootstrap()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Track(dispatcher.gameObject);
 
             Exception backgroundException = null;
             UnityMainThreadDispatcher backgroundInstance = null;
@@ -237,7 +246,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator BackgroundThreadCanScheduleWorkAfterBootstrap()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Track(dispatcher.gameObject);
 
             Exception backgroundException = null;
             bool executed = false;
@@ -277,7 +285,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator RunAsyncCancellationTokenHonorsCancellation()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Track(dispatcher.gameObject);
 
             Task task = null;
             using (CancellationTokenSource cancellationTokenSource = new())
@@ -305,7 +312,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator RunAsyncDelegateCompletesAfterAwait()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Track(dispatcher.gameObject);
 
             bool awaited = false;
 
@@ -329,11 +335,85 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator BootstrapEnsuresInstanceExists()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Track(dispatcher.gameObject);
 
             yield return null;
 
             Assert.IsTrue(UnityMainThreadDispatcher.HasInstance);
+        }
+
+        [UnityTest]
+        public IEnumerator TryDispatchToMainThreadReturnsFalseWhenInstanceMissing()
+        {
+            UnityMainThreadDispatcher existing =
+                UnityEngine.Object.FindObjectOfType<UnityMainThreadDispatcher>();
+            if (existing != null)
+            {
+                Track(existing.gameObject);
+                UnityEngine.Object.Destroy(existing.gameObject);
+                while (UnityMainThreadDispatcher.HasInstance)
+                {
+                    yield return null;
+                }
+            }
+
+            bool executed = false;
+            bool dispatched = UnityMainThreadDispatcher.TryDispatchToMainThread(() =>
+                executed = true
+            );
+
+            Assert.IsFalse(dispatched);
+            Assert.IsFalse(executed);
+            Assert.IsFalse(UnityMainThreadDispatcher.HasInstance);
+
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator BackgroundThreadLoggingDoesNotRespawnDispatcher()
+        {
+            UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
+            UnityEngine.Object.Destroy(dispatcher.gameObject);
+            while (UnityMainThreadDispatcher.HasInstance)
+            {
+                yield return null;
+            }
+
+            GameObject loggerOwner = Track(new GameObject("LoggerOwner"));
+            Exception backgroundException = null;
+
+            using (ManualResetEventSlim completed = new(false))
+            {
+                Task.Run(() =>
+                {
+                    try
+                    {
+                        WallstopStudiosLogger.LogDebug(
+                            loggerOwner,
+                            FormattableStringFactory.Create("Background log {0}", 1)
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        backgroundException = ex;
+                    }
+                    finally
+                    {
+                        completed.Set();
+                    }
+                });
+
+                while (!completed.IsSet)
+                {
+                    yield return null;
+                }
+            }
+
+            Assert.IsNull(backgroundException);
+            Assert.IsFalse(UnityMainThreadDispatcher.HasInstance);
+            Assert.AreEqual(
+                0,
+                UnityEngine.Object.FindObjectsOfType<UnityMainThreadDispatcher>().Length
+            );
         }
     }
 }

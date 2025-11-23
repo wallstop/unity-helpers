@@ -584,54 +584,50 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             bool waitBefore
         )
         {
-            bool usedJitter = false;
+            bool jitterConsumed = false;
+
+            if (waitBefore)
+            {
+                float initialDelay = ResolveInvocationDelay(
+                    updateRate,
+                    useJitter,
+                    ref jitterConsumed
+                );
+                yield return WaitForDelay(initialDelay);
+            }
+
             while (true)
             {
-                float startTime;
-                if (waitBefore)
-                {
-                    if (useJitter && !usedJitter)
-                    {
-                        float delay = PRNG.Instance.NextFloat(updateRate);
-                        startTime = Time.time;
-                        while (!HasEnoughTimePassed(startTime, delay))
-                        {
-                            yield return null;
-                        }
-
-                        usedJitter = true;
-                    }
-
-                    startTime = Time.time;
-                    while (!HasEnoughTimePassed(startTime, updateRate))
-                    {
-                        yield return null;
-                    }
-                }
-
                 action();
-
-                if (!waitBefore)
-                {
-                    if (useJitter && !usedJitter)
-                    {
-                        float delay = PRNG.Instance.NextFloat(updateRate);
-                        startTime = Time.time;
-                        while (!HasEnoughTimePassed(startTime, delay))
-                        {
-                            yield return null;
-                        }
-
-                        usedJitter = true;
-                    }
-
-                    startTime = Time.time;
-                    while (!HasEnoughTimePassed(startTime, updateRate))
-                    {
-                        yield return null;
-                    }
-                }
+                float delay = ResolveInvocationDelay(updateRate, useJitter, ref jitterConsumed);
+                yield return WaitForDelay(delay);
             }
+        }
+
+        private static float ResolveInvocationDelay(
+            float baseDelay,
+            bool useJitter,
+            ref bool jitterConsumed
+        )
+        {
+            float delay = Mathf.Max(0f, baseDelay);
+            if (useJitter && !jitterConsumed)
+            {
+                delay = Mathf.Max(0f, PRNG.Instance.NextFloat(baseDelay));
+                jitterConsumed = true;
+            }
+
+            return delay;
+        }
+
+        private static IEnumerator WaitForDelay(float duration)
+        {
+            float clamped = Mathf.Max(0f, duration);
+            float startTime = Time.time;
+            do
+            {
+                yield return null;
+            } while (!HasEnoughTimePassed(startTime, clamped));
         }
 
         public static Coroutine ExecuteFunctionAfterDelay(

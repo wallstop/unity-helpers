@@ -8,8 +8,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class FileHelperTests
+    public sealed class FileHelperTests : CommonTestBase
     {
         private string _testDirectory;
 

@@ -4,8 +4,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using System.Collections.Generic;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class FuncBasedComparerTests
+    public sealed class FuncBasedComparerTests : CommonTestBase
     {
         [Test]
         public void CompareUsesProvidedDelegate()

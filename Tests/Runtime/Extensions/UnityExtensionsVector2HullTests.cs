@@ -5,8 +5,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class UnityExtensionsVector2HullTests
+    public sealed class UnityExtensionsVector2HullTests : CommonTestBase
     {
         [Test]
         public void BuildConvexHullVector2IncludesColinearPointsWhenRequested()

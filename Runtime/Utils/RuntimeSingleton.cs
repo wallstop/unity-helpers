@@ -100,6 +100,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         private static void ClearInstance()
         {
             _instance.Destroy();
+            _instance = null;
         }
 
         protected virtual void Awake()

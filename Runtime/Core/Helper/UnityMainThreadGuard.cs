@@ -152,5 +152,29 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             throw new InvalidOperationException(message);
         }
+
+        internal static bool TryPostToMainThread(Action action)
+        {
+            if (action == null)
+            {
+                return false;
+            }
+
+            SynchronizationContext context = _mainThreadContext;
+            if (context == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                context.Post(static state => ((Action)state)?.Invoke(), action);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }

@@ -4,8 +4,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class ColorExtensionsTests
+    public sealed class ColorExtensionsTests : CommonTestBase
     {
         [Test]
         public void ToHexFormatsCorrectly()

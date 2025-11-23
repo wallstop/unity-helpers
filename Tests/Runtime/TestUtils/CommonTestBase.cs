@@ -25,6 +25,9 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
 #if REFLEX_PRESENT
             ReflexTestSupport.EnsureReflexSettings();
 #endif
+            UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
+            UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
+            UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
         }
 
         // Per-test tracked UnityEngine.Objects
@@ -210,6 +213,8 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
                 }
                 _trackedObjects.Clear();
             }
+
+            UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
         }
 
         /// <summary>
@@ -252,6 +257,8 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
                 }
                 _trackedObjects.Clear();
             }
+
+            UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
         }
 
         /// <summary>
@@ -307,6 +314,9 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
                 }
                 _trackedAsyncDisposals.Clear();
             }
+
+            UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
+            UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
         }
     }
 }

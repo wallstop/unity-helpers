@@ -25,6 +25,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private const int DefaultQueueLimit = 4096;
         private int _pendingActionCount;
         private int _lastOverflowFrame = -1;
+#if UNITY_EDITOR
+        private const HideFlags EditorDispatcherHideFlags =
+            HideFlags.HideInHierarchy | HideFlags.HideInInspector | HideFlags.NotEditable;
+#endif
 
         [SerializeField]
         [Tooltip(
@@ -33,6 +37,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private int maxPendingActions = DefaultQueueLimit;
 
         protected override bool Preserve => false;
+
+        internal static bool AutoCreationEnabled { get; private set; } = true;
 
         /// <summary>
         /// Gets the number of actions currently waiting to be executed on the main thread.
@@ -49,6 +55,29 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             set => maxPendingActions = Mathf.Max(0, value);
         }
 
+        internal static bool TryGetInstance(out UnityMainThreadDispatcher dispatcher)
+        {
+            dispatcher = _instance;
+            return dispatcher != null;
+        }
+
+        internal static bool TryDispatchToMainThread(Action action)
+        {
+            if (action == null)
+            {
+                return false;
+            }
+
+            UnityMainThreadDispatcher dispatcher = _instance;
+            if (dispatcher == null)
+            {
+                return false;
+            }
+
+            dispatcher.RunOnMainThread(action);
+            return true;
+        }
+
 #if UNITY_EDITOR
         private readonly EditorApplication.CallbackFunction _update;
         private bool _attachedEditorUpdate;
@@ -61,9 +90,32 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
         }
 
+        public static new UnityMainThreadDispatcher Instance
+        {
+            get
+            {
+                if (!AutoCreationEnabled)
+                {
+                    return _instance;
+                }
+
+                return RuntimeSingleton<UnityMainThreadDispatcher>.Instance;
+            }
+        }
+
+        internal static void SetAutoCreationEnabled(bool enabled)
+        {
+            AutoCreationEnabled = enabled;
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
         private static void EnsureDispatcherBootstrap()
         {
+            if (!AutoCreationEnabled)
+            {
+                return;
+            }
+
             EnsureDispatcherExists("runtime bootstrap");
         }
 
@@ -71,6 +123,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         [InitializeOnLoadMethod]
         private static void EnsureDispatcherBootstrapInEditor()
         {
+            if (!AutoCreationEnabled)
+            {
+                return;
+            }
+
             if (Application.isPlaying)
             {
                 return;
@@ -82,6 +139,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         private static void EnsureDispatcherExists(string reason)
         {
+            if (!AutoCreationEnabled)
+            {
+                return;
+            }
+
             if (HasInstance)
             {
                 return;
@@ -91,7 +153,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             UnityMainThreadDispatcher dispatcher = Instance;
             if (!Application.isPlaying && dispatcher != null)
             {
-                dispatcher.hideFlags = HideFlags.HideAndDontSave;
+#if UNITY_EDITOR
+                dispatcher.ApplyEditorHideFlags();
+#endif
             }
         }
 
@@ -194,6 +258,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 EditorApplication.update += _update;
                 _attachedEditorUpdate = true;
+                ApplyEditorHideFlags();
             }
 #endif
         }
@@ -217,6 +282,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 EditorApplication.update -= _update;
                 _attachedEditorUpdate = false;
             }
+
+            ApplyEditorHideFlags();
 #endif
             base.OnDestroy();
         }
@@ -468,5 +535,15 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             return taskCompletionSource.Task;
         }
+
+#if UNITY_EDITOR
+        private void ApplyEditorHideFlags()
+        {
+            if (!Application.isPlaying)
+            {
+                hideFlags = EditorDispatcherHideFlags;
+            }
+        }
+#endif
     }
 }

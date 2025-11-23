@@ -2,8 +2,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class PathHelperTests
+    public sealed class PathHelperTests : CommonTestBase
     {
         [Test]
         public void SanitizePathWithNullReturnsNull()

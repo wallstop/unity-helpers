@@ -5,8 +5,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using System.Linq;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class StringExtensionTests
+    public sealed class StringExtensionTests : CommonTestBase
     {
         [Test]
         public void ToPascalCaseNominal()

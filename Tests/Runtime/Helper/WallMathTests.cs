@@ -1,5 +1,7 @@
 // ReSharper disable EqualExpressionComparison
 // ReSharper disable CompareOfFloatsByEqualityOperator
+using WallstopStudios.UnityHelpers.Tests.TestUtils;
+
 namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System;
@@ -9,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
 
-    public sealed class WallMathTests
+    public sealed class WallMathTests : CommonTestBase
     {
         private const int TestIterations = 10_000;
         private const float Epsilon = 0.0001f;

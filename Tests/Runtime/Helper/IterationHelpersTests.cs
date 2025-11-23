@@ -4,8 +4,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using System.Linq;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class IterationHelpersTests
+    public sealed class IterationHelpersTests : CommonTestBase
     {
         [Test]
         public void IndexOverTwoDimensionalArrayReturnsAllCoordinates()

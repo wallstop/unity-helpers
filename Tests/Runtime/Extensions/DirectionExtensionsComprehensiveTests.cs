@@ -7,8 +7,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Model;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class DirectionExtensionsComprehensiveTests
+    public sealed class DirectionExtensionsComprehensiveTests : CommonTestBase
     {
         private const int KnownDirectionMask = (1 << 8) - 1;
 

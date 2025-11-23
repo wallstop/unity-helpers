@@ -8,8 +8,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Tests.Random;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class RandomExtensionTests
+    public sealed class RandomExtensionTests : CommonTestBase
     {
         [Test]
         public void NextVector2WithAmplitude()

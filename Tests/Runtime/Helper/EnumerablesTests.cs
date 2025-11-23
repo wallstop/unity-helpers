@@ -5,8 +5,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using System.Linq;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class EnumerablesTests
+    public sealed class EnumerablesTests : CommonTestBase
     {
         [Test]
         public void OfReturnsSingleElementSequence()

@@ -6,9 +6,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using System.Reflection;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     [TestFixture]
-    public sealed class ReflectionHelperCapabilityMatrixTests
+    public sealed class ReflectionHelperCapabilityMatrixTests : CommonTestBase
     {
         public enum CapabilityMode
         {

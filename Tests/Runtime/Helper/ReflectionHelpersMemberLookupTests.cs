@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Tests.Attributes;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     [AttributeUsage(
         AttributeTargets.Class
@@ -37,7 +38,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     public sealed class RuntimeScriptableObjectTarget : ScriptableObject { }
 
     [TestFixture]
-    public sealed class ReflectionHelpersMemberLookupTests
+    public sealed class ReflectionHelpersMemberLookupTests : CommonTestBase
     {
         [Test]
         public void GetTypesWithAttributeRuntimeMarkerIncludesType()

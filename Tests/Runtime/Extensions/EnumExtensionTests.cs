@@ -7,7 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class EnumExtensionTests
+    public sealed class EnumExtensionTests : CommonTestBase
     {
         private enum TestEnum
         {

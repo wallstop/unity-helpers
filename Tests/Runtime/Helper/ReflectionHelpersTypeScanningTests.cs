@@ -7,9 +7,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Tests.Attributes;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     [TestFixture]
-    public sealed class ReflectionHelpersTypeScanningTests
+    public sealed class ReflectionHelpersTypeScanningTests : CommonTestBase
     {
         [Test]
         public void GetAllLoadedTypesIncludesTestAssemblyType()
