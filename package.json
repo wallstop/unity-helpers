@@ -75,6 +75,11 @@
       "path": "Samples~/Random - PRNG"
     },
     {
+      "displayName": "Logging – Tag Formatter",
+      "description": "UnityLogTagFormatter decorators, runtime toggles, and logging extension demos.",
+      "path": "Samples~/Logging - Tag Formatter"
+    },
+    {
       "displayName": "Spatial Structures – 2D and 3D",
       "description": "QuadTree2D, KdTree2D nearest neighbors, SpatialHash2D queries.",
       "path": "Samples~/Spatial Structures - 2D and 3D"
@@ -92,8 +97,8 @@
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "lint:docs": "pwsh -NoProfile -File scripts/lint-doc-links.ps1",
-    "lint:doc-links": "pwsh -NoProfile -File scripts/lint-doc-links.ps1 -VerboseOutput",
+    "lint:docs": "node ./scripts/run-doc-link-lint.js",
+    "lint:doc-links": "node ./scripts/run-doc-link-lint.js --verbose",
     "hooks:install": "git config core.hooksPath .githooks",
     "eol:check": "pwsh -NoProfile -File scripts/check-eol.ps1",
     "eol:fix": "pwsh -NoProfile -File scripts/normalize-eol.ps1",

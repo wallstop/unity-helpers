@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Linq;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
@@ -1529,6 +1530,121 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             yield return null;
         }
 
+        [UnityTest]
+        public IEnumerator ConvexHullRotatedGridPrunesColinearPoints()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            grid.transform.position = new Vector3(125f, -42f, 0f);
+            grid.transform.rotation = Quaternion.Euler(0f, 0f, 37.5f);
+            grid.transform.localScale = new Vector3(0.33f, 0.75f, 1f);
+            grid.cellSize = new Vector3(0.33f, 0.75f, 1f);
+
+            List<FastVector3Int> perimeter = new();
+            for (int x = -3; x <= 7; ++x)
+            {
+                perimeter.Add(new FastVector3Int(x, -4, 0));
+                perimeter.Add(new FastVector3Int(x, 6, 0));
+            }
+
+            for (int y = -3; y <= 5; ++y)
+            {
+                perimeter.Add(new FastVector3Int(-3, y, 0));
+                perimeter.Add(new FastVector3Int(7, y, 0));
+            }
+
+            List<FastVector3Int> hull = perimeter.BuildConvexHull(
+                grid,
+                includeColinearPoints: false
+            );
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    new FastVector3Int(-3, -4, 0),
+                    new FastVector3Int(7, -4, 0),
+                    new FastVector3Int(7, 6, 0),
+                    new FastVector3Int(-3, 6, 0),
+                },
+                hull
+            );
+
+            List<FastVector3Int> hullWithEdges = perimeter.BuildConvexHull(
+                grid,
+                includeColinearPoints: true
+            );
+            CollectionAssert.IsSupersetOf(
+                hullWithEdges,
+                new[]
+                {
+                    new FastVector3Int(-1, -4, 0),
+                    new FastVector3Int(5, -4, 0),
+                    new FastVector3Int(7, 3, 0),
+                    new FastVector3Int(2, 6, 0),
+                }
+            );
+
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator ConvexHullLargeRotatedGridPrunesColinearPoints()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            grid.transform.position = new Vector3(5000f, -12500f, 0f);
+            grid.transform.rotation = Quaternion.Euler(0f, 0f, 18.75f);
+            grid.transform.localScale = new Vector3(0.125f, 0.333f, 1f);
+            grid.cellSize = new Vector3(0.125f, 0.333f, 1f);
+
+            const int minX = -1700;
+            const int maxX = 1700;
+            const int minY = -850;
+            const int maxY = 850;
+
+            List<FastVector3Int> perimeter = new List<FastVector3Int>((maxX - minX + 1) * 4);
+            for (int x = minX; x <= maxX; ++x)
+            {
+                perimeter.Add(new FastVector3Int(x, minY, 0));
+                perimeter.Add(new FastVector3Int(x, maxY, 0));
+            }
+
+            for (int y = minY + 1; y < maxY; ++y)
+            {
+                perimeter.Add(new FastVector3Int(minX, y, 0));
+                perimeter.Add(new FastVector3Int(maxX, y, 0));
+            }
+
+            List<FastVector3Int> hull = perimeter.BuildConvexHull(
+                grid,
+                includeColinearPoints: false
+            );
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    new FastVector3Int(minX, minY, 0),
+                    new FastVector3Int(maxX, minY, 0),
+                    new FastVector3Int(maxX, maxY, 0),
+                    new FastVector3Int(minX, maxY, 0),
+                },
+                hull
+            );
+
+            List<FastVector3Int> hullWithEdges = perimeter.BuildConvexHull(
+                grid,
+                includeColinearPoints: true
+            );
+            CollectionAssert.IsSupersetOf(
+                hullWithEdges,
+                new[]
+                {
+                    new FastVector3Int(0, minY, 0),
+                    new FastVector3Int(0, maxY, 0),
+                    new FastVector3Int(maxX, 0, 0),
+                    new FastVector3Int(minX, 0, 0),
+                }
+            );
+
+            yield return null;
+        }
+
         [Test]
         public void Vector2ConvexHullDenseSamplesCollapseToCorners()
         {
@@ -1555,6 +1671,51 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     new Vector2(0, 5),
                 },
                 hull
+            );
+        }
+
+        private static readonly float[] LargeRotationAngles = { 5f, 18.75f, -37.5f };
+
+        [TestCaseSource(nameof(LargeRotationAngles))]
+        public void Vector2ConvexHullRotatedSamplesCollapseToCorners(float angleDegrees)
+        {
+            const int minX = -1700;
+            const int maxX = 1700;
+            const int minY = -850;
+            const int maxY = 850;
+
+            float angleRad = Mathf.Deg2Rad * angleDegrees;
+            float cos = Mathf.Cos(angleRad);
+            float sin = Mathf.Sin(angleRad);
+
+            List<Vector2> samples = CreateRotatedVectorPerimeter(
+                minX,
+                maxX,
+                minY,
+                maxY,
+                angleDegrees
+            );
+
+            List<Vector2> hull = samples.BuildConvexHull(includeColinearPoints: false);
+            AssertHullCollapsesToCornersAfterInverseRotation(
+                hull,
+                cos,
+                sin,
+                new Vector2Int(minX, minY),
+                new Vector2Int(maxX, minY),
+                new Vector2Int(maxX, maxY),
+                new Vector2Int(minX, maxY)
+            );
+
+            List<Vector2> hullWithEdges = samples.BuildConvexHull(includeColinearPoints: true);
+            AssertHullContainsEdgeSamplesAfterInverseRotation(
+                hullWithEdges,
+                cos,
+                sin,
+                new Vector2Int(0, minY),
+                new Vector2Int(0, maxY),
+                new Vector2Int(maxX, 0),
+                new Vector2Int(minX, 0)
             );
         }
 
@@ -2128,6 +2289,117 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 scratchDistances,
                 membership
             );
+        }
+
+        private static Vector2 InverseRotate(Vector2 value, float cos, float sin)
+        {
+            float invX = value.x * cos + value.y * sin;
+            float invY = -value.x * sin + value.y * cos;
+            return new Vector2(invX, invY);
+        }
+
+        private static void AssertHullCollapsesToCornersAfterInverseRotation(
+            IEnumerable<Vector2> hull,
+            float cos,
+            float sin,
+            params Vector2Int[] expectedCorners
+        )
+        {
+            HashSet<Vector2Int> actualCorners = new();
+            foreach (Vector2 candidate in hull)
+            {
+                Vector2 unrotated = InverseRotate(candidate, cos, sin);
+                int xr = Mathf.RoundToInt(unrotated.x);
+                int yr = Mathf.RoundToInt(unrotated.y);
+                actualCorners.Add(new Vector2Int(xr, yr));
+            }
+
+            TestContext.WriteLine(
+                $"Rotated hull raw count={hull.Count()} uniqueCorners={actualCorners.Count}: {string.Join(", ", actualCorners)}"
+            );
+            CollectionAssert.AreEquivalent(expectedCorners, actualCorners);
+        }
+
+        private static void AssertHullContainsEdgeSamplesAfterInverseRotation(
+            IEnumerable<Vector2> hull,
+            float cos,
+            float sin,
+            params Vector2Int[] requiredSamples
+        )
+        {
+            HashSet<Vector2Int> actual = new();
+            foreach (Vector2 candidate in hull)
+            {
+                Vector2 unrotated = InverseRotate(candidate, cos, sin);
+                int xr = Mathf.RoundToInt(unrotated.x);
+                int yr = Mathf.RoundToInt(unrotated.y);
+                actual.Add(new Vector2Int(xr, yr));
+            }
+
+            foreach (Vector2Int expected in requiredSamples)
+            {
+                Assert.IsTrue(
+                    actual.Contains(expected),
+                    $"Expected rotated hull to include {expected} after inverse rotation."
+                );
+            }
+        }
+
+        private static List<Vector2> CreateRotatedVectorPerimeter(
+            int minX,
+            int maxX,
+            int minY,
+            int maxY,
+            float angleDegrees
+        )
+        {
+            double angleRad = angleDegrees * Mathf.Deg2Rad;
+            double cos = Math.Cos(angleRad);
+            double sin = Math.Sin(angleRad);
+
+            Vector2 bottomLeft = RotateExact(minX, minY, cos, sin);
+            Vector2 bottomRight = RotateExact(maxX, minY, cos, sin);
+            Vector2 topRight = RotateExact(maxX, maxY, cos, sin);
+            Vector2 topLeft = RotateExact(minX, maxY, cos, sin);
+
+            List<Vector2> perimeter = new((maxX - minX + 1) * 2 + Math.Max(0, maxY - minY - 1) * 2);
+
+            for (int x = minX; x <= maxX; ++x)
+            {
+                float t = (x - minX) / (float)(maxX - minX);
+                perimeter.Add(Quantize(Vector2.Lerp(bottomLeft, bottomRight, t)));
+            }
+
+            for (int x = minX; x <= maxX; ++x)
+            {
+                float t = (x - minX) / (float)(maxX - minX);
+                perimeter.Add(Quantize(Vector2.Lerp(topLeft, topRight, t)));
+            }
+
+            for (int y = minY + 1; y < maxY; ++y)
+            {
+                float t = (y - minY) / (float)(maxY - minY);
+                perimeter.Add(Quantize(Vector2.Lerp(topLeft, bottomLeft, t)));
+                perimeter.Add(Quantize(Vector2.Lerp(topRight, bottomRight, t)));
+            }
+
+            return perimeter;
+        }
+
+        private static Vector2 RotateExact(int x, int y, double cos, double sin)
+        {
+            double fx = x;
+            double fy = y;
+            double rotatedX = fx * cos - fy * sin;
+            double rotatedY = fx * sin + fy * cos;
+            return new Vector2((float)rotatedX, (float)rotatedY);
+        }
+
+        private static Vector2 Quantize(Vector2 value)
+        {
+            float x = Mathf.Round(value.x * 1000f) * 0.001f;
+            float y = Mathf.Round(value.y * 1000f) * 0.001f;
+            return new Vector2(x, y);
         }
 
 #if UNITY_EDITOR

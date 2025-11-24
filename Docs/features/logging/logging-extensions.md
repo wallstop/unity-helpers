@@ -3,10 +3,21 @@
 Bring structured, color-coded logs to any Unity project without sprinkling `Debug.Log` everywhere. `WallstopStudiosLogger` adds extension methods (`this.Log`, `this.LogWarn`, `this.LogError`, `this.LogDebug`) that automatically capture component metadata, thread info, timestamps, and user-defined tags rendered by `UnityLogTagFormatter`.
 
 - **Thread-safe:** Logs are marshalled back to the Unity main thread when required (via `UnityMainThreadDispatcher` / `UnityMainThreadGuard`).
-- **Readable output:** Pretty mode prefixes `time|thread|GameObject[Component]` so log parsing and runtime tooling become deterministic.
+- **Readable output:** Pretty mode prefixes `time|GameObject[Component]` when logging on the main thread and inserts `|thread|` only when background workers emit messages, keeping logs deterministic without extra noise.
 - **Tag formatter:** Apply rich text decorations inline (`$"{name:b,color=cyan}"`) without string concatenation. Tags deduplicate automatically and can be stacked in any order.
 
 > These helpers live in `Runtime/Core/Extension/WallstopStudiosLogger.cs` and `Runtime/Core/Helper/Logging/UnityLogTagFormatter.cs`. Tests at `Tests/Runtime/Extensions/LoggingExtensionTests.cs` demonstrate every supported scenario.
+
+---
+
+## Sample Scene
+
+- Import the `Logging – Tag Formatter` package sample and open `Samples~/Logging - Tag Formatter/Scenes/LoggingDemo.unity`.
+- Press Play to use the on-screen toggles (global logging, component logging, pretty output) and emit Info/Warn/Error logs that showcase the decorators.
+- Review `LoggingDemoBootstrap` (decorator registration) and `LoggingDemoController` (runtime toggles + `this.Log*` usage) to copy the patterns into your project.
+
+![Image placeholder: Logging sample Console output with colored NPC/status tags]
+![GIF placeholder: Logging demo overlay toggling pretty mode and emitting differently colored logs in real time]
 
 ---
 
@@ -31,7 +42,7 @@ public sealed class EnemyHUD : MonoBehaviour
 ```
 
 - Pass interpolated strings directly; the formatter applies tags before Unity renders the message.
-- Use `pretty: false` if you only want the decorated text without the timestamp/thread prefix.
+- Use `pretty: false` if you only want the decorated text without the timestamp (or optional thread) prefix.
 - Call `this.LogWarn`, `this.LogError`, or `this.LogDebug` for severity-specific output; all overloads accept `Exception e` to append stack traces.
 
 ### Enabling logging in builds
@@ -109,7 +120,7 @@ Use negative priorities for “outer” wrappers (run earlier) and higher number
 Additional behavior:
 
 - **Thread routing:** If a log originates off the main thread, the extension tries `UnityMainThreadDispatcher.TryDispatchToMainThread` first. If unavailable, it falls back to `UnityMainThreadGuard.TryPostToMainThread` and, if that fails, emits an “offline” log with a `[WallstopMainThreadLogger:*]` prefix.
-- **Pretty output:** Keeps logs uniform (`timestamp|thread|GameObject[Component]|message`). Pass `pretty: false` when emitting data the Unity console already decorates (for example, performance CSV dumps).
+- **Pretty output:** Keeps logs uniform (`timestamp|GameObject[Component]|message` on the main thread, inserting `|thread|` only for worker threads). Pass `pretty: false` when emitting data the Unity console already decorates (for example, performance CSV dumps).
 - **Context awareness:** Unity context objects are forwarded to `Debug.Log*`, preserving click-to-focus navigation even when logs originate from pooled helper classes.
 
 ---

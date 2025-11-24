@@ -13,7 +13,7 @@
 
 - Install hooks and tools: `npm run hooks:install` and `dotnet tool restore`.
 - Format C#: `dotnet tool run CSharpier format` (pre-commit runs this automatically).
-- Lint docs links: `npm run lint:docs` or `pwsh ./scripts/lint-doc-links.ps1 -VerboseOutput`.
+- Lint docs links: `npm run lint:docs` or `node ./scripts/run-doc-link-lint.js --verbose`.
 - Run tests (Unity): add this package to a Unity 2021.3+ project, then use Test Runner (EditMode/PlayMode). CLI example:
   `Unity -batchmode -projectPath <Project> -runTests -testPlatform EditMode -testResults ./TestResults.xml -quit`.
 

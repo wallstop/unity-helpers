@@ -15,7 +15,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
     using UnityEditor;
 #endif
 
-
     /// <summary>
     /// Default supported formats:
     ///     b -> Bold text
@@ -75,7 +74,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
         private readonly HashSet<string> _appliedTags = new(StringComparer.OrdinalIgnoreCase);
         private static readonly Stopwatch FallbackStopwatch = Stopwatch.StartNew();
         private static int _unityMainThreadId;
-        private static string _unityMainThreadLabel = "unity-main";
         private static int _mainThreadCaptured;
 
         public UnityLogTagFormatter()
@@ -335,7 +333,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void CaptureRuntimeMainThread()
         {
-            CaptureUnityMainThread(Thread.CurrentThread, "unity-main");
+            CaptureUnityMainThread(Thread.CurrentThread);
         }
 
 #if UNITY_EDITOR
@@ -347,7 +345,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
                 return;
             }
 
-            CaptureUnityMainThread(Thread.CurrentThread, "editor-main");
+            CaptureUnityMainThread(Thread.CurrentThread);
         }
 #endif
 
@@ -358,11 +356,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
                 return;
             }
 
-            string label = Application.isPlaying ? "unity-main" : "editor-main";
-            CaptureUnityMainThread(Thread.CurrentThread, label);
+            CaptureUnityMainThread(Thread.CurrentThread);
         }
 
-        private static void CaptureUnityMainThread(Thread thread, string label)
+        private static void CaptureUnityMainThread(Thread thread)
         {
             if (thread == null)
             {
@@ -370,9 +367,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
             }
 
             _unityMainThreadId = thread.ManagedThreadId;
-            _unityMainThreadLabel = string.IsNullOrWhiteSpace(label)
-                ? thread.Name ?? "unity-main"
-                : label;
             Interlocked.Exchange(ref _mainThreadCaptured, 1);
         }
 
@@ -383,7 +377,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
 
             if (_mainThreadCaptured == 1 && currentId == _unityMainThreadId)
             {
-                return $"{_unityMainThreadLabel}#{currentId}";
+                return string.Empty;
             }
 
             string threadName = Thread.CurrentThread.Name;
@@ -603,6 +597,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
 
             float now = GetTimestamp();
             string threadLabel = BuildThreadLabel();
+            bool hasThreadLabel = !string.IsNullOrEmpty(threadLabel);
             string componentType;
             string gameObjectName;
             if (unityObject != null)
@@ -616,9 +611,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
                 gameObjectName = "NO_NAME";
             }
 
+            string contextLabel = $"{gameObjectName}[{componentType}]";
+            string prefix = hasThreadLabel
+                ? $"{now}|{threadLabel}|{contextLabel}"
+                : $"{now}|{contextLabel}";
+
             return e != null
-                ? $"{now}|{threadLabel}|{gameObjectName}[{componentType}]|{message.ToString(this)}{NewLine}    {e}"
-                : $"{now}|{threadLabel}|{gameObjectName}[{componentType}]|{message.ToString(this)}";
+                ? $"{prefix}|{message.ToString(this)}{NewLine}    {e}"
+                : $"{prefix}|{message.ToString(this)}";
         }
     }
 }

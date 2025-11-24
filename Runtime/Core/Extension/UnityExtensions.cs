@@ -33,6 +33,26 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return cmp != 0 ? cmp : lhs.y.CompareTo(rhs.y);
         };
 
+        private static double ComputeAreaTolerance(Vector2 a, Vector2 b, Vector2 c)
+        {
+            double maxComponent = Math.Max(
+                Math.Max(
+                    Math.Max(Math.Abs(a.x), Math.Abs(a.y)),
+                    Math.Max(Math.Abs(b.x), Math.Abs(b.y))
+                ),
+                Math.Max(Math.Abs(c.x), Math.Abs(c.y))
+            );
+            double scale = Math.Max(1d, maxComponent);
+            return ConvexHullRelationEpsilon * scale * scale;
+        }
+
+        private static bool AreApproximatelyColinear(Vector2 a, Vector2 b, Vector2 c)
+        {
+            double cross = Geometry.IsAPointLeftOfVectorOrOnTheLineDouble(a, b, c);
+            double tolerance = ComputeAreaTolerance(a, b, c);
+            return Math.Abs(cross) <= tolerance;
+        }
+
         private static bool AreVector2PointsEquivalent(Vector2 lhs, Vector2 rhs)
         {
             return Mathf.Abs(lhs.x - rhs.x) <= ConvexHullRelationEpsilon
@@ -1331,8 +1351,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool allColinear = true;
             for (int i = 1; i < points.Count - 1; ++i)
             {
-                float rel = Geometry.IsAPointLeftOfVectorOrOnTheLine(start, points[^1], points[i]);
-                if (Mathf.Abs(rel) > ConvexHullRelationEpsilon)
+                if (!AreApproximatelyColinear(start, points[^1], points[i]))
                 {
                     allColinear = false;
                     break;
@@ -1382,12 +1401,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     {
                         continue;
                     }
-                    float rel = Geometry.IsAPointLeftOfVectorOrOnTheLine(current, candidate, p);
-                    if (rel > ConvexHullRelationEpsilon)
+                    double rel = Geometry.IsAPointLeftOfVectorOrOnTheLineDouble(
+                        current,
+                        candidate,
+                        p
+                    );
+                    double tolerance = ComputeAreaTolerance(current, candidate, p);
+                    if (rel > tolerance)
                     {
                         candidate = p;
                     }
-                    else if (Mathf.Abs(rel) <= ConvexHullRelationEpsilon)
+                    else if (Math.Abs(rel) <= tolerance)
                     {
                         float distCandidate = (candidate - current).sqrMagnitude;
                         float distP = (p - current).sqrMagnitude;
@@ -1411,8 +1435,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         {
                             continue;
                         }
-                        float rel = Geometry.IsAPointLeftOfVectorOrOnTheLine(current, candidate, p);
-                        if (Mathf.Abs(rel) <= ConvexHullRelationEpsilon)
+                        double rel = Geometry.IsAPointLeftOfVectorOrOnTheLineDouble(
+                            current,
+                            candidate,
+                            p
+                        );
+                        double tolerance = ComputeAreaTolerance(current, candidate, p);
+                        if (Math.Abs(rel) <= tolerance)
                         {
                             colinear.Add(p);
                         }
@@ -1477,12 +1506,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 {
                     int prev = (i - 1 + hull.Count) % hull.Count;
                     int next = (i + 1) % hull.Count;
-                    float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(
-                        hull[prev],
-                        hull[i],
-                        hull[next]
-                    );
-                    if (Mathf.Abs(cross) <= ConvexHullRelationEpsilon)
+                    if (AreApproximatelyColinear(hull[prev], hull[i], hull[next]))
                     {
                         hull.RemoveAt(i);
                         removed = true;
@@ -1502,12 +1526,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             while (hull.Count >= 3)
             {
                 int count = hull.Count;
-                float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(
-                    hull[count - 3],
-                    hull[count - 2],
-                    hull[count - 1]
-                );
-                if (Mathf.Abs(cross) <= ConvexHullRelationEpsilon)
+                if (AreApproximatelyColinear(hull[count - 3], hull[count - 2], hull[count - 1]))
                 {
                     hull.RemoveAt(count - 2);
                     continue;
@@ -1562,8 +1581,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 bool allColinear = true;
                 for (int i = 1; i < points.Count - 1; ++i)
                 {
-                    float cross = Geometry.IsAPointLeftOfVectorOrOnTheLine(first, last, points[i]);
-                    if (Mathf.Abs(cross) > ConvexHullRelationEpsilon)
+                    if (!AreApproximatelyColinear(first, last, points[i]))
                     {
                         allColinear = false;
                         break;
@@ -1593,9 +1611,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 while (lower.Count >= 2)
                 {
-                    float cross = Turn(lower[^2], lower[^1], p);
-                    bool isRightTurn = cross < -ConvexHullRelationEpsilon;
-                    bool isColinear = Mathf.Abs(cross) <= ConvexHullRelationEpsilon;
+                    Vector2 a = lower[^2];
+                    Vector2 b = lower[^1];
+                    double cross = Geometry.IsAPointLeftOfVectorOrOnTheLineDouble(a, b, p);
+                    double tolerance = ComputeAreaTolerance(a, b, p);
+                    bool isRightTurn = cross < -tolerance;
+                    bool isColinear = Math.Abs(cross) <= tolerance;
                     if (isRightTurn || (!includeColinearPoints && isColinear))
                     {
                         lower.RemoveAt(lower.Count - 1);
@@ -1611,9 +1632,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 Vector2 p = points[i];
                 while (upper.Count >= 2)
                 {
-                    float cross = Turn(upper[^2], upper[^1], p);
-                    bool isRightTurn = cross < -ConvexHullRelationEpsilon;
-                    bool isColinear = Mathf.Abs(cross) <= ConvexHullRelationEpsilon;
+                    Vector2 a = upper[^2];
+                    Vector2 b = upper[^1];
+                    double cross = Geometry.IsAPointLeftOfVectorOrOnTheLineDouble(a, b, p);
+                    double tolerance = ComputeAreaTolerance(a, b, p);
+                    bool isRightTurn = cross < -tolerance;
+                    bool isColinear = Math.Abs(cross) <= tolerance;
                     if (isRightTurn || (!includeColinearPoints && isColinear))
                     {
                         upper.RemoveAt(upper.Count - 1);
@@ -1638,11 +1662,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 PruneColinearOnHull(hull);
             }
             return hull;
-
-            float Turn(Vector2 a, Vector2 b, Vector2 c)
-            {
-                return Geometry.IsAPointLeftOfVectorOrOnTheLine(a, b, c);
-            }
         }
 
         // ===================== Vector2 Convex Hulls =====================

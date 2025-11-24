@@ -59,3 +59,63 @@ All hull helpers now offer both grid-aware (`Grid` + `FastVector3Int`) and gridl
   - `fastPoints.BuildConcaveHull(grid, options)` remains available when your data lives in grid space.
 
 Because the new overloads reuse the pooled implementations under the hood, behaviour (winding, pruning, GC profile) matches the grid versions—pick whichever signature best matches your data source.
+
+## Gridless vs Grid-Aware Quickstart
+
+- Pick the **gridless** overloads when your points already live in world/local space (`Vector2`, `Vector3`, or `FastVector3Int` without a `Grid`). This keeps the hull math independent from Unity’s tile conversion layer.
+- Pick the **grid-aware** overloads when you have cell coordinates tied to a `Grid` or `Tilemap` and you want the helper to respect `Grid.CellToWorld` so you can visualize the hull in scene space.
+
+Gridless example — pure `Vector2` data for nav areas or spline fitting:
+
+```csharp
+using System.Collections.Generic;
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Extension;
+
+// outlinePoints could come from mouse clicks or a baked spline
+List<Vector2> outlinePoints = CollectOutlineSamples();
+UnityExtensions.ConcaveHullOptions outlineOptions = new UnityExtensions.ConcaveHullOptions
+{
+    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+    BucketSize = 32,
+    AngleThreshold = 70f,
+};
+
+List<Vector2> hull = outlinePoints.BuildConcaveHull(outlineOptions);
+```
+
+Grid-aware example — `FastVector3Int` tiles aligned to a `Grid` for tilemaps or voxel data:
+
+```csharp
+using System.Collections.Generic;
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+using WallstopStudios.UnityHelpers.Core.Extension;
+
+Grid grid = GetComponent<Grid>();
+List<FastVector3Int> tileSamples = CollectTileCoordinates();
+UnityExtensions.ConcaveHullOptions tileOptions = new UnityExtensions.ConcaveHullOptions
+{
+    Strategy = UnityExtensions.ConcaveHullStrategy.Knn,
+    NearestNeighbors = 5,
+};
+
+List<FastVector3Int> gridHull = tileSamples.BuildConcaveHull(grid, tileOptions);
+```
+
+See `Samples~/Spatial Structures - 2D and 3D/Scripts/HullUsageDemo.cs` for a runnable MonoBehaviour that draws both loops (cyan for gridless, yellow for grid-aware) and logs the strategy/neighbor counts so you can copy the pattern directly into your own tooling, or just open `Samples~/Spatial Structures - 2D and 3D/Scenes/HullUsageDemo.unity` and press Play to watch both flows without extra setup.
+
+![Image placeholder: Game view showing cyan Vector2 hull and yellow Grid hull drawn simultaneously]
+![GIF placeholder: Recording of cyan/yellow hull loops updating as the demo toggles between gridless and grid-aware modes]
+
+## Colinear Points & includeColinearPoints
+
+- Convex hull helpers prune colinear points by default so only the true corners remain, even after grid-to-world projections introduce float skew.
+- Opt into boundary retention by passing `includeColinearPoints: true` to `BuildConvexHull` (gridless) or its grid-aware overloads.
+- Concave hulls inherit the pruned convex frontier; enabling colinear inclusion widens the seed set and can improve fidelity for dense edge sampling.
+- The comprehensive tests `UnityExtensionsComprehensiveTests.ConvexHullDenseSamplesOnAllEdgesCollapseToCorners` (grid) and `.Vector2ConvexHullDenseSamplesCollapseToCorners` (gridless) cover both paths so you can trust the deterministic behavior.
+
+```csharp
+List<FastVector3Int> cornersOnly = gridPoints.BuildConvexHull(grid, includeColinearPoints: false);
+List<FastVector3Int> withEdges = gridPoints.BuildConvexHull(grid, includeColinearPoints: true);
+```

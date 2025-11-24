@@ -341,7 +341,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
-        public void PrettyLogIncludesMainThreadMetadata()
+        public void PrettyLogOmitsMainThreadMetadata()
         {
             UnityLogTagFormatter formatter = new();
 
@@ -355,8 +355,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 int expectedLogCount = 0;
                 assertion = message =>
                 {
-                    StringAssert.IsMatch(@"\|(unity|editor)-main#\d+\|", message);
-                    Assert.IsTrue(message.Contains("Hello"), message);
+                    StringAssert.DoesNotMatch(@"\|(unity|editor)-main#\d+\|", message);
+                    StringAssert.IsMatch(@"^\d+(\.\d+)?\|NO_NAME\[NO_TYPE\]\|Hello$", message);
                 };
 
                 formatter.Log($"Hello", pretty: true);
