@@ -908,6 +908,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </remarks>
         public static float NextFloatAround(this IRandom random, float center, float variance)
         {
+            if (variance <= 0f)
+            {
+                return center;
+            }
+
             return random.NextFloat(center - variance, center + variance);
         }
 
@@ -927,6 +932,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </remarks>
         public static int NextIntAround(this IRandom random, int center, int variance)
         {
+            if (variance <= 0)
+            {
+                return center;
+            }
+
             return random.Next(center - variance, center + variance + 1);
         }
 
@@ -976,31 +986,41 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             if (count == 0)
             {
-                return Enumerable.Empty<T>();
+                return Array.Empty<T>();
             }
 
-            using PooledResource<T[]> arrayBuffer = WallstopArrayPool<T>.Get(count, out T[] result);
+            return NextSubsetIterator(random, itemsList, count);
+        }
 
-            // Fill the reservoir with the first count elements
+        private static IEnumerable<T> NextSubsetIterator<T>(
+            IRandom random,
+            IReadOnlyList<T> items,
+            int count
+        )
+        {
+            using PooledResource<T[]> arrayBuffer = WallstopFastArrayPool<T>.Get(
+                count,
+                out T[] result
+            );
+
             for (int i = 0; i < count; ++i)
             {
-                result[i] = itemsList[i];
+                result[i] = items[i];
             }
 
-            // Process remaining elements
-            for (int i = count; i < itemsList.Count; ++i)
+            for (int i = count; i < items.Count; ++i)
             {
-                // Generate a random index from 0 to i (inclusive)
                 int j = random.Next(0, i + 1);
-
-                // If the random index is within the reservoir, replace it
                 if (j < count)
                 {
-                    result[j] = itemsList[i];
+                    result[j] = items[i];
                 }
             }
 
-            return result;
+            for (int i = 0; i < count; ++i)
+            {
+                yield return result[i];
+            }
         }
     }
 }

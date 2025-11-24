@@ -162,5 +162,47 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             BoundsInt bounds = new(0, 0, 0, 1, 1, 1);
             Assert.IsTrue(bounds.Contains(point));
         }
+
+        [Test]
+        public void FastContains3DPointHonorsTolerance()
+        {
+            Bounds bounds = new(Vector3.zero, Vector3.one);
+            Vector3 outside = new(0.5f, 0.5f, 0.6f);
+
+            Assert.IsFalse(bounds.FastContains3D(outside));
+            Assert.IsTrue(bounds.FastContains3D(outside, tolerance: 0.2f));
+        }
+
+        [Test]
+        public void FastContains3DBoxRejectsWhenOutside()
+        {
+            Bounds container = new(Vector3.zero, new Vector3(2f, 2f, 2f));
+            Bounds inside = new(Vector3.zero, Vector3.one);
+            Bounds outside = new(new Vector3(2f, 0f, 0f), Vector3.one);
+
+            Assert.IsTrue(container.FastContains3D(inside));
+            Assert.IsFalse(container.FastContains3D(outside));
+        }
+
+        [Test]
+        public void FastIntersects3DDetectsSeparatedBounds()
+        {
+            Bounds a = new(Vector3.zero, Vector3.one);
+            Bounds b = new(new Vector3(5f, 0f, 0f), Vector3.one);
+
+            Assert.IsFalse(a.FastIntersects3D(b));
+            Assert.IsTrue(a.FastIntersects3D(new Bounds(new Vector3(0.4f, 0f, 0f), Vector3.one)));
+        }
+
+        [Test]
+        public void IsCircleFullyContainedHandlesZeroRadiusAndOutsideCenters()
+        {
+            GameObject go = Track(new GameObject("CircleColliderTest"));
+            BoxCollider2D collider = go.AddComponent<BoxCollider2D>();
+            collider.size = new Vector2(4f, 4f);
+
+            Assert.IsTrue(collider.IsCircleFullyContained(Vector2.zero, 0f));
+            Assert.IsFalse(collider.IsCircleFullyContained(new Vector2(3f, 0f), 0.5f));
+        }
     }
 }

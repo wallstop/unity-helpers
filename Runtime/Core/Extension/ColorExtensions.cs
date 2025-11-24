@@ -968,9 +968,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
                 else
                 {
-                    inputColor.r *= random.NextFloat(1 / inputColor.r);
-                    inputColor.g *= random.NextFloat(1 / inputColor.g);
-                    inputColor.b *= random.NextFloat(1 / inputColor.b);
+                    inputColor.r *= GetRandomScale(random, inputColor.r);
+                    inputColor.g *= GetRandomScale(random, inputColor.g);
+                    inputColor.b *= GetRandomScale(random, inputColor.b);
                 }
             }
 
@@ -978,6 +978,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             h = h < 0.5f ? h + 0.5f : h - 0.5f;
             Color result = Color.HSVToRGB(h, s, v);
             return result;
+
+            static float GetRandomScale(IRandom rng, float component)
+            {
+                if (component <= 0f || float.IsNaN(component))
+                {
+                    return rng.NextFloat();
+                }
+
+                float maxScale = 1f / component;
+                if (maxScale <= 0f || float.IsInfinity(maxScale))
+                {
+                    return rng.NextFloat();
+                }
+
+                return rng.NextFloat(maxScale);
+            }
         }
     }
 }

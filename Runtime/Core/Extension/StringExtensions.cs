@@ -1051,6 +1051,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return char.ToLowerInvariant(pascalCase[0]).ToString();
             }
 
+            pascalCase = RemoveCombiningDotAboveIfPresent(pascalCase);
             using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.GetStringBuilder(
                 value.Length,
                 out StringBuilder stringBuilder

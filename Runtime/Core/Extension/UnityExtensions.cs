@@ -5456,12 +5456,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             Vector3 min = bounds.min;
             Vector3 max = bounds.max;
-            return p.x + tolerance >= min.x
-                && p.x < max.x - tolerance
-                && p.y + tolerance >= min.y
-                && p.y < max.y - tolerance
-                && p.z + tolerance >= min.z
-                && p.z < max.z - tolerance;
+            return p.x >= min.x - tolerance
+                && p.x < max.x + tolerance
+                && p.y >= min.y - tolerance
+                && p.y < max.y + tolerance
+                && p.z >= min.z - tolerance
+                && p.z < max.z + tolerance;
         }
 
         /// <summary>

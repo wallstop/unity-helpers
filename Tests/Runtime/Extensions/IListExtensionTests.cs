@@ -438,6 +438,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void RemoveAtSwapBackInvalidIndexThrows()
+        {
+            List<int> list = new() { 1, 2, 3 };
+            Assert.Throws<ArgumentOutOfRangeException>(() => list.RemoveAtSwapBack(-1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => list.RemoveAtSwapBack(10));
+        }
+
+        [Test]
         public void IsSortedEmptyList()
         {
             int[] empty = Array.Empty<int>();

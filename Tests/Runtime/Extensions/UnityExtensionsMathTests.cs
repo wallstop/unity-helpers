@@ -1251,6 +1251,46 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void FastContains3DPointBelowMinWithinToleranceReturnsTrue()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(-5.05f, 2f, 2f);
+
+            Assert.IsFalse(bounds.FastContains3D(point));
+            Assert.IsTrue(bounds.FastContains3D(point, tolerance: 0.1f));
+        }
+
+        [Test]
+        public void FastContains3DPointOutsideToleranceRemainsFalse()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(5.05f, 2f, 2f);
+
+            Assert.IsFalse(bounds.FastContains3D(point, tolerance: 0.02f));
+            Assert.IsTrue(bounds.FastContains3D(point, tolerance: 0.1f));
+        }
+
+        [Test]
+        public void FastContains3DPointAtMaxEdgeIncludedByTolerance()
+        {
+            Bounds bounds = new(new Vector3(5f, 5f, 5f), new Vector3(10f, 10f, 10f));
+            Vector3 point = new(10f, 5f, 5f);
+
+            Assert.IsFalse(bounds.FastContains3D(point));
+            Assert.IsTrue(bounds.FastContains3D(point, tolerance: 0.05f));
+        }
+
+        [Test]
+        public void FastContains3DPointNeedsLargeToleranceWhenFarOutside()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), Vector3.one);
+            Vector3 point = new(1.2f, 0.2f, 0.2f);
+
+            Assert.IsFalse(bounds.FastContains3D(point, tolerance: 0.6f));
+            Assert.IsTrue(bounds.FastContains3D(point, tolerance: 0.75f));
+        }
+
+        [Test]
         public void FastContains3DBoundsFullyContainedReturnsTrue()
         {
             Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(100f, 100f, 100f));
@@ -1456,6 +1496,67 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
             Bounds inner = new(new Vector3(-9.99f, -9.99f, -10f), new Vector3(19.99f, 19.99f, 20f));
             Assert.IsFalse(outer.FastContains3D(inner));
+        }
+
+        [Test]
+        public void FastContains3DBoundsAllowsToleranceOnMax()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds inner = new(new Vector3(0.525f, 0f, 0f), new Vector3(1.1f, 1f, 1f));
+
+            Assert.IsFalse(outer.FastContains3D(inner));
+            Assert.IsTrue(outer.FastContains3D(inner, tolerance: 0.1f));
+        }
+
+        [Test]
+        public void FastContains3DBoundsAllowsToleranceOnMin()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds inner = new(new Vector3(-0.525f, 0f, 0f), new Vector3(1.1f, 1f, 1f));
+
+            Assert.IsFalse(outer.FastContains3D(inner));
+            Assert.IsTrue(outer.FastContains3D(inner, tolerance: 0.1f));
+        }
+
+        [Test]
+        public void FastContains3DBoundsToleranceTooSmallRemainsFalse()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds inner = new(new Vector3(0.6f, 0f, 0f), new Vector3(1.4f, 1f, 1f));
+
+            Assert.IsFalse(outer.FastContains3D(inner, tolerance: 0.05f));
+            Assert.IsTrue(outer.FastContains3D(inner, tolerance: 0.3f));
+        }
+
+        [Test]
+        public void FastContains3DBoundsZeroSizedOuterNeedsTolerance()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), Vector3.zero);
+            Bounds inner = new(new Vector3(0f, 0f, 0f), Vector3.one);
+
+            Assert.IsFalse(outer.FastContains3D(inner));
+            Assert.IsFalse(outer.FastContains3D(inner, tolerance: 0.4f));
+            Assert.IsTrue(outer.FastContains3D(inner, tolerance: 0.6f));
+        }
+
+        [Test]
+        public void FastContains3DPointNegativeToleranceExcludesEdge()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), Vector3.one);
+            Vector3 barelyInside = new(-0.49f, 0f, 0f);
+
+            Assert.IsTrue(bounds.FastContains3D(barelyInside));
+            Assert.IsFalse(bounds.FastContains3D(barelyInside, tolerance: -0.05f));
+        }
+
+        [Test]
+        public void FastContains3DBoundsNegativeToleranceShrinksSpace()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(4f, 4f, 4f));
+            Bounds inner = new(new Vector3(0f, 0f, 0f), new Vector3(4f, 4f, 4f));
+
+            Assert.IsTrue(outer.FastContains3D(inner));
+            Assert.IsFalse(outer.FastContains3D(inner, tolerance: -0.1f));
         }
 
         [Test]

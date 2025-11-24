@@ -479,6 +479,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void ToCamelCaseHandlesTurkishCharacters()
+        {
+            Assert.AreEqual("istanbulCity", "İSTANBUL_city".ToCamelCase());
+        }
+
+        [Test]
         public void ToCamelCaseSpecialCharacterSeparators()
         {
             Assert.AreEqual("testCase", "test'Case".ToCamelCase());
@@ -1766,6 +1772,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Assert.AreEqual(string.Empty, "not valid base64!@#".FromBase64());
             Assert.AreEqual(string.Empty, ((string)null).FromBase64());
             Assert.AreEqual(string.Empty, string.Empty.FromBase64());
+        }
+
+        [Test]
+        public void FromBase64RejectsLikelyButInvalidPadding()
+        {
+            Assert.AreEqual(string.Empty, "AAAA====".FromBase64());
         }
 
         [Test]

@@ -1,8 +1,10 @@
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading.Tasks;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
@@ -722,6 +724,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             int existing = dict.TryAdd("test", key => 200);
             Assert.AreEqual(100, existing);
+        }
+
+        [Test]
+        public void ConcurrentDictionaryAddOrUpdateHandlesParallelWrites()
+        {
+            ConcurrentDictionary<string, int> dictionary = new();
+            Parallel.For(
+                0,
+                1000,
+                _ => dictionary.AddOrUpdate("counter", _ => 1, (_, existing) => existing + 1)
+            );
+
+            Assert.IsTrue(dictionary.TryGetValue("counter", out int value));
+            Assert.AreEqual(1000, value);
+        }
+
+        [Test]
+        public void ToDictionaryThrowsOnDuplicateTupleKeys()
+        {
+            IEnumerable<(string, int)> tuples = new List<(string, int)> { ("dup", 1), ("dup", 2) };
+
+            Assert.Throws<ArgumentException>(() => tuples.ToDictionary());
         }
     }
 }
