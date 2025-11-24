@@ -94,7 +94,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
         private static T[] ConvertEnumerable(IEnumerable<T> enumerable)
         {
-            List<T> values = new List<T>();
+            List<T> values = new();
             foreach (T entry in enumerable)
             {
                 values.Add(entry);
@@ -311,7 +311,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             string attributeName
         )
         {
-            List<object> normalized = new List<object>();
+            List<object> normalized = new();
             for (int index = 0; index < values.Length; index += 1)
             {
                 object current = values[index];
@@ -337,7 +337,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
         private static object[] NormalizeArray(Array array, Type valueType, string attributeName)
         {
-            List<object> normalized = new List<object>();
+            List<object> normalized = new();
             IEnumerator enumerator = array.GetEnumerator();
             int index = 0;
             while (enumerator.MoveNext())
@@ -371,7 +371,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             string attributeName
         )
         {
-            List<object> normalized = new List<object>();
+            List<object> normalized = new();
             IEnumerator enumerator = enumerable.GetEnumerator();
             int index = 0;
             while (enumerator.MoveNext())

@@ -649,14 +649,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool[] membershipFlags
         )
         {
-            if (hull == null)
-            {
-                hull = new List<Vector2>();
-            }
-
+            hull ??= new List<Vector2>();
             hull.Clear();
             int pointCount = points?.Count ?? 0;
-            if (pointCount == 0)
+            if (pointCount == 0 || points == null)
             {
                 return hull;
             }
@@ -765,13 +761,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     SortIndicesByDistance(points, current, scratchIndices, scratchDistances);
                     if (scratchIndices.Count > 0)
                     {
-                        for (int i = 0; i < scratchIndices.Count; ++i)
+                        foreach (int index in scratchIndices)
                         {
-                            int index = scratchIndices[i];
                             if (membershipFlags != null && membershipFlags[index])
                             {
                                 continue;
                             }
+
                             hull.Add(points[index]);
                             if (membershipFlags != null && membershipFlags.Length > index)
                             {
@@ -806,14 +802,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool[] membershipFlags
         )
         {
-            if (hull == null)
-            {
-                hull = new List<FastVector3Int>();
-            }
-
+            hull ??= new List<FastVector3Int>();
             hull.Clear();
             int pointCount = points?.Count ?? 0;
-            if (pointCount == 0)
+            if (pointCount == 0 || points == null)
             {
                 return hull;
             }
@@ -928,9 +920,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     );
                     if (scratchIndices.Count > 0)
                     {
-                        for (int i = 0; i < scratchIndices.Count; ++i)
+                        foreach (int index in scratchIndices)
                         {
-                            int index = scratchIndices[i];
                             if (membershipFlags != null && membershipFlags[index])
                             {
                                 continue;
@@ -1151,18 +1142,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             foreach (FastVector3Int point in source)
             {
-                Vector2 vectorPoint = new Vector2(point.x, point.y);
+                Vector2 vectorPoint = new(point.x, point.y);
                 vectorPoints.Add(vectorPoint);
-                if (!mapping.ContainsKey(vectorPoint))
+                mapping.TryAdd(vectorPoint, point);
+
+                if (fallbackAssigned)
                 {
-                    mapping.Add(vectorPoint, point);
+                    continue;
                 }
 
-                if (!fallbackAssigned)
-                {
-                    fallbackZ = point.z;
-                    fallbackAssigned = true;
-                }
+                fallbackZ = point.z;
+                fallbackAssigned = true;
             }
         }
 
@@ -1177,12 +1167,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return new List<FastVector3Int>();
             }
 
-            List<FastVector3Int> converted = new List<FastVector3Int>(vectorHull.Count);
+            List<FastVector3Int> converted = new(vectorHull.Count);
             for (int i = 0; i < vectorHull.Count; ++i)
             {
                 Vector2 vertex = vectorHull[i];
-                FastVector3Int point;
-                if (!mapping.TryGetValue(vertex, out point))
+                if (!mapping.TryGetValue(vertex, out FastVector3Int point))
                 {
                     point = new FastVector3Int(
                         Mathf.RoundToInt(vertex.x),
@@ -1268,9 +1257,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     out Dictionary<Vector2, FastVector3Int> mapping
                 );
 
-            int fallbackZ;
-            PopulateVectorBuffers(positions, vectorPoints, mapping, out fallbackZ);
-
+            PopulateVectorBuffers(positions, vectorPoints, mapping, out int fallbackZ);
             List<Vector2> vectorHull = vectorPoints.BuildConcaveHull(options);
             return ConvertVector2HullToFastVector3(vectorHull, mapping, fallbackZ);
         }
@@ -1291,9 +1278,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int nearestNeighbors = 3
         )
         {
-            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
+            ConcaveHullOptions options = new()
             {
-                Strategy = UnityExtensions.ConcaveHullStrategy.Knn,
+                Strategy = ConcaveHullStrategy.Knn,
                 NearestNeighbors = Math.Max(3, nearestNeighbors),
             };
             return positions.BuildConcaveHull(options);
@@ -1317,9 +1304,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             float angleThreshold = 90f
         )
         {
-            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
+            ConcaveHullOptions options = new()
             {
-                Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                Strategy = ConcaveHullStrategy.EdgeSplit,
                 BucketSize = Math.Max(1, bucketSize),
                 AngleThreshold = angleThreshold,
             };
@@ -1351,11 +1338,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             bool allColinear = true;
             for (int i = 1; i < points.Count - 1; ++i)
             {
-                if (!AreApproximatelyColinear(start, points[^1], points[i]))
+                if (AreApproximatelyColinear(start, points[^1], points[i]))
                 {
-                    allColinear = false;
-                    break;
+                    continue;
                 }
+
+                allColinear = false;
+                break;
             }
             if (allColinear)
             {
@@ -1365,9 +1354,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
                 Vector2 min = start;
                 Vector2 max = start;
-                for (int i = 0; i < points.Count; ++i)
+                foreach (Vector2 w in points)
                 {
-                    Vector2 w = points[i];
                     if (w.x < min.x || (Mathf.Approximately(w.x, min.x) && w.y < min.y))
                     {
                         min = w;
@@ -2212,8 +2200,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     out Dictionary<Vector2, FastVector3Int> mapping
                 );
 
-            int fallbackZ;
-            PopulateVectorBuffers(pointsSet, vectorPoints, mapping, out fallbackZ);
+            PopulateVectorBuffers(pointsSet, vectorPoints, mapping, out int fallbackZ);
 
             List<Vector2> vectorHull = BuildConvexHull(vectorPoints, includeColinearPoints);
             return ConvertVector2HullToFastVector3(vectorHull, mapping, fallbackZ);
@@ -2782,8 +2769,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     out Dictionary<Vector2, FastVector3Int> mapping
                 );
 
-            int fallbackZ;
-            PopulateVectorBuffers(pointsSet, vectorPoints, mapping, out fallbackZ);
+            PopulateVectorBuffers(pointsSet, vectorPoints, mapping, out int fallbackZ);
 
             using PooledResource<List<Vector2>> hullResource = Buffers<Vector2>.List.Get(
                 out List<Vector2> hullBuffer

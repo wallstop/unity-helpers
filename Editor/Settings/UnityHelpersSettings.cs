@@ -1664,10 +1664,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 )
             )
             {
-                if (!wbuttonCustomColors.ContainsKey(WButtonLegacyColorKey))
-                {
-                    wbuttonCustomColors[WButtonLegacyColorKey] = legacyDefault;
-                }
+                wbuttonCustomColors.TryAdd(WButtonLegacyColorKey, legacyDefault);
                 wbuttonCustomColors.Remove(DefaultWButtonColorKey);
                 changed = true;
             }
@@ -1832,10 +1829,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 )
             )
             {
-                if (!wgroupCustomColors.ContainsKey(WGroupLegacyColorKey))
-                {
-                    wgroupCustomColors[WGroupLegacyColorKey] = legacyDefault;
-                }
+                wgroupCustomColors.TryAdd(WGroupLegacyColorKey, legacyDefault);
                 wgroupCustomColors.Remove(DefaultWGroupColorKey);
                 changed = true;
             }
