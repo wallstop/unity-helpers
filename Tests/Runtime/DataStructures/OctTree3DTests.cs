@@ -154,6 +154,45 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void GetElementsInRangeFullyContainedNodeOutsideMinimumReturnsAll()
+        {
+            List<Vector3> cluster = new();
+            Vector3 center = new Vector3(25f, -10f, 5f);
+            for (int i = 0; i < 24; ++i)
+            {
+                float offset = i * 0.1f;
+                cluster.Add(center + new Vector3(offset, -offset * 0.5f, offset * 0.25f));
+            }
+
+            OctTree3D<Vector3> tree = CreateTree(cluster);
+            List<Vector3> results = new();
+
+            tree.GetElementsInRange(Vector3.zero, 200f, results, minimumRange: 5f);
+
+            CollectionAssert.AreEquivalent(cluster, results);
+        }
+
+        [Test]
+        public void GetElementsInRangeFullyContainedNodeIntersectingMinimumFiltersPoints()
+        {
+            List<Vector3> points = new()
+            {
+                new Vector3(0.5f, 0f, 0f),
+                new Vector3(1.5f, 0.5f, 0f),
+                new Vector3(3f, 0f, 0f),
+                new Vector3(6f, 0f, 0f),
+            };
+
+            OctTree3D<Vector3> tree = CreateTree(points);
+            List<Vector3> results = new();
+
+            tree.GetElementsInRange(Vector3.zero, 10f, results, minimumRange: 2f);
+
+            Vector3[] expected = { points[2], points[3] };
+            CollectionAssert.AreEquivalent(expected, results);
+        }
+
+        [Test]
         public void GetElementsInBoundsReturnsIntersectingPoints()
         {
             List<Vector3> points = new()
@@ -346,6 +385,22 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             tree.GetElementsInRange(Vector3.zero, float.MaxValue / 2f, results);
             Assert.AreEqual(points.Count, results.Count);
+        }
+
+        [Test]
+        public void BucketSizeLessThanOneIsClamped()
+        {
+            List<Vector3> points = new();
+            for (int i = 0; i < 64; ++i)
+            {
+                points.Add(new Vector3(i, i * 0.5f, -i));
+            }
+
+            OctTree3D<Vector3> tree = new(points, point => point, bucketSize: 0);
+
+            List<Vector3> results = new();
+            tree.GetElementsInRange(Vector3.zero, 500f, results);
+            CollectionAssert.AreEquivalent(points, results);
         }
     }
 }

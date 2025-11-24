@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System.Collections;
+    using System.Text.RegularExpressions;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
@@ -99,6 +100,99 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 simulatePlayMode: false,
                 RuntimeInitializeLoadType.BeforeSplashScreen,
                 CreateRuntimeEntry<AutoRuntimeSingleton>()
+            );
+
+            yield return null;
+
+            Assert.IsFalse(AutoRuntimeSingleton.HasInstance);
+            Assert.AreEqual(0, AutoRuntimeSingleton.AwakenCount);
+        }
+
+        [UnityTest]
+        public IEnumerator AutoLoaderSkipsScriptableSingletonsWhenNotPlaying()
+        {
+            SingletonAutoLoader.ExecuteEntriesForTests(
+                simulatePlayMode: false,
+                RuntimeInitializeLoadType.BeforeSplashScreen,
+                CreateScriptableEntry<AutoScriptableSingleton>()
+            );
+
+            yield return null;
+
+            Assert.IsFalse(AutoScriptableSingleton.HasInstance);
+            Assert.AreEqual(0, AutoScriptableSingleton.CreatedCount);
+        }
+
+        [UnityTest]
+        public IEnumerator AutoLoaderLogsWarningWhenTypeCannotBeResolved()
+        {
+            LogAssert.Expect(
+                LogType.Warning,
+                new Regex("Unable to resolve type", RegexOptions.IgnoreCase)
+            );
+
+            SingletonAutoLoader.ExecuteEntriesForTests(
+                simulatePlayMode: true,
+                RuntimeInitializeLoadType.BeforeSplashScreen,
+                new AttributeMetadataCache.AutoLoadSingletonEntry(
+                    "Missing.Type, UnknownAssembly",
+                    SingletonAutoLoadKind.Runtime,
+                    RuntimeInitializeLoadType.BeforeSplashScreen
+                )
+            );
+
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator AutoLoaderWarnsWhenRuntimeEntryTargetsScriptableSingleton()
+        {
+            LogAssert.Expect(
+                LogType.Warning,
+                new Regex("does not derive from RuntimeSingleton", RegexOptions.IgnoreCase)
+            );
+
+            SingletonAutoLoader.ExecuteEntriesForTests(
+                simulatePlayMode: true,
+                RuntimeInitializeLoadType.BeforeSplashScreen,
+                CreateRuntimeEntry<AutoScriptableSingleton>()
+            );
+
+            yield return null;
+
+            Assert.IsFalse(AutoScriptableSingleton.HasInstance);
+        }
+
+        [UnityTest]
+        public IEnumerator AutoLoaderWarnsWhenScriptableEntryTargetsRuntimeSingleton()
+        {
+            LogAssert.Expect(
+                LogType.Warning,
+                new Regex("does not derive from ScriptableObjectSingleton", RegexOptions.IgnoreCase)
+            );
+
+            SingletonAutoLoader.ExecuteEntriesForTests(
+                simulatePlayMode: true,
+                RuntimeInitializeLoadType.BeforeSplashScreen,
+                CreateScriptableEntry<AutoRuntimeSingleton>()
+            );
+
+            yield return null;
+
+            Assert.IsFalse(AutoRuntimeSingleton.HasInstance);
+        }
+
+        [UnityTest]
+        public IEnumerator AutoLoaderSkipsEntriesWithDifferentLoadType()
+        {
+            SingletonAutoLoader.ExecuteEntriesForTests(
+                simulatePlayMode: true,
+                RuntimeInitializeLoadType.AfterSceneLoad,
+                new AttributeMetadataCache.AutoLoadSingletonEntry(
+                    typeof(AutoRuntimeSingleton).AssemblyQualifiedName,
+                    SingletonAutoLoadKind.Runtime,
+                    RuntimeInitializeLoadType.BeforeSplashScreen
+                )
             );
 
             yield return null;

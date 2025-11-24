@@ -107,6 +107,29 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void FromSerializedNameTrimsWhitespace()
+        {
+            string raw = $"  {typeof(List<int>).AssemblyQualifiedName}  ";
+            SerializableType wrapper = SerializableType.FromSerializedName(raw);
+
+            Assert.IsFalse(wrapper.IsEmpty);
+            Assert.AreEqual(typeof(List<int>), wrapper.Value);
+        }
+
+        [Test]
+        public void FromSerializedNameWithMissingAssemblyReturnsPlaceholder()
+        {
+            SerializableType unresolved = SerializableType.FromSerializedName(
+                "Example.MissingType, MissingAssembly"
+            );
+
+            Assert.IsTrue(unresolved.IsEmpty);
+            Assert.IsNull(unresolved.Value);
+            Assert.IsFalse(string.IsNullOrEmpty(unresolved.AssemblyQualifiedName));
+            StringAssert.Contains("MissingAssembly", unresolved.DisplayName);
+        }
+
+        [Test]
         public void DisplayNameIncludesAssemblyAndType()
         {
             SerializableType serializable = new(typeof(Dictionary<string, int>));

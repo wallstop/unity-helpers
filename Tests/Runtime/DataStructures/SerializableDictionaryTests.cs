@@ -426,6 +426,33 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void UnityObjectKeysWithNullEntriesPreserveSerializedArrays()
+        {
+            SerializableDictionary<DummyAsset, string> dictionary = new();
+
+            DummyAsset valid = ScriptableObject.CreateInstance<DummyAsset>();
+            DummyAsset[] serializedKeys = { null, valid };
+            string[] serializedValues = { "omit", "keep" };
+            dictionary._keys = serializedKeys;
+            dictionary._values = serializedValues;
+
+            string expectedMessage =
+                $"SerializableDictionary<{typeof(DummyAsset).FullName}, {typeof(string).FullName}> skipped serialized entry at index 0 because the key reference was null.";
+            LogAssert.Expect(LogType.Error, expectedMessage);
+
+            dictionary.OnAfterDeserialize();
+
+            Assert.AreEqual(1, dictionary.Count);
+            Assert.IsTrue(dictionary.ContainsKey(valid));
+            Assert.AreEqual("keep", dictionary[valid]);
+            Assert.AreSame(serializedKeys, dictionary.SerializedKeys);
+            Assert.AreSame(serializedValues, dictionary.SerializedValues);
+            Assert.IsTrue(dictionary.PreserveSerializedEntries);
+
+            ScriptableObject.DestroyImmediate(valid);
+        }
+
+        [Test]
         public void ComparerCollisionsPreserveSerializedCache()
         {
             SerializableDictionary<CaseInsensitiveDictionaryKey, string> dictionary = new();
@@ -534,6 +561,25 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void OnBeforeSerializeSkipsRebuildWhenPreservingSerializedEntries()
+        {
+            SerializableDictionary<string, string> dictionary = new();
+            string[] serializedKeys = { "dup", "dup" };
+            string[] serializedValues = { "first", "second" };
+            dictionary._keys = serializedKeys;
+            dictionary._values = serializedValues;
+
+            dictionary.OnAfterDeserialize();
+            Assert.IsTrue(dictionary.PreserveSerializedEntries);
+
+            dictionary.OnBeforeSerialize();
+
+            Assert.AreSame(serializedKeys, dictionary.SerializedKeys);
+            Assert.AreSame(serializedValues, dictionary.SerializedValues);
+            Assert.IsTrue(dictionary.PreserveSerializedEntries);
+        }
+
+        [Test]
         public void DictionaryMutationsClearPreservedSerializedEntries()
         {
             SerializableDictionary<int, string> dictionary = new();
@@ -568,6 +614,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
         [Serializable]
         private sealed class IntCache : SerializableDictionary.Cache<int> { }
+
+        private sealed class DummyAsset : ScriptableObject { }
 
         private sealed class CaseInsensitiveDictionaryKey : IEquatable<CaseInsensitiveDictionaryKey>
         {

@@ -371,6 +371,53 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(3, producerCalls);
         }
 
+        [UnityTest]
+        public IEnumerator ResetAfterJitterDoesNotReapplyJitter()
+        {
+            int producerCalls = 0;
+            TimedCache<int> cache = new(() => ++producerCalls, 0.05f, useJitter: true);
+
+            _ = cache.Value;
+            Assert.AreEqual(1, producerCalls);
+
+            // Wait long enough to cover initial jitter range.
+            yield return new WaitForSeconds(0.12f);
+            _ = cache.Value;
+            Assert.AreEqual(2, producerCalls);
+
+            cache.Reset();
+
+            yield return new WaitForSeconds(0.049f);
+            _ = cache.Value;
+            Assert.AreEqual(2, producerCalls);
+
+            yield return new WaitForSeconds(0.02f);
+            _ = cache.Value;
+            Assert.AreEqual(3, producerCalls);
+        }
+
+        [UnityTest]
+        public IEnumerator ValueRefreshesExactlyWhenTtlElapsed()
+        {
+            int producerCalls = 0;
+            TimedCache<int> cache = new(() => ++producerCalls, 0.05f);
+
+            int first = cache.Value;
+            Assert.AreEqual(1, first);
+
+            // Wait just shy of the TTL — cache should still be valid.
+            yield return new WaitForSeconds(0.049f);
+            int withinWindow = cache.Value;
+            Assert.AreEqual(1, withinWindow);
+            Assert.AreEqual(1, producerCalls);
+
+            // Wait a hair past the TTL to trigger the exact HasEnoughTimePassed boundary.
+            yield return new WaitForSeconds(0.002f);
+            int afterExpiry = cache.Value;
+            Assert.AreEqual(2, afterExpiry);
+            Assert.AreEqual(2, producerCalls);
+        }
+
         [Test]
         public void ProducerCalledExactlyOncePerRefresh()
         {

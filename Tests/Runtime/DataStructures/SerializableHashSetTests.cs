@@ -155,6 +155,44 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void UnityObjectEntriesWithNullPreserveSerializedCache()
+        {
+            SerializableHashSet<DummyAsset> set = new();
+            DummyAsset valid = Track(ScriptableObject.CreateInstance<DummyAsset>());
+            DummyAsset[] serializedItems = { null, valid };
+            set._items = serializedItems;
+
+            string expectedMessage =
+                $"SerializableSet<{typeof(DummyAsset).FullName}> skipped serialized entry at index 0 because the value reference was null.";
+            LogAssert.Expect(LogType.Error, expectedMessage);
+
+            set.OnAfterDeserialize();
+
+            Assert.AreEqual(1, set.Count);
+            Assert.IsTrue(set.Contains(valid));
+            Assert.AreSame(serializedItems, set.SerializedItems);
+            Assert.IsTrue(set.PreserveSerializedEntries);
+
+            ScriptableObject.DestroyImmediate(valid);
+        }
+
+        [Test]
+        public void EditorAfterDeserializeSuppressesWarnings()
+        {
+            SerializableHashSet<DummyAsset> set = new();
+            DummyAsset[] serializedItems = { null };
+            set._items = serializedItems;
+
+            ISerializableSetEditorSync editorSync = set;
+            editorSync.EditorAfterDeserialize();
+
+            Assert.AreEqual(0, set.Count);
+            Assert.AreSame(serializedItems, set.SerializedItems);
+            Assert.IsTrue(set.PreserveSerializedEntries);
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
         public void ProtoSerializationRoundTripsValues()
         {
             SerializableHashSet<int> original = new(new[] { 1, 3, 5 });
@@ -216,6 +254,91 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(set.Contains(5));
             Assert.IsTrue(set.Contains(10));
             Assert.IsTrue(set.Contains(15));
+        }
+
+        [Test]
+        public void InspectorSnapshotWithoutPreserveClearsCache()
+        {
+            SerializableHashSet<int> set = new();
+            ISerializableSetInspector inspector = set;
+            int[] snapshot = { 7, 14 };
+
+            inspector.SetSerializedItemsSnapshot(snapshot, preserveSerializedEntries: false);
+            set.OnAfterDeserialize();
+
+            Assert.AreEqual(2, set.Count);
+            Assert.IsFalse(set.PreserveSerializedEntries);
+            Assert.IsNull(
+                set.SerializedItems,
+                "Serialized cache should be released when preservation not requested."
+            );
+            Assert.IsTrue(set.Contains(7));
+            Assert.IsTrue(set.Contains(14));
+        }
+
+        [Test]
+        public void InspectorTryAddElementConvertsStrings()
+        {
+            SerializableHashSet<int> set = new();
+            ISerializableSetInspector inspector = set;
+
+            Assert.IsTrue(inspector.TryAddElement("42", out object normalized));
+            Assert.AreEqual(42, normalized);
+            Assert.IsTrue(set.Contains(42));
+
+            Assert.IsFalse(
+                inspector.TryAddElement("42", out normalized),
+                "Duplicate entries should not be added via inspector."
+            );
+        }
+
+        [Test]
+        public void InspectorSynchronizeSerializedStateRebuildsSnapshot()
+        {
+            SerializableHashSet<int> set = new() { 3, 6 };
+            ISerializableSetInspector inspector = set;
+
+            inspector.SynchronizeSerializedState();
+
+            Array snapshot = inspector.GetSerializedItemsSnapshot();
+            CollectionAssert.AreEquivalent(new[] { 3, 6 }, snapshot);
+            Assert.IsFalse(set.PreserveSerializedEntries);
+        }
+
+        [Test]
+        public void InspectorRemoveElementClearsSerializedItems()
+        {
+            SerializableHashSet<int> set = new(new[] { 10 });
+            set.OnBeforeSerialize();
+            ISerializableSetInspector inspector = set;
+
+            Assert.IsTrue(inspector.RemoveElement(10));
+            Assert.AreEqual(0, set.Count);
+            Assert.IsNull(set.SerializedItems);
+            Assert.IsFalse(set.PreserveSerializedEntries);
+        }
+
+        [Test]
+        public void InspectorClearElementsEmptiesSet()
+        {
+            SerializableHashSet<int> set = new(new[] { 1, 2, 3 });
+            ISerializableSetInspector inspector = set;
+
+            inspector.ClearElements();
+
+            Assert.AreEqual(0, set.Count);
+            Assert.IsNull(set.SerializedItems);
+            Assert.IsFalse(set.PreserveSerializedEntries);
+        }
+
+        [Test]
+        public void InspectorTryAddElementRejectsNullForValueTypes()
+        {
+            SerializableHashSet<int> set = new();
+            ISerializableSetInspector inspector = set;
+
+            Assert.IsFalse(inspector.TryAddElement(null, out object _));
+            Assert.AreEqual(0, set.Count);
         }
 
         [Test]
@@ -282,6 +405,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 return Identifier.GetHashCode(StringComparison.Ordinal);
             }
         }
+
+        private sealed class DummyAsset : ScriptableObject { }
 
         [Test]
         public void EnumeratorIsValueTypeAndSupportsForEach()

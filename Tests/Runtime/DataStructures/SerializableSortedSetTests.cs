@@ -131,6 +131,26 @@
         }
 
         [Test]
+        public void CustomComparerDuplicatesPreserveSerializedItems()
+        {
+            SerializableSortedSet<CaseInsensitiveString> set = new();
+            CaseInsensitiveString[] serializedItems = { new("ALPHA"), new("alpha"), new("bravo") };
+            set._items = serializedItems;
+
+            set.OnAfterDeserialize();
+
+            Assert.AreEqual(2, set.Count);
+            Assert.IsTrue(set.Contains(new CaseInsensitiveString("alpha")));
+            Assert.IsTrue(set.Contains(new CaseInsensitiveString("BRAVO")));
+            Assert.AreSame(
+                serializedItems,
+                set.SerializedItems,
+                "Comparer-driven duplicates must keep serialized cache."
+            );
+            Assert.IsTrue(set.PreserveSerializedEntries);
+        }
+
+        [Test]
         public void NullSerializedItemsResetStateDuringDeserialization()
         {
             SerializableHashSet<string> set = new() { "alpha" };
@@ -168,6 +188,21 @@
         }
 
         [Test]
+        public void EditorAfterDeserializeSuppressesNullWarnings()
+        {
+            SerializableSortedSet<ScriptableSample> set = new();
+            set._items = new ScriptableSample[] { null };
+
+            ISerializableSetEditorSync editorSync = set;
+            editorSync.EditorAfterDeserialize();
+
+            Assert.AreEqual(0, set.Count);
+            Assert.AreSame(set._items, set.SerializedItems);
+            Assert.IsTrue(set.PreserveSerializedEntries);
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
         public void UnityDeserializationRestoresSortOrderFromUnsortedSerializedItems()
         {
             SerializableSortedSet<string> set = new();
@@ -187,6 +222,52 @@
                 set._items,
                 "Serialized cache should be released when no null entries or duplicates remain."
             );
+        }
+
+        [Test]
+        public void InspectorSnapshotWithDuplicatesPreservesCache()
+        {
+            SerializableSortedSet<int> set = new();
+            ISerializableSetInspector inspector = set;
+            int[] snapshot = { 2, 2, 3 };
+
+            inspector.SetSerializedItemsSnapshot(snapshot, preserveSerializedEntries: true);
+            set.OnAfterDeserialize();
+
+            Assert.AreEqual(2, set.Count);
+            Assert.IsTrue(set.Contains(2));
+            Assert.IsTrue(set.Contains(3));
+            CollectionAssert.AreEqual(snapshot, set.SerializedItems);
+            Assert.IsTrue(set.PreserveSerializedEntries);
+        }
+
+        [Test]
+        public void InspectorSnapshotWithoutPreserveClearsCache()
+        {
+            SerializableSortedSet<int> set = new();
+            ISerializableSetInspector inspector = set;
+            int[] snapshot = { 4, 5 };
+
+            inspector.SetSerializedItemsSnapshot(snapshot, preserveSerializedEntries: false);
+            set.OnAfterDeserialize();
+
+            Assert.AreEqual(2, set.Count);
+            Assert.IsFalse(set.PreserveSerializedEntries);
+            Assert.IsNull(set.SerializedItems);
+            CollectionAssert.AreEquivalent(snapshot, set.ToArray());
+        }
+
+        [Test]
+        public void InspectorSynchronizeSerializedStateStoresOrderedSnapshot()
+        {
+            SerializableSortedSet<int> set = new() { 5, 1, 3 };
+            ISerializableSetInspector inspector = set;
+
+            inspector.SynchronizeSerializedState();
+
+            Array snapshot = inspector.GetSerializedItemsSnapshot();
+            CollectionAssert.AreEqual(new[] { 1, 3, 5 }, snapshot);
+            Assert.IsFalse(set.PreserveSerializedEntries);
         }
 
         [Test]
@@ -441,6 +522,58 @@
 
             string[] expected = { "alpha", "bravo", "charlie" };
             CollectionAssert.AreEqual(expected, roundTrip.ToArray());
+        }
+
+        private sealed class CaseInsensitiveString : IComparable<CaseInsensitiveString>, IComparable
+        {
+            public CaseInsensitiveString(string value)
+            {
+                Value = value;
+            }
+
+            public string Value { get; }
+
+            public int CompareTo(CaseInsensitiveString other)
+            {
+                return other == null
+                    ? 1
+                    : string.Compare(Value, other.Value, StringComparison.OrdinalIgnoreCase);
+            }
+
+            int IComparable.CompareTo(object obj)
+            {
+                if (ReferenceEquals(this, obj))
+                {
+                    return 0;
+                }
+
+                if (obj is CaseInsensitiveString candidate)
+                {
+                    return CompareTo(candidate);
+                }
+
+                return 1;
+            }
+
+            public override bool Equals(object obj)
+            {
+                if (obj is CaseInsensitiveString other)
+                {
+                    return string.Equals(Value, other.Value, StringComparison.OrdinalIgnoreCase);
+                }
+
+                return false;
+            }
+
+            public override int GetHashCode()
+            {
+                return Value == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(Value);
+            }
+
+            public override string ToString()
+            {
+                return Value ?? string.Empty;
+            }
         }
     }
 }

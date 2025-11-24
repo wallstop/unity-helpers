@@ -64,7 +64,12 @@ namespace WallstopStudios.UnityHelpers.Utils
                 return;
             }
 
-            LazyInstance.Value.Destroy();
+            T value = LazyInstance.Value;
+            if (value != null)
+            {
+                value.Destroy();
+            }
+
             LazyInstance = CreateLazy();
         }
 

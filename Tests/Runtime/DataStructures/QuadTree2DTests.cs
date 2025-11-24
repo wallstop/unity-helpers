@@ -76,6 +76,80 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void EntryConstructorRespectsProvidedBounds()
+        {
+            List<QuadTree2D<Vector2>.Entry> entries = new()
+            {
+                new QuadTree2D<Vector2>.Entry(new Vector2(1, 1), new Vector2(1, 1)),
+                new QuadTree2D<Vector2>.Entry(new Vector2(2, 2), new Vector2(2, 2)),
+                new QuadTree2D<Vector2>.Entry(new Vector2(3, 3), new Vector2(3, 3)),
+            };
+            Bounds boundary = new(new Vector3(5, 5, 0), new Vector3(10, 10, 1));
+
+            QuadTree2D<Vector2> tree = new(entries, boundary);
+
+            Assert.AreEqual(boundary.center, tree.Boundary.center);
+            Assert.AreEqual(boundary.size, tree.Boundary.size);
+
+            List<Vector2> results = new();
+            tree.GetElementsInBounds(boundary, results);
+
+            List<Vector2> expected = entries.Select(entry => entry.value).ToList();
+            CollectionAssert.AreEquivalent(expected, results);
+        }
+
+        [Test]
+        public void EntryConstructorWithEmptyEntriesUsesProvidedBounds()
+        {
+            Bounds boundary = new(new Vector3(2, 3, 0), new Vector3(4, 6, 1));
+            QuadTree2D<Vector2>.Entry[] entries = Array.Empty<QuadTree2D<Vector2>.Entry>();
+
+            QuadTree2D<Vector2> tree = new(entries, boundary);
+
+            Assert.AreEqual(boundary.center, tree.Boundary.center);
+            Assert.AreEqual(boundary.size, tree.Boundary.size);
+
+            List<Vector2> results = new();
+            tree.GetElementsInBounds(boundary, results);
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [Test]
+        public void BucketSizeLessThanOneIsClamped()
+        {
+            List<Vector2> points = new();
+            for (int i = 0; i < 32; i++)
+            {
+                points.Add(new Vector2(i, -i));
+            }
+
+            QuadTree2D<Vector2> tree = new(points, _ => _, bucketSize: 0);
+
+            List<Vector2> results = new();
+            tree.GetElementsInRange(Vector2.zero, 1000f, results);
+
+            CollectionAssert.AreEquivalent(points, results);
+        }
+
+        [Test]
+        public void EntryConstructorBucketSizeLessThanOneIsClamped()
+        {
+            List<QuadTree2D<Vector2>.Entry> entries = new()
+            {
+                new QuadTree2D<Vector2>.Entry(new Vector2(-5, -5), new Vector2(-5, -5)),
+                new QuadTree2D<Vector2>.Entry(new Vector2(5, 5), new Vector2(5, 5)),
+                new QuadTree2D<Vector2>.Entry(new Vector2(10, -10), new Vector2(10, -10)),
+            };
+
+            QuadTree2D<Vector2> tree = new(entries, bucketSize: 0);
+
+            List<Vector2> results = new();
+            tree.GetElementsInRange(Vector2.zero, 1000f, results);
+            List<Vector2> expected = entries.Select(entry => entry.value).ToList();
+            CollectionAssert.AreEquivalent(expected, results);
+        }
+
+        [Test]
         public void GetElementsInRangeWithEmptyTreeReturnsEmptyAdditional()
         {
             List<Vector2> points = new();

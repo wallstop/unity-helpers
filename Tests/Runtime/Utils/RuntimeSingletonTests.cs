@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using System.Threading.Tasks;
     using NUnit.Framework;
     using UnityEngine;
+    using UnityEngine.SceneManagement;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Utils;
@@ -652,6 +653,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             Assert.IsTrue(instance.transform.parent == null);
+        }
+
+        [UnityTest]
+        public IEnumerator PreservableSingletonLivesInDontDestroyScene()
+        {
+            PreservableSingleton instance = PreservableSingleton.Instance;
+            Track(instance.gameObject);
+
+            yield return null;
+
+            Assert.AreEqual("DontDestroyOnLoad", instance.gameObject.scene.name);
+        }
+
+        [UnityTest]
+        public IEnumerator NonPreservableSingletonRemainsInActiveScene()
+        {
+            Scene activeScene = SceneManager.GetActiveScene();
+            NonPreservableSingleton instance = NonPreservableSingleton.Instance;
+            Track(instance.gameObject);
+
+            yield return null;
+
+            Assert.AreEqual(activeScene, instance.gameObject.scene);
         }
 
         [Test]

@@ -24,6 +24,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
         internal static bool IncludeTestAssemblies { get; set; }
 
+        // Optional hook so tests can restrict the candidate singleton types that auto-creation processes.
+        internal static Func<Type, bool> TypeFilter { get; set; }
+
         static ScriptableObjectSingletonCreator()
         {
             EnsureSingletonAssets();
@@ -57,6 +60,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     if (
                         !t.IsGenericType
                         && (IncludeTestAssemblies || !TestAssemblyHelper.IsTestType(t))
+                        && (TypeFilter == null || TypeFilter(t))
                     )
                     {
                         allCandidates.Add(t);

@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
@@ -55,6 +56,96 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             Assert.AreEqual(expectedKeys.Length, index);
+        }
+
+        [Test]
+        public void CopyFromClearsPreservedSerializedArrays()
+        {
+            SerializableSortedDictionary<string, string> dictionary = new();
+            string[] duplicateKeys = { "dup", "dup" };
+            string[] duplicateValues = { "first", "second" };
+            dictionary._keys = duplicateKeys;
+            dictionary._values = duplicateValues;
+
+            dictionary.OnAfterDeserialize();
+            Assert.IsTrue(
+                dictionary.PreserveSerializedEntries,
+                "Duplicate serialized data should set preserve flag."
+            );
+
+            Dictionary<string, string> source = new() { { "alpha", "1" }, { "bravo", "2" } };
+
+            dictionary.CopyFrom(source);
+
+            Assert.IsFalse(
+                dictionary.PreserveSerializedEntries,
+                "CopyFrom should reset preserve flag for clean data."
+            );
+            Assert.IsNull(dictionary.SerializedKeys);
+            Assert.IsNull(dictionary.SerializedValues);
+            CollectionAssert.AreEqual(source.Keys, dictionary.Select(pair => pair.Key));
+        }
+
+        [Test]
+        public void CopyFromRespectsCustomComparerOrdering()
+        {
+            SerializableSortedDictionary<CaseInsensitiveKey, int> dictionary = new();
+            Dictionary<CaseInsensitiveKey, int> source = new()
+            {
+                { new("bravo"), 2 },
+                { new("Alpha"), 1 },
+                { new("charlie"), 3 },
+            };
+
+            dictionary.CopyFrom(source);
+
+            CaseInsensitiveKey[] expectedOrder = { new("Alpha"), new("bravo"), new("charlie") };
+            int index = 0;
+            foreach (KeyValuePair<CaseInsensitiveKey, int> pair in dictionary)
+            {
+                Assert.AreEqual(expectedOrder[index].Token, pair.Key.Token);
+                index++;
+            }
+
+            Assert.AreEqual(expectedOrder.Length, index);
+            Assert.AreEqual(1, dictionary[new("alpha")]);
+            Assert.IsTrue(dictionary.ContainsKey(new("CHARLIE")));
+        }
+
+        [Test]
+        public void InspectorSnapshotWithoutPreserveClearsSerializedArrays()
+        {
+            SerializableSortedDictionary<string, string> dictionary = new();
+            string[] serializedKeys = { "alpha", "bravo" };
+            string[] serializedValues = { "1", "2" };
+            dictionary._keys = serializedKeys;
+            dictionary._values = serializedValues;
+
+            dictionary.OnAfterDeserialize();
+
+            Assert.AreEqual(2, dictionary.Count);
+            Assert.IsFalse(dictionary.PreserveSerializedEntries);
+            Assert.IsNull(dictionary.SerializedKeys);
+            Assert.IsNull(dictionary.SerializedValues);
+        }
+
+        [Test]
+        public void OnBeforeSerializeSkipsRebuildWhenPreservingSerializedEntries()
+        {
+            SerializableSortedDictionary<string, string> dictionary = new();
+            string[] serializedKeys = { "dup", "dup" };
+            string[] serializedValues = { "old", "new" };
+            dictionary._keys = serializedKeys;
+            dictionary._values = serializedValues;
+
+            dictionary.OnAfterDeserialize();
+            Assert.IsTrue(dictionary.PreserveSerializedEntries);
+
+            dictionary.OnBeforeSerialize();
+
+            Assert.AreSame(serializedKeys, dictionary.SerializedKeys);
+            Assert.AreSame(serializedValues, dictionary.SerializedValues);
+            Assert.IsTrue(dictionary.PreserveSerializedEntries);
         }
 
         [Test]

@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
@@ -233,6 +234,28 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void RemoveUsesCustomComparerAtCellBoundary()
+        {
+            SpatialHash2D<string> hash = new(1.0f, StringComparer.OrdinalIgnoreCase);
+            Vector2 boundaryPosition = new(2f, -1f); // Lies exactly on a cell edge
+
+            hash.Insert(boundaryPosition, "Player");
+            Assert.AreEqual(1, hash.CellCount);
+
+            bool removed = hash.Remove(boundaryPosition, "player");
+
+            Assert.IsTrue(
+                removed,
+                "Case-insensitive comparer should allow removal of differently-cased values."
+            );
+            Assert.AreEqual(0, hash.CellCount, "Removing last entry in cell should shrink grid.");
+
+            List<string> results = new();
+            hash.Query(boundaryPosition, 0.25f, results);
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [Test]
         public void RemoveNullItemWorks()
         {
             SpatialHash2D<string> hash = new(1.0f);
@@ -252,6 +275,17 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             hash.Insert(new Vector3(0.5f, 0.5f, 0.5f), "a");
 
             Assert.IsTrue(hash.Remove(new Vector3(0.5f, 0.5f, 0.5f), "a"));
+            Assert.AreEqual(0, hash.CellCount);
+        }
+
+        [Test]
+        public void Remove3DUsesCustomComparerAtCellBoundary()
+        {
+            SpatialHash3D<string> hash = new(1.0f, StringComparer.OrdinalIgnoreCase);
+            Vector3 boundary = new(2f, -3f, 4f);
+
+            hash.Insert(boundary, "Enemy");
+            Assert.IsTrue(hash.Remove(boundary, "enemy"));
             Assert.AreEqual(0, hash.CellCount);
         }
 
@@ -313,6 +347,79 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             hash.Query(new Vector2(0, 0), 1000.0f, results);
 
             Assert.AreEqual(3, results.Count);
+        }
+
+        [Test]
+        public void QueryCoarseModeReturnsSupersetAndDeduplicates()
+        {
+            SpatialHash2D<string> hash = new(1.0f);
+            hash.Insert(Vector2.zero, "origin");
+            hash.Insert(new Vector2(0.9f, 0f), "close");
+            hash.Insert(new Vector2(1.8f, 0f), "far");
+            hash.Insert(new Vector2(1.8f, 0.1f), "far");
+
+            List<string> exactResults = new();
+            List<string> coarseResults = new();
+
+            hash.Query(Vector2.zero, 1.0f, exactResults, distinct: true, exactDistance: true);
+            hash.Query(Vector2.zero, 1.0f, coarseResults, distinct: true, exactDistance: false);
+
+            CollectionAssert.IsSubsetOf(exactResults, coarseResults);
+            Assert.IsFalse(exactResults.Contains("far"));
+            Assert.IsTrue(coarseResults.Contains("far"));
+
+            int farCount = 0;
+            foreach (string entry in coarseResults)
+            {
+                if (entry == "far")
+                {
+                    farCount++;
+                }
+            }
+
+            Assert.AreEqual(
+                1,
+                farCount,
+                "Distinct coarse query should deduplicate identical entries."
+            );
+        }
+
+        [Test]
+        public void QueryCoarseModeWithoutDistinctKeepsDuplicates()
+        {
+            SpatialHash3D<int> hash = new(1.0f);
+            hash.Insert(Vector3.zero, 0);
+            hash.Insert(new Vector3(1.9f, 0f, 0f), 1);
+            hash.Insert(new Vector3(1.9f, 0.2f, 0f), 1);
+            hash.Insert(new Vector3(-1.9f, 0f, 0f), 2);
+
+            List<int> exactResults = new();
+            List<int> coarseResults = new();
+
+            hash.Query(Vector3.zero, 1.0f, exactResults, distinct: false, exactDistance: true);
+            hash.Query(Vector3.zero, 1.0f, coarseResults, distinct: false, exactDistance: false);
+
+            Assert.AreEqual(
+                1,
+                exactResults.Count,
+                "Exact distance query should only include the origin entry."
+            );
+            Assert.AreEqual(
+                4,
+                coarseResults.Count,
+                "Coarse query should include all entries from intersecting cells."
+            );
+
+            int duplicateOnes = 0;
+            foreach (int entry in coarseResults)
+            {
+                if (entry == 1)
+                {
+                    duplicateOnes++;
+                }
+            }
+
+            Assert.AreEqual(2, duplicateOnes, "Non-distinct coarse query should keep duplicates.");
         }
 
         [Test]
@@ -517,6 +624,26 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void QueryRectDistinctAndNonDistinctModesYieldExpectedCounts()
+        {
+            SpatialHash2D<string> hash = new(1.0f);
+            hash.Insert(new Vector2(0.25f, 0.25f), "dup");
+            hash.Insert(new Vector2(0.9f, 0.9f), "dup");
+            hash.Insert(new Vector2(0.5f, 0.5f), "unique");
+
+            Rect rect = Rect.MinMaxRect(0, 0, 1.2f, 1.2f);
+
+            List<string> distinctResults = new();
+            hash.QueryRect(rect, distinctResults, distinct: true);
+            CollectionAssert.AreEquivalent(new[] { "dup", "unique" }, distinctResults);
+
+            List<string> duplicates = new();
+            hash.QueryRect(rect, duplicates, distinct: false);
+            Assert.AreEqual(3, duplicates.Count);
+            Assert.AreEqual(2, duplicates.Count(token => token == "dup"));
+        }
+
+        [Test]
         public void QueryRectReturnsListForChaining()
         {
             SpatialHash2D<string> hash = new(1.0f);
@@ -542,6 +669,39 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(2, results.Count);
             CollectionAssert.Contains(results, "a");
             CollectionAssert.Contains(results, "b");
+        }
+
+        [Test]
+        public void QueryBox3DIncludesBoundaryPoints()
+        {
+            SpatialHash3D<string> hash = new(1.0f);
+            hash.Insert(new Vector3(1f, 1f, 1f), "edge");
+
+            Bounds bounds = new(new Vector3(0.5f, 0.5f, 0.5f), new Vector3(1f, 1f, 1f));
+            List<string> results = new();
+            hash.QueryBox(bounds, results);
+
+            CollectionAssert.Contains(results, "edge");
+        }
+
+        [Test]
+        public void QueryBox3DDistinctVersusNonDistinct()
+        {
+            SpatialHash3D<string> hash = new(1.0f);
+            hash.Insert(new Vector3(0.25f, 0.25f, 0.25f), "alpha");
+            hash.Insert(new Vector3(0.9f, 0.9f, 0.9f), "alpha");
+            hash.Insert(new Vector3(0.5f, 0.5f, 0.2f), "beta");
+
+            Bounds bounds = new(new Vector3(0.5f, 0.5f, 0.5f), new Vector3(1.2f, 1.2f, 1.2f));
+
+            List<string> distinct = new();
+            hash.QueryBox(bounds, distinct, distinct: true);
+            CollectionAssert.AreEquivalent(new[] { "alpha", "beta" }, distinct);
+
+            List<string> duplicates = new();
+            hash.QueryBox(bounds, duplicates, distinct: false);
+            Assert.AreEqual(3, duplicates.Count);
+            Assert.AreEqual(2, duplicates.Count(token => token == "alpha"));
         }
 
         [Test]

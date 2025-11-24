@@ -25,20 +25,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
-            if (!Directory.Exists(_testDirectory))
-            {
-                return;
-            }
-
             try
             {
-                Directory.Delete(_testDirectory, true);
+                if (!string.IsNullOrEmpty(_testDirectory) && Directory.Exists(_testDirectory))
+                {
+                    Directory.Delete(_testDirectory, recursive: true);
+                }
             }
             catch
             {
-                // Best effort cleanup
+                // Best effort cleanup, fall through to base teardown.
+            }
+            finally
+            {
+                base.TearDown();
             }
         }
 
