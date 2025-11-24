@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
+    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
@@ -205,6 +206,102 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             int[] subset = rng.NextSubset(new[] { 1, 2, 3 }, 1).ToArray();
             Assert.AreEqual(1, subset.Length);
             CollectionAssert.Contains(new[] { 1, 2, 3 }, subset[0]);
+        }
+
+        [Test]
+        public void NextVector2NegativeAmplitudeUsesAbsoluteRange()
+        {
+            SystemRandom rng = new(7);
+            Vector2 result = rng.NextVector2(-2f);
+
+            Assert.That(result.x, Is.InRange(-2f, 2f));
+            Assert.That(result.y, Is.InRange(-2f, 2f));
+
+            Vector3 vector3 = rng.NextVector3(-3f);
+            Assert.That(vector3.x, Is.InRange(-3f, 3f));
+            Assert.That(vector3.y, Is.InRange(-3f, 3f));
+            Assert.That(vector3.z, Is.InRange(-3f, 3f));
+        }
+
+        [Test]
+        public void NextVector2IntNegativeAmplitudeUsesAbsoluteRange()
+        {
+            SystemRandom rng = new(9);
+            Vector2Int result = rng.NextVector2Int(-3);
+
+            Assert.GreaterOrEqual(result.x, -3);
+            Assert.Less(result.x, 3);
+            Assert.GreaterOrEqual(result.y, -3);
+            Assert.Less(result.y, 3);
+        }
+
+        [Test]
+        public void NextVector3IntZeroAmplitudeReturnsZeroVector()
+        {
+            SystemRandom rng = new(11);
+            Assert.AreEqual(Vector3Int.zero, rng.NextVector3Int(0));
+        }
+
+        [Test]
+        public void NextVector2InRectZeroWidthLocksXAxis()
+        {
+            SystemRandom rng = new(13);
+            Rect rect = new(5f, 2f, 0f, 4f);
+
+            Vector2 result = rng.NextVector2InRect(rect);
+
+            Assert.AreEqual(rect.xMin, result.x);
+            Assert.That(result.y, Is.InRange(rect.yMin, rect.yMax));
+        }
+
+        [Test]
+        public void NextVector2InRectZeroAreaReturnsMinCorner()
+        {
+            SystemRandom rng = new(15);
+            Rect rect = new(-3f, 8f, 0f, 0f);
+
+            Vector2 result = rng.NextVector2InRect(rect);
+
+            Assert.AreEqual(new Vector2(rect.xMin, rect.yMin), result);
+        }
+
+        [Test]
+        public void NextVector3InBoundsZeroVolumeReturnsCenter()
+        {
+            SystemRandom rng = new(21);
+            Bounds bounds = new(new Vector3(2f, 3f, 4f), Vector3.zero);
+
+            Assert.AreEqual(bounds.center, rng.NextVector3InBounds(bounds));
+        }
+
+        [Test]
+        public void NextVector3OnSphereHandlesNegativeRadius()
+        {
+            SystemRandom rng = new(17);
+            Vector3 center = new(1.5f, -2f, 0.25f);
+            float radius = -5f;
+
+            Vector3 result = rng.NextVector3OnSphere(radius, center);
+
+            Assert.AreEqual(Mathf.Abs(radius), Vector3.Distance(center, result), 1e-3f);
+        }
+
+        [Test]
+        public void NextVector3OnSphereZeroRadiusReturnsCenter()
+        {
+            SystemRandom rng = new(19);
+            Vector3 center = new(-1f, 0.5f, 3f);
+
+            Assert.AreEqual(center, rng.NextVector3OnSphere(0f, center));
+        }
+
+        [Test]
+        public void NextVector3InSphereZeroRadiusReturnsCenter()
+        {
+            SystemRandom rng = new(23);
+            Vector3 center = new(2f, -3f, 4f);
+
+            Assert.AreEqual(center, rng.NextVector3InSphere(0f, center));
         }
     }
 }

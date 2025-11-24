@@ -902,6 +902,56 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void FastIntersects3DGapClosedByToleranceReturnsTrue()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds bounds2 = new(new Vector3(2.2f, 0f, 0f), new Vector3(2f, 2f, 2f));
+
+            Assert.IsFalse(bounds1.FastIntersects3D(bounds2));
+            Assert.IsTrue(bounds1.FastIntersects3D(bounds2, tolerance: 0.21f));
+        }
+
+        [Test]
+        public void FastIntersects3DGapClosedByToleranceOnYAxisReturnsTrue()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds bounds2 = new(new Vector3(0f, 2.25f, 0f), new Vector3(2f, 2f, 2f));
+
+            Assert.IsFalse(bounds1.FastIntersects3D(bounds2));
+            Assert.IsTrue(bounds1.FastIntersects3D(bounds2, tolerance: 0.3f));
+        }
+
+        [Test]
+        public void FastIntersects3DGapClosedByToleranceWhenOrderSwapped()
+        {
+            Bounds left = new(new Vector3(-2.3f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds right = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+
+            Assert.IsFalse(right.FastIntersects3D(left));
+            Assert.IsTrue(right.FastIntersects3D(left, tolerance: 0.35f));
+        }
+
+        [Test]
+        public void FastIntersects3DNegativeToleranceRequiresPenetration()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds bounds2 = new(new Vector3(2f, 0f, 0f), new Vector3(2f, 2f, 2f));
+
+            Assert.IsTrue(bounds1.FastIntersects3D(bounds2));
+            Assert.IsFalse(bounds1.FastIntersects3D(bounds2, tolerance: -0.05f));
+        }
+
+        [Test]
+        public void FastIntersects3DZeroVolumeWithToleranceStillFalse()
+        {
+            Bounds solid = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds flat = new(new Vector3(0f, 0f, 0f), Vector3.zero);
+
+            Assert.IsFalse(solid.FastIntersects3D(flat, tolerance: 1f));
+            Assert.IsFalse(flat.FastIntersects3D(solid, tolerance: 1f));
+        }
+
+        [Test]
         public void FastIntersects3DOnlyXOverlapsReturnsFalse()
         {
             Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
@@ -1519,6 +1569,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void FastContains3DBoundsNegativeToleranceShrinksAcceptance()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(4f, 4f, 4f));
+            Bounds inner = new(new Vector3(0f, 0f, 0f), new Vector3(4f, 4f, 4f));
+
+            Assert.IsTrue(outer.FastContains3D(inner));
+            Assert.IsFalse(outer.FastContains3D(inner, tolerance: -0.05f));
+        }
+
+        [Test]
         public void FastContains3DBoundsToleranceTooSmallRemainsFalse()
         {
             Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
@@ -1622,6 +1682,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void FastContainsHalfOpen3DPositiveToleranceAllowsMinSlack()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds inner = new(new Vector3(-0.125f, 0f, 0f), new Vector3(1.85f, 1f, 1f));
+
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner, tolerance: 0.1f));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DPositiveToleranceRequiresExtraSpaceOnMax()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds inner = new(new Vector3(0.225f, 0f, 0f), new Vector3(1.45f, 1f, 1f));
+
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner, tolerance: 0.1f));
+        }
+
+        [Test]
         public void FastContainsHalfOpen3DInnerMinBelowOuterMinReturnsFalse()
         {
             Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
@@ -1660,6 +1740,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(20f, 20f, 20f));
             Bounds inner = new(new Vector3(5f, 5f, 5f), new Vector3(15f, 15f, 10f));
             Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DNegativeToleranceAllowsMaxOvershoot()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds inner = new(new Vector3(0.26f, 0f, 0f), new Vector3(1.52f, 1f, 1f));
+
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner, tolerance: -0.05f));
         }
 
         [Test]
@@ -1735,6 +1825,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
             Bounds inner = new(new Vector3(-5.1f, 0f, 0f), new Vector3(5f, 5f, 5f));
             Assert.IsFalse(outer.FastContainsHalfOpen3D(inner));
+        }
+
+        [Test]
+        public void FastContainsHalfOpen3DNegativeToleranceShrinksMinAcceptance()
+        {
+            Bounds outer = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds inner = new(new Vector3(-0.235f, 0f, 0f), new Vector3(1.47f, 1f, 1f));
+
+            Assert.IsTrue(outer.FastContainsHalfOpen3D(inner));
+            Assert.IsFalse(outer.FastContainsHalfOpen3D(inner, tolerance: -0.05f));
         }
 
         [Test]

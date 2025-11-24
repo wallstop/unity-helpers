@@ -10,12 +10,52 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
     public sealed class ColorExtensionsTests : CommonTestBase
     {
+        private static readonly object[] NullSpriteSingleCases =
+        {
+            new object[] { ColorAveragingMethod.LAB, 0f, 0f, 0f, 1f },
+            new object[] { ColorAveragingMethod.HSV, 0f, 0f, 0f, 1f },
+            new object[] { ColorAveragingMethod.Dominant, 0f, 0f, 0f, 1f },
+            new object[] { ColorAveragingMethod.Weighted, 0f, 0f, 0f, 0f },
+        };
+
+        private static readonly object[] NullSpriteCollectionCases =
+        {
+            new object[] { ColorAveragingMethod.LAB, 0f, 0f, 0f, 1f },
+            new object[] { ColorAveragingMethod.HSV, 0f, 0f, 0f, 1f },
+            new object[] { ColorAveragingMethod.Dominant, 0f, 0f, 0f, 1f },
+            new object[] { ColorAveragingMethod.Weighted, 0f, 0f, 0f, 0f },
+        };
+
+        private static readonly object[] AllNullSpriteCases =
+        {
+            new object[] { ColorAveragingMethod.LAB, 0f, 0f, 0f, 1f },
+            new object[] { ColorAveragingMethod.HSV, 0f, 0f, 0f, 1f },
+            new object[] { ColorAveragingMethod.Dominant, 0f, 0f, 0f, 1f },
+            new object[] { ColorAveragingMethod.Weighted, 0f, 0f, 0f, 0f },
+        };
+
+        private static readonly object[] EmptyPixelCases =
+        {
+            new object[] { ColorAveragingMethod.LAB, 0f, 0f, 0f, 1f },
+            new object[] { ColorAveragingMethod.HSV, 0f, 0f, 0f, 1f },
+            new object[] { ColorAveragingMethod.Dominant, 0f, 0f, 0f, 1f },
+            new object[] { ColorAveragingMethod.Weighted, 0f, 0f, 0f, 0f },
+        };
+
         [Test]
         public void ToHexFormatsCorrectly()
         {
             Color color = new(0.1f, 0.2f, 0.3f, 0.4f);
             Assert.AreEqual("#19334C66", color.ToHex());
             Assert.AreEqual("#19334C", color.ToHex(includeAlpha: false));
+        }
+
+        [Test]
+        public void ToHexClampsOutOfRangeComponents()
+        {
+            Color color = new(1.5f, -0.25f, 2f, -1f);
+            Assert.AreEqual("#FF00FF00", color.ToHex());
+            Assert.AreEqual("#FF00FF", color.ToHex(includeAlpha: false));
         }
 
         [Test]
@@ -40,11 +80,53 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             AssertColorsApproximatelyEqual(new Color(1f, 0f, 0f, 1f), result, 1e-3f);
         }
 
-        [Test]
-        public void GetAverageColorEnumerableEmptyReturnsBlack()
+        [TestCaseSource(nameof(EmptyPixelCases))]
+        public void GetAverageColorEnumerableEmptyReturnsExpectedDefaults(
+            ColorAveragingMethod method,
+            float expectedR,
+            float expectedG,
+            float expectedB,
+            float expectedA
+        )
         {
-            Color result = Array.Empty<Color>().GetAverageColor(ColorAveragingMethod.HSV);
-            AssertColorsApproximatelyEqual(Color.black, result, 1e-5f);
+            Color expected = new(expectedR, expectedG, expectedB, expectedA);
+            Color result = Array.Empty<Color>().GetAverageColor(method);
+            AssertColorsApproximatelyEqual(expected, result, 1e-5f, method.ToString());
+        }
+
+        [TestCaseSource(nameof(EmptyPixelCases))]
+        public void GetAverageColorEnumerableAllFilteredReturnsExpectedDefaults(
+            ColorAveragingMethod method,
+            float expectedR,
+            float expectedG,
+            float expectedB,
+            float expectedA
+        )
+        {
+            List<Color> pixels = new()
+            {
+                new Color(1f, 0f, 0f, 0.001f),
+                new Color(0f, 1f, 0f, 0.001f),
+            };
+
+            Color expected = new(expectedR, expectedG, expectedB, expectedA);
+            Color result = pixels.GetAverageColor(method, alphaCutoff: 0.01f);
+            AssertColorsApproximatelyEqual(expected, result, 1e-5f, method.ToString());
+        }
+
+        [TestCaseSource(nameof(NullSpriteSingleCases))]
+        public void GetAverageColorNullSpriteReturnsExpectedDefaults(
+            ColorAveragingMethod method,
+            float expectedR,
+            float expectedG,
+            float expectedB,
+            float expectedA
+        )
+        {
+            Sprite sprite = null;
+            Color expected = new(expectedR, expectedG, expectedB, expectedA);
+            Color result = sprite.GetAverageColor(method);
+            AssertColorsApproximatelyEqual(expected, result, 1e-4f, method.ToString());
         }
 
         [Test]
@@ -85,6 +167,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Assert.Greater(result.r, result.g);
             Assert.Greater(result.r, result.b);
             Assert.Greater(result.r, 0.8f);
+            Assert.AreEqual(1f, result.a, 1e-6f);
+        }
+
+        [Test]
+        public void GetAverageColorSpriteCollectionIgnoresNullEntries()
+        {
+            Sprite sprite = CreateSprite(
+                new Color(0.2f, 0.3f, 0.4f, 1f),
+                new Color(0.2f, 0.3f, 0.4f, 1f)
+            );
+            Sprite[] sprites = { null, sprite, null };
+
+            foreach (ColorAveragingMethod method in Enum.GetValues(typeof(ColorAveragingMethod)))
+            {
+                Color expected = sprite.GetAverageColor(method);
+                Color actual = sprites.GetAverageColor(method);
+                AssertColorsApproximatelyEqual(expected, actual, 1e-4f, method.ToString());
+            }
         }
 
         [Test]
@@ -159,12 +259,34 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Assert.Greater(result.r, result.b);
         }
 
-        [Test]
-        public void GetAverageColorSpriteCollectionNullReturnsBlack()
+        [TestCaseSource(nameof(NullSpriteCollectionCases))]
+        public void GetAverageColorSpriteCollectionNullReturnsExpectedDefaults(
+            ColorAveragingMethod method,
+            float expectedR,
+            float expectedG,
+            float expectedB,
+            float expectedA
+        )
         {
             IEnumerable<Sprite> sprites = null;
-            Color result = sprites.GetAverageColor(ColorAveragingMethod.LAB);
-            AssertColorsApproximatelyEqual(Color.black, result, 1e-6f);
+            Color expected = new(expectedR, expectedG, expectedB, expectedA);
+            Color result = sprites.GetAverageColor(method);
+            AssertColorsApproximatelyEqual(expected, result, 1e-6f, method.ToString());
+        }
+
+        [TestCaseSource(nameof(AllNullSpriteCases))]
+        public void GetAverageColorSpriteCollectionAllNullReturnsExpectedDefaults(
+            ColorAveragingMethod method,
+            float expectedR,
+            float expectedG,
+            float expectedB,
+            float expectedA
+        )
+        {
+            IEnumerable<Sprite> sprites = new Sprite[] { null, null };
+            Color expected = new(expectedR, expectedG, expectedB, expectedA);
+            Color result = sprites.GetAverageColor(method);
+            AssertColorsApproximatelyEqual(expected, result, 1e-6f, method.ToString());
         }
 
         [Test]

@@ -1531,6 +1531,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void ToTitleCaseWithoutPreservingSeparatorsCollapsesDelimiters()
+        {
+            Assert.AreEqual(
+                "Hello World 123 Beta",
+                "hello_world-123__beta".ToTitleCase(preserveSeparators: false)
+            );
+            Assert.AreEqual("Foo Bar", "foo---bar".ToTitleCase(preserveSeparators: false));
+        }
+
+        [Test]
         public void ContainsIgnoreCaseNominal()
         {
             Assert.IsTrue("Hello World".ContainsIgnoreCase("hello"));

@@ -79,6 +79,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void OrthographicBoundsClampsNonPositiveDepth()
+        {
+            GameObject go = Track(new GameObject("CameraDepthClampTest", typeof(Camera)));
+
+            Camera camera = go.GetComponent<Camera>();
+            camera.orthographic = true;
+            camera.orthographicSize = 3f;
+            camera.nearClipPlane = 10f;
+            camera.farClipPlane = 5f; // invalid depth to trigger fallback
+
+            Bounds bounds = camera.OrthographicBounds();
+
+            int screenHeight = Screen.height == 0 ? 1 : Screen.height;
+            float screenAspect = (float)Screen.width / screenHeight;
+            float expectedHeight = camera.orthographicSize * 2f;
+
+            Assert.AreEqual(go.transform.position, bounds.center);
+            Assert.AreEqual(expectedHeight * screenAspect, bounds.size.x);
+            Assert.AreEqual(expectedHeight, bounds.size.y);
+            Assert.AreEqual(1f, bounds.size.z);
+        }
+
+        [Test]
         public void OrthographicBoundsThrowsWhenCameraIsNull()
         {
             Assert.Throws<ArgumentNullException>(() => UnityExtensions.OrthographicBounds(null));

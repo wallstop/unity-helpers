@@ -96,11 +96,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - two random number generations.
         /// Allocations: No heap allocations (Vector2 is a value type).
-        /// Edge Cases: Negative amplitude is converted to positive via the range calculation.
+        /// Edge Cases: Negative amplitude is normalized via absolute value. Zero amplitude returns Vector2.zero.
         /// </remarks>
         public static Vector2 NextVector2(this IRandom random, float amplitude)
         {
-            return random.NextVector2(-amplitude, amplitude);
+            float range = Mathf.Abs(amplitude);
+            if (range <= 0f)
+            {
+                return Vector2.zero;
+            }
+
+            return random.NextVector2(-range, range);
         }
 
         /// <summary>
@@ -222,11 +228,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - three random number generations.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Negative amplitude is converted to positive via the range calculation.
+        /// Edge Cases: Negative amplitude is normalized via absolute value. Zero amplitude returns Vector3.zero.
         /// </remarks>
         public static Vector3 NextVector3(this IRandom random, float amplitude)
         {
-            return random.NextVector3(-amplitude, amplitude);
+            float range = Mathf.Abs(amplitude);
+            if (range <= 0f)
+            {
+                return Vector3.zero;
+            }
+
+            return random.NextVector3(-range, range);
         }
 
         /// <summary>
@@ -506,11 +518,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - two random integer generations.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Negative amplitude is converted to positive via the range calculation.
+        /// Edge Cases: Negative amplitude is normalized via absolute value. Zero amplitude returns Vector2Int.zero.
         /// </remarks>
         public static Vector2Int NextVector2Int(this IRandom random, int amplitude)
         {
-            return random.NextVector2Int(-amplitude, amplitude);
+            int range = Mathf.Abs(amplitude);
+            if (range == 0)
+            {
+                return Vector2Int.zero;
+            }
+
+            return random.NextVector2Int(-range, range);
         }
 
         /// <summary>
@@ -570,11 +588,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - three random integer generations.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Negative amplitude is converted to positive via the range calculation.
+        /// Edge Cases: Negative amplitude is normalized via absolute value. Zero amplitude returns Vector3Int.zero.
         /// </remarks>
         public static Vector3Int NextVector3Int(this IRandom random, int amplitude)
         {
-            return random.NextVector3Int(-amplitude, amplitude);
+            int range = Mathf.Abs(amplitude);
+            if (range == 0)
+            {
+                return Vector3Int.zero;
+            }
+
+            return random.NextVector3Int(-range, range);
         }
 
         /// <summary>
@@ -694,8 +718,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </remarks>
         public static Vector2 NextVector2InRect(this IRandom random, Rect rect)
         {
-            float x = random.NextFloat(rect.xMin, rect.xMax);
-            float y = random.NextFloat(rect.yMin, rect.yMax);
+            float xMin = Mathf.Min(rect.xMin, rect.xMax);
+            float xMax = Mathf.Max(rect.xMin, rect.xMax);
+            float yMin = Mathf.Min(rect.yMin, rect.yMax);
+            float yMax = Mathf.Max(rect.yMin, rect.yMax);
+
+            float x = xMax - xMin <= 0f ? xMin : random.NextFloat(xMin, xMax);
+            float y = yMax - yMin <= 0f ? yMin : random.NextFloat(yMin, yMax);
             return new Vector2(x, y);
         }
 
@@ -710,13 +739,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - three random float generations.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Zero-volume bounds return the center point.
+        /// Edge Cases: Degenerate (zero-volume) bounds return the center point.
         /// </remarks>
         public static Vector3 NextVector3InBounds(this IRandom random, Bounds bounds)
         {
-            float x = random.NextFloat(bounds.min.x, bounds.max.x);
-            float y = random.NextFloat(bounds.min.y, bounds.max.y);
-            float z = random.NextFloat(bounds.min.z, bounds.max.z);
+            Vector3 size = bounds.size;
+            if (size.x <= 0f || size.y <= 0f || size.z <= 0f)
+            {
+                return bounds.center;
+            }
+
+            Vector3 min = bounds.min;
+            Vector3 max = bounds.max;
+
+            float x = random.NextFloat(min.x, max.x);
+            float y = random.NextFloat(min.y, max.y);
+            float z = random.NextFloat(min.z, max.z);
             return new Vector3(x, y, z);
         }
 
