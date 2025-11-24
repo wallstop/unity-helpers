@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             AutoRuntimeSingleton.ClearForTests();
             AutoScriptableSingleton.ClearForTests();
+            RuntimeMismatchSingleton.ClearForTests();
+            ScriptableMismatchSingleton.ClearForTests();
         }
 
         private sealed class AutoRuntimeSingleton : RuntimeSingleton<AutoRuntimeSingleton>
@@ -52,6 +54,45 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             public static void ClearForTests()
             {
+                CreatedCount = 0;
+                LazyInstance = CreateLazy();
+            }
+        }
+
+        private sealed class RuntimeMismatchSingleton : RuntimeSingleton<RuntimeMismatchSingleton>
+        {
+            public static int AwakeCount;
+
+            protected override void Awake()
+            {
+                base.Awake();
+                AwakeCount++;
+            }
+
+            public static void ClearForTests()
+            {
+                AwakeCount = 0;
+                if (HasInstance)
+                {
+                    DestroyImmediate(_instance.gameObject);
+                }
+                _instance = null;
+            }
+        }
+
+        private sealed class ScriptableMismatchSingleton
+            : ScriptableObjectSingleton<ScriptableMismatchSingleton>
+        {
+            public static int CreatedCount;
+
+            private ScriptableMismatchSingleton()
+            {
+                CreatedCount++;
+            }
+
+            public static void ClearForTests()
+            {
+                CreatedCount = 0;
                 LazyInstance = CreateLazy();
             }
         }
@@ -155,12 +196,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             SingletonAutoLoader.ExecuteEntriesForTests(
                 simulatePlayMode: true,
                 RuntimeInitializeLoadType.BeforeSplashScreen,
-                CreateRuntimeEntry<AutoScriptableSingleton>()
+                CreateRuntimeEntry<ScriptableMismatchSingleton>()
             );
 
             yield return null;
 
-            Assert.IsFalse(AutoScriptableSingleton.HasInstance);
+            Assert.AreEqual(0, ScriptableMismatchSingleton.CreatedCount);
+            Assert.IsFalse(ScriptableMismatchSingleton.HasInstance);
         }
 
         [UnityTest]
@@ -174,12 +216,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             SingletonAutoLoader.ExecuteEntriesForTests(
                 simulatePlayMode: true,
                 RuntimeInitializeLoadType.BeforeSplashScreen,
-                CreateScriptableEntry<AutoRuntimeSingleton>()
+                CreateScriptableEntry<RuntimeMismatchSingleton>()
             );
 
             yield return null;
 
-            Assert.IsFalse(AutoRuntimeSingleton.HasInstance);
+            Assert.AreEqual(0, RuntimeMismatchSingleton.AwakeCount);
+            Assert.IsFalse(RuntimeMismatchSingleton.HasInstance);
         }
 
         [UnityTest]

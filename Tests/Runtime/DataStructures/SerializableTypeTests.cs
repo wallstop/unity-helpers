@@ -123,10 +123,23 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 "Example.MissingType, MissingAssembly"
             );
 
-            Assert.IsTrue(unresolved.IsEmpty);
+            Assert.IsFalse(
+                unresolved.IsEmpty,
+                "Serialized name should be preserved even when unresolved."
+            );
             Assert.IsNull(unresolved.Value);
             Assert.IsFalse(string.IsNullOrEmpty(unresolved.AssemblyQualifiedName));
             StringAssert.Contains("MissingAssembly", unresolved.DisplayName);
+        }
+
+        [Test]
+        public void FromSerializedNameKeepsOriginalStringWhenUnresolved()
+        {
+            SerializableType unresolved = SerializableType.FromSerializedName(MissingTypeName);
+
+            Assert.AreEqual(MissingTypeName, unresolved.AssemblyQualifiedName);
+            Assert.IsNull(unresolved.Value);
+            Assert.IsFalse(unresolved.EqualsType(typeof(int)));
         }
 
         [Test]

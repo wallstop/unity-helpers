@@ -405,9 +405,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 "Exact distance query should only include the origin entry."
             );
             Assert.AreEqual(
-                4,
+                3,
                 coarseResults.Count,
-                "Coarse query should include all entries from intersecting cells."
+                "Coarse query should include entries from intersecting cells even without distance checks."
             );
 
             int duplicateOnes = 0;
@@ -420,6 +420,22 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             Assert.AreEqual(2, duplicateOnes, "Non-distinct coarse query should keep duplicates.");
+        }
+
+        [Test]
+        public void CoarseQuerySkipsCellsBeyondRadiusExtent()
+        {
+            SpatialHash3D<int> hash = new(1.0f);
+            hash.Insert(new Vector3(2.5f, 0f, 0f), 99);
+
+            List<int> coarseResults = new();
+            hash.Query(Vector3.zero, 1.0f, coarseResults, distinct: false, exactDistance: false);
+
+            CollectionAssert.DoesNotContain(
+                coarseResults,
+                99,
+                "Cells more than one cell radius away should not be considered in coarse queries."
+            );
         }
 
         [Test]

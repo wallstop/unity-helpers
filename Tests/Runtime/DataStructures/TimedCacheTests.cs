@@ -371,48 +371,166 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(3, producerCalls);
         }
 
+        private sealed class ManualTimeSource
+        {
+            public float Now;
+
+            public float Get() => Now;
+
+            public void Advance(float delta) => Now += delta;
+        }
+
         [UnityTest]
         public IEnumerator ResetAfterJitterDoesNotReapplyJitter()
         {
+            const float CacheTtl = 0.2f;
+            const float Jitter = CacheTtl;
             int producerCalls = 0;
-            TimedCache<int> cache = new(() => ++producerCalls, 0.05f, useJitter: true);
+            ManualTimeSource time = new();
+            TimedCache<int> cache = new(
+                () => ++producerCalls,
+                CacheTtl,
+                useJitter: true,
+                timeProvider: time.Get,
+                jitterOverride: Jitter
+            );
 
             _ = cache.Value;
             Assert.AreEqual(1, producerCalls);
+            yield return null;
 
             // Wait long enough to cover initial jitter range.
-            yield return new WaitForSeconds(0.12f);
+            time.Advance(CacheTtl + Jitter + 0.01f);
+            yield return null;
             _ = cache.Value;
             Assert.AreEqual(2, producerCalls);
 
             cache.Reset();
+            int callsAfterReset = producerCalls;
 
-            yield return new WaitForSeconds(0.049f);
+            // Wait under the TTL to ensure jitter was not re-applied.
+            time.Advance(CacheTtl * 0.5f);
+            yield return null;
+            _ = cache.Value;
+            Assert.AreEqual(callsAfterReset, producerCalls);
+
+            // Wait beyond the TTL to trigger expiry without jitter.
+            time.Advance(CacheTtl * 0.6f);
+            yield return null;
+            _ = cache.Value;
+            Assert.AreEqual(callsAfterReset + 1, producerCalls);
+        }
+
+        [UnityTest]
+        public IEnumerator MultipleResetsAfterJitterRemainDeterministic()
+        {
+            const float CacheTtl = 0.15f;
+            const float Jitter = CacheTtl;
+            int producerCalls = 0;
+            ManualTimeSource time = new();
+            TimedCache<int> cache = new(
+                () => ++producerCalls,
+                CacheTtl,
+                useJitter: true,
+                timeProvider: time.Get,
+                jitterOverride: Jitter
+            );
+
+            _ = cache.Value;
+            Assert.AreEqual(1, producerCalls);
+            yield return null;
+
+            time.Advance(CacheTtl + Jitter + 0.01f);
+            yield return null;
             _ = cache.Value;
             Assert.AreEqual(2, producerCalls);
 
-            yield return new WaitForSeconds(0.02f);
+            for (int i = 0; i < 2; i++)
+            {
+                cache.Reset();
+                int callsAfterReset = producerCalls;
+
+                time.Advance(CacheTtl * 0.4f);
+                yield return null;
+                _ = cache.Value;
+                Assert.AreEqual(
+                    callsAfterReset,
+                    producerCalls,
+                    "Cache should not refresh before TTL after reset."
+                );
+
+                time.Advance(CacheTtl * 0.7f);
+                yield return null;
+                _ = cache.Value;
+                Assert.AreEqual(
+                    callsAfterReset + 1,
+                    producerCalls,
+                    "Cache should refresh once TTL has elapsed."
+                );
+            }
+        }
+
+        [Test]
+        public void ManualTimeProviderControlsExpiration()
+        {
+            ManualTimeSource time = new();
+            int producerCalls = 0;
+            TimedCache<int> cache = new(() => ++producerCalls, 1f, timeProvider: time.Get);
+
             _ = cache.Value;
-            Assert.AreEqual(3, producerCalls);
+            Assert.AreEqual(1, producerCalls);
+
+            time.Advance(0.5f);
+            _ = cache.Value;
+            Assert.AreEqual(1, producerCalls);
+
+            time.Advance(0.6f);
+            _ = cache.Value;
+            Assert.AreEqual(2, producerCalls);
+        }
+
+        [Test]
+        public void JitterOverrideAllowsDeterministicScheduling()
+        {
+            ManualTimeSource time = new();
+            int producerCalls = 0;
+            TimedCache<int> cache = new(
+                () => ++producerCalls,
+                0.5f,
+                useJitter: true,
+                timeProvider: time.Get,
+                jitterOverride: 0.5f
+            );
+
+            _ = cache.Value;
+            Assert.AreEqual(1, producerCalls);
+
+            time.Advance(1.01f);
+            _ = cache.Value;
+            Assert.AreEqual(2, producerCalls, "Cache should refresh after TTL + jitter.");
         }
 
         [UnityTest]
         public IEnumerator ValueRefreshesExactlyWhenTtlElapsed()
         {
+            const float CacheTtl = 0.05f;
             int producerCalls = 0;
-            TimedCache<int> cache = new(() => ++producerCalls, 0.05f);
+            ManualTimeSource time = new();
+            TimedCache<int> cache = new(() => ++producerCalls, CacheTtl, timeProvider: time.Get);
 
             int first = cache.Value;
             Assert.AreEqual(1, first);
 
-            // Wait just shy of the TTL — cache should still be valid.
-            yield return new WaitForSeconds(0.049f);
+            // Advance just shy of the TTL — cache should still be valid.
+            time.Advance(CacheTtl - 0.001f);
+            yield return null;
             int withinWindow = cache.Value;
             Assert.AreEqual(1, withinWindow);
             Assert.AreEqual(1, producerCalls);
 
-            // Wait a hair past the TTL to trigger the exact HasEnoughTimePassed boundary.
-            yield return new WaitForSeconds(0.002f);
+            // Advance past the TTL to trigger the expiration boundary.
+            time.Advance(0.002f);
+            yield return null;
             int afterExpiry = cache.Value;
             Assert.AreEqual(2, afterExpiry);
             Assert.AreEqual(2, producerCalls);
