@@ -27,6 +27,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public IEnumerator UnitySetUp()
         {
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = true;
+            ScriptableObjectSingletonCreator.TypeFilter = static type =>
+                type == typeof(CreatorPathSingleton);
             DeleteAssetIfExists(TargetAssetPath);
             yield return null;
             DeleteAssetIfExists(WrongAssetPath);
@@ -62,6 +64,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             DeleteFolderHierarchy(WrongFolderCaseVariant);
             yield return null;
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = false;
+            ScriptableObjectSingletonCreator.TypeFilter = null;
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             yield return null;
@@ -298,9 +301,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             );
         }
 
-        [ScriptableSingletonPath("Tests/CreatorPath")]
-        private sealed class CreatorPathSingleton
-            : ScriptableObjectSingleton<CreatorPathSingleton> { }
     }
 #endif
 }

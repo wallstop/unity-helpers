@@ -3,6 +3,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 #if UNITY_EDITOR
     using System;
     using System.Collections;
+    using System.IO;
+    using System.Text.RegularExpressions;
     using System.Threading.Tasks;
     using NUnit.Framework;
     using UnityEditor;
@@ -18,6 +20,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         private static readonly System.Collections.Generic.List<string> CreatedAssetPaths = new();
         private static readonly System.Collections.Generic.List<ScriptableObject> InMemoryInstances =
             new();
+        private const string ResourcesRoot = "Assets/Resources";
 
         [UnitySetUp]
         public IEnumerator SetUp()
@@ -30,12 +33,46 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
             MultipleInstancesSingleton.ClearInstance();
             yield return null;
+            ResourceBackedSingleton.ClearInstance();
+            yield return null;
+            DeepPathResourceSingleton.ClearInstance();
+            yield return null;
+            WrongPathFallbackSingleton.ClearInstance();
+            yield return null;
+            MultiAssetScriptableSingleton.ClearInstance();
+            yield return null;
+            LifecycleScriptableSingleton.ClearInstance();
+            yield return null;
+            MissingResourceSingleton.ClearInstance();
+            yield return null;
             // Clean up any leftover assets from previous runs to avoid broken nested-class assets
+            EnsureFolder(ResourcesRoot);
+            yield return null;
             DeleteAssetIfExists("Assets/Resources/TestSingleton.asset");
             yield return null;
             DeleteAssetIfExists("Assets/Resources/EmptyPathSingleton.asset");
             yield return null;
             DeleteAssetIfExists("Assets/Resources/CustomPath/CustomPathSingleton.asset");
+            yield return null;
+            DeleteAssetIfExists(ToFullResourcePath("ResourceBackedSingleton.asset"));
+            yield return null;
+            DeleteAssetIfExists(
+                ToFullResourcePath("Deep/Nested/Singletons/DeepPathResourceSingleton.asset")
+            );
+            yield return null;
+            DeleteAssetIfExists(ToFullResourcePath("Loose/WrongPathInstance.asset"));
+            yield return null;
+            DeleteAssetIfExists(ToFullResourcePath("Multi/Primary.asset"));
+            yield return null;
+            DeleteAssetIfExists(ToFullResourcePath("Multi/Secondary.asset"));
+            yield return null;
+            DeleteAssetIfExists(ToFullResourcePath("Lifecycle/LifecycleScriptableSingleton.asset"));
+            yield return null;
+            DeleteAssetIfExists(ToFullResourcePath("MultiNatural/Entry2.asset"));
+            yield return null;
+            DeleteAssetIfExists(ToFullResourcePath("MultiNatural/Entry10.asset"));
+            yield return null;
+            DeleteAssetIfExists(ToFullResourcePath("MultiNatural/Entry11.asset"));
             yield return null;
             DeleteFolderIfEmpty("Assets/Resources/CustomPath");
             yield return null;
@@ -85,6 +122,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 AssetDatabase.DeleteAsset(assetPath);
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
+                PruneResourceFoldersForPath(assetPath);
             }
         }
 
@@ -124,6 +162,79 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             AssetDatabase.Refresh();
         }
 
+        private static string ToFullResourcePath(string relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath))
+            {
+                throw new ArgumentException("relativePath cannot be empty", nameof(relativePath));
+            }
+
+            string sanitized = relativePath.Replace("\\", "/").TrimStart('/');
+            if (string.IsNullOrEmpty(sanitized))
+            {
+                throw new ArgumentException("relativePath cannot be empty", nameof(relativePath));
+            }
+
+            return $"{ResourcesRoot}/{sanitized}".Replace("//", "/");
+        }
+
+        private static TType CreateResourceAsset<TType>(
+            string relativePath,
+            Action<TType> configure = null
+        )
+            where TType : ScriptableObject
+        {
+            string fullPath = ToFullResourcePath(relativePath);
+            string directory = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                directory = directory.Replace("\\", "/");
+                EnsureFolder(directory);
+            }
+
+            DeleteAssetIfExists(fullPath);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                EnsureFolder(directory);
+            }
+
+            TType instance = ScriptableObject.CreateInstance<TType>();
+            instance.name = Path.GetFileNameWithoutExtension(fullPath);
+            configure?.Invoke(instance);
+
+            AssetDatabase.CreateAsset(instance, fullPath);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            CreatedAssetPaths.Add(fullPath);
+            return instance;
+        }
+
+        private static void PruneResourceFoldersForPath(string assetPath)
+        {
+            if (string.IsNullOrWhiteSpace(assetPath))
+            {
+                return;
+            }
+
+            string directory = Path.GetDirectoryName(assetPath);
+            while (!string.IsNullOrWhiteSpace(directory))
+            {
+                directory = directory.Replace("\\", "/");
+                if (!directory.StartsWith(ResourcesRoot, StringComparison.Ordinal))
+                {
+                    break;
+                }
+
+                if (!string.Equals(directory, ResourcesRoot, StringComparison.Ordinal))
+                {
+                    DeleteFolderIfEmpty(directory);
+                }
+
+                directory = Path.GetDirectoryName(directory);
+            }
+        }
+
         private static TType CreateInMemoryInstance<TType>()
             where TType : ScriptableObject
         {
@@ -132,28 +243,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             instance.hideFlags = HideFlags.DontSave;
             InMemoryInstances.Add(instance);
             return instance;
-        }
-
-        private sealed class TestSingleton : ScriptableObjectSingleton<TestSingleton>
-        {
-            public int testValue = 42;
-        }
-
-        [ScriptableSingletonPath("CustomPath")]
-        private sealed class CustomPathSingleton : ScriptableObjectSingleton<CustomPathSingleton>
-        {
-            public string customData = "test";
-        }
-
-        private sealed class EmptyPathSingleton : ScriptableObjectSingleton<EmptyPathSingleton>
-        {
-            public bool flag = true;
-        }
-
-        private sealed class MultipleInstancesSingleton
-            : ScriptableObjectSingleton<MultipleInstancesSingleton>
-        {
-            public int instanceId;
         }
 
         [UnityTearDown]
@@ -166,7 +255,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 if (!string.IsNullOrWhiteSpace(path))
                 {
-                    AssetDatabase.DeleteAsset(path);
+                    DeleteAssetIfExists(path);
                 }
                 yield return null;
             }
@@ -193,6 +282,36 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 TestSingleton.Instance.Destroy();
                 TestSingleton.ClearInstance();
+            }
+
+            if (ResourceBackedSingleton.HasInstance)
+            {
+                ResourceBackedSingleton.Instance.Destroy();
+                ResourceBackedSingleton.ClearInstance();
+            }
+
+            if (DeepPathResourceSingleton.HasInstance)
+            {
+                DeepPathResourceSingleton.Instance.Destroy();
+                DeepPathResourceSingleton.ClearInstance();
+            }
+
+            if (WrongPathFallbackSingleton.HasInstance)
+            {
+                WrongPathFallbackSingleton.Instance.Destroy();
+                WrongPathFallbackSingleton.ClearInstance();
+            }
+
+            if (MultiAssetScriptableSingleton.HasInstance)
+            {
+                MultiAssetScriptableSingleton.Instance.Destroy();
+                MultiAssetScriptableSingleton.ClearInstance();
+            }
+
+            if (LifecycleScriptableSingleton.HasInstance)
+            {
+                LifecycleScriptableSingleton.Instance.Destroy();
+                LifecycleScriptableSingleton.ClearInstance();
             }
 
             yield return null;
@@ -223,6 +342,54 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             MultipleInstancesSingleton[] allMultipleSingletons =
                 Resources.FindObjectsOfTypeAll<MultipleInstancesSingleton>();
             foreach (MultipleInstancesSingleton singleton in allMultipleSingletons)
+            {
+                singleton.Destroy();
+                yield return null;
+            }
+
+            ResourceBackedSingleton[] resourceBacked =
+                Resources.FindObjectsOfTypeAll<ResourceBackedSingleton>();
+            foreach (ResourceBackedSingleton singleton in resourceBacked)
+            {
+                singleton.Destroy();
+                yield return null;
+            }
+
+            DeepPathResourceSingleton[] deepPath =
+                Resources.FindObjectsOfTypeAll<DeepPathResourceSingleton>();
+            foreach (DeepPathResourceSingleton singleton in deepPath)
+            {
+                singleton.Destroy();
+                yield return null;
+            }
+
+            WrongPathFallbackSingleton[] wrongPath =
+                Resources.FindObjectsOfTypeAll<WrongPathFallbackSingleton>();
+            foreach (WrongPathFallbackSingleton singleton in wrongPath)
+            {
+                singleton.Destroy();
+                yield return null;
+            }
+
+            MultiAssetScriptableSingleton[] multiAsset =
+                Resources.FindObjectsOfTypeAll<MultiAssetScriptableSingleton>();
+            foreach (MultiAssetScriptableSingleton singleton in multiAsset)
+            {
+                singleton.Destroy();
+                yield return null;
+            }
+
+            LifecycleScriptableSingleton[] lifecycle =
+                Resources.FindObjectsOfTypeAll<LifecycleScriptableSingleton>();
+            foreach (LifecycleScriptableSingleton singleton in lifecycle)
+            {
+                singleton.Destroy();
+                yield return null;
+            }
+            LifecycleScriptableSingleton.DisableCount = 0;
+            MissingResourceSingleton[] missing =
+                Resources.FindObjectsOfTypeAll<MissingResourceSingleton>();
+            foreach (MissingResourceSingleton singleton in missing)
             {
                 singleton.Destroy();
                 yield return null;
@@ -478,6 +645,220 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.IsNotNull(result);
             Assert.IsTrue(result.Contains("TestSingleton") || result.Length > 0);
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator MissingAssetInstanceReturnsNull()
+        {
+            MissingResourceSingleton.ClearInstance();
+            yield return null;
+
+            MissingResourceSingleton instance = MissingResourceSingleton.Instance;
+
+            Assert.IsNull(instance);
+            Assert.IsFalse(MissingResourceSingleton.HasInstance);
+            Assert.IsTrue(MissingResourceSingleton.LazyInstance.IsValueCreated);
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator ClearInstanceHandlesMissingAsset()
+        {
+            MissingResourceSingleton.ClearInstance();
+            yield return null;
+
+            _ = MissingResourceSingleton.Instance;
+            yield return null;
+
+            Assert.DoesNotThrow(() => MissingResourceSingleton.ClearInstance());
+            yield return null;
+
+            Assert.IsFalse(MissingResourceSingleton.HasInstance);
+            Assert.IsFalse(MissingResourceSingleton.LazyInstance.IsValueCreated);
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator LoadsInstanceFromResourcesAsset()
+        {
+            CreateResourceAsset<ResourceBackedSingleton>(
+                "ResourceBackedSingleton.asset",
+                asset => asset.payload = "from-resource"
+            );
+            ResourceBackedSingleton.ClearInstance();
+            yield return null;
+
+            ResourceBackedSingleton instance = ResourceBackedSingleton.Instance;
+
+            Assert.IsTrue(instance != null);
+            Assert.AreEqual("from-resource", instance.payload);
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator CustomPathResourcesAssetIsLoaded()
+        {
+            CreateResourceAsset<DeepPathResourceSingleton>(
+                "Deep/Nested/Singletons/DeepPathResourceSingleton.asset",
+                asset => asset.payload = "deep-path"
+            );
+            DeepPathResourceSingleton.ClearInstance();
+            yield return null;
+
+            DeepPathResourceSingleton instance = DeepPathResourceSingleton.Instance;
+
+            Assert.IsTrue(instance != null);
+            Assert.AreEqual("deep-path", instance.payload);
+            StringAssert.Contains("Deep/Nested/Singletons", AssetDatabase.GetAssetPath(instance));
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator AttributePathFallbacksWhenAssetStoredElsewhere()
+        {
+            CreateResourceAsset<WrongPathFallbackSingleton>(
+                "Loose/WrongPathInstance.asset",
+                asset =>
+                {
+                    asset.payload = "relocated";
+                    asset.name = "RenamedWrongPath";
+                }
+            );
+            WrongPathFallbackSingleton.ClearInstance();
+            yield return null;
+
+            WrongPathFallbackSingleton instance = WrongPathFallbackSingleton.Instance;
+
+            Assert.IsTrue(instance != null);
+            Assert.AreEqual("relocated", instance.payload);
+            StringAssert.Contains("Loose/WrongPathInstance.asset", AssetDatabase.GetAssetPath(instance));
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator MultipleAssetsLogWarningAndSelectDeterministically()
+        {
+            CreateResourceAsset<MultiAssetScriptableSingleton>(
+                "Multi/Primary.asset",
+                asset =>
+                {
+                    asset.name = "01_Primary";
+                    asset.id = "primary";
+                }
+            );
+            CreateResourceAsset<MultiAssetScriptableSingleton>(
+                "Multi/Secondary.asset",
+                asset =>
+                {
+                    asset.name = "02_Secondary";
+                    asset.id = "secondary";
+                }
+            );
+            MultiAssetScriptableSingleton.ClearInstance();
+            yield return null;
+
+            LogAssert.Expect(
+                LogType.Warning,
+                new Regex("Found multiple ScriptableSingletons", RegexOptions.IgnoreCase)
+            );
+
+            MultiAssetScriptableSingleton instance = MultiAssetScriptableSingleton.Instance;
+
+            Assert.AreEqual("primary", instance.id);
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator MultipleAssetsUseNaturalNumericOrdering()
+        {
+            CreateResourceAsset<MultiAssetScriptableSingleton>(
+                "MultiNatural/Entry10.asset",
+                asset =>
+                {
+                    asset.name = "Entry10";
+                    asset.id = "ten";
+                }
+            );
+            CreateResourceAsset<MultiAssetScriptableSingleton>(
+                "MultiNatural/Entry2.asset",
+                asset =>
+                {
+                    asset.name = "Entry2";
+                    asset.id = "two";
+                }
+            );
+            CreateResourceAsset<MultiAssetScriptableSingleton>(
+                "MultiNatural/Entry11.asset",
+                asset =>
+                {
+                    asset.name = "Entry11";
+                    asset.id = "eleven";
+                }
+            );
+            MultiAssetScriptableSingleton.ClearInstance();
+            yield return null;
+
+            LogAssert.Expect(
+                LogType.Warning,
+                new Regex("Found multiple ScriptableSingletons", RegexOptions.IgnoreCase)
+            );
+
+            MultiAssetScriptableSingleton instance = MultiAssetScriptableSingleton.Instance;
+
+            Assert.AreEqual("two", instance.id);
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator ClearInstanceReloadsLatestAssetState()
+        {
+            CreateResourceAsset<ResourceBackedSingleton>(
+                "ResourceBackedSingleton.asset",
+                asset => asset.payload = "first"
+            );
+            ResourceBackedSingleton.ClearInstance();
+            yield return null;
+
+            ResourceBackedSingleton first = ResourceBackedSingleton.Instance;
+            Assert.AreEqual("first", first.payload);
+
+            DeleteAssetIfExists(ToFullResourcePath("ResourceBackedSingleton.asset"));
+            yield return null;
+
+            CreateResourceAsset<ResourceBackedSingleton>(
+                "ResourceBackedSingleton.asset",
+                asset => asset.payload = "second"
+            );
+            ResourceBackedSingleton.ClearInstance();
+            yield return null;
+
+            ResourceBackedSingleton second = ResourceBackedSingleton.Instance;
+            Assert.AreEqual("second", second.payload);
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator ClearInstanceDestroysLoadedAsset()
+        {
+            LifecycleScriptableSingleton.DisableCount = 0;
+            CreateResourceAsset<LifecycleScriptableSingleton>(
+                "Lifecycle/LifecycleScriptableSingleton.asset"
+            );
+            LifecycleScriptableSingleton.ClearInstance();
+            yield return null;
+
+            LifecycleScriptableSingleton instance = LifecycleScriptableSingleton.Instance;
+
+            Assert.IsTrue(instance != null);
+            Assert.AreEqual(0, LifecycleScriptableSingleton.DisableCount);
+
+            LifecycleScriptableSingleton.ClearInstance();
+            yield return null;
+
+            Assert.IsFalse(LifecycleScriptableSingleton.HasInstance);
+            Assert.IsFalse(LifecycleScriptableSingleton.LazyInstance.IsValueCreated);
+            Assert.GreaterOrEqual(LifecycleScriptableSingleton.DisableCount, 1);
             yield break;
         }
 

@@ -20,6 +20,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = true;
             ScriptableObjectSingletonCreator.VerboseLogging = true;
+            ScriptableObjectSingletonCreator.TypeFilter = static type =>
+                type == typeof(CaseMismatch)
+                || type == typeof(Duplicate)
+                || type == typeof(A.NameCollision)
+                || type == typeof(B.NameCollision);
             EnsureFolder("Assets/Resources");
             EnsureFolder(TestRoot);
             yield break;
@@ -49,6 +54,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
+            ScriptableObjectSingletonCreator.TypeFilter = null;
+            ScriptableObjectSingletonCreator.IncludeTestAssemblies = false;
         }
 
         [UnityTest]
@@ -113,6 +120,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             );
         }
 
+        [UnityTest]
+        public IEnumerator EnsureSingletonAssetsIsIdempotent()
+        {
+            string targetPath = "Assets/Resources/CaseTest/CaseMismatch.asset";
+            AssetDatabase.DeleteAsset(targetPath);
+            yield return null;
+
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+
+            string firstGuid = AssetDatabase.AssetPathToGUID(targetPath);
+            Assert.IsFalse(string.IsNullOrEmpty(firstGuid));
+
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+
+            string secondGuid = AssetDatabase.AssetPathToGUID(targetPath);
+            Assert.AreEqual(firstGuid, secondGuid);
+        }
+
         private static void EnsureFolder(string folderPath)
         {
             if (AssetDatabase.IsValidFolder(folderPath))
@@ -148,12 +175,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
         }
 
-        // Types used by the tests
-        [ScriptableSingletonPath("CaseTest")]
-        private sealed class CaseMismatch : ScriptableObjectSingleton<CaseMismatch> { }
-
-        [ScriptableSingletonPath("CreatorTests")]
-        private sealed class Duplicate : ScriptableObjectSingleton<Duplicate> { }
     }
 #endif
 }
