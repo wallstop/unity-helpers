@@ -298,10 +298,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 points.Add(new Vector2(i, i));
             }
 
-            KdTree2D<Vector2> treeSmallBucket = new(points, _ => _, bucketSize: 1, balanced: false);
+            KdTree2D<Vector2> treeSmallBucket = new(points, v => v, bucketSize: 1, balanced: false);
             KdTree2D<Vector2> treeLargeBucket = new(
                 points,
-                _ => _,
+                v => v,
                 bucketSize: 100,
                 balanced: false
             );

@@ -1252,7 +1252,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             bits.TrySet(2);
 
             int iterations = 0;
-            foreach (bool bit in bits)
+            foreach (bool unused in bits)
             {
                 iterations++;
             }

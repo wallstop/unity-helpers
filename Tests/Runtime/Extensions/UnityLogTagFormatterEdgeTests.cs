@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using System;
+    using System.Diagnostics.CodeAnalysis;
     using System.Text.RegularExpressions;
     using System.Threading;
     using NUnit.Framework;
@@ -10,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Helper.Logging;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
+    [SuppressMessage("ReSharper", "AccessToModifiedClosure")]
     public sealed class UnityLogTagFormatterEdgeTests : CommonTestBase
     {
         [TestCase(true)]
@@ -392,7 +394,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             string loggedMessage = null;
             int workerThreadId = -1;
-            Thread worker = new Thread(() =>
+            Thread worker = new(() =>
             {
                 UnityLogTagFormatter workerFormatter = new();
                 workerThreadId = Thread.CurrentThread.ManagedThreadId;

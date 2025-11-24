@@ -8,6 +8,11 @@
 
 This page explains how the 2D and 3D spatial structures compare in terms of correctness, when to use each structure, and why some 3D variants may produce different results for identical inputs and queries.
 
+## Result Buffers
+
+- Every range/bounds/nearest-neighbor API accepts an output `List<T>` and **clears it before** appending results. Reuse the same buffer between calls to avoid garbage, and do not expect prior contents to survive a query.
+- This pattern is consistent across `QuadTree2D`, `KdTree2D/3D`, `OctTree3D`, and the RTree variants, matching the log-friendly “provide your own buffer” approach used throughout the helpers.
+
 ## Structures At A Glance
 
 - QuadTree2D — Recursive 4-way partitioning of space. Good general-purpose point queries.

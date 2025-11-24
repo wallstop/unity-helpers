@@ -325,7 +325,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void ConvexHullVector2HandlesNearColinearNoise()
         {
-            List<Vector2> baseLine = new List<Vector2>();
+            List<Vector2> baseLine = new();
             for (int i = 0; i <= 20; ++i)
             {
                 baseLine.Add(new Vector2(i, 0f));
@@ -357,7 +357,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             float[] seeds = { 2f, 11f, 42f, 137f };
             foreach (float seed in seeds)
             {
-                List<Vector2> line = new List<Vector2>();
+                List<Vector2> line = new();
                 for (int i = 0; i <= 30; ++i)
                 {
                     line.Add(new Vector2(i, 0f));
@@ -383,7 +383,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void ConcaveHullVector2RejectsSelfIntersection()
         {
-            List<Vector2> sShape = new List<Vector2>
+            List<Vector2> sShape = new()
             {
                 new Vector2(-4f, -1f),
                 new Vector2(-2f, 1.5f),
@@ -402,7 +402,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void ConvexHullVector2MaintainsCounterClockwiseWinding()
         {
-            List<Vector2> circle = new List<Vector2>();
+            List<Vector2> circle = new();
             const int count = 32;
             for (int i = 0; i < count; ++i)
             {
@@ -478,8 +478,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
         private static List<Vector2> AddJitter(IEnumerable<Vector2> points, float maxDeviation)
         {
-            System.Random random = new System.Random(1337);
-            List<Vector2> jittered = new List<Vector2>();
+            System.Random random = new(1337);
+            List<Vector2> jittered = new();
             foreach (Vector2 point in points)
             {
                 float deviation = (float)(random.NextDouble() - 0.5) * maxDeviation;

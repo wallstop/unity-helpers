@@ -987,7 +987,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void SortByNameEmptyList()
         {
-            List<UnityEngine.GameObject> list = new();
+            List<GameObject> list = new();
             list.SortByName();
             Assert.That(list, Is.Empty);
         }

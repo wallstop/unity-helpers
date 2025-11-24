@@ -298,10 +298,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 points.Add(new Vector2(i, i));
             }
 
-            KdTree2D<Vector2> treeSmallBucket = new(points, _ => _, bucketSize: 1, balanced: true);
+            KdTree2D<Vector2> treeSmallBucket = new(points, v => v, bucketSize: 1, balanced: true);
             KdTree2D<Vector2> treeLargeBucket = new(
                 points,
-                _ => _,
+                v => v,
                 bucketSize: 100,
                 balanced: true
             );
@@ -481,8 +481,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 points.Add(new Vector2(Random.NextFloat(-50, 50), Random.NextFloat(-50, 50)));
             }
 
-            KdTree2D<Vector2> balancedTree = new(points, _ => _, balanced: true);
-            KdTree2D<Vector2> unbalancedTree = new(points, _ => _, balanced: false);
+            KdTree2D<Vector2> balancedTree = new(points, v => v, balanced: true);
+            KdTree2D<Vector2> unbalancedTree = new(points, v => v, balanced: false);
 
             List<Vector2> balancedResults = new();
             List<Vector2> unbalancedResults = new();
@@ -542,14 +542,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<Vector2> points = new();
             for (int i = 0; i < 100; i++)
             {
-                if (i % 2 == 0)
-                {
-                    points.Add(new Vector2(i, 0));
-                }
-                else
-                {
-                    points.Add(new Vector2(0, i));
-                }
+                points.Add(i % 2 == 0 ? new Vector2(i, 0) : new Vector2(0, i));
             }
 
             KdTree2D<Vector2> tree = CreateTree(points);

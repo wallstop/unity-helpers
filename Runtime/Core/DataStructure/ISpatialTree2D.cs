@@ -14,6 +14,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// tree.GetElementsInRange(playerPosition, 5f, results);
     /// ]]></code>
     /// </example>
+    /// <remarks>
+    /// <para><b>Result buffers:</b> Each query clears the provided <see cref="List{T}"/> before appending new entries. Reuse the same list between calls to avoid repeated allocations.</para>
+    /// </remarks>
     public interface ISpatialTree2D<T>
     {
         Bounds Boundary { get; }

@@ -18,6 +18,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// <remarks>
     /// <para><b>⚠️ EXPERIMENTAL:</b> 3D spatial trees are currently experimental and under active development.</para>
     /// <para>APIs may change, and performance characteristics may vary. Use with caution in production environments.</para>
+    /// <para><b>Result buffers:</b> Every query method clears the supplied <see cref="List{T}"/> before writing results. Pass a reusable buffer when you want to minimize allocations.</para>
     /// </remarks>
     public interface ISpatialTree3D<T>
     {

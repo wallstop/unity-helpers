@@ -564,7 +564,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(ds.TryUnion(2, 3));
             Assert.IsTrue(ds.TryUnion(0, 2));
 
-            Assert.IsTrue(ds.TryFind(3, out int rep3));
+            Assert.IsTrue(ds.TryFind(3, out int _));
             Assert.IsTrue(ds.TryIsConnected(1, 3, out bool connected));
             Assert.IsTrue(connected);
         }
@@ -715,7 +715,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             edges.Sort((a, b) => a.weight.CompareTo(b.weight));
 
             int edgesAdded = 0;
-            foreach ((int u, int v, int weight) in edges)
+            foreach ((int u, int v, int _) in edges)
             {
                 if (ds.TryUnion(u, v))
                 {

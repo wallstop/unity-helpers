@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Linq;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
@@ -67,7 +66,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
         private static List<Vector2> ConvertToVector2(IEnumerable<FastVector3Int> points)
         {
-            List<Vector2> converted = new List<Vector2>();
+            List<Vector2> converted = new();
             foreach (FastVector3Int point in points)
             {
                 converted.Add(new Vector2(point.x, point.y));
@@ -144,7 +143,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             string label
         )
         {
-            HashSet<FastVector3Int> hullSet = new HashSet<FastVector3Int>(hull);
+            HashSet<FastVector3Int> hullSet = new(hull);
 
             foreach (FastVector3Int vertex in hullSet)
             {
@@ -397,7 +396,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator BuildConvexHullVector3IntIncludesColinearPointsWhenRequested()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
             List<Vector3Int> points = new()
             {
                 new Vector3Int(0, 0, 0),
@@ -418,7 +417,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator BuildConvexHullVector3IntExcludesColinearPointsWhenDisabled()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<Vector3Int> points = new()
             {
@@ -448,7 +447,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator BuildConvexHullFastVector3IntProducesExpectedLoop()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> points = new()
             {
@@ -478,7 +477,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator BuildConvexHullFastVector3IntIncludesColinearWhenRequested()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> points = new()
             {
@@ -499,7 +498,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator IsPointInsideConvexHullDetectsContainment()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<Vector3Int> hull = new()
             {
@@ -518,7 +517,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator IsPointInsideConvexHullTreatsBoundaryAsInside()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<Vector3Int> hull = new()
             {
@@ -538,7 +537,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator IsPointInsideConvexHullFastVectorDetectsContainment()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> hull = new()
             {
@@ -557,7 +556,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator IsPointInsideConvexHullFastVectorTreatsBoundaryAsInside()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> hull = new()
             {
@@ -577,7 +576,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator IsConvexHullInsideConvexHullValidatesInteriorPoints()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<Vector3Int> hull = new()
             {
@@ -604,7 +603,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator IsConvexHullInsideConvexHullHandlesCounterClockwiseOrder()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<Vector3Int> hull = new()
             {
@@ -631,7 +630,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator IsConvexHullInsideConvexHullFastVectorValidatesInteriorPoints()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> hull = new()
             {
@@ -658,7 +657,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator IsConvexHullInsideConvexHullFastVectorHandlesCounterClockwiseOrder()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> hull = new()
             {
@@ -685,7 +684,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator BuildConcaveHullVariantsMatchConvexHullForRectangle()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> points = new()
             {
@@ -720,7 +719,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConvexHullExcludesInteriorColinearPointsFast()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> points = new()
             {
@@ -743,7 +742,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConvexHullPermutationInvariance()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> points = new()
             {
@@ -773,7 +772,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator BuildConcaveHullVariantsMatchConvexHullForTriangle()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> points = new()
             {
@@ -807,7 +806,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConcaveHullTrivialShapesReturnConvexHull()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             // Two points
             List<FastVector3Int> twoPoints = new()
@@ -932,7 +931,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Track(owner);
             List<FastVector3Int> points = GenerateRandomPointsSquare(32, 8);
 
-            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
+            UnityExtensions.ConcaveHullOptions options = new()
             {
                 Strategy = UnityExtensions.ConcaveHullStrategy.Knn,
                 NearestNeighbors = 6,
@@ -1003,8 +1002,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 (4, 4),
                 (0, 4)
             );
-            HashSet<FastVector3Int> expectedSet = new HashSet<FastVector3Int>(expectedCorners);
-            HashSet<FastVector3Int> inputSet = new HashSet<FastVector3Int>(points);
+            HashSet<FastVector3Int> expectedSet = new(expectedCorners);
+            HashSet<FastVector3Int> inputSet = new(points);
 
             List<FastVector3Int> gridlessKnn = points.BuildConcaveHullKnn();
             List<FastVector3Int> gridlessEdge = points.BuildConcaveHullEdgeSplit();
@@ -1068,18 +1067,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void FastVectorConcaveHullGridlessHandlesNearColinearNoise()
         {
-            List<FastVector3Int> points = new List<FastVector3Int>();
-            System.Random rng = new System.Random(555);
+            List<FastVector3Int> points = new();
+            System.Random rng = new(555);
             for (int i = 0; i < 24; ++i)
             {
                 double jitter = (rng.NextDouble() - 0.5) * 0.02;
-                points.Add(new FastVector3Int(i, (int)System.Math.Round(jitter), 0));
+                points.Add(new FastVector3Int(i, (int)Math.Round(jitter), 0));
             }
             points.Add(new FastVector3Int(10, 12, 0));
             points.Add(new FastVector3Int(15, -10, 0));
 
             List<FastVector3Int> hull = points.BuildConcaveHullKnn();
-            HashSet<FastVector3Int> input = new HashSet<FastVector3Int>(points);
+            HashSet<FastVector3Int> input = new(points);
             Assert.IsTrue(
                 hull.All(input.Contains),
                 "Hull vertices should originate from input points."
@@ -1089,7 +1088,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void FastVectorConcaveHullGridlessRejectsSelfIntersections()
         {
-            List<FastVector3Int> bowtie = new List<FastVector3Int>
+            List<FastVector3Int> bowtie = new()
             {
                 new FastVector3Int(-3, 0, 0),
                 new FastVector3Int(-1, 2, 0),
@@ -1109,15 +1108,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void FastVectorConvexHullGridlessMaintainsWinding()
         {
-            List<FastVector3Int> ring = new List<FastVector3Int>();
+            List<FastVector3Int> ring = new();
             const int count = 48;
             for (int i = 0; i < count; ++i)
             {
-                double angle = 2.0 * System.Math.PI * i / count;
+                double angle = 2.0 * Math.PI * i / count;
                 ring.Add(
                     new FastVector3Int(
-                        (int)System.Math.Round(System.Math.Cos(angle) * 10),
-                        (int)System.Math.Round(System.Math.Sin(angle) * 10),
+                        (int)Math.Round(Math.Cos(angle) * 10),
+                        (int)Math.Round(Math.Sin(angle) * 10),
                         0
                     )
                 );
@@ -1161,7 +1160,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Track(owner);
             List<FastVector3Int> points = GenerateRandomPointsSquare(24, 6);
 
-            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
+            UnityExtensions.ConcaveHullOptions options = new()
             {
                 Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
                 BucketSize = 32,
@@ -1215,7 +1214,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConcaveHullHandlesDuplicatesAndColinear()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             // Duplicates and colinear points along X-axis
             List<FastVector3Int> points = new()
@@ -1254,7 +1253,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConvexHullAllPointsIdenticalReturnsSinglePoint()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> points = Enumerable
                 .Repeat(new FastVector3Int(5, 5, 0), 20)
@@ -1281,7 +1280,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConvexHullWithDuplicatesAndFourCornersReturnsCornersConcaveMatches()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
             List<FastVector3Int> points = new()
             {
                 new FastVector3Int(0, 0, 0),
@@ -1329,7 +1328,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConvexHullWithDuplicatesJarvisMatchesMonotoneChain()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> points = new()
             {
@@ -1361,7 +1360,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConvexHullWithDuplicatesOnScaledGridReturnsCorners()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
             grid.transform.position = new Vector3(12345.5f, -9876.25f, 0f);
             grid.transform.localScale = new Vector3(0.03125f, 0.125f, 1f);
             grid.transform.rotation = Quaternion.Euler(0f, 0f, 27.5f);
@@ -1399,7 +1398,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConvexHullWithDuplicatesLargeTransformStillDropsEdges()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
             grid.transform.position = new Vector3(750000f, -125000f, 0f);
             grid.transform.localScale = new Vector3(0.0005f, 0.00025f, 1f);
             grid.cellSize = new Vector3(0.0005f, 0.00025f, 1f);
@@ -1449,7 +1448,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConvexHullDenseEdgeSamplesExcludeColinearWhenDisabled()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> perimeter = new()
             {
@@ -1501,7 +1500,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConvexHullDenseSamplesOnAllEdgesCollapseToCorners()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> samples = new();
             for (int x = 0; x <= 5; ++x)
@@ -1533,7 +1532,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConvexHullRotatedGridPrunesColinearPoints()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
             grid.transform.position = new Vector3(125f, -42f, 0f);
             grid.transform.rotation = Quaternion.Euler(0f, 0f, 37.5f);
             grid.transform.localScale = new Vector3(0.33f, 0.75f, 1f);
@@ -1588,7 +1587,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConvexHullLargeRotatedGridPrunesColinearPoints()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
             grid.transform.position = new Vector3(5000f, -12500f, 0f);
             grid.transform.rotation = Quaternion.Euler(0f, 0f, 18.75f);
             grid.transform.localScale = new Vector3(0.125f, 0.333f, 1f);
@@ -1599,7 +1598,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             const int minY = -850;
             const int maxY = 850;
 
-            List<FastVector3Int> perimeter = new List<FastVector3Int>((maxX - minX + 1) * 4);
+            List<FastVector3Int> perimeter = new((maxX - minX + 1) * 4);
             for (int x = minX; x <= maxX; ++x)
             {
                 perimeter.Add(new FastVector3Int(x, minY, 0));
@@ -1722,7 +1721,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator LargePointCloudConcaveHullsInsideConvexHull()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> points = GenerateRandomPointsSquare(600, 50, seed: 4242);
             // Ensure a few extremes are present
@@ -1771,7 +1770,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator LargePointCloudConvexHullReasonableAndContainsExtremes()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            CreateGrid(out GameObject _);
 
             List<FastVector3Int> points = GenerateRandomPointsSquare(800, 100, seed: 2025);
             points.AddRange(
@@ -1789,7 +1788,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConvexHullCirclePointsAllOnHull()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> circle = GenerateCirclePoints(64, 25);
             List<FastVector3Int> hull = circle.BuildConvexHull(grid, includeColinearPoints: true);
@@ -1816,7 +1815,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConvexHullRectanglePerimeterOnlyCorners()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> rectPerimeter = new();
             for (int x = 0; x <= 10; ++x)
@@ -1848,7 +1847,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator ConvexHullRectanglePerimeterIncludeColinearKeepsEdgePoints()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> rectPerimeter = new();
             for (int x = 0; x <= 10; ++x)
@@ -1899,7 +1898,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator RandomCloudMultipleSeedsConvexContainsConcaves()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             int[] seeds = { 11, 123, 9999 };
             foreach (int seed in seeds)
@@ -1940,7 +1939,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator CrossShapeConvexCornersConcavesSubset()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             // Cross shape: long plus sign
             List<FastVector3Int> points = new();
@@ -1992,7 +1991,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator UShapeConcaveInsideConvex()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             // U-shape perimeter
             List<FastVector3Int> u = new();
@@ -2031,7 +2030,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [UnityTest]
         public IEnumerator IsPositionInsideDetectsInsideAndOutside()
         {
-            Grid grid = CreateGrid(out GameObject owner);
+            Grid grid = CreateGrid(out GameObject _);
 
             List<FastVector3Int> hull = new()
             {
@@ -2277,7 +2276,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Vector2[] worldPositions = new Vector2[count];
             for (int i = 0; i < count; ++i)
             {
-                worldPositions[i] = grid.CellToWorld(points[i]);
+                worldPositions[i] = grid.CellToWorld(points![i]);
             }
 
             return UnityExtensions.BuildGridConvexHullJarvisFallback(
@@ -2306,7 +2305,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         )
         {
             HashSet<Vector2Int> actualCorners = new();
-            foreach (Vector2 candidate in hull)
+            IEnumerable<Vector2> candidates = hull as Vector2[] ?? hull.ToArray();
+            foreach (Vector2 candidate in candidates)
             {
                 Vector2 unrotated = InverseRotate(candidate, cos, sin);
                 int xr = Mathf.RoundToInt(unrotated.x);
@@ -2315,7 +2315,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
 
             TestContext.WriteLine(
-                $"Rotated hull raw count={hull.Count()} uniqueCorners={actualCorners.Count}: {string.Join(", ", actualCorners)}"
+                $"Rotated hull raw count={candidates.Count()} uniqueCorners={actualCorners.Count}: {string.Join(", ", actualCorners)}"
             );
             CollectionAssert.AreEquivalent(expectedCorners, actualCorners);
         }

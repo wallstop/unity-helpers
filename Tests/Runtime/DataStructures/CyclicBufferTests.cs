@@ -707,14 +707,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 {
                     int value = PRNG.Instance.Next();
                     buffer.Add(value);
-                    if (capacity > 0)
+                    if (expected.Count == capacity)
                     {
-                        if (expected.Count == capacity)
-                        {
-                            expected.RemoveAt(0);
-                        }
-                        expected.Add(value);
+                        expected.RemoveAt(0);
                     }
+                    expected.Add(value);
                 }
 
                 Assert.AreEqual(expected.Count, buffer.Count);
@@ -894,7 +891,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             CyclicBuffer<int> buffer = new(5) { 1, 2, 3, 4 };
 
-            int removed = buffer.RemoveAll(x => true);
+            int removed = buffer.RemoveAll(_ => true);
 
             Assert.AreEqual(4, removed);
             Assert.AreEqual(0, buffer.Count);
@@ -1218,7 +1215,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             CyclicBuffer<int> buffer = new(5);
 
             int count = 0;
-            foreach (int item in buffer)
+            foreach (int unused in buffer)
             {
                 count++;
             }
@@ -1497,7 +1494,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.Throws<IndexOutOfRangeException>(() => buffer[0] = 1);
 
             int count = 0;
-            foreach (int item in buffer)
+            foreach (int unused in buffer)
             {
                 count++;
             }
@@ -1524,7 +1521,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 {
                     int x = buffer[i];
                 });
-                Assert.DoesNotThrow(() => buffer[i] = buffer[i] + 10);
+                Assert.DoesNotThrow(() => buffer[i] += 10);
             }
 
             Assert.That(buffer.ToArray(), Is.EqualTo(new[] { 12, 13, 14 }));
