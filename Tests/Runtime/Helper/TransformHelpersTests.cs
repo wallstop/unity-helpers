@@ -66,6 +66,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             CollectionAssert.AreEqual(new[] { child.transform }, buffer);
         }
 
+        [Test]
+        public void IterateOverAllChildrenRecursivelyBreadthFirstIncludesSelf()
+        {
+            GameObject root = Track(new GameObject("Root"));
+            List<Transform> buffer = new();
+            root.transform.IterateOverAllChildrenRecursivelyBreadthFirst(buffer, includeSelf: true);
+
+            Assert.AreEqual(1, buffer.Count);
+            Assert.AreSame(root.transform, buffer[0]);
+        }
+
+        [Test]
+        public void IterateOverAllParentComponentsHandlesNullComponent()
+        {
+            List<Transform> buffer = new() { null };
+            Transform result = null;
+
+            IEnumerable<Transform> enumerable = result.IterateOverAllParents(includeSelf: true);
+            Assert.IsFalse(enumerable.GetEnumerator().MoveNext());
+
+            List<Transform> listResult = result.IterateOverAllParents(buffer, includeSelf: true);
+            Assert.IsEmpty(listResult);
+        }
+
         private (TransformProbe root, TransformProbe middle, TransformProbe leaf) BuildHierarchy()
         {
             TransformProbe root = Track(new GameObject("RootProbe", typeof(TransformProbe)))

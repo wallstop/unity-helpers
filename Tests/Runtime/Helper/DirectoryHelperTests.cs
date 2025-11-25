@@ -126,6 +126,65 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
 
         [Test]
+        public void FindAbsolutePathToDirectoryIsCaseInsensitive()
+        {
+            string result = DirectoryHelper.FindAbsolutePathToDirectory("tests/runtime");
+            Assert.IsFalse(string.IsNullOrWhiteSpace(result));
+            StringAssert.EndsWith("tests/runtime", result.ToLowerInvariant());
+        }
+
+        [Test]
+        public void GetCallerScriptDirectoryReturnsEmptyWhenSourcePathNull()
+        {
+            string directory = DirectoryHelper.GetCallerScriptDirectory(sourceFilePath: null);
+            Assert.AreEqual(string.Empty, directory);
+        }
+
+        [TestCase(@"\\server\share\Assets\Example.asset")]
+        [TestCase(@"//server/share/Assets/Example.asset")]
+        public void AbsoluteToUnityRelativePathReturnsEmptyForUncPaths(string uncPath)
+        {
+            string relative = DirectoryHelper.AbsoluteToUnityRelativePath(uncPath);
+            Assert.AreEqual(string.Empty, relative);
+        }
+
+        [Test]
+        public void FindAbsolutePathToDirectoryResolvesTestsFolder()
+        {
+            string result = DirectoryHelper.FindAbsolutePathToDirectory("Tests/Runtime");
+            Assert.IsFalse(string.IsNullOrWhiteSpace(result));
+            StringAssert.EndsWith("tests/runtime", result.ToLowerInvariant());
+        }
+
+        [TestCase("Assets/Test/Path", true)]
+        [TestCase("assets/test/path", true)]
+        [TestCase("ASSETS/TEST/PATH", true)]
+        [TestCase("Packages/com.wallstop-studios.unity-helpers", false)]
+        public void AbsoluteToUnityRelativePathHandlesCaseInsensitivity(
+            string suffix,
+            bool expectAssets
+        )
+        {
+            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.Replace('\\', '/');
+            if (string.IsNullOrEmpty(projectRoot))
+            {
+                Assert.Inconclusive("Project root could not be determined.");
+                return;
+            }
+
+            string testPath = $"{projectRoot}/{suffix}";
+            string relative = DirectoryHelper.AbsoluteToUnityRelativePath(testPath);
+            if (expectAssets)
+            {
+                Assert.That(relative, Does.StartWith("Assets/").IgnoreCase);
+            }
+            else
+            {
+                Assert.That(relative, Does.StartWith("Packages/").IgnoreCase);
+            }
+        }
+
+        [Test]
         public void AbsoluteToUnityRelativePathWithNullReturnsEmpty()
         {
             string result = DirectoryHelper.AbsoluteToUnityRelativePath(null);
@@ -343,6 +402,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 path => path == Application.dataPath
             );
             Assert.That(result, Is.Not.Null);
+        }
+
+        [Test]
+        public void FindRootPathReturnsCurrentPathWhenConditionThrows()
+        {
+            string startPath = Application.dataPath;
+            bool exceptionThrown = false;
+            string result = DirectoryHelper.FindRootPath(
+                startPath,
+                _ =>
+                {
+                    if (!exceptionThrown)
+                    {
+                        exceptionThrown = true;
+                        throw new InvalidOperationException("test");
+                    }
+
+                    return false;
+                }
+            );
+
+            Assert.AreEqual(startPath, result);
         }
     }
 }

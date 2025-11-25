@@ -395,6 +395,89 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
 
         [UnityTest]
+        public IEnumerator StartFunctionAsCoroutineIgnoresInvalidJitterValues()
+        {
+            CoroutineHost host = CreateHost();
+            host.ResetState();
+
+            Helpers.JitterSampler = _ => float.NaN;
+            Coroutine coroutine = host.StartFunctionAsCoroutine(
+                host.Increment,
+                0.01f,
+                useJitter: true
+            );
+
+            try
+            {
+                yield return null;
+                Assert.Greater(host.InvocationCount, 0, "NaN jitter should be treated as zero.");
+            }
+            finally
+            {
+                host.StopCoroutine(coroutine);
+            }
+
+            Helpers.JitterSampler = _ => -5f;
+            coroutine = host.StartFunctionAsCoroutine(host.Increment, 0.01f, useJitter: true);
+
+            try
+            {
+                yield return null;
+                Assert.Greater(
+                    host.InvocationCount,
+                    0,
+                    "Negative jitter should be clamped to zero."
+                );
+            }
+            finally
+            {
+                host.StopCoroutine(coroutine);
+                Helpers.ResetJitterSampler();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator StartFunctionAsCoroutineHandlesNegativeIntervals()
+        {
+            CoroutineHost host = CreateHost();
+
+            Coroutine coroutine = host.StartFunctionAsCoroutine(host.Increment, -0.5f);
+            yield return null;
+            Assert.Greater(host.InvocationCount, 0);
+            host.StopCoroutine(coroutine);
+        }
+
+        [UnityTest]
+        public IEnumerator ExecuteFunctionAfterFrameHandlesMultipleCallbacks()
+        {
+            CoroutineHost host = CreateHost();
+            int executed = 0;
+
+            Coroutine first = host.ExecuteFunctionAfterFrame(() => executed++);
+            Coroutine second = host.ExecuteFunctionAfterFrame(() => executed++);
+
+            yield return new WaitForEndOfFrame();
+            yield return null;
+
+            Assert.AreEqual(2, executed);
+            host.StopCoroutine(first);
+            host.StopCoroutine(second);
+        }
+
+        [UnityTest]
+        public IEnumerator CoroutineHelpersThrowOnNullActions()
+        {
+            CoroutineHost host = CreateHost();
+
+            Assert.Throws<ArgumentNullException>(() => host.StartFunctionAsCoroutine(null, 0.1f));
+            Assert.Throws<ArgumentNullException>(() => host.ExecuteFunctionAfterDelay(null, 0.1f));
+            Assert.Throws<ArgumentNullException>(() => host.ExecuteFunctionNextFrame(null));
+            Assert.Throws<ArgumentNullException>(() => host.ExecuteFunctionAfterFrame(null));
+
+            yield break;
+        }
+
+        [UnityTest]
         public IEnumerator StartFunctionAsCoroutineClampsExcessiveJitter()
         {
             CoroutineHost host = CreateHost();
@@ -488,6 +571,33 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 3 <= totalInvocations,
                 $"Expecteed total invocations of at least 3, got {totalInvocations}"
             );
+        }
+
+        [UnityTest]
+        public IEnumerator ExecuteOverTimeDoesNothingWhenCountIsZero()
+        {
+            CoroutineHost host = CreateHost();
+            IEnumerator routine = Helpers.ExecuteOverTime(host.Increment, 0, 0.1f);
+            host.StartCoroutine(routine);
+
+            yield return new WaitForSeconds(0.2f);
+            Assert.AreEqual(0, host.InvocationCount);
+        }
+
+        [UnityTest]
+        public IEnumerator ExecuteOverTimeInvokesRemainingIterationsAtEnd()
+        {
+            CoroutineHost host = CreateHost();
+            IEnumerator routine = Helpers.ExecuteOverTime(host.Increment, 5, 0.05f, delay: true);
+            host.StartCoroutine(routine);
+
+            float timeout = Time.time + 1f;
+            while (host.InvocationCount < 5 && Time.time < timeout)
+            {
+                yield return null;
+            }
+
+            Assert.AreEqual(5, host.InvocationCount);
         }
 
         [UnityTest]
@@ -774,6 +884,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             Assert.IsFalse(Helpers.NameEquals(original, other));
             yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator NameEqualsTrimsWhitespaceAndNestedCloneSuffixes()
+        {
+            GameObject original = Track(new GameObject(" Helper "));
+            GameObject doubleClone = Track(Object.Instantiate(original));
+            doubleClone.name = $"{original.name}(Clone) (Clone)  ";
+
+            Assert.IsTrue(Helpers.NameEquals(original, doubleClone));
+
+            GameObject renamed = Track(Object.Instantiate(original));
+            renamed.name = "Helper( Clone )";
+            Assert.IsFalse(Helpers.NameEquals(original, renamed));
+            yield break;
+        }
+
+        [TestCase("Player", "Player(Clone)", true)]
+        [TestCase(" Player ", "Player (Clone)", true)]
+        [TestCase("Enemy(Clone)", "Enemy(Clone) (Clone)", true)]
+        [TestCase("Boss", "MiniBoss(Clone)", false)]
+        public void NameEqualsHandlesCloneVariations(string lhsName, string rhsName, bool expected)
+        {
+            GameObject lhs = Track(new GameObject(lhsName));
+            GameObject rhs = Track(new GameObject(rhsName));
+            Assert.AreEqual(expected, Helpers.NameEquals(lhs, rhs));
         }
 
         [Test]

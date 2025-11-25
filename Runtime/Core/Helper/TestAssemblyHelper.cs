@@ -44,18 +44,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return false;
             }
 
-            if (IsTestAssembly(type.Assembly))
-            {
-                return true;
-            }
-
             string ns = type.Namespace;
-            if (!string.IsNullOrEmpty(ns) && ContainsTestMarker(ns))
+            if (string.IsNullOrEmpty(ns))
+            {
+                return ContainsTestMarker(type.Name) || IsTestAssembly(type.Assembly);
+            }
+
+            if (ContainsTestMarker(ns))
             {
                 return true;
             }
 
-            return false;
+            return IsTestAssembly(type.Assembly);
         }
 
         /// <summary>
@@ -86,6 +86,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
 
             if (value.StartsWith("Tests", Comparison) || value.StartsWith("Test", Comparison))
+            {
+                return true;
+            }
+
+            if (value.IndexOf("Test", Comparison) >= 0)
             {
                 return true;
             }

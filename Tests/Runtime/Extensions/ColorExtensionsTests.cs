@@ -363,15 +363,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetComplementRandomizedFuzzAlwaysFinite()
         {
-            WallstopStudios.UnityHelpers.Core.Random.SystemRandom rng = new(123);
+            SystemRandom rng = new(123);
             for (int i = 0; i < 256; ++i)
             {
                 Color input = new Color(rng.NextFloat(), rng.NextFloat(), rng.NextFloat(), 1f);
                 float variance = i % 2 == 0 ? 0f : rng.NextFloat(0.25f);
 
-                WallstopStudios.UnityHelpers.Core.Random.SystemRandom complementRandom = new(
-                    1000 + i
-                );
+                SystemRandom complementRandom = new(1000 + i);
                 Color result = input.GetComplement(complementRandom, variance);
 
                 Assert.IsFalse(float.IsNaN(result.r));

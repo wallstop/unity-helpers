@@ -1,6 +1,6 @@
-++ Tests/Runtime/Helper/TransformHelpersTests.cs.meta
+++ Tests/Runtime/Helper/SpriteLabelCacheTests.cs.meta
 fileFormatVersion: 2
-guid: f4faa89cb40b403fa0d04a329c1c1919
+guid: 68f5c4d8e9034f4985c85eb865ec55af
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2

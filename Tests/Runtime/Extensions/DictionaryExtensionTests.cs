@@ -464,7 +464,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void TryRemoveFromConcurrentDictionary()
         {
-            System.Collections.Concurrent.ConcurrentDictionary<string, int> dictionary = new()
+            ConcurrentDictionary<string, int> dictionary = new()
             {
                 ["one"] = 1,
                 ["two"] = 2,
@@ -663,7 +663,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetOrAddConcurrentDictionary()
         {
-            System.Collections.Concurrent.ConcurrentDictionary<string, int> dict = new();
+            ConcurrentDictionary<string, int> dict = new();
 
             int value = dict.GetOrAdd("test", () => 100);
             Assert.AreEqual(100, value);
@@ -676,7 +676,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetOrAddKeyConcurrentDictionary()
         {
-            System.Collections.Concurrent.ConcurrentDictionary<string, int> dict = new();
+            ConcurrentDictionary<string, int> dict = new();
 
             int value = dict.GetOrAdd("test", key => key.Length);
             Assert.AreEqual(4, value);
@@ -689,7 +689,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetOrAddNewConcurrentDictionary()
         {
-            System.Collections.Concurrent.ConcurrentDictionary<string, List<int>> dict = new();
+            ConcurrentDictionary<string, List<int>> dict = new();
 
             List<int> value = dict.GetOrAdd("test");
             Assert.IsNotNull(value);
@@ -705,7 +705,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void AddOrUpdateConcurrentDictionary()
         {
-            System.Collections.Concurrent.ConcurrentDictionary<string, int> dict = new();
+            ConcurrentDictionary<string, int> dict = new();
 
             int value = dict.AddOrUpdate("test", key => 100, (key, existing) => existing + 1);
             Assert.AreEqual(100, value);
@@ -717,7 +717,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void TryAddConcurrentDictionary()
         {
-            System.Collections.Concurrent.ConcurrentDictionary<string, int> dict = new();
+            ConcurrentDictionary<string, int> dict = new();
 
             int value = dict.TryAdd("test", key => 100);
             Assert.AreEqual(100, value);

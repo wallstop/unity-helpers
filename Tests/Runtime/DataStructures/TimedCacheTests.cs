@@ -470,6 +470,42 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
         }
 
+        [UnityTest]
+        public IEnumerator JitterIsConsumedOnlyOnceAcrossRefreshes()
+        {
+            const float CacheTtl = 0.2f;
+            const float Jitter = CacheTtl * 0.5f;
+
+            int producerCalls = 0;
+            ManualTimeSource time = new();
+            TimedCache<int> cache = new(
+                () => ++producerCalls,
+                CacheTtl,
+                useJitter: true,
+                timeProvider: time.Get,
+                jitterOverride: Jitter
+            );
+
+            _ = cache.Value;
+            Assert.AreEqual(1, producerCalls);
+            yield return null;
+
+            time.Advance(CacheTtl + Jitter + 0.01f);
+            yield return null;
+            _ = cache.Value;
+            Assert.AreEqual(2, producerCalls, "First refresh should include jitter.");
+
+            time.Advance(CacheTtl * 0.6f);
+            yield return null;
+            _ = cache.Value;
+            Assert.AreEqual(2, producerCalls, "Jitter should not be reapplied.");
+
+            time.Advance(CacheTtl * 0.5f);
+            yield return null;
+            _ = cache.Value;
+            Assert.AreEqual(3, producerCalls, "Subsequent refresh should honor TTL only.");
+        }
+
         [Test]
         public void ManualTimeProviderControlsExpiration()
         {

@@ -97,6 +97,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             }
         }
 
+        private static readonly RuntimeInitializeLoadType[] RuntimeLoadTypes =
+        {
+            RuntimeInitializeLoadType.AfterAssembliesLoaded,
+            RuntimeInitializeLoadType.BeforeSplashScreen,
+            RuntimeInitializeLoadType.BeforeSceneLoad,
+            RuntimeInitializeLoadType.AfterSceneLoad,
+            RuntimeInitializeLoadType.SubsystemRegistration,
+        };
+
         [UnityTest]
         public IEnumerator AutoLoaderInitializesRuntimeSingletons()
         {
@@ -244,21 +253,92 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assert.AreEqual(0, AutoRuntimeSingleton.AwakenCount);
         }
 
-        private static AttributeMetadataCache.AutoLoadSingletonEntry CreateRuntimeEntry<T>()
+        [UnityTest]
+        public IEnumerator AutoLoaderIgnoresDuplicateEntries()
+        {
+            SingletonAutoLoader.ExecuteEntriesForTests(
+                simulatePlayMode: true,
+                RuntimeInitializeLoadType.BeforeSplashScreen,
+                CreateRuntimeEntry<AutoRuntimeSingleton>(),
+                CreateRuntimeEntry<AutoRuntimeSingleton>()
+            );
+
+            yield return null;
+            Assert.AreEqual(1, AutoRuntimeSingleton.AwakenCount);
+        }
+
+        [UnityTest]
+        public IEnumerator MissingTypeWarningEmittedOnceForDuplicates()
+        {
+            LogAssert.Expect(
+                LogType.Warning,
+                new Regex("Unable to resolve type", RegexOptions.IgnoreCase)
+            );
+
+            SingletonAutoLoader.ExecuteEntriesForTests(
+                simulatePlayMode: true,
+                RuntimeInitializeLoadType.BeforeSplashScreen,
+                new AttributeMetadataCache.AutoLoadSingletonEntry(
+                    "Unknown.Type, MissingAssembly",
+                    SingletonAutoLoadKind.Runtime,
+                    RuntimeInitializeLoadType.BeforeSplashScreen
+                ),
+                new AttributeMetadataCache.AutoLoadSingletonEntry(
+                    "Unknown.Type, MissingAssembly",
+                    SingletonAutoLoadKind.Runtime,
+                    RuntimeInitializeLoadType.BeforeSplashScreen
+                )
+            );
+
+            yield return null;
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [UnityTest]
+        public IEnumerator AutoLoaderExecutesOnlyMatchingLoadType(
+            [ValueSource(nameof(RuntimeLoadTypes))] RuntimeInitializeLoadType loadType
+        )
+        {
+            AutoRuntimeSingleton.ClearForTests();
+            RuntimeMismatchSingleton.ClearForTests();
+
+            RuntimeInitializeLoadType otherLoadType =
+                loadType == RuntimeInitializeLoadType.BeforeSplashScreen
+                    ? RuntimeInitializeLoadType.AfterSceneLoad
+                    : RuntimeInitializeLoadType.BeforeSplashScreen;
+
+            SingletonAutoLoader.ExecuteEntriesForTests(
+                simulatePlayMode: true,
+                loadType,
+                CreateRuntimeEntry<AutoRuntimeSingleton>(loadType),
+                CreateRuntimeEntry<RuntimeMismatchSingleton>(otherLoadType)
+            );
+
+            yield return null;
+
+            Assert.AreEqual(1, AutoRuntimeSingleton.AwakenCount);
+            Assert.AreEqual(0, RuntimeMismatchSingleton.AwakeCount);
+        }
+
+        private static AttributeMetadataCache.AutoLoadSingletonEntry CreateRuntimeEntry<T>(
+            RuntimeInitializeLoadType loadType = RuntimeInitializeLoadType.BeforeSplashScreen
+        )
         {
             return new AttributeMetadataCache.AutoLoadSingletonEntry(
                 typeof(T).AssemblyQualifiedName,
                 SingletonAutoLoadKind.Runtime,
-                RuntimeInitializeLoadType.BeforeSplashScreen
+                loadType
             );
         }
 
-        private static AttributeMetadataCache.AutoLoadSingletonEntry CreateScriptableEntry<T>()
+        private static AttributeMetadataCache.AutoLoadSingletonEntry CreateScriptableEntry<T>(
+            RuntimeInitializeLoadType loadType = RuntimeInitializeLoadType.BeforeSplashScreen
+        )
         {
             return new AttributeMetadataCache.AutoLoadSingletonEntry(
                 typeof(T).AssemblyQualifiedName,
                 SingletonAutoLoadKind.ScriptableObject,
-                RuntimeInitializeLoadType.BeforeSplashScreen
+                loadType
             );
         }
     }

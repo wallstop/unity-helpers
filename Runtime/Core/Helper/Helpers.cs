@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.IO;
     using System.Reflection;
     using DataStructure.Adapters;
     using Random;
@@ -51,6 +52,27 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private static string[] CachedLayerNames = Array.Empty<string>();
         private static bool LayerCacheInitialized;
 
+#if UNITY_EDITOR
+        internal static Func<string[]> LayerNameProvider
+        {
+            get => _layerNameProvider ?? DefaultLayerNameProvider;
+            set => _layerNameProvider = value;
+        }
+
+        private static Func<string[]> _layerNameProvider;
+
+        private static readonly Func<string[]> DefaultLayerNameProvider = () =>
+            InternalEditorUtility.layers;
+
+        internal static void ResetLayerNameProvider()
+        {
+            _layerNameProvider = null;
+        }
+#else
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("UnusedMember.Local", "")]
+        internal static void ResetLayerNameProvider() { }
+#endif
+
         internal static Func<float, float> JitterSampler
         {
             get => _jitterSampler ?? DefaultJitterSampler;
@@ -74,6 +96,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             _jitterSampler = null;
         }
 
+        internal static void ResetLayerCache()
+        {
+            CachedLayerNames = Array.Empty<string>();
+            LayerCacheInitialized = false;
+        }
+
 #if UNITY_EDITOR
         private static readonly string[] DefaultPrefabSearchFolders =
         {
@@ -87,13 +115,25 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             "Assets/Resources",
             "Assets/TileMaps",
         };
+
+        [InitializeOnLoadMethod]
+        private static void RegisterProjectChangeHandlers()
+        {
+            EditorApplication.projectChanged -= HandleProjectChangedForHelpers;
+            EditorApplication.projectChanged += HandleProjectChangedForHelpers;
+        }
+
+        internal static void HandleProjectChangedForHelpers()
+        {
+            ResetLayerCache();
+            ResetSpriteLabelCache();
+        }
 #endif
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void CLearLayerNames()
         {
-            CachedLayerNames = Array.Empty<string>();
-            LayerCacheInitialized = false;
+            ResetLayerCache();
         }
 
         /// <summary>
@@ -217,11 +257,16 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// </remarks>
         public static string[] GetAllLayerNames()
         {
+            if (LayerCacheInitialized && CachedLayerNames != null)
+            {
+                return CachedLayerNames;
+            }
+
 #if UNITY_EDITOR
             try
             {
                 // Prefer the editor API when available
-                string[] editorLayers = InternalEditorUtility.layers;
+                string[] editorLayers = LayerNameProvider?.Invoke();
                 if (editorLayers is { Length: > 0 })
                 {
                     LayerCacheInitialized = true;
@@ -595,6 +640,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             bool waitBefore = false
         )
         {
+            if (action == null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
             return monoBehaviour.StartCoroutine(
                 FunctionAsCoroutine(action, updateRate, useJitter, waitBefore)
             );
@@ -670,6 +720,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             float delay
         )
         {
+            if (action == null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
             return monoBehaviour.StartCoroutine(FunctionDelayAsCoroutine(action, delay));
         }
 
@@ -678,6 +733,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             Action action
         )
         {
+            if (action == null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
             return monoBehaviour.ExecuteFunctionAfterDelay(action, 0f);
         }
 
@@ -686,6 +746,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             Action action
         )
         {
+            if (action == null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
             return monoBehaviour.StartCoroutine(FunctionAfterFrame(action));
         }
 
@@ -1170,22 +1235,34 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return true;
             }
 
+            string lhsNormalized = NormalizeCloneName(lhs.name);
+            string rhsNormalized = NormalizeCloneName(rhs.name);
+
+            return string.Equals(lhsNormalized, rhsNormalized, StringComparison.Ordinal);
+        }
+
+        private static string NormalizeCloneName(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return string.Empty;
+            }
+
+            string normalized = name;
             const string clone = "(Clone)";
-            string lhsName = lhs.name;
-            while (lhsName.EndsWith(clone, StringComparison.Ordinal))
+            while (true)
             {
-                lhsName = lhsName.Substring(0, lhsName.Length - clone.Length);
-                lhsName = lhsName.Trim();
+                string trimmedEnd = normalized.TrimEnd();
+                if (!trimmedEnd.EndsWith(clone, StringComparison.Ordinal))
+                {
+                    normalized = trimmedEnd;
+                    break;
+                }
+
+                normalized = trimmedEnd.Substring(0, trimmedEnd.Length - clone.Length);
             }
 
-            string rhsName = rhs.name;
-            while (rhsName.EndsWith(clone, StringComparison.Ordinal))
-            {
-                rhsName = rhsName.Substring(0, rhsName.Length - clone.Length);
-                rhsName = rhsName.Trim();
-            }
-
-            return string.Equals(lhsName, rhsName, StringComparison.Ordinal);
+            return normalized.Trim();
         }
 
         public static Color ChangeColorBrightness(this Color color, float correctionFactor)
