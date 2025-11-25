@@ -338,9 +338,31 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 throw new ArgumentException("Max cannot be zero");
             }
 
-            // 64-bit Lemire method via high 64 bits of 128-bit product
-            // Produces uniform values in [0, max) without rejection
-            return MulHi64(NextUlong(), max);
+            // Power-of-two fast path (no rejection required)
+            if ((max & (max - 1)) == 0)
+            {
+                return NextUlong() & (max - 1);
+            }
+
+            // Lemire's method with rejection: use high 64 bits of the 128-bit product,
+            // retrying when the low bits fall within the threshold region to avoid bias.
+            ulong threshold = unchecked(0UL - max) % max;
+            int attempts = 0;
+            while (true)
+            {
+                ulong sample = NextUlong();
+                ulong productLow = unchecked(sample * max);
+                if (productLow >= threshold)
+                {
+                    return MulHi64(sample, max);
+                }
+
+                if (++attempts > MaxRejectionAttempts64)
+                {
+                    // Failsafe: fall back to modulo to avoid hanging indefinitely.
+                    return sample % max;
+                }
+            }
         }
 
         public ulong NextUlong(ulong min, ulong max)
