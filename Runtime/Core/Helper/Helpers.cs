@@ -834,7 +834,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         )
         {
             random ??= PRNG.Instance;
-            double r = radius * Math.Sqrt(random.NextDouble());
+            double radiusAbs = Math.Abs(radius);
+            if (radiusAbs <= 0f)
+            {
+                return center;
+            }
+
+            double r = radiusAbs * Math.Sqrt(random.NextDouble());
             double theta = random.NextDouble() * 2 * Math.PI;
             return new Vector2(
                 center.x + (float)(r * Math.Cos(theta)),
@@ -855,11 +861,17 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         )
         {
             random ??= PRNG.Instance;
+            double radiusAbs = Math.Abs(radius);
+            if (radiusAbs <= 0f)
+            {
+                return center;
+            }
+
             double u = random.NextDouble();
             double v = random.NextDouble();
             double theta = 2 * Math.PI * u;
             double phi = Math.Acos(2 * v - 1);
-            double r = radius * Math.Pow(random.NextDouble(), 1.0 / 3.0);
+            double r = radiusAbs * Math.Pow(random.NextDouble(), 1.0 / 3.0);
             double sinPhi = Math.Sin(phi);
             return new Vector3(
                 center.x + (float)(r * sinPhi * Math.Cos(theta)),

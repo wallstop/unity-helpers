@@ -303,5 +303,69 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             Assert.AreEqual(center, rng.NextVector3InSphere(0f, center));
         }
+
+        [Test]
+        public void NextVector2InRangeZeroRangeReturnsOrigin()
+        {
+            SystemRandom rng = new(25);
+            Vector2 origin = new(-1.25f, 3.4f);
+
+            Assert.AreEqual(origin, rng.NextVector2InRange(0f, origin));
+        }
+
+        [TestCase(-5f)]
+        [TestCase(-0.25f)]
+        public void NextVector2InRangeNegativeRangeUsesAbsolute(float inputRange)
+        {
+            SystemRandom rng = new(27);
+            Vector2 origin = new(0.5f, -2.5f);
+
+            Vector2 result = rng.NextVector2InRange(inputRange, origin);
+
+            Assert.LessOrEqual(Vector2.Distance(origin, result), Mathf.Abs(inputRange));
+        }
+
+        [Test]
+        public void NextVector2InRangeDefaultsToZeroOrigin()
+        {
+            SystemRandom rng = new(29);
+            float range = 3.5f;
+
+            Vector2 result = rng.NextVector2InRange(range);
+
+            Assert.LessOrEqual(result.magnitude, range);
+        }
+
+        [Test]
+        public void NextVector3InRangeZeroRangeReturnsOrigin()
+        {
+            SystemRandom rng = new(31);
+            Vector3 origin = new(4f, -2f, 7f);
+
+            Assert.AreEqual(origin, rng.NextVector3InRange(0f, origin));
+        }
+
+        [TestCase(-10f)]
+        [TestCase(-0.5f)]
+        public void NextVector3InRangeNegativeRangeUsesAbsolute(float inputRange)
+        {
+            SystemRandom rng = new(33);
+            Vector3 origin = new(-1f, 2f, -3f);
+
+            Vector3 result = rng.NextVector3InRange(inputRange, origin);
+
+            Assert.LessOrEqual(Vector3.Distance(origin, result), Mathf.Abs(inputRange));
+        }
+
+        [Test]
+        public void NextVector3InRangeDefaultsToZeroOrigin()
+        {
+            SystemRandom rng = new(35);
+            float range = 4f;
+
+            Vector3 result = rng.NextVector3InRange(range);
+
+            Assert.LessOrEqual(result.magnitude, range);
+        }
     }
 }

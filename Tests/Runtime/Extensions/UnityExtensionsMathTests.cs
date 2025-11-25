@@ -204,6 +204,72 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void FastContains2DBoundsManualExpansionIncludesPoint()
+        {
+            Bounds bounds = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Vector2 point = new(2.05f, 1f);
+
+            Assert.IsFalse(bounds.FastContains2D(point));
+
+            bounds.Encapsulate(point);
+            Assert.IsTrue(bounds.FastContains2D(point));
+        }
+
+        [Test]
+        public void FastIntersects2DBoundsManualExpansionHandlesGap()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds bounds2 = new(new Vector3(2.2f, 0f, 0f), new Vector3(2f, 2f, 2f));
+
+            Assert.IsFalse(bounds1.FastIntersects2D(bounds2));
+
+            bounds1.Encapsulate(bounds2);
+            Assert.IsTrue(bounds1.FastIntersects2D(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects2DBoundsManualExpansionHandlesGapOnYAxis()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds bounds2 = new(new Vector3(0f, 2.3f, 0f), new Vector3(2f, 2f, 2f));
+
+            Assert.IsFalse(bounds1.FastIntersects2D(bounds2));
+
+            bounds1.Encapsulate(bounds2.min);
+            Assert.IsTrue(bounds1.FastIntersects2D(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects2DBoundsIntManualExpansionHandlesGap()
+        {
+            BoundsInt bounds1 = new(0, 0, 0, 2, 2, 1);
+            BoundsInt bounds2 = new(3, 0, 0, 2, 2, 1);
+
+            Assert.IsFalse(bounds1.FastIntersects2D(bounds2));
+
+            BoundsInt expanded = new(
+                bounds1.position,
+                new Vector3Int(bounds1.size.x + 1, bounds1.size.y, bounds1.size.z)
+            );
+            Assert.IsTrue(expanded.FastIntersects2D(bounds2));
+        }
+
+        [Test]
+        public void FastIntersects2DBoundsManualShrinkStopsOverlap()
+        {
+            Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(4f, 4f, 4f));
+            Bounds bounds2 = new(new Vector3(1f, 1f, 0f), new Vector3(2f, 2f, 2f));
+
+            Assert.IsTrue(bounds1.FastIntersects2D(bounds2));
+
+            Vector3 min = bounds1.min;
+            Vector3 max = bounds1.max;
+            Bounds shrunk = new();
+            shrunk.SetMinMax(min, new Vector3(min.x + 0.9f, max.y, max.z));
+            Assert.IsFalse(shrunk.FastIntersects2D(bounds2));
+        }
+
+        [Test]
         public void FastIntersects2DBoundsIntSeparatedBoundsReturnsFalse()
         {
             BoundsInt bounds1 = new(0, 0, 0, 10, 10, 10);
@@ -422,6 +488,42 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Bounds bounds1 = new(new Vector3(0f, 0f, 0f), new Vector3(10f, 10f, 10f));
             Bounds bounds2 = new(new Vector3(0f, 0f, 0f), new Vector3(5f, 5f, 5f));
             Assert.IsTrue(bounds1.Overlaps2D(bounds2));
+        }
+
+        [Test]
+        public void Overlaps2DManualExpansionClosesGap()
+        {
+            Bounds a = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds b = new(new Vector3(2.5f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Assert.IsFalse(a.Overlaps2D(b));
+
+            a.Encapsulate(b.min);
+            Assert.IsTrue(a.Overlaps2D(b));
+        }
+
+        [Test]
+        public void Overlaps2DManualExpansionClosesGapOnYAxis()
+        {
+            Bounds a = new(new Vector3(0f, 0f, 0f), new Vector3(2f, 2f, 2f));
+            Bounds b = new(new Vector3(0f, 2.6f, 0f), new Vector3(2f, 2f, 2f));
+            Assert.IsFalse(a.Overlaps2D(b));
+
+            a.Encapsulate(b.min);
+            Assert.IsTrue(a.Overlaps2D(b));
+        }
+
+        [Test]
+        public void Overlaps2DManualShrinkRemovesOverlap()
+        {
+            Bounds a = new(new Vector3(0f, 0f, 0f), new Vector3(6f, 6f, 6f));
+            Bounds b = new(new Vector3(1f, 1f, 0f), new Vector3(2f, 2f, 2f));
+            Assert.IsTrue(a.Overlaps2D(b));
+
+            Vector3 min = a.min;
+            Vector3 max = a.max;
+            Bounds shrunk = new();
+            shrunk.SetMinMax(min, new Vector3(min.x + 0.5f, max.y, max.z));
+            Assert.IsFalse(shrunk.Overlaps2D(b));
         }
 
         [Test]

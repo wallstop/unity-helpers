@@ -440,6 +440,74 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assert.AreEqual(1f, point.y, 1e-4f);
         }
 
+        [Test]
+        public void GetRandomPointInCircleZeroRadiusReturnsCenter()
+        {
+            DeterministicRandom random = new(Array.Empty<double>());
+            Vector2 center = new(3.5f, -2f);
+            Assert.AreEqual(center, Helpers.GetRandomPointInCircle(center, 0f, random));
+        }
+
+        [Test]
+        public void GetRandomPointInCircleNegativeRadiusUsesAbsolute()
+        {
+            DeterministicRandom random = new(new[] { 0.25, 0.0 });
+            Vector2 center = new(-1f, 0.5f);
+
+            Vector2 result = Helpers.GetRandomPointInCircle(center, -4f, random);
+
+            Assert.AreEqual(center + new Vector2(2f, 0f), result);
+        }
+
+        [Test]
+        public void GetRandomPointInSphereZeroRadiusReturnsCenter()
+        {
+            DeterministicRandom random = new(Array.Empty<double>());
+            Vector3 center = new(1f, 2f, 3f);
+            Assert.AreEqual(center, Helpers.GetRandomPointInSphere(center, 0f, random));
+        }
+
+        [Test]
+        public void GetRandomPointInSphereNegativeRadiusUsesAbsolute()
+        {
+            DeterministicRandom random = new(new[] { 0.25, 0.5, 0.125 });
+            Vector3 center = new(1f, 2f, 3f);
+
+            Vector3 result = Helpers.GetRandomPointInSphere(center, -3f, random);
+
+            Assert.AreEqual(1f, result.x, 1e-4f);
+            Assert.AreEqual(3.5f, result.y, 1e-4f);
+            Assert.AreEqual(3f, result.z, 1e-4f);
+        }
+
+        [Test]
+        public void GetRandomPointInCircleAlwaysWithinRadius()
+        {
+            const float radius = 3f;
+            Vector2 center = new(2f, -1.5f);
+            DeterministicRandom random = new(Enumerable.Repeat(0.5, 400).ToArray());
+
+            for (int i = 0; i < 100; ++i)
+            {
+                Vector2 point = Helpers.GetRandomPointInCircle(center, radius, random);
+                Assert.LessOrEqual(Vector2.Distance(center, point), radius + 1e-5f);
+            }
+        }
+
+        [Test]
+        public void GetRandomPointInSphereAlwaysWithinRadius()
+        {
+            const float radius = 4f;
+            Vector3 center = new(-3f, 0.25f, 5f);
+            DeterministicRandom random = new(Enumerable.Repeat(0.75, 600).ToArray());
+
+            for (int i = 0; i < 100; ++i)
+            {
+                Vector3 point = Helpers.GetRandomPointInSphere(center, radius, random);
+                Assert.LessOrEqual(Vector3.Distance(center, point), radius + 1e-5f);
+            }
+        }
+
         [UnityTest]
         public IEnumerator GetPlayerObjectInChildHierarchyFindsTaggedChild()
         {

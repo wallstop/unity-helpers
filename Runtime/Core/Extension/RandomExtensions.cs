@@ -206,7 +206,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - uses square root for uniform distribution.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Negative range may produce unexpected results. Zero range returns origin.
+        /// Edge Cases: Negative range is normalized via absolute value. Zero range returns origin.
         /// </remarks>
         public static Vector2 NextVector2InRange(
             this IRandom random,
@@ -214,7 +214,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             Vector2? origin = null
         )
         {
-            return Helpers.GetRandomPointInCircle(origin ?? Vector2.zero, range, random);
+            float radius = Mathf.Abs(range);
+            if (radius <= 0f)
+            {
+                return origin ?? Vector2.zero;
+            }
+
+            return Helpers.GetRandomPointInCircle(origin ?? Vector2.zero, radius, random);
         }
 
         /// <summary>
@@ -279,7 +285,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - uses cube root for uniform distribution.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Negative range may produce unexpected results. Zero range returns origin.
+        /// Edge Cases: Negative range is normalized via absolute value. Zero range returns origin.
         /// </remarks>
         public static Vector3 NextVector3InRange(
             this IRandom random,
@@ -287,7 +293,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             Vector3? origin = null
         )
         {
-            return Helpers.GetRandomPointInSphere(origin ?? Vector3.zero, range, random);
+            float radius = Mathf.Abs(range);
+            if (radius <= 0f)
+            {
+                return origin ?? Vector3.zero;
+            }
+
+            return Helpers.GetRandomPointInSphere(origin ?? Vector3.zero, radius, random);
         }
 
         /// <summary>
