@@ -180,11 +180,39 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 yield return null;
             }
 
+            guard = 10;
+            while (
+                UnityEngine.Object.FindObjectsOfType<UnityMainThreadDispatcher>().Length > 0
+                && guard-- > 0
+            )
+            {
+                yield return null;
+            }
+
             Assert.IsFalse(UnityMainThreadDispatcher.HasInstance);
             Assert.AreEqual(
                 0,
                 UnityEngine.Object.FindObjectsOfType<UnityMainThreadDispatcher>().Length
             );
+        }
+
+        [UnityTest]
+        public IEnumerator DestroyExistingDispatcherImmediateClearsInstanceWithoutErrors()
+        {
+            UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
+            Track(dispatcher.gameObject);
+
+            bool destroyed = UnityMainThreadDispatcher.DestroyExistingDispatcher(immediate: true);
+
+            Assert.IsTrue(destroyed);
+            Assert.IsFalse(UnityMainThreadDispatcher.HasInstance);
+
+            yield return null;
+            LogAssert.NoUnexpectedReceived();
+
+            UnityMainThreadDispatcher.SetAutoCreationEnabled(true);
+            UnityMainThreadDispatcher recreated = UnityMainThreadDispatcher.Instance;
+            Track(recreated.gameObject);
         }
 
         [Test]
@@ -197,6 +225,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assert.IsFalse(destroyed);
 
             UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
+        }
+
+        [UnityTest]
+        public IEnumerator DestroyExistingDispatcherReturnsFalseWhenMissingDeferred()
+        {
+            UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
+
+            bool destroyed = UnityMainThreadDispatcher.DestroyExistingDispatcher(immediate: false);
+            Assert.IsFalse(destroyed);
+
+            yield break;
         }
 
         [UnityTest]

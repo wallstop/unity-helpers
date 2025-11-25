@@ -51,6 +51,29 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private static string[] CachedLayerNames = Array.Empty<string>();
         private static bool LayerCacheInitialized;
 
+        internal static Func<float, float> JitterSampler
+        {
+            get => _jitterSampler ?? DefaultJitterSampler;
+            set => _jitterSampler = value;
+        }
+
+        private static Func<float, float> _jitterSampler;
+
+        private static readonly Func<float, float> DefaultJitterSampler = maxDelay =>
+        {
+            if (maxDelay <= 0f)
+            {
+                return 0f;
+            }
+
+            return PRNG.Instance.NextFloat(0f, maxDelay);
+        };
+
+        internal static void ResetJitterSampler()
+        {
+            _jitterSampler = null;
+        }
+
 #if UNITY_EDITOR
         private static readonly string[] DefaultPrefabSearchFolders =
         {
@@ -470,7 +493,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 GameObject go => go != null ? go.GetComponents<T>() : Array.Empty<T>(),
                 Component c => c != null ? c.GetComponents<T>() : Array.Empty<T>(),
-                _ => default,
+                _ => Array.Empty<T>(),
             };
         }
 
@@ -584,40 +607,51 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             bool waitBefore
         )
         {
-            bool jitterConsumed = false;
+            float interval = ResolveInvocationDelay(updateRate);
+            float initialDelay = waitBefore ? interval : 0f;
 
-            if (waitBefore)
+            if (useJitter)
             {
-                float initialDelay = ResolveInvocationDelay(
-                    updateRate,
-                    useJitter,
-                    ref jitterConsumed
-                );
+                initialDelay += SampleInitialJitter(interval);
+            }
+
+            if (initialDelay > 0f)
+            {
                 yield return WaitForDelay(initialDelay);
             }
 
             while (true)
             {
                 action();
-                float delay = ResolveInvocationDelay(updateRate, useJitter, ref jitterConsumed);
-                yield return WaitForDelay(delay);
+                if (interval <= 0f)
+                {
+                    yield return null;
+                    continue;
+                }
+
+                yield return WaitForDelay(interval);
             }
         }
 
-        private static float ResolveInvocationDelay(
-            float baseDelay,
-            bool useJitter,
-            ref bool jitterConsumed
-        )
+        private static float ResolveInvocationDelay(float baseDelay)
         {
-            float delay = Mathf.Max(0f, baseDelay);
-            if (useJitter && !jitterConsumed)
+            return Mathf.Max(0f, baseDelay);
+        }
+
+        private static float SampleInitialJitter(float interval)
+        {
+            if (interval <= 0f)
             {
-                delay = Mathf.Max(0f, PRNG.Instance.NextFloat(baseDelay));
-                jitterConsumed = true;
+                return 0f;
             }
 
-            return delay;
+            float jitter = JitterSampler(interval);
+            if (float.IsNaN(jitter) || jitter <= 0f)
+            {
+                return 0f;
+            }
+
+            return Mathf.Min(jitter, interval);
         }
 
         private static IEnumerator WaitForDelay(float duration)

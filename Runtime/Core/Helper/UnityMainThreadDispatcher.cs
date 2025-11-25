@@ -159,14 +159,20 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return false;
             }
 
+            if (_instance == dispatcher)
+            {
+                _instance = null;
+            }
+
             if (immediate || !Application.isPlaying)
             {
+                // Tests rely on immediate destruction to stay deterministic. Production code
+                // should prefer deferred destruction by passing immediate: false.
                 DestroyImmediate(dispatcherObject);
+                return true;
             }
-            else
-            {
-                Destroy(dispatcherObject);
-            }
+
+            Destroy(dispatcherObject);
 
             return true;
         }

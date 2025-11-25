@@ -204,6 +204,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             yield break;
         }
 
+        [Test]
+        public void GetComponentsReturnsEmptyArrayForNullTargets()
+        {
+            Component[] result = Helpers.GetComponents<Component>(null);
+            Assert.AreSame(Array.Empty<Component>(), result);
+        }
+
+        [UnityTest]
+        public IEnumerator GetComponentsReturnsEmptyArrayForNonGameObjects()
+        {
+            ScriptableObject asset = Track(ScriptableObject.CreateInstance<ScriptableObject>());
+            Component[] result = Helpers.GetComponents<Component>(asset);
+            Assert.IsNotNull(result);
+            Assert.IsEmpty(result);
+            Assert.AreSame(Array.Empty<Component>(), result);
+            yield break;
+        }
+
         [UnityTest]
         public IEnumerator TryGetComponentWrapsUnityImplementation()
         {
@@ -304,6 +322,111 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             }
 
             host.StopCoroutine(coroutine);
+        }
+
+        [UnityTest]
+        public IEnumerator StartFunctionAsCoroutineAppliesJitterBeforeFirstInvocation()
+        {
+            CoroutineHost host = CreateHost();
+            host.ResetState();
+            Helpers.JitterSampler = _ => 0.02f;
+
+            Coroutine coroutine = host.StartFunctionAsCoroutine(
+                host.Increment,
+                0.05f,
+                useJitter: true
+            );
+
+            try
+            {
+                yield return null;
+                Assert.AreEqual(
+                    0,
+                    host.InvocationCount,
+                    "Jitter should delay the first invocation."
+                );
+
+                float timeout = Time.time + 0.5f;
+                while (host.InvocationCount == 0 && Time.time < timeout)
+                {
+                    yield return null;
+                }
+
+                Assert.Greater(
+                    host.InvocationCount,
+                    0,
+                    "Invocation never occurred after jitter delay elapsed."
+                );
+            }
+            finally
+            {
+                host.StopCoroutine(coroutine);
+                Helpers.ResetJitterSampler();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator StartFunctionAsCoroutineHandlesZeroIntervalWithJitter()
+        {
+            CoroutineHost host = CreateHost();
+            host.ResetState();
+            Helpers.JitterSampler = _ => 0f;
+
+            Coroutine coroutine = host.StartFunctionAsCoroutine(
+                host.Increment,
+                0f,
+                useJitter: true
+            );
+
+            try
+            {
+                yield return null;
+                Assert.Greater(
+                    host.InvocationCount,
+                    0,
+                    "Zero interval should still execute at least once per frame."
+                );
+            }
+            finally
+            {
+                host.StopCoroutine(coroutine);
+                Helpers.ResetJitterSampler();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator StartFunctionAsCoroutineClampsExcessiveJitter()
+        {
+            CoroutineHost host = CreateHost();
+            host.ResetState();
+            Helpers.JitterSampler = delay => delay * 4f;
+
+            Coroutine coroutine = host.StartFunctionAsCoroutine(
+                host.Increment,
+                0.05f,
+                useJitter: true
+            );
+
+            try
+            {
+                float start = Time.time;
+                while (host.InvocationCount == 0 && Time.time - start < 0.2f)
+                {
+                    yield return null;
+                }
+
+                Assert.Greater(host.InvocationCount, 0, "Invocation never occurred.");
+                Assert.Less(
+                    Time.time - start,
+                    0.15f,
+                    "Jitter should have been clamped to the base interval."
+                );
+            }
+            finally
+            {
+                host.StopCoroutine(coroutine);
+                Helpers.ResetJitterSampler();
+            }
         }
 
         [UnityTest]
