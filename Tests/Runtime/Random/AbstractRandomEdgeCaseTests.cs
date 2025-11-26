@@ -265,7 +265,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
 
             public int UintCalls { get; private set; }
 
-            public override RandomState InternalState => new RandomState(0UL);
+            public override RandomState InternalState => new(0UL);
 
             public void EnqueueUlong(ulong value)
             {

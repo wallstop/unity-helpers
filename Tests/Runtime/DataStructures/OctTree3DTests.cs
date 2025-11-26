@@ -157,7 +157,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void GetElementsInRangeFullyContainedNodeOutsideMinimumReturnsAll()
         {
             List<Vector3> cluster = new();
-            Vector3 center = new Vector3(25f, -10f, 5f);
+            Vector3 center = new(25f, -10f, 5f);
             for (int i = 0; i < 24; ++i)
             {
                 float offset = i * 0.1f;

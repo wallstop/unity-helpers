@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Tests.TestDoubles;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using Object = UnityEngine.Object;
 
@@ -215,7 +216,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator GetComponentsReturnsEmptyArrayForNonGameObjects()
         {
             ScriptableObject asset = Track(ScriptableObject.CreateInstance<ScriptableObject>());
-            Component[] result = Helpers.GetComponents<Component>(asset);
+            Component[] result = asset.GetComponents<Component>();
             Assert.IsNotNull(result);
             Assert.IsEmpty(result);
             Assert.AreSame(Array.Empty<Component>(), result);
@@ -741,6 +742,31 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             }
         }
 
+        [TestCaseSource(nameof(RandomCircleSampleData))]
+        public void GetRandomPointInCircleHandlesPathologicalSamples(double[] samples)
+        {
+            EdgeCaseRandom random = new(doubleSequence: samples, doubleFallback: 0.5d);
+            Vector2 center = new(1.25f, -3.5f);
+            const float radius = 2.5f;
+            Vector2 point = Helpers.GetRandomPointInCircle(center, radius, random);
+            Assert.IsTrue(float.IsFinite(point.x));
+            Assert.IsTrue(float.IsFinite(point.y));
+            Assert.LessOrEqual(Vector2.Distance(center, point), radius + 1e-4f);
+        }
+
+        [TestCaseSource(nameof(RandomSphereSampleData))]
+        public void GetRandomPointInSphereHandlesPathologicalSamples(double[] samples)
+        {
+            EdgeCaseRandom random = new(doubleSequence: samples, doubleFallback: 0.5d);
+            Vector3 center = new(-0.5f, 2.25f, 4f);
+            const float radius = 3.75f;
+            Vector3 point = Helpers.GetRandomPointInSphere(center, radius, random);
+            Assert.IsTrue(float.IsFinite(point.x));
+            Assert.IsTrue(float.IsFinite(point.y));
+            Assert.IsTrue(float.IsFinite(point.z));
+            Assert.LessOrEqual(Vector3.Distance(center, point), radius + 1e-4f);
+        }
+
         [UnityTest]
         public IEnumerator GetPlayerObjectInChildHierarchyFindsTaggedChild()
         {
@@ -963,6 +989,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assert.AreEqual(2, bounds.xMax);
             Assert.AreEqual(-1, bounds.yMin);
             Assert.AreEqual(1, bounds.yMax);
+        }
+
+        private static IEnumerable<TestCaseData> RandomCircleSampleData()
+        {
+            yield return new TestCaseData(new[] { double.NaN, double.NaN }).SetName(
+                "Circle_NaNSamples"
+            );
+            yield return new TestCaseData(new[] { 1d + double.Epsilon, 0.25d }).SetName(
+                "Circle_GreaterThanOne"
+            );
+            yield return new TestCaseData(new[] { -10d, 1d + 1e-6 }).SetName(
+                "Circle_NegativeAndTooLarge"
+            );
+        }
+
+        private static IEnumerable<TestCaseData> RandomSphereSampleData()
+        {
+            yield return new TestCaseData(
+                new[] { 1d + double.Epsilon, 1d + double.Epsilon, 0d }
+            ).SetName("Sphere_ClampPhiAndTheta");
+            yield return new TestCaseData(new[] { double.NaN, double.NaN, double.NaN }).SetName(
+                "Sphere_AllNaN"
+            );
+            yield return new TestCaseData(new[] { -5d, 0.75d, 1d + double.Epsilon }).SetName(
+                "Sphere_NegativeRadiusSample"
+            );
         }
 
         private CoroutineHost CreateHost()

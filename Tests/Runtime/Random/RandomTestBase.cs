@@ -33,7 +33,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
         protected const ulong DeterministicSeed64 = 0x0123456789ABCDEFUL;
         protected const ulong DeterministicSeed64B = 0xF0E1D2C3B4A59687UL;
         protected const int DeterministicSeedInt = 0x1BADC0DE;
-        protected static readonly Guid DeterministicGuid = new Guid(
+        protected static readonly Guid DeterministicGuid = new(
             "11223344-5566-7788-99AA-BBCCDDEEFF00"
         );
 

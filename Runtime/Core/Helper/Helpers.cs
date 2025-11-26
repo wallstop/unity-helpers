@@ -939,8 +939,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return center;
             }
 
-            double r = radiusAbs * Math.Sqrt(random.NextDouble());
-            double theta = random.NextDouble() * 2 * Math.PI;
+            double radiusSample = ClampUnitInterval(random.NextDouble());
+            double angleSample = ClampUnitInterval(random.NextDouble());
+            double r = radiusAbs * Math.Sqrt(radiusSample);
+            double theta = angleSample * 2 * Math.PI;
             return new Vector2(
                 center.x + (float)(r * Math.Cos(theta)),
                 center.y + (float)(r * Math.Sin(theta))
@@ -966,11 +968,21 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return center;
             }
 
-            double u = random.NextDouble();
-            double v = random.NextDouble();
-            double theta = 2 * Math.PI * u;
-            double phi = Math.Acos(2 * v - 1);
-            double r = radiusAbs * Math.Pow(random.NextDouble(), 1.0 / 3.0);
+            double thetaSample = ClampUnitInterval(random.NextDouble());
+            double phiSample = ClampUnitInterval(random.NextDouble());
+            double radiusSample = ClampUnitInterval(random.NextDouble());
+            double theta = 2 * Math.PI * thetaSample;
+            double phiArgument = 2 * phiSample - 1;
+            if (phiArgument < -1)
+            {
+                phiArgument = -1;
+            }
+            else if (phiArgument > 1)
+            {
+                phiArgument = 1;
+            }
+            double phi = Math.Acos(phiArgument);
+            double r = radiusAbs * Math.Pow(radiusSample, 1.0 / 3.0);
             double sinPhi = Math.Sin(phi);
             return new Vector3(
                 center.x + (float)(r * sinPhi * Math.Cos(theta)),

@@ -612,8 +612,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 {
                     try
                     {
-                        WallstopStudiosLogger.LogDebug(
-                            loggerOwner,
+                        loggerOwner.LogDebug(
                             FormattableStringFactory.Create("Background log {0}", 1)
                         );
                     }

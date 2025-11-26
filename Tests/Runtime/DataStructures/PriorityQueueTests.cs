@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void DefaultConstructorStartsEmpty()
         {
-            PriorityQueue<int> queue = new PriorityQueue<int>();
+            PriorityQueue<int> queue = new();
 
             Assert.AreEqual(0, queue.Count);
             Assert.IsTrue(queue.IsEmpty);
@@ -55,7 +55,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void ConstructorFromCollectionHeapifiesInput()
         {
             int[] items = { 9, 2, 7, 4 };
-            PriorityQueue<int> queue = new PriorityQueue<int>(items);
+            PriorityQueue<int> queue = new(items);
 
             Assert.AreEqual(items.Length, queue.Count);
             Assert.IsTrue(queue.TryDequeue(out int first));
@@ -72,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void CreateMaxFromCollectionUsesProvidedItems()
         {
-            List<int> items = new List<int> { 1, 3, 5, 7 };
+            List<int> items = new() { 1, 3, 5, 7 };
             PriorityQueue<int> queue = PriorityQueue<int>.CreateMax(items);
 
             foreach (int expected in new[] { 7, 5, 3, 1 })
@@ -176,7 +176,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(queue.TryPeek(out int result));
             Assert.AreEqual(5, result);
 
-            List<int> ordered = new List<int>();
+            List<int> ordered = new();
             while (queue.TryDequeue(out int value))
             {
                 ordered.Add(value);
@@ -256,7 +256,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             queue.Enqueue(20);
             queue.Enqueue(30);
 
-            List<int> enumerated = new List<int>();
+            List<int> enumerated = new();
             foreach (int value in queue)
             {
                 enumerated.Add(value);
@@ -285,7 +285,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             IComparer<string> comparer = Comparer<string>.Create(
                 (a, b) => a.Length.CompareTo(b.Length)
             );
-            PriorityQueue<string> queue = new PriorityQueue<string>(comparer);
+            PriorityQueue<string> queue = new(comparer);
             queue.Enqueue("ccc");
             queue.Enqueue("a");
             queue.Enqueue("bb");

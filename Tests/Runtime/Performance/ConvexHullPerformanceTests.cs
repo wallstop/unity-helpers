@@ -149,7 +149,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             int maxY
         )
         {
-            List<FastVector3Int> perimeter = new List<FastVector3Int>((maxX - minX + 1) * 4);
+            List<FastVector3Int> perimeter = new((maxX - minX + 1) * 4);
             for (int x = minX; x <= maxX; ++x)
             {
                 perimeter.Add(new FastVector3Int(x, minY, 0));

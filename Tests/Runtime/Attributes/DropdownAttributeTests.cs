@@ -48,7 +48,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [Test]
         public void StringInListMissingMethodLogsErrorAndReturnsEmpty()
         {
-            Regex pattern = new Regex("StringInListAttribute");
+            Regex pattern = new("StringInListAttribute");
             LogAssert.Expect(LogType.Error, pattern);
             StringInListAttribute attribute = new(typeof(StringProviders), "Missing");
             CollectionAssert.IsEmpty(attribute.List);
@@ -57,7 +57,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [Test]
         public void StringInListMethodThrowingExceptionLogsErrorAndReturnsEmpty()
         {
-            Regex pattern = new Regex("StringInListAttribute");
+            Regex pattern = new("StringInListAttribute");
             LogAssert.Expect(LogType.Error, pattern);
             StringInListAttribute attribute = new(
                 typeof(StringProviders),
@@ -97,7 +97,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [Test]
         public void IntDropdownMissingMethodLogsErrorAndReturnsEmpty()
         {
-            Regex pattern = new Regex("IntDropdownAttribute");
+            Regex pattern = new("IntDropdownAttribute");
             LogAssert.Expect(LogType.Error, pattern);
             IntDropdownAttribute attribute = new(typeof(IntProviders), "Missing");
             CollectionAssert.IsEmpty(attribute.Options);
@@ -106,7 +106,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [Test]
         public void IntDropdownMethodThrowingExceptionLogsErrorAndReturnsEmpty()
         {
-            Regex pattern = new Regex("IntDropdownAttribute");
+            Regex pattern = new("IntDropdownAttribute");
             LogAssert.Expect(LogType.Error, pattern);
             IntDropdownAttribute attribute = new(
                 typeof(IntProviders),
@@ -252,7 +252,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [Test]
         public void WValueDropDownInvalidConversionLogsErrorAndSkips()
         {
-            Regex pattern = new Regex("WValueDropDownAttribute");
+            Regex pattern = new("WValueDropDownAttribute");
             LogAssert.Expect(LogType.Error, pattern);
             WValueDropDownAttribute attribute = new(typeof(byte), 1, 512);
             object[] options = attribute.Options;
@@ -263,7 +263,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [Test]
         public void WValueDropDownMissingProviderLogsErrorAndReturnsEmpty()
         {
-            Regex pattern = new Regex("WValueDropDownAttribute");
+            Regex pattern = new("WValueDropDownAttribute");
             LogAssert.Expect(LogType.Error, pattern);
             WValueDropDownAttribute attribute = new(
                 typeof(ValueProviders),
@@ -354,7 +354,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [Test]
         public void WValueDropDownProviderThrowingLogsErrorAndReturnsEmpty()
         {
-            Regex pattern = new Regex("WValueDropDownAttribute");
+            Regex pattern = new("WValueDropDownAttribute");
             LogAssert.Expect(LogType.Error, pattern);
             WValueDropDownAttribute attribute = new(
                 typeof(ValueProviders),
@@ -400,7 +400,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [Test]
         public void WValueDropDownProviderWithInvalidReturnLogsError()
         {
-            Regex pattern = new Regex("WValueDropDownAttribute");
+            Regex pattern = new("WValueDropDownAttribute");
             LogAssert.Expect(LogType.Error, pattern);
             WValueDropDownAttribute attribute = new(
                 typeof(ValueProviders),
@@ -482,11 +482,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             public static IEnumerable<DropdownItem> GetDropdownItems()
             {
-                return new List<DropdownItem>
-                {
-                    new DropdownItem("Alpha"),
-                    new DropdownItem("Beta"),
-                };
+                return new List<DropdownItem> { new("Alpha"), new("Beta") };
             }
 
             public static DropdownItem[] GetDropdownItemArray()
@@ -496,11 +492,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             public static List<CustomReference> GetCustomReferences()
             {
-                return new List<CustomReference>
-                {
-                    new CustomReference("First"),
-                    new CustomReference("Second"),
-                };
+                return new List<CustomReference> { new("First"), new("Second") };
             }
 
             public static IEnumerable<int> GetNullCollection()

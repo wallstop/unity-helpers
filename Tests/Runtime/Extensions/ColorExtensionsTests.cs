@@ -366,7 +366,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             SystemRandom rng = new(123);
             for (int i = 0; i < 256; ++i)
             {
-                Color input = new Color(rng.NextFloat(), rng.NextFloat(), rng.NextFloat(), 1f);
+                Color input = new(rng.NextFloat(), rng.NextFloat(), rng.NextFloat(), 1f);
                 float variance = i % 2 == 0 ? 0f : rng.NextFloat(0.25f);
 
                 SystemRandom complementRandom = new(1000 + i);

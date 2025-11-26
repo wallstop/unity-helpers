@@ -314,7 +314,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) average case - Marsaglia rejection sampling averages ~1.3 iterations. Uses square root.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Very small radius (near zero) works correctly. Negative radius produces points at -radius distance.
+        /// Edge Cases: Very small radius (near zero) works correctly. Negative radius is treated as its absolute value.
         /// </remarks>
         public static Vector3 NextVector3OnSphere(
             this IRandom random,
@@ -322,22 +322,36 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             Vector3? center = null
         )
         {
-            // Marsaglia's method for uniform sphere surface sampling
-            float x;
-            float y;
-            float z;
-            float lengthSquared;
-            do
+            const int MaxAttempts = 128;
+            const float MinLengthSquared = 0.0001f;
+            float radiusMagnitude = Mathf.Abs(radius);
+            if (radiusMagnitude <= 0f)
             {
-                x = random.NextFloat(-1f, 1f);
-                y = random.NextFloat(-1f, 1f);
-                z = random.NextFloat(-1f, 1f);
-                lengthSquared = x * x + y * y + z * z;
-            } while (lengthSquared > 1f || lengthSquared < 0.0001f);
+                return center ?? Vector3.zero;
+            }
 
-            float invLength = radius / Mathf.Sqrt(lengthSquared);
-            Vector3 result = new(x * invLength, y * invLength, z * invLength);
-            return center.HasValue ? result + center.Value : result;
+            for (int attempt = 0; attempt < MaxAttempts; ++attempt)
+            {
+                float x = random.NextFloat(-1f, 1f);
+                float y = random.NextFloat(-1f, 1f);
+                float z = random.NextFloat(-1f, 1f);
+                float lengthSquared = x * x + y * y + z * z;
+                if (
+                    !float.IsFinite(lengthSquared)
+                    || lengthSquared > 1f
+                    || lengthSquared < MinLengthSquared
+                )
+                {
+                    continue;
+                }
+
+                float invLength = radiusMagnitude / Mathf.Sqrt(lengthSquared);
+                Vector3 sampled = new(x * invLength, y * invLength, z * invLength);
+                return center.HasValue ? sampled + center.Value : sampled;
+            }
+
+            Vector3 fallback = new(radiusMagnitude, 0f, 0f);
+            return center.HasValue ? fallback + center.Value : fallback;
         }
 
         /// <summary>
@@ -352,7 +366,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - uses cube root for uniform volumetric distribution.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Negative radius may produce unexpected results. Zero radius returns center.
+        /// Edge Cases: Negative radius is treated as its absolute value. Zero radius returns center.
         /// </remarks>
         public static Vector3 NextVector3InSphere(
             this IRandom random,
@@ -378,9 +392,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         public static Quaternion NextQuaternion(this IRandom random)
         {
             // Uniform random rotation using Shoemake's algorithm
-            float u1 = random.NextFloat();
-            float u2 = random.NextFloat();
-            float u3 = random.NextFloat();
+            float u1 = Helpers.ClampUnitInterval(random.NextFloat());
+            float u2 = Helpers.ClampUnitInterval(random.NextFloat());
+            float u3 = Helpers.ClampUnitInterval(random.NextFloat());
 
             float sqrt1MinusU1 = Mathf.Sqrt(1f - u1);
             float sqrtU1 = Mathf.Sqrt(u1);
