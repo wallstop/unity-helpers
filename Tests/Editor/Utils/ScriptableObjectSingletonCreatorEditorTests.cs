@@ -1,7 +1,9 @@
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
 #if UNITY_EDITOR
+    using System;
     using System.Collections;
+    using System.Collections.Generic;
     using System.IO;
     using NUnit.Framework;
     using UnityEditor;
@@ -11,12 +13,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
+    using Object = UnityEngine.Object;
 
     public sealed class ScriptableObjectSingletonCreatorEditorTests : CommonTestBase
     {
         private const string ResourcesRoot = "Assets/Resources";
         private const string TargetFolder = ResourcesRoot + "/Tests/CreatorPath";
         private const string TargetAssetPath = TargetFolder + "/CreatorPathSingleton.asset";
+        private const string NestedTargetFolder = ResourcesRoot + "/Tests/Nested/DeepPath";
+        private const string NestedTargetAssetPath =
+            NestedTargetFolder + "/NestedDiskSingleton.asset";
         private const string WrongFolder = ResourcesRoot + "/Tests/WrongPath";
         private const string WrongAssetPath = WrongFolder + "/CreatorPathSingleton.asset";
         private const string WrongFolderCaseVariant = ResourcesRoot + "/TestS/WrongPath";
@@ -28,18 +34,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = true;
             ScriptableObjectSingletonCreator.TypeFilter = static type =>
-                type == typeof(CreatorPathSingleton);
+                type == typeof(CreatorPathSingleton) || type == typeof(NestedDiskSingleton);
+            ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
             DeleteAssetIfExists(TargetAssetPath);
             yield return null;
             DeleteAssetIfExists(WrongAssetPath);
             yield return null;
             DeleteAssetIfExists(WrongAssetPathCaseVariant);
             yield return null;
+            DeleteAssetIfExists(NestedTargetAssetPath);
+            yield return null;
             DeleteFolderHierarchy(TargetFolder);
             yield return null;
             DeleteFolderHierarchy(WrongFolder);
             yield return null;
             DeleteFolderHierarchy(WrongFolderCaseVariant);
+            yield return null;
+            DeleteFolderHierarchy(NestedTargetFolder);
             yield return null;
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -57,14 +68,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
             DeleteAssetIfExists(WrongAssetPathCaseVariant);
             yield return null;
+            DeleteAssetIfExists(NestedTargetAssetPath);
+            yield return null;
             DeleteFolderHierarchy(TargetFolder);
             yield return null;
             DeleteFolderHierarchy(WrongFolder);
             yield return null;
             DeleteFolderHierarchy(WrongFolderCaseVariant);
             yield return null;
+            DeleteFolderHierarchy(NestedTargetFolder);
+            yield return null;
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = false;
             ScriptableObjectSingletonCreator.TypeFilter = null;
+            ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             yield return null;
@@ -301,6 +317,101 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             );
         }
 
+        private static IEnumerable<DiskFolderScenario> DiskOnlyFolderScenarios()
+        {
+            yield return new DiskFolderScenario(
+                "CreatorPath",
+                TargetFolder,
+                TargetAssetPath,
+                typeof(CreatorPathSingleton)
+            );
+
+            yield return new DiskFolderScenario(
+                "NestedDeepPath",
+                NestedTargetFolder,
+                NestedTargetAssetPath,
+                typeof(NestedDiskSingleton)
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator CreatesAssetWhenFolderOnlyExistsOnDisk(
+            [ValueSource(nameof(DiskOnlyFolderScenarios))] DiskFolderScenario scenario
+        )
+        {
+            EnsureFolder(ResourcesRoot);
+            yield return null;
+            DeleteAssetIfExists(scenario.AssetPath);
+            yield return null;
+            DeleteFolderHierarchy(scenario.FolderPath);
+            yield return null;
+
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            string absoluteTarget = Path.Combine(
+                projectRoot,
+                scenario.FolderPath.Replace('/', Path.DirectorySeparatorChar)
+            );
+
+            if (Directory.Exists(absoluteTarget))
+            {
+                Directory.Delete(absoluteTarget, true);
+            }
+
+            string metaPath = absoluteTarget + ".meta";
+            if (File.Exists(metaPath))
+            {
+                File.Delete(metaPath);
+            }
+
+            Directory.CreateDirectory(absoluteTarget);
+            yield return null;
+
+            Assert.IsFalse(AssetDatabase.IsValidFolder(scenario.FolderPath));
+
+            Func<Type, bool> originalFilter = ScriptableObjectSingletonCreator.TypeFilter;
+            ScriptableObjectSingletonCreator.TypeFilter = type => type == scenario.SingletonType;
+            try
+            {
+                ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+                yield return null;
+            }
+            finally
+            {
+                ScriptableObjectSingletonCreator.TypeFilter = originalFilter;
+            }
+
+            Assert.IsTrue(AssetDatabase.IsValidFolder(scenario.FolderPath));
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(scenario.AssetPath) != null);
+            Assert.IsFalse(AssetDatabase.IsValidFolder(scenario.FolderPath + " 1"));
+        }
+
+        public sealed class DiskFolderScenario
+        {
+            public DiskFolderScenario(
+                string name,
+                string folderPath,
+                string assetPath,
+                Type singletonType
+            )
+            {
+                Name = name;
+                FolderPath = folderPath;
+                AssetPath = assetPath;
+                SingletonType = singletonType;
+            }
+
+            public string Name { get; }
+            public string FolderPath { get; }
+            public string AssetPath { get; }
+            public Type SingletonType { get; }
+
+            public override string ToString()
+            {
+                return string.IsNullOrEmpty(Name) ? base.ToString() : Name;
+            }
+        }
     }
 #endif
 }

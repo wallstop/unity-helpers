@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
 #if UNITY_EDITOR
     using System.Collections;
+    using System.IO;
     using System.Text.RegularExpressions;
     using NUnit.Framework;
     using UnityEditor;
@@ -24,9 +25,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 type == typeof(CaseMismatch)
                 || type == typeof(Duplicate)
                 || type == typeof(A.NameCollision)
-                || type == typeof(B.NameCollision);
+                || type == typeof(B.NameCollision)
+                || type == typeof(RetrySingleton)
+                || type == typeof(FileBlockSingleton)
+                || type == typeof(NoRetrySingleton);
             EnsureFolder("Assets/Resources");
             EnsureFolder(TestRoot);
+            ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
             yield break;
         }
 
@@ -51,11 +56,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             TryDeleteFolder(TestRoot);
             TryDeleteFolder("Assets/Resources/Collision");
             TryDeleteFolder("Assets/Resources/CaseTest");
+            TryDeleteFolder(TestRoot + "/Retry");
+            TryDeleteFolder(TestRoot + "/Retry 1");
+            TryDeleteFolder(TestRoot + "/FileBlock");
+            TryDeleteFolder(TestRoot + "/FileBlock 1");
+            DeleteFileIfExists(TestRoot + "/FileBlock");
+            TryDeleteFolder(TestRoot + "/NoRetry");
+            TryDeleteFolder(TestRoot + "/NoRetry 1");
+            DeleteFileIfExists(TestRoot + "/NoRetry");
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             ScriptableObjectSingletonCreator.TypeFilter = null;
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = false;
+            ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
         }
 
         [UnityTest]
@@ -140,6 +154,227 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.AreEqual(firstGuid, secondGuid);
         }
 
+        [UnityTest]
+        public IEnumerator RetriesCreationAfterTemporaryFolderBlock()
+        {
+            string retryFolder = TestRoot + "/Retry";
+            string retryAsset = retryFolder + "/RetrySingleton.asset";
+            string blockerMeta = retryFolder + ".meta";
+            string retryFolderVariant = retryFolder + " 1";
+
+            AssetDatabase.DeleteAsset(retryAsset);
+            if (AssetDatabase.IsValidFolder(retryFolder))
+            {
+                AssetDatabase.DeleteAsset(retryFolder);
+            }
+            if (AssetDatabase.IsValidFolder(retryFolderVariant))
+            {
+                AssetDatabase.DeleteAsset(retryFolderVariant);
+            }
+
+            if (File.Exists(retryFolder))
+            {
+                File.Delete(retryFolder);
+            }
+
+            if (File.Exists(blockerMeta))
+            {
+                File.Delete(blockerMeta);
+            }
+
+            EnsureFolder(TestRoot);
+
+            File.WriteAllText(retryFolder, "block");
+            AssetDatabase.ImportAsset(retryFolder);
+            yield return null;
+
+            LogAssert.Expect(
+                LogType.Error,
+                new Regex(
+                    "(Failed|Expected) to create folder 'Assets/Resources/CreatorTests/Retry'"
+                )
+            );
+            LogAssert.Expect(
+                LogType.Error,
+                new Regex("Unable to ensure folder 'Assets/Resources/CreatorTests/Retry'")
+            );
+
+            ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            Assert.IsFalse(AssetDatabase.IsValidFolder(retryFolder));
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(retryAsset) == null);
+            Assert.IsFalse(AssetDatabase.IsValidFolder(retryFolderVariant));
+
+            if (File.Exists(retryFolder))
+            {
+                File.Delete(retryFolder);
+            }
+            if (File.Exists(blockerMeta))
+            {
+                File.Delete(blockerMeta);
+            }
+            AssetDatabase.Refresh();
+            yield return null;
+
+            // Manually trigger another ensure now that the blocker is gone so we do not depend on Editor delay order.
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+
+            int waitFrames = 0;
+            while (AssetDatabase.LoadAssetAtPath<Object>(retryAsset) == null && waitFrames < 10)
+            {
+                yield return null;
+                waitFrames++;
+            }
+
+            Assert.IsTrue(AssetDatabase.IsValidFolder(retryFolder));
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(retryAsset) != null);
+            Assert.IsFalse(AssetDatabase.IsValidFolder(retryFolderVariant));
+        }
+
+        [UnityTest]
+        public IEnumerator DoesNotCreateAlternateFolderWhenFileConflicts()
+        {
+            string conflictFolder = TestRoot + "/FileBlock";
+            string conflictAsset = conflictFolder + "/FileBlockSingleton.asset";
+            string conflictFile = conflictFolder;
+            string conflictVariant = conflictFolder + " 1";
+
+            AssetDatabase.DeleteAsset(conflictAsset);
+            if (AssetDatabase.IsValidFolder(conflictFolder))
+            {
+                AssetDatabase.DeleteAsset(conflictFolder);
+            }
+            if (AssetDatabase.IsValidFolder(conflictVariant))
+            {
+                AssetDatabase.DeleteAsset(conflictVariant);
+            }
+
+            DeleteFileIfExists(conflictFile);
+            EnsureFolder(TestRoot);
+
+            string absoluteParent = Path.GetDirectoryName(GetAbsolutePath(conflictFile));
+            if (!string.IsNullOrEmpty(absoluteParent) && !Directory.Exists(absoluteParent))
+            {
+                Directory.CreateDirectory(absoluteParent);
+            }
+
+            File.WriteAllText(GetAbsolutePath(conflictFile), "block");
+            AssetDatabase.ImportAsset(conflictFile);
+            yield return null;
+
+            LogAssert.Expect(
+                LogType.Error,
+                new Regex(
+                    "(Failed|Expected) to create folder 'Assets/Resources/CreatorTests/FileBlock'"
+                )
+            );
+            LogAssert.Expect(
+                LogType.Error,
+                new Regex("Unable to ensure folder 'Assets/Resources/CreatorTests/FileBlock'")
+            );
+
+            ScriptableObjectSingletonCreator.DisableAutomaticRetries = true;
+            try
+            {
+                ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            }
+            finally
+            {
+                ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
+            }
+            yield return null;
+
+            Assert.IsFalse(AssetDatabase.IsValidFolder(conflictFolder));
+            Assert.IsFalse(AssetDatabase.IsValidFolder(conflictVariant));
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(conflictAsset) == null);
+
+            DeleteFileIfExists(conflictFile);
+            if (AssetDatabase.IsValidFolder(conflictVariant))
+            {
+                AssetDatabase.DeleteAsset(conflictVariant);
+            }
+            AssetDatabase.Refresh();
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator AutomaticRetriesCanBeDisabled()
+        {
+            string noRetryFolder = TestRoot + "/NoRetry";
+            string noRetryAsset = noRetryFolder + "/NoRetrySingleton.asset";
+            string noRetryVariant = noRetryFolder + " 1";
+            string blockerMeta = noRetryFolder + ".meta";
+
+            AssetDatabase.DeleteAsset(noRetryAsset);
+            if (AssetDatabase.IsValidFolder(noRetryFolder))
+            {
+                AssetDatabase.DeleteAsset(noRetryFolder);
+            }
+            if (AssetDatabase.IsValidFolder(noRetryVariant))
+            {
+                AssetDatabase.DeleteAsset(noRetryVariant);
+            }
+            DeleteFileIfExists(noRetryFolder);
+            if (File.Exists(blockerMeta))
+            {
+                File.Delete(blockerMeta);
+            }
+
+            EnsureFolder(TestRoot);
+
+            File.WriteAllText(noRetryFolder, "block");
+            AssetDatabase.ImportAsset(noRetryFolder);
+            yield return null;
+
+            LogAssert.Expect(
+                LogType.Error,
+                new Regex(
+                    "(Failed|Expected) to create folder 'Assets/Resources/CreatorTests/NoRetry'"
+                )
+            );
+            LogAssert.Expect(
+                LogType.Error,
+                new Regex("Unable to ensure folder 'Assets/Resources/CreatorTests/NoRetry'")
+            );
+
+            bool originalRetrySetting = ScriptableObjectSingletonCreator.DisableAutomaticRetries;
+            ScriptableObjectSingletonCreator.DisableAutomaticRetries = true;
+            try
+            {
+                ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+                yield return null;
+            }
+            finally
+            {
+                ScriptableObjectSingletonCreator.DisableAutomaticRetries = originalRetrySetting;
+            }
+
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(noRetryAsset) == null);
+            Assert.IsFalse(AssetDatabase.IsValidFolder(noRetryFolder));
+            Assert.IsFalse(AssetDatabase.IsValidFolder(noRetryVariant));
+
+            DeleteFileIfExists(noRetryFolder);
+            if (File.Exists(blockerMeta))
+            {
+                File.Delete(blockerMeta);
+            }
+            AssetDatabase.Refresh();
+            yield return null;
+
+            // Automatic retries are still disabled, so nothing should be created until we run ensure manually.
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(noRetryAsset) == null);
+
+            ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+
+            ScriptableObjectSingletonCreator.DisableAutomaticRetries = originalRetrySetting;
+
+            Assert.IsTrue(AssetDatabase.IsValidFolder(noRetryFolder));
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(noRetryAsset) != null);
+        }
+
         private static void EnsureFolder(string folderPath)
         {
             if (AssetDatabase.IsValidFolder(folderPath))
@@ -175,6 +410,47 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
         }
 
+        private static string GetAbsolutePath(string assetsRelativePath)
+        {
+            if (string.IsNullOrWhiteSpace(assetsRelativePath))
+            {
+                return string.Empty;
+            }
+
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            if (string.IsNullOrEmpty(projectRoot))
+            {
+                return string.Empty;
+            }
+
+            string normalized = assetsRelativePath.Replace('/', Path.DirectorySeparatorChar);
+            return Path.Combine(projectRoot, normalized);
+        }
+
+        private static void DeleteFileIfExists(string assetsRelativePath)
+        {
+            if (string.IsNullOrWhiteSpace(assetsRelativePath))
+            {
+                return;
+            }
+
+            if (AssetDatabase.DeleteAsset(assetsRelativePath))
+            {
+                return;
+            }
+
+            string absolutePath = GetAbsolutePath(assetsRelativePath);
+            if (!string.IsNullOrEmpty(absolutePath) && File.Exists(absolutePath))
+            {
+                File.Delete(absolutePath);
+            }
+
+            string metaPath = absolutePath + ".meta";
+            if (!string.IsNullOrEmpty(metaPath) && File.Exists(metaPath))
+            {
+                File.Delete(metaPath);
+            }
+        }
     }
 #endif
 }
@@ -201,6 +477,24 @@ namespace B
 #if UNITY_EDITOR
     [ScriptableSingletonPath("CreatorTests/Collision")]
     internal sealed class NameCollision : ScriptableObjectSingleton<NameCollision> { }
+
+#endif
+}
+
+namespace WallstopStudios.UnityHelpers.Tests.Utils
+{
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Utils;
+
+#if UNITY_EDITOR
+    [ScriptableSingletonPath("CreatorTests/Retry")]
+    internal sealed class RetrySingleton : ScriptableObjectSingleton<RetrySingleton> { }
+
+    [ScriptableSingletonPath("CreatorTests/FileBlock")]
+    internal sealed class FileBlockSingleton : ScriptableObjectSingleton<FileBlockSingleton> { }
+
+    [ScriptableSingletonPath("CreatorTests/NoRetry")]
+    internal sealed class NoRetrySingleton : ScriptableObjectSingleton<NoRetrySingleton> { }
 
 #endif
 }
