@@ -69,6 +69,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Fixed obsolete API usage in editor code
   - Fixed project settings panel rendering issues
   - Fixed reflection-based property access for better performance
+- **Scriptable Object Singletons**: Duplicate folders should no longer be created
 
 ### Improved
 
