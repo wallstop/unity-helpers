@@ -81,9 +81,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             {
                 ulong stateA = ((ulong)_a << UintByteCount) | _b;
                 ulong stateB = ((ulong)_c << UintByteCount) | _d;
-                byte[] payload = new byte[StatePayloadLength];
-                BinaryPrimitives.WriteUInt32LittleEndian(payload, _e);
-                return BuildState(stateA, stateB, payload: payload);
+                BinaryPrimitives.WriteUInt32LittleEndian(_payload, _e);
+                return BuildState(stateA, stateB, payload: _payload);
             }
         }
 
@@ -101,6 +100,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         [ProtoMember(10)]
         private uint _e;
+
+        // Cached space for RandomState
+        private readonly byte[] _payload = new byte[StatePayloadLength];
 
         public IllusionFlow()
             : this(Guid.NewGuid()) { }
