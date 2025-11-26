@@ -1,7 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Core.DataStructure
 {
     using System;
-    using Helper;
     using Random;
     using UnityEngine;
 

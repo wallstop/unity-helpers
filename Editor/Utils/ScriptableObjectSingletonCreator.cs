@@ -2,18 +2,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 {
 #if UNITY_EDITOR
     using System;
+    using System.Collections;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.IO;
+    using System.Threading;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using Debug = UnityEngine.Debug;
     using Object = UnityEngine.Object;
 
     [InitializeOnLoad]
     public static class ScriptableObjectSingletonCreator
     {
         private const string ResourcesRoot = "Assets/Resources";
+        private const string AssetImportWorkerEnvVar = "UNITY_ASSET_IMPORT_WORKER";
+        private const string LegacyAssetImportWorkerEnvVar = "UNITY_ASSETIMPORT_WORKER";
         private const int MaxRetryAttempts = 5;
 
         // Prevents re-entrant execution during domain reloads/asset refreshes
@@ -21,12 +27,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         private static int _assetEditingScopeDepth;
         private static bool _ensureScheduled;
         private static int _retryAttempts;
+        private static bool? _assetImportWorkerEnvCachedValue;
+        private static Func<bool> _defaultAssetImportWorkerDetector;
+        private static bool _mainThreadConfirmed;
+        private static bool _mainThreadConfirmationPending;
+        private static int _capturedMainThreadId;
 
         // Controls whether informational logs are emitted. Warnings still always log.
         internal static bool VerboseLogging { get; set; }
 
         internal static bool IncludeTestAssemblies { get; set; }
         internal static bool DisableAutomaticRetries { get; set; }
+        internal static Func<bool> AssetImportWorkerProcessCheck { get; set; }
 
         // Optional hook so tests can restrict the candidate singleton types that auto-creation processes.
         internal static Func<Type, bool> TypeFilter { get; set; }
@@ -39,6 +51,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         internal static void EnsureSingletonAssets()
         {
             CancelScheduledEnsureInvocation();
+
+            if (IsRunningInsideAssetImportWorkerProcess())
+            {
+                if (_mainThreadConfirmationPending)
+                {
+                    ScheduleEnsureSingletonAssets();
+                    return;
+                }
+
+                LogVerbose(
+                    "ScriptableObjectSingletonCreator: Skipping ensure while running inside asset import worker process."
+                );
+                return;
+            }
 
             if (_isEnsuring)
             {
@@ -254,7 +280,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         private static string GetResourcesSubFolder(Type type)
         {
             if (
-                !ReflectionHelpers.TryGetAttributeSafe<ScriptableSingletonPathAttribute>(
+                !ReflectionHelpers.TryGetAttributeSafe(
                     type,
                     out ScriptableSingletonPathAttribute attribute,
                     inherit: false
@@ -430,15 +456,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                             anyChanges = true;
                             return asset;
                         }
-                        else
-                        {
-                            moveResult = retry;
-                        }
+
+                        moveResult = retry;
                     }
                     else
                     {
                         retried = true;
-                        moveResult = $"Parent directory is not in asset database (after retry)";
+                        moveResult = "Parent directory is not in asset database (after retry)";
                     }
                 }
 
@@ -933,9 +957,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 return null;
             }
 
-            for (int i = 0; i < subFolders.Length; i++)
+            foreach (string sub in subFolders)
             {
-                string sub = subFolders[i];
                 int lastSlash = sub.LastIndexOf('/', sub.Length - 1);
                 string terminal = lastSlash >= 0 ? sub.Substring(lastSlash + 1) : sub;
                 if (string.Equals(terminal, desiredName, StringComparison.OrdinalIgnoreCase))
@@ -984,9 +1007,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 }
 
                 string match = null;
-                for (int s = 0; s < subs.Length; s++)
+                foreach (string sub in subs)
                 {
-                    string sub = subs[s];
                     int last = sub.LastIndexOf('/', sub.Length - 1);
                     string name = last >= 0 ? sub.Substring(last + 1) : sub;
                     if (string.Equals(name, desired, StringComparison.OrdinalIgnoreCase))
@@ -1055,12 +1077,154 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             }
         }
 
+        private static bool IsRunningInsideAssetImportWorkerProcess()
+        {
+            Func<bool> detectorOverride = AssetImportWorkerProcessCheck;
+            if (detectorOverride != null)
+            {
+                _mainThreadConfirmationPending = false;
+                return InvokeDetector(detectorOverride, assumeWorkerOnFailure: false);
+            }
+
+            if (IsAssetImportWorkerProcessViaEnvironment())
+            {
+                _mainThreadConfirmationPending = false;
+                return true;
+            }
+
+            if (!TryConfirmEditorMainThread())
+            {
+                LogVerbose(
+                    "ScriptableObjectSingletonCreator: Main thread not yet confirmed; deferring singleton ensure."
+                );
+                _mainThreadConfirmationPending = true;
+                return true;
+            }
+
+            _mainThreadConfirmationPending = false;
+            _defaultAssetImportWorkerDetector ??= AssetDatabase.IsAssetImportWorkerProcess;
+            return InvokeDetector(_defaultAssetImportWorkerDetector, assumeWorkerOnFailure: false);
+        }
+
+        private static bool InvokeDetector(Func<bool> detector, bool assumeWorkerOnFailure)
+        {
+            try
+            {
+                return detector();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning(
+                    $"ScriptableObjectSingletonCreator: Asset import worker detector threw {ex.GetType().Name}: {ex.Message}. {(assumeWorkerOnFailure ? "Assuming import worker context." : "Assuming main editor process.")}"
+                );
+                return assumeWorkerOnFailure;
+            }
+        }
+
+        private static bool TryConfirmEditorMainThread()
+        {
+            if (_mainThreadConfirmed)
+            {
+                return Thread.CurrentThread.ManagedThreadId == _capturedMainThreadId;
+            }
+
+            if (!UnityMainThreadGuard.IsMainThread)
+            {
+                return false;
+            }
+
+            _capturedMainThreadId = Thread.CurrentThread.ManagedThreadId;
+            _mainThreadConfirmed = true;
+            return true;
+        }
+
+        private static bool IsAssetImportWorkerProcessViaEnvironment()
+        {
+            if (_assetImportWorkerEnvCachedValue.HasValue)
+            {
+                return _assetImportWorkerEnvCachedValue.Value;
+            }
+
+            if (IsTruthy(Environment.GetEnvironmentVariable(AssetImportWorkerEnvVar)))
+            {
+                _assetImportWorkerEnvCachedValue = true;
+                return true;
+            }
+
+            if (IsTruthy(Environment.GetEnvironmentVariable(LegacyAssetImportWorkerEnvVar)))
+            {
+                _assetImportWorkerEnvCachedValue = true;
+                return true;
+            }
+
+            IDictionary variables = null;
+            try
+            {
+                variables = Environment.GetEnvironmentVariables();
+            }
+            catch (Exception ex)
+            {
+                LogVerbose(
+                    $"ScriptableObjectSingletonCreator: Unable to enumerate environment variables for worker detection: {ex.Message}"
+                );
+            }
+
+            if (variables != null)
+            {
+                foreach (DictionaryEntry entry in variables)
+                {
+                    if (
+                        entry.Key is not string key
+                        || key.IndexOf(
+                            "UNITY_ASSET_IMPORT_WORKER",
+                            StringComparison.OrdinalIgnoreCase
+                        ) < 0
+                        || entry.Value is not string candidateValue
+                    )
+                    {
+                        continue;
+                    }
+
+                    if (IsTruthy(candidateValue))
+                    {
+                        _assetImportWorkerEnvCachedValue = true;
+                        return true;
+                    }
+                }
+            }
+
+            _assetImportWorkerEnvCachedValue = false;
+            return false;
+
+            static bool IsTruthy(string candidate)
+            {
+                if (string.IsNullOrWhiteSpace(candidate))
+                {
+                    return false;
+                }
+
+                string normalized = candidate.Trim();
+                return !string.Equals(normalized, "0", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(normalized, "false", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         private static void LogVerbose(string message)
         {
             if (VerboseLogging)
             {
                 Debug.Log(message);
             }
+        }
+
+        [Conditional("UNITY_INCLUDE_TESTS")]
+        internal static void ResetAssetImportWorkerDetectionStateForTests()
+        {
+            _assetImportWorkerEnvCachedValue = null;
+            _defaultAssetImportWorkerDetector = null;
+            _mainThreadConfirmed = false;
+            _mainThreadConfirmationPending = false;
+            _capturedMainThreadId = 0;
         }
     }
 #endif

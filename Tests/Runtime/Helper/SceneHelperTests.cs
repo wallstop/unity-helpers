@@ -12,7 +12,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Utils;
 #if UNITY_EDITOR
-    using UnityEditor;
     using UnityEditor.SceneManagement;
 #endif
 

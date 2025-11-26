@@ -220,7 +220,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                     }
 
                     if (
-                        !ReflectionHelpers.TryGetAttributeSafe<WButtonAttribute>(
+                        !ReflectionHelpers.TryGetAttributeSafe(
                             method,
                             out WButtonAttribute attribute,
                             inherit: true

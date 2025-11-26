@@ -70,6 +70,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Fixed project settings panel rendering issues
   - Fixed reflection-based property access for better performance
 - **Scriptable Object Singletons**: Duplicate folders should no longer be created
+  - Fixed a "should-never-happen" bug where, if a singleton was accessed for the first time off the main thread, it would never be able to be accessed for the lifetime of the process
 
 ### Improved
 

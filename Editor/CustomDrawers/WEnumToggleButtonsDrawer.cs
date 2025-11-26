@@ -1491,11 +1491,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             TAttribute attribute;
             if (
-                ReflectionHelpers.TryGetAttributeSafe<TAttribute>(
-                    fieldInfo,
-                    out attribute,
-                    inherit: true
-                )
+                ReflectionHelpers.TryGetAttributeSafe(fieldInfo, out attribute, inherit: true)
                 || property == null
             )
             {
@@ -1506,7 +1502,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (
                 inferredFieldInfo != null
                 && inferredFieldInfo != fieldInfo
-                && ReflectionHelpers.TryGetAttributeSafe<TAttribute>(
+                && ReflectionHelpers.TryGetAttributeSafe(
                     inferredFieldInfo,
                     out attribute,
                     inherit: true

@@ -10,7 +10,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
@@ -732,7 +731,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.IsTrue(instance != null);
             Assert.AreEqual("relocated", instance.payload);
-            StringAssert.Contains("Loose/WrongPathInstance.asset", AssetDatabase.GetAssetPath(instance));
+            StringAssert.Contains(
+                "Loose/WrongPathInstance.asset",
+                AssetDatabase.GetAssetPath(instance)
+            );
             yield break;
         }
 

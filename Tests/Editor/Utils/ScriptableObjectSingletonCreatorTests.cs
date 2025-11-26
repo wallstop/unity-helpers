@@ -1,7 +1,9 @@
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
 #if UNITY_EDITOR
+    using System;
     using System.Collections;
+    using System.Collections.Generic;
     using System.IO;
     using System.Text.RegularExpressions;
     using NUnit.Framework;
@@ -11,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
+    using Object = UnityEngine.Object;
 
     public sealed class ScriptableObjectSingletonCreatorTests : CommonTestBase
     {
@@ -152,6 +155,91 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             string secondGuid = AssetDatabase.AssetPathToGUID(targetPath);
             Assert.AreEqual(firstGuid, secondGuid);
+        }
+
+        [UnityTest]
+        public IEnumerator SkipsEnsureInsideAssetImportWorkerProcess()
+        {
+            string targetPath = "Assets/Resources/CaseTest/CaseMismatch.asset";
+            AssetDatabase.DeleteAsset(targetPath);
+            yield return null;
+
+            Func<bool> originalDetector =
+                ScriptableObjectSingletonCreator.AssetImportWorkerProcessCheck;
+            ScriptableObjectSingletonCreator.AssetImportWorkerProcessCheck = static () => true;
+            try
+            {
+                ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+                yield return null;
+                Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(targetPath) == null);
+            }
+            finally
+            {
+                ScriptableObjectSingletonCreator.AssetImportWorkerProcessCheck = originalDetector;
+            }
+
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(targetPath) != null);
+        }
+
+        [UnityTest]
+        public IEnumerator EnvironmentVariablesTriggerWorkerDetection(
+            [ValueSource(nameof(AssetImportWorkerEnvironmentScenarios))] string environmentVariable
+        )
+        {
+            string targetPath = "Assets/Resources/CaseTest/CaseMismatch.asset";
+            AssetDatabase.DeleteAsset(targetPath);
+            yield return null;
+
+            string originalValue = Environment.GetEnvironmentVariable(environmentVariable);
+            Func<bool> originalDetector =
+                ScriptableObjectSingletonCreator.AssetImportWorkerProcessCheck;
+            try
+            {
+                Environment.SetEnvironmentVariable(environmentVariable, "1");
+                ScriptableObjectSingletonCreator.ResetAssetImportWorkerDetectionStateForTests();
+                ScriptableObjectSingletonCreator.AssetImportWorkerProcessCheck = null;
+
+                ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+                yield return null;
+
+                Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(targetPath) == null);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(environmentVariable, originalValue);
+                ScriptableObjectSingletonCreator.AssetImportWorkerProcessCheck = originalDetector;
+                ScriptableObjectSingletonCreator.ResetAssetImportWorkerDetectionStateForTests();
+            }
+
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(targetPath) != null);
+        }
+
+        [UnityTest]
+        public IEnumerator DetectorExceptionsDoNotBlockEnsure()
+        {
+            string targetPath = "Assets/Resources/CaseTest/CaseMismatch.asset";
+            AssetDatabase.DeleteAsset(targetPath);
+            yield return null;
+
+            Func<bool> originalDetector =
+                ScriptableObjectSingletonCreator.AssetImportWorkerProcessCheck;
+            ScriptableObjectSingletonCreator.AssetImportWorkerProcessCheck = static () =>
+                throw new InvalidOperationException("detector failure");
+
+            try
+            {
+                ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+                yield return null;
+                Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(targetPath) != null);
+            }
+            finally
+            {
+                ScriptableObjectSingletonCreator.AssetImportWorkerProcessCheck = originalDetector;
+            }
         }
 
         [UnityTest]
@@ -373,6 +461,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.IsTrue(AssetDatabase.IsValidFolder(noRetryFolder));
             Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(noRetryAsset) != null);
+        }
+
+        private static IEnumerable<string> AssetImportWorkerEnvironmentScenarios()
+        {
+            yield return "UNITY_ASSET_IMPORT_WORKER";
+            yield return "UNITY_ASSETIMPORT_WORKER";
+            yield return "MY_CUSTOM_UNITY_ASSET_IMPORT_WORKER_FLAG";
         }
 
         private static void EnsureFolder(string folderPath)
