@@ -585,7 +585,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             Span<int> counts = stackalloc int[BucketCount];
 
             using PooledResource<ElementData[]> scratchResource =
-                WallstopFastArrayPool<ElementData>.Get(length, out ElementData[] scratch);
+                WallstopArrayPool<ElementData>.Get(length, out ElementData[] scratch);
             ElementData[] source = elements;
             ElementData[] destination = scratch;
             bool dataInScratch = false;

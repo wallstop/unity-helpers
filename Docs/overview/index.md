@@ -474,7 +474,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **WallstopArrayPool<T>** - Pooled array rental
 → [README - Buffering Pattern](../../README.md#buffering-pattern)
 
-**WallstopFastArrayPool<T>** - Fast array pool for short-lived arrays
+**WallstopFastArrayPool<T>** - Fast array pool for short-lived arrays (`T : unmanaged`)
 → [README - Buffering Pattern](../../README.md#buffering-pattern)
 
 **WButton** - Inspector method buttons with history, async support, cancellation

@@ -1062,10 +1062,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int count
         )
         {
-            using PooledResource<T[]> arrayBuffer = WallstopFastArrayPool<T>.Get(
-                count,
-                out T[] result
-            );
+            using PooledResource<T[]> arrayBuffer = WallstopArrayPool<T>.Get(count, out T[] result);
 
             for (int i = 0; i < count; ++i)
             {

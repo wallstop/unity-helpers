@@ -10,9 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Utils;
-    using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class ScriptableObjectSingletonCreatorTests : CommonTestBase

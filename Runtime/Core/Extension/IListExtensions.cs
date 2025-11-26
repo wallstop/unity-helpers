@@ -419,7 +419,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             int bufferLength = count / 2 + 1;
-            using PooledResource<T[]> bufferLease = WallstopFastArrayPool<T>.Get(
+            using PooledResource<T[]> bufferLease = WallstopArrayPool<T>.Get(
                 bufferLength,
                 out T[] buffer
             );
@@ -472,7 +472,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             int bufferLength = count / 2 + 1;
-            using PooledResource<T[]> tempLease = WallstopFastArrayPool<T>.Get(
+            using PooledResource<T[]> tempLease = WallstopArrayPool<T>.Get(
                 bufferLength,
                 out T[] buffer
             );

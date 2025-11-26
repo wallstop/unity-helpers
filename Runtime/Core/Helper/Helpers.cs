@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.IO;
     using System.Reflection;
     using DataStructure.Adapters;
     using Random;
@@ -1127,7 +1126,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             if (assetPaths is IReadOnlyList<string> readonlyList)
             {
-                arrayResource = WallstopFastArrayPool<string>.Get(
+                arrayResource = WallstopArrayPool<string>.Get(
                     readonlyList.Count,
                     out string[] buffer
                 );
@@ -1141,7 +1140,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
             if (assetPaths is ICollection<string> collection)
             {
-                arrayResource = WallstopFastArrayPool<string>.Get(
+                arrayResource = WallstopArrayPool<string>.Get(
                     collection.Count,
                     out string[] buffer
                 );
@@ -1152,7 +1151,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             listResource = Buffers<string>.List.Get(out List<string> list);
             list.AddRange(assetPaths);
 
-            arrayResource = WallstopFastArrayPool<string>.Get(list.Count, out string[] temp);
+            arrayResource = WallstopArrayPool<string>.Get(list.Count, out string[] temp);
             list.CopyTo(temp);
             return temp;
         }

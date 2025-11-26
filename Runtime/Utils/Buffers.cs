@@ -861,6 +861,7 @@ namespace WallstopStudios.UnityHelpers.Utils
     /// This design trades safety for performance in scenarios where array contents don't need to be reset.
     /// </remarks>
     public static class WallstopFastArrayPool<T>
+        where T : unmanaged
     {
         private static readonly List<Stack<T[]>> _pool = new();
         private static readonly Action<T[]> _onRelease = Release;
@@ -941,6 +942,7 @@ namespace WallstopStudios.UnityHelpers.Utils
     /// This design trades safety for performance in scenarios where array contents don't need to be reset.
     /// </remarks>
     public static class WallstopFastArrayPool<T>
+        where T : unmanaged
     {
         private static readonly ReaderWriterLockSlim _lock = new();
         private static readonly List<ConcurrentStack<T[]>> _pool = new();

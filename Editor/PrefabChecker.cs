@@ -439,7 +439,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 TryRecordHistory(p);
             }
 
-            using PooledResource<string[]> folderArrayLease = WallstopFastArrayPool<string>.Get(
+            using PooledResource<string[]> folderArrayLease = WallstopArrayPool<string>.Get(
                 validPaths.Count,
                 out string[] folderArray
             );

@@ -96,6 +96,8 @@ See [the roadmap](docs/overview/roadmap.md) for details
 
 - **Breaking Changes**:
   - Removed `KVector2` (deprecated, use Unity's built-in Vector2)
+  - Renamed `KGuid` -> `WGuid`, changed data layout
+  - Forced `WallstopFastArrayPool` to force `unmanaged` types. This pool does not clear arrays and can leak references.
 - **API Improvements**:
   - Simplified `TryAdd` methods for collections
   - Enforced `IComparable` constraint where appropriate for sorting

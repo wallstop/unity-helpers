@@ -624,7 +624,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             // Search in folders via AssetDatabase
             if (folderAssetPaths.Count > 0)
             {
-                using PooledResource<string[]> bufferResource = WallstopFastArrayPool<string>.Get(
+                using PooledResource<string[]> bufferResource = WallstopArrayPool<string>.Get(
                     folderAssetPaths.Count,
                     out string[] folders
                 );

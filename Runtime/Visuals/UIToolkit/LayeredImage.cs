@@ -256,7 +256,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                 int layerCount = layers.Length;
 
                 using PooledResource<LayerFrameInfo[]> frameInfoLease =
-                    WallstopFastArrayPool<LayerFrameInfo>.Get(
+                    WallstopArrayPool<LayerFrameInfo>.Get(
                         layerCount,
                         out LayerFrameInfo[] frameInfos
                     );

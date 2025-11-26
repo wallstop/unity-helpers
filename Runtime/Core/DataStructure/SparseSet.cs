@@ -330,7 +330,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 // Rent array and populate on first use
                 if (count > 0)
                 {
-                    _pooledArray = WallstopFastArrayPool<T>.Get(count, out T[] temp);
+                    _pooledArray = WallstopArrayPool<T>.Get(count, out T[] temp);
                     for (int i = 0; i < count; i++)
                     {
                         temp[i] = elements[dense[i]];

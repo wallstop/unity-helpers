@@ -866,7 +866,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                     float timeStep = 1f / framesPerSecond;
                     using PooledResource<ObjectReferenceKeyframe[]> keyframesResource =
-                        WallstopFastArrayPool<ObjectReferenceKeyframe>.Get(
+                        WallstopArrayPool<ObjectReferenceKeyframe>.Get(
                             validFrames.Count,
                             out ObjectReferenceKeyframe[] keyframes
                         );

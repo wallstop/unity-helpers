@@ -451,7 +451,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         if (folderAssetPaths.Count > 0)
                         {
                             using PooledResource<string[]> folderLease =
-                                WallstopFastArrayPool<string>.Get(
+                                WallstopArrayPool<string>.Get(
                                     folderAssetPaths.Count,
                                     out string[] folders
                                 );

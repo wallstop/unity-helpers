@@ -1057,8 +1057,8 @@ void ProcessLargeDataset(int size)
   - Example: `using var lease = WallstopArrayPool<int>.Get(1024, out int[] buffer);`
   - Use for temporary processing buffers, sorting, or interop with APIs that require arrays.
 
-- `WallstopFastArrayPool<T>` — fast array pool specialized for frequent short‑lived arrays.
-  - Example: `using var lease = WallstopFastArrayPool<string>.Get(count, out string[] buffer);`
+- `WallstopFastArrayPool<T>` — fast array pool specialized for frequent short‑lived arrays (requires `T : unmanaged`), does not clear arrays. Returned arrays may have previous content in them.
+  - Example: `using var lease = WallstopFastArrayPool<int>.Get(count, out int[] buffer);`
   - Used throughout Helpers for high‑frequency editor/runtime operations (e.g., asset searches).
 
 **How pooling + buffering help APIs:**
