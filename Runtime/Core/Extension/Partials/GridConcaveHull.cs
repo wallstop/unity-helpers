@@ -13,6 +13,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     /// </summary>
     public static partial class UnityExtensions
     {
+        private const float ConcaveCornerRepairThresholdDegrees = 90f;
+
         private readonly struct HullEdge
         {
             public readonly float edgeLength;
@@ -430,7 +432,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             PruneColinearOnHull(concaveHull);
-            InsertMissingAxisCorners(concaveHull, originalGridPositions);
             return concaveHull;
 
             Vector2 CellToWorld(FastVector3Int cell) => grid.CellToWorld(cell);
@@ -667,7 +668,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 if (success)
                 {
                     PruneColinearOnHull(hull);
-                    InsertMissingAxisCorners(hull, dataSet);
                     return hull;
                 }
 
@@ -844,6 +844,51 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 _ = source.Remove(toRemove[i]);
             }
+        }
+
+        private static bool ShouldRepairConcaveCorners(float angleThreshold)
+        {
+            return angleThreshold >= ConcaveCornerRepairThresholdDegrees;
+        }
+
+        private static List<FastVector3Int> ClonePositions(
+            IReadOnlyCollection<FastVector3Int> positions
+        )
+        {
+            if (positions == null)
+            {
+                return new List<FastVector3Int>();
+            }
+
+            if (positions is List<FastVector3Int> list)
+            {
+                return new List<FastVector3Int>(list);
+            }
+
+            return new List<FastVector3Int>(positions);
+        }
+
+        private static void MaybeRepairConcaveCorners(
+            List<FastVector3Int> hull,
+            List<FastVector3Int> originalPoints,
+            ConcaveHullStrategy strategy,
+            float angleThreshold
+        )
+        {
+            if (
+                hull == null
+                || originalPoints == null
+                || (
+                    strategy != ConcaveHullStrategy.Knn
+                    && !ShouldRepairConcaveCorners(angleThreshold)
+                )
+            )
+            {
+                return;
+            }
+
+            InsertMissingAxisCorners(hull, originalPoints);
+            RemoveDuplicateVertices(hull);
         }
 
         private static void InsertMissingAxisCorners(
@@ -1222,6 +1267,30 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             return false;
+        }
+
+        private static void RemoveDuplicateVertices(List<FastVector3Int> hull)
+        {
+            if (hull == null || hull.Count <= 1)
+            {
+                return;
+            }
+
+            using PooledResource<HashSet<FastVector3Int>> seenResource =
+                Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> seen);
+            int index = 0;
+            while (index < hull.Count)
+            {
+                FastVector3Int vertex = hull[index];
+                if (seen.Contains(vertex))
+                {
+                    hull.RemoveAt(index);
+                    continue;
+                }
+
+                seen.Add(vertex);
+                ++index;
+            }
         }
 
         private static void PruneDiagonalOnlyVertices(

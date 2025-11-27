@@ -228,6 +228,34 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             AssertRequiredVertices($"{label} knn", requiredCorners, knn);
         }
 
+        [TestCaseSource(nameof(AxisCornerCases))]
+        public void ConcaveHullAxisCornerDiagnostics(
+            string label,
+            List<FastVector3Int> points,
+            int nearestNeighbors,
+            FastVector3Int[] requiredCorners
+        )
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+
+            List<FastVector3Int> edgeSplit = points.BuildConcaveHullEdgeSplit(
+                grid,
+                bucketSize: 8,
+                angleThreshold: 200f
+            );
+
+            foreach (FastVector3Int required in requiredCorners)
+            {
+                if (!edgeSplit.Contains(required))
+                {
+                    Debug.LogError(
+                        $"[AxisCornerDiagnostics] {label} missing {required}. Hull vertices:\n{string.Join(", ", edgeSplit)}"
+                    );
+                }
+            }
+        }
+
         [Test]
         public void ConcaveHullDoesNotInsertDiagonalOnlyCandidates()
         {

@@ -49,6 +49,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             options ??= new ConcaveHullOptions();
+            List<FastVector3Int> sourcePoints = ClonePositions(positions);
             using PooledResource<List<Vector2>> vectorPointsResource = Buffers<Vector2>.List.Get(
                 out List<Vector2> vectorPoints
             );
@@ -59,7 +60,18 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             PopulateVectorBuffers(positions, vectorPoints, mapping, out int fallbackZ);
             List<Vector2> vectorHull = vectorPoints.BuildConcaveHull(options);
-            return ConvertVector2HullToFastVector3(vectorHull, mapping, fallbackZ);
+            List<FastVector3Int> fastHull = ConvertVector2HullToFastVector3(
+                vectorHull,
+                mapping,
+                fallbackZ
+            );
+            MaybeRepairConcaveCorners(
+                fastHull,
+                sourcePoints,
+                options.Strategy,
+                options.AngleThreshold
+            );
+            return fastHull;
         }
 
         public static List<FastVector3Int> BuildConcaveHullKnn(

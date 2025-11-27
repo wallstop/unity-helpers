@@ -44,6 +44,9 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Add/remove buttons with improved visual styling
 - **Random Number Generation**: Extended PRNG capabilities
   - Additional random sampling methods with statistical improvements
+- **Grid Concave Hull Reliability**:
+  - Edge-split and grid KNN hull builders now insert missing axis-aligned corners after the initial pass, guaranteeing concave stair, horseshoe, and serpentine inputs retain their interior vertices even when only sparse samples exist.
+  - New regression-focused tests (`UnityExtensionsGridConcaveHullTests`) cover staircase fallback, axis-corner preservation, and diagonal-only rejection to guard against future regressions.
 
 ### Fixed
 
