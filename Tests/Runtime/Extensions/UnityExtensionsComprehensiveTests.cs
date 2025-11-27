@@ -747,6 +747,77 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [UnityTest]
+        public IEnumerator BuildConcaveHullEdgeSplitHonorsAngleThreshold()
+        {
+            Grid grid = CreateGrid(out GameObject _);
+            List<FastVector3Int> concavePoints = new()
+            {
+                new FastVector3Int(0, 0, 0),
+                new FastVector3Int(0, 4, 0),
+                new FastVector3Int(2, 4, 0),
+                new FastVector3Int(2, 2, 0),
+                new FastVector3Int(4, 2, 0),
+                new FastVector3Int(4, 0, 0),
+            };
+            FastVector3Int elbow = new(2, 2, 0);
+
+            List<FastVector3Int> convex = concavePoints.BuildConvexHull(
+                grid,
+                includeColinearPoints: false
+            );
+            List<FastVector3Int> strict = concavePoints.BuildConcaveHullEdgeSplit(
+                grid,
+                bucketSize: 8,
+                angleThreshold: 25f
+            );
+            List<FastVector3Int> loose = concavePoints.BuildConcaveHullEdgeSplit(
+                grid,
+                bucketSize: 8,
+                angleThreshold: 150f
+            );
+
+            CollectionAssert.AreEquivalent(convex, strict);
+            CollectionAssert.DoesNotContain(strict, elbow);
+            CollectionAssert.Contains(loose, elbow);
+            Assert.Greater(
+                loose.Count,
+                strict.Count,
+                "Looser threshold should introduce the elbow."
+            );
+
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator BuildConcaveHullKnnMatchesEdgeSplitForConcaveShape()
+        {
+            Grid grid = CreateGrid(out GameObject _);
+            List<FastVector3Int> concavePoints = new()
+            {
+                new FastVector3Int(0, 0, 0),
+                new FastVector3Int(0, 4, 0),
+                new FastVector3Int(2, 4, 0),
+                new FastVector3Int(2, 2, 0),
+                new FastVector3Int(4, 2, 0),
+                new FastVector3Int(4, 0, 0),
+            };
+            FastVector3Int elbow = new(2, 2, 0);
+
+            List<FastVector3Int> edgeSplit = concavePoints.BuildConcaveHullEdgeSplit(
+                grid,
+                bucketSize: 8,
+                angleThreshold: 150f
+            );
+            List<FastVector3Int> knn = concavePoints.BuildConcaveHullKnn(grid, nearestNeighbors: 3);
+
+            CollectionAssert.Contains(edgeSplit, elbow);
+            CollectionAssert.Contains(knn, elbow);
+            CollectionAssert.AreEquivalent(edgeSplit, knn);
+
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator ConvexHullExcludesInteriorColinearPointsFast()
         {
             Grid grid = CreateGrid(out GameObject _);
@@ -2126,6 +2197,33 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             CollectionAssert.AreEquivalent(list, enumerated);
             Assert.AreEqual(4, list.Count);
             Assert.Contains(new FastVector3Int(1, 1, 0), list);
+        }
+
+        [Test]
+        public void AllFastPositionsWithinZeroSizeBoundsReturnsEmpty()
+        {
+            BoundsInt bounds = new(0, 0, 0, 0, 5, 1);
+            List<FastVector3Int> buffer = new() { new FastVector3Int(10, 10, 10) };
+
+            List<FastVector3Int> list = bounds.AllFastPositionsWithin(buffer);
+
+            Assert.AreSame(buffer, list);
+            Assert.AreEqual(0, list.Count);
+            Assert.IsFalse(bounds.AllFastPositionsWithin().Any());
+        }
+
+        [Test]
+        public void AllFastPositionsWithinClearsBufferBeforeFilling()
+        {
+            BoundsInt bounds = new(1, 1, 0, 2, 1, 1);
+            List<FastVector3Int> buffer = new() { new FastVector3Int(5, 5, 5) };
+
+            List<FastVector3Int> list = bounds.AllFastPositionsWithin(buffer);
+            List<FastVector3Int> enumerated = bounds.AllFastPositionsWithin().ToList();
+
+            Assert.AreEqual(2, list.Count);
+            CollectionAssert.AreEquivalent(enumerated, list);
+            CollectionAssert.DoesNotContain(list, new FastVector3Int(5, 5, 5));
         }
 
         [Test]

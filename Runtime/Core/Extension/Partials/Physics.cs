@@ -1,10 +1,8 @@
+// ReSharper disable once CheckNamespace
 namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;
     using System.Collections.Generic;
-    using DataStructure;
-    using DataStructure.Adapters;
-    using Helper;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
 

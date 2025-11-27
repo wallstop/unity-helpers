@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Utils
     using System.Text;
     using System.Threading;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Extension;
     using Debug = UnityEngine.Debug;
 #if !SINGLE_THREADED
     using System.Collections.Concurrent;

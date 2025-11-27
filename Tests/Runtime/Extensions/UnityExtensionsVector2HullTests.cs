@@ -62,6 +62,68 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void BuildConvexHullVector2DeduplicatesRepeatedPoints()
+        {
+            List<Vector2> points = new()
+            {
+                new Vector2(0, 0),
+                new Vector2(0, 0),
+                new Vector2(0, 2),
+                new Vector2(2, 2),
+                new Vector2(2, 0),
+                new Vector2(2, 0),
+            };
+
+            List<Vector2> hull = points.BuildConvexHull(includeColinearPoints: true);
+
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    new Vector2(0, 0),
+                    new Vector2(0, 2),
+                    new Vector2(2, 2),
+                    new Vector2(2, 0),
+                },
+                hull,
+                "Duplicate vertices should be removed before hull construction."
+            );
+        }
+
+        [Test]
+        public void BuildConvexHullVector2TreatsNearColinearPointsAsColinear()
+        {
+            const float epsilon = 1e-6f;
+            List<Vector2> points = new()
+            {
+                new Vector2(0f, 0f),
+                new Vector2(2f, 0f),
+                new Vector2(2f, 2f),
+                new Vector2(0f, 2f),
+                new Vector2(1f, epsilon), // almost on the bottom edge
+            };
+            Vector2 nearlyColinear = new(1f, epsilon);
+
+            List<Vector2> hull = points.BuildConvexHull(includeColinearPoints: false);
+
+            CollectionAssert.DoesNotContain(
+                hull,
+                nearlyColinear,
+                "Near-colinear edge points should be pruned by tolerance."
+            );
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    new Vector2(0f, 0f),
+                    new Vector2(2f, 0f),
+                    new Vector2(2f, 2f),
+                    new Vector2(0f, 2f),
+                },
+                hull,
+                "Hull should consist only of the square's corners."
+            );
+        }
+
+        [Test]
         public void ConvexHullVector2PermutationInvariance()
         {
             List<Vector2> points = new()

@@ -115,7 +115,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         protected RandomState BuildState(
             ulong state1,
             ulong state2 = 0,
-            IReadOnlyList<byte> payload = null
+            IReadOnlyList<byte> payload = null,
+            uint? auxiliaryUintA = null,
+            uint? auxiliaryUintB = null
         )
         {
             byte[] payloadCopy = null;
@@ -323,7 +325,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return UnbiasLong(biasedResult);
         }
 
-        public ulong NextUlong()
+        public virtual ulong NextUlong()
         {
             uint upper = NextUint();
             uint lower = NextUint();

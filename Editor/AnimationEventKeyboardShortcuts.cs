@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Editor
 {
 #if UNITY_EDITOR
     using System;
-    using UnityEditor;
     using UnityEngine;
 
     internal static class AnimationEventKeyboardShortcuts

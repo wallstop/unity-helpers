@@ -11,7 +11,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Utils;
     using Debug = UnityEngine.Debug;
     using Object = UnityEngine.Object;
 
