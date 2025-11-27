@@ -1,14 +1,12 @@
 {
-  "name": "WallstopStudios.UnityHelpers.Tests.Editor",
+  "name": "WallstopStudios.UnityHelpers.Tests.Common",
   "rootNamespace": "WallstopStudios.UnityHelpers.Tests",
   "references": [
     "UnityEditor.TestRunner",
     "UnityEngine.TestRunner",
-    "WallstopStudios.UnityHelpers",
-    "WallstopStudios.UnityHelpers.Editor",
-    "WallstopStudios.UnityHelpers.Tests.Common"
+    "WallstopStudios.UnityHelpers"
   ],
-  "includePlatforms": ["Editor"],
+  "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": true,
