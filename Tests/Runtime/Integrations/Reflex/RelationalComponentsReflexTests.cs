@@ -92,8 +92,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex
         public System.Collections.IEnumerator InstallerBindsAssignerAndOptions()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(ReflexRelationalTester));
-            Lazy<AttributeMetadataCache> previousLazy = AttributeMetadataCache.LazyInstance;
-            AttributeMetadataCache.LazyInstance = new Lazy<AttributeMetadataCache>(() => cache);
+            Lazy<AttributeMetadataCache> previousLazy = AttributeMetadataCache._lazyInstance;
+            AttributeMetadataCache._lazyInstance = new Lazy<AttributeMetadataCache>(() => cache);
 
             Scene scene = CreateTempScene("ReflexInstallerScene");
             GameObject installerObject = Track(new GameObject("ReflexInstaller"));
@@ -130,7 +130,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex
             }
             finally
             {
-                AttributeMetadataCache.LazyInstance = previousLazy;
+                AttributeMetadataCache._lazyInstance = previousLazy;
             }
         }
 

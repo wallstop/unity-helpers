@@ -4,12 +4,12 @@ namespace WallstopStudios.UnityHelpers.Utils
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Text;
-    using UnityEngine;
-#if !SINGLE_THREADED
     using System.Threading;
-    using System.Collections.Concurrent;
-#else
+    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using Debug = UnityEngine.Debug;
+#if !SINGLE_THREADED
+    using System.Collections.Concurrent;
 #endif
     /// <summary>
     /// Provides thread-safe pooled access to commonly used Unity coroutine yield instructions and StringBuilder instances.
@@ -17,17 +17,106 @@ namespace WallstopStudios.UnityHelpers.Utils
     /// </summary>
     public static class Buffers
     {
-#if SINGLE_THREADED
-        private static readonly Dictionary<float, WaitForSeconds> WaitForSeconds = new();
-        private static readonly Dictionary<float, WaitForSecondsRealtime> WaitForSecondsRealtime =
-            new();
-#else
-        private static readonly ConcurrentDictionary<float, WaitForSeconds> WaitForSeconds = new();
-        private static readonly ConcurrentDictionary<
+        /// <summary>
+        /// Gets or sets the quantization step (in seconds) applied to pooled WaitForSeconds/WaitForSecondsRealtime durations.
+        /// Values less than or equal to zero disable quantization.
+        /// </summary>
+        public static float WaitInstructionQuantizationStepSeconds
+        {
+            get => Volatile.Read(ref waitInstructionQuantizationStepSeconds);
+            set
+            {
+                float sanitized = value;
+                if (float.IsNaN(sanitized) || sanitized <= 0f)
+                {
+                    sanitized = 0f;
+                }
+                Volatile.Write(ref waitInstructionQuantizationStepSeconds, sanitized);
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the maximum number of distinct WaitForSeconds/WaitForSecondsRealtime entries cached.
+        /// A value of 0 disables the cap (unbounded cache).
+        /// </summary>
+        public static int WaitInstructionMaxDistinctEntries
+        {
+            get => Volatile.Read(ref waitInstructionMaxDistinctEntries);
+            set
+            {
+                int sanitized = value < 0 ? 0 : value;
+                Volatile.Write(ref waitInstructionMaxDistinctEntries, sanitized);
+            }
+        }
+
+        /// <summary>
+        /// Snapshot of the WaitForSeconds cache (distinct entries, limit hits, quantization info).
+        /// </summary>
+        public static WaitInstructionCacheDiagnostics WaitForSecondsCacheDiagnostics =>
+            BuildDiagnostics(
+                WaitForSecondsCacheName,
+                GetWaitForSecondsEntryCount(),
+                Volatile.Read(ref waitForSecondsLimitHits),
+                Volatile.Read(ref waitForSecondsEvictions)
+            );
+
+        /// <summary>
+        /// Snapshot of the WaitForSecondsRealtime cache (distinct entries, limit hits, quantization info).
+        /// </summary>
+        public static WaitInstructionCacheDiagnostics WaitForSecondsRealtimeCacheDiagnostics =>
+            BuildDiagnostics(
+                WaitForSecondsRealtimeCacheName,
+                GetWaitForSecondsRealtimeEntryCount(),
+                Volatile.Read(ref waitForSecondsRealtimeLimitHits),
+                Volatile.Read(ref waitForSecondsRealtimeEvictions)
+            );
+
+        /// <summary>
+        /// Enables or disables LRU eviction when the cache reaches the max distinct entry count. When enabled, the oldest entries are removed and reused instead of refusing new durations.
+        /// </summary>
+        public static bool WaitInstructionUseLruEviction
+        {
+            get => Volatile.Read(ref waitInstructionUseLruEvictionFlag) != 0;
+            set => Volatile.Write(ref waitInstructionUseLruEvictionFlag, value ? 1 : 0);
+        }
+
+        private readonly struct WaitInstructionCacheEntry<TInstruction>
+        {
+            internal readonly TInstruction value;
+            internal readonly LinkedListNode<float> node;
+
+            internal WaitInstructionCacheEntry(TInstruction value, LinkedListNode<float> node)
+            {
+                this.value = value;
+                this.node = node;
+            }
+        }
+
+        private static readonly Dictionary<
             float,
-            WaitForSecondsRealtime
+            WaitInstructionCacheEntry<WaitForSeconds>
+        > WaitForSeconds = new();
+        private static readonly Dictionary<
+            float,
+            WaitInstructionCacheEntry<WaitForSecondsRealtime>
         > WaitForSecondsRealtime = new();
-#endif
+        private static readonly LinkedList<float> WaitForSecondsOrder = new();
+        private static readonly LinkedList<float> WaitForSecondsRealtimeOrder = new();
+
+        public const int WaitInstructionDefaultMaxDistinctEntries = 512;
+        private const int WaitInstructionLimitWarningInterval = 25;
+        private const string WaitForSecondsCacheName = "WaitForSeconds";
+        private const string WaitForSecondsRealtimeCacheName = "WaitForSecondsRealtime";
+
+        private static float waitInstructionQuantizationStepSeconds;
+        private static int waitInstructionMaxDistinctEntries =
+            WaitInstructionDefaultMaxDistinctEntries;
+        private static int waitInstructionUseLruEvictionFlag;
+        private static int waitForSecondsLimitHits;
+        private static int waitForSecondsRealtimeLimitHits;
+        private static int waitForSecondsEvictions;
+        private static int waitForSecondsRealtimeEvictions;
+        private static readonly object WaitInstructionCacheLock = new();
 
         /// <summary>
         /// Reusable WaitForFixedUpdate instance to avoid repeated allocations in coroutines.
@@ -78,7 +167,35 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// </remarks>
         public static WaitForSeconds GetWaitForSeconds(float seconds)
         {
-            return WaitForSeconds.GetOrAdd(seconds, value => new WaitForSeconds(value));
+            WaitForSeconds pooled = RentWaitInstruction(
+                WaitForSeconds,
+                WaitForSecondsOrder,
+                CreateWaitForSeconds,
+                seconds,
+                ref waitForSecondsLimitHits,
+                ref waitForSecondsEvictions,
+                WaitForSecondsCacheName,
+                allowEviction: true
+            );
+            return pooled ?? new WaitForSeconds(seconds);
+        }
+
+        /// <summary>
+        /// Attempts to retrieve a cached WaitForSeconds instance without allocating a fallback when the cache limit is reached.
+        /// Returns null if the duration would exceed the configured cache size.
+        /// </summary>
+        public static WaitForSeconds TryGetWaitForSecondsPooled(float seconds)
+        {
+            return RentWaitInstruction(
+                WaitForSeconds,
+                WaitForSecondsOrder,
+                CreateWaitForSeconds,
+                seconds,
+                ref waitForSecondsLimitHits,
+                ref waitForSecondsEvictions,
+                WaitForSecondsCacheName,
+                allowEviction: false
+            );
         }
 
         /// <summary>
@@ -94,10 +211,381 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// </remarks>
         public static WaitForSecondsRealtime GetWaitForSecondsRealTime(float seconds)
         {
-            return WaitForSecondsRealtime.GetOrAdd(
+            WaitForSecondsRealtime pooled = RentWaitInstruction(
+                WaitForSecondsRealtime,
+                WaitForSecondsRealtimeOrder,
+                CreateWaitForSecondsRealtime,
                 seconds,
-                value => new WaitForSecondsRealtime(value)
+                ref waitForSecondsRealtimeLimitHits,
+                ref waitForSecondsRealtimeEvictions,
+                WaitForSecondsRealtimeCacheName,
+                allowEviction: true
             );
+            return pooled ?? new WaitForSecondsRealtime(seconds);
+        }
+
+        /// <summary>
+        /// Attempts to retrieve a cached WaitForSecondsRealtime instance without allocating a fallback when the cache limit is reached.
+        /// Returns null if the duration would exceed the configured cache size.
+        /// </summary>
+        public static WaitForSecondsRealtime TryGetWaitForSecondsRealtimePooled(float seconds)
+        {
+            return RentWaitInstruction(
+                WaitForSecondsRealtime,
+                WaitForSecondsRealtimeOrder,
+                CreateWaitForSecondsRealtime,
+                seconds,
+                ref waitForSecondsRealtimeLimitHits,
+                ref waitForSecondsRealtimeEvictions,
+                WaitForSecondsRealtimeCacheName,
+                allowEviction: false
+            );
+        }
+
+        private static WaitForSeconds CreateWaitForSeconds(float seconds)
+        {
+            return new WaitForSeconds(seconds);
+        }
+
+        private static WaitForSecondsRealtime CreateWaitForSecondsRealtime(float seconds)
+        {
+            return new WaitForSecondsRealtime(seconds);
+        }
+
+        private static TInstruction RentWaitInstruction<TInstruction>(
+            Dictionary<float, WaitInstructionCacheEntry<TInstruction>> cache,
+            LinkedList<float> order,
+            Func<float, TInstruction> factory,
+            float requestedSeconds,
+            ref int limitHits,
+            ref int evictionCount,
+            string cacheName,
+            bool allowEviction
+        )
+            where TInstruction : class
+        {
+            float quantized = QuantizeSeconds(requestedSeconds);
+            lock (WaitInstructionCacheLock)
+            {
+                if (cache.TryGetValue(quantized, out WaitInstructionCacheEntry<TInstruction> entry))
+                {
+                    if (entry.node.List != null)
+                    {
+                        order.Remove(entry.node);
+                        order.AddLast(entry.node);
+                    }
+                    return entry.value;
+                }
+
+                bool useLru =
+                    allowEviction
+                    && WaitInstructionUseLruEviction
+                    && WaitInstructionMaxDistinctEntries > 0;
+                if (useLru && cache.Count >= WaitInstructionMaxDistinctEntries)
+                {
+                    if (order.First != null)
+                    {
+                        float evictKey = order.First.Value;
+                        order.RemoveFirst();
+                        if (cache.Remove(evictKey))
+                        {
+                            Interlocked.Increment(ref evictionCount);
+                        }
+                    }
+                }
+                else if (!CanCacheNewEntry(cache.Count))
+                {
+                    ReportCacheLimit(cacheName, ref limitHits);
+                    return null;
+                }
+
+                LinkedListNode<float> node = order.AddLast(quantized);
+                TInstruction created = factory(quantized);
+                cache[quantized] = new WaitInstructionCacheEntry<TInstruction>(created, node);
+                return created;
+            }
+        }
+
+        private static float QuantizeSeconds(float seconds)
+        {
+            float step = WaitInstructionQuantizationStepSeconds;
+            if (step <= 0f || float.IsNaN(step) || float.IsInfinity(step))
+            {
+                return seconds;
+            }
+
+            if (float.IsNaN(seconds) || float.IsInfinity(seconds))
+            {
+                return seconds;
+            }
+
+            float normalized = seconds / step;
+            float rounded = Mathf.Round(normalized);
+            return rounded * step;
+        }
+
+        private static bool CanCacheNewEntry(int currentCount)
+        {
+            int maxEntries = WaitInstructionMaxDistinctEntries;
+            return maxEntries <= 0 || currentCount < maxEntries;
+        }
+
+        private static void ReportCacheLimit(string cacheName, ref int limitHits)
+        {
+            int hits = Interlocked.Increment(ref limitHits);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            int maxEntries = WaitInstructionMaxDistinctEntries;
+            if (maxEntries > 0 && (hits == 1 || hits % WaitInstructionLimitWarningInterval == 0))
+            {
+                Debug.LogWarning(
+                    $"[Buffers] {cacheName} cache reached the configured limit of {maxEntries} unique wait instructions. Consider using Buffers.TryGet... or increasing Buffers.WaitInstructionMaxDistinctEntries."
+                );
+            }
+#endif
+        }
+
+        private static int GetWaitForSecondsEntryCount()
+        {
+            lock (WaitInstructionCacheLock)
+            {
+                return WaitForSeconds.Count;
+            }
+        }
+
+        private static int GetWaitForSecondsRealtimeEntryCount()
+        {
+            lock (WaitInstructionCacheLock)
+            {
+                return WaitForSecondsRealtime.Count;
+            }
+        }
+
+        private static WaitInstructionCacheDiagnostics BuildDiagnostics(
+            string cacheName,
+            int distinctEntries,
+            int limitHits,
+            int evictions
+        )
+        {
+            return new WaitInstructionCacheDiagnostics(
+                cacheName,
+                distinctEntries,
+                WaitInstructionMaxDistinctEntries,
+                limitHits,
+                evictions,
+                WaitInstructionQuantizationStepSeconds,
+                WaitInstructionUseLruEviction
+            );
+        }
+
+        internal static void ResetWaitInstructionCachesForTesting()
+        {
+            lock (WaitInstructionCacheLock)
+            {
+                WaitForSeconds.Clear();
+                WaitForSecondsRealtime.Clear();
+                WaitForSecondsOrder.Clear();
+                WaitForSecondsRealtimeOrder.Clear();
+            }
+            WaitInstructionQuantizationStepSeconds = 0f;
+            WaitInstructionMaxDistinctEntries = WaitInstructionDefaultMaxDistinctEntries;
+            WaitInstructionUseLruEviction = false;
+            Volatile.Write(ref waitForSecondsLimitHits, 0);
+            Volatile.Write(ref waitForSecondsRealtimeLimitHits, 0);
+            Volatile.Write(ref waitForSecondsEvictions, 0);
+            Volatile.Write(ref waitForSecondsRealtimeEvictions, 0);
+        }
+
+        internal static IDisposable BeginWaitInstructionTestScope()
+        {
+            return new WaitInstructionTestScope();
+        }
+
+        private sealed class WaitInstructionTestScope : IDisposable
+        {
+            private readonly WaitInstructionCacheSnapshot<WaitForSeconds> waitForSecondsSnapshot;
+            private readonly WaitInstructionCacheSnapshot<WaitForSecondsRealtime> waitForSecondsRealtimeSnapshot;
+            private readonly float quantizationStepSnapshot;
+            private readonly int maxDistinctEntriesSnapshot;
+            private readonly bool useLruSnapshot;
+            private readonly int waitForSecondsLimitHitsSnapshot;
+            private readonly int waitForSecondsRealtimeLimitHitsSnapshot;
+            private readonly int waitForSecondsEvictionsSnapshot;
+            private readonly int waitForSecondsRealtimeEvictionsSnapshot;
+            private bool disposed;
+
+            internal WaitInstructionTestScope()
+            {
+                waitForSecondsSnapshot = SnapshotCache(WaitForSeconds, WaitForSecondsOrder);
+                waitForSecondsRealtimeSnapshot = SnapshotCache(
+                    WaitForSecondsRealtime,
+                    WaitForSecondsRealtimeOrder
+                );
+                quantizationStepSnapshot = WaitInstructionQuantizationStepSeconds;
+                maxDistinctEntriesSnapshot = WaitInstructionMaxDistinctEntries;
+                useLruSnapshot = WaitInstructionUseLruEviction;
+                waitForSecondsLimitHitsSnapshot = Volatile.Read(ref waitForSecondsLimitHits);
+                waitForSecondsRealtimeLimitHitsSnapshot = Volatile.Read(
+                    ref waitForSecondsRealtimeLimitHits
+                );
+                waitForSecondsEvictionsSnapshot = Volatile.Read(ref waitForSecondsEvictions);
+                waitForSecondsRealtimeEvictionsSnapshot = Volatile.Read(
+                    ref waitForSecondsRealtimeEvictions
+                );
+
+                ResetWaitInstructionCachesForTesting();
+            }
+
+            public void Dispose()
+            {
+                if (disposed)
+                {
+                    return;
+                }
+                disposed = true;
+
+                WaitInstructionQuantizationStepSeconds = quantizationStepSnapshot;
+                WaitInstructionMaxDistinctEntries = maxDistinctEntriesSnapshot;
+                WaitInstructionUseLruEviction = useLruSnapshot;
+                Volatile.Write(ref waitForSecondsLimitHits, waitForSecondsLimitHitsSnapshot);
+                Volatile.Write(
+                    ref waitForSecondsRealtimeLimitHits,
+                    waitForSecondsRealtimeLimitHitsSnapshot
+                );
+                Volatile.Write(ref waitForSecondsEvictions, waitForSecondsEvictionsSnapshot);
+                Volatile.Write(
+                    ref waitForSecondsRealtimeEvictions,
+                    waitForSecondsRealtimeEvictionsSnapshot
+                );
+
+                RestoreCache(WaitForSeconds, WaitForSecondsOrder, waitForSecondsSnapshot);
+                RestoreCache(
+                    WaitForSecondsRealtime,
+                    WaitForSecondsRealtimeOrder,
+                    waitForSecondsRealtimeSnapshot
+                );
+            }
+
+            private static WaitInstructionCacheSnapshot<TInstruction> SnapshotCache<TInstruction>(
+                Dictionary<float, WaitInstructionCacheEntry<TInstruction>> cache,
+                LinkedList<float> order
+            )
+                where TInstruction : class
+            {
+                lock (WaitInstructionCacheLock)
+                {
+                    Dictionary<float, TInstruction> entries = new(cache.Count);
+                    foreach (
+                        KeyValuePair<float, WaitInstructionCacheEntry<TInstruction>> pair in cache
+                    )
+                    {
+                        entries[pair.Key] = pair.Value.value;
+                    }
+
+                    List<float> ordering = new(order);
+                    return new WaitInstructionCacheSnapshot<TInstruction>(entries, ordering);
+                }
+            }
+
+            private static void RestoreCache<TInstruction>(
+                Dictionary<float, WaitInstructionCacheEntry<TInstruction>> cache,
+                LinkedList<float> order,
+                WaitInstructionCacheSnapshot<TInstruction> snapshot
+            )
+                where TInstruction : class
+            {
+                lock (WaitInstructionCacheLock)
+                {
+                    cache.Clear();
+                    order.Clear();
+
+                    if (snapshot.Order == null || snapshot.Entries == null)
+                    {
+                        return;
+                    }
+
+                    Dictionary<float, LinkedListNode<float>> nodes = new(snapshot.Order.Count);
+                    foreach (float key in snapshot.Order)
+                    {
+                        LinkedListNode<float> node = order.AddLast(key);
+                        nodes[key] = node;
+                    }
+
+                    foreach (KeyValuePair<float, TInstruction> pair in snapshot.Entries)
+                    {
+                        if (!nodes.TryGetValue(pair.Key, out LinkedListNode<float> node))
+                        {
+                            node = order.AddLast(pair.Key);
+                            nodes[pair.Key] = node;
+                        }
+
+                        cache[pair.Key] = new WaitInstructionCacheEntry<TInstruction>(
+                            pair.Value,
+                            node
+                        );
+                    }
+                }
+            }
+
+            private readonly struct WaitInstructionCacheSnapshot<TInstruction>
+                where TInstruction : class
+            {
+                internal WaitInstructionCacheSnapshot(
+                    Dictionary<float, TInstruction> entries,
+                    List<float> order
+                )
+                {
+                    Entries = entries;
+                    Order = order;
+                }
+
+                internal Dictionary<float, TInstruction> Entries { get; }
+
+                internal List<float> Order { get; }
+            }
+        }
+    }
+
+    public readonly struct WaitInstructionCacheDiagnostics
+    {
+        public WaitInstructionCacheDiagnostics(
+            string cacheName,
+            int distinctEntries,
+            int maxDistinctEntries,
+            int limitRefusals,
+            int evictions,
+            float quantizationStepSeconds,
+            bool lruEnabled
+        )
+        {
+            CacheName = cacheName;
+            DistinctEntries = distinctEntries;
+            MaxDistinctEntries = maxDistinctEntries;
+            LimitRefusals = limitRefusals;
+            Evictions = evictions;
+            QuantizationStepSeconds = quantizationStepSeconds;
+            IsLruEnabled = lruEnabled;
+        }
+
+        public string CacheName { get; }
+
+        public int DistinctEntries { get; }
+
+        public int MaxDistinctEntries { get; }
+
+        public int LimitRefusals { get; }
+
+        public int Evictions { get; }
+
+        public float QuantizationStepSeconds { get; }
+
+        public bool IsQuantized => QuantizationStepSeconds > 0f;
+
+        public bool IsLruEnabled { get; }
+
+        public override string ToString()
+        {
+            return $"{CacheName}: entries={DistinctEntries}, max={MaxDistinctEntries}, refusals={LimitRefusals}, evictions={Evictions}, quantizationStep={QuantizationStepSeconds}, lru={IsLruEnabled}";
         }
     }
 

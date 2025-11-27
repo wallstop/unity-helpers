@@ -55,7 +55,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             public static void ClearForTests()
             {
                 CreatedCount = 0;
-                LazyInstance = CreateLazy();
+                _lazyInstance = CreateLazy();
             }
         }
 
@@ -93,7 +93,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             public static void ClearForTests()
             {
                 CreatedCount = 0;
-                LazyInstance = CreateLazy();
+                _lazyInstance = CreateLazy();
             }
         }
 

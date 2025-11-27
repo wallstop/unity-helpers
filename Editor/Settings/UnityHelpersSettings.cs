@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 #if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
     using UnityEditor;
     using UnityEngine;
@@ -12,6 +13,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
     using WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup;
+    using WallstopStudios.UnityHelpers.Settings;
+    using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
     /// Project-wide configuration surface for Unity Helpers editor tooling.
@@ -91,6 +94,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private static readonly Dictionary<int, bool> SettingsFoldoutGroupStates = new();
         private const float SettingsLabelWidth = 260f;
         private const float SettingsMinFieldWidth = 110f;
+        private const string WaitInstructionBufferFoldoutKey = "Buffers";
+        private static UnityHelpersBufferSettingsAsset waitInstructionBufferSettingsAsset;
         private static readonly GUIContent StringInListPageSizeContent =
             EditorGUIUtility.TrTextContent(
                 "StringInList Page Size",
@@ -196,6 +201,32 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 "Serializable Sorted Set Foldout Speed",
                 "Animation speed used when expanding or collapsing SerializableSortedSet manual entry foldouts."
             );
+        private const string WaitInstructionBufferDefaultsHelpText =
+            "Configure the global defaults for Buffers.WaitInstruction pooling. These values are applied automatically on domain reload and when the player starts if Auto Apply is enabled.";
+        private static readonly GUIContent WaitInstructionBufferApplyOnLoadContent =
+            EditorGUIUtility.TrTextContent(
+                "Auto Apply On Load",
+                "When enabled, the configured defaults are applied automatically on domain reload, scene load, and in player builds."
+            );
+        private static readonly GUIContent WaitInstructionBufferQuantizationContent =
+            EditorGUIUtility.TrTextContent(
+                "Quantization Step (seconds)",
+                "Durations are rounded to this step before being cached. Set to 0 to disable quantization."
+            );
+        private static readonly GUIContent WaitInstructionBufferMaxEntriesContent =
+            EditorGUIUtility.TrTextContent(
+                "Max Distinct Entries",
+                "Maximum number of cached WaitForSeconds/Realtime durations (0 = unbounded)."
+            );
+        private static readonly GUIContent WaitInstructionBufferUseLruContent =
+            EditorGUIUtility.TrTextContent(
+                "Use LRU Eviction",
+                "When enabled, the cache evicts the least recently used duration instead of refusing new entries once the limit is reached."
+            );
+        private static readonly GUIContent WaitInstructionBufferApplyNowButtonContent =
+            EditorGUIUtility.TrTextContent("Apply Defaults Now");
+        private static readonly GUIContent WaitInstructionBufferCaptureCurrentButtonContent =
+            EditorGUIUtility.TrTextContent("Capture Current Values");
         private static readonly GUIContent DuplicateAnimationModeContent =
             EditorGUIUtility.TrTextContent(
                 "Duplicate Row Animation",
@@ -332,6 +363,43 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         }
 
         [SerializeField]
+        [Tooltip(
+            "Whether the configured wait instruction defaults should be applied automatically on domain reload and player start."
+        )]
+        [WGroup(
+            WaitInstructionBufferFoldoutKey,
+            displayName: "Buffers",
+            collapsible: true,
+            startCollapsed: true
+        )]
+        private bool waitInstructionBufferApplyOnLoad = true;
+
+        [SerializeField]
+        [Tooltip(
+            "Rounds requested WaitForSeconds durations to this step size before caching (set to 0 to disable)."
+        )]
+        [Min(0f)]
+        private float waitInstructionBufferQuantizationStepSeconds;
+
+        [SerializeField]
+        [Tooltip(
+            "Maximum number of distinct WaitForSeconds/Realtime entries cached (0 = unlimited)."
+        )]
+        [Min(0)]
+        private int waitInstructionBufferMaxDistinctEntries =
+            Buffers.WaitInstructionDefaultMaxDistinctEntries;
+
+        [SerializeField]
+        [Tooltip(
+            "Evict the least recently used duration when the cache hits the distinct entry limit."
+        )]
+        private bool waitInstructionBufferUseLruEviction;
+
+        [SerializeField]
+        [HideInInspector]
+        private bool waitInstructionBufferDefaultsInitialized;
+
+        [SerializeField]
         [Tooltip("Maximum number of entries shown per page for StringInList dropdowns.")]
         [Range(MinPageSize, MaxPageSize)]
         [WGroup(
@@ -369,9 +437,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [WGroup(
             "WButton Actions",
             displayName: "WButton Actions",
-            autoIncludeCount: 2,
+            autoIncludeCount: 1,
             collapsible: true
         )]
+        [WGroupEnd("Pagination")]
         private int wbuttonPageSize = DefaultWButtonPageSize;
 
         [SerializeField]
@@ -448,12 +517,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [Tooltip(
             "Enable animated transitions when expanding or collapsing SerializableHashSet manual entry foldouts."
         )]
-        [WGroup(
-            "Set Foldouts",
-            displayName: "Set Foldouts",
-            autoIncludeCount: 4,
-            collapsible: true
-        )]
+        [WGroup("Serializable Sets", displayName: "Serializable Sets", collapsible: true)]
         private bool serializableSetFoldoutTweenEnabled = true;
 
         [SerializeField]
@@ -464,14 +528,37 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         [SerializeField]
         [Tooltip(
+            "Enable lateral shake animations when highlighting duplicate or invalid entries in SerializableSet inspectors."
+        )]
+        private bool serializableSetDuplicateTweenEnabled = true;
+
+        [SerializeField]
+        [Tooltip(
+            "When enabled, number of shake cycles to play for SerializableSet duplicate entries. Negative values loop indefinitely."
+        )]
+        [WShowIf(nameof(serializableSetDuplicateTweenEnabled))]
+        private int serializableSetDuplicateTweenCycles = DefaultDuplicateTweenCycles;
+
+        [SerializeField]
+        [HideInInspector]
+        private bool serializableSetTweensGroupEndSentinel;
+
+        [SerializeField]
+        [HideInInspector]
+        private bool serializableSetDuplicateTweenSettingsInitialized;
+
+        [SerializeField]
+        [Tooltip(
             "Enable animated transitions when expanding or collapsing SerializableSortedSet manual entry foldouts."
         )]
+        [WGroup("Sorted Set", displayName: "Sorted Sets", autoIncludeCount: 1, collapsible: true)]
         private bool serializableSortedSetFoldoutTweenEnabled = true;
 
         [SerializeField]
         [Tooltip("Animation speed used when toggling SerializableSortedSet manual entry foldouts.")]
         [WShowIf(nameof(serializableSortedSetFoldoutTweenEnabled))]
         [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
+        [WGroupEnd("Sorted Set Foldouts")]
         private float serializableSortedSetFoldoutSpeed = DefaultFoldoutSpeed;
 
         [SerializeField]
@@ -496,29 +583,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             expectedValues: new object[] { DuplicateRowAnimationMode.Tween }
         )]
         private int duplicateRowTweenCycles = DefaultDuplicateTweenCycles;
-
-        [SerializeField]
-        [Tooltip(
-            "Enable lateral shake animations when highlighting duplicate or invalid entries in SerializableSet inspectors."
-        )]
-        [WGroup(
-            "Serializable Set Tweens",
-            displayName: "Serializable Set Tweens",
-            autoIncludeCount: 2,
-            collapsible: true
-        )]
-        private bool serializableSetDuplicateTweenEnabled = true;
-
-        [SerializeField]
-        [Tooltip(
-            "When enabled, number of shake cycles to play for SerializableSet duplicate entries. Negative values loop indefinitely."
-        )]
-        [WShowIf(nameof(serializableSetDuplicateTweenEnabled))]
-        private int serializableSetDuplicateTweenCycles = DefaultDuplicateTweenCycles;
-
-        [SerializeField]
-        [HideInInspector]
-        private bool serializableSetDuplicateTweenSettingsInitialized;
 
         [SerializeField]
         [Tooltip(
@@ -576,7 +640,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [WGroup(
             "Color Palettes",
             displayName: "Color Palettes",
-            autoIncludeCount: 3,
+            autoIncludeCount: 4,
             collapsible: true
         )]
         private WButtonCustomColorDictionary wbuttonCustomColors = new();
@@ -591,6 +655,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         [SerializeField]
         [Tooltip("Named color palette applied to WEnumToggleButtons color keys.")]
+        [WGroupEnd("Color Palettes")]
         private WEnumToggleButtonsCustomColorDictionary wenumToggleButtonsCustomColors = new();
 
         [SerializeField]
@@ -3302,6 +3367,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return false;
         }
 
+        private static bool DrawFloatField(
+            GUIContent content,
+            float currentValue,
+            Action<float> setter
+        )
+        {
+            EditorGUI.BeginChangeCheck();
+            float newValue = EditorGUILayout.FloatField(content, currentValue);
+            if (EditorGUI.EndChangeCheck())
+            {
+                setter(newValue);
+                return true;
+            }
+
+            return false;
+        }
+
         private static bool DrawFloatSliderField(
             GUIContent content,
             float currentValue,
@@ -3361,6 +3443,27 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return false;
         }
 
+        private static void DrawWaitInstructionBufferButtons(UnityHelpersSettings settings)
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button(WaitInstructionBufferApplyNowButtonContent))
+                {
+                    settings.ApplyWaitInstructionBufferDefaultsToAsset(applyToRuntime: true);
+                }
+
+                settings.EnsureWaitInstructionBufferDefaultsInitialized();
+                bool isRuntimeInSync = settings.AreWaitInstructionDefaultsInSyncWithRuntime();
+                using (new EditorGUI.DisabledScope(isRuntimeInSync))
+                {
+                    if (GUILayout.Button(WaitInstructionBufferCaptureCurrentButtonContent))
+                    {
+                        settings.CaptureWaitInstructionDefaultsFromRuntime();
+                    }
+                }
+            }
+        }
+
         private readonly struct LabelWidthScope : IDisposable
         {
             private readonly float _previousWidth;
@@ -3392,10 +3495,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 guiHandler = _ =>
                 {
                     UnityHelpersSettings settings = instance;
+                    settings.EnsureWaitInstructionBufferDefaultsInitialized();
                     SerializedObject serializedSettings = new(settings);
                     serializedSettings.UpdateIfRequiredOrScript();
 
                     bool dataChanged = false;
+                    HashSet<string> waitInstructionPropertiesDrawn = new();
 
                     using (new LabelWidthScope(SettingsLabelWidth))
                     {
@@ -3754,6 +3859,112 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 if (EditorGUI.EndChangeCheck())
                                 {
                                     dataChanged = true;
+                                }
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(waitInstructionBufferApplyOnLoad),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (!waitInstructionPropertiesDrawn.Add(property.propertyPath))
+                                {
+                                    return true;
+                                }
+                                using (new EditorGUI.IndentLevelScope())
+                                {
+                                    EditorGUILayout.HelpBox(
+                                        WaitInstructionBufferDefaultsHelpText,
+                                        MessageType.Info
+                                    );
+                                    bool changed = DrawToggleField(
+                                        WaitInstructionBufferApplyOnLoadContent,
+                                        settings.waitInstructionBufferApplyOnLoad,
+                                        value => settings.waitInstructionBufferApplyOnLoad = value
+                                    );
+                                    dataChanged |= changed;
+                                }
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(waitInstructionBufferQuantizationStepSeconds),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (!waitInstructionPropertiesDrawn.Add(property.propertyPath))
+                                {
+                                    return true;
+                                }
+                                using (new EditorGUI.IndentLevelScope())
+                                {
+                                    bool changed = DrawFloatField(
+                                        WaitInstructionBufferQuantizationContent,
+                                        settings.waitInstructionBufferQuantizationStepSeconds,
+                                        value =>
+                                            settings.waitInstructionBufferQuantizationStepSeconds =
+                                                Mathf.Max(0f, value)
+                                    );
+                                    dataChanged |= changed;
+                                }
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(waitInstructionBufferMaxDistinctEntries),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (!waitInstructionPropertiesDrawn.Add(property.propertyPath))
+                                {
+                                    return true;
+                                }
+                                using (new EditorGUI.IndentLevelScope())
+                                {
+                                    bool changed = DrawIntField(
+                                        WaitInstructionBufferMaxEntriesContent,
+                                        settings.waitInstructionBufferMaxDistinctEntries,
+                                        value =>
+                                            settings.waitInstructionBufferMaxDistinctEntries =
+                                                Mathf.Max(0, value)
+                                    );
+                                    dataChanged |= changed;
+                                }
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(waitInstructionBufferUseLruEviction),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (!waitInstructionPropertiesDrawn.Add(property.propertyPath))
+                                {
+                                    return true;
+                                }
+                                using (new EditorGUI.IndentLevelScope())
+                                {
+                                    bool changed = DrawToggleField(
+                                        WaitInstructionBufferUseLruContent,
+                                        settings.waitInstructionBufferUseLruEviction,
+                                        value =>
+                                            settings.waitInstructionBufferUseLruEviction = value
+                                    );
+                                    dataChanged |= changed;
+                                    DrawWaitInstructionBufferButtons(settings);
                                 }
                                 return true;
                             }
@@ -4148,6 +4359,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     }
 
                     settings.SaveSettings();
+                    settings.ApplyWaitInstructionBufferDefaultsToAsset(
+                        settings.waitInstructionBufferApplyOnLoad
+                    );
                     serializedSettings.UpdateIfRequiredOrScript();
                 },
                 keywords = new[]
@@ -4171,6 +4385,126 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             };
         }
 
+        private void EnsureWaitInstructionBufferDefaultsInitialized()
+        {
+            if (waitInstructionBufferDefaultsInitialized)
+            {
+                return;
+            }
+
+            UnityHelpersBufferSettingsAsset asset = EnsureWaitInstructionBufferSettingsAsset();
+            if (asset == null)
+            {
+                return;
+            }
+
+            waitInstructionBufferApplyOnLoad = asset.ApplyOnLoad;
+            waitInstructionBufferQuantizationStepSeconds = asset.QuantizationStepSeconds;
+            waitInstructionBufferMaxDistinctEntries = asset.MaxDistinctEntries;
+            waitInstructionBufferUseLruEviction = asset.UseLruEviction;
+            waitInstructionBufferDefaultsInitialized = true;
+        }
+
+        private void CaptureWaitInstructionDefaultsFromRuntime()
+        {
+            waitInstructionBufferQuantizationStepSeconds = Mathf.Max(
+                0f,
+                Buffers.WaitInstructionQuantizationStepSeconds
+            );
+            waitInstructionBufferMaxDistinctEntries = Mathf.Max(
+                0,
+                Buffers.WaitInstructionMaxDistinctEntries
+            );
+            waitInstructionBufferUseLruEviction = Buffers.WaitInstructionUseLruEviction;
+            waitInstructionBufferDefaultsInitialized = true;
+            ApplyWaitInstructionBufferDefaultsToAsset(waitInstructionBufferApplyOnLoad);
+        }
+
+        private bool AreWaitInstructionDefaultsInSyncWithRuntime()
+        {
+            float runtimeQuantization = Mathf.Max(
+                0f,
+                Buffers.WaitInstructionQuantizationStepSeconds
+            );
+            float configuredQuantization = Mathf.Max(
+                0f,
+                waitInstructionBufferQuantizationStepSeconds
+            );
+
+            int runtimeMaxEntries = Mathf.Max(0, Buffers.WaitInstructionMaxDistinctEntries);
+            int configuredMaxEntries = Mathf.Max(0, waitInstructionBufferMaxDistinctEntries);
+
+            bool runtimeUseLru = Buffers.WaitInstructionUseLruEviction;
+
+            return Mathf.Approximately(configuredQuantization, runtimeQuantization)
+                && configuredMaxEntries == runtimeMaxEntries
+                && waitInstructionBufferUseLruEviction == runtimeUseLru;
+        }
+
+        private void ApplyWaitInstructionBufferDefaultsToAsset(bool applyToRuntime)
+        {
+            UnityHelpersBufferSettingsAsset asset = EnsureWaitInstructionBufferSettingsAsset();
+            if (asset == null)
+            {
+                return;
+            }
+
+            waitInstructionBufferQuantizationStepSeconds = Mathf.Max(
+                0f,
+                waitInstructionBufferQuantizationStepSeconds
+            );
+            waitInstructionBufferMaxDistinctEntries = Mathf.Max(
+                0,
+                waitInstructionBufferMaxDistinctEntries
+            );
+
+            SerializedObject assetSerialized = new(asset);
+            SerializedProperty applyOnLoadProperty = assetSerialized.FindProperty(
+                UnityHelpersBufferSettingsAsset.ApplyOnLoadPropertyName
+            );
+            SerializedProperty quantizationProperty = assetSerialized.FindProperty(
+                UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName
+            );
+            SerializedProperty maxEntriesProperty = assetSerialized.FindProperty(
+                UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName
+            );
+            SerializedProperty useLruProperty = assetSerialized.FindProperty(
+                UnityHelpersBufferSettingsAsset.UseLruEvictionPropertyName
+            );
+
+            if (applyOnLoadProperty != null)
+            {
+                applyOnLoadProperty.boolValue = waitInstructionBufferApplyOnLoad;
+            }
+
+            if (quantizationProperty != null)
+            {
+                quantizationProperty.floatValue = waitInstructionBufferQuantizationStepSeconds;
+            }
+
+            if (maxEntriesProperty != null)
+            {
+                maxEntriesProperty.intValue = waitInstructionBufferMaxDistinctEntries;
+            }
+
+            if (useLruProperty != null)
+            {
+                useLruProperty.boolValue = waitInstructionBufferUseLruEviction;
+            }
+
+            bool assetChanged = assetSerialized.ApplyModifiedPropertiesWithoutUndo();
+            if (assetChanged)
+            {
+                EditorUtility.SetDirty(asset);
+                AssetDatabase.SaveAssets();
+            }
+
+            if (applyToRuntime)
+            {
+                asset.ApplyToBuffers();
+            }
+        }
+
         private static bool ColorsApproximatelyEqual(Color left, Color right)
         {
             const float tolerance = 0.01f;
@@ -4178,6 +4512,37 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 && Mathf.Abs(left.g - right.g) <= tolerance
                 && Mathf.Abs(left.b - right.b) <= tolerance
                 && Mathf.Abs(left.a - right.a) <= tolerance;
+        }
+
+        private static UnityHelpersBufferSettingsAsset EnsureWaitInstructionBufferSettingsAsset()
+        {
+            if (waitInstructionBufferSettingsAsset != null)
+            {
+                return waitInstructionBufferSettingsAsset;
+            }
+
+            waitInstructionBufferSettingsAsset =
+                AssetDatabase.LoadAssetAtPath<UnityHelpersBufferSettingsAsset>(
+                    UnityHelpersBufferSettingsAsset.AssetPath
+                );
+            if (waitInstructionBufferSettingsAsset != null)
+            {
+                return waitInstructionBufferSettingsAsset;
+            }
+
+            string directory = Path.GetDirectoryName(UnityHelpersBufferSettingsAsset.AssetPath);
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            UnityHelpersBufferSettingsAsset created =
+                ScriptableObject.CreateInstance<UnityHelpersBufferSettingsAsset>();
+            created.SyncFromRuntime();
+            AssetDatabase.CreateAsset(created, UnityHelpersBufferSettingsAsset.AssetPath);
+            AssetDatabase.SaveAssets();
+            waitInstructionBufferSettingsAsset = created;
+            return waitInstructionBufferSettingsAsset;
         }
     }
 #endif

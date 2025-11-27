@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
     using System.Linq;
     using NUnit.Framework;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.DataStructure;
 
     public static class SpatialDiagnostics
     {
@@ -13,7 +14,8 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
             Bounds bounds,
             ICollection<Vector3> expected,
             ICollection<Vector3> actual,
-            int maxItems = 64
+            int maxItems = 64,
+            OctTreeBoundsQueryDiagnosticsCollector octDiagnostics = null
         )
         {
             if (expected is null)
@@ -51,6 +53,11 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
             }
 
             string message = BuildDifferenceMessage(context, bounds, expected, actual, maxItems);
+            if (octDiagnostics is not null)
+            {
+                message +=
+                    Environment.NewLine + octDiagnostics.BuildReport(expected, actual, maxItems);
+            }
             Assert.Fail(message);
         }
 
@@ -101,8 +108,13 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
                 maxItems
             );
 
+            BoundingBox3D halfOpen = BoundingBox3D.FromClosedBoundsInclusiveMax(bounds);
             string header =
-                $"{context}\nBounds center={bounds.center}, size={bounds.size}\nKD count={expected.Count}, Oct count={actual.Count}";
+                $"{context}"
+                + $"\nBounds center={FormatVector(bounds.center)}, size={FormatVector(bounds.size)}"
+                + $"\nClosed min/max: {FormatVector(bounds.min)} -> {FormatVector(bounds.max)}"
+                + $"\nHalf-open min/max(exclusive): {FormatVector(halfOpen.min)} -> {FormatVector(halfOpen.max)}"
+                + $"\nKD count={expected.Count}, Oct count={actual.Count}";
 
             string missingStr =
                 missing.Count == 0

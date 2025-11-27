@@ -387,6 +387,28 @@ Pick one feature that solves your immediate problem:
 
 ---
 
+## Running Automated Tests
+
+Unity Helpers ships 4k+ EditMode and PlayMode tests. You can execute every suite locally (or in CI) with the new cross-platform runner.
+
+1. **Use the bundled validation project** – `TestProjects/UnityPackageTests` references this repo via `file:../..` and marks the package as `testable`. Open it in the Unity Hub once (Unity **2021.3 LTS**) so cached data is generated under `Library/`.
+2. **Point the scripts at your editor** – set `UNITY_EDITOR_PATH` to your Unity executable (`C:\Program Files\Unity\Hub\Editor\2021.3.38f1\Editor\Unity.exe` on Windows or `/Applications/Unity/Hub/Editor/2021.3.38f1/Unity.app/Contents/MacOS/Unity` on macOS/Linux runners). Override `UNITY_PROJECT_PATH` only if you want to reuse a different host project.
+3. **Run the tests from the CLI** – `npm run test` (or `npm run test:unity`) invokes `scripts/run-unity-tests.ps1` on Windows and `scripts/run-unity-tests.sh` elsewhere. Both EditMode and PlayMode suites execute back-to-back, producing logs and `*-TestResults.xml` files under `artifacts/unity-tests` (override via `UNITY_TEST_RESULTS_DIR`).
+
+Environment knobs:
+
+| Variable                | Purpose                                                                     |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `UNITY_EDITOR_PATH`     | Absolute path to the Unity editor binary (required).                        |
+| `UNITY_PROJECT_PATH`    | Project to test (defaults to `TestProjects/UnityPackageTests`).             |
+| `UNITY_TEST_FILTER`     | Optional NUnit filter passed to `-testFilter`.                              |
+| `UNITY_TEST_CATEGORY`   | Optional category filter (`-testCategory`).                                 |
+| `UNITY_TEST_EXTRA_ARGS` | Additional CLI flags appended verbatim (useful for `-assemblyNames`, etc.). |
+
+`npm run validate:tests` now runs `lint:tests` **and** the Unity suites, and `validate:prepush` includes that command so CI and Git hooks share the same guardrails.
+
+---
+
 ## 📚 Related Documentation
 
 **Core Guides:**

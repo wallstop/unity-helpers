@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     internal sealed class TestSingleton : ScriptableObjectSingleton<TestSingleton>
     {
         public int testValue = 42;
+        public string payload;
     }
 }
 #endif

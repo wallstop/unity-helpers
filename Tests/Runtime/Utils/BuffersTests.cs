@@ -16,10 +16,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
     public sealed class BuffersTests
     {
+        private IDisposable _waitInstructionScope;
         private readonly WallstopGenericPool<List<int>> _intPool = new(
             () => new List<int>(),
             onRelease: list => list.Clear()
         );
+
+        [SetUp]
+        public void SetUp()
+        {
+            _waitInstructionScope = Buffers.BeginWaitInstructionTestScope();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            _waitInstructionScope?.Dispose();
+        }
 
         [Test]
         public void PreWarmCount()

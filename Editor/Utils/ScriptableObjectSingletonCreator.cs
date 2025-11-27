@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
     using Debug = UnityEngine.Debug;
     using Object = UnityEngine.Object;
 
@@ -187,6 +188,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                     if (assetAtTarget != null)
                     {
+                        if (UpdateSingletonMetadataEntry(derivedType, targetAssetPath))
+                        {
+                            anyChanges = true;
+                        }
                         continue;
                     }
 
@@ -204,6 +209,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     LogVerbose(
                         $"ScriptableObjectSingletonCreator: Created missing singleton for type {derivedType.FullName} at {targetAssetPath}."
                     );
+                    if (UpdateSingletonMetadataEntry(derivedType, targetAssetPath))
+                    {
+                        anyChanges = true;
+                    }
                     anyChanges = true;
                 }
             }
@@ -486,6 +495,68 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     candidatePaths.Add(normalized);
                 }
             }
+        }
+
+        private static bool UpdateSingletonMetadataEntry(Type type, string assetPath)
+        {
+            string loadPath = ToResourcesLoadPath(assetPath);
+            if (string.IsNullOrEmpty(loadPath))
+            {
+                return false;
+            }
+
+            string resourcesFolder = GetResourcesFolderFromLoadPath(loadPath);
+            string guid = AssetDatabase.AssetPathToGUID(assetPath) ?? string.Empty;
+            ScriptableObjectSingletonMetadataUtility.UpdateEntry(
+                type,
+                loadPath,
+                resourcesFolder,
+                guid
+            );
+            return true;
+        }
+
+        private static string ToResourcesLoadPath(string assetPath)
+        {
+            if (string.IsNullOrWhiteSpace(assetPath))
+            {
+                return null;
+            }
+
+            string normalized = NormalizePath(assetPath);
+            if (!normalized.StartsWith(ResourcesRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            string relative = normalized.Substring(ResourcesRoot.Length).TrimStart('/');
+            if (string.IsNullOrWhiteSpace(relative))
+            {
+                return null;
+            }
+
+            if (relative.EndsWith(".asset", StringComparison.OrdinalIgnoreCase))
+            {
+                relative = relative.Substring(0, relative.Length - ".asset".Length);
+            }
+
+            return relative.Replace("\\", "/");
+        }
+
+        private static string GetResourcesFolderFromLoadPath(string loadPath)
+        {
+            if (string.IsNullOrWhiteSpace(loadPath))
+            {
+                return string.Empty;
+            }
+
+            string directory = Path.GetDirectoryName(loadPath);
+            if (string.IsNullOrEmpty(directory))
+            {
+                return string.Empty;
+            }
+
+            return directory.Replace("\\", "/");
         }
 
         private static string CombinePaths(string left, string right)

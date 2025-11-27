@@ -11,10 +11,61 @@ Static helper classes and utilities that solve common programming problems witho
 - [Gameplay Helpers](#gameplay-helpers) — Predictive aiming, spatial sampling, rotation
 - [GameObject & Component Helpers](#gameobject--component-helpers) — Component discovery, hierarchy manipulation
 - [Transform Helpers](#transform-helpers) — Hierarchy traversal
+- [Coroutine Wait Pools](#wait-instruction-pools) — Configure `Buffers.GetWaitForSeconds*` caching
 - [Threading](#threading) — Main thread dispatcher
 - [Path & File Helpers](#path--file-helpers) — Path resolution, file operations
 - [Scene Helpers](#scene-helpers) — Scene queries and loading
 - [Advanced Utilities](#advanced-utilities) — Null checks, hashing, formatting
+
+---
+
+<a id="wait-instruction-pools"></a>
+
+## Coroutine Wait Pools
+
+Unity allocates a new `WaitForSeconds`/`WaitForSecondsRealtime` every time you yield with a literal. `Buffers.GetWaitForSeconds(...)` and `Buffers.GetWaitForSecondsRealTime(...)` pool those instructions so coroutines stay allocation free, but each distinct duration used to stick around forever. Large ranges (randomized cooldowns, tweens, etc.) could leak thousands of instances.
+
+**New pooling policy knobs (Runtime 2.2.1+):**
+
+| Setting                                                                                    | Default   | Purpose                                                                                                                                                                                         |
+| ------------------------------------------------------------------------------------------ | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Buffers.WaitInstructionMaxDistinctEntries`                                                | `512`     | Upper bound on distinct cached durations. Set to `0` to disable the cap, or tighten it for editor/dev builds. When the limit is reached the cache stops growing (or evicts, if LRU is enabled). |
+| `Buffers.WaitInstructionQuantizationStepSeconds`                                           | `0` (off) | Rounds requested durations to the nearest step before caching. Useful when you can tolerate millisecond snapping (e.g., `.005f` → `.01f`).                                                      |
+| `Buffers.WaitInstructionUseLruEviction`                                                    | `false`   | When true, the cache becomes an LRU: it evicts the least recently used duration whenever it hits the max entry count instead of rejecting new ones. Diagnostics expose the eviction count.      |
+| `Buffers.TryGetWaitForSecondsPooled(float seconds)` / `TryGetWaitForSecondsRealtimePooled` | n/a       | Returns the cached instruction or `null` if the request would exceed the cap. Use this when you want to detect “unsafe” usages and allocate manually instead.                                   |
+| `Buffers.WaitForSecondsCacheDiagnostics` / `.WaitForSecondsRealtimeCacheDiagnostics`       | snapshot  | Exposes `DistinctEntries`, `MaxDistinctEntries`, `LimitRefusals`, and whether quantization is active so you can surface metrics in your own tooling.                                            |
+
+> ⚙️ **Project-wide defaults:** Open the **Coroutine Wait Instruction Buffers** foldout under **Project Settings ▸ Wallstop Studios ▸ Unity Helpers** to edit these knobs. The settings asset lives at `Resources/WallstopStudios/UnityHelpers/UnityHelpersBufferSettings.asset`, ships with your build, and automatically applies on script/domain reload or when a player starts (unless your code overrides the values at runtime). Use **Apply Defaults Now** to push the current sliders into the active domain or **Capture Current Values** to snapshot whatever `Buffers` is using in play mode.
+
+```csharp
+// Clamp the cache to 128 distinct waits, quantize to milliseconds, and reuse LRU entries.
+Buffers.WaitInstructionMaxDistinctEntries = 128;
+Buffers.WaitInstructionQuantizationStepSeconds = 0.001f;
+Buffers.WaitInstructionUseLruEviction = true;
+
+IEnumerator WeaponCooldown(Func<float> cooldownSeconds)
+{
+    float waitSeconds = cooldownSeconds();
+
+    // Prefer pooled waits, but fall back to a fresh instance if the cache refuses it.
+    WaitForSeconds pooled = Buffers.TryGetWaitForSecondsPooled(waitSeconds)
+        ?? new WaitForSeconds(waitSeconds);
+
+    yield return pooled;
+}
+
+void OnGUI()
+{
+    WaitInstructionCacheDiagnostics stats = Buffers.WaitForSecondsCacheDiagnostics;
+    GUILayout.Label(
+        $"Wait cache: {stats.DistinctEntries}/{stats.MaxDistinctEntries} (refusals={stats.LimitRefusals}, evictions={stats.Evictions})"
+    );
+}
+```
+
+> ⚠️ **Limit warnings:** In Editor and Development builds the first limit hit (and every 25th after) emits a warning so you can spot misuses quickly. Production builds skip the log to avoid noise.
+>
+> ✅ **Deterministic fallback:** When the cache refuses a duration, `Buffers.GetWaitForSeconds*` still returns a valid instruction—it just isn’t cached, so highly variable waits no longer lead to unbounded memory growth.
 
 ---
 

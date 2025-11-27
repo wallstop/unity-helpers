@@ -294,6 +294,8 @@ if (ItemsDb.TryGetById(42, out var sword)) { /* equip sword */ }
 
 Tips
 
+- The auto-creator now maintains `Assets/Resources/ScriptableObjectSingletonMetadata.asset`, which records the exact `Resources` load path + GUID for every singleton asset. At runtime, `ScriptableObjectSingleton<T>` consults this metadata so it can call `Resources.Load("Folder/MySingleton")` directly (or `Resources.LoadAll` scoped to `Folder/` when it needs to detect duplicates) and never falls back to `Resources.LoadAll(string.Empty)`.
+- When metadata is missing or stale (e.g., if you deleted the metadata asset in a test project), the runtime logs a warning once per type and falls back to a bounded search (`Resources.Load<T>(typeName)` + editor-only `AssetDatabase` lookups) instead of scanning the entire `Resources` tree.
 - Keep serialized lists as your source of truth; build dictionaries at load/validate.
 - Use `[ScriptableSingletonPath]` to place the asset predictably under `Resources/`.
 - Split huge DBs into themed sub‑assets and cross‑reference via indices.

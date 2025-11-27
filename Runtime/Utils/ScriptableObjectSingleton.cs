@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Utils
 {
     using System;
+    using System.Collections.Generic;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;
@@ -38,6 +39,17 @@ namespace WallstopStudios.UnityHelpers.Utils
 #endif
         where T : ScriptableObjectSingleton<T>
     {
+        private static ScriptableObjectSingletonMetadata _metadataAsset;
+        private static bool _metadataLoadAttempted;
+        private static bool _metadataMissingWarningLogged;
+        private static bool _metadataLoadFailureWarningLogged;
+        private static readonly HashSet<string> _metadataFolderWarnings = new(
+            StringComparer.Ordinal
+        );
+        private static readonly HashSet<string> _missingInstanceWarnings = new(
+            StringComparer.Ordinal
+        );
+
         private static string GetResourcesPath()
         {
             Type type = typeof(T);
@@ -59,160 +71,347 @@ namespace WallstopStudios.UnityHelpers.Utils
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         internal static void ClearInstance()
         {
-            if (!LazyInstance.IsValueCreated)
+            if (!_lazyInstance.IsValueCreated)
             {
                 return;
             }
 
-            T value = LazyInstance.Value;
+            T value = _lazyInstance.Value;
             if (value != null)
             {
                 value.Destroy();
             }
 
-            LazyInstance = CreateLazy();
+            _lazyInstance = CreateLazy();
         }
 
-        protected internal static Lazy<T> LazyInstance = CreateLazy();
+        protected internal static Lazy<T> _lazyInstance = CreateLazy();
 
         internal static Lazy<T> CreateLazy()
         {
             return new Lazy<T>(() =>
             {
                 Type type = typeof(T);
-                string path = GetResourcesPath();
-                T[] instances = Resources.LoadAll<T>(path);
+                List<T> candidates = new();
 
-                if (instances == null || instances.Length == 0)
+                bool metadataHit = TryPopulateCandidatesFromMetadata(type, candidates);
+
+                if (!metadataHit)
                 {
-                    T named = Resources.Load<T>(type.Name);
-                    if (named != null)
+                    string resourcesPath = GetResourcesPath();
+                    TryAddCandidate(candidates, LoadFromResourcesPath(resourcesPath, type.Name));
+
+                    if (candidates.Count == 0)
                     {
-                        instances = new[] { named };
+                        TryAddCandidate(candidates, Resources.Load<T>(type.Name));
                     }
-                }
-
-                if (
-                    instances == null
-                    || instances.Length == 0
-                        && !string.Equals(path, string.Empty, StringComparison.OrdinalIgnoreCase)
-                )
-                {
-                    instances = Resources.LoadAll<T>(string.Empty);
-                }
-
-                if (instances == null || instances.Length == 0)
-                {
-                    // As a last resort in editor, return any already-loaded instances of this type.
-                    // This supports tests that create instances programmatically and save them as assets.
-                    T[] found = Resources.FindObjectsOfTypeAll<T>();
-                    if (found is { Length: > 0 })
-                    {
-                        instances = found;
-                    }
-                }
 
 #if UNITY_EDITOR
-                if (instances == null || instances.Length == 0)
-                {
-                    // Editor-only fallback: try direct path lookups under Assets/Resources
-                    // This supports editor tests for types defined in editor assemblies.
-                    string typeName = type.Name;
-                    string[] candidates;
-                    if (!string.IsNullOrWhiteSpace(path))
-                    {
-                        candidates = new[]
-                        {
-                            $"Assets/Resources/{path}/{typeName}.asset",
-                            $"Assets/Resources/{typeName}.asset",
-                        };
-                    }
-                    else
-                    {
-                        candidates = new[] { $"Assets/Resources/{typeName}.asset" };
-                    }
-
-                    bool found = false;
-                    foreach (string candidate in candidates)
-                    {
-                        // Try loading as specific type first
-                        T atPath = AssetDatabase.LoadAssetAtPath<T>(candidate);
-                        if (atPath != null)
-                        {
-                            instances = new[] { atPath };
-                            found = true;
-                            break;
-                        }
-
-                        // For nested classes without script files, LoadAssetAtPath may fail.
-                        // Try LoadAllAssetsAtPath which can load "broken" assets.
-                        // Note: For nested classes, Unity may return "missing" object references (null).
-                        // We check if a GUID exists to know if a file is present, then handle missing objects.
-                        string guid = AssetDatabase.AssetPathToGUID(candidate);
-                        if (!string.IsNullOrEmpty(guid))
-                        {
-                            // Asset file exists, try to load it
-                            UnityEngine.Object[] allAtPath = AssetDatabase.LoadAllAssetsAtPath(
-                                candidate
-                            );
-
-                            if (allAtPath is { Length: > 0 })
-                            {
-                                foreach (UnityEngine.Object obj in allAtPath)
-                                {
-                                    // Unity returns non-null entries for missing objects, but they fail null checks
-                                    // Use Unity's object == null check which handles missing references
-                                    if (obj == null)
-                                    {
-                                        continue;
-                                    }
-
-                                    if (type.IsInstanceOfType(obj))
-                                    {
-                                        instances = new[] { (T)obj };
-                                        found = true;
-                                        break;
-                                    }
-                                }
-                                if (found)
-                                {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
+                    AddEditorCandidates(type, resourcesPath, candidates);
 #endif
 
-                if (instances == null || instances.Length == 0)
-                {
-                    return null;
-                }
-
-                switch (instances.Length)
-                {
-                    case 1:
+                    if (candidates.Count == 0)
                     {
-                        return instances[0];
+                        AddRuntimeDiscoveredCandidates(type, candidates);
                     }
-                    case 0:
+
+                    if (candidates.Count == 0)
                     {
-                        return null;
+                        AddGlobalResourcesCandidates(type, candidates);
                     }
                 }
 
-                Debug.LogWarning(
-                    $"Found multiple ScriptableSingletons of type {type.Name}, defaulting to first by name."
-                );
-                Array.Sort(instances, UnityObjectNameComparer<T>.Instance);
-                return instances[0];
+                return ResolveCandidates(type, candidates);
             });
+        }
+
+        private static bool TryPopulateCandidatesFromMetadata(Type type, List<T> candidates)
+        {
+            if (!TryGetMetadataEntry(type, out ScriptableObjectSingletonMetadata.Entry entry))
+            {
+                WarnMetadataMissing(type);
+                return false;
+            }
+
+            bool added = false;
+            string folder = entry.resourcesPath;
+            if (!string.IsNullOrWhiteSpace(folder))
+            {
+                T[] scoped = Resources.LoadAll<T>(folder);
+                if (scoped is { Length: > 0 })
+                {
+                    foreach (T candidate in scoped)
+                    {
+                        TryAddCandidate(candidates, candidate);
+                    }
+
+                    added = candidates.Count > 0;
+                }
+                else
+                {
+                    WarnMetadataFolderEmpty(type, folder);
+                }
+            }
+
+            if (added)
+            {
+                return true;
+            }
+
+            T direct = Resources.Load<T>(entry.resourcesLoadPath);
+            if (direct != null)
+            {
+                TryAddCandidate(candidates, direct);
+                added = true;
+            }
+            else
+            {
+                WarnMetadataLoadFailure(type, entry.resourcesLoadPath);
+            }
+
+            return added;
+        }
+
+        private static void TryAddCandidate(List<T> candidates, T candidate)
+        {
+            if (candidate == null || candidates == null)
+            {
+                return;
+            }
+
+            if (!candidates.Contains(candidate))
+            {
+                candidates.Add(candidate);
+            }
+        }
+
+        private static T LoadFromResourcesPath(string resourcesPath, string typeName)
+        {
+            string loadPath = BuildLoadPath(resourcesPath, typeName);
+            return string.IsNullOrEmpty(loadPath) ? null : Resources.Load<T>(loadPath);
+        }
+
+        private static string BuildLoadPath(string resourcesPath, string typeName)
+        {
+            if (string.IsNullOrWhiteSpace(typeName))
+            {
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(resourcesPath))
+            {
+                return typeName;
+            }
+
+            string trimmed = resourcesPath.Trim().Trim('/');
+            return string.IsNullOrEmpty(trimmed) ? typeName : $"{trimmed}/{typeName}";
+        }
+
+#if UNITY_EDITOR
+        private static void AddEditorCandidates(Type type, string resourcesPath, List<T> candidates)
+        {
+            string typeName = type.Name;
+            List<string> candidatePaths = new();
+            if (!string.IsNullOrWhiteSpace(resourcesPath))
+            {
+                candidatePaths.Add($"Assets/Resources/{resourcesPath}/{typeName}.asset");
+            }
+            candidatePaths.Add($"Assets/Resources/{typeName}.asset");
+
+            foreach (string candidate in candidatePaths)
+            {
+                T atPath = AssetDatabase.LoadAssetAtPath<T>(candidate);
+                if (atPath != null)
+                {
+                    TryAddCandidate(candidates, atPath);
+                    return;
+                }
+
+                string guid = AssetDatabase.AssetPathToGUID(candidate);
+                if (string.IsNullOrEmpty(guid))
+                {
+                    continue;
+                }
+
+                UnityEngine.Object[] allAtPath = AssetDatabase.LoadAllAssetsAtPath(candidate);
+                if (allAtPath is { Length: > 0 })
+                {
+                    foreach (UnityEngine.Object obj in allAtPath)
+                    {
+                        if (obj == null || !type.IsInstanceOfType(obj))
+                        {
+                            continue;
+                        }
+
+                        TryAddCandidate(candidates, (T)obj);
+                        return;
+                    }
+                }
+            }
+        }
+#endif
+
+        private static void AddRuntimeDiscoveredCandidates(Type type, List<T> candidates)
+        {
+            T[] found = Resources.FindObjectsOfTypeAll<T>();
+            if (found is not { Length: > 0 })
+            {
+                return;
+            }
+
+            foreach (T candidate in found)
+            {
+                if (candidate == null || !type.IsInstanceOfType(candidate))
+                {
+                    continue;
+                }
+
+                TryAddCandidate(candidates, candidate);
+            }
+        }
+
+        private static void AddGlobalResourcesCandidates(Type type, List<T> candidates)
+        {
+            T[] all = Resources.LoadAll<T>(string.Empty);
+            if (all is not { Length: > 0 })
+            {
+                return;
+            }
+
+            foreach (T candidate in all)
+            {
+                if (candidate == null || !type.IsInstanceOfType(candidate))
+                {
+                    continue;
+                }
+
+                TryAddCandidate(candidates, candidate);
+            }
+        }
+
+        private static T ResolveCandidates(Type type, List<T> candidates)
+        {
+            if (candidates == null || candidates.Count == 0)
+            {
+                WarnNoInstancesFound(type);
+                return null;
+            }
+
+            if (candidates.Count == 1)
+            {
+                return candidates[0];
+            }
+
+            Debug.LogWarning(
+                $"Found multiple ScriptableSingletons of type {type.Name}, defaulting to first by name."
+            );
+            candidates.Sort(UnityObjectNameComparer<T>.Instance);
+            return candidates[0];
+        }
+
+        private static bool TryGetMetadataEntry(
+            Type type,
+            out ScriptableObjectSingletonMetadata.Entry entry
+        )
+        {
+            ScriptableObjectSingletonMetadata metadata = _metadataAsset;
+            if (metadata == null && !_metadataLoadAttempted)
+            {
+                _metadataLoadAttempted = true;
+                metadata = Resources.Load<ScriptableObjectSingletonMetadata>(
+                    ScriptableObjectSingletonMetadata.ResourcePath
+                );
+                _metadataAsset = metadata;
+            }
+
+            if (metadata == null)
+            {
+                entry = default;
+                return false;
+            }
+
+            return metadata.TryGetEntry(type, out entry);
+        }
+
+        private static void WarnMetadataMissing(Type type)
+        {
+            string message =
+                $"ScriptableObjectSingleton metadata entry not found for {type.FullName}. Falling back to heuristic Resources search.";
+            LogMetadataWarning(message, ref _metadataMissingWarningLogged);
+        }
+
+        private static void WarnMetadataLoadFailure(Type type, string path)
+        {
+            string message =
+                $"ScriptableObjectSingleton metadata entry for {type.FullName} points to '{path}', but the asset could not be loaded.";
+            LogMetadataWarning(message, ref _metadataLoadFailureWarningLogged);
+        }
+
+        private static void WarnMetadataFolderEmpty(Type type, string folder)
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (string.IsNullOrWhiteSpace(folder))
+            {
+                return;
+            }
+
+            string key = $"{type.FullName}|{folder}";
+            lock (_metadataFolderWarnings)
+            {
+                if (!_metadataFolderWarnings.Add(key))
+                {
+                    return;
+                }
+            }
+
+            Debug.LogWarning(
+                $"ScriptableObjectSingleton metadata entry for {type.FullName} points to folder '{folder}', but no assets were found there. Falling back to heuristic search."
+            );
+#else
+            _ = type;
+            _ = folder;
+#endif
+        }
+
+        private static void WarnNoInstancesFound(Type type)
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            string key = type.FullName ?? type.Name;
+            lock (_missingInstanceWarnings)
+            {
+                if (!_missingInstanceWarnings.Add(key))
+                {
+                    return;
+                }
+            }
+
+            Debug.LogWarning(
+                $"ScriptableObjectSingleton could not locate any asset for {type.FullName}. Returning null."
+            );
+#else
+            _ = type;
+#endif
+        }
+
+        private static void LogMetadataWarning(string message, ref bool flag)
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (!flag)
+            {
+                flag = true;
+                Debug.LogWarning(message);
+            }
+#else
+            flag = true;
+            _ = message;
+#endif
         }
 
         /// <summary>
         /// Gets a value indicating whether the lazy instance has been created and is non‑null.
         /// </summary>
-        public static bool HasInstance => LazyInstance.IsValueCreated && LazyInstance.Value != null;
+        public static bool HasInstance =>
+            _lazyInstance.IsValueCreated && _lazyInstance.Value != null;
 
         /// <summary>
         /// Gets the global asset instance, loading it from <c>Resources</c> on first access.
@@ -233,13 +432,13 @@ namespace WallstopStudios.UnityHelpers.Utils
         {
             get
             {
-                if (LazyInstance.IsValueCreated)
+                if (_lazyInstance.IsValueCreated)
                 {
-                    return LazyInstance.Value;
+                    return _lazyInstance.Value;
                 }
 
                 UnityMainThreadGuard.EnsureMainThread();
-                return LazyInstance.Value;
+                return _lazyInstance.Value;
             }
         }
     }

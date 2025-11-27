@@ -65,3 +65,4 @@
 ## Agent-Specific Notes
 
 - This file’s scope is the entire repo. Keep changes minimal, follow `.editorconfig`, respect folder boundaries (Runtime vs Editor), and update docs/tests alongside code changes.
+- Do not copy or clone this repository elsewhere. If you need test results, ask the user—they will run the tests and provide the output.

@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
+    using System;
     using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
@@ -214,35 +215,92 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
         }
 
-        // [Ignore("TODO: FIX ME")]
-        // [Test]
-        // public void UnitBoundsAtGridCenterOnTenGridConsistentWithKDTree()
-        // {
-        //     Vector3Int size = new(10, 10, 10);
-        //     Vector3[] points = CreateGridPoints(size);
-        //     KdTree3D<Vector3> kd = new(points, p => p);
-        //     OctTree3D<Vector3> oct = new(points, p => p);
-        //
-        //     Bounds b = new(new Vector3(4.5f, 4.5f, 4.5f), new Vector3(1f, 1f, 1f));
-        //     List<Vector3> kdResults = new();
-        //     kd.GetElementsInBounds(b, kdResults);
-        //     List<Vector3> octResults = new();
-        //     oct.GetElementsInBounds(b, octResults);
-        //
-        //     SpatialDiagnostics.AssertMatchingResults(
-        //         "Unit bounds at grid center mismatch",
-        //         b,
-        //         kdResults,
-        //         octResults
-        //     );
-        //
-        //     Assert.AreEqual(
-        //         5,
-        //         kdResults.Count,
-        //         "Expected KD to return 5 points for unit bounds at grid center, got {0}.",
-        //         kdResults.Count
-        //     );
-        // }
+        [Test]
+        public void UnitBoundsAtGridCenterOnTenGridConsistentWithKDTree()
+        {
+            Vector3Int size = new(10, 10, 10);
+            Vector3[] points = CreateGridPoints(size);
+            KdTree3D<Vector3> kd = new(points, p => p);
+            OctTree3D<Vector3> oct = new(points, p => p);
+
+            Bounds b = new(new Vector3(4.5f, 4.5f, 4.5f), new Vector3(1f, 1f, 1f));
+            List<Vector3> kdResults = new();
+            kd.GetElementsInBounds(b, kdResults);
+            List<Vector3> octResults = new();
+            oct.GetElementsInBounds(b, octResults);
+
+            SpatialDiagnostics.AssertMatchingResults(
+                "Unit bounds at grid center mismatch",
+                b,
+                kdResults,
+                octResults
+            );
+
+            Assert.AreEqual(
+                8,
+                kdResults.Count,
+                "Expected KD to return 8 points for unit bounds at grid center, got {0}.",
+                kdResults.Count
+            );
+        }
+
+        [Test]
+        public void UnitBoundsAtGridCornerMatchesAcrossTrees()
+        {
+            Vector3Int size = new(10, 10, 10);
+            Vector3[] points = CreateGridPoints(size);
+            KdTree3D<Vector3> kd = new(points, p => p);
+            OctTree3D<Vector3> oct = new(points, p => p);
+
+            Bounds b = new(new Vector3(0.5f, 0.5f, 0.5f), Vector3.one);
+            List<Vector3> kdResults = new();
+            kd.GetElementsInBounds(b, kdResults);
+            List<Vector3> octResults = new();
+            oct.GetElementsInBounds(b, octResults);
+
+            SpatialDiagnostics.AssertMatchingResults(
+                "Unit bounds at grid corner mismatch",
+                b,
+                kdResults,
+                octResults
+            );
+
+            Assert.AreEqual(
+                8,
+                kdResults.Count,
+                "Expected KD to return 8 points for unit bounds at grid corner, got {0}.",
+                kdResults.Count
+            );
+        }
+
+        [Test]
+        public void UnitBoundsCenteredOnEdgeMidpointMatchesAcrossTrees()
+        {
+            Vector3Int size = new(10, 10, 10);
+            Vector3[] points = CreateGridPoints(size);
+            KdTree3D<Vector3> kd = new(points, p => p);
+            OctTree3D<Vector3> oct = new(points, p => p);
+
+            Bounds b = new(new Vector3(5f, 4.5f, 4.5f), Vector3.one);
+            List<Vector3> kdResults = new();
+            kd.GetElementsInBounds(b, kdResults);
+            List<Vector3> octResults = new();
+            oct.GetElementsInBounds(b, octResults);
+
+            SpatialDiagnostics.AssertMatchingResults(
+                "Unit bounds at edge midpoint mismatch",
+                b,
+                kdResults,
+                octResults
+            );
+
+            Assert.AreEqual(
+                4,
+                kdResults.Count,
+                "Expected KD to return 4 points for unit bounds centered on an edge midpoint, got {0}.",
+                kdResults.Count
+            );
+        }
 
         [Test]
         public void EdgeTouchingBoundsConsistentAcrossTrees()
@@ -276,6 +334,145 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                     octResults
                 );
             }
+        }
+
+        [Test]
+        public void RotatedBoundsProjectionMatchesAcrossTrees()
+        {
+            Vector3Int size = new(18, 18, 18);
+            Vector3[] points = CreateGridPoints(size);
+            KdTree3D<Vector3> kd = new(points, p => p);
+            OctTree3D<Vector3> oct = new(points, p => p);
+
+            Bounds baseBounds = new(new Vector3(8.5f, 8.5f, 8.5f), new Vector3(6f, 4f, 5f));
+            Quaternion[] rotations =
+            {
+                Quaternion.identity,
+                Quaternion.Euler(0f, 15f, 0f),
+                Quaternion.Euler(10f, 25f, 5f),
+                Quaternion.Euler(30f, 12f, 22f),
+            };
+
+            List<Vector3> kdResults = new();
+            List<Vector3> octResults = new();
+            for (int i = 0; i < rotations.Length; ++i)
+            {
+                Bounds projected = BuildAxisAlignedBounds(baseBounds, rotations[i]);
+                kd.GetElementsInBounds(projected, kdResults);
+                oct.GetElementsInBounds(projected, octResults);
+
+                SpatialDiagnostics.AssertMatchingResults(
+                    $"Rotated bounds projection mismatch #{i}",
+                    projected,
+                    kdResults,
+                    octResults
+                );
+            }
+        }
+
+        [Test]
+        [Timeout(20000)]
+        public void LargeGridRandomBoundsFuzzMatchesAcrossTrees()
+        {
+            Vector3Int size = new(32, 32, 32);
+            Vector3[] points = CreateGridPoints(size);
+            KdTree3D<Vector3> kd = new(points, p => p);
+            OctTree3D<Vector3> oct = new(points, p => p);
+
+            System.Random random = new(0xBADC0DE);
+            List<Vector3> kdResults = new();
+            List<Vector3> octResults = new();
+
+            for (int i = 0; i < 128; ++i)
+            {
+                Bounds query = CreateRandomBounds(random, size);
+                kd.GetElementsInBounds(query, kdResults);
+                oct.GetElementsInBounds(query, octResults);
+
+                SpatialDiagnostics.AssertMatchingResults(
+                    $"Random bounds fuzz mismatch #{i}",
+                    query,
+                    kdResults,
+                    octResults,
+                    maxItems: 128
+                );
+            }
+        }
+
+        private static Bounds BuildAxisAlignedBounds(Bounds source, Quaternion rotation)
+        {
+            Vector3 extents = source.extents;
+            Vector3 min = new(
+                float.PositiveInfinity,
+                float.PositiveInfinity,
+                float.PositiveInfinity
+            );
+            Vector3 max = new(
+                float.NegativeInfinity,
+                float.NegativeInfinity,
+                float.NegativeInfinity
+            );
+
+            for (int sx = -1; sx <= 1; sx += 2)
+            {
+                for (int sy = -1; sy <= 1; sy += 2)
+                {
+                    for (int sz = -1; sz <= 1; sz += 2)
+                    {
+                        Vector3 offset = new(extents.x * sx, extents.y * sy, extents.z * sz);
+                        Vector3 rotated = rotation * offset;
+                        Vector3 point = source.center + rotated;
+                        if (point.x < min.x)
+                        {
+                            min.x = point.x;
+                        }
+                        if (point.y < min.y)
+                        {
+                            min.y = point.y;
+                        }
+                        if (point.z < min.z)
+                        {
+                            min.z = point.z;
+                        }
+                        if (point.x > max.x)
+                        {
+                            max.x = point.x;
+                        }
+                        if (point.y > max.y)
+                        {
+                            max.y = point.y;
+                        }
+                        if (point.z > max.z)
+                        {
+                            max.z = point.z;
+                        }
+                    }
+                }
+            }
+
+            Vector3 size = max - min;
+            Vector3 center = (min + max) * 0.5f;
+            return new Bounds(center, size);
+        }
+
+        private static Bounds CreateRandomBounds(System.Random random, Vector3Int gridSize)
+        {
+            Vector3 center = new(
+                RandomRange(random, -2f, gridSize.x + 2f),
+                RandomRange(random, -2f, gridSize.y + 2f),
+                RandomRange(random, -2f, gridSize.z + 2f)
+            );
+            Vector3 size = new(
+                Mathf.Max(1f, RandomRange(random, 1f, gridSize.x)),
+                Mathf.Max(1f, RandomRange(random, 1f, gridSize.y)),
+                Mathf.Max(1f, RandomRange(random, 1f, gridSize.z))
+            );
+            return new Bounds(center, size);
+        }
+
+        private static float RandomRange(System.Random random, float min, float max)
+        {
+            return (float)(min + random.NextDouble() * (max - min));
         }
     }
 }

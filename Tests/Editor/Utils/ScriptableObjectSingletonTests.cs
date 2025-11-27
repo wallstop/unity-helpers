@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -72,6 +73,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             DeleteAssetIfExists(ToFullResourcePath("MultiNatural/Entry10.asset"));
             yield return null;
             DeleteAssetIfExists(ToFullResourcePath("MultiNatural/Entry11.asset"));
+            yield return null;
+            DeleteAssetIfExists(ScriptableObjectSingletonMetadata.AssetPath);
             yield return null;
             DeleteFolderIfEmpty("Assets/Resources/CustomPath");
             yield return null;
@@ -452,11 +455,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator LazyInstanceIsLazy()
         {
-            Assert.IsFalse(TestSingleton.LazyInstance.IsValueCreated);
+            Assert.IsFalse(TestSingleton._lazyInstance.IsValueCreated);
 
             TestSingleton instance = TestSingleton.Instance;
 
-            Assert.IsTrue(TestSingleton.LazyInstance.IsValueCreated);
+            Assert.IsTrue(TestSingleton._lazyInstance.IsValueCreated);
             Assert.IsTrue(instance != null);
             yield break;
         }
@@ -518,7 +521,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             bool hasInstance = TestSingleton.HasInstance;
 
             Assert.IsFalse(hasInstance);
-            Assert.IsFalse(TestSingleton.LazyInstance.IsValueCreated);
+            Assert.IsFalse(TestSingleton._lazyInstance.IsValueCreated);
             yield break;
         }
 
@@ -526,7 +529,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public IEnumerator LazyInstanceValueMatchesInstance()
         {
             TestSingleton instance = TestSingleton.Instance;
-            TestSingleton lazyValue = TestSingleton.LazyInstance.Value;
+            TestSingleton lazyValue = TestSingleton._lazyInstance.Value;
 
             Assert.AreSame(instance, lazyValue);
             yield break;
@@ -604,9 +607,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator LazyInstanceDoesNotChangeAfterCreation()
         {
-            Lazy<TestSingleton> lazy1 = TestSingleton.LazyInstance;
+            Lazy<TestSingleton> lazy1 = TestSingleton._lazyInstance;
             TestSingleton instance = TestSingleton.Instance;
-            Lazy<TestSingleton> lazy2 = TestSingleton.LazyInstance;
+            Lazy<TestSingleton> lazy2 = TestSingleton._lazyInstance;
 
             Assert.AreSame(lazy1, lazy2);
             yield break;
@@ -657,7 +660,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.IsNull(instance);
             Assert.IsFalse(MissingResourceSingleton.HasInstance);
-            Assert.IsTrue(MissingResourceSingleton.LazyInstance.IsValueCreated);
+            Assert.IsTrue(MissingResourceSingleton._lazyInstance.IsValueCreated);
             yield break;
         }
 
@@ -674,7 +677,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             Assert.IsFalse(MissingResourceSingleton.HasInstance);
-            Assert.IsFalse(MissingResourceSingleton.LazyInstance.IsValueCreated);
+            Assert.IsFalse(MissingResourceSingleton._lazyInstance.IsValueCreated);
             yield break;
         }
 
@@ -735,6 +738,50 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 "Loose/WrongPathInstance.asset",
                 AssetDatabase.GetAssetPath(instance)
             );
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator MetadataAssetTracksSingletonEntries()
+        {
+            CreateResourceAsset<TestSingleton>(
+                "TestSingleton.asset",
+                asset => asset.payload = "metadata"
+            );
+            yield return null;
+
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+
+            ScriptableObjectSingletonMetadata metadata =
+                AssetDatabase.LoadAssetAtPath<ScriptableObjectSingletonMetadata>(
+                    ScriptableObjectSingletonMetadata.AssetPath
+                );
+            Assert.IsNotNull(metadata);
+            Assert.IsTrue(metadata.TryGetEntry(typeof(TestSingleton), out var entry));
+            Assert.AreEqual("TestSingleton", entry.resourcesLoadPath);
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator MetadataStoresCustomResourcesPath()
+        {
+            CreateResourceAsset<DeepPathResourceSingleton>(
+                "Deep/Nested/Singletons/DeepPathResourceSingleton.asset",
+                asset => asset.payload = "deep"
+            );
+            yield return null;
+
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+
+            ScriptableObjectSingletonMetadata metadata =
+                AssetDatabase.LoadAssetAtPath<ScriptableObjectSingletonMetadata>(
+                    ScriptableObjectSingletonMetadata.AssetPath
+                );
+            Assert.IsNotNull(metadata);
+            Assert.IsTrue(metadata.TryGetEntry(typeof(DeepPathResourceSingleton), out var entry));
+            StringAssert.Contains("Deep/Nested/Singletons", entry.resourcesLoadPath);
             yield break;
         }
 
@@ -859,7 +906,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             Assert.IsFalse(LifecycleScriptableSingleton.HasInstance);
-            Assert.IsFalse(LifecycleScriptableSingleton.LazyInstance.IsValueCreated);
+            Assert.IsFalse(LifecycleScriptableSingleton._lazyInstance.IsValueCreated);
             Assert.GreaterOrEqual(LifecycleScriptableSingleton.DisableCount, 1);
             yield break;
         }
