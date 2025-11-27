@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Runtime")]
 [assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Runtime.Random")]
 [assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Runtime.Performance")]
+[assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Common")]
 [assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Editor")]
 [assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Runtime.Zenject")]
 [assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Runtime.VContainer")]

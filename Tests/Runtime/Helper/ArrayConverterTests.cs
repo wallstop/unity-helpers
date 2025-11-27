@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class ArrayConverterTests : CommonTestBase
     {

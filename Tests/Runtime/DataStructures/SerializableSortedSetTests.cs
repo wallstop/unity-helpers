@@ -9,6 +9,7 @@
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Serialization;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class SerializableSortedSetTests : CommonTestBase

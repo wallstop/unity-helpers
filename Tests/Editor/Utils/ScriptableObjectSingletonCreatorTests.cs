@@ -303,12 +303,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             // Manually trigger another ensure now that the blocker is gone so we do not depend on Editor delay order.
-            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
-            yield return null;
-
             int waitFrames = 0;
-            while (AssetDatabase.LoadAssetAtPath<Object>(retryAsset) == null && waitFrames < 10)
+            const int maxWaitFrames = 60;
+            while (
+                AssetDatabase.LoadAssetAtPath<Object>(retryAsset) == null
+                && waitFrames < maxWaitFrames
+            )
             {
+                ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+                AssetDatabase.Refresh();
                 yield return null;
                 waitFrames++;
             }

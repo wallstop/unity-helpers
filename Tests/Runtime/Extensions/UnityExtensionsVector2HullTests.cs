@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class UnityExtensionsVector2HullTests : CommonTestBase
     {

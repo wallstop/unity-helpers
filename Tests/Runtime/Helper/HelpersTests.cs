@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Tests.TestDoubles;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class HelpersTests : CommonTestBase

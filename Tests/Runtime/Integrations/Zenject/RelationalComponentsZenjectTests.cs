@@ -1,5 +1,5 @@
 #if ZENJECT_PRESENT
-namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
+namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject.Runtime
 {
     using System;
     using System.Collections.Generic;
@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
     using WallstopStudios.UnityHelpers.Integrations.Zenject;
     using WallstopStudios.UnityHelpers.Tags;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class RelationalComponentsZenjectTests : CommonTestBase
     {

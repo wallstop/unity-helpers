@@ -1,5 +1,5 @@
 #if REFLEX_PRESENT
-namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex
+namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex.Runtime.Integrations.Reflex
 {
     using System;
     using System.Collections.Generic;
@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.Reflex;
     using WallstopStudios.UnityHelpers.Tags;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class RelationalComponentsReflexTests : CommonTestBase
     {

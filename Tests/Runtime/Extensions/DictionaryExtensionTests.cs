@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class DictionaryExtensionTests : CommonTestBase
     {

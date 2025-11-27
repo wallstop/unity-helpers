@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
     using CategoryAttribute = System.ComponentModel.CategoryAttribute;
     using DescriptionAttribute = System.ComponentModel.DescriptionAttribute;
 

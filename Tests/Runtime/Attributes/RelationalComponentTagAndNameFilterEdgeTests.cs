@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     [TestFixture]
     public sealed class RelationalComponentTagAndNameFilterEdgeTests : CommonTestBase

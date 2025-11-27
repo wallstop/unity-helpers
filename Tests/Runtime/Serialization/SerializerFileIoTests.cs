@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Serialization;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class SerializerFileIoTests : CommonTestBase
     {

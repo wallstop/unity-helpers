@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Tags;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class SingletonAutoLoaderTests : CommonTestBase

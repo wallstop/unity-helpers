@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using DataStructure.Adapters;
     using Helper;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Utils;
 
     public static partial class UnityExtensions
     {

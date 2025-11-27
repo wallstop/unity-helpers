@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     /// <summary>
     /// Tests to ensure backward compatibility after refactoring to use base classes.

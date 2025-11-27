@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class UnityExtensionsComprehensiveTests : CommonTestBase
     {
@@ -383,8 +384,37 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Bounds? maybe = bounds.GetBounds();
             Assert.IsTrue(maybe.HasValue);
             Bounds combined = maybe.Value;
-            Assert.AreEqual(new Vector3(2.5f, 2.5f, 0f), combined.center);
+            Assert.AreEqual(new Vector3(3f, 3f, 0f), combined.center);
             Assert.AreEqual(new Vector3(8f, 8f, 4f), combined.size);
+        }
+
+        [Test]
+        public void GetBoundsFromBoundsCollectionHandlesNegativeExtents()
+        {
+            List<Bounds> bounds = new()
+            {
+                new Bounds(new Vector3(-2f, -2f, 0f), new Vector3(4f, 4f, 2f)),
+                new Bounds(new Vector3(6f, 2f, -1f), new Vector3(2f, 10f, 4f)),
+            };
+
+            Bounds? maybe = bounds.GetBounds();
+            Assert.IsTrue(maybe.HasValue, "Expected combined bounds.");
+            Bounds combined = maybe.Value;
+            Assert.AreEqual(new Vector3(1.5f, 1.5f, -1f), combined.center);
+            Assert.AreEqual(new Vector3(11f, 11f, 4f), combined.size);
+        }
+
+        [Test]
+        public void GetBoundsFromBoundsCollectionWithSingleEntry()
+        {
+            Bounds original = new(new Vector3(4f, -3f, 1f), new Vector3(2f, 6f, 8f));
+            List<Bounds> bounds = new() { original };
+
+            Bounds? maybe = bounds.GetBounds();
+            Assert.IsTrue(maybe.HasValue, "Expected combined bounds.");
+            Bounds combined = maybe.Value;
+            Assert.AreEqual(original.center, combined.center);
+            Assert.AreEqual(original.size, combined.size);
         }
 
         [Test]

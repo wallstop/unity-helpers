@@ -1,5 +1,5 @@
 #if VCONTAINER_PRESENT
-namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
+namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer.Runtime
 {
     using global::VContainer;
     using NUnit.Framework;
@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class RelationalObjectPoolsVContainerTests : CommonTestBase
     {

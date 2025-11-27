@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Utils;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
     public sealed class SerializableHashSetTests : CommonTestBase
