@@ -675,6 +675,8 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 
 **Purpose:** Advanced visual editor for creating and managing animation events with sprite preview, method auto-discovery, and parameter editing.
 
+> Need the implementation details? See the architecture notes in `docs/project/animation-event-editor.md` (helper breakdown, control flow, testing).
+
 **Key Features:**
 
 - **Sprite preview:** See the sprite at each event time
