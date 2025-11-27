@@ -918,27 +918,35 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             bounds.size = size;
         }
 
-        private static Bounds ToClosedBounds(BoundingBox3D box)
+#if UNITY_ASSERTIONS
+        private static Vector3 ComputeClosedMax(Vector3 min, Vector3 exclusiveMax)
         {
-            Vector3 min = box.min;
-            Vector3 maxClosed = new(
-                PrevFloat(box.max.x),
-                PrevFloat(box.max.y),
-                PrevFloat(box.max.z)
-            );
-            Vector3 center = (min + maxClosed) * 0.5f;
-            Vector3 size = maxClosed - min;
-            return new Bounds(center, size);
+            float closedX = PrevFloat(exclusiveMax.x);
+            float closedY = PrevFloat(exclusiveMax.y);
+            float closedZ = PrevFloat(exclusiveMax.z);
+
+            if (closedX < min.x)
+            {
+                closedX = min.x;
+            }
+            if (closedY < min.y)
+            {
+                closedY = min.y;
+            }
+            if (closedZ < min.z)
+            {
+                closedZ = min.z;
+            }
+
+            return new Vector3(closedX, closedY, closedZ);
         }
 
-#if UNITY_ASSERTIONS
         private static bool ClosedContains(Bounds container, BoundingBox3D contents)
         {
-            Bounds closedContents = ToClosedBounds(contents);
+            Vector3 contentMin = contents.min;
+            Vector3 contentMax = ComputeClosedMax(contentMin, contents.max);
             Vector3 containerMin = container.min;
             Vector3 containerMax = container.max;
-            Vector3 contentMin = closedContents.min;
-            Vector3 contentMax = closedContents.max;
             return containerMin.x <= contentMin.x
                 && containerMin.y <= contentMin.y
                 && containerMin.z <= contentMin.z
@@ -949,8 +957,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         private static bool ClosedIntersects(Bounds closedQuery, BoundingBox3D nodeBoundary)
         {
-            Bounds closedNode = ToClosedBounds(nodeBoundary);
-            return closedNode.Intersects(closedQuery);
+            Vector3 nodeMin = nodeBoundary.min;
+            Vector3 nodeMax = ComputeClosedMax(nodeMin, nodeBoundary.max);
+            Vector3 queryMin = closedQuery.min;
+            Vector3 queryMax = closedQuery.max;
+            return nodeMax.x >= queryMin.x
+                && nodeMin.x <= queryMax.x
+                && nodeMax.y >= queryMin.y
+                && nodeMin.y <= queryMax.y
+                && nodeMax.z >= queryMin.z
+                && nodeMin.z <= queryMax.z;
         }
 #endif
 
