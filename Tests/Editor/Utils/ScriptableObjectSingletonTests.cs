@@ -742,47 +742,62 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [UnityTest]
-        public IEnumerator MetadataAssetTracksSingletonEntries()
+        public IEnumerator MetadataAssetTracksSingletonEntries(
+            [ValueSource(nameof(MetadataEntryScenarios))] MetadataScenario scenario
+        )
         {
-            CreateResourceAsset<TestSingleton>(
-                "TestSingleton.asset",
-                asset => asset.payload = "metadata"
-            );
+            scenario.CreateAsset();
             yield return null;
 
-            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            using (
+                SingletonCreatorTestScope scope = SingletonCreatorTestScope.RestrictTo(
+                    scenario.SingletonType
+                )
+            )
+            {
+                ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            }
             yield return null;
 
             ScriptableObjectSingletonMetadata metadata =
                 AssetDatabase.LoadAssetAtPath<ScriptableObjectSingletonMetadata>(
                     ScriptableObjectSingletonMetadata.AssetPath
                 );
-            Assert.IsNotNull(metadata);
-            Assert.IsTrue(metadata.TryGetEntry(typeof(TestSingleton), out var entry));
-            Assert.AreEqual("TestSingleton", entry.resourcesLoadPath);
-            yield break;
-        }
+            Assert.IsNotNull(metadata, $"Metadata asset missing for {scenario.Description}");
 
-        [UnityTest]
-        public IEnumerator MetadataStoresCustomResourcesPath()
-        {
-            CreateResourceAsset<DeepPathResourceSingleton>(
-                "Deep/Nested/Singletons/DeepPathResourceSingleton.asset",
-                asset => asset.payload = "deep"
+            ScriptableObjectSingletonMetadata.Entry entry;
+            Assert.IsTrue(
+                metadata.TryGetEntry(scenario.SingletonType, out entry),
+                $"Metadata entry missing for {scenario.SingletonType.Name} ({scenario.Description})"
             );
-            yield return null;
 
-            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
-            yield return null;
+            StringAssert.AreEqualIgnoringCase(
+                scenario.ExpectedLoadPath,
+                entry.resourcesLoadPath,
+                $"resourcesLoadPath mismatch for {scenario.Description}"
+            );
 
-            ScriptableObjectSingletonMetadata metadata =
-                AssetDatabase.LoadAssetAtPath<ScriptableObjectSingletonMetadata>(
-                    ScriptableObjectSingletonMetadata.AssetPath
+            string expectedFolder = scenario.ExpectedFolder?.Replace("\\", "/") ?? string.Empty;
+            string actualFolder = (entry.resourcesPath ?? string.Empty).Replace("\\", "/");
+            if (string.IsNullOrEmpty(expectedFolder))
+            {
+                Assert.IsTrue(
+                    string.IsNullOrEmpty(actualFolder),
+                    $"Expected metadata to store empty folder for {scenario.Description}"
                 );
-            Assert.IsNotNull(metadata);
-            Assert.IsTrue(metadata.TryGetEntry(typeof(DeepPathResourceSingleton), out var entry));
-            StringAssert.Contains("Deep/Nested/Singletons", entry.resourcesLoadPath);
-            yield break;
+            }
+            else
+            {
+                Assert.IsFalse(
+                    string.IsNullOrEmpty(actualFolder),
+                    $"Metadata missing folder for {scenario.Description}"
+                );
+                StringAssert.AreEqualIgnoringCase(
+                    expectedFolder,
+                    actualFolder,
+                    $"resourcesPath mismatch for {scenario.Description}"
+                );
+            }
         }
 
         [UnityTest]
@@ -857,6 +872,116 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.AreEqual("two", instance.id);
             yield break;
+        }
+
+        public readonly struct MetadataScenario
+        {
+            private readonly Action _createAsset;
+
+            public MetadataScenario(
+                string description,
+                Action createAsset,
+                Type singletonType,
+                string expectedLoadPath,
+                string expectedFolder
+            )
+            {
+                if (createAsset == null)
+                {
+                    throw new ArgumentNullException(nameof(createAsset));
+                }
+
+                if (singletonType == null)
+                {
+                    throw new ArgumentNullException(nameof(singletonType));
+                }
+
+                Description = description ?? string.Empty;
+                _createAsset = createAsset;
+                SingletonType = singletonType;
+                ExpectedLoadPath = expectedLoadPath ?? string.Empty;
+                ExpectedFolder = expectedFolder ?? string.Empty;
+            }
+
+            public string Description { get; }
+            public Type SingletonType { get; }
+            public string ExpectedLoadPath { get; }
+            public string ExpectedFolder { get; }
+
+            public void CreateAsset()
+            {
+                _createAsset();
+            }
+        }
+
+        private static System.Collections.Generic.IEnumerable<MetadataScenario> MetadataEntryScenarios()
+        {
+            yield return new MetadataScenario(
+                "default resources asset uses type name",
+                () =>
+                    CreateResourceAsset<TestSingleton>(
+                        "TestSingleton.asset",
+                        asset => asset.payload = "metadata"
+                    ),
+                typeof(TestSingleton),
+                "TestSingleton",
+                string.Empty
+            );
+
+            yield return new MetadataScenario(
+                "custom resources folder is stored",
+                () =>
+                    CreateResourceAsset<DeepPathResourceSingleton>(
+                        "Deep/Nested/Singletons/DeepPathResourceSingleton.asset",
+                        asset => asset.payload = "deep"
+                    ),
+                typeof(DeepPathResourceSingleton),
+                "Deep/Nested/Singletons/DeepPathResourceSingleton",
+                "Deep/Nested/Singletons"
+            );
+        }
+
+        private sealed class SingletonCreatorTestScope : IDisposable
+        {
+            private readonly bool _previousIncludeTests;
+            private readonly Func<Type, bool> _previousFilter;
+
+            private SingletonCreatorTestScope(Type[] allowedTypes)
+            {
+                if (allowedTypes == null || allowedTypes.Length == 0)
+                {
+                    throw new ArgumentException(
+                        "allowedTypes must contain at least one type.",
+                        nameof(allowedTypes)
+                    );
+                }
+
+                System.Collections.Generic.HashSet<Type> allowed =
+                    new System.Collections.Generic.HashSet<Type>(allowedTypes);
+                _previousIncludeTests = ScriptableObjectSingletonCreator.IncludeTestAssemblies;
+                _previousFilter = ScriptableObjectSingletonCreator.TypeFilter;
+                ScriptableObjectSingletonCreator.IncludeTestAssemblies = true;
+                ScriptableObjectSingletonCreator.TypeFilter = type =>
+                {
+                    if (!allowed.Contains(type))
+                    {
+                        return false;
+                    }
+
+                    return _previousFilter == null || _previousFilter(type);
+                };
+            }
+
+            public static SingletonCreatorTestScope RestrictTo(params Type[] allowedTypes)
+            {
+                return new SingletonCreatorTestScope(allowedTypes);
+            }
+
+            public void Dispose()
+            {
+                ScriptableObjectSingletonCreator.TypeFilter = _previousFilter;
+                ScriptableObjectSingletonCreator.IncludeTestAssemblies = _previousIncludeTests;
+            }
         }
 
         [UnityTest]

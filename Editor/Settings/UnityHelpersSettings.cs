@@ -12,7 +12,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
-    using WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup;
     using WallstopStudios.UnityHelpers.Settings;
     using WallstopStudios.UnityHelpers.Utils;
 
@@ -47,9 +46,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const string WGroupLightThemeColorKey = "Default-Light";
         public const string WGroupDarkThemeColorKey = "Default-Dark";
         public const string WGroupLegacyColorKey = "WDefault";
-        public const string DefaultWFoldoutGroupColorKey = "Foldout-Default";
-        public const string WFoldoutGroupLightThemeColorKey = "Foldout-Default-Light";
-        public const string WFoldoutGroupDarkThemeColorKey = "Foldout-Default-Dark";
         public const string DefaultWEnumToggleButtonsColorKey = "Default";
         public const string WEnumToggleButtonsLightThemeColorKey = "Default-Light";
         public const string WEnumToggleButtonsDarkThemeColorKey = "Default-Dark";
@@ -91,7 +87,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             DefaultDarkThemeButtonColor;
         private static readonly Color DefaultDarkThemeEnumInactiveTextColor = Color.white;
         private static readonly Dictionary<int, bool> SettingsGroupFoldoutStates = new();
-        private static readonly Dictionary<int, bool> SettingsFoldoutGroupStates = new();
         private const float SettingsLabelWidth = 260f;
         private const float SettingsMinFieldWidth = 110f;
         private const string WaitInstructionBufferFoldoutKey = "Buffers";
@@ -144,22 +139,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 "WButton Foldout Speed",
                 "Animation speed used when expanding or collapsing WButton action groups."
             );
-        private static readonly GUIContent WFoldoutGroupTweenEnabledContent =
-            EditorGUIUtility.TrTextContent(
-                "Tween WFoldout Groups",
-                "Enable animated transitions when expanding or collapsing WFoldoutGroup containers."
-            );
-        private static readonly GUIContent WFoldoutGroupTweenSpeedContent =
-            EditorGUIUtility.TrTextContent(
-                "WFoldout Group Tween Speed",
-                "Animation speed used when expanding or collapsing WFoldoutGroup containers."
-            );
         private static readonly GUIContent WButtonCustomColorsContent =
             EditorGUIUtility.TrTextContent("WButton Custom Colors");
         private static readonly GUIContent WGroupCustomColorsContent =
             EditorGUIUtility.TrTextContent("WGroup Custom Colors");
-        private static readonly GUIContent WFoldoutGroupCustomColorsContent =
-            EditorGUIUtility.TrTextContent("WFoldoutGroup Custom Colors");
         private static readonly GUIContent WEnumToggleButtonsCustomColorsContent =
             EditorGUIUtility.TrTextContent("WEnumToggleButtons Custom Colors");
         private static readonly GUIContent DictionaryFoldoutTweenEnabledContent =
@@ -307,19 +290,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public readonly struct WGroupPaletteEntry
         {
             public WGroupPaletteEntry(Color backgroundColor, Color textColor)
-            {
-                BackgroundColor = backgroundColor;
-                TextColor = textColor;
-            }
-
-            public Color BackgroundColor { get; }
-
-            public Color TextColor { get; }
-        }
-
-        public readonly struct WFoldoutGroupPaletteEntry
-        {
-            public WFoldoutGroupPaletteEntry(Color backgroundColor, Color textColor)
             {
                 BackgroundColor = backgroundColor;
                 TextColor = textColor;
@@ -620,22 +590,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private int wgroupAutoIncludeRowCount = DefaultWGroupAutoIncludeRowCount;
 
         [SerializeField]
-        [Tooltip("Animate WFoldoutGroup containers when toggled.")]
-        [WGroup(
-            "WFoldout Groups",
-            displayName: "WFoldout Groups",
-            autoIncludeCount: 1,
-            collapsible: true
-        )]
-        private bool wfoldoutGroupTweenEnabled = true;
-
-        [SerializeField]
-        [Tooltip("Animation speed used when toggling WFoldoutGroup containers.")]
-        [WShowIf(nameof(wfoldoutGroupTweenEnabled))]
-        [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
-        private float wfoldoutGroupTweenSpeed = DefaultFoldoutSpeed;
-
-        [SerializeField]
         [Tooltip("Named color palette applied to WButton custom color keys.")]
         [WGroup(
             "Color Palettes",
@@ -648,10 +602,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [SerializeField]
         [Tooltip("Named color palette applied to WGroup custom color keys.")]
         private WGroupCustomColorDictionary wgroupCustomColors = new();
-
-        [SerializeField]
-        [Tooltip("Named color palette applied to WFoldoutGroup custom color keys.")]
-        private WFoldoutGroupCustomColorDictionary wfoldoutGroupCustomColors = new();
 
         [SerializeField]
         [Tooltip("Named color palette applied to WEnumToggleButtons color keys.")]
@@ -865,10 +815,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         [Serializable]
         private sealed class WGroupCustomColorDictionary
-            : SerializableDictionary<string, WGroupCustomColor> { }
-
-        [Serializable]
-        private sealed class WFoldoutGroupCustomColorDictionary
             : SerializableDictionary<string, WGroupCustomColor> { }
 
         [Serializable]
@@ -1291,26 +1237,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return instance.ContainsWGroupColorKey(colorKey);
         }
 
-        public static WFoldoutGroupPaletteEntry ResolveWFoldoutGroupPalette(string colorKey)
-        {
-            return instance.GetWFoldoutGroupPaletteEntry(colorKey);
-        }
-
         public static WEnumToggleButtonsPaletteEntry ResolveWEnumToggleButtonsPalette(
             string colorKey
         )
         {
             return instance.GetWEnumToggleButtonsPaletteEntry(colorKey);
-        }
-
-        public static string EnsureWFoldoutGroupColorKey(string colorKey)
-        {
-            return instance.EnsureWFoldoutGroupColorKeyInternal(colorKey);
-        }
-
-        internal static bool HasWFoldoutGroupPaletteColorKey(string colorKey)
-        {
-            return instance.ContainsWFoldoutGroupColorKey(colorKey);
         }
 
         internal static bool HasWEnumToggleButtonsPaletteColorKey(string colorKey)
@@ -1336,16 +1267,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public static float GetWButtonFoldoutSpeed()
         {
             return Mathf.Clamp(instance.wbuttonFoldoutSpeed, MinFoldoutSpeed, MaxFoldoutSpeed);
-        }
-
-        public static bool ShouldTweenWFoldoutGroups()
-        {
-            return instance.wfoldoutGroupTweenEnabled;
-        }
-
-        public static float GetWFoldoutGroupTweenSpeed()
-        {
-            return Mathf.Clamp(instance.wfoldoutGroupTweenSpeed, MinFoldoutSpeed, MaxFoldoutSpeed);
         }
 
         public static bool ShouldTweenSerializableDictionaryFoldouts()
@@ -1444,7 +1365,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             internal const string LegacyWButtonPriorityColors = nameof(legacyWButtonPriorityColors);
             internal const string WButtonCustomColors = nameof(wbuttonCustomColors);
             internal const string WGroupCustomColors = nameof(wgroupCustomColors);
-            internal const string WFoldoutGroupCustomColors = nameof(wfoldoutGroupCustomColors);
             internal const string WEnumToggleButtonsCustomColors = nameof(
                 wenumToggleButtonsCustomColors
             );
@@ -1464,8 +1384,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             internal const string FoldoutTweenSettingsInitialized = nameof(
                 foldoutTweenSettingsInitialized
             );
-            internal const string WFoldoutGroupTweenEnabled = nameof(wfoldoutGroupTweenEnabled);
-            internal const string WFoldoutGroupTweenSpeed = nameof(wfoldoutGroupTweenSpeed);
 #pragma warning disable CS0618 // Type or member is obsolete
             internal const string WButtonPriority = nameof(WButtonPriorityColor.priority);
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -1541,11 +1459,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 MinFoldoutSpeed,
                 MaxFoldoutSpeed
             );
-            wfoldoutGroupTweenSpeed = Mathf.Clamp(
-                wfoldoutGroupTweenSpeed <= 0f ? DefaultFoldoutSpeed : wfoldoutGroupTweenSpeed,
-                MinFoldoutSpeed,
-                MaxFoldoutSpeed
-            );
             serializableDictionaryFoldoutSpeed = Mathf.Clamp(
                 serializableDictionaryFoldoutSpeed <= 0f
                     ? DefaultFoldoutSpeed
@@ -1590,10 +1503,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             {
                 SaveSettings();
             }
-            if (EnsureWFoldoutGroupCustomColorDefaults())
-            {
-                SaveSettings();
-            }
 
             bool shouldApplyRuntimeConfig = true;
             if (EnsureSerializableTypePatternDefaults())
@@ -1620,7 +1529,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             EnsureWButtonCustomColorDefaults();
             EnsureWEnumToggleButtonsCustomColorDefaults();
             EnsureWGroupCustomColorDefaults();
-            EnsureWFoldoutGroupCustomColorDefaults();
             ApplyRuntimeConfiguration();
             Save(true);
         }
@@ -1667,11 +1575,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             if (!wbuttonFoldoutTweenEnabled)
             {
                 wbuttonFoldoutTweenEnabled = true;
-            }
-
-            if (!wfoldoutGroupTweenEnabled)
-            {
-                wfoldoutGroupTweenEnabled = true;
             }
 
             if (!serializableDictionaryFoldoutTweenEnabled)
@@ -1967,66 +1870,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 }
 
                 paletteIndex++;
-            }
-
-            return changed;
-        }
-
-        private bool EnsureWFoldoutGroupCustomColorDefaults()
-        {
-            if (wfoldoutGroupCustomColors == null)
-            {
-                wfoldoutGroupCustomColors = new WFoldoutGroupCustomColorDictionary();
-            }
-
-            bool changed = false;
-
-            if (!wfoldoutGroupCustomColors.ContainsKey(DefaultWFoldoutGroupColorKey))
-            {
-                WGroupCustomColor defaultColor = new()
-                {
-                    BackgroundColor = EditorGUIUtility.isProSkin
-                        ? DefaultDarkThemeGroupBackground
-                        : DefaultLightThemeGroupBackground,
-                    TextColor = EditorGUIUtility.isProSkin ? Color.white : Color.black,
-                };
-                wfoldoutGroupCustomColors[DefaultWFoldoutGroupColorKey] = defaultColor;
-                changed = true;
-            }
-
-            if (!wfoldoutGroupCustomColors.ContainsKey(WFoldoutGroupLightThemeColorKey))
-            {
-                WGroupCustomColor lightColor = new()
-                {
-                    BackgroundColor = DefaultLightThemeGroupBackground,
-                    TextColor = Color.black,
-                };
-                wfoldoutGroupCustomColors[WFoldoutGroupLightThemeColorKey] = lightColor;
-                changed = true;
-            }
-
-            if (!wfoldoutGroupCustomColors.ContainsKey(WFoldoutGroupDarkThemeColorKey))
-            {
-                WGroupCustomColor darkColor = new()
-                {
-                    BackgroundColor = DefaultDarkThemeGroupBackground,
-                    TextColor = Color.white,
-                };
-                wfoldoutGroupCustomColors[WFoldoutGroupDarkThemeColorKey] = darkColor;
-                changed = true;
-            }
-
-            foreach (KeyValuePair<string, WGroupCustomColor> entry in wfoldoutGroupCustomColors)
-            {
-                WGroupCustomColor value = entry.Value;
-                if (value == null)
-                {
-                    wfoldoutGroupCustomColors[entry.Key] = new WGroupCustomColor();
-                    changed = true;
-                    continue;
-                }
-
-                value.EnsureReadableText();
             }
 
             return changed;
@@ -2543,29 +2386,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return NormalizeWGroupColorKey(normalized);
         }
 
-        private string EnsureWFoldoutGroupColorKeyInternal(string colorKey)
-        {
-            if (string.IsNullOrWhiteSpace(colorKey))
-            {
-                return DefaultWFoldoutGroupColorKey;
-            }
-
-            if (IsReservedWFoldoutGroupColorKey(colorKey))
-            {
-                return NormalizeWFoldoutGroupColorKey(colorKey);
-            }
-
-            EnsureWFoldoutGroupCustomColorDefaults();
-
-            string normalized = NormalizeWFoldoutGroupColorKey(colorKey);
-            if (!ContainsWFoldoutGroupColorKey(normalized))
-            {
-                AddWFoldoutGroupColorKey(normalized);
-            }
-
-            return NormalizeWFoldoutGroupColorKey(normalized);
-        }
-
         private void AddWGroupColorKey(string normalizedKey)
         {
             if (string.IsNullOrEmpty(normalizedKey))
@@ -2591,31 +2411,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             SaveSettings();
         }
 
-        private void AddWFoldoutGroupColorKey(string normalizedKey)
-        {
-            if (string.IsNullOrEmpty(normalizedKey))
-            {
-                return;
-            }
-
-            wfoldoutGroupCustomColors ??= new WFoldoutGroupCustomColorDictionary();
-
-            if (ContainsWFoldoutGroupColorKey(normalizedKey))
-            {
-                return;
-            }
-
-            int paletteIndex = wfoldoutGroupCustomColors.Count;
-            Color suggested = WButtonColorUtility.SuggestPaletteColor(paletteIndex);
-            WGroupCustomColor color = new()
-            {
-                BackgroundColor = suggested,
-                TextColor = WButtonColorUtility.GetReadableTextColor(suggested),
-            };
-            wfoldoutGroupCustomColors[normalizedKey] = color;
-            SaveSettings();
-        }
-
         private bool ContainsWGroupColorKey(string colorKey)
         {
             if (string.IsNullOrWhiteSpace(colorKey))
@@ -2636,75 +2431,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             string normalized = colorKey.Trim();
 
             foreach (string existingKey in wgroupCustomColors.Keys)
-            {
-                if (string.Equals(existingKey, normalized, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static bool IsReservedWFoldoutGroupColorKey(string key)
-        {
-            if (string.IsNullOrWhiteSpace(key))
-            {
-                return true;
-            }
-
-            if (
-                string.Equals(key, DefaultWFoldoutGroupColorKey, StringComparison.OrdinalIgnoreCase)
-            )
-            {
-                return true;
-            }
-
-            if (
-                string.Equals(
-                    key,
-                    WFoldoutGroupLightThemeColorKey,
-                    StringComparison.OrdinalIgnoreCase
-                )
-            )
-            {
-                return true;
-            }
-
-            if (
-                string.Equals(
-                    key,
-                    WFoldoutGroupDarkThemeColorKey,
-                    StringComparison.OrdinalIgnoreCase
-                )
-            )
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        private bool ContainsWFoldoutGroupColorKey(string colorKey)
-        {
-            if (string.IsNullOrWhiteSpace(colorKey))
-            {
-                return true;
-            }
-
-            if (IsReservedWFoldoutGroupColorKey(colorKey))
-            {
-                return true;
-            }
-
-            if (wfoldoutGroupCustomColors == null || wfoldoutGroupCustomColors.Count == 0)
-            {
-                return false;
-            }
-
-            string normalized = colorKey.Trim();
-
-            foreach (string existingKey in wfoldoutGroupCustomColors.Keys)
             {
                 if (string.Equals(existingKey, normalized, StringComparison.OrdinalIgnoreCase))
                 {
@@ -2763,60 +2489,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             if (wgroupCustomColors != null)
             {
                 foreach (string existingKey in wgroupCustomColors.Keys)
-                {
-                    if (
-                        string.Equals(
-                            existingKey,
-                            colorKey.Trim(),
-                            StringComparison.OrdinalIgnoreCase
-                        )
-                    )
-                    {
-                        return existingKey;
-                    }
-                }
-            }
-
-            return colorKey.Trim();
-        }
-
-        private string NormalizeWFoldoutGroupColorKey(string colorKey)
-        {
-            if (string.IsNullOrWhiteSpace(colorKey))
-            {
-                return DefaultWFoldoutGroupColorKey;
-            }
-
-            if (IsReservedWFoldoutGroupColorKey(colorKey))
-            {
-                if (
-                    string.Equals(
-                        colorKey,
-                        WFoldoutGroupLightThemeColorKey,
-                        StringComparison.OrdinalIgnoreCase
-                    )
-                )
-                {
-                    return WFoldoutGroupLightThemeColorKey;
-                }
-
-                if (
-                    string.Equals(
-                        colorKey,
-                        WFoldoutGroupDarkThemeColorKey,
-                        StringComparison.OrdinalIgnoreCase
-                    )
-                )
-                {
-                    return WFoldoutGroupDarkThemeColorKey;
-                }
-
-                return DefaultWFoldoutGroupColorKey;
-            }
-
-            if (wfoldoutGroupCustomColors != null)
-            {
-                foreach (string existingKey in wfoldoutGroupCustomColors.Keys)
                 {
                     if (
                         string.Equals(
@@ -2943,127 +2615,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             return GetThemeAwareDefaultGroupPalette();
-        }
-
-        private WFoldoutGroupPaletteEntry GetThemeAwareDefaultFoldoutPalette()
-        {
-            string themeKey = EditorGUIUtility.isProSkin
-                ? WFoldoutGroupDarkThemeColorKey
-                : WFoldoutGroupLightThemeColorKey;
-            Color fallbackBackground = EditorGUIUtility.isProSkin
-                ? DefaultDarkThemeGroupBackground
-                : DefaultLightThemeGroupBackground;
-            Color fallbackText = EditorGUIUtility.isProSkin ? Color.white : Color.black;
-            return GetWFoldoutThemePaletteEntry(themeKey, fallbackBackground, fallbackText);
-        }
-
-        private WFoldoutGroupPaletteEntry GetWFoldoutThemePaletteEntry(
-            string key,
-            Color fallbackBackground,
-            Color fallbackText
-        )
-        {
-            EnsureWFoldoutGroupCustomColorDefaults();
-
-            if (
-                wfoldoutGroupCustomColors != null
-                && wfoldoutGroupCustomColors.TryGetValue(key, out WGroupCustomColor value)
-                && value != null
-            )
-            {
-                value.EnsureReadableText();
-                return new WFoldoutGroupPaletteEntry(value.BackgroundColor, value.TextColor);
-            }
-
-            Color readableText =
-                fallbackText.maxColorComponent <= 0f
-                    ? WButtonColorUtility.GetReadableTextColor(fallbackBackground)
-                    : fallbackText;
-            return new WFoldoutGroupPaletteEntry(fallbackBackground, readableText);
-        }
-
-        private WFoldoutGroupPaletteEntry GetWFoldoutGroupPaletteEntry(string colorKey)
-        {
-            EnsureWFoldoutGroupCustomColorDefaults();
-
-            string normalized = NormalizeWFoldoutGroupColorKey(colorKey);
-
-            if (
-                string.Equals(
-                    normalized,
-                    DefaultWFoldoutGroupColorKey,
-                    StringComparison.OrdinalIgnoreCase
-                )
-            )
-            {
-                return GetThemeAwareDefaultFoldoutPalette();
-            }
-
-            if (
-                string.Equals(
-                    normalized,
-                    WFoldoutGroupLightThemeColorKey,
-                    StringComparison.OrdinalIgnoreCase
-                )
-            )
-            {
-                return GetWFoldoutThemePaletteEntry(
-                    WFoldoutGroupLightThemeColorKey,
-                    DefaultLightThemeGroupBackground,
-                    Color.black
-                );
-            }
-
-            if (
-                string.Equals(
-                    normalized,
-                    WFoldoutGroupDarkThemeColorKey,
-                    StringComparison.OrdinalIgnoreCase
-                )
-            )
-            {
-                return GetWFoldoutThemePaletteEntry(
-                    WFoldoutGroupDarkThemeColorKey,
-                    DefaultDarkThemeGroupBackground,
-                    Color.white
-                );
-            }
-
-            if (
-                wfoldoutGroupCustomColors != null
-                && wfoldoutGroupCustomColors.TryGetValue(
-                    normalized,
-                    out WGroupCustomColor directValue
-                )
-                && directValue != null
-            )
-            {
-                directValue.EnsureReadableText();
-                return new WFoldoutGroupPaletteEntry(
-                    directValue.BackgroundColor,
-                    directValue.TextColor
-                );
-            }
-
-            if (wfoldoutGroupCustomColors != null)
-            {
-                foreach (KeyValuePair<string, WGroupCustomColor> entry in wfoldoutGroupCustomColors)
-                {
-                    if (
-                        string.Equals(entry.Key, normalized, StringComparison.OrdinalIgnoreCase)
-                        && entry.Value != null
-                    )
-                    {
-                        entry.Value.EnsureReadableText();
-                        return new WFoldoutGroupPaletteEntry(
-                            entry.Value.BackgroundColor,
-                            entry.Value.TextColor
-                        );
-                    }
-                }
-            }
-
-            return GetThemeAwareDefaultFoldoutPalette();
         }
 
         private WEnumToggleButtonsPaletteEntry GetWEnumToggleButtonsPaletteEntry(string colorKey)
@@ -3740,48 +3291,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wfoldoutGroupTweenEnabled),
-                                    StringComparison.Ordinal
-                                )
-                            )
-                            {
-                                bool changed = DrawToggleField(
-                                    WFoldoutGroupTweenEnabledContent,
-                                    settings.wfoldoutGroupTweenEnabled,
-                                    value => settings.wfoldoutGroupTweenEnabled = value
-                                );
-                                dataChanged |= changed;
-                                return true;
-                            }
-
-                            if (
-                                string.Equals(
-                                    property.propertyPath,
-                                    nameof(wfoldoutGroupTweenSpeed),
-                                    StringComparison.Ordinal
-                                )
-                            )
-                            {
-                                if (!settings.wfoldoutGroupTweenEnabled)
-                                {
-                                    return true;
-                                }
-
-                                bool changed = DrawFloatSliderField(
-                                    WFoldoutGroupTweenSpeedContent,
-                                    settings.wfoldoutGroupTweenSpeed,
-                                    MinFoldoutSpeed,
-                                    MaxFoldoutSpeed,
-                                    value => settings.wfoldoutGroupTweenSpeed = value,
-                                    true
-                                );
-                                dataChanged |= changed;
-                                return true;
-                            }
-
-                            if (
-                                string.Equals(
-                                    property.propertyPath,
                                     nameof(wbuttonCustomColors),
                                     StringComparison.Ordinal
                                 )
@@ -3812,27 +3321,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 EditorGUILayout.PropertyField(
                                     property,
                                     WGroupCustomColorsContent,
-                                    true
-                                );
-                                if (EditorGUI.EndChangeCheck())
-                                {
-                                    dataChanged = true;
-                                }
-                                return true;
-                            }
-
-                            if (
-                                string.Equals(
-                                    property.propertyPath,
-                                    nameof(wfoldoutGroupCustomColors),
-                                    StringComparison.Ordinal
-                                )
-                            )
-                            {
-                                EditorGUI.BeginChangeCheck();
-                                EditorGUILayout.PropertyField(
-                                    property,
-                                    WFoldoutGroupCustomColorsContent,
                                     true
                                 );
                                 if (EditorGUI.EndChangeCheck())
@@ -4295,23 +3783,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 );
                                 continue;
                             }
-                            if (operation.Type == WGroupDrawOperationType.FoldoutGroup)
-                            {
-                                WFoldoutGroupDefinition foldoutDefinition = operation.FoldoutGroup;
-                                if (foldoutDefinition == null)
-                                {
-                                    continue;
-                                }
-
-                                WFoldoutGroupGUI.DrawGroup(
-                                    foldoutDefinition,
-                                    serializedSettings,
-                                    SettingsFoldoutGroupStates,
-                                    TryDrawSettingsGroupProperty
-                                );
-                                continue;
-                            }
-
                             SerializedProperty property = serializedSettings.FindProperty(
                                 operation.PropertyPath
                             );

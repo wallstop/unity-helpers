@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
-    using WallstopStudios.UnityHelpers.Editor.Utils.WFoldoutGroup;
 
     [CustomEditor(typeof(UnityEngine.Object), true)]
     [CanEditMultipleObjects]
@@ -15,7 +14,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
         private readonly Dictionary<int, WButtonPaginationState> _paginationStates = new();
         private readonly Dictionary<int, bool> _foldoutStates = new();
         private readonly Dictionary<int, bool> _groupFoldoutStates = new();
-        private readonly Dictionary<int, bool> _foldoutGroupStates = new();
 
         public override void OnInspectorGUI()
         {
@@ -73,22 +71,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                     }
 
                     WGroupGUI.DrawGroup(definition, serializedObject, _groupFoldoutStates);
-                    continue;
-                }
-
-                if (operation.Type == WGroupDrawOperationType.FoldoutGroup)
-                {
-                    WFoldoutGroupDefinition foldoutDefinition = operation.FoldoutGroup;
-                    if (foldoutDefinition == null)
-                    {
-                        continue;
-                    }
-
-                    WFoldoutGroupGUI.DrawGroup(
-                        foldoutDefinition,
-                        serializedObject,
-                        _foldoutGroupStates
-                    );
                     continue;
                 }
 

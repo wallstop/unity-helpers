@@ -12,7 +12,6 @@ The `UnityHelpersSettings` asset provides project-wide configuration for paginat
 - [Pagination Settings](#pagination-settings)
 - [WButton Settings](#wbutton-settings)
 - [WGroup Settings](#wgroup-settings)
-- [WFoldoutGroup Settings](#wfoldoutgroup-settings)
 - [Color Palettes](#color-palettes)
 - [WEnumToggleButtons Settings](#wenumtogglebuttons-settings)
 - [Creating the Settings Asset](#creating-the-settings-asset)
@@ -288,142 +287,43 @@ public float mana;
 
 ---
 
-## WFoldoutGroup Settings
-
-### WFoldoutGroupTweenEnabled
-
-**Default:** true
-**Applies to:** `[WFoldoutGroup]` attributes
-
-**Description:** Enable smooth animation when expanding/collapsing foldout groups.
-
----
-
-### WFoldoutGroupTweenSpeed
-
-**Default:** 2.0
-**Range:** 2.0 - 12.0
-**Applies to:** `[WFoldoutGroup]` attributes (when tween enabled)
-
-**Description:** Animation speed for foldout group expand/collapse.
-
----
-
 ## Color Palettes
 
-### Built-in Color Keys
-
-All color palette settings use the following built-in keys:
-
-- `"Default"` - Theme-aware (adapts to Unity light/dark theme)
-- `"Default-Dark"` - Dark theme colors
-- `"Default-Light"` - Light theme colors
-- `"WDefault"` - Legacy vibrant blue
-- Custom keys (defined in dictionaries below)
-
----
+Palette keys keep WButton, WGroup, and WEnumToggleButtons visuals consistent across the project. Open the **Color Palettes** foldout inside `UnityHelpersSettings` to add or edit entries. Each key is matched at draw time against the `ColorKey`/`priority` parameter on the corresponding attribute; unknown keys fall back to theme-aware defaults.
 
 ### WButtonCustomColors
 
-**Type:** Dictionary<string, ButtonColorPalette>
-**Applies to:** `[WButton(colorKey: "...")]`
-
-**Structure:**
-
-```csharp
-public class ButtonColorPalette
-{
-    public Color backgroundColor;
-    public Color textColor;
-    public Color borderColor;
-}
-```
-
+**Applies to:** `[WButton]` via the `priority` (alias `ColorKey`) parameter  
+**Reserved keys:** `Default`, `Default-Light`, `Default-Dark`, `WDefault` (legacy)  
+**Description:** Each entry stores a button color and a readable text color. Reserved keys auto-sync to the current editor skin and cannot be deleted. Custom keys are ideal for highlighting dangerous or primary actions across multiple inspectors.  
 **Usage:**
 
-1. Open `UnityHelpersSettings.asset`
-2. Expand `WButtonCustomColors`
-3. Click `+` to add new entry
-4. Set key name (e.g., `"CustomRed"`)
-5. Configure colors
+1. Expand **Color Palettes → WButton Custom Colors**.
+2. Add an entry (e.g., `Highlight`) and pick button/text colors.
+3. Reference the key from your button:
 
 ```csharp
-[WButton("Dangerous", colorKey: "CustomRed")]
-private void DangerousAction() { }
+[WButton("Submit", priority: "Highlight")]
+private void Submit() { }
 ```
-
-![Image placeholder: UnityHelpersSettings showing WButtonCustomColors dictionary editor]
-
----
 
 ### WGroupCustomColors
 
-**Type:** Dictionary<string, GroupColorPalette>
-**Applies to:** `[WGroup(colorKey: "...")]`
-
-**Structure:**
-
-```csharp
-public class GroupColorPalette
-{
-    public Color headerBackground;
-    public Color borderColor;
-    public Color bodyBackground;
-}
-```
-
-**Usage:**
-
-```csharp
-[WGroup("combat", "Combat", colorKey: "CustomGreen")]
-public float health;
-public float mana;
-[WGroupEnd("combat")]
-```
-
----
-
-### WFoldoutGroupCustomColors
-
-**Type:** Dictionary<string, GroupColorPalette>
-**Applies to:** `[WFoldoutGroup(colorKey: "...")]`
-
-**Structure:** Same as `WGroupCustomColors`
-
-**Usage:**
-
-```csharp
-[WFoldoutGroup("settings", "Settings", colorKey: "CustomBlue")]
-public bool option1;
-public bool option2;
-[WFoldoutGroupEnd("settings")]
-```
-
----
+**Applies to:** `[WGroup]` via the `colorKey` constructor argument  
+**Reserved keys:** `Default`, `Default-Light`, `Default-Dark`, `WDefault`  
+**Description:** Entries store background and header text colors for boxed groups. Reserved keys map to light/dark editor themes, while custom keys let you brand different sections (e.g., `Stats`, `Networking`, `Danger`). Unknown keys are created automatically but editing them here ensures consistent palettes across scenes.  
+**Usage:** Add a key under **WGroup Custom Colors** and reference it: `[WGroup("stats", colorKey: "StatsAccent")]`.
 
 ### WEnumToggleButtonsCustomColors
 
-**Type:** Dictionary<string, ToggleButtonColorPalette>
-**Applies to:** `[WEnumToggleButtons(colorKey: "...")]`
-
-**Structure:**
-
-```csharp
-public class ToggleButtonColorPalette
-{
-    public Color activeBackground;
-    public Color inactiveBackground;
-    public Color activeText;
-    public Color inactiveText;
-    public Color borderColor;
-}
-```
-
-**Usage:**
+**Applies to:** `[WEnumToggleButtons]` via the `ColorKey` property  
+**Reserved keys:** `Default`, `Default-Light`, `Default-Dark`  
+**Description:** Each entry defines four colors (selected background/text and inactive background/text). Use this dictionary to align enum toggle palettes with the rest of your UI or to clearly separate different tool contexts.  
+**Usage:** Add a key under **WEnumToggleButtons Custom Colors**, then assign it per field:
 
 ```csharp
-[WEnumToggleButtons(colorKey: "CustomPurple")]
-public Permissions permissions;
+[WEnumToggleButtons(ColorKey = "Difficulty")]
+public DifficultyLevel difficulty;
 ```
 
 ---
@@ -498,7 +398,6 @@ WButtonPageSize: 4
 ```text
 WButtonFoldoutTweenEnabled: false
 WGroupTweenEnabled: false
-WFoldoutGroupTweenEnabled: false
 ```
 
 **Use case:** Slower machines, prefer instant feedback
@@ -510,7 +409,6 @@ WFoldoutGroupTweenEnabled: false
 ```text
 WButtonFoldoutSpeed: 8.0
 WGroupTweenSpeed: 8.0
-WFoldoutGroupTweenSpeed: 8.0
 ```
 
 **Use case:** Snappy UI feel
@@ -570,7 +468,7 @@ WButtonHistorySize: 10
 ## See Also
 
 - **[Inspector Overview](inspector-overview.md)** - Complete inspector features overview
-- **[Inspector Grouping Attributes](inspector-grouping-attributes.md)** - WGroup and WFoldoutGroup
+- **[Inspector Grouping Attributes](inspector-grouping-attributes.md)** - WGroup layouts
 - **[Inspector Buttons](inspector-button.md)** - WButton
 - **[Inspector Selection Attributes](inspector-selection-attributes.md)** - WEnumToggleButtons
 

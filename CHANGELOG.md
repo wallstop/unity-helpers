@@ -22,8 +22,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - `UnityMainThreadDispatcher` with configurable lifecycle management
   - Reworked auto-load singleton architecture for better scene persistence
 - **Inspector Attributes & Drawers**: Comprehensive custom inspector tooling
-  - `WFoldoutGroup` attribute for collapsible property groups with enhanced styling
-  - `WGroup` attribute for visual grouping of inspector properties
+  - `WGroup` attribute for visual grouping of inspector properties, including collapsible sections and palette-driven styling
   - `WButton` attribute with support for async/Task methods and custom styling
   - `EnumToggleButtons` for toggle-based enum selection in inspector
   - `WShowIf` conditional display attribute improvements

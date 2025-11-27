@@ -98,11 +98,11 @@ public class CharacterStats : MonoBehaviour
     public float defense = 10f;
     [WGroupEnd("combat")]
 
-    [WFoldoutGroup("abilities", "Abilities", startCollapsed: true)]
+    [WGroup("abilities", "Abilities", collapsible: true, startCollapsed: true)]
     [System.Flags] public enum Powers { None = 0, Fly = 1, Strength = 2, Speed = 4 }
     [WEnumToggleButtons(showSelectAll: true, buttonsPerRow: 3)]
     public Powers currentPowers;
-    [WFoldoutGroupEnd("abilities")]
+    [WGroupEnd("abilities")]
 
     public enum WeaponType { Melee, Ranged, Magic }
     public WeaponType weaponType;
@@ -117,7 +117,7 @@ public class CharacterStats : MonoBehaviour
 
 **Features:**
 
-- **[WGroup](docs/features/inspector/inspector-grouping-attributes.md)** / **[WFoldoutGroup](docs/features/inspector/inspector-grouping-attributes.md)** - Boxed sections with auto-inclusion, color themes, animations
+- **[WGroup](docs/features/inspector/inspector-grouping-attributes.md)** - Boxed sections with auto-inclusion, color themes, collapsible headers, and animations when enabled
 - **[WButton](docs/features/inspector/inspector-button.md)** - Method buttons with history, async support, cancellation
 - **[WShowIf](docs/features/inspector/inspector-conditional-display.md)** - Conditional visibility (9 comparison operators)
 - **[WEnumToggleButtons](docs/features/inspector/inspector-selection-attributes.md)** - Flag enums as visual toggle grids

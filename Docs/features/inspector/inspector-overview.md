@@ -32,10 +32,10 @@ Unity Helpers includes a powerful suite of inspector attributes and serializatio
 Control how fields are grouped and organized in the inspector:
 
 - **[WGroup & WGroupEnd](inspector-grouping-attributes.md#wgroup--wgroupend)** - Boxed sections with optional collapse, color themes, auto-inclusion
-- **[WFoldoutGroup & WFoldoutGroupEnd](inspector-grouping-attributes.md#wfoldoutgroup--wfoldoutgroupend)** - Collapsible foldout sections for long forms
+- **[WGroup & WGroupEnd](inspector-grouping-attributes.md#wgroup--wgroupend)** - Collapsible or boxed sections for long forms
 
 ![Image placeholder: WGroup example showing boxed fields with colored header]
-![Image placeholder: WFoldoutGroup collapsed and expanded states]
+![Image placeholder: WGroup collapsed and expanded states]
 ![Image placeholder: Color palette customization in settings]
 
 **[→ Full Guide: Inspector Grouping Attributes](inspector-grouping-attributes.md)**
@@ -145,11 +145,11 @@ public class CharacterStats : MonoBehaviour
     public float attackPower = 25f;
     [WGroupEnd("Combat")]
 
-    [WFoldoutGroup("Visual", "Visual Settings", startCollapsed: true)]
+    [WGroup("Visual", "Visual Settings", collapsible: true, startCollapsed: true)]
     public Color primaryColor = Color.white;
     public Material skinMaterial;
     public Sprite portrait;
-    [WFoldoutGroupEnd("Visual")]
+    [WGroupEnd("Visual")]
 
     [WButton("Test Damage", colorKey: "Default-Dark")]
     private void TestTakeDamage()
@@ -257,7 +257,7 @@ public class GameDatabase : MonoBehaviour
 | Feature                 | Unity Default | Odin Inspector        | Unity Helpers                 |
 | ----------------------- | ------------- | --------------------- | ----------------------------- |
 | **Grouping/Boxes**      | Custom Editor | `[BoxGroup]`          | `[WGroup]`                    |
-| **Foldouts**            | Custom Editor | `[FoldoutGroup]`      | `[WFoldoutGroup]`             |
+| **Foldouts**            | Custom Editor | `[FoldoutGroup]`      | `[WGroup(collapsible: true)]` |
 | **Method Buttons**      | Custom Editor | `[Button]`            | `[WButton]`                   |
 | **Conditional Display** | Custom Drawer | `[ShowIf]`            | `[WShowIf]`                   |
 | **Enum Toggles**        | Custom Drawer | `[EnumToggleButtons]` | `[WEnumToggleButtons]`        |
@@ -316,7 +316,7 @@ public class GameDatabase : MonoBehaviour
 
 ### Inspector Attributes
 
-- **[Inspector Grouping Attributes](inspector-grouping-attributes.md)** - WGroup, WFoldoutGroup, layout control
+- **[Inspector Grouping Attributes](inspector-grouping-attributes.md)** - WGroup layout control
 - **[Inspector Buttons](inspector-button.md)** - WButton for method invocation
 - **[Inspector Conditional Display](inspector-conditional-display.md)** - WShowIf for dynamic visibility
 - **[Inspector Selection Attributes](inspector-selection-attributes.md)** - WEnumToggleButtons, dropdowns

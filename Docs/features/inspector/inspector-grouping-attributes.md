@@ -9,7 +9,6 @@ Unity Helpers provides powerful grouping attributes that create boxed sections a
 ## Table of Contents
 
 - [WGroup & WGroupEnd](#wgroup--wgroupend)
-- [WFoldoutGroup & WFoldoutGroupEnd](#wfoldoutgroup--wfoldoutgroupend)
 - [Common Features](#common-features)
 - [Configuration](#configuration)
 - [Best Practices](#best-practices)
@@ -212,54 +211,6 @@ public int totalPoints;  // Included in "stats" group, then closes it
 
 ---
 
-## WFoldoutGroup & WFoldoutGroupEnd
-
-Identical to `WGroup` but optimized for collapsible sections (always collapsible by default).
-
-### Basic Usage
-
-```csharp
-[WFoldoutGroup("debug", "Debug Options", startCollapsed: true)]
-public bool showGizmos;
-public bool logEvents;
-public bool verboseLogging;
-[WFoldoutGroupEnd("debug")]
-```
-
-![Image placeholder: WFoldoutGroup collapsed state]
-![Image placeholder: WFoldoutGroup expanded state]
-
-### When to Use WFoldoutGroup vs WGroup
-
-| Use Case                   | Attribute                                |
-| -------------------------- | ---------------------------------------- |
-| Always-visible stats       | `WGroup` (collapsible: false)            |
-| Optional/advanced settings | `WFoldoutGroup` (collapsible by default) |
-| Long forms with sections   | `WFoldoutGroup` (start collapsed)        |
-| Visual organization only   | `WGroup` (hideHeader: true)              |
-
----
-
-### Parameters
-
-```csharp
-[WFoldoutGroup(
-    string groupName,
-    string displayName = null,
-    int autoIncludeCount = UseGlobalAutoInclude,
-    bool startCollapsed = false,         // Default: false (expanded)
-    string colorKey = "Default",
-    bool hideHeader = false
-)]
-```
-
-**Animation Settings:**
-
-- Speed controlled by `UnityHelpersSettings.WFoldoutGroupTweenSpeed` (default: 2.0)
-- Enable/disable via `UnityHelpersSettings.WFoldoutGroupTweenEnabled`
-
----
-
 ## Common Features
 
 ### Auto-Include Constants
@@ -304,9 +255,8 @@ All grouping attributes respect project-wide settings defined in `UnityHelpersSe
 
 - `WGroupAutoIncludeRowCount` (default: 4) - Default fields to auto-include
 - `WGroupCustomColors` - Custom color palette dictionary
-- `WFoldoutGroupCustomColors` - Foldout-specific colors
-- `WGroupTweenEnabled` / `WFoldoutGroupTweenEnabled` - Enable animations
-- `WGroupTweenSpeed` / `WFoldoutGroupTweenSpeed` - Animation speed (2-12)
+- `WGroupTweenEnabled` - Enable animations
+- `WGroupTweenSpeed` - Animation speed (2-12)
 
 ![Image placeholder: UnityHelpersSettings asset showing WGroup configuration section]
 
@@ -376,15 +326,15 @@ public float energy;
 [WGroupEnd("core")]
 
 // ✅ GOOD: Collapsible for optional/advanced features
-[WFoldoutGroup("advanced", "Advanced", startCollapsed: true)]
+[WGroup("advanced", "Advanced", collapsible: true, startCollapsed: true)]
 public float debugParameter;
 public bool experimentalFeature;
-[WFoldoutGroupEnd("advanced")]
+[WGroupEnd("advanced")]
 
 // ❌ BAD: Everything collapsible (hides important data)
-[WFoldoutGroup("important", "Critical Settings", startCollapsed: true)]
+[WGroup("important", "Critical Settings", collapsible: true, startCollapsed: true)]
 public float maxHealth;  // Why hide this?
-[WFoldoutGroupEnd("important")]
+[WGroupEnd("important")]
 ```
 
 ---
@@ -418,10 +368,10 @@ public class RPGCharacter : MonoBehaviour
     public float defense = 15f;
     [WGroupEnd("combat")]
 
-    [WFoldoutGroup("skills", "Skills", startCollapsed: true)]
+    [WGroup("skills", "Skills", collapsible: true, startCollapsed: true)]
     public List<string> learnedSkills;
     public int skillPoints = 0;
-    [WFoldoutGroupEnd("skills")]
+    [WGroupEnd("skills")]
 }
 ```
 
@@ -448,17 +398,17 @@ public class WeaponConfig : MonoBehaviour
     public DamageType damageType;
     [WGroupEnd("damage")]
 
-    [WFoldoutGroup("effects", "Special Effects", startCollapsed: true)]
+    [WGroup("effects", "Special Effects", collapsible: true, startCollapsed: true)]
     public ParticleSystem hitEffect;
     public AudioClip hitSound;
     public float effectDuration = 1f;
-    [WFoldoutGroupEnd("effects")]
+    [WGroupEnd("effects")]
 
-    [WFoldoutGroup("advanced", "Advanced Settings", startCollapsed: true)]
+    [WGroup("advanced", "Advanced Settings", collapsible: true, startCollapsed: true)]
     public float projectileSpeed = 20f;
     public LayerMask targetLayers;
     public bool debugMode = false;
-    [WFoldoutGroupEnd("advanced")]
+    [WGroupEnd("advanced")]
 }
 ```
 
@@ -480,8 +430,8 @@ public class LevelSettings : MonoBehaviour
     public string description;
     [WGroupEnd("general")]
 
-    [WFoldoutGroup("environment", "Environment", startCollapsed: true,
-                   autoIncludeCount: WFoldoutGroupAttribute.InfiniteAutoInclude)]
+    [WGroup("environment", "Environment", collapsible: true, startCollapsed: true,
+            autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
     public Color skyColor;
     public Color fogColor;
     public float fogDensity;
@@ -489,23 +439,23 @@ public class LevelSettings : MonoBehaviour
     public Cubemap skybox;
     public float ambientIntensity;
     public float sunIntensity;
-    [WFoldoutGroupEnd("environment")]
+    [WGroupEnd("environment")]
 
-    [WFoldoutGroup("gameplay", "Gameplay Rules", startCollapsed: false)]
+    [WGroup("gameplay", "Gameplay Rules", collapsible: true, startCollapsed: false)]
     public int enemyCount = 10;
     public float difficultyMultiplier = 1f;
     public bool allowRespawns = true;
-    [WFoldoutGroupEnd("gameplay")]
+    [WGroupEnd("gameplay")]
 
-    [WFoldoutGroup("debug", "Debug Options", startCollapsed: true)]
+    [WGroup("debug", "Debug Options", collapsible: true, startCollapsed: true)]
     public bool godMode = false;
     public bool unlimitedAmmo = false;
     public bool showHitboxes = false;
-    [WFoldoutGroupEnd("debug")]
+    [WGroupEnd("debug")]
 }
 ```
 
-![GIF placeholder: LevelSettings with multiple foldout groups being toggled]
+![GIF placeholder: LevelSettings with multiple collapsible groups being toggled]
 
 ---
 
@@ -573,7 +523,7 @@ public int intelligence;
 
 **Solutions:**
 
-1. Check `UnityHelpersSettings.WGroupTweenEnabled` or `WFoldoutGroupTweenEnabled`
+1. Check `UnityHelpersSettings.WGroupTweenEnabled`
 2. Ensure `collapsible: true` is set for WGroup
 3. Verify animation speed isn't set too low in settings
 

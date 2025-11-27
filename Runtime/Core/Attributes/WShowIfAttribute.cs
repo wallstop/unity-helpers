@@ -77,7 +77,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// </para>
     /// <para>
     /// When multiple conditions are required, stack the attribute instance per rule or combine it with other inspector helpers such as
-    /// <see cref="WGroupAttribute"/> and <see cref="WFoldoutGroupAttribute"/> to keep complex editors manageable.
+    /// <see cref="WGroupAttribute"/> to keep complex editors manageable.
     /// </para>
     /// </remarks>
     /// <example>

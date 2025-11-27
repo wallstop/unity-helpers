@@ -655,7 +655,7 @@ public class PerformanceSettings : MonoBehaviour
 ## See Also
 
 - **[Inspector Overview](inspector-overview.md)** - Complete inspector features overview
-- **[Inspector Grouping Attributes](inspector-grouping-attributes.md)** - WGroup and WFoldoutGroup
+- **[Inspector Grouping Attributes](inspector-grouping-attributes.md)** - WGroup layouts
 - **[Inspector Conditional Display](inspector-conditional-display.md)** - WShowIf
 - **[Inspector Settings](inspector-settings.md)** - Configuration reference
 

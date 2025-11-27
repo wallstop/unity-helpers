@@ -483,13 +483,10 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **WEnumToggleButtons** - Enum and flag enum toggle button toolbars
 → [Inspector Selection Attributes](../features/inspector/inspector-selection-attributes.md#wenumtogglebuttons) | [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#wenum-toggle-buttons)
 
-**WFoldoutGroup** / **WFoldoutGroupEnd** - Collapsible foldout inspector sections
-→ [Inspector Grouping Attributes](../features/inspector/inspector-grouping-attributes.md#wfoldoutgroup--wfoldoutgroupend)
-
 **WGuid** - Immutable version-4 GUID using two longs for fast Unity serialization
 → [Serialization Types](../features/serialization/serialization-types.md#wguid)
 
-**WGroup** / **WGroupEnd** - Boxed inspector sections with auto-inclusion and color themes
+**WGroup** / **WGroupEnd** - Boxed inspector sections with auto-inclusion, palette-driven styling, and optional collapsible headers
 → [Inspector Grouping Attributes](../features/inspector/inspector-grouping-attributes.md#wgroup--wgroupend)
 
 **Weighted Random** - Weighted random selection

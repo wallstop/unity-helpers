@@ -594,7 +594,7 @@ public float myField;
 ## See Also
 
 - **[Inspector Overview](inspector-overview.md)** - Complete inspector features overview
-- **[Inspector Grouping Attributes](inspector-grouping-attributes.md)** - WGroup and WFoldoutGroup
+- **[Inspector Grouping Attributes](inspector-grouping-attributes.md)** - WGroup layouts
 - **[Inspector Selection Attributes](inspector-selection-attributes.md)** - Dropdowns and toggles
 - **[Editor Tools Guide](../editor-tools/editor-tools-guide.md)** - Other editor utilities
 
