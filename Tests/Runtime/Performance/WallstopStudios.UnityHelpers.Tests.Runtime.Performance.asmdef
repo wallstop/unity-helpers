@@ -1,11 +1,11 @@
 {
-  "name": "WallstopStudios.UnityHelpers.Tests.Runtime",
-  "rootNamespace": "WallstopStudios.UnityHelpers.Tests",
+  "name": "WallstopStudios.UnityHelpers.Tests.Runtime.Performance",
+  "rootNamespace": "WallstopStudios.UnityHelpers",
   "references": [
     "UnityEditor.TestRunner",
     "UnityEngine.TestRunner",
     "WallstopStudios.UnityHelpers",
-    "WallstopStudios.UnityHelpers.Tests.Runtime.Random"
+    "WallstopStudios.UnityHelpers.Tests.Runtime"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

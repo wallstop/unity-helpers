@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Random
+namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
 {
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Random;

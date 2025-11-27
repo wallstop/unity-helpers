@@ -12,6 +12,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
 ### Added
 
 - Coroutine wait buffer defaults can now be configured under **Project Settings ▸ Wallstop Studios ▸ Unity Helpers**. The generated `Resources/WallstopStudios/UnityHelpers/UnityHelpersBufferSettings.asset` applies the selected quantization, entry caps, and LRU mode automatically on domain reload or when the player starts (unless your code overrides the values at runtime).
+- Random and Performance runtime test suites now live in their own PlayMode assemblies, keeping namespaces tidy while still wiring markdown benchmark output to the existing docs.
 
 ## [2.2.0]
 
