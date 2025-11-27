@@ -199,6 +199,68 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             );
         }
 
+        private static IEnumerable<TestCaseData> Vector2AxisCornerCases()
+        {
+            yield return new TestCaseData(
+                "Vector2Staircase",
+                CreateVector2List((0, 0), (0, 3), (1, 3), (1, 2), (2, 2), (2, 1), (3, 1), (3, 0)),
+                4,
+                new[] { new Vector2(1, 2), new Vector2(2, 1) }
+            ).SetName("ConcaveHullVector2PreservesStaircaseCorners");
+
+            yield return new TestCaseData(
+                "Vector2Horseshoe",
+                CreateVector2List((0, 0), (0, 5), (1, 5), (1, 1), (4, 1), (4, 5), (5, 5), (5, 0)),
+                5,
+                new[] { new Vector2(1, 1), new Vector2(4, 1) }
+            ).SetName("ConcaveHullVector2PreservesHorseshoeCorners");
+        }
+
+        [TestCaseSource(nameof(Vector2AxisCornerCases))]
+        public void ConcaveHullVector2PreservesAxisCorners(
+            string label,
+            List<Vector2> points,
+            int nearestNeighbors,
+            Vector2[] requiredCorners
+        )
+        {
+            List<Vector2> edgeSplit = points.BuildConcaveHullEdgeSplit(
+                bucketSize: 8,
+                angleThreshold: 200f
+            );
+            List<Vector2> knn = points.BuildConcaveHullKnn(nearestNeighbors);
+
+            AssertRequiredVectorCorners($"{label} edge-split", requiredCorners, edgeSplit);
+            AssertRequiredVectorCorners($"{label} knn", requiredCorners, knn);
+        }
+
+        [TestCaseSource(nameof(Vector2AxisCornerCases))]
+        public void ConcaveHullVector2AxisCornerDiagnostics(
+            string label,
+            List<Vector2> points,
+            int nearestNeighbors,
+            Vector2[] requiredCorners
+        )
+        {
+            List<Vector2> edgeSplit = points.BuildConcaveHullEdgeSplit(
+                bucketSize: 8,
+                angleThreshold: 200f
+            );
+
+            foreach (Vector2 required in requiredCorners)
+            {
+                if (!edgeSplit.Contains(required))
+                {
+                    Debug.LogError(
+                        $"[GridlessAxisCornerDiagnostics] {label} missing {required}. Hull vertices:\n{string.Join(", ", edgeSplit)}"
+                    );
+                }
+            }
+
+            List<Vector2> knn = points.BuildConcaveHullKnn(nearestNeighbors);
+            AssertRequiredVectorCorners($"{label} knn", requiredCorners, knn);
+        }
+
         [Test]
         public void ConcaveHullVector2VariantsMatchConvexHullRectangle()
         {
@@ -567,6 +629,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
 
             return false;
+        }
+
+        private static List<Vector2> CreateVector2List(params (int x, int y)[] coords)
+        {
+            List<Vector2> list = new(coords.Length);
+            foreach ((int x, int y) in coords)
+            {
+                list.Add(new Vector2(x, y));
+            }
+            return list;
+        }
+
+        private static void AssertRequiredVectorCorners(
+            string label,
+            IEnumerable<Vector2> required,
+            IReadOnlyCollection<Vector2> hull
+        )
+        {
+            foreach (Vector2 vertex in required)
+            {
+                Assert.IsTrue(hull.Contains(vertex), $"{label}: hull should contain {vertex}.");
+            }
         }
     }
 }

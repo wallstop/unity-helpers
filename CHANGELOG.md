@@ -14,6 +14,10 @@ See [the roadmap](docs/overview/roadmap.md) for details
 - Coroutine wait buffer defaults can now be configured under **Project Settings ▸ Wallstop Studios ▸ Unity Helpers**. The generated `Resources/WallstopStudios/UnityHelpers/UnityHelpersBufferSettings.asset` applies the selected quantization, entry caps, and LRU mode automatically on domain reload or when the player starts (unless your code overrides the values at runtime).
 - Random and Performance runtime test suites now live in their own PlayMode assemblies, keeping namespaces tidy while still wiring markdown benchmark output to the existing docs.
 
+### Changed
+
+- The legacy line-division concave hull overload `BuildConcaveHull(IEnumerable<FastVector3Int>, Grid, float scaleFactor, float concavity)` has been marked `[Obsolete]` and now throws `NotSupportedException`. Use `ConcaveHullStrategy.Knn` or `ConcaveHullStrategy.EdgeSplit` (and their dedicated helpers) instead; the docs now call out this retirement explicitly.
+
 ## [2.2.0]
 
 ### Added

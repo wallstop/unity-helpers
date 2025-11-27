@@ -277,6 +277,181 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             );
         }
 
+        [Test]
+        public void EdgeSplitFallsBackToConvexWhenAngleThresholdLow()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+
+            List<FastVector3Int> concaveShape = CreatePointList(
+                (0, 0),
+                (0, 4),
+                (2, 4),
+                (2, 2),
+                (4, 2),
+                (4, 0)
+            );
+            FastVector3Int elbow = FV(2, 2);
+
+            List<FastVector3Int> convex = concaveShape.BuildConvexHull(
+                grid,
+                includeColinearPoints: false
+            );
+            List<FastVector3Int> hull = concaveShape.BuildConcaveHullEdgeSplit(
+                grid,
+                bucketSize: 8,
+                angleThreshold: 30f
+            );
+
+            CollectionAssert.AreEquivalent(
+                convex,
+                hull,
+                "Low angle thresholds should force edge-split hulls to align with the convex hull."
+            );
+            Assert.IsFalse(
+                hull.Contains(elbow),
+                "Elbow should not be present once the algorithm falls back to the convex hull."
+            );
+        }
+
+        [Test]
+        public void EdgeSplitCapturesConcaveVerticesWhenAngleThresholdHigh()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+
+            List<FastVector3Int> concaveShape = CreatePointList(
+                (0, 0),
+                (0, 4),
+                (2, 4),
+                (2, 2),
+                (4, 2),
+                (4, 0)
+            );
+            FastVector3Int elbow = FV(2, 2);
+
+            List<FastVector3Int> hull = concaveShape.BuildConcaveHullEdgeSplit(
+                grid,
+                bucketSize: 8,
+                angleThreshold: 240f
+            );
+
+            AssertHullSubset(concaveShape, hull);
+            Assert.IsTrue(
+                hull.Contains(elbow),
+                "High angle thresholds should reintroduce the concave elbow."
+            );
+        }
+
+        [Test]
+        public void EdgeSplitFallsBackWhenBucketSizeTooSmall()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+
+            List<FastVector3Int> concaveShape = CreatePointList(
+                (0, 0),
+                (0, 4),
+                (2, 4),
+                (2, 2),
+                (4, 2),
+                (4, 0)
+            );
+            FastVector3Int elbow = FV(2, 2);
+
+            List<FastVector3Int> hull = concaveShape.BuildConcaveHullEdgeSplit(
+                grid,
+                bucketSize: 1,
+                angleThreshold: 240f
+            );
+
+            AssertHullSubset(concaveShape, hull);
+            Assert.IsFalse(
+                hull.Contains(elbow),
+                "Small bucket sizes should starve the QuadTree and fall back to convex hull behaviour."
+            );
+        }
+
+        [Test]
+        public void EdgeSplitCapturesConcavityWhenBucketSizeAdequate()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+
+            List<FastVector3Int> concaveShape = CreatePointList(
+                (0, 0),
+                (0, 4),
+                (2, 4),
+                (2, 2),
+                (4, 2),
+                (4, 0)
+            );
+            FastVector3Int elbow = FV(2, 2);
+
+            List<FastVector3Int> hull = concaveShape.BuildConcaveHullEdgeSplit(
+                grid,
+                bucketSize: 16,
+                angleThreshold: 240f
+            );
+
+            AssertHullSubset(concaveShape, hull);
+            Assert.IsTrue(
+                hull.Contains(elbow),
+                "Adequate bucket sizes should feed enough candidates to reintroduce concave vertices."
+            );
+        }
+
+        [Test]
+        public void ConcaveHullRepairMetricsRemainBoundedOnLargeSamples()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+
+            List<FastVector3Int> samples = new();
+            for (int y = 0; y < 120; ++y)
+            {
+                for (int x = 0; x < 120; ++x)
+                {
+                    // Carve out a concave cavity to force the repair path.
+                    if (x > 30 && x < 90 && y > 30 && y < 90)
+                    {
+                        continue;
+                    }
+                    samples.Add(new FastVector3Int(x, y, 0));
+                }
+            }
+
+            Assert.GreaterOrEqual(samples.Count, 10000);
+
+            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
+            {
+                Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                BucketSize = 48,
+                AngleThreshold = 220f,
+            };
+
+            List<FastVector3Int> hull = samples.BuildConcaveHull(grid, options);
+            UnityExtensions.ConcaveHullRepairStats stats = UnityExtensions.ProfileConcaveHullRepair(
+                hull,
+                samples,
+                UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                options.AngleThreshold
+            );
+
+            Assert.Greater(
+                stats.AxisCornerInsertions + stats.AxisPathInsertions,
+                0,
+                "Repair should have inserted additional axis corners for the carved cavity."
+            );
+            Assert.LessOrEqual(
+                stats.FinalHullCount,
+                stats.OriginalPointsCount,
+                "Repair must not exceed the source point budget."
+            );
+            Assert.AreEqual(0, stats.DuplicateRemovals, "Repair should deduplicate as it goes.");
+            Assert.Greater(stats.MaxFrontierSize, 0, "BFS frontier should have processed nodes.");
+        }
+
         private static List<FastVector3Int> CreatePointList(params (int x, int y)[] coords)
         {
             return coords.Select(tuple => FV(tuple.x, tuple.y)).ToList();

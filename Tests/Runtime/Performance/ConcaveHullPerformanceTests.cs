@@ -18,6 +18,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
         private const int LargeHeight = 128;
         private const long LargeVector2AllocationBudgetBytes = Vector2AllocationBudgetBytes * 8;
         private const long LargeGridAllocationBudgetBytes = GridAllocationBudgetBytes * 8;
+        private const int RepairSampleWidth = 160;
+        private const int RepairSampleHeight = 160;
 
         [Test]
         public void BuildConcaveHullKnnVector2AllocationsStayBounded()
@@ -94,6 +96,57 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
         }
 
         [Test]
+        public void BuildConcaveHullEdgeSplitRepairStatsStayBounded()
+        {
+            List<FastVector3Int> points = CreateConcaveGridSample(
+                RepairSampleWidth,
+                RepairSampleHeight
+            );
+            Grid grid = new GameObject("ConcaveHullRepairGrid").AddComponent<Grid>();
+            Track(grid.gameObject);
+
+            List<FastVector3Int> hull = points.BuildConcaveHull(
+                grid,
+                new UnityExtensions.ConcaveHullOptions
+                {
+                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                    BucketSize = 64,
+                    AngleThreshold = 220f,
+                }
+            );
+
+            UnityExtensions.ConcaveHullRepairStats stats = UnityExtensions.ProfileConcaveHullRepair(
+                hull,
+                points,
+                UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                angleThreshold: 220f
+            );
+
+            Assert.Greater(
+                stats.AxisCornerInsertions + stats.AxisPathInsertions,
+                0,
+                "Repair should insert axis-aligned corners for the carved cavity."
+            );
+            Assert.AreEqual(
+                stats.FinalHullCount,
+                hull.Count,
+                "Profiled repair should mirror final hull size."
+            );
+            Assert.LessOrEqual(
+                stats.FinalHullCount,
+                stats.OriginalPointsCount,
+                "Repair must not exceed the source point budget."
+            );
+            Assert.AreEqual(0, stats.DuplicateRemovals, "Repair should deduplicate as it goes.");
+            Assert.Greater(stats.MaxFrontierSize, 0, "BFS frontier should process nodes.");
+            Assert.Greater(stats.AxisNeighborVisits, 0, "BFS should traverse neighbors.");
+
+            Debug.Log(
+                $"[ConcaveHullPerformance] repair stats — Start:{stats.StartHullCount}, Final:{stats.FinalHullCount}, AxisCornerInsertions:{stats.AxisCornerInsertions}, AxisPathInsertions:{stats.AxisPathInsertions}, AxisNeighborVisits:{stats.AxisNeighborVisits}"
+            );
+        }
+
+        [Test]
         public void BuildConcaveHullKnnGridAllocationsStayBoundedForLargePointCloud()
         {
             List<FastVector3Int> points = CreateGridPointCloud(LargeWidth, LargeHeight);
@@ -142,6 +195,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
             {
                 for (int x = 0; x < width; ++x)
                 {
+                    points.Add(new FastVector3Int(x, y, 0));
+                }
+            }
+
+            return points;
+        }
+
+        private static List<FastVector3Int> CreateConcaveGridSample(int width, int height)
+        {
+            List<FastVector3Int> points = new(width * height);
+            for (int y = 0; y < height; ++y)
+            {
+                for (int x = 0; x < width; ++x)
+                {
+                    if (x > width / 4 && x < width * 3 / 4 && y > height / 4 && y < height * 3 / 4)
+                    {
+                        continue;
+                    }
+
                     points.Add(new FastVector3Int(x, y, 0));
                 }
             }

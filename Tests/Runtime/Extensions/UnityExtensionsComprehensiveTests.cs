@@ -1116,9 +1116,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void FastVectorConcaveHullGridlessRandomCloudsRemainInsideConvexHull()
         {
-            System.Random rng = new(1234);
+            System.Random masterRng = new(1234);
+            HullRegressionRecorder recorder = new(
+                nameof(FastVectorConcaveHullGridlessRandomCloudsRemainInsideConvexHull)
+            );
+
             for (int trial = 0; trial < 5; ++trial)
             {
+                int trialSeed = masterRng.Next();
+                System.Random rng = new(trialSeed);
                 int count = rng.Next(10, 40);
                 List<FastVector3Int> points = new(count);
                 for (int i = 0; i < count; ++i)
@@ -1128,40 +1134,60 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     );
                 }
 
-                List<FastVector3Int> convex = points.BuildConvexHull(includeColinearPoints: false);
-                List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn();
-                List<FastVector3Int> concaveEdge = points.BuildConcaveHullEdgeSplit();
-                List<FastVector3Int> concaveUnified = points.BuildConcaveHull(
-                    new UnityExtensions.ConcaveHullOptions
-                    {
-                        Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                        BucketSize = 32,
-                        AngleThreshold = 85f,
-                    }
-                );
+                List<FastVector3Int> convex = null;
+                List<FastVector3Int> concaveKnn = null;
+                List<FastVector3Int> concaveEdge = null;
+                List<FastVector3Int> concaveUnified = null;
+                try
+                {
+                    convex = points.BuildConvexHull(includeColinearPoints: false);
+                    concaveKnn = points.BuildConcaveHullKnn();
+                    concaveEdge = points.BuildConcaveHullEdgeSplit();
+                    concaveUnified = points.BuildConcaveHull(
+                        new UnityExtensions.ConcaveHullOptions
+                        {
+                            Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                            BucketSize = 32,
+                            AngleThreshold = 85f,
+                        }
+                    );
 
-                HashSet<FastVector3Int> input = new(points);
-                Assert.IsTrue(concaveKnn.All(input.Contains));
-                Assert.IsTrue(concaveEdge.All(input.Contains));
-                Assert.IsTrue(concaveUnified.All(input.Contains));
+                    HashSet<FastVector3Int> input = new(points);
+                    Assert.IsTrue(concaveKnn.All(input.Contains));
+                    Assert.IsTrue(concaveEdge.All(input.Contains));
+                    Assert.IsTrue(concaveUnified.All(input.Contains));
 
-                List<Vector2> convexVector = ConvertToVector2(convex);
-                List<Vector2> concaveKnnVector = ConvertToVector2(concaveKnn);
-                List<Vector2> concaveEdgeVector = ConvertToVector2(concaveEdge);
-                List<Vector2> concaveUnifiedVector = ConvertToVector2(concaveUnified);
+                    List<Vector2> convexVector = ConvertToVector2(convex);
+                    List<Vector2> concaveKnnVector = ConvertToVector2(concaveKnn);
+                    List<Vector2> concaveEdgeVector = ConvertToVector2(concaveEdge);
+                    List<Vector2> concaveUnifiedVector = ConvertToVector2(concaveUnified);
 
-                Assert.IsTrue(
-                    convexVector.IsConvexHullInsideConvexHull(concaveKnnVector),
-                    "Gridless k-NN concave hull must be inside convex hull."
-                );
-                Assert.IsTrue(
-                    convexVector.IsConvexHullInsideConvexHull(concaveEdgeVector),
-                    "Gridless edge-split concave hull must be inside convex hull."
-                );
-                Assert.IsTrue(
-                    convexVector.IsConvexHullInsideConvexHull(concaveUnifiedVector),
-                    "Unified concave hull must be inside convex hull."
-                );
+                    Assert.IsTrue(
+                        convexVector.IsConvexHullInsideConvexHull(concaveKnnVector),
+                        "Gridless k-NN concave hull must be inside convex hull."
+                    );
+                    Assert.IsTrue(
+                        convexVector.IsConvexHullInsideConvexHull(concaveEdgeVector),
+                        "Gridless edge-split concave hull must be inside convex hull."
+                    );
+                    Assert.IsTrue(
+                        convexVector.IsConvexHullInsideConvexHull(concaveUnifiedVector),
+                        "Unified concave hull must be inside convex hull."
+                    );
+                }
+                catch (AssertionException)
+                {
+                    recorder.WriteSnapshot(
+                        mode: $"gridless_trial{trial}",
+                        seed: trialSeed,
+                        points: points,
+                        convex: convex,
+                        concaveEdgeSplit: concaveEdge,
+                        concaveKnn: concaveKnn,
+                        concaveUnified: concaveUnified
+                    );
+                    throw;
+                }
             }
         }
 
@@ -2000,38 +2026,56 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public IEnumerator RandomCloudMultipleSeedsConvexContainsConcaves()
         {
             Grid grid = CreateGrid(out GameObject _);
+            HullRegressionRecorder recorder = new(
+                nameof(RandomCloudMultipleSeedsConvexContainsConcaves)
+            );
 
             int[] seeds = { 11, 123, 9999 };
             foreach (int seed in seeds)
             {
                 List<FastVector3Int> points = GenerateRandomPointsSquare(300, 40, seed);
-                List<FastVector3Int> convex = points.BuildConvexHull(grid);
-                List<FastVector3Int> concaveEdgeSplit = points.BuildConcaveHullEdgeSplit(grid);
-                List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
-                List<FastVector3Int> concave = points.BuildConcaveHull(
-                    grid,
-                    new UnityExtensions.ConcaveHullOptions
-                    {
-                        Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                    }
-                );
+                List<FastVector3Int> convex = null;
+                List<FastVector3Int> concaveEdgeSplit = null;
+                List<FastVector3Int> concaveKnn = null;
+                List<FastVector3Int> concave = null;
+                try
+                {
+                    convex = points.BuildConvexHull(grid);
+                    concaveEdgeSplit = points.BuildConcaveHullEdgeSplit(grid);
+                    concaveKnn = points.BuildConcaveHullKnn(grid);
+                    concave = points.BuildConcaveHull(
+                        grid,
+                        new UnityExtensions.ConcaveHullOptions
+                        {
+                            Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                        }
+                    );
 
-                // Invariants: no duplicates and hull points are from input
-                Assert.AreEqual(convex.Distinct().Count(), convex.Count);
-                Assert.AreEqual(concaveEdgeSplit.Distinct().Count(), concaveEdgeSplit.Count);
-                Assert.AreEqual(concaveKnn.Distinct().Count(), concaveKnn.Count);
-                Assert.AreEqual(concave.Distinct().Count(), concave.Count);
+                    AssertNoDuplicates(convex, concaveEdgeSplit, concaveKnn, concave);
 
-                HashSet<FastVector3Int> input = new(points);
-                Assert.IsTrue(convex.All(input.Contains));
-                Assert.IsTrue(concaveEdgeSplit.All(input.Contains));
-                Assert.IsTrue(concaveKnn.All(input.Contains));
-                Assert.IsTrue(concave.All(input.Contains));
+                    HashSet<FastVector3Int> input = new(points);
+                    Assert.IsTrue(convex.All(input.Contains));
+                    Assert.IsTrue(concaveEdgeSplit.All(input.Contains));
+                    Assert.IsTrue(concaveKnn.All(input.Contains));
+                    Assert.IsTrue(concave.All(input.Contains));
 
-                // Concave hulls must be inside convex hull
-                Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concaveEdgeSplit));
-                Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concaveKnn));
-                Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concave));
+                    Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concaveEdgeSplit));
+                    Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concaveKnn));
+                    Assert.IsTrue(convex.IsConvexHullInsideConvexHull(grid, concave));
+                }
+                catch (AssertionException)
+                {
+                    recorder.WriteSnapshot(
+                        mode: "grid",
+                        seed: seed,
+                        points: points,
+                        convex: convex,
+                        concaveEdgeSplit: concaveEdgeSplit,
+                        concaveKnn: concaveKnn,
+                        concaveUnified: concave
+                    );
+                    throw;
+                }
             }
 
             yield return null;
@@ -2528,6 +2572,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             float x = Mathf.Round(value.x * 1000f) * 0.001f;
             float y = Mathf.Round(value.y * 1000f) * 0.001f;
             return new Vector2(x, y);
+        }
+
+        private static void AssertNoDuplicates(params List<FastVector3Int>[] hulls)
+        {
+            foreach (List<FastVector3Int> hull in hulls)
+            {
+                if (hull == null)
+                {
+                    continue;
+                }
+
+                Assert.AreEqual(
+                    hull.Distinct().Count(),
+                    hull.Count,
+                    "Hull should not contain duplicates."
+                );
+            }
         }
 
 #if UNITY_EDITOR

@@ -57,6 +57,7 @@ All hull helpers now offer both grid-aware (`Grid` + `FastVector3Int`) and gridl
   - `vectorPoints.BuildConcaveHull(options)` / `BuildConcaveHullKnn` / `BuildConcaveHullEdgeSplit` for `Vector2`.
   - `fastPoints.BuildConcaveHull(options)` plus the `Knn`/`EdgeSplit` helpers for `FastVector3Int` without requiring a `Grid`.
   - `fastPoints.BuildConcaveHull(grid, options)` remains available when your data lives in grid space.
+  - > ⚠️ The legacy line-division overload `BuildConcaveHull(IEnumerable<FastVector3Int>, Grid, float scaleFactor, float concavity)` has been retired and now throws `NotSupportedException`. Switch to `ConcaveHullStrategy.Knn` or `ConcaveHullStrategy.EdgeSplit` instead.
 
 Because the new overloads reuse the pooled implementations under the hood, behaviour (winding, pruning, GC profile) matches the grid versions—pick whichever signature best matches your data source.
 
