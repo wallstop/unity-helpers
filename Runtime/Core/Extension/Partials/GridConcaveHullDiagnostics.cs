@@ -1,0 +1,709 @@
+// ReSharper disable once CheckNamespace
+namespace WallstopStudios.UnityHelpers.Core.Extension
+{
+    using System;
+    using System.Collections.Generic;
+    using DataStructure;
+    using DataStructure.Adapters;
+    using UnityEngine;
+    using Utils;
+
+    /// <summary>
+    /// Concave hull diagnostics, repair helpers, and shared geometry utilities.
+    /// </summary>
+    public static partial class UnityExtensions
+    {
+        private const float ConcaveCornerRepairThresholdDegrees = 90f;
+
+        /// <summary>
+        /// Calculates the cosine of the angle at point o formed by points a and b using the law of cosines.
+        /// </summary>
+        public static double GetCosine(Vector2 a, Vector3 b, Vector3 o)
+        {
+            double aPow2 = (a.x - o.x) * (a.x - o.x) + (a.y - o.y) * (a.y - o.y);
+            double bPow2 = (b.x - o.x) * (b.x - o.x) + (b.y - o.y) * (b.y - o.y);
+            double cPow2 = (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
+            double cos = (aPow2 + bPow2 - cPow2) / (2 * Math.Sqrt(aPow2 * bPow2));
+            return Math.Round(cos, 4);
+        }
+
+        public static bool IsPositionInside(List<Vector2> hull, Vector2 position)
+        {
+            bool isPositionInside = false;
+            for (int i = 0; i < hull.Count; ++i)
+            {
+                Vector2 oldVector = hull[i];
+                int nextIndex = (i + 1) % hull.Count;
+                Vector2 newVector = hull[nextIndex];
+
+                Vector2 lhs;
+                Vector2 rhs;
+                if (oldVector.x < newVector.x)
+                {
+                    lhs = oldVector;
+                    rhs = newVector;
+                }
+                else
+                {
+                    lhs = newVector;
+                    rhs = oldVector;
+                }
+
+                if (
+                    (newVector.x < position.x) == (position.x <= oldVector.x)
+                    && (position.y - (long)lhs.y) * (rhs.x - lhs.x)
+                        < (rhs.y - (long)lhs.y) * (position.x - lhs.x)
+                )
+                {
+                    isPositionInside = !isPositionInside;
+                }
+            }
+            return isPositionInside;
+        }
+
+        public static bool IsPositionInside(
+            List<FastVector3Int> hull,
+            FastVector3Int gridPosition,
+            Grid grid
+        )
+        {
+            bool isPositionInside = false;
+            Vector2 position = grid.CellToWorld(gridPosition);
+            for (int i = 0; i < hull.Count; ++i)
+            {
+                Vector2 oldVector = grid.CellToWorld(hull[i]);
+                int nextIndex = (i + 1) % hull.Count;
+                Vector2 newVector = grid.CellToWorld(hull[nextIndex]);
+
+                Vector2 lhs;
+                Vector2 rhs;
+                if (oldVector.x < newVector.x)
+                {
+                    lhs = oldVector;
+                    rhs = newVector;
+                }
+                else
+                {
+                    lhs = newVector;
+                    rhs = oldVector;
+                }
+
+                if (
+                    newVector.x < position.x == position.x <= oldVector.x
+                    && (position.y - (long)lhs.y) * (rhs.x - lhs.x)
+                        < (rhs.y - (long)lhs.y) * (position.x - lhs.x)
+                )
+                {
+                    isPositionInside = !isPositionInside;
+                }
+            }
+
+            return isPositionInside;
+        }
+
+        private static bool ShouldRepairConcaveCorners(float angleThreshold)
+        {
+            return angleThreshold >= ConcaveCornerRepairThresholdDegrees;
+        }
+
+        private static List<FastVector3Int> ClonePositions(
+            IReadOnlyCollection<FastVector3Int> positions
+        )
+        {
+            if (positions == null)
+            {
+                return new List<FastVector3Int>();
+            }
+
+            if (positions is List<FastVector3Int> list)
+            {
+                return new List<FastVector3Int>(list);
+            }
+
+            return new List<FastVector3Int>(positions);
+        }
+
+        private static void MaybeRepairConcaveCorners(
+            List<FastVector3Int> hull,
+            List<FastVector3Int> originalPoints,
+            ConcaveHullStrategy strategy,
+            float angleThreshold
+        )
+        {
+            if (
+                hull == null
+                || originalPoints == null
+                || (
+                    strategy != ConcaveHullStrategy.Knn
+                    && !ShouldRepairConcaveCorners(angleThreshold)
+                )
+            )
+            {
+                return;
+            }
+
+            InsertMissingAxisCorners(hull, originalPoints);
+            RemoveDuplicateVertices(hull);
+        }
+
+        private static void InsertMissingAxisCorners(
+            List<FastVector3Int> hull,
+            List<FastVector3Int> originalPoints
+        )
+        {
+            if (hull == null || originalPoints == null || hull.Count < 3)
+            {
+                return;
+            }
+
+            using PooledResource<HashSet<FastVector3Int>> pointSetResource =
+                Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> pointSet);
+            pointSet.UnionWith(originalPoints);
+
+            bool inserted;
+            do
+            {
+                inserted = false;
+                int count = hull.Count;
+                for (int i = 0; i < count; ++i)
+                {
+                    int nextIndex = (i + 1) % count;
+                    FastVector3Int start = hull[i];
+                    FastVector3Int end = hull[nextIndex];
+                    if (start.x == end.x || start.y == end.y)
+                    {
+                        continue;
+                    }
+
+                    _ = pointSet.Add(start);
+                    _ = pointSet.Add(end);
+
+                    List<FastVector3Int> path = TryFindAxisPath(start, end, pointSet);
+                    if (path != null && path.Count > 2)
+                    {
+                        int insertIndex = nextIndex;
+                        for (int p = 1; p < path.Count - 1; ++p)
+                        {
+                            FastVector3Int waypoint = path[p];
+                            InsertCorner(hull, insertIndex, waypoint);
+                            ++insertIndex;
+                            pointSet.Add(waypoint);
+                        }
+
+                        inserted = true;
+                        break;
+                    }
+
+                    FastVector3Int candidateA = new(start.x, end.y, start.z);
+                    FastVector3Int candidateB = new(end.x, start.y, start.z);
+                    if (pointSet.Contains(candidateA))
+                    {
+                        InsertCorner(hull, nextIndex, candidateA);
+                        pointSet.Add(candidateA);
+                        inserted = true;
+                        break;
+                    }
+
+                    if (pointSet.Contains(candidateB))
+                    {
+                        InsertCorner(hull, nextIndex, candidateB);
+                        pointSet.Add(candidateB);
+                        inserted = true;
+                        break;
+                    }
+                }
+            } while (inserted);
+
+            EnsureAxisCornersIncluded(hull, originalPoints, pointSet);
+            PruneDiagonalOnlyVertices(hull, pointSet);
+        }
+
+        private static List<FastVector3Int> TryFindAxisPath(
+            FastVector3Int start,
+            FastVector3Int end,
+            HashSet<FastVector3Int> pointSet
+        )
+        {
+            using PooledResource<Queue<FastVector3Int>> queueResource =
+                Buffers<FastVector3Int>.Queue.Get(out Queue<FastVector3Int> frontier);
+            using PooledResource<Dictionary<FastVector3Int, FastVector3Int>> parentResource =
+                DictionaryBuffer<FastVector3Int, FastVector3Int>.Dictionary.Get(
+                    out Dictionary<FastVector3Int, FastVector3Int> parents
+                );
+
+            frontier.Enqueue(start);
+            parents[start] = start;
+
+            while (frontier.Count > 0)
+            {
+                FastVector3Int current = frontier.Dequeue();
+                if (current == end)
+                {
+                    break;
+                }
+
+                foreach (FastVector3Int neighbor in EnumerateAxisNeighbors(current, pointSet))
+                {
+                    if (parents.ContainsKey(neighbor))
+                    {
+                        continue;
+                    }
+
+                    parents[neighbor] = current;
+                    frontier.Enqueue(neighbor);
+                }
+            }
+
+            if (!parents.ContainsKey(end))
+            {
+                return null;
+            }
+
+            using PooledResource<List<FastVector3Int>> pathResource =
+                Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> pathBuffer);
+            pathBuffer.Clear();
+
+            FastVector3Int cursor = end;
+            pathBuffer.Add(cursor);
+            while (cursor != start)
+            {
+                cursor = parents[cursor];
+                pathBuffer.Add(cursor);
+            }
+
+            pathBuffer.Reverse();
+            return new List<FastVector3Int>(pathBuffer);
+        }
+
+        private static IEnumerable<FastVector3Int> EnumerateAxisNeighbors(
+            FastVector3Int origin,
+            HashSet<FastVector3Int> pointSet
+        )
+        {
+            FastVector3Int right = new(origin.x + 1, origin.y, origin.z);
+            if (pointSet.Contains(right))
+            {
+                yield return right;
+            }
+
+            FastVector3Int left = new(origin.x - 1, origin.y, origin.z);
+            if (pointSet.Contains(left))
+            {
+                yield return left;
+            }
+
+            FastVector3Int up = new(origin.x, origin.y + 1, origin.z);
+            if (pointSet.Contains(up))
+            {
+                yield return up;
+            }
+
+            FastVector3Int down = new(origin.x, origin.y - 1, origin.z);
+            if (pointSet.Contains(down))
+            {
+                yield return down;
+            }
+        }
+
+        private static void InsertCorner(
+            List<FastVector3Int> hull,
+            int insertIndex,
+            FastVector3Int candidate
+        )
+        {
+            if (insertIndex == hull.Count)
+            {
+                hull.Add(candidate);
+            }
+            else
+            {
+                hull.Insert(insertIndex, candidate);
+            }
+        }
+
+        private static void EnsureAxisCornersIncluded(
+            List<FastVector3Int> hull,
+            List<FastVector3Int> originalPoints,
+            HashSet<FastVector3Int> pointSet
+        )
+        {
+            if (hull == null || originalPoints == null)
+            {
+                return;
+            }
+
+            using PooledResource<HashSet<FastVector3Int>> hullSetResource =
+                Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> hullSet);
+            hullSet.UnionWith(hull);
+
+            bool added;
+            do
+            {
+                added = false;
+                foreach (FastVector3Int candidate in originalPoints)
+                {
+                    if (hullSet.Contains(candidate))
+                    {
+                        continue;
+                    }
+
+                    if (!HasAxisCornerSupport(candidate, pointSet))
+                    {
+                        continue;
+                    }
+
+                    if (!TryConnectCandidateToHull(candidate, hull, pointSet, hullSet))
+                    {
+                        continue;
+                    }
+
+                    added = true;
+                    break;
+                }
+            } while (added);
+        }
+
+        private static bool HasAxisCornerSupport(
+            FastVector3Int candidate,
+            HashSet<FastVector3Int> points
+        )
+        {
+            if (points == null || points.Count == 0)
+            {
+                return false;
+            }
+
+            bool hasX = false;
+            bool hasY = false;
+            foreach (FastVector3Int point in points)
+            {
+                if (point == candidate)
+                {
+                    continue;
+                }
+
+                if (!hasX && point.x == candidate.x)
+                {
+                    hasX = true;
+                }
+
+                if (!hasY && point.y == candidate.y)
+                {
+                    hasY = true;
+                }
+
+                if (hasX && hasY)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool TryConnectCandidateToHull(
+            FastVector3Int candidate,
+            List<FastVector3Int> hull,
+            HashSet<FastVector3Int> pointSet,
+            HashSet<FastVector3Int> hullSet
+        )
+        {
+            if (hull == null || hull.Count < 2)
+            {
+                return false;
+            }
+
+            int count = hull.Count;
+            for (int i = 0; i < count; ++i)
+            {
+                FastVector3Int anchor = hull[i];
+                if (anchor.x != candidate.x && anchor.y != candidate.y)
+                {
+                    continue;
+                }
+
+                List<FastVector3Int> path = TryFindAxisPath(anchor, candidate, pointSet);
+                if (path == null || path.Count <= 1)
+                {
+                    continue;
+                }
+
+                InsertPathAfterIndex(hull, i, path);
+                for (int p = 1; p < path.Count; ++p)
+                {
+                    FastVector3Int waypoint = path[p];
+                    hullSet.Add(waypoint);
+                    pointSet.Add(waypoint);
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private static void InsertPathAfterIndex(
+            List<FastVector3Int> hull,
+            int anchorIndex,
+            List<FastVector3Int> path
+        )
+        {
+            int insertIndex = anchorIndex + 1;
+            for (int p = 1; p < path.Count; ++p)
+            {
+                FastVector3Int waypoint = path[p];
+                if (insertIndex >= hull.Count)
+                {
+                    hull.Add(waypoint);
+                }
+                else
+                {
+                    hull.Insert(insertIndex, waypoint);
+                }
+
+                ++insertIndex;
+            }
+        }
+
+        private static bool TryInsertAxisCorner(List<FastVector3Int> hull, FastVector3Int candidate)
+        {
+            if (hull == null || hull.Count < 2)
+            {
+                return false;
+            }
+
+            int count = hull.Count;
+            for (int i = 0; i < count; ++i)
+            {
+                FastVector3Int prev = hull[i];
+                FastVector3Int next = hull[(i + 1) % count];
+                bool prevSharesX = prev.x == candidate.x && IsBetween(candidate.y, prev.y, next.y);
+                bool prevSharesY = prev.y == candidate.y && IsBetween(candidate.x, prev.x, next.x);
+                bool nextSharesX = next.x == candidate.x && IsBetween(candidate.y, prev.y, next.y);
+                bool nextSharesY = next.y == candidate.y && IsBetween(candidate.x, prev.x, next.x);
+                if ((prevSharesX && nextSharesY) || (prevSharesY && nextSharesX))
+                {
+                    InsertCorner(hull, (i + 1) % count, candidate);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsBetween(int value, int boundA, int boundB)
+        {
+            return boundA <= boundB
+                ? boundA <= value && value <= boundB
+                : boundB <= value && value <= boundA;
+        }
+
+        private static bool HasSharedAxisNeighbor(
+            FastVector3Int candidate,
+            HashSet<FastVector3Int> points
+        )
+        {
+            if (points == null || points.Count == 0)
+            {
+                return false;
+            }
+
+            foreach (FastVector3Int point in points)
+            {
+                if (point == candidate)
+                {
+                    continue;
+                }
+
+                if (point.x == candidate.x || point.y == candidate.y)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void RemoveDuplicateVertices(List<FastVector3Int> hull)
+        {
+            if (hull == null || hull.Count <= 1)
+            {
+                return;
+            }
+
+            using PooledResource<HashSet<FastVector3Int>> seenResource =
+                Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> seen);
+            int index = 0;
+            while (index < hull.Count)
+            {
+                FastVector3Int vertex = hull[index];
+                if (seen.Contains(vertex))
+                {
+                    hull.RemoveAt(index);
+                    continue;
+                }
+
+                seen.Add(vertex);
+                ++index;
+            }
+        }
+
+        private static void PruneDiagonalOnlyVertices(
+            List<FastVector3Int> hull,
+            HashSet<FastVector3Int> originalPoints
+        )
+        {
+            if (hull == null || originalPoints == null || originalPoints.Count == 0)
+            {
+                return;
+            }
+
+            int minX = int.MaxValue;
+            int maxX = int.MinValue;
+            int minY = int.MaxValue;
+            int maxY = int.MinValue;
+            foreach (FastVector3Int point in originalPoints)
+            {
+                if (point.x < minX)
+                {
+                    minX = point.x;
+                }
+
+                if (point.x > maxX)
+                {
+                    maxX = point.x;
+                }
+
+                if (point.y < minY)
+                {
+                    minY = point.y;
+                }
+
+                if (point.y > maxY)
+                {
+                    maxY = point.y;
+                }
+            }
+
+            for (int i = hull.Count - 1; i >= 0; --i)
+            {
+                FastVector3Int vertex = hull[i];
+                if (HasSharedAxisNeighbor(vertex, originalPoints))
+                {
+                    continue;
+                }
+
+                bool insideX = minX < vertex.x && vertex.x < maxX;
+                bool insideY = minY < vertex.y && vertex.y < maxY;
+                if (insideX && insideY)
+                {
+                    hull.RemoveAt(i);
+                }
+            }
+        }
+
+        private static float CalculateAngle(Vector2 lhs, Vector2 rhs)
+        {
+            return Mathf.Atan2(rhs.y - lhs.y, rhs.x - lhs.x);
+        }
+
+        private static float AngleDifference(float lhsAngle, float rhsAngle)
+        {
+            float delta = lhsAngle - rhsAngle;
+            float twoPi = Mathf.PI * 2f;
+            delta %= twoPi;
+            if (delta < 0f)
+            {
+                delta += twoPi;
+            }
+
+            return delta;
+        }
+
+        public static bool Intersects(
+            Vector2 lhsFrom,
+            Vector2 lhsTo,
+            Vector2 rhsFrom,
+            Vector2 rhsTo
+        )
+        {
+            if (lhsFrom == rhsFrom || lhsFrom == rhsTo || lhsTo == rhsFrom || lhsTo == rhsTo)
+            {
+                return false;
+            }
+
+            OrientationType orientation1 = Orientation(lhsFrom, lhsTo, rhsFrom);
+            OrientationType orientation2 = Orientation(lhsFrom, lhsTo, rhsTo);
+            OrientationType orientation3 = Orientation(rhsFrom, rhsTo, lhsFrom);
+            OrientationType orientation4 = Orientation(rhsFrom, rhsTo, lhsTo);
+
+            if (orientation1 != orientation2 && orientation3 != orientation4)
+            {
+                return true;
+            }
+
+            if (orientation1 == OrientationType.Colinear && LiesOnSegment(lhsFrom, rhsFrom, lhsTo))
+            {
+                return true;
+            }
+
+            if (orientation2 == OrientationType.Colinear && LiesOnSegment(lhsFrom, rhsTo, lhsTo))
+            {
+                return true;
+            }
+
+            if (orientation3 == OrientationType.Colinear && LiesOnSegment(rhsFrom, lhsFrom, rhsTo))
+            {
+                return true;
+            }
+
+            if (orientation4 == OrientationType.Colinear && LiesOnSegment(rhsFrom, lhsTo, rhsTo))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        public static bool LiesOnSegment(Vector2 p, Vector2 q, Vector2 r)
+        {
+            return q.x <= Math.Max(p.x, r.x)
+                && Math.Min(p.x, r.x) <= q.x
+                && q.y <= Math.Max(p.y, r.y)
+                && Math.Min(p.y, r.y) <= q.y;
+        }
+
+        public enum OrientationType
+        {
+            Colinear = 0,
+            Clockwise = 1,
+            Counterclockwise = 2,
+        }
+
+        public static OrientationType Orientation(Vector2 p, Vector2 q, Vector2 r)
+        {
+            float value = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
+            if (Mathf.Approximately(value, 0))
+            {
+                return OrientationType.Colinear;
+            }
+
+            return 0 < value ? OrientationType.Clockwise : OrientationType.Counterclockwise;
+        }
+
+        public static Vector2 Rotate(this Vector2 v, float degrees)
+        {
+            float sin = Mathf.Sin(degrees * Mathf.Deg2Rad);
+            float cos = Mathf.Cos(degrees * Mathf.Deg2Rad);
+
+            float tx = v.x;
+            float ty = v.y;
+
+            Vector2 rotatedVector;
+            rotatedVector.x = cos * tx - sin * ty;
+            rotatedVector.y = sin * tx + cos * ty;
+
+            return rotatedVector;
+        }
+    }
+}
