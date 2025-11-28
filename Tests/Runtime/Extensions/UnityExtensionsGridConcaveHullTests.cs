@@ -4,12 +4,14 @@
 
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Random;
 
     public sealed class UnityExtensionsGridConcaveHullTests : GridTestBase
     {
@@ -312,6 +314,57 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             List<FastVector3Int> knn = points.BuildConcaveHullKnn(grid, nearestNeighbors);
             AssertRequiredVertices($"{label} knn", requiredCorners, knn);
+        }
+
+        [Test]
+        public void ConcaveHullRepairHandlesPermutedLShapes()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+
+            List<FastVector3Int> basePoints = CreatePointList(
+                (0, 0),
+                (0, 4),
+                (1, 4),
+                (1, 3),
+                (2, 3),
+                (2, 2),
+                (3, 2),
+                (3, 1),
+                (4, 1),
+                (4, 0)
+            );
+            FastVector3Int[] required = { FV(1, 3), FV(2, 2), FV(3, 1) };
+            IRandom random = new PcgRandom(0xC0FFEE);
+            for (int iteration = 0; iteration < 24; ++iteration)
+            {
+                List<FastVector3Int> permuted = basePoints.OrderBy(_ => random.Next()).ToList();
+                List<FastVector3Int> hull = permuted.BuildConcaveHullEdgeSplit(
+                    grid,
+                    bucketSize: 8,
+                    angleThreshold: 220f
+                );
+                AssertRequiredVertices($"Permuted L iteration {iteration}", required, hull);
+#if ENABLE_CONCAVE_HULL_STATS
+                UnityExtensions.ConcaveHullRepairStats stats =
+                    UnityExtensions.ProfileConcaveHullRepair(
+                        hull,
+                        permuted,
+                        UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                        220f
+                    );
+                Assert.AreEqual(
+                    0,
+                    stats.DuplicateRemovals,
+                    $"Permuted L iteration {iteration} should not emit duplicates."
+                );
+                Assert.LessOrEqual(
+                    stats.AxisPathInsertions,
+                    12,
+                    $"Permuted L iteration {iteration} should only require a few axis-path inserts."
+                );
+#endif
+            }
         }
 
         [TestCaseSource(nameof(AxisCornerCases))]
@@ -634,6 +687,42 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 #endif
         }
 
+        [Test]
+        public void ConcaveHullRepairHandlesSharedThroatCavities()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+
+            List<FastVector3Int> samples = CreateSharedThroatSamples();
+            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
+            {
+                Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                BucketSize = 32,
+                AngleThreshold = 240f,
+            };
+
+            List<FastVector3Int> hull = samples.BuildConcaveHull(grid, options);
+            AssertHullSubset(samples, hull);
+#if ENABLE_CONCAVE_HULL_STATS
+            UnityExtensions.ConcaveHullRepairStats stats = UnityExtensions.ProfileConcaveHullRepair(
+                hull,
+                samples,
+                UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                options.AngleThreshold
+            );
+            Assert.Greater(
+                stats.AxisPathInsertions + stats.AxisCornerInsertions,
+                0,
+                "Shared throat cavities should require at least one repair insert."
+            );
+            Assert.AreEqual(
+                0,
+                stats.DuplicateRemovals,
+                "Shared throat repair should not create duplicates."
+            );
+#endif
+        }
+
         private static List<FastVector3Int> CreatePointList(params (int x, int y)[] coords)
         {
             return coords.Select(tuple => FV(tuple.x, tuple.y)).ToList();
@@ -664,6 +753,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 Assert.IsTrue(hull.Contains(vertex), $"{label}: hull should contain {vertex}.");
             }
+        }
+
+        private static List<FastVector3Int> CreateSharedThroatSamples()
+        {
+            List<FastVector3Int> samples = new();
+            for (int y = 0; y < 30; ++y)
+            {
+                for (int x = 0; x < 30; ++x)
+                {
+                    bool leftCavity = x >= 5 && x <= 10 && y >= 5 && y <= 20;
+                    bool rightCavity = x >= 19 && x <= 24 && y >= 9 && y <= 24;
+                    bool sharedThroat = x == 15 && y >= 10 && y <= 14;
+                    if ((leftCavity || rightCavity) && !sharedThroat)
+                    {
+                        continue;
+                    }
+
+                    samples.Add(new FastVector3Int(x, y, 0));
+                }
+            }
+
+            return samples;
         }
 
         private static List<FastVector3Int> CreateStraightFallbackPoints(bool includeInteriorColumn)

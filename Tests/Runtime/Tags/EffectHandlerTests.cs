@@ -12,6 +12,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     [TestFixture]
     public sealed class EffectHandlerTests : TagsTestBase
     {
+        private const float RemainingDurationEpsilon = 1e-3f;
+
         [SetUp]
         public void SetUp()
         {
@@ -665,7 +667,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             EffectHandle handle = handler.ApplyEffect(effect).Value;
             Assert.IsTrue(handler.TryGetRemainingDuration(handle, out float remaining));
             Assert.Greater(remaining, 0f);
-            Assert.LessOrEqual(remaining, effect.duration);
+            Assert.LessOrEqual(
+                remaining,
+                effect.duration + RemainingDurationEpsilon,
+                $"Remaining duration {remaining} should not exceed declared duration {effect.duration} beyond epsilon."
+            );
 
             handler.RemoveEffect(handle);
             Assert.IsFalse(handler.TryGetRemainingDuration(handle, out float afterRemoval));

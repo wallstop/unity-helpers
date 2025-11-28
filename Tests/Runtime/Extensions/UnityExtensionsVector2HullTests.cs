@@ -4,14 +4,17 @@
 
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Tests.Utils;
+    using Random = System.Random;
 
     public sealed class UnityExtensionsVector2HullTests : CommonTestBase
     {
@@ -344,6 +347,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void ConcaveHullVector2HandlesPermutedLShapes()
+        {
+            List<Vector2> basePoints = CreateVector2List(
+                (0, 0),
+                (0, 4),
+                (1, 4),
+                (1, 3),
+                (2, 3),
+                (2, 2),
+                (3, 2),
+                (3, 1),
+                (4, 1),
+                (4, 0)
+            );
+            Vector2[] required = { new Vector2(1, 3), new Vector2(2, 2), new Vector2(3, 1) };
+            IRandom random = new PcgRandom(0xBEEF);
+            for (int iteration = 0; iteration < 24; ++iteration)
+            {
+                List<Vector2> permuted = basePoints.OrderBy(_ => random.Next()).ToList();
+                List<Vector2> hull = permuted.BuildConcaveHullEdgeSplit(
+                    bucketSize: 8,
+                    angleThreshold: 220f
+                );
+                AssertRequiredVectorCorners(
+                    $"Vector2 permuted L iteration {iteration}",
+                    required,
+                    hull
+                );
+            }
+        }
+
+        [Test]
         public void ConcaveHullVector2VariantsMatchConvexHullRectangle()
         {
             List<Vector2> points = new()
@@ -420,7 +455,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void ConcaveHullVector2RandomSetsRespectInvariants()
         {
-            System.Random rng = new(7);
+            IRandom rng = new PcgRandom(7);
             for (int t = 0; t < 10; ++t)
             {
                 int count = rng.Next(6, 20);

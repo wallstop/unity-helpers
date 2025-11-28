@@ -7,7 +7,9 @@ namespace WallstopStudios.UnityHelpers.Utils
     using System.Threading;
     using UnityEngine;
     using Debug = UnityEngine.Debug;
-#if !SINGLE_THREADED
+#if SINGLE_THREADED
+    using WallstopStudios.UnityHelpers.Core.Extension;
+#else
     using System.Collections.Concurrent;
 #endif
     /// <summary>
