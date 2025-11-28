@@ -9,7 +9,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Utils;
-#if !SINGLETHREADED
+#if !SINGLE_THREADED
+    using System.Collections.Concurrent;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
 #endif
@@ -281,214 +283,276 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
         }
 
-#if !SINGLETHREADED
-        [Test]
-        public void WallstopFastArrayPoolConcurrentAccessDifferentSizes()
+#if !SINGLE_THREADED
+        [TestCaseSource(nameof(WallstopFastArrayPoolConcurrentScenarioCases))]
+        public void WallstopFastArrayPoolConcurrentAccessScenarios(FastArrayPoolScenario scenario)
         {
-            const int threadCount = 10;
-            const int operationsPerThread = 100;
-            Task[] tasks = new Task[threadCount];
-            List<Exception> exceptions = new();
+            RunFastArrayPoolScenario(scenario);
+        }
 
-            for (int t = 0; t < threadCount; t++)
+        private static IEnumerable<TestCaseData> WallstopFastArrayPoolConcurrentScenarioCases()
+        {
+            yield return CreateDifferentSizesScenario();
+            yield return CreateSameSizeScenario();
+            yield return CreateMixedSizesScenario();
+            yield return CreateRapidAllocationScenario();
+        }
+
+        private static void RunFastArrayPoolScenario(FastArrayPoolScenario scenario)
+        {
+            ConcurrentQueue<ScenarioException> exceptions = new();
+            Task[] tasks = new Task[scenario.ThreadCount];
+
+            for (int t = 0; t < scenario.ThreadCount; t++)
             {
                 int threadId = t;
                 tasks[t] = Task.Run(async () =>
                 {
                     try
                     {
-                        PcgRandom random = new(threadId);
-                        foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
+                        Task work = scenario.Work(threadId);
+                        if (work == null)
                         {
-                            int size = random.Next(1, 50) + threadId;
-                            using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
-                                size
+                            throw new InvalidOperationException(
+                                $"Scenario '{scenario.Name}' returned a null task for thread {threadId}."
                             );
-
-                            Assert.AreEqual(size, pooled.resource.Length);
-
-                            for (int j = 0; j < Math.Min(5, size); j++)
-                            {
-                                pooled.resource[j] = threadId * 1000 + i * 10 + j;
-                            }
-
-                            await Task.Delay(TimeSpan.FromMilliseconds(random.NextDouble()));
                         }
+
+                        await work.ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
-                        lock (exceptions)
-                        {
-                            exceptions.Add(ex);
-                        }
+                        exceptions.Enqueue(new ScenarioException(threadId, ex));
                     }
                 });
             }
 
             Task.WaitAll(tasks);
 
-            if (exceptions.Count > 0)
+            ScenarioException[] failures = exceptions.ToArray();
+            if (failures.Length == 0)
             {
-                throw new AggregateException(exceptions);
+                return;
             }
+
+            StringBuilder builder = new();
+            foreach (ScenarioException failure in failures)
+            {
+                builder.AppendLine(
+                    $"Thread {failure.ThreadId}: {failure.Exception.GetType().Name} - {failure.Exception.Message}"
+                );
+
+                if (failure.Exception.Data != null && failure.Exception.Data.Count > 0)
+                {
+                    foreach (DictionaryEntry entry in failure.Exception.Data)
+                    {
+                        builder.AppendLine($"    {entry.Key}: {entry.Value}");
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(failure.Exception.StackTrace))
+                {
+                    builder.AppendLine(failure.Exception.StackTrace);
+                }
+
+                builder.AppendLine();
+            }
+
+            Assert.Fail(
+                $"Scenario '{scenario.Name}' captured {failures.Length} exception(s).{Environment.NewLine}{builder}"
+            );
         }
 
-        [Test]
-        public void WallstopFastArrayPoolConcurrentAccessSameSize()
+        private static TestCaseData CreateDifferentSizesScenario()
+        {
+            const int threadCount = 10;
+            const int operationsPerThread = 100;
+
+            FastArrayPoolScenario scenario = new(
+                nameof(WallstopFastArrayPoolConcurrentAccessDifferentSizes),
+                threadCount,
+                async threadId =>
+                {
+                    PcgRandom random = new(threadId);
+                    foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
+                    {
+                        int size = random.Next(1, 50) + threadId;
+                        using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(size);
+
+                        Assert.AreEqual(
+                            size,
+                            pooled.resource.Length,
+                            $"DifferentSizes thread {threadId} iteration {i} expected length {size}"
+                        );
+
+                        for (int j = 0; j < Math.Min(5, size); j++)
+                        {
+                            pooled.resource[j] = threadId * 1000 + i * 10 + j;
+                        }
+
+                        await Task.Delay(TimeSpan.FromMilliseconds(random.NextDouble()))
+                            .ConfigureAwait(false);
+                    }
+                }
+            );
+
+            return new TestCaseData(scenario).SetName(scenario.Name);
+        }
+
+        private static TestCaseData CreateSameSizeScenario()
         {
             const int threadCount = 8;
             const int operationsPerThread = 200;
             const int arraySize = 25;
-            Task[] tasks = new Task[threadCount];
-            List<Exception> exceptions = new();
 
-            for (int t = 0; t < threadCount; t++)
-            {
-                int threadId = t;
-                tasks[t] = Task.Run(() =>
+            FastArrayPoolScenario scenario = new(
+                nameof(WallstopFastArrayPoolConcurrentAccessSameSize),
+                threadCount,
+                threadId =>
                 {
-                    try
+                    PcgRandom random = new(threadId);
+                    foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
                     {
-                        PcgRandom random = new(threadId);
-                        foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
+                        using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
+                            arraySize
+                        );
+
+                        Array.Clear(pooled.resource, 0, pooled.resource.Length);
+                        Assert.AreEqual(
+                            arraySize,
+                            pooled.resource.Length,
+                            $"SameSize thread {threadId} iteration {i} expected length {arraySize}"
+                        );
+
+                        for (int j = 0; j < arraySize; j++)
                         {
-                            using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
-                                arraySize
+                            Assert.AreEqual(
+                                0,
+                                pooled.resource[j],
+                                $"SameSize thread {threadId} iteration {i} index {j} expected zero"
                             );
-
-                            Array.Clear(pooled.resource, 0, pooled.resource.Length);
-                            Assert.AreEqual(arraySize, pooled.resource.Length);
-
-                            for (int j = 0; j < arraySize; j++)
-                            {
-                                Assert.AreEqual(0, pooled.resource[j]);
-                                pooled.resource[j] = threadId * 1000 + i;
-                            }
+                            pooled.resource[j] = threadId * 1000 + i;
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        lock (exceptions)
-                        {
-                            exceptions.Add(ex);
-                        }
-                    }
-                });
-            }
 
-            Task.WaitAll(tasks);
+                    return Task.CompletedTask;
+                }
+            );
 
-            if (exceptions.Count > 0)
-            {
-                throw new AggregateException(exceptions);
-            }
+            return new TestCaseData(scenario).SetName(scenario.Name);
         }
 
-        [Test]
-        public void WallstopFastArrayPoolConcurrentAccessMixedSizes()
+        private static TestCaseData CreateMixedSizesScenario()
         {
             const int threadCount = 6;
             const int operationsPerThread = 150;
-            Task[] tasks = new Task[threadCount];
-            List<Exception> exceptions = new();
             int[] sizes = { 1, 5, 10, 20, 50, 100 };
 
-            for (int t = 0; t < threadCount; t++)
-            {
-                int threadId = t;
-                tasks[t] = Task.Run(async () =>
+            FastArrayPoolScenario scenario = new(
+                nameof(WallstopFastArrayPoolConcurrentAccessMixedSizes),
+                threadCount,
+                async threadId =>
                 {
-                    try
+                    PcgRandom random = new(threadId + 100);
+                    foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
                     {
-                        PcgRandom random = new(threadId + 100);
-                        foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
+                        int size = random.NextOf(sizes);
+                        using PooledResource<long[]> pooled = WallstopFastArrayPool<long>.Get(size);
+                        Array.Clear(pooled.resource, 0, pooled.resource.Length);
+
+                        Assert.AreEqual(
+                            size,
+                            pooled.resource.Length,
+                            $"MixedSizes thread {threadId} iteration {i} expected length {size}"
+                        );
+
+                        for (int j = 0; j < size; j++)
                         {
-                            int size = random.NextOf(sizes);
-                            using PooledResource<long[]> pooled = WallstopFastArrayPool<long>.Get(
-                                size
+                            Assert.AreEqual(
+                                0,
+                                pooled.resource[j],
+                                $"MixedSizes thread {threadId} iteration {i} index {j} expected zero"
                             );
-                            Array.Clear(pooled.resource, 0, pooled.resource.Length);
-
-                            Assert.AreEqual(size, pooled.resource.Length);
-
-                            for (int j = 0; j < size; j++)
-                            {
-                                Assert.AreEqual(0, pooled.resource[j]);
-                                long packed = ((long)threadId << 32) | ((long)i << 16) | (uint)j;
-                                pooled.resource[j] = packed;
-                            }
-
-                            if (i % 50 == 0)
-                            {
-                                await Task.Delay(TimeSpan.FromMilliseconds(random.NextDouble()));
-                            }
+                            long packed = ((long)threadId << 32) | ((long)i << 16) | (uint)j;
+                            pooled.resource[j] = packed;
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        lock (exceptions)
+
+                        if (i % 50 == 0)
                         {
-                            exceptions.Add(ex);
+                            await Task.Delay(TimeSpan.FromMilliseconds(random.NextDouble()))
+                                .ConfigureAwait(false);
                         }
                     }
-                });
-            }
+                }
+            );
 
-            Task.WaitAll(tasks);
-
-            if (exceptions.Count > 0)
-            {
-                throw new AggregateException(exceptions);
-            }
+            return new TestCaseData(scenario).SetName(scenario.Name);
         }
 
-        [Test]
-        public void WallstopFastArrayPoolConcurrentAccessRapidAllocationDeallocation()
+        private static TestCaseData CreateRapidAllocationScenario()
         {
             const int threadCount = 12;
             const int operationsPerThread = 500;
-            Task[] tasks = new Task[threadCount];
-            List<Exception> exceptions = new();
 
-            for (int t = 0; t < threadCount; t++)
-            {
-                int threadId = t;
-                tasks[t] = Task.Run(() =>
+            FastArrayPoolScenario scenario = new(
+                nameof(WallstopFastArrayPoolConcurrentAccessRapidAllocationDeallocation),
+                threadCount,
+                threadId =>
                 {
-                    try
+                    PcgRandom random = new(threadId + 100);
+                    foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
                     {
-                        PcgRandom random = new(threadId + 100);
-                        foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
+                        int size = random.Next(1, 30);
+                        using PooledResource<byte[]> pooled = WallstopFastArrayPool<byte>.Get(size);
+
+                        Assert.AreEqual(
+                            size,
+                            pooled.resource.Length,
+                            $"RapidAllocation thread {threadId} iteration {i} expected length {size}"
+                        );
+
+                        for (int j = 0; j < size; j++)
                         {
-                            int size = random.Next(1, 30);
-                            using PooledResource<byte[]> pooled = WallstopFastArrayPool<byte>.Get(
-                                size
-                            );
-
-                            Assert.AreEqual(size, pooled.resource.Length);
-
-                            for (int j = 0; j < size; j++)
-                            {
-                                pooled.resource[j] = (byte)(threadId + i + j);
-                            }
+                            pooled.resource[j] = (byte)(threadId + i + j);
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        lock (exceptions)
-                        {
-                            exceptions.Add(ex);
-                        }
-                    }
-                });
-            }
 
-            Task.WaitAll(tasks);
+                    return Task.CompletedTask;
+                }
+            );
 
-            if (exceptions.Count > 0)
+            return new TestCaseData(scenario).SetName(scenario.Name);
+        }
+
+        private sealed class FastArrayPoolScenario
+        {
+            public FastArrayPoolScenario(string name, int threadCount, Func<int, Task> work)
             {
-                throw new AggregateException(exceptions);
+                Name = name;
+                ThreadCount = threadCount;
+                Work = work;
             }
+
+            public string Name { get; }
+            public int ThreadCount { get; }
+            public Func<int, Task> Work { get; }
+
+            public override string ToString()
+            {
+                return Name;
+            }
+        }
+
+        private sealed class ScenarioException
+        {
+            public ScenarioException(int threadId, Exception exception)
+            {
+                ThreadId = threadId;
+                Exception = exception;
+            }
+
+            public int ThreadId { get; }
+            public Exception Exception { get; }
         }
 
         [Test]
