@@ -485,7 +485,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int j;
             while (gap > 15)
             {
-                gap = ((gap >> 2) - (gap >> 4)) + (gap >> 3);
+                gap = (gap >> 2) - (gap >> 4) + (gap >> 3);
                 i = gap;
 
                 while (i < length)
@@ -1301,7 +1301,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             int bucketCount = DetermineIps4oBucketCount(length);
             int pivotCount = bucketCount - 1;
-            int sampleSize = Math.Min(length, (bucketCount * 2) - 1);
+            int sampleSize = Math.Min(length, bucketCount * 2 - 1);
 
             using PooledResource<T[]> sampleLease = WallstopArrayPool<T>.Get(
                 sampleSize,
@@ -1446,7 +1446,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             for (int i = 1; i < bucketCount; ++i)
             {
-                int index = (i * sampleSize) / bucketCount;
+                int index = i * sampleSize / bucketCount;
                 if (index >= sampleSize)
                 {
                     index = sampleSize - 1;
@@ -1518,35 +1518,48 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 out T[] buffer
             );
 
-            using PooledResource<List<PowerSortPlusRun>> nodeLease =
-                Buffers<PowerSortPlusRun>.List.Get(out List<PowerSortPlusRun> nodes);
-            nodes.Clear();
-            PowerSortPlusRun head = BuildPowerSortPlusRuns(runs, nodes);
+            using PooledResource<List<PowerSortPlusCandidate>> heapLease =
+                Buffers<PowerSortPlusCandidate>.List.Get(out List<PowerSortPlusCandidate> heap);
+            heap.Clear();
 
-            List<PowerSortPlusCandidate> heap = new();
-            for (PowerSortPlusRun node = head; node != null && node.Next != null; node = node.Next)
+            using PooledResource<PowerSortPlusNode[]> nodeLease =
+                WallstopArrayPool<PowerSortPlusNode>.Get(runs.Count, out PowerSortPlusNode[] nodes);
+            int headIndex = BuildPowerSortPlusRuns(runs, nodes);
+
+            for (int nodeIndex = headIndex; nodeIndex != -1; nodeIndex = nodes[nodeIndex].next)
             {
-                PowerSortPlusPushCandidate(heap, node, node.Next);
+                int nextIndex = nodes[nodeIndex].next;
+                if (nextIndex != -1)
+                {
+                    PowerSortPlusPushCandidate(heap, nodes, nodeIndex, nextIndex);
+                }
             }
 
             int activeRuns = runs.Count;
             while (activeRuns > 1)
             {
-                if (!PowerSortPlusTryPopValidCandidate(heap, out PowerSortPlusCandidate candidate))
+                if (
+                    !PowerSortPlusTryPopValidCandidate(
+                        heap,
+                        nodes,
+                        out PowerSortPlusCandidate candidate
+                    )
+                )
                 {
-                    PowerSortPlusRun fallbackLeft = head;
-                    PowerSortPlusRun fallbackRight = fallbackLeft?.Next;
-                    if (fallbackLeft == null || fallbackRight == null)
+                    int fallbackLeft = headIndex;
+                    int fallbackRight = fallbackLeft >= 0 ? nodes[fallbackLeft].next : -1;
+                    if (fallbackLeft < 0 || fallbackRight < 0)
                     {
                         break;
                     }
 
-                    head = PowerSortPlusMergeNodes(
+                    headIndex = PowerSortPlusMergeNodes(
                         array,
                         buffer,
                         comparer,
-                        head,
+                        headIndex,
                         heap,
+                        nodes,
                         fallbackLeft,
                         fallbackRight
                     );
@@ -1554,22 +1567,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     continue;
                 }
 
-                head = PowerSortPlusMergeNodes(
+                headIndex = PowerSortPlusMergeNodes(
                     array,
                     buffer,
                     comparer,
-                    head,
+                    headIndex,
                     heap,
-                    candidate.Left,
-                    candidate.Right
+                    nodes,
+                    candidate.leftIndex,
+                    candidate.rightIndex
                 );
                 activeRuns--;
-            }
-
-            foreach (PowerSortPlusRun node in nodes)
-            {
-                node.Prev = null;
-                node.Next = null;
             }
         }
 
@@ -1700,7 +1708,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return;
             }
 
-            int bufferLength = Math.Max(32, (count / 2) + 1);
+            int bufferLength = Math.Max(32, count / 2 + 1);
             using PooledResource<T[]> bufferLease = WallstopArrayPool<T>.Get(
                 bufferLength,
                 out T[] buffer
@@ -1751,7 +1759,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             workRuns.AddRange(runs);
 
             using PooledResource<T[]> bufferLease = WallstopArrayPool<T>.Get(
-                Math.Max(32, (count / 2) + 1),
+                Math.Max(32, count / 2 + 1),
                 out T[] buffer
             );
 
@@ -2279,108 +2287,122 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return low;
         }
 
-        private static PowerSortPlusRun BuildPowerSortPlusRuns(
+        private static int BuildPowerSortPlusRuns(
             List<(int start, int length)> runs,
-            List<PowerSortPlusRun> storage
+            PowerSortPlusNode[] nodes
         )
         {
-            PowerSortPlusRun head = null;
-            PowerSortPlusRun previous = null;
+            if (runs.Count == 0)
+            {
+                return -1;
+            }
+
             for (int i = 0; i < runs.Count; ++i)
             {
                 (int start, int length) run = runs[i];
-                PowerSortPlusRun node = new()
-                {
-                    Start = run.start,
-                    Length = run.length,
-                    Prev = previous,
-                    Next = null,
-                    Version = 0,
-                };
-                storage.Add(node);
-                if (previous != null)
-                {
-                    previous.Next = node;
-                }
-                else
-                {
-                    head = node;
-                }
-                previous = node;
+                nodes[i].start = run.start;
+                nodes[i].length = run.length;
+                nodes[i].prev = i - 1;
+                nodes[i].next = i + 1 < runs.Count ? i + 1 : -1;
+                nodes[i].version = 0;
+                nodes[i].active = true;
             }
 
-            return head;
+            for (int i = runs.Count; i < nodes.Length; ++i)
+            {
+                nodes[i].active = false;
+                nodes[i].prev = -1;
+                nodes[i].next = -1;
+            }
+
+            return 0;
         }
 
-        private static PowerSortPlusRun PowerSortPlusMergeNodes<T, TComparer>(
+        private static int PowerSortPlusMergeNodes<T, TComparer>(
             IList<T> array,
             T[] buffer,
             TComparer comparer,
-            PowerSortPlusRun head,
+            int headIndex,
             List<PowerSortPlusCandidate> heap,
-            PowerSortPlusRun left,
-            PowerSortPlusRun right
+            PowerSortPlusNode[] nodes,
+            int leftIndex,
+            int rightIndex
         )
             where TComparer : IComparer<T>
         {
-            if (left == null || right == null)
+            if (leftIndex < 0 || rightIndex < 0)
             {
-                return head ?? left ?? right;
+                return headIndex;
             }
 
-            MergeRuns(array, buffer, left.Start, left.Length, right.Start, right.Length, comparer);
-
-            left.Length += right.Length;
-            left.Version++;
-
-            PowerSortPlusRun next = right.Next;
-            left.Next = next;
-            if (next != null)
+            ref PowerSortPlusNode left = ref nodes[leftIndex];
+            ref PowerSortPlusNode right = ref nodes[rightIndex];
+            if (!left.active || !right.active)
             {
-                next.Prev = left;
+                return headIndex;
             }
 
-            right.Prev = null;
-            right.Next = null;
-            right.Version++;
+            MergeRuns(array, buffer, left.start, left.length, right.start, right.length, comparer);
 
-            if (left.Prev != null)
-            {
-                PowerSortPlusPushCandidate(heap, left.Prev, left);
-            }
-            if (left.Next != null)
-            {
-                PowerSortPlusPushCandidate(heap, left, left.Next);
-            }
+            left.length += right.length;
+            left.version++;
 
-            if (left.Prev == null)
+            int nextIndex = right.next;
+            left.next = nextIndex;
+            if (nextIndex != -1)
             {
-                head = left;
+                nodes[nextIndex].prev = leftIndex;
             }
 
-            return head;
+            right.active = false;
+            right.prev = -1;
+            right.next = -1;
+            right.version++;
+
+            if (left.prev != -1)
+            {
+                PowerSortPlusPushCandidate(heap, nodes, left.prev, leftIndex);
+            }
+            if (left.next != -1)
+            {
+                PowerSortPlusPushCandidate(heap, nodes, leftIndex, left.next);
+            }
+
+            if (left.prev == -1)
+            {
+                headIndex = leftIndex;
+            }
+
+            return headIndex;
         }
 
         private static void PowerSortPlusPushCandidate(
             List<PowerSortPlusCandidate> heap,
-            PowerSortPlusRun left,
-            PowerSortPlusRun right
+            PowerSortPlusNode[] nodes,
+            int leftIndex,
+            int rightIndex
         )
         {
-            if (left == null || right == null)
+            if (leftIndex < 0 || rightIndex < 0)
             {
                 return;
             }
 
-            PowerSortPlusCandidate candidate = new()
+            ref PowerSortPlusNode left = ref nodes[leftIndex];
+            ref PowerSortPlusNode right = ref nodes[rightIndex];
+            if (!left.active || !right.active)
             {
-                Left = left,
-                Right = right,
-                Priority = left.Length + right.Length,
-                LeftVersion = left.Version,
-                RightVersion = right.Version,
-                TieBreaker = left.Start,
-            };
+                return;
+            }
+
+            PowerSortPlusCandidate candidate = new(
+                leftIndex,
+                rightIndex,
+                left.length + right.length,
+                left.version,
+                right.version,
+                left.start
+            );
 
             heap.Add(candidate);
             PowerSortPlusSiftUp(heap, heap.Count - 1);
@@ -2388,6 +2410,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         private static bool PowerSortPlusTryPopValidCandidate(
             List<PowerSortPlusCandidate> heap,
+            PowerSortPlusNode[] nodes,
             out PowerSortPlusCandidate candidate
         )
         {
@@ -2395,12 +2418,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 PowerSortPlusCandidate top = PowerSortPlusPop(heap);
                 if (
-                    top.Left != null
-                    && top.Right != null
-                    && top.Left.Version == top.LeftVersion
-                    && top.Right.Version == top.RightVersion
-                    && top.Left.Next == top.Right
-                    && top.Right.Prev == top.Left
+                    top.leftIndex >= 0
+                    && top.rightIndex >= 0
+                    && nodes[top.leftIndex].active
+                    && nodes[top.rightIndex].active
+                    && nodes[top.leftIndex].version == top.leftVersion
+                    && nodes[top.rightIndex].version == top.rightVersion
+                    && nodes[top.leftIndex].next == top.rightIndex
+                    && nodes[top.rightIndex].prev == top.leftIndex
                 )
                 {
                     candidate = top;
@@ -2470,32 +2495,50 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         private static int PowerSortPlusCompare(PowerSortPlusCandidate a, PowerSortPlusCandidate b)
         {
-            int priorityCompare = a.Priority.CompareTo(b.Priority);
+            int priorityCompare = a.priority.CompareTo(b.priority);
             if (priorityCompare != 0)
             {
                 return priorityCompare;
             }
 
-            return a.TieBreaker.CompareTo(b.TieBreaker);
+            return a.tieBreaker.CompareTo(b.tieBreaker);
         }
 
-        private sealed class PowerSortPlusRun
+        private readonly struct PowerSortPlusCandidate
         {
-            public int Start;
-            public int Length;
-            public PowerSortPlusRun Prev;
-            public PowerSortPlusRun Next;
-            public int Version;
+            public readonly int leftIndex;
+            public readonly int rightIndex;
+            public readonly int priority;
+            public readonly int leftVersion;
+            public readonly int rightVersion;
+            public readonly int tieBreaker;
+
+            public PowerSortPlusCandidate(
+                int leftIndex,
+                int rightIndex,
+                int priority,
+                int leftVersion,
+                int rightVersion,
+                int tieBreaker
+            )
+            {
+                this.leftIndex = leftIndex;
+                this.rightIndex = rightIndex;
+                this.priority = priority;
+                this.leftVersion = leftVersion;
+                this.rightVersion = rightVersion;
+                this.tieBreaker = tieBreaker;
+            }
         }
 
-        private struct PowerSortPlusCandidate
+        private struct PowerSortPlusNode
         {
-            public PowerSortPlusRun Left;
-            public PowerSortPlusRun Right;
-            public int Priority;
-            public int LeftVersion;
-            public int RightVersion;
-            public int TieBreaker;
+            public int start;
+            public int length;
+            public int prev;
+            public int next;
+            public int version;
+            public bool active;
         }
 
         private static void CollectNaturalRuns<T, TComparer>(
@@ -2934,7 +2977,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     continue;
                 }
 
-                JesseCursor<T> cursor = new JesseCursor<T>(pile);
+                JesseCursor<T> cursor = new(pile);
                 heap.Add(cursor);
                 JesseHeapSiftUp(heap, heap.Count - 1, comparer);
             }
@@ -3123,7 +3166,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 T pivot = array[pivotIndex];
                 (int leftEnd, int rightStart) = SkaPartition(array, left, right, pivot, comparer);
 
-                if ((leftEnd - left) < (right - rightStart))
+                if (leftEnd - left < right - rightStart)
                 {
                     if (left < leftEnd)
                     {
@@ -3160,7 +3203,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int a = left;
             int b = left + step;
             int c = left + (step << 1);
-            int d = left + (step * 3);
+            int d = left + step * 3;
             int e = right;
             return MedianOfFiveIndices(array, a, b, c, d, e, comparer);
         }
@@ -3301,7 +3344,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int a = left;
             int b = left + step;
             int c = left + (step << 1);
-            int d = left + (step * 3);
+            int d = left + step * 3;
             int e = right;
             return MedianOfFiveIndices(array, a, b, c, d, e, comparer);
         }
