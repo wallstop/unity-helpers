@@ -1,3 +1,7 @@
+#if UNITY_EDITOR || UNITY_INCLUDE_TESTS || WALLSTOP_CONCAVE_HULL_STATS
+#define ENABLE_CONCAVE_HULL_STATS
+#endif
+
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using System.Collections.Generic;
@@ -206,6 +210,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             ).SetName("ConcaveHullPreservesSerpentineCorners");
         }
 
+        private static IEnumerable<TestCaseData> GridAxisCornerScenarioCases()
+        {
+            yield return new TestCaseData(
+                "StraightFallbackHallway",
+                CreateStraightFallbackPoints(includeInteriorColumn: false),
+                8,
+                220f,
+                5,
+                new[] { FV(1, 1), FV(4, 1) },
+                0
+            ).SetName("ConcaveHullGridRecoversAxisCornersWithStraightFallback");
+
+            yield return new TestCaseData(
+                "AxisPathHallway",
+                CreateStraightFallbackPoints(includeInteriorColumn: true),
+                8,
+                220f,
+                5,
+                new[] { FV(1, 1), FV(4, 1) },
+                1
+            ).SetName("ConcaveHullGridRecoversAxisCornersWithAxisPath");
+        }
+
         [TestCaseSource(nameof(AxisCornerCases))]
         public void ConcaveHullPreservesAxisCorners(
             string label,
@@ -225,6 +252,65 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             List<FastVector3Int> knn = points.BuildConcaveHullKnn(grid, nearestNeighbors);
 
             AssertRequiredVertices($"{label} edge-split", requiredCorners, edgeSplit);
+            AssertRequiredVertices($"{label} knn", requiredCorners, knn);
+        }
+
+        [TestCaseSource(nameof(GridAxisCornerScenarioCases))]
+        public void ConcaveHullAxisCornerRepairDiagnostics(
+            string label,
+            List<FastVector3Int> points,
+            int bucketSize,
+            float angleThreshold,
+            int nearestNeighbors,
+            FastVector3Int[] requiredCorners,
+            int expectedAxisPathInsertionsMin
+        )
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+
+            UnityExtensions.ConcaveHullOptions edgeSplitOptions =
+                new UnityExtensions.ConcaveHullOptions
+                {
+                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                    BucketSize = bucketSize,
+                    AngleThreshold = angleThreshold,
+                };
+
+            List<FastVector3Int> edgeSplit = points.BuildConcaveHull(grid, edgeSplitOptions);
+            AssertRequiredVertices($"{label} edge-split", requiredCorners, edgeSplit);
+#if ENABLE_CONCAVE_HULL_STATS
+            UnityExtensions.ConcaveHullRepairStats edgeStats =
+                UnityExtensions.ProfileConcaveHullRepair(
+                    edgeSplit,
+                    points,
+                    UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                    angleThreshold
+                );
+            Assert.AreEqual(
+                0,
+                edgeStats.DuplicateRemovals,
+                $"{label} edge-split should not emit duplicates."
+            );
+            if (expectedAxisPathInsertionsMin == 0)
+            {
+                Assert.AreEqual(
+                    0,
+                    edgeStats.AxisPathInsertions,
+                    $"{label} edge-split should rely on straight fallback without BFS inserts."
+                );
+            }
+            else
+            {
+                Assert.GreaterOrEqual(
+                    edgeStats.AxisPathInsertions,
+                    expectedAxisPathInsertionsMin,
+                    $"{label} edge-split should reinstate missing corners via BFS axis path."
+                );
+            }
+#endif
+
+            List<FastVector3Int> knn = points.BuildConcaveHullKnn(grid, nearestNeighbors);
             AssertRequiredVertices($"{label} knn", requiredCorners, knn);
         }
 
@@ -491,6 +577,63 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             );
         }
 
+        [Test]
+        public void ConcaveHullRepairMetricsRemainBoundedAcrossMultipleCavities()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+
+            List<FastVector3Int> samples = new();
+            for (int y = 0; y < 150; ++y)
+            {
+                for (int x = 0; x < 150; ++x)
+                {
+                    bool inFirstCavity = x > 25 && x < 55 && y > 25 && y < 55;
+                    bool inSecondCavity = x > 95 && x < 125 && y > 70 && y < 120;
+                    if (inFirstCavity || inSecondCavity)
+                    {
+                        continue;
+                    }
+                    samples.Add(new FastVector3Int(x, y, 0));
+                }
+            }
+
+            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
+            {
+                Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                BucketSize = 64,
+                AngleThreshold = 240f,
+            };
+
+            List<FastVector3Int> hull = samples.BuildConcaveHull(grid, options);
+#if ENABLE_CONCAVE_HULL_STATS
+            UnityExtensions.ConcaveHullRepairStats stats = UnityExtensions.ProfileConcaveHullRepair(
+                hull,
+                samples,
+                UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                options.AngleThreshold
+            );
+
+            Assert.Greater(
+                stats.AxisPathInsertions + stats.AxisCornerInsertions,
+                0,
+                "Repair should reintroduce axis corners for each cavity."
+            );
+            Assert.AreEqual(
+                0,
+                stats.DuplicateRemovals,
+                "Repair should deduplicate as it goes (multi-cavity)."
+            );
+            Assert.LessOrEqual(
+                stats.FinalHullCount,
+                stats.OriginalPointsCount,
+                "Repair must stay within the original point budget for multi-cavity datasets."
+            );
+#else
+            Assert.IsNotNull(hull);
+#endif
+        }
+
         private static List<FastVector3Int> CreatePointList(params (int x, int y)[] coords)
         {
             return coords.Select(tuple => FV(tuple.x, tuple.y)).ToList();
@@ -521,6 +664,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 Assert.IsTrue(hull.Contains(vertex), $"{label}: hull should contain {vertex}.");
             }
+        }
+
+        private static List<FastVector3Int> CreateStraightFallbackPoints(bool includeInteriorColumn)
+        {
+            List<FastVector3Int> points = new()
+            {
+                FV(0, 0),
+                FV(0, 5),
+                FV(5, 5),
+                FV(5, 0),
+                FV(1, 5),
+                FV(4, 5),
+                FV(4, 0),
+                FV(1, 0),
+                FV(5, 1),
+                FV(0, 1),
+                FV(1, 1),
+                FV(4, 1),
+            };
+
+            if (includeInteriorColumn)
+            {
+                points.AddRange(CreatePointList((1, 2), (1, 3), (1, 4), (4, 2), (4, 3), (4, 4)));
+            }
+
+            return points;
         }
     }
 }

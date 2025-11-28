@@ -1,9 +1,14 @@
+#if UNITY_EDITOR || UNITY_INCLUDE_TESTS || WALLSTOP_CONCAVE_HULL_STATS
+#define ENABLE_CONCAVE_HULL_STATS
+#endif
+
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Tests.Utils;
@@ -205,6 +210,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 "Vector2Staircase",
                 CreateVector2List((0, 0), (0, 3), (1, 3), (1, 2), (2, 2), (2, 1), (3, 1), (3, 0)),
                 4,
+                8,
+                200f,
                 new[] { new Vector2(1, 2), new Vector2(2, 1) }
             ).SetName("ConcaveHullVector2PreservesStaircaseCorners");
 
@@ -212,8 +219,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 "Vector2Horseshoe",
                 CreateVector2List((0, 0), (0, 5), (1, 5), (1, 1), (4, 1), (4, 5), (5, 5), (5, 0)),
                 5,
+                8,
+                200f,
                 new[] { new Vector2(1, 1), new Vector2(4, 1) }
             ).SetName("ConcaveHullVector2PreservesHorseshoeCorners");
+
+            yield return new TestCaseData(
+                "Vector2StraightFallback",
+                CreateVector2List(
+                    (0, 0),
+                    (0, 5),
+                    (5, 5),
+                    (5, 0),
+                    (1, 5),
+                    (4, 5),
+                    (4, 0),
+                    (1, 0),
+                    (5, 1),
+                    (0, 1),
+                    (1, 1),
+                    (4, 1)
+                ),
+                5,
+                8,
+                220f,
+                new[] { new Vector2(1, 1), new Vector2(4, 1) }
+            ).SetName("ConcaveHullVector2RecoversAxisCornersWithStraightFallback");
         }
 
         [TestCaseSource(nameof(Vector2AxisCornerCases))]
@@ -221,12 +252,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             string label,
             List<Vector2> points,
             int nearestNeighbors,
+            int bucketSize,
+            float angleThreshold,
             Vector2[] requiredCorners
         )
         {
             List<Vector2> edgeSplit = points.BuildConcaveHullEdgeSplit(
-                bucketSize: 8,
-                angleThreshold: 200f
+                bucketSize: bucketSize,
+                angleThreshold: angleThreshold
             );
             List<Vector2> knn = points.BuildConcaveHullKnn(nearestNeighbors);
 
@@ -239,12 +272,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             string label,
             List<Vector2> points,
             int nearestNeighbors,
+            int bucketSize,
+            float angleThreshold,
             Vector2[] requiredCorners
         )
         {
             List<Vector2> edgeSplit = points.BuildConcaveHullEdgeSplit(
-                bucketSize: 8,
-                angleThreshold: 200f
+                bucketSize: bucketSize,
+                angleThreshold: angleThreshold
             );
 
             foreach (Vector2 required in requiredCorners)
@@ -259,6 +294,53 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             List<Vector2> knn = points.BuildConcaveHullKnn(nearestNeighbors);
             AssertRequiredVectorCorners($"{label} knn", requiredCorners, knn);
+        }
+
+        [Test]
+        public void ConcaveHullVector2RepairIsIdempotentAfterAxisCornersInserted()
+        {
+#if !ENABLE_CONCAVE_HULL_STATS
+            Assert.Ignore("ENABLE_CONCAVE_HULL_STATS is not defined for this build.");
+#else
+            List<Vector2> samples = CreateVector2List(
+                (0, 0),
+                (0, 3),
+                (1, 3),
+                (1, 2),
+                (2, 2),
+                (2, 1),
+                (3, 1),
+                (3, 0)
+            );
+
+            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
+            {
+                Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                BucketSize = 8,
+                AngleThreshold = 220f,
+            };
+
+            List<Vector2> repairedHull = samples.BuildConcaveHull(options);
+            List<FastVector3Int> fastHull = ConvertVector2CollectionToFast(repairedHull);
+            List<FastVector3Int> fastSamples = ConvertVector2CollectionToFast(samples);
+            UnityExtensions.ConcaveHullRepairStats stats = UnityExtensions.ProfileConcaveHullRepair(
+                fastHull,
+                fastSamples,
+                options.Strategy,
+                options.AngleThreshold
+            );
+
+            Assert.AreEqual(
+                0,
+                stats.AxisCornerInsertions + stats.AxisPathInsertions,
+                "Vector2 repair should be a no-op once axis corners already exist."
+            );
+            Assert.AreEqual(
+                0,
+                stats.DuplicateRemovals,
+                "Vector2 repair must not emit duplicates once the hull is repaired."
+            );
+#endif
         }
 
         [Test]
@@ -651,6 +733,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 Assert.IsTrue(hull.Contains(vertex), $"{label}: hull should contain {vertex}.");
             }
+        }
+
+        private static List<FastVector3Int> ConvertVector2CollectionToFast(
+            IEnumerable<Vector2> points
+        )
+        {
+            return points
+                .Select(point => new FastVector3Int(
+                    (int)Mathf.Round(point.x),
+                    (int)Mathf.Round(point.y),
+                    0
+                ))
+                .ToList();
         }
     }
 }
