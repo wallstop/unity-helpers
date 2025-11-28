@@ -7,7 +7,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using UnityEngine.Rendering;
     using UnityEngine.SceneManagement;
     using WallstopStudios.UnityHelpers.Core.Serialization;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Tests.Utils;
 
     [TestFixture]

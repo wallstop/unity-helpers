@@ -1968,12 +1968,18 @@ else
 - Run Prefab Checker before commits
 - Use [ValidateAssignment] on critical fields
 - Maintain consistent texture settings per category
+- Use the manual recompile menu/shortcut when iterating on packages to avoid reopening the project
 
 **Workflow:**
 
 - Batch similar operations together
 - Use multi-file selection where available
 - Leverage automation tools (SingletonCreator, CacheGenerator)
+
+**Compilation helpers:**
+
+- Menu path: `Tools > Wallstop Studios > Unity Helpers > Request Script Compilation`
+- Shortcut: `Ctrl/Cmd + Alt + R` (configurable via Unity’s Shortcut Manager under _Wallstop / Request Script Compilation_)
 
 ---
 

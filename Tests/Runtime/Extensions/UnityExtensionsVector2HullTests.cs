@@ -4,7 +4,6 @@
 
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
-    using System;
     using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
@@ -14,7 +13,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Tests.Utils;
-    using Random = System.Random;
 
     public sealed class UnityExtensionsVector2HullTests : CommonTestBase
     {

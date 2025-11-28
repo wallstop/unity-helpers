@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;
     using System.Collections.Generic;
-    using DataStructure;
     using DataStructure.Adapters;
     using UnityEngine;
     using Utils;

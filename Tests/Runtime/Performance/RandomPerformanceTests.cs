@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
         private const ulong DeterministicSeedBase = 0x6C8E9CF5709321D5UL;
         private const ulong DeterministicSeedIncrement = 0x9E3779B97F4A7C15UL;
         private const int GuidSeedOffset = 10_000;
+        private const int WarmupIterations = 5_000;
 
         [Test, Timeout(0)]
         public void Benchmark()
@@ -113,6 +114,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
         private static RandomBenchmarkResult RunBenchmark<T>(T random, TimeSpan timeout)
             where T : IRandom
         {
+            WarmupGenerator(random);
+
             int nextBool = RunNextBool(timeout, random);
             int nextInt = RunNext(timeout, random);
             int nextUint = RunNextUint(timeout, random);
@@ -183,6 +186,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
             } while (timer.Elapsed < timeout);
 
             return count;
+        }
+
+        private static void WarmupGenerator<T>(T random)
+            where T : IRandom
+        {
+            for (int i = 0; i < WarmupIterations; ++i)
+            {
+                _ = random.Next();
+                _ = random.NextBool();
+                _ = random.NextUint();
+                _ = random.NextFloat();
+                _ = random.NextDouble();
+                _ = random.NextUint(1_000);
+                _ = random.Next(1_000);
+            }
         }
 
         private static int RunNextBool<T>(TimeSpan timeout, T random)

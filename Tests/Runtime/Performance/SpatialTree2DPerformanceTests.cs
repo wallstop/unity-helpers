@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
     {
         private const float PointBoundsSize = 0.001f;
         private const int BenchmarkTimeoutMilliseconds = 180_000;
+        private const int WarmupIterations = 3;
 
         private static readonly TimeSpan BenchmarkDuration = TimeSpan.FromSeconds(1);
 
@@ -484,6 +485,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
             List<Vector2> buffer
         )
         {
+            for (int i = 0; i < WarmupIterations; ++i)
+            {
+                tree.GetElementsInRange(center, radius, buffer);
+            }
+
             Stopwatch timer = Stopwatch.StartNew();
             int iterations = 0;
             do
@@ -501,6 +507,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
             List<Vector2> buffer
         )
         {
+            for (int i = 0; i < WarmupIterations; ++i)
+            {
+                tree.GetElementsInBounds(bounds, buffer);
+            }
+
             Stopwatch timer = Stopwatch.StartNew();
             int iterations = 0;
             do
@@ -519,6 +530,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
             List<Vector2> buffer
         )
         {
+            for (int i = 0; i < WarmupIterations; ++i)
+            {
+                tree.GetApproximateNearestNeighbors(center, count, buffer);
+            }
+
             Stopwatch timer = Stopwatch.StartNew();
             int iterations = 0;
             do

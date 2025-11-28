@@ -1,6 +1,5 @@
 // ReSharper disable EqualExpressionComparison
 // ReSharper disable CompareOfFloatsByEqualityOperator
-using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
 namespace WallstopStudios.UnityHelpers.Tests.Helper
 {

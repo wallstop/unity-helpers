@@ -63,7 +63,7 @@ Unity Helpers eliminates entire categories of repetitive work with production-re
 | 🔍 Slow spatial searches             | [**Spatial Trees**](#spatial-trees) - O(log n) queries                                  | 5 minutes     |
 | 🎲 Random is too slow/limited        | [**PRNG.Instance**](#random-number-generators) - 10-15x faster, extensive API           | 1 minute      |
 | 💾 Need save/load system             | [**Serialization**](#4--unity-aware-serialization) - Unity types just work              | 10 minutes    |
-| 🛠️ Manual sprite workflows           | [**Editor Tools**](#6-️-editor-tools-suite) - 20+ automation tools                      | 3 minutes     |
+| 🛠️ Manual sprite workflows           | [**Editor Tools**](#6-️-editor-tools-suite) - 20+ automation tools                       | 3 minutes     |
 
 **Not sure where to start?** → [Getting Started Guide](docs/overview/getting-started.md) walks through the top 3 features in 5 minutes.
 
@@ -985,6 +985,7 @@ Unity Helpers includes 20+ editor tools to streamline your workflow:
 - **Animation Tools**: Event Editor, Creator, Copier, Sheet Animation Creator
 - **Validation**: Prefab Checker with comprehensive validation rules
 - **Automation**: ScriptableObject Singleton Creator, Attribute Cache Generator
+- **Compilation**: Request a manual script compilation via `Tools > Wallstop Studios > Unity Helpers > Request Script Compilation` or use the default shortcut (**Ctrl/Cmd + Alt + R**) registered with Unity’s Shortcut Manager (listed under _Wallstop / Request Script Compilation_).
 
 [📖 Complete Editor Tools Documentation](docs/features/editor-tools/editor-tools-guide.md)
 
@@ -1198,7 +1199,7 @@ Unity Helpers is built with performance as a top priority:
 
 **List Sorting:**
 
-- Multiple adaptive algorithms (`Ghost`, `Meteor`, `Power`, `Grail`, `Pattern-Defeating QuickSort`, `Insertion`) tuned for `IList<T>`
+- Multiple adaptive algorithms (`Ghost`, `Meteor`, `Power`, `Grail`, `Pattern-Defeating QuickSort`, `Insertion`, `Shear`, `Tim`, `Jesse`, `Green`, `Ska`, `Drift`, `Ipn`, `Smooth`, `Block`, `IPS4o`, `Power+`, `Glide`, `Flux`, `Indy`, `Sled`) tuned for `IList<T>`
 - Deterministic datasets (sorted, nearly sorted, shuffled) across sizes from 100 to 1,000,000
 - [📊 IList Sorting Performance Benchmarks](docs/performance/ilist-sorting-performance.md)
 

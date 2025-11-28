@@ -9,7 +9,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper.Logging;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Tests.Utils;
 
     [SuppressMessage("ReSharper", "AccessToModifiedClosure")]

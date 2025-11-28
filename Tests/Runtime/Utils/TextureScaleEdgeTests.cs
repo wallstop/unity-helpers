@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
     using NUnit.Framework;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class TextureScaleEdgeTests : CommonTestBase

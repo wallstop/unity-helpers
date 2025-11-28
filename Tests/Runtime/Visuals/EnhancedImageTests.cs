@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Tests.Utils;
     using WallstopStudios.UnityHelpers.Visuals.UGUI;
 

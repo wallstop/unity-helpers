@@ -16,6 +16,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
         private const string SectionPrefix = "ILIST_SORT_";
         private const int NearlySortedSwapPercentage = 50;
         private const int BenchmarkTimeoutMilliseconds = 300_000;
+        private const int BenchmarkWarmupIterations = 3;
 
         private static readonly DatasetSizeSpec[] DatasetSizeSpecs =
         {
@@ -46,6 +47,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
             new("Grail", SortAlgorithm.Grail, true, int.MaxValue),
             new("Power", SortAlgorithm.Power, true, int.MaxValue),
             new("Insertion", SortAlgorithm.Insertion, true, 10_000),
+            new("Shear", SortAlgorithm.Shear, false, int.MaxValue),
+            new("Tim", SortAlgorithm.Tim, true, int.MaxValue),
+            new("Jesse", SortAlgorithm.Jesse, false, int.MaxValue),
+            new("Green", SortAlgorithm.Green, true, int.MaxValue),
+            new("Ska", SortAlgorithm.Ska, false, int.MaxValue),
+            new("Drift", SortAlgorithm.Drift, true, int.MaxValue),
+            new("Ipn", SortAlgorithm.Ipn, false, int.MaxValue),
+            new("Smooth", SortAlgorithm.Smooth, false, int.MaxValue),
+            new("Block", SortAlgorithm.Block, true, int.MaxValue),
+            new("IPS4o", SortAlgorithm.Ips4o, false, int.MaxValue),
+            new("Power+", SortAlgorithm.PowerPlus, true, int.MaxValue),
+            new("Glide", SortAlgorithm.Glide, true, int.MaxValue),
+            new("Flux", SortAlgorithm.Flux, false, int.MaxValue),
+            new("Indy", SortAlgorithm.Indy, true, int.MaxValue),
+            new("Sled", SortAlgorithm.Sled, true, int.MaxValue),
         };
 
         [Test]
@@ -157,9 +173,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
             }
 
             int[] workingData = new int[baseData.Length];
-            Array.Copy(baseData, workingData, baseData.Length);
-
             IList<int> workingList = workingData;
+            RunWarmups(implementation, baseData, comparer, workingData, workingList);
+            Array.Copy(baseData, workingData, baseData.Length);
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             try
@@ -180,6 +196,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
 
             double milliseconds = stopwatch.Elapsed.TotalMilliseconds;
             return FormatDuration(milliseconds);
+        }
+
+        private static void RunWarmups(
+            SortImplementation implementation,
+            int[] baseData,
+            IComparer<int> comparer,
+            int[] workingData,
+            IList<int> workingList
+        )
+        {
+            if (BenchmarkWarmupIterations <= 0 || baseData.Length == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < BenchmarkWarmupIterations; ++i)
+            {
+                Array.Copy(baseData, workingData, baseData.Length);
+                implementation.Execute(workingList, comparer);
+            }
         }
 
         private static string FormatDuration(double milliseconds)
