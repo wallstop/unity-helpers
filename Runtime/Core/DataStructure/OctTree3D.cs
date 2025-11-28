@@ -678,11 +678,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             // Use inclusive-max conversion to align with KDTree semantics at max edges
             BoundingBox3D queryHalfOpen = BoundingBox3D.FromClosedBoundsInclusiveMax(queryBounds);
             logger?.OnQueryInitialized(queryBounds, queryHalfOpen, _bounds);
-#if UNITY_ASSERTIONS
+            // Heavy closed-bounds asserts are optional to keep performance tests lightweight.
+#if UNITY_ASSERTIONS && ENABLE_SPATIAL_DIAGNOSTICS
             Bounds closedQuery = queryBounds;
 #endif
             bool rootIntersects = queryHalfOpen.Intersects(_bounds);
-#if UNITY_ASSERTIONS
+#if UNITY_ASSERTIONS && ENABLE_SPATIAL_DIAGNOSTICS
             bool closedRootIntersects = ClosedIntersects(closedQuery, _bounds);
             UnityEngine.Assertions.Assert.AreEqual(
                 closedRootIntersects,
@@ -716,7 +717,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 }
 
                 bool nodeFullyContained = queryHalfOpen.Contains(currentNode.boundary);
-#if UNITY_ASSERTIONS
+#if UNITY_ASSERTIONS && ENABLE_SPATIAL_DIAGNOSTICS
                 bool closedNodeContained = ClosedContains(closedQuery, currentNode.boundary);
                 UnityEngine.Assertions.Assert.AreEqual(
                     closedNodeContained,
@@ -785,7 +786,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         Entry entry = entries[indices[i]];
                         // Per-point checks use inclusive half-open semantics for closed behavior
                         bool contains = queryHalfOpen.Contains(entry.position);
-#if UNITY_ASSERTIONS
+#if UNITY_ASSERTIONS && ENABLE_SPATIAL_DIAGNOSTICS
                         bool closedContains = queryBounds.Contains(entry.position);
                         UnityEngine.Assertions.Assert.AreEqual(
                             closedContains,
@@ -818,7 +819,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                     // Traverse children that intersect under half-open semantics
                     bool childIntersects = queryHalfOpen.Intersects(child.boundary);
-#if UNITY_ASSERTIONS
+#if UNITY_ASSERTIONS && ENABLE_SPATIAL_DIAGNOSTICS
                     bool closedChildIntersects = ClosedIntersects(closedQuery, child.boundary);
                     UnityEngine.Assertions.Assert.AreEqual(
                         closedChildIntersects,
@@ -918,7 +919,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             bounds.size = size;
         }
 
-#if UNITY_ASSERTIONS
+#if UNITY_ASSERTIONS && ENABLE_SPATIAL_DIAGNOSTICS
         private static Vector3 ComputeClosedMax(Vector3 min, Vector3 exclusiveMax)
         {
             float closedX = PrevFloat(exclusiveMax.x);
@@ -1078,7 +1079,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         continue;
                     }
 
-                    if (bestNeighborValues.Contains(entry.value))
+                    if (!bestNeighborValues.Add(entry.value))
                     {
                         continue;
                     }
@@ -1089,7 +1090,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         distanceSquared
                     );
                     bestNeighborValues.Remove(replaced.entry.value);
-                    bestNeighborValues.Add(entry.value);
                     currentWorstDistanceSquared = FindWorstDistanceSquared(bestNeighbors);
                 }
             }

@@ -385,13 +385,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                     continue;
                 }
 
-                if (consumed.Contains(propertyPath))
+                if (!consumed.Add(propertyPath))
                 {
                     continue;
                 }
 
                 operations.Add(new WGroupDrawOperation(propertyPath));
-                consumed.Add(propertyPath);
             }
 
             return operations;
@@ -481,14 +480,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
             internal bool AddProperty(string propertyPath, int propertyIndex)
             {
-                if (_lookup.Contains(propertyPath))
+                if (!_lookup.Add(propertyPath))
                 {
                     return false;
                 }
 
                 PropertyEntry entry = new(propertyPath, propertyIndex);
                 _entries.Add(entry);
-                _lookup.Add(propertyPath);
 
                 if (propertyIndex < AnchorIndex)
                 {

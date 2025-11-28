@@ -1027,7 +1027,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             while (index < hull.Count)
             {
                 FastVector3Int vertex = hull[index];
-                if (seen.Contains(vertex))
+                if (!seen.Add(vertex))
                 {
                     hull.RemoveAt(index);
 #if ENABLE_CONCAVE_HULL_STATS
@@ -1036,7 +1036,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     continue;
                 }
 
-                seen.Add(vertex);
                 ++index;
             }
 

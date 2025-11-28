@@ -495,7 +495,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 {
                     ElementData elementData = _elementData[i];
                     T value = elementData._value;
-                    if (nearestNeighborsSet.Contains(value))
+                    if (!nearestNeighborsSet.Add(value))
                     {
                         continue;
                     }
@@ -505,7 +505,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     if (candidates.Count < count)
                     {
                         candidates.Add((i, distanceSquared));
-                        nearestNeighborsSet.Add(value);
                         if (candidates.Count == count)
                         {
                             currentWorstDistanceSquared = FindWorstDistance(candidates);
@@ -516,6 +515,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                     if (distanceSquared >= currentWorstDistanceSquared)
                     {
+                        nearestNeighborsSet.Remove(value);
                         continue;
                     }
 
@@ -524,7 +524,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     nearestNeighborsSet.Remove(removedValue);
 
                     candidates[worstCandidateIndex] = (i, distanceSquared);
-                    nearestNeighborsSet.Add(value);
 
                     currentWorstDistanceSquared = FindWorstDistance(candidates);
                 }
