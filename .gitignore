@@ -329,8 +329,12 @@ package-lock.json.meta
 !Samples~/
 !Samples~/**
 
-PLAN.md
-PLAN.md.meta
+PLAN.md*
 
+artifacts*/
 artifacts/**
 artifacts.meta
+.claude*/
+.claude*.meta
+.codex*/
+.codex*.meta
