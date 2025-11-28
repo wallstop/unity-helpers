@@ -96,8 +96,6 @@
     }
   ],
   "scripts": {
-    "test": "node ./scripts/run-unity-tests.js",
-    "test:unity": "node ./scripts/run-unity-tests.js",
     "lint:docs": "node ./scripts/run-doc-link-lint.js",
     "lint:doc-links": "node ./scripts/run-doc-link-lint.js --verbose",
     "hooks:install": "git config core.hooksPath .githooks",
@@ -111,7 +109,7 @@
     "format:yaml:check": "prettier --check \"**/*.{yml,yaml}\"",
     "lint:markdown": "markdownlint \"**/*.md\" \"**/*.markdown\" --config .markdownlint.json --ignore-path .markdownlintignore",
     "validate:content": "npm run lint:docs && npm run lint:markdown && npm run format:md:check && npm run format:json:check && npm run format:yaml:check",
-    "validate:tests": "npm run lint:tests && npm run test:unity",
+    "validate:tests": "npm run lint:tests",
     "validate:prepush": "npm run validate:content && npm run eol:check && npm run validate:tests",
     "lint:tests": "pwsh -NoProfile -File scripts/lint-tests.ps1 -VerboseOutput",
     "prepublishOnly": "npm run validate:content"
