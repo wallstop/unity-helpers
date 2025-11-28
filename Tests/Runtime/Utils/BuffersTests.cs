@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Runtime.CompilerServices;
     using NUnit.Framework;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Extension;
@@ -138,6 +139,105 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.AreSame(firstArray, pooledReused.resource);
             Assert.AreEqual(42, pooledReused.resource[0]);
         }
+
+        [Test]
+        public void WallstopFastArrayPoolZeroLengthAlwaysSharedInstance()
+        {
+            using PooledResource<int[]> first = WallstopFastArrayPool<int>.Get(0);
+            using PooledResource<int[]> second = WallstopFastArrayPool<int>.Get(0);
+
+            Assert.AreSame(Array.Empty<int>(), first.resource);
+            Assert.AreSame(first.resource, second.resource);
+
+            for (int i = 0; i < 32; i++)
+            {
+                using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(0);
+                Assert.AreSame(
+                    first.resource,
+                    pooled.resource,
+                    $"Zero-length iteration {i} should reuse the shared empty array."
+                );
+            }
+        }
+
+        [Test]
+        public void WallstopFastArrayPoolDoesNotCrossContaminateSizes()
+        {
+            const int smallSize = 16;
+            const int largeSize = 64;
+            const int iterations = 20;
+            HashSet<int> smallHashes = new();
+            HashSet<int> largeHashes = new();
+
+            for (int i = 0; i < iterations; i++)
+            {
+                using PooledResource<int[]> small = WallstopFastArrayPool<int>.Get(smallSize);
+                using PooledResource<int[]> large = WallstopFastArrayPool<int>.Get(largeSize);
+                Assert.AreNotSame(small.resource, large.resource);
+
+                smallHashes.Add(RuntimeHelpers.GetHashCode(small.resource));
+                largeHashes.Add(RuntimeHelpers.GetHashCode(large.resource));
+            }
+
+            for (int i = 0; i < iterations; i++)
+            {
+                using PooledResource<int[]> small = WallstopFastArrayPool<int>.Get(smallSize);
+                int hash = RuntimeHelpers.GetHashCode(small.resource);
+                Assert.IsTrue(
+                    smallHashes.Contains(hash),
+                    $"Small-size fetch {i} returned unexpected buffer hash {hash}."
+                );
+                Assert.IsFalse(
+                    largeHashes.Contains(hash),
+                    $"Small-size fetch {i} reused buffer previously issued for large size."
+                );
+            }
+
+            for (int i = 0; i < iterations; i++)
+            {
+                using PooledResource<int[]> large = WallstopFastArrayPool<int>.Get(largeSize);
+                int hash = RuntimeHelpers.GetHashCode(large.resource);
+                Assert.IsTrue(
+                    largeHashes.Contains(hash),
+                    $"Large-size fetch {i} returned unexpected buffer hash {hash}."
+                );
+                Assert.IsFalse(
+                    smallHashes.Contains(hash),
+                    $"Large-size fetch {i} reused buffer previously issued for small size."
+                );
+            }
+        }
+
+#if SINGLE_THREADED
+        [Test]
+        public void WallstopFastArrayPoolReleaseHandlesSparseBuckets()
+        {
+            const int maxSize = 128;
+
+            using (PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(maxSize))
+            {
+                Assert.AreEqual(maxSize, pooled.resource.Length);
+            }
+
+            Assert.DoesNotThrow(() =>
+            {
+                for (int size = 1; size <= maxSize; size += 5)
+                {
+                    using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(size);
+                    Assert.AreEqual(size, pooled.resource.Length);
+                }
+            });
+
+            Assert.DoesNotThrow(() =>
+            {
+                for (int size = maxSize - 1; size >= 1; size -= 7)
+                {
+                    using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(size);
+                    Assert.AreEqual(size, pooled.resource.Length);
+                }
+            });
+        }
+#endif
 
         [Test]
         public void WallstopFastArrayPoolGetDifferentSizesReturnsCorrectArrays()
@@ -285,9 +385,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
 #if !SINGLE_THREADED
         [TestCaseSource(nameof(WallstopFastArrayPoolConcurrentScenarioCases))]
-        public void WallstopFastArrayPoolConcurrentAccessScenarios(FastArrayPoolScenario scenario)
+        public void WallstopFastArrayPoolConcurrentAccessScenarios(ConcurrentScenario scenario)
         {
-            RunFastArrayPoolScenario(scenario);
+            RunConcurrentScenario(scenario);
+        }
+
+        [TestCaseSource(nameof(WallstopArrayPoolConcurrentScenarioCases))]
+        public void WallstopArrayPoolConcurrentAccessScenarios(ConcurrentScenario scenario)
+        {
+            RunConcurrentScenario(scenario);
         }
 
         private static IEnumerable<TestCaseData> WallstopFastArrayPoolConcurrentScenarioCases()
@@ -296,9 +402,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return CreateSameSizeScenario();
             yield return CreateMixedSizesScenario();
             yield return CreateRapidAllocationScenario();
+            yield return CreateOutOfOrderDisposeScenario();
         }
 
-        private static void RunFastArrayPoolScenario(FastArrayPoolScenario scenario)
+        private static IEnumerable<TestCaseData> WallstopArrayPoolConcurrentScenarioCases()
+        {
+            yield return CreateArrayPoolClearScenario();
+            yield return CreateArrayPoolMixedSizesScenario();
+        }
+
+        private static void RunConcurrentScenario(ConcurrentScenario scenario)
         {
             ConcurrentQueue<ScenarioException> exceptions = new();
             Task[] tasks = new Task[scenario.ThreadCount];
@@ -368,7 +481,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int threadCount = 10;
             const int operationsPerThread = 100;
 
-            FastArrayPoolScenario scenario = new(
+            ConcurrentScenario scenario = new(
                 nameof(WallstopFastArrayPoolConcurrentAccessDifferentSizes),
                 threadCount,
                 async threadId =>
@@ -405,7 +518,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int operationsPerThread = 200;
             const int arraySize = 25;
 
-            FastArrayPoolScenario scenario = new(
+            ConcurrentScenario scenario = new(
                 nameof(WallstopFastArrayPoolConcurrentAccessSameSize),
                 threadCount,
                 threadId =>
@@ -448,7 +561,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int operationsPerThread = 150;
             int[] sizes = { 1, 5, 10, 20, 50, 100 };
 
-            FastArrayPoolScenario scenario = new(
+            ConcurrentScenario scenario = new(
                 nameof(WallstopFastArrayPoolConcurrentAccessMixedSizes),
                 threadCount,
                 async threadId =>
@@ -494,7 +607,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int threadCount = 12;
             const int operationsPerThread = 500;
 
-            FastArrayPoolScenario scenario = new(
+            ConcurrentScenario scenario = new(
                 nameof(WallstopFastArrayPoolConcurrentAccessRapidAllocationDeallocation),
                 threadCount,
                 threadId =>
@@ -524,9 +637,156 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             return new TestCaseData(scenario).SetName(scenario.Name);
         }
 
-        private sealed class FastArrayPoolScenario
+        private static TestCaseData CreateOutOfOrderDisposeScenario()
         {
-            public FastArrayPoolScenario(string name, int threadCount, Func<int, Task> work)
+            const int threadCount = 4;
+            const int allocationsPerThread = 64;
+
+            ConcurrentScenario scenario = new(
+                nameof(WallstopFastArrayPoolConcurrentOutOfOrderDispose),
+                threadCount,
+                threadId =>
+                {
+                    int baseSize = 12 + threadId * 24;
+                    int[] threadSizes = { baseSize, baseSize + 3, baseSize + 6 };
+                    List<PooledResource<int[]>> rentals = new();
+
+                    for (int i = 0; i < allocationsPerThread; i++)
+                    {
+                        int size = threadSizes[i % threadSizes.Length];
+                        PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(size);
+                        rentals.Add(pooled);
+                        pooled.resource[0] = threadId;
+                        pooled.resource[size - 1] = threadId;
+                    }
+
+                    Dictionary<int, Queue<int[]>> expectedOrder = new();
+
+                    for (int i = rentals.Count - 1; i >= 0; i--)
+                    {
+                        PooledResource<int[]> pooled = rentals[i];
+                        int size = pooled.resource.Length;
+                        if (!expectedOrder.TryGetValue(size, out Queue<int[]> queue))
+                        {
+                            queue = new Queue<int[]>();
+                            expectedOrder[size] = queue;
+                        }
+
+                        queue.Enqueue(pooled.resource);
+                        pooled.Dispose();
+                    }
+
+                    foreach (KeyValuePair<int, Queue<int[]>> pair in expectedOrder)
+                    {
+                        while (pair.Value.Count > 0)
+                        {
+                            int[] expected = pair.Value.Dequeue();
+                            using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
+                                pair.Key
+                            );
+
+                            Assert.AreSame(
+                                expected,
+                                pooled.resource,
+                                $"OutOfOrderDispose thread {threadId} expected LIFO for size {pair.Key}"
+                            );
+                        }
+                    }
+
+                    return Task.CompletedTask;
+                }
+            );
+
+            return new TestCaseData(scenario).SetName(scenario.Name);
+        }
+
+        private static TestCaseData CreateArrayPoolClearScenario()
+        {
+            const int threadCount = 6;
+            const int operationsPerThread = 120;
+            const int arraySize = 32;
+
+            ConcurrentScenario scenario = new(
+                nameof(WallstopArrayPoolClearOnReuse),
+                threadCount,
+                threadId =>
+                {
+                    PcgRandom random = new(threadId + 400);
+                    foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
+                    {
+                        using PooledResource<int[]> pooled = WallstopArrayPool<int>.Get(arraySize);
+                        Assert.AreEqual(
+                            arraySize,
+                            pooled.resource.Length,
+                            $"ArrayPoolClear thread {threadId} iteration {i} expected length {arraySize}"
+                        );
+
+                        for (int j = 0; j < arraySize; j++)
+                        {
+                            Assert.AreEqual(
+                                0,
+                                pooled.resource[j],
+                                $"ArrayPoolClear thread {threadId} iteration {i} index {j} expected zero"
+                            );
+                            pooled.resource[j] = threadId + i + j;
+                        }
+                    }
+
+                    return Task.CompletedTask;
+                }
+            );
+
+            return new TestCaseData(scenario).SetName(scenario.Name);
+        }
+
+        private static TestCaseData CreateArrayPoolMixedSizesScenario()
+        {
+            const int threadCount = 5;
+            const int operationsPerThread = 80;
+            int[] sizes = { 2, 7, 13, 21, 34 };
+
+            ConcurrentScenario scenario = new(
+                nameof(WallstopArrayPoolConcurrentMixedSizesClearCheck),
+                threadCount,
+                async threadId =>
+                {
+                    PcgRandom random = new(threadId + 700);
+                    foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
+                    {
+                        int size = random.NextOf(sizes);
+                        using PooledResource<byte[]> pooled = WallstopArrayPool<byte>.Get(size);
+
+                        Assert.AreEqual(
+                            size,
+                            pooled.resource.Length,
+                            $"ArrayPoolMixedSizes thread {threadId} iteration {i} expected length {size}"
+                        );
+
+                        for (int j = 0; j < size; j++)
+                        {
+                            Assert.AreEqual(
+                                0,
+                                pooled.resource[j],
+                                $"ArrayPoolMixedSizes thread {threadId} iteration {i} index {j} expected zero"
+                            );
+                            pooled.resource[j] = (byte)(threadId + i + j);
+                        }
+
+                        if (i % 25 == 0)
+                        {
+                            await Task.Delay(TimeSpan.FromMilliseconds(random.NextDouble() * 2.0))
+                                .ConfigureAwait(false);
+                        }
+                    }
+                }
+            );
+
+            return new TestCaseData(scenario).SetName(scenario.Name);
+        }
+
+        private sealed class ConcurrentScenario
+        {
+            public ConcurrentScenario(string name, int threadCount, Func<int, Task> work)
             {
                 Name = name;
                 ThreadCount = threadCount;
