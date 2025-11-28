@@ -18,7 +18,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int nearestNeighbors = 3
         )
         {
-            return BuildConcaveHull2(points, nearestNeighbors);
+            ConcaveHullOptions options = new()
+            {
+                Strategy = ConcaveHullStrategy.Knn,
+                NearestNeighbors = Math.Max(3, nearestNeighbors),
+            };
+            return BuildConcaveHull(points, options);
         }
 
         // KNN-style concave hull for Vector2 (port of BuildConcaveHull2)

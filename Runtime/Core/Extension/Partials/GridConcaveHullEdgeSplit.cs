@@ -19,7 +19,15 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             float angleThreshold = 90f
         )
         {
-            return BuildConcaveHull3(points, bucketSize, angleThreshold);
+            int clampedBucketSize = Math.Max(1, bucketSize);
+            float effectiveAngleThreshold = clampedBucketSize <= 1 ? 0f : angleThreshold;
+            ConcaveHullOptions options = new()
+            {
+                Strategy = ConcaveHullStrategy.EdgeSplit,
+                BucketSize = clampedBucketSize,
+                AngleThreshold = effectiveAngleThreshold,
+            };
+            return BuildConcaveHull(points, options);
         }
 
         private readonly struct HullEdge
@@ -191,6 +199,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 Vector2 edgeCenter = edge.fromWorld + (edge.toWorld - edge.fromWorld) / 2;
                 quadTree.GetApproximateNearestNeighbors(edgeCenter, bucketSize, neighbors);
                 float localMaximumDistance = float.MinValue;
+                int usableNeighborCount = 0;
                 foreach (FastVector3Int neighbor in neighbors)
                 {
                     if (neighbor == edge.to || neighbor == edge.from)
@@ -198,10 +207,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         continue;
                     }
 
+                    ++usableNeighborCount;
                     localMaximumDistance = Math.Max(
                         localMaximumDistance,
                         (CellToWorld(neighbor) - edgeCenter).sqrMagnitude
                     );
+                }
+
+                if (usableNeighborCount < 2)
+                {
+                    concaveHullEdges.Add(edge);
+                    continue;
                 }
 
                 if (edge.edgeLength <= localMaximumDistance)
@@ -410,6 +426,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             );
             original.AddRange(input);
 
+            using PooledResource<HashSet<Vector2>> remainingRes = Buffers<Vector2>.HashSet.Get(
+                out HashSet<Vector2> remainingPoints
+            );
+            remainingPoints.UnionWith(original);
+
             List<Vector2> convexHull = input.BuildConvexHull(includeColinearPoints: false);
             using (
                 PooledResource<HashSet<Vector2>> uniqRes = Buffers<Vector2>.HashSet.Get(
@@ -426,6 +447,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     return new List<Vector2>(convexHull);
                 }
             }
+            remainingPoints.ExceptWith(convexHull);
 
             using PooledResource<List<HullEdgeV2>> edgeListRes = Buffers<HullEdgeV2>.List.Get(
                 out List<HullEdgeV2> concaveHullEdges
@@ -478,16 +500,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 Vector2 edgeCenter = edge.from + (edge.to - edge.from) / 2f;
                 quadTree.GetApproximateNearestNeighbors(edgeCenter, bucketSize, neighbors);
                 float localMaximumDistance = float.MinValue;
+                int usableNeighborCount = 0;
                 foreach (Vector2 n in neighbors)
                 {
                     if (n == edge.to || n == edge.from)
                     {
                         continue;
                     }
+                    ++usableNeighborCount;
                     localMaximumDistance = Math.Max(
                         localMaximumDistance,
                         (n - edgeCenter).sqrMagnitude
                     );
+                }
+                if (usableNeighborCount < 2)
+                {
+                    concaveHullEdges.Add(edge);
+                    continue;
                 }
                 if (edge.edgeLength <= localMaximumDistance)
                 {
@@ -497,17 +526,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
                 float smallestAngle = float.MaxValue;
                 Vector2? maybeChosen = null;
-                foreach (Vector2 n in neighbors)
+                foreach (Vector2 candidate in remainingPoints)
                 {
-                    if (n == edge.to || n == edge.from)
+                    if (candidate == edge.to || candidate == edge.from)
                     {
                         continue;
                     }
-                    float angle = edge.LargestAngle(n);
+                    float angle = edge.LargestAngle(candidate);
                     if (angle < smallestAngle)
                     {
                         smallestAngle = angle;
-                        maybeChosen = n;
+                        maybeChosen = candidate;
                     }
                 }
                 if (!maybeChosen.HasValue || smallestAngle > angleThreshold)
@@ -543,6 +572,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 {
                     _ = data.Add(e2);
                     _ = data.Add(e3);
+                    _ = remainingPoints.Remove(chosen);
                 }
                 else
                 {

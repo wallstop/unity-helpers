@@ -2,6 +2,21 @@
 
 ## Priority 2 — Maintainability & Developer Experience
 
+### 🔥 High Priority Investigation — Concave Hull Repair Loop Regression *(New)*
+
+- **What happened**: The latest round of concave-hull work introduced synthetic “axis path” fallbacks that insert corners not present in the original data. In practice this created situations where the repair pass keeps splicing in alternating corners (A→B→A…) without ever exhausting the loop, manifesting as test runs that never finish (CI timeout after 10–15 minutes). The first sign was the large-sample repair test (`ConcaveHullRepairMetricsRemainBoundedOnLargeSamples`) stalling even though previous builds completed in ~12s.
+- **Current hypothesis**: The new `TrySynthesizeAxisPath`/`InsertAxisPathWaypoints` helpers can inject corners outside the source point set. When `InsertMissingAxisCorners` runs again, those synthetic points fail the “point set contains candidate” guard, so we attempt to synthesize another path, effectively oscillating forever. The regression also aligns with the switch to always running `RepairVector2Hull` after the Vector2 entry points, so both grid and gridless paths hit the offending code.
+- **Immediate actions**:
+  1. Reproduce locally by running `ConcaveHullRepairMetricsRemainBoundedOnLargeSamples` in isolation with verbose logging to confirm the looping behavior and capture the sequence of injected corners.
+  2. Temporarily disable synthetic-path insertion (fall back to `pointSet.Contains`-only logic) and rerun the large-sample + hull parity suites to verify the loop disappears.
+  3. Once confirmed, design a safer fallback (e.g., expand the point set with a bounded axis walk derived from the actual input grid) or drop the feature entirely if it isn’t required for production data.
+  4. Add a watchdog assertion inside `InsertMissingAxisCorners` (or the large-sample test) to fail fast when the loop exceeds N iterations so future regressions don’t just hang CI.
+- **Owner**: Geometry/concave-hull maintainers (current on-call agent)
+- **Timeline**: Begin investigation immediately; aim for a fix (or revert) within the next working day to unblock CI.
+- **2025-11-29 Progress**: Installed an iteration watchdog inside `InsertMissingAxisCorners` (Guard = `max(1024, uniquePointCount * 4)`) so the repair loop now throws with the captured `ConcaveHullRepairStats` snapshot instead of spinning forever. Waiting on a repro run of `ConcaveHullRepairMetricsRemainBoundedOnLargeSamples` with `ENABLE_CONCAVE_HULL_STATS` enabled to capture the offending axis path sequence before proceeding to the temporary feature toggle.
+- **2025-11-29 Progress (cont.)**: Fixed the axis-path insertion loop by only marking the repair pass as “progress” when a new waypoint is actually injected and by tracking axis-corner inserts inside the hull set. Added an idempotence regression test so running the repair twice on an already axis-aligned hull remains a no-op, preventing the duplicate explosions that previously tripped the watchdog and `DuplicateRemovals` counter.
+- **2025-11-29 Progress (cont. 2)**: Prevented candidate reconnection from spamming duplicates by having `InsertPathAfterIndex` skip waypoints already present in the hull and teaching `TryFindAxisPath` to fall back to a straight axis connection for lattice-aligned candidates. This keeps the large-sample repair stats bounded (duplicate removals now stay at 0) and unblocks the Vector2 horseshoe tests, which once again regain their missing interior corners.
+
 ### 5. Split `UnityExtensions` into focused modules *(In Progress)*
 
 - **Problem**: `Runtime/Core/Extension/UnityExtensions.cs` is still a multi-thousand-line catch‑all (UI helpers, bounds/rect utilities, pooling helpers, etc.). Only the geometry block had been extracted, so most changes still collided in the root file and new helpers kept landing there by default.

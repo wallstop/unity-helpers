@@ -59,18 +59,30 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 );
 
             PopulateVectorBuffers(positions, vectorPoints, mapping, out int fallbackZ);
-            List<Vector2> vectorHull = vectorPoints.BuildConcaveHull(options);
+            List<Vector2> vectorHull = BuildConcaveHullRaw(vectorPoints, options);
             List<FastVector3Int> fastHull = ConvertVector2HullToFastVector3(
                 vectorHull,
                 mapping,
                 fallbackZ
             );
+#if ENABLE_CONCAVE_HULL_STATS
+            ConcaveHullRepairStats repairStats = new(fastHull.Count, sourcePoints.Count);
+            MaybeRepairConcaveCorners(
+                fastHull,
+                sourcePoints,
+                options.Strategy,
+                options.AngleThreshold,
+                repairStats
+            );
+            TrackHullRepairStats(fastHull, repairStats);
+#else
             MaybeRepairConcaveCorners(
                 fastHull,
                 sourcePoints,
                 options.Strategy,
                 options.AngleThreshold
             );
+#endif
             return fastHull;
         }
 
@@ -93,11 +105,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             float angleThreshold = 90f
         )
         {
+            int clampedBucketSize = Math.Max(1, bucketSize);
+            float effectiveAngleThreshold = clampedBucketSize <= 1 ? 0f : angleThreshold;
             ConcaveHullOptions options = new()
             {
                 Strategy = ConcaveHullStrategy.EdgeSplit,
-                BucketSize = Math.Max(1, bucketSize),
-                AngleThreshold = angleThreshold,
+                BucketSize = clampedBucketSize,
+                AngleThreshold = effectiveAngleThreshold,
             };
             return positions.BuildConcaveHull(options);
         }

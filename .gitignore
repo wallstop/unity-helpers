@@ -329,3 +329,6 @@ package-lock.json.meta
 
 PLAN.md
 PLAN.md.meta
+
+artifacts/**
+artifacts.meta

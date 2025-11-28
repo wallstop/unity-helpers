@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;
     using System.Collections.Generic;
+    using System.Runtime.CompilerServices;
     using DataStructure;
     using DataStructure.Adapters;
     using UnityEngine;
@@ -36,6 +37,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             public int DiagonalPruned { get; private set; }
             public int AxisNeighborVisits { get; private set; }
             public int MaxFrontierSize { get; private set; }
+
+            internal ConcaveHullRepairStats Clone()
+            {
+                ConcaveHullRepairStats clone = new(StartHullCount, OriginalPointsCount)
+                {
+                    FinalHullCount = FinalHullCount,
+                    AxisCornerInsertions = AxisCornerInsertions,
+                    AxisPathInsertions = AxisPathInsertions,
+                    CandidateConnections = CandidateConnections,
+                    DuplicateRemovals = DuplicateRemovals,
+                    DiagonalPruned = DiagonalPruned,
+                    AxisNeighborVisits = AxisNeighborVisits,
+                    MaxFrontierSize = MaxFrontierSize,
+                };
+                return clone;
+            }
 
             internal void IncrementAxisCornerInsertions()
             {
@@ -85,7 +102,53 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         }
 #endif
 
+#if ENABLE_CONCAVE_HULL_STATS
+        private static readonly ConditionalWeakTable<
+            List<FastVector3Int>,
+            ConcaveHullRepairStats
+        > HullRepairStatsCache = new();
+
+        private static void TrackHullRepairStats(
+            List<FastVector3Int> hull,
+            ConcaveHullRepairStats stats
+        )
+        {
+            if (hull == null || stats == null)
+            {
+                return;
+            }
+
+            ConcaveHullRepairStats clone = stats.Clone();
+            if (HullRepairStatsCache.TryGetValue(hull, out _))
+            {
+                HullRepairStatsCache.Remove(hull);
+            }
+
+            HullRepairStatsCache.Add(hull, clone);
+        }
+
+        private static bool TryGetTrackedHullRepairStats(
+            List<FastVector3Int> hull,
+            out ConcaveHullRepairStats stats
+        )
+        {
+            if (
+                hull != null
+                && HullRepairStatsCache.TryGetValue(hull, out ConcaveHullRepairStats cached)
+            )
+            {
+                stats = cached.Clone();
+                return true;
+            }
+
+            stats = null;
+            return false;
+        }
+#endif
+
         private const float ConcaveCornerRepairThresholdDegrees = 90f;
+        private const int AxisCornerRepairIterationMultiplier = 4;
+        private const int AxisCornerRepairIterationMinimum = 1024;
 
         /// <summary>
         /// Calculates the cosine of the angle at point o formed by points a and b using the law of cosines.
@@ -245,9 +308,32 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> pointSet);
             pointSet.UnionWith(originalPoints);
 
+            using PooledResource<HashSet<FastVector3Int>> hullSetResource =
+                Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> hullSet);
+            hullSet.UnionWith(hull);
+
+            int uniquePointBudget = Math.Max(1, pointSet.Count);
+            int iterationGuardLimit = Math.Max(
+                AxisCornerRepairIterationMinimum,
+                uniquePointBudget * AxisCornerRepairIterationMultiplier
+            );
+            int iterationCount = 0;
             bool inserted;
             do
             {
+                if (iterationCount++ >= iterationGuardLimit)
+                {
+#if ENABLE_CONCAVE_HULL_STATS
+                    throw new InvalidOperationException(
+                        $"InsertMissingAxisCorners exceeded iteration guard limit ({iterationGuardLimit}). Stats => AxisCorners:{stats?.AxisCornerInsertions ?? 0}, AxisPaths:{stats?.AxisPathInsertions ?? 0}, Candidates:{stats?.CandidateConnections ?? 0}."
+                    );
+#else
+                    throw new InvalidOperationException(
+                        $"InsertMissingAxisCorners exceeded iteration guard limit ({iterationGuardLimit}). Enable ENABLE_CONCAVE_HULL_STATS for more diagnostics."
+                    );
+#endif
+                }
+
                 inserted = false;
                 int count = hull.Count;
                 for (int i = 0; i < count; ++i)
@@ -264,31 +350,54 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     _ = pointSet.Add(end);
 
 #if ENABLE_CONCAVE_HULL_STATS
-                    List<FastVector3Int> path = TryFindAxisPath(start, end, pointSet, stats);
+                    List<FastVector3Int> path = TryFindAxisPath(
+                        start,
+                        end,
+                        pointSet,
+                        allowStraightAxisFallback: false,
+                        stats
+                    );
 #else
-                    List<FastVector3Int> path = TryFindAxisPath(start, end, pointSet);
+                    List<FastVector3Int> path = TryFindAxisPath(
+                        start,
+                        end,
+                        pointSet,
+                        allowStraightAxisFallback: false
+                    );
 #endif
                     if (path != null && path.Count > 2)
                     {
                         int insertIndex = nextIndex;
+                        bool insertedWaypoint = false;
                         for (int p = 1; p < path.Count - 1; ++p)
                         {
                             FastVector3Int waypoint = path[p];
+                            if (!hullSet.Add(waypoint))
+                            {
+                                continue;
+                            }
+
                             InsertCorner(hull, insertIndex, waypoint);
                             ++insertIndex;
+                            insertedWaypoint = true;
                             pointSet.Add(waypoint);
+#if ENABLE_CONCAVE_HULL_STATS
+                            stats?.IncrementAxisPathInsertions(1);
+#endif
                         }
 
-#if ENABLE_CONCAVE_HULL_STATS
-                        stats?.IncrementAxisPathInsertions(path.Count - 2);
-#endif
+                        if (!insertedWaypoint)
+                        {
+                            continue;
+                        }
+
                         inserted = true;
                         break;
                     }
 
                     FastVector3Int candidateA = new(start.x, end.y, start.z);
                     FastVector3Int candidateB = new(end.x, start.y, start.z);
-                    if (pointSet.Contains(candidateA))
+                    if (pointSet.Contains(candidateA) && hullSet.Add(candidateA))
                     {
                         InsertCorner(hull, nextIndex, candidateA);
                         pointSet.Add(candidateA);
@@ -299,7 +408,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         break;
                     }
 
-                    if (pointSet.Contains(candidateB))
+                    if (pointSet.Contains(candidateB) && hullSet.Add(candidateB))
                     {
                         InsertCorner(hull, nextIndex, candidateB);
                         pointSet.Add(candidateB);
@@ -324,7 +433,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         private static List<FastVector3Int> TryFindAxisPath(
             FastVector3Int start,
             FastVector3Int end,
-            HashSet<FastVector3Int> pointSet
+            HashSet<FastVector3Int> pointSet,
+            bool allowStraightAxisFallback
 #if ENABLE_CONCAVE_HULL_STATS
             ,
             ConcaveHullRepairStats stats
@@ -369,6 +479,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             if (!parents.ContainsKey(end))
             {
+                if (allowStraightAxisFallback && (start.x == end.x || start.y == end.y))
+                {
+                    return new List<FastVector3Int> { start, end };
+                }
+
                 return null;
             }
 
@@ -551,9 +666,20 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
 
 #if ENABLE_CONCAVE_HULL_STATS
-                List<FastVector3Int> path = TryFindAxisPath(anchor, candidate, pointSet, stats);
+                List<FastVector3Int> path = TryFindAxisPath(
+                    anchor,
+                    candidate,
+                    pointSet,
+                    allowStraightAxisFallback: true,
+                    stats
+                );
 #else
-                List<FastVector3Int> path = TryFindAxisPath(anchor, candidate, pointSet);
+                List<FastVector3Int> path = TryFindAxisPath(
+                    anchor,
+                    candidate,
+                    pointSet,
+                    allowStraightAxisFallback: true
+                );
 #endif
                 if (path == null || path.Count <= 1)
                 {
@@ -561,27 +687,25 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
 
 #if ENABLE_CONCAVE_HULL_STATS
-                InsertPathAfterIndex(hull, i, path, stats);
+                bool inserted = InsertPathAfterIndex(hull, i, path, hullSet, pointSet, stats);
 #else
-                InsertPathAfterIndex(hull, i, path);
+                bool inserted = InsertPathAfterIndex(hull, i, path, hullSet, pointSet);
 #endif
-                for (int p = 1; p < path.Count; ++p)
+                if (inserted)
                 {
-                    FastVector3Int waypoint = path[p];
-                    hullSet.Add(waypoint);
-                    pointSet.Add(waypoint);
+                    return true;
                 }
-
-                return true;
             }
 
             return false;
         }
 
-        private static void InsertPathAfterIndex(
+        private static bool InsertPathAfterIndex(
             List<FastVector3Int> hull,
             int anchorIndex,
-            List<FastVector3Int> path
+            List<FastVector3Int> path,
+            HashSet<FastVector3Int> hullSet,
+            HashSet<FastVector3Int> pointSet
 #if ENABLE_CONCAVE_HULL_STATS
             ,
             ConcaveHullRepairStats stats
@@ -589,9 +713,15 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         )
         {
             int insertIndex = anchorIndex + 1;
+            bool inserted = false;
             for (int p = 1; p < path.Count; ++p)
             {
                 FastVector3Int waypoint = path[p];
+                if (hullSet != null && !hullSet.Add(waypoint))
+                {
+                    continue;
+                }
+
                 if (insertIndex >= hull.Count)
                 {
                     hull.Add(waypoint);
@@ -601,6 +731,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     hull.Insert(insertIndex, waypoint);
                 }
 
+                pointSet?.Add(waypoint);
+                inserted = true;
                 ++insertIndex;
 #if ENABLE_CONCAVE_HULL_STATS
                 if (p < path.Count - 1)
@@ -609,6 +741,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
 #endif
             }
+
+            return inserted;
         }
 
         private static bool TryInsertAxisCorner(List<FastVector3Int> hull, FastVector3Int candidate)
@@ -847,6 +981,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 throw new ArgumentNullException(nameof(hull));
             }
+
+#if ENABLE_CONCAVE_HULL_STATS
+            if (TryGetTrackedHullRepairStats(hull, out ConcaveHullRepairStats cachedStats))
+            {
+                return cachedStats;
+            }
+#endif
 
             List<FastVector3Int> workingHull = new(hull);
             List<FastVector3Int> workingOriginal =

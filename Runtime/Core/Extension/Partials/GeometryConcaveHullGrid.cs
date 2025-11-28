@@ -53,7 +53,19 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     );
             }
 
+#if ENABLE_CONCAVE_HULL_STATS
+            ConcaveHullRepairStats repairStats = new(hull.Count, sourcePoints.Count);
+            MaybeRepairConcaveCorners(
+                hull,
+                sourcePoints,
+                options.Strategy,
+                options.AngleThreshold,
+                repairStats
+            );
+            TrackHullRepairStats(hull, repairStats);
+#else
             MaybeRepairConcaveCorners(hull, sourcePoints, options.Strategy, options.AngleThreshold);
+#endif
             return hull;
         }
 
@@ -81,11 +93,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         )
         {
 #pragma warning disable CS0618 // Type or member is obsolete
+            int clampedBucketSize = Math.Max(1, bucketSize);
+            float effectiveAngleThreshold = clampedBucketSize <= 1 ? 0f : angleThreshold;
             ConcaveHullOptions options = new()
             {
                 Strategy = ConcaveHullStrategy.EdgeSplit,
-                BucketSize = Math.Max(1, bucketSize),
-                AngleThreshold = angleThreshold,
+                BucketSize = clampedBucketSize,
+                AngleThreshold = effectiveAngleThreshold,
             };
             return BuildConcaveHull(gridPositions, grid, options);
 #pragma warning restore CS0618 // Type or member is obsolete

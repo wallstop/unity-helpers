@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEFAULT_PROJECT="${SCRIPT_DIR}/../TestProjects/UnityPackageTests"
+DEFAULT_PROJECT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 DEFAULT_RESULTS="${SCRIPT_DIR}/../artifacts/unity-tests"
 
 UNITY_PATH="${UNITY_PATH:-${UNITY_EDITOR_PATH:-}}"

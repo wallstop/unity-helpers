@@ -29,7 +29,7 @@ function Resolve-PathOrDefault {
 }
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$defaultProject = Join-Path $scriptRoot ".." "TestProjects" "UnityPackageTests"
+$defaultProject = Join-Path $scriptRoot ".." ".." ".."
 $defaultResults = Join-Path $scriptRoot ".." "artifacts" "unity-tests"
 
 $UnityPath = Resolve-PathOrDefault $UnityPath ($env:UNITY_EDITOR_PATH)

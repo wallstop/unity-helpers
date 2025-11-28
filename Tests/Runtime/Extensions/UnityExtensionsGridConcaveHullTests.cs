@@ -343,37 +343,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             );
         }
 
-        [Test]
-        public void EdgeSplitFallsBackWhenBucketSizeTooSmall()
+        private static IEnumerable<TestCaseData> EdgeSplitBucketCases()
         {
-            Grid grid = CreateGrid(out GameObject owner);
-            Track(owner);
-
-            List<FastVector3Int> concaveShape = CreatePointList(
-                (0, 0),
-                (0, 4),
-                (2, 4),
-                (2, 2),
-                (4, 2),
-                (4, 0)
+            yield return new TestCaseData(1, false).SetName(
+                "EdgeSplitFallsBackWhenBucketSizeTooSmall"
             );
-            FastVector3Int elbow = FV(2, 2);
-
-            List<FastVector3Int> hull = concaveShape.BuildConcaveHullEdgeSplit(
-                grid,
-                bucketSize: 1,
-                angleThreshold: 240f
-            );
-
-            AssertHullSubset(concaveShape, hull);
-            Assert.IsFalse(
-                hull.Contains(elbow),
-                "Small bucket sizes should starve the QuadTree and fall back to convex hull behaviour."
+            yield return new TestCaseData(16, true).SetName(
+                "EdgeSplitCapturesConcavityWhenBucketSizeAdequate"
             );
         }
 
-        [Test]
-        public void EdgeSplitCapturesConcavityWhenBucketSizeAdequate()
+        [TestCaseSource(nameof(EdgeSplitBucketCases))]
+        public void EdgeSplitBucketSizeControlsConcavity(int bucketSize, bool expectElbow)
         {
             Grid grid = CreateGrid(out GameObject owner);
             Track(owner);
@@ -390,15 +371,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             List<FastVector3Int> hull = concaveShape.BuildConcaveHullEdgeSplit(
                 grid,
-                bucketSize: 16,
+                bucketSize: bucketSize,
                 angleThreshold: 240f
             );
 
             AssertHullSubset(concaveShape, hull);
-            Assert.IsTrue(
-                hull.Contains(elbow),
-                "Adequate bucket sizes should feed enough candidates to reintroduce concave vertices."
+            bool containsElbow = hull.Contains(elbow);
+            TestContext.WriteLine(
+                $"BucketSize={bucketSize}, ExpectedElbow={expectElbow}, ActualElbow={containsElbow}, HullVertices={hull.Count}"
             );
+
+            string expectation = expectElbow
+                ? "Adequate bucket sizes should feed enough candidates to reintroduce concave vertices."
+                : "Small bucket sizes should starve the QuadTree and fall back to convex hull behaviour.";
+            Assert.AreEqual(expectElbow, containsElbow, expectation);
         }
 
         [Test]
@@ -438,6 +424,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 options.AngleThreshold
             );
 
+            TestContext.WriteLine(
+                $"Repair stats: start={stats.StartHullCount}, final={stats.FinalHullCount}, axisCorners={stats.AxisCornerInsertions}, axisPaths={stats.AxisPathInsertions}, duplicates={stats.DuplicateRemovals}, candidates={stats.CandidateConnections}, frontier={stats.MaxFrontierSize}"
+            );
+
             Assert.Greater(
                 stats.AxisCornerInsertions + stats.AxisPathInsertions,
                 0,
@@ -450,6 +440,55 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             );
             Assert.AreEqual(0, stats.DuplicateRemovals, "Repair should deduplicate as it goes.");
             Assert.Greater(stats.MaxFrontierSize, 0, "BFS frontier should have processed nodes.");
+        }
+
+        [Test]
+        public void ConcaveHullRepairIsIdempotentAfterAxisCornersInserted()
+        {
+            Grid grid = CreateGrid(out GameObject owner);
+            Track(owner);
+
+            List<FastVector3Int> samples = CreatePointList(
+                (0, 0),
+                (0, 3),
+                (1, 3),
+                (1, 2),
+                (2, 2),
+                (2, 1),
+                (3, 1),
+                (3, 0)
+            );
+
+            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
+            {
+                Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
+                BucketSize = 8,
+                AngleThreshold = 220f,
+            };
+
+            List<FastVector3Int> repairedHull = samples.BuildConcaveHull(grid, options);
+            UnityExtensions.ConcaveHullRepairStats stats = UnityExtensions.ProfileConcaveHullRepair(
+                new List<FastVector3Int>(repairedHull),
+                new List<FastVector3Int>(samples),
+                options.Strategy,
+                options.AngleThreshold
+            );
+
+            Assert.AreEqual(
+                0,
+                stats.AxisCornerInsertions + stats.AxisPathInsertions,
+                "Repair should be a no-op once all axis corners already exist."
+            );
+            Assert.AreEqual(
+                0,
+                stats.DuplicateRemovals,
+                "Re-running repair on an axis-aligned hull must not create duplicates."
+            );
+            Assert.AreEqual(
+                repairedHull.Count,
+                stats.FinalHullCount,
+                "Axis-aligned hulls should retain their vertex count across repair passes."
+            );
         }
 
         private static List<FastVector3Int> CreatePointList(params (int x, int y)[] coords)

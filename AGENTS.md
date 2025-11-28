@@ -67,3 +67,4 @@
 - This file’s scope is the entire repo. Keep changes minimal, follow `.editorconfig`, respect folder boundaries (Runtime vs Editor), and update docs/tests alongside code changes.
 - Do not copy or clone this repository elsewhere. If you need test results, ask the user—they will run the tests and provide the output.
 - Do **not** create commits (or push) without explicit user consent. Share diffs/changes and wait for approval before committing.
+- Never hard-code or document machine-specific absolute paths. If you must reference a location, describe it relative to the repo root or via environment variables so those paths don’t leak into version control.

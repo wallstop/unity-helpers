@@ -8,4 +8,4 @@ This minimal Unity project exists solely to exercise the package’s EditMode an
 - Package dependencies live entirely inside `Packages/manifest.json`.
 - Generated folders such as `Library/`, `Temp/`, `UserSettings/`, and cached `packages-lock.json` files are gitignored – Unity will create them on demand.
 
-If you need to run the package tests locally without touching your main game, open this project in the Unity Hub (2021.3 LTS) and run the Test Runner.
+If you need to run the package tests locally without touching your main game, open this project in the Unity Hub (2022.3.51f1 LTS) and run the Test Runner.

@@ -1170,11 +1170,15 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 Vector2 vertex = vectorHull[i];
                 if (!mapping.TryGetValue(vertex, out FastVector3Int point))
                 {
-                    point = new FastVector3Int(
-                        Mathf.RoundToInt(vertex.x),
-                        Mathf.RoundToInt(vertex.y),
-                        fallbackZ
-                    );
+                    Vector2 rounded = new(Mathf.Round(vertex.x), Mathf.Round(vertex.y));
+                    if (!mapping.TryGetValue(rounded, out point))
+                    {
+                        point = new FastVector3Int(
+                            Mathf.RoundToInt(vertex.x),
+                            Mathf.RoundToInt(vertex.y),
+                            fallbackZ
+                        );
+                    }
                 }
 
                 converted.Add(point);
