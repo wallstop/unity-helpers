@@ -231,6 +231,36 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
         }
 
+        [UnityTest]
+        public IEnumerator PendingEntryPrimitiveValueDrawsInlineField()
+        {
+            SerializableSetPropertyDrawer.PendingEntry pending = new();
+            Rect rect = new(0f, 0f, 200f, EditorGUIUtility.singleLineHeight);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                pending.value = 7;
+                pending.value = SerializableSetPropertyDrawer.DrawFieldForType(
+                    rect,
+                    new GUIContent("Value"),
+                    pending.value,
+                    typeof(int),
+                    pending
+                );
+            });
+
+            Assert.IsInstanceOf<int>(pending.value, "Primitive values should remain ints.");
+            Assert.IsNull(pending.valueWrapper, "Primitive values should not allocate wrappers.");
+            Assert.IsNull(
+                pending.valueWrapperSerialized,
+                "Primitive values should not allocate serialized wrappers."
+            );
+            Assert.IsNull(
+                pending.valueWrapperProperty,
+                "Primitive values should not allocate wrapper properties."
+            );
+        }
+
         [Test]
         public void CloneComplexValueReturnsSameReferenceForStrings()
         {

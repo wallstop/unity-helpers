@@ -1471,51 +1471,74 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            float rowHeight = EditorGUIUtility.singleLineHeight;
-            float spacing = EditorGUIUtility.standardVerticalSpacing;
-
-            float containerY = y;
-            float containerX = fullPosition.x;
-            float containerWidth = fullPosition.width;
-
-            AnimBool foldoutAnim = EnsureManualEntryFoldoutAnim(pending);
-            float foldoutProgress = GetPendingFoldoutProgress(pending);
-            float sectionHeight = GetPendingSectionHeight(pending);
-
-            Rect backgroundRect = new(containerX, containerY, containerWidth, sectionHeight);
-            Color backgroundColor = EditorGUIUtility.isProSkin
-                ? new Color(0.18f, 0.18f, 0.18f, 1f)
-                : new Color(0.92f, 0.92f, 0.92f, 1f);
-            if (Event.current.type == EventType.Repaint)
+            int previousIndentLevel = EditorGUI.indentLevel;
+            EditorGUI.indentLevel = 0;
+            try
             {
-                EditorGUI.DrawRect(backgroundRect, backgroundColor);
-            }
+                float rowHeight = EditorGUIUtility.singleLineHeight;
+                float spacing = EditorGUIUtility.standardVerticalSpacing;
 
-            float headerY = containerY + ManualEntrySectionPadding;
-            Rect headerRect = new(
-                containerX + ManualEntrySectionPadding + ManualEntryFoldoutOffset,
-                headerY,
-                containerWidth - ManualEntrySectionPadding * 2f - ManualEntryFoldoutOffset,
-                rowHeight
-            );
+                float containerY = y;
+                float containerX = fullPosition.x;
+                float containerWidth = fullPosition.width;
 
-            EditorGUI.BeginChangeCheck();
-            FontStyle previousFoldoutStyle = EditorStyles.foldout.fontStyle;
-            EditorStyles.foldout.fontStyle = FontStyle.Bold;
-            bool expanded = EditorGUI.Foldout(
-                headerRect,
-                pending.isExpanded,
-                ManualEntryFoldoutContent,
-                true
-            );
-            EditorStyles.foldout.fontStyle = previousFoldoutStyle;
-            if (EditorGUI.EndChangeCheck())
-            {
-                pending.isExpanded = expanded;
-                foldoutAnim = EnsureManualEntryFoldoutAnim(pending);
+                AnimBool foldoutAnim = EnsureManualEntryFoldoutAnim(pending);
+                float foldoutProgress = GetPendingFoldoutProgress(pending);
+                float sectionHeight = GetPendingSectionHeight(pending);
+
+                Rect backgroundRect = new(containerX, containerY, containerWidth, sectionHeight);
+                Color backgroundColor = EditorGUIUtility.isProSkin
+                    ? new Color(0.18f, 0.18f, 0.18f, 1f)
+                    : new Color(0.92f, 0.92f, 0.92f, 1f);
+                if (Event.current.type == EventType.Repaint)
+                {
+                    EditorGUI.DrawRect(backgroundRect, backgroundColor);
+                }
+
+                float headerY = containerY + ManualEntrySectionPadding;
+                Rect headerRect = new(
+                    containerX + ManualEntrySectionPadding + ManualEntryFoldoutOffset,
+                    headerY,
+                    containerWidth - ManualEntrySectionPadding * 2f - ManualEntryFoldoutOffset,
+                    rowHeight
+                );
+
+                EditorGUI.BeginChangeCheck();
+                FontStyle previousFoldoutStyle = EditorStyles.foldout.fontStyle;
+                EditorStyles.foldout.fontStyle = FontStyle.Bold;
+                bool expanded = EditorGUI.Foldout(
+                    headerRect,
+                    pending.isExpanded,
+                    ManualEntryFoldoutContent,
+                    true
+                );
+                EditorStyles.foldout.fontStyle = previousFoldoutStyle;
+                if (EditorGUI.EndChangeCheck())
+                {
+                    pending.isExpanded = expanded;
+                    foldoutAnim = EnsureManualEntryFoldoutAnim(pending);
+                    if (foldoutAnim != null)
+                    {
+                        foldoutAnim.target = expanded;
+                        foldoutProgress = foldoutAnim.faded;
+                    }
+                    else
+                    {
+                        foldoutProgress = pending.isExpanded ? 1f : 0f;
+                    }
+
+                    sectionHeight = GetPendingSectionHeight(pending);
+                    backgroundRect.height = sectionHeight;
+                    if (Event.current.type == EventType.Repaint)
+                    {
+                        EditorGUI.DrawRect(backgroundRect, backgroundColor);
+                    }
+                    RequestRepaint();
+                }
+
                 if (foldoutAnim != null)
                 {
-                    foldoutAnim.target = expanded;
+                    foldoutAnim.target = pending.isExpanded;
                     foldoutProgress = foldoutAnim.faded;
                 }
                 else
@@ -1523,150 +1546,144 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     foldoutProgress = pending.isExpanded ? 1f : 0f;
                 }
 
-                sectionHeight = GetPendingSectionHeight(pending);
-                backgroundRect.height = sectionHeight;
-                if (Event.current.type == EventType.Repaint)
+                if (foldoutProgress <= 0f && !pending.isExpanded)
                 {
-                    EditorGUI.DrawRect(backgroundRect, backgroundColor);
+                    y = backgroundRect.yMax;
+                    return;
                 }
-                RequestRepaint();
-            }
 
-            if (foldoutAnim != null)
-            {
-                foldoutAnim.target = pending.isExpanded;
-                foldoutProgress = foldoutAnim.faded;
-            }
-            else
-            {
-                foldoutProgress = pending.isExpanded ? 1f : 0f;
-            }
+                float innerX = containerX + ManualEntrySectionPadding;
+                float innerWidth = containerWidth - ManualEntrySectionPadding * 2f;
+                float innerY = headerRect.yMax + spacing;
 
-            if (foldoutProgress <= 0f && !pending.isExpanded)
-            {
-                y = backgroundRect.yMax;
-                return;
-            }
+                Color previousColor = GUI.color;
+                if (!Mathf.Approximately(foldoutProgress, 1f))
+                {
+                    GUI.color = new Color(
+                        previousColor.r,
+                        previousColor.g,
+                        previousColor.b,
+                        previousColor.a * Mathf.Clamp01(foldoutProgress)
+                    );
+                }
 
-            float innerX = containerX + ManualEntrySectionPadding;
-            float innerWidth = containerWidth - ManualEntrySectionPadding * 2f;
-            float innerY = headerRect.yMax + spacing;
-
-            Color previousColor = GUI.color;
-            if (!Mathf.Approximately(foldoutProgress, 1f))
-            {
-                GUI.color = new Color(
-                    previousColor.r,
-                    previousColor.g,
-                    previousColor.b,
-                    previousColor.a * Mathf.Clamp01(foldoutProgress)
+                object previousValue = pending.value;
+                object updatedValue = DrawFieldForType(
+                    new Rect(innerX, innerY, innerWidth, rowHeight),
+                    ManualEntryValueContent,
+                    pending.value,
+                    elementType,
+                    pending
                 );
-            }
+                object normalizedValue = CloneComplexValue(updatedValue, elementType);
+                bool valueChanged = !ValuesEqual(previousValue, normalizedValue);
+                if (valueChanged)
+                {
+                    pending.value = normalizedValue;
+                    pending.errorMessage = null;
+                }
+                else
+                {
+                    pending.value = normalizedValue;
+                }
+                innerY += rowHeight + spacing;
 
-            object previousValue = pending.value;
-            object updatedValue = DrawFieldForType(
-                new Rect(innerX, innerY, innerWidth, rowHeight),
-                ManualEntryValueContent,
-                pending.value,
-                elementType,
-                pending
-            );
-            object normalizedValue = CloneComplexValue(updatedValue, elementType);
-            bool valueChanged = !ValuesEqual(previousValue, normalizedValue);
-            if (valueChanged)
-            {
-                pending.value = normalizedValue;
-                pending.errorMessage = null;
-            }
-            else
-            {
-                pending.value = normalizedValue;
-            }
-            innerY += rowHeight + spacing;
+                bool inspectorAvailable = inspector != null;
+                bool typeSupported = elementType != null && IsTypeSupported(elementType);
+                bool elementAllowsNull = ElementTypeSupportsNull(elementType);
+                bool valueProvided = pending.value != null || elementAllowsNull;
+                bool duplicateExists = false;
+                if (inspectorAvailable && typeSupported && valueProvided)
+                {
+                    object candidate = ConvertSnapshotValue(elementType, pending.value);
+                    duplicateExists = inspector.ContainsElement(candidate);
+                }
 
-            bool inspectorAvailable = inspector != null;
-            bool typeSupported = elementType != null && IsTypeSupported(elementType);
-            bool elementAllowsNull = ElementTypeSupportsNull(elementType);
-            bool valueProvided = pending.value != null || elementAllowsNull;
-            bool duplicateExists = false;
-            if (inspectorAvailable && typeSupported && valueProvided)
-            {
-                object candidate = ConvertSnapshotValue(elementType, pending.value);
-                duplicateExists = inspector.ContainsElement(candidate);
-            }
+                bool canCommit =
+                    inspectorAvailable && typeSupported && valueProvided && !duplicateExists;
 
-            bool canCommit =
-                inspectorAvailable && typeSupported && valueProvided && !duplicateExists;
+                Rect addRect = new(innerX, innerY, ManualEntryButtonWidth, rowHeight);
+                Rect resetRect = new(
+                    addRect.xMax + spacing,
+                    innerY,
+                    ManualEntryResetWidth,
+                    rowHeight
+                );
+                float infoX = resetRect.xMax + spacing;
+                float infoWidth = Mathf.Max(0f, innerX + innerWidth - infoX);
 
-            Rect addRect = new(innerX, innerY, ManualEntryButtonWidth, rowHeight);
-            Rect resetRect = new(addRect.xMax + spacing, innerY, ManualEntryResetWidth, rowHeight);
-            float infoX = resetRect.xMax + spacing;
-            float infoWidth = Mathf.Max(0f, innerX + innerWidth - infoX);
+                string infoMessage = GetManualEntryInfoMessage(
+                    inspectorAvailable,
+                    typeSupported,
+                    valueProvided,
+                    duplicateExists,
+                    elementType
+                );
 
-            string infoMessage = GetManualEntryInfoMessage(
-                inspectorAvailable,
-                typeSupported,
-                valueProvided,
-                duplicateExists,
-                elementType
-            );
-
-            bool addEnabled = canCommit;
-            using (new EditorGUI.DisabledScope(!addEnabled))
-            {
-                GUIStyle addStyle = SolidButtonStyles.GetSolidButtonStyle("Add", addEnabled);
-                if (
-                    GUI.Button(addRect, ManualEntryAddContent, addStyle)
-                    && TryCommitPendingEntry(
-                        pending,
-                        property,
-                        propertyPath,
-                        ref itemsProperty,
-                        pagination,
-                        inspector
+                bool addEnabled = canCommit;
+                using (new EditorGUI.DisabledScope(!addEnabled))
+                {
+                    GUIStyle addStyle = SolidButtonStyles.GetSolidButtonStyle("Add", addEnabled);
+                    if (
+                        GUI.Button(addRect, ManualEntryAddContent, addStyle)
+                        && TryCommitPendingEntry(
+                            pending,
+                            property,
+                            propertyPath,
+                            ref itemsProperty,
+                            pagination,
+                            inspector
+                        )
                     )
-                )
-                {
-                    duplicateExists = false;
+                    {
+                        duplicateExists = false;
+                    }
                 }
-            }
 
-            object defaultElementValue =
-                elementType != null
-                    ? SerializableDictionaryPropertyDrawer.GetDefaultValue(elementType)
-                    : null;
-            bool resetEnabled =
-                elementType != null && !ValuesEqual(pending.value, defaultElementValue);
-            bool parentGuiEnabled = GUI.enabled;
-            using (new EditorGUI.DisabledScope(!resetEnabled))
-            {
-                bool styleEnabled = resetEnabled && parentGuiEnabled;
-                GUIStyle resetStyle = SolidButtonStyles.GetSolidButtonStyle("Reset", styleEnabled);
-                if (GUI.Button(resetRect, ManualEntryResetContent, resetStyle))
+                object defaultElementValue =
+                    elementType != null
+                        ? SerializableDictionaryPropertyDrawer.GetDefaultValue(elementType)
+                        : null;
+                bool resetEnabled =
+                    elementType != null && !ValuesEqual(pending.value, defaultElementValue);
+                bool parentGuiEnabled = GUI.enabled;
+                using (new EditorGUI.DisabledScope(!resetEnabled))
                 {
-                    ResetPendingEntry(pending, collapseFoldout: false);
-                    SyncPendingWrapperValue(pending);
+                    bool styleEnabled = resetEnabled && parentGuiEnabled;
+                    GUIStyle resetStyle = SolidButtonStyles.GetSolidButtonStyle(
+                        "Reset",
+                        styleEnabled
+                    );
+                    if (GUI.Button(resetRect, ManualEntryResetContent, resetStyle))
+                    {
+                        ResetPendingEntry(pending, collapseFoldout: false);
+                        SyncPendingWrapperValue(pending);
+                    }
                 }
-            }
 
-            if (infoWidth > 0f && !string.IsNullOrEmpty(infoMessage))
+                if (infoWidth > 0f && !string.IsNullOrEmpty(infoMessage))
+                {
+                    Rect infoRect = new(infoX, innerY, infoWidth, rowHeight);
+                    GUI.Label(infoRect, infoMessage, EditorStyles.miniLabel);
+                }
+
+                innerY += rowHeight + spacing;
+
+                if (!string.IsNullOrEmpty(pending.errorMessage))
+                {
+                    float warningHeight = GetWarningBarHeight();
+                    Rect warningRect = new(innerX, innerY, innerWidth, warningHeight);
+                    EditorGUI.HelpBox(warningRect, pending.errorMessage, MessageType.Warning);
+                    innerY = warningRect.yMax + spacing;
+                }
+
+                GUI.color = previousColor;
+                y = backgroundRect.yMax;
+            }
+            finally
             {
-                Rect infoRect = new(infoX, innerY, infoWidth, rowHeight);
-                GUI.Label(infoRect, infoMessage, EditorStyles.miniLabel);
+                EditorGUI.indentLevel = previousIndentLevel;
             }
-
-            innerY += rowHeight + spacing;
-
-            if (!string.IsNullOrEmpty(pending.errorMessage))
-            {
-                float warningHeight = GetWarningBarHeight();
-                Rect warningRect = new(innerX, innerY, innerWidth, warningHeight);
-                EditorGUI.HelpBox(warningRect, pending.errorMessage, MessageType.Warning);
-                innerY = warningRect.yMax + spacing;
-            }
-
-            GUI.color = previousColor;
-            y = backgroundRect.yMax;
         }
 
         private static string GetManualEntryInfoMessage(
@@ -2254,6 +2271,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return true;
             }
 
+            if (IsSimplePendingFieldType(type))
+            {
+                return false;
+            }
+
             if (type.IsArray)
             {
                 return TypeSupportsComplexEditing(type.GetElementType());
@@ -2265,6 +2287,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return type.IsSerializable;
+        }
+
+        private static bool IsSimplePendingFieldType(Type type)
+        {
+            if (type == null)
+            {
+                return false;
+            }
+
+            if (type.IsPrimitive || type.IsEnum)
+            {
+                return true;
+            }
+
+            return type == typeof(string)
+                || type == typeof(decimal)
+                || type == typeof(Vector2)
+                || type == typeof(Vector3)
+                || type == typeof(Vector4)
+                || type == typeof(Vector2Int)
+                || type == typeof(Vector3Int)
+                || type == typeof(Rect)
+                || type == typeof(RectInt)
+                || type == typeof(Bounds)
+                || type == typeof(BoundsInt)
+                || type == typeof(Color)
+                || type == typeof(AnimationCurve);
         }
 
         private static bool IsTypeSupported(Type type)

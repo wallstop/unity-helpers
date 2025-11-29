@@ -629,6 +629,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             StringComparer.OrdinalIgnoreCase
         );
 
+        internal HashSet<string> WButtonCustomColorSkipAutoSuggest
+        {
+            get => wbuttonCustomColorSkipAutoSuggest;
+            set => wbuttonCustomColorSkipAutoSuggest = value;
+        }
+
+        internal HashSet<string> WGroupCustomColorSkipAutoSuggest
+        {
+            get => wgroupCustomColorSkipAutoSuggest;
+            set => wgroupCustomColorSkipAutoSuggest = value;
+        }
+
         [Serializable]
         internal sealed class SerializableTypeIgnorePattern
         {
@@ -650,7 +662,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         }
 
         [Serializable]
-        private sealed class WButtonCustomColor
+        internal sealed class WButtonCustomColor
         {
             [SerializeField]
             internal Color buttonColor = Color.white;
@@ -794,13 +806,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 #endif
 
         [Serializable]
-        private sealed class WGroupCustomColor
+        internal sealed class WGroupCustomColor
         {
             [SerializeField]
-            private Color backgroundColor = DefaultColorKeyButtonColor;
+            internal Color backgroundColor = DefaultColorKeyButtonColor;
 
             [SerializeField]
-            private Color textColor = Color.white;
+            internal Color textColor = Color.white;
 
             public Color BackgroundColor
             {
@@ -1409,6 +1421,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 #pragma warning restore CS0618 // Type or member is obsolete
             internal const string WButtonCustomColorButton = nameof(WButtonCustomColor.buttonColor);
             internal const string WButtonCustomColorText = nameof(WButtonCustomColor.textColor);
+            internal const string WGroupCustomColorBackground = nameof(
+                WGroupCustomColor.backgroundColor
+            );
+            internal const string WGroupCustomColorText = nameof(WGroupCustomColor.textColor);
         }
 
         /// <summary>
@@ -1638,7 +1654,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return true;
         }
 
-        private bool EnsureWButtonCustomColorDefaults()
+        internal bool EnsureWButtonCustomColorDefaults()
         {
             wbuttonCustomColors ??= new WButtonCustomColorDictionary();
 
@@ -1814,7 +1830,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return changed;
         }
 
-        private bool EnsureWGroupCustomColorDefaults()
+        internal bool EnsureWGroupCustomColorDefaults()
         {
             wgroupCustomColors ??= new WGroupCustomColorDictionary();
 

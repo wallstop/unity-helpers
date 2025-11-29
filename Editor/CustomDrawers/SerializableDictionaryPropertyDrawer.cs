@@ -42,6 +42,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly char[] PropertyPathSeparators = { '.' };
 
         private const float PendingSectionPadding = 6f;
+        internal const float PendingFoldoutToggleOffset = 12f;
+        internal const float PendingFoldoutToggleOffsetProjectSettings = 2f;
+        internal const float PendingFoldoutLabelPadding = 4f;
+        internal const float DictionaryRowFieldPadding = 4f;
+        internal const float ExpandableValueFoldoutLabelWidth = 16f;
+        internal const float PendingExpandableValueFoldoutGutter = 8f;
+        internal const float RowExpandableValueFoldoutGutter = 32f;
         private const float PendingAddButtonWidth = 110f;
         private const int DefaultPageSize =
             UnityHelpersSettings.DefaultSerializableDictionaryPageSize;
@@ -81,7 +88,32 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             "New Entry"
         );
         private static GUIStyle _footerLabelStyle;
+        private static GUIStyle _pendingFoldoutLabelStyle;
+        private static readonly GUIContent FoldoutSpacerLabel = new(" ");
         private static readonly object NullKeySentinel = new();
+
+        internal static bool HasLastPendingHeaderRect { get; private set; }
+        internal static Rect LastPendingHeaderRect { get; private set; }
+        internal static Rect LastPendingFoldoutToggleRect { get; private set; }
+        internal static bool HasLastRowRects { get; private set; }
+        internal static Rect LastRowOriginalRect { get; private set; }
+        internal static Rect LastRowKeyRect { get; private set; }
+        internal static Rect LastRowValueRect { get; private set; }
+        internal static float LastRowValueBaseX { get; private set; }
+        internal static bool LastPendingValueUsedFoldoutLabel { get; private set; }
+        internal static bool LastRowValueUsedFoldoutLabel { get; private set; }
+        internal static float LastPendingValueFoldoutOffset { get; private set; }
+        internal static float LastRowValueFoldoutOffset { get; private set; }
+
+        internal static void ResetLayoutTrackingForTests()
+        {
+            HasLastPendingHeaderRect = false;
+            HasLastRowRects = false;
+            LastPendingValueUsedFoldoutLabel = false;
+            LastRowValueUsedFoldoutLabel = false;
+            LastPendingValueFoldoutOffset = 0f;
+            LastRowValueFoldoutOffset = 0f;
+        }
 
         /// <summary>
         /// Draws the expandable dictionary inspector UI, including toolbar actions and inline key/value editing.
@@ -540,6 +572,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
 
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
+                bool valueSupportsFoldoutForHeight =
+                    resolvedValueType != null
+                    && ValueTypeSupportsFoldout(resolvedValueType)
+                    && SerializedPropertySupportsFoldout(valueProperty);
+                if (valueSupportsFoldoutForHeight)
+                {
+                    valueProperty.isExpanded = true;
+                }
                 float keyHeight = EditorGUI.GetPropertyHeight(keyProperty, GUIContent.none, true);
                 float valueHeight = EditorGUI.GetPropertyHeight(
                     valueProperty,
@@ -575,10 +615,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 bool complexValue =
                     resolvedValueType != null && TypeSupportsComplexEditing(resolvedValueType);
                 float keyColumnWidth = complexValue
-                    ? Mathf.Min(Mathf.Max(rect.width * 0.35f, 180f), rect.width - gap - 60f)
+                    ? Mathf.Min(Mathf.Max(rect.width * 0.35f, 170f), rect.width - gap - 80f)
                     : (rect.width - gap) * 0.5f;
                 keyColumnWidth = Mathf.Max(100f, keyColumnWidth);
                 float valueColumnWidth = Mathf.Max(0f, rect.width - keyColumnWidth - gap);
+                if (valueSupportsFoldoutForHeight)
+                {
+                    float targetValueWidth = Mathf.Max(rect.width * 0.55f, 220f);
+                    targetValueWidth = Mathf.Min(targetValueWidth, rect.width - gap - 110f);
+                    valueColumnWidth = Mathf.Max(valueColumnWidth, targetValueWidth);
+                    keyColumnWidth = Mathf.Max(100f, rect.width - gap - valueColumnWidth);
+                    valueColumnWidth = Mathf.Max(0f, rect.width - keyColumnWidth - gap);
+                    gap += 6f;
+                }
 
                 Rect keyRect = new(rect.x, contentY, keyColumnWidth, keyHeight);
                 Rect valueRect = new(
@@ -587,6 +636,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     valueColumnWidth,
                     valueHeight
                 );
+
+                LastRowOriginalRect = rect;
+                LastRowValueBaseX = valueRect.x;
+
+                float rowFieldPadding = DictionaryRowFieldPadding;
+                keyRect.x += rowFieldPadding;
+                keyRect.width = Mathf.Max(0f, keyRect.width - rowFieldPadding);
+                valueRect.x += rowFieldPadding;
+                valueRect.width = Mathf.Max(0f, valueRect.width - rowFieldPadding);
+
+                bool valueSupportsFoldout = valueSupportsFoldoutForHeight;
 
                 float iconSize = EditorGUIUtility.singleLineHeight;
                 float iconSpacing = 3f;
@@ -619,6 +679,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
 
+                HasLastRowRects = true;
+                LastRowKeyRect = keyRect;
+                LastRowValueRect = valueRect;
+
                 EditorGUI.BeginChangeCheck();
                 EditorGUI.PropertyField(keyRect, keyProperty, GUIContent.none, true);
                 if (EditorGUI.EndChangeCheck())
@@ -627,13 +691,49 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     ApplyAndSyncPaletteRowChange(dictionaryProperty, "KeyFieldChanged");
                 }
 
-                EditorGUI.BeginChangeCheck();
-                EditorGUI.PropertyField(valueRect, valueProperty, GUIContent.none, true);
-                if (EditorGUI.EndChangeCheck())
+                GUIContent valueLabel = GUIContent.none;
+                float previousLabelWidth = EditorGUIUtility.labelWidth;
+                bool restoredLabelWidth = false;
+                if (valueSupportsFoldout)
                 {
-                    MarkListCacheDirty(key);
-                    ApplyAndSyncPaletteRowChange(dictionaryProperty, "ValueFieldChanged");
+                    valueLabel = FoldoutSpacerLabel;
+                    EditorGUIUtility.labelWidth = Mathf.Max(
+                        previousLabelWidth,
+                        ExpandableValueFoldoutLabelWidth
+                    );
+                    restoredLabelWidth = true;
+                    float foldoutOffset = RowExpandableValueFoldoutGutter;
+                    valueRect.x += foldoutOffset;
+                    valueRect.width = Mathf.Max(0f, valueRect.width - foldoutOffset);
+                    LastRowValueFoldoutOffset = foldoutOffset;
+                    if (valueProperty != null && !valueProperty.isExpanded)
+                    {
+                        valueProperty.isExpanded = true;
+                    }
                 }
+                else
+                {
+                    LastRowValueFoldoutOffset = 0f;
+                }
+
+                try
+                {
+                    EditorGUI.BeginChangeCheck();
+                    EditorGUI.PropertyField(valueRect, valueProperty, valueLabel, true);
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        MarkListCacheDirty(key);
+                        ApplyAndSyncPaletteRowChange(dictionaryProperty, "ValueFieldChanged");
+                    }
+                }
+                finally
+                {
+                    if (restoredLabelWidth)
+                    {
+                        EditorGUIUtility.labelWidth = previousLabelWidth;
+                    }
+                }
+                LastRowValueUsedFoldoutLabel = valueSupportsFoldout;
             };
 
             list.onRemoveCallback = reorderableList =>
@@ -2170,273 +2270,410 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Type valueType
         )
         {
-            AnimBool foldoutAnim = EnsurePendingFoldoutAnim(pending);
-            float foldoutProgress;
-            if (foldoutAnim != null)
+            int previousIndentLevel = EditorGUI.indentLevel;
+            EditorGUI.indentLevel = 0;
+            try
             {
-                foldoutAnim.target = pending.isExpanded;
-                foldoutProgress = foldoutAnim.faded;
-            }
-            else
-            {
-                foldoutProgress = pending.isExpanded ? 1f : 0f;
-            }
-
-            PendingSectionMetrics pendingMetrics = CalculatePendingSectionMetrics(
-                pending,
-                keyType,
-                valueType
-            );
-            float sectionHeight = pendingMetrics.EvaluateHeight(foldoutProgress);
-            float rowHeight = EditorGUIUtility.singleLineHeight;
-            float spacing = EditorGUIUtility.standardVerticalSpacing;
-
-            Rect containerRect = new(fullPosition.x, y, fullPosition.width, sectionHeight);
-            Color backgroundColor = EditorGUIUtility.isProSkin
-                ? new Color(0.18f, 0.18f, 0.18f, 1f)
-                : new Color(0.92f, 0.92f, 0.92f, 1f);
-            if (Event.current.type == EventType.Repaint)
-            {
-                EditorGUI.DrawRect(containerRect, backgroundColor);
-            }
-
-            GUI.BeginGroup(containerRect);
-
-            float innerWidth = Mathf.Max(0f, containerRect.width - PendingSectionPadding * 2f);
-            float innerY = PendingSectionPadding;
-
-            const float FoldoutOffset = 10f;
-            Rect headerRect = new(
-                PendingSectionPadding + FoldoutOffset,
-                innerY,
-                innerWidth - FoldoutOffset,
-                rowHeight
-            );
-            EditorGUI.BeginChangeCheck();
-            FontStyle originalFoldoutFontStyle = EditorStyles.foldout.fontStyle;
-            EditorStyles.foldout.fontStyle = FontStyle.Bold;
-            bool expanded = EditorGUI.Foldout(
-                headerRect,
-                pending.isExpanded,
-                PendingFoldoutContent,
-                true
-            );
-            EditorStyles.foldout.fontStyle = originalFoldoutFontStyle;
-            if (EditorGUI.EndChangeCheck())
-            {
-                pending.isExpanded = expanded;
-                GUI.changed = true;
-                foldoutAnim = EnsurePendingFoldoutAnim(pending);
+                AnimBool foldoutAnim = EnsurePendingFoldoutAnim(pending);
+                float foldoutProgress;
                 if (foldoutAnim != null)
                 {
-                    foldoutAnim.target = expanded;
+                    foldoutAnim.target = pending.isExpanded;
                     foldoutProgress = foldoutAnim.faded;
                 }
                 else
                 {
-                    foldoutProgress = expanded ? 1f : 0f;
+                    foldoutProgress = pending.isExpanded ? 1f : 0f;
                 }
 
-                sectionHeight = pendingMetrics.EvaluateHeight(foldoutProgress);
-                RequestRepaint();
-            }
-
-            containerRect.height = sectionHeight;
-
-            float contentFade = Mathf.Clamp01(foldoutProgress);
-            if (contentFade <= 0f && !pending.isExpanded)
-            {
-                GUI.EndGroup();
-                y = containerRect.yMax;
-                return;
-            }
-
-            innerY += rowHeight + spacing;
-
-            Color previousColor = GUI.color;
-            bool adjustColor = !Mathf.Approximately(contentFade, 1f);
-            if (adjustColor)
-            {
-                GUI.color = new Color(
-                    previousColor.r,
-                    previousColor.g,
-                    previousColor.b,
-                    previousColor.a * contentFade
-                );
-            }
-
-            float keyHeight = pendingMetrics.KeyHeight;
-            Rect keyRect = new(PendingSectionPadding, innerY, innerWidth, keyHeight);
-            pending.key = DrawFieldForType(keyRect, "Key", pending.key, keyType, pending, false);
-            innerY += keyHeight + spacing;
-
-            float valueHeight = pendingMetrics.ValueHeight;
-            Rect valueRect = new(PendingSectionPadding, innerY, innerWidth, valueHeight);
-            pending.value = DrawFieldForType(
-                valueRect,
-                "Value",
-                pending.value,
-                valueType,
-                pending,
-                true
-            );
-            innerY += valueHeight + spacing;
-
-            bool keySupported = IsTypeSupported(keyType);
-            bool valueSupported = IsTypeSupported(valueType);
-            string pendingKeyString = pending.key as string;
-            bool keyValid = KeyIsValid(keyType, pending.key);
-            bool isBlankStringKey =
-                keyType == typeof(string) && string.IsNullOrWhiteSpace(pendingKeyString);
-            bool canCommit = keySupported && valueSupported && (keyValid || isBlankStringKey);
-
-            int existingIndex = FindExistingKeyIndex(
-                dictionaryProperty,
-                keysProperty,
-                keyType,
-                pending.key
-            );
-            string buttonLabel = existingIndex >= 0 ? "Overwrite" : "Add";
-            bool entryAlreadyExists =
-                existingIndex >= 0
-                && EntryMatchesExisting(
-                    keysProperty,
-                    valuesProperty,
-                    existingIndex,
-                    keyType,
-                    valueType,
-                    pending
-                );
-            if (entryAlreadyExists)
-            {
-                canCommit = false;
-            }
-
-            Rect buttonsRect = new(PendingSectionPadding, innerY, innerWidth, rowHeight);
-            float resetWidth = 70f;
-            Rect addRect = new(buttonsRect.x, buttonsRect.y, PendingAddButtonWidth, rowHeight);
-            Rect resetRect = new(addRect.xMax + spacing, buttonsRect.y, resetWidth, rowHeight);
-
-            float infoX = resetRect.xMax + spacing;
-            float availableInfoWidth = Mathf.Max(0f, buttonsRect.xMax - infoX);
-            string infoMessage;
-            if (entryAlreadyExists)
-            {
-                infoMessage = "Entry already exists with the same value.";
-            }
-            else
-            {
-                infoMessage = GetPendingInfoMessage(
-                    keySupported,
-                    valueSupported,
-                    keyValid || isBlankStringKey,
-                    existingIndex,
+                PendingSectionMetrics pendingMetrics = CalculatePendingSectionMetrics(
+                    pending,
                     keyType,
                     valueType
                 );
-                if (string.IsNullOrEmpty(infoMessage) && isBlankStringKey)
-                {
-                    string descriptor = string.IsNullOrEmpty(pendingKeyString)
-                        ? "empty"
-                        : "whitespace-only";
-                    infoMessage = $"Adding entry with {descriptor} string key.";
-                }
-            }
-            if (availableInfoWidth > 0f && !string.IsNullOrEmpty(infoMessage))
-            {
-                Rect infoRect = new(infoX, buttonsRect.y, availableInfoWidth, rowHeight);
-                GUI.Label(infoRect, infoMessage, EditorStyles.miniLabel);
-            }
+                float sectionHeight = pendingMetrics.EvaluateHeight(foldoutProgress);
+                float rowHeight = EditorGUIUtility.singleLineHeight;
+                float spacing = EditorGUIUtility.standardVerticalSpacing;
 
-            using (new EditorGUI.DisabledScope(!canCommit))
-            {
-                string tooltip;
+                Rect containerRect = new(fullPosition.x, y, fullPosition.width, sectionHeight);
+                Color backgroundColor = EditorGUIUtility.isProSkin
+                    ? new Color(0.18f, 0.18f, 0.18f, 1f)
+                    : new Color(0.92f, 0.92f, 0.92f, 1f);
+                if (Event.current.type == EventType.Repaint)
+                {
+                    EditorGUI.DrawRect(containerRect, backgroundColor);
+                }
+
+                GUI.BeginGroup(containerRect);
+
+                float innerWidth = Mathf.Max(0f, containerRect.width - PendingSectionPadding * 2f);
+                float innerY = PendingSectionPadding;
+
+                Rect headerRect = new(PendingSectionPadding, innerY, innerWidth, rowHeight);
+                float resolvedToggleOffset = ResolvePendingFoldoutToggleOffset(dictionaryProperty);
+                float toggleWidthBudget = Mathf.Max(0f, headerRect.width - resolvedToggleOffset);
+                float foldoutToggleWidth = Mathf.Min(
+                    EditorGUIUtility.singleLineHeight,
+                    toggleWidthBudget
+                );
+                Rect foldoutToggleRect = new(
+                    headerRect.x + resolvedToggleOffset,
+                    headerRect.y,
+                    foldoutToggleWidth,
+                    headerRect.height
+                );
+                float labelWidth = Mathf.Max(
+                    0f,
+                    headerRect.width - (foldoutToggleRect.xMax - headerRect.x)
+                );
+                Rect labelHitRect = new(
+                    foldoutToggleRect.xMax,
+                    headerRect.y,
+                    labelWidth,
+                    headerRect.height
+                );
+                Rect labelRect = new(
+                    labelHitRect.x + PendingFoldoutLabelPadding,
+                    headerRect.y,
+                    Mathf.Max(0f, labelHitRect.width - PendingFoldoutLabelPadding),
+                    headerRect.height
+                );
+
+                HasLastPendingHeaderRect = true;
+                LastPendingHeaderRect = headerRect;
+                LastPendingFoldoutToggleRect = foldoutToggleRect;
+
+                Event currentEvent = Event.current;
+                bool expanded = pending.isExpanded;
+                if (
+                    currentEvent.type == EventType.MouseDown
+                    && currentEvent.button == 0
+                    && labelHitRect.Contains(currentEvent.mousePosition)
+                )
+                {
+                    expanded = !expanded;
+                    GUI.changed = true;
+                    currentEvent.Use();
+                }
+
+                EditorGUI.BeginChangeCheck();
+                bool arrowExpanded = EditorGUI.Foldout(
+                    foldoutToggleRect,
+                    expanded,
+                    GUIContent.none,
+                    toggleOnLabelClick: false
+                );
+                if (EditorGUI.EndChangeCheck())
+                {
+                    expanded = arrowExpanded;
+                }
+
+                GUIStyle pendingLabelStyle = GetPendingFoldoutLabelStyle();
+                EditorGUIUtility.AddCursorRect(labelHitRect, MouseCursor.Link);
+                EditorGUI.LabelField(labelRect, PendingFoldoutContent, pendingLabelStyle);
+
+                if (expanded != pending.isExpanded)
+                {
+                    pending.isExpanded = expanded;
+                    foldoutAnim = EnsurePendingFoldoutAnim(pending);
+                    if (foldoutAnim != null)
+                    {
+                        foldoutAnim.target = expanded;
+                        foldoutProgress = foldoutAnim.faded;
+                    }
+                    else
+                    {
+                        foldoutProgress = expanded ? 1f : 0f;
+                    }
+
+                    sectionHeight = pendingMetrics.EvaluateHeight(foldoutProgress);
+                    RequestRepaint();
+                }
+
+                containerRect.height = sectionHeight;
+
+                float contentFade = Mathf.Clamp01(foldoutProgress);
+                if (contentFade <= 0f && !pending.isExpanded)
+                {
+                    GUI.EndGroup();
+                    y = containerRect.yMax;
+                    LastPendingValueUsedFoldoutLabel = false;
+                    LastPendingValueFoldoutOffset = 0f;
+                    return;
+                }
+
+                innerY += rowHeight + spacing;
+
+                Color previousColor = GUI.color;
+                bool adjustColor = !Mathf.Approximately(contentFade, 1f);
+                if (adjustColor)
+                {
+                    GUI.color = new Color(
+                        previousColor.r,
+                        previousColor.g,
+                        previousColor.b,
+                        previousColor.a * contentFade
+                    );
+                }
+
+                float keyHeight = pendingMetrics.KeyHeight;
+                Rect keyRect = new(PendingSectionPadding, innerY, innerWidth, keyHeight);
+                pending.key = DrawFieldForType(
+                    keyRect,
+                    "Key",
+                    pending.key,
+                    keyType,
+                    pending,
+                    false
+                );
+                innerY += keyHeight + spacing;
+
+                float valueHeight = pendingMetrics.ValueHeight;
+                Rect valueRect = new(PendingSectionPadding, innerY, innerWidth, valueHeight);
+                bool pendingValueSupportsFoldout = PendingValueSupportsFoldout(pending, valueType);
+                float pendingValueFoldoutOffset = pendingValueSupportsFoldout
+                    ? PendingExpandableValueFoldoutGutter
+                    : 0f;
+                if (pendingValueFoldoutOffset > 0f)
+                {
+                    valueRect.x += pendingValueFoldoutOffset;
+                    valueRect.width = Mathf.Max(0f, valueRect.width - pendingValueFoldoutOffset);
+                }
+                pending.value = DrawFieldForType(
+                    valueRect,
+                    "Value",
+                    pending.value,
+                    valueType,
+                    pending,
+                    true
+                );
+                LastPendingValueUsedFoldoutLabel = pendingValueSupportsFoldout;
+                LastPendingValueFoldoutOffset = pendingValueFoldoutOffset;
+                if (
+                    pendingValueSupportsFoldout
+                    && pending.valueWrapperProperty != null
+                    && !pending.valueWrapperProperty.isExpanded
+                )
+                {
+                    pending.valueWrapperProperty.isExpanded = true;
+                }
+                innerY += valueHeight + spacing;
+
+                bool keySupported = IsTypeSupported(keyType);
+                bool valueSupported = IsTypeSupported(valueType);
+                string pendingKeyString = pending.key as string;
+                bool keyValid = KeyIsValid(keyType, pending.key);
+                bool isBlankStringKey =
+                    keyType == typeof(string) && string.IsNullOrWhiteSpace(pendingKeyString);
+                bool canCommit = keySupported && valueSupported && (keyValid || isBlankStringKey);
+
+                int existingIndex = FindExistingKeyIndex(
+                    dictionaryProperty,
+                    keysProperty,
+                    keyType,
+                    pending.key
+                );
+                string buttonLabel = existingIndex >= 0 ? "Overwrite" : "Add";
+                bool entryAlreadyExists =
+                    existingIndex >= 0
+                    && EntryMatchesExisting(
+                        keysProperty,
+                        valuesProperty,
+                        existingIndex,
+                        keyType,
+                        valueType,
+                        pending
+                    );
                 if (entryAlreadyExists)
                 {
-                    tooltip = "Current item already exists in the dictionary.";
+                    canCommit = false;
                 }
-                else if (existingIndex >= 0)
+
+                Rect buttonsRect = new(PendingSectionPadding, innerY, innerWidth, rowHeight);
+                float resetWidth = 70f;
+                Rect addRect = new(buttonsRect.x, buttonsRect.y, PendingAddButtonWidth, rowHeight);
+                Rect resetRect = new(addRect.xMax + spacing, buttonsRect.y, resetWidth, rowHeight);
+
+                float infoX = resetRect.xMax + spacing;
+                float availableInfoWidth = Mathf.Max(0f, buttonsRect.xMax - infoX);
+                string infoMessage;
+                if (entryAlreadyExists)
                 {
-                    tooltip = "Overwrite the existing entry with this key.";
-                }
-                else if (isBlankStringKey)
-                {
-                    string descriptor = string.IsNullOrEmpty(pendingKeyString)
-                        ? "empty string"
-                        : "whitespace-only string";
-                    tooltip = $"Add a new entry using a {descriptor} key.";
+                    infoMessage = "Entry already exists with the same value.";
                 }
                 else
                 {
-                    tooltip = "Add a new entry to the dictionary.";
-                }
-
-                GUIContent addContent = EditorGUIUtility.TrTextContent(buttonLabel, tooltip);
-
-                string styleKey =
-                    existingIndex >= 0 ? "Overwrite"
-                    : isBlankStringKey ? "AddEmpty"
-                    : "Add";
-                GUIStyle addStyle = SolidButtonStyles.GetSolidButtonStyle(styleKey, GUI.enabled);
-
-                if (GUI.Button(addRect, addContent, addStyle))
-                {
-                    CommitResult result = CommitEntry(
-                        keysProperty,
-                        valuesProperty,
-                        keyType,
-                        valueType,
-                        pending,
+                    infoMessage = GetPendingInfoMessage(
+                        keySupported,
+                        valueSupported,
+                        keyValid || isBlankStringKey,
                         existingIndex,
-                        dictionaryProperty
+                        keyType,
+                        valueType
                     );
-                    if (result.added)
+                    if (string.IsNullOrEmpty(infoMessage) && isBlankStringKey)
                     {
-                        pending.key = GetDefaultValue(keyType);
-                        pending.value = GetDefaultValue(valueType);
-                        ReleasePendingWrapper(pending, false);
-                        ReleasePendingWrapper(pending, true);
+                        string descriptor = string.IsNullOrEmpty(pendingKeyString)
+                            ? "empty"
+                            : "whitespace-only";
+                        infoMessage = $"Adding entry with {descriptor} string key.";
                     }
-
-                    if (result.index >= 0)
-                    {
-                        int targetPage = GetPageForIndex(result.index, pagination.pageSize);
-                        int totalPages = GetTotalPages(keysProperty.arraySize, pagination.pageSize);
-                        pagination.pageIndex = Mathf.Clamp(targetPage, 0, totalPages - 1);
-                        pagination.selectedIndex = result.index;
-
-                        string listKey = GetListKey(dictionaryProperty);
-                        ListPageCache cache = EnsurePageCache(listKey, keysProperty, pagination);
-                        SyncListSelectionWithPagination(list, pagination, cache);
-                    }
-
-                    GUI.FocusControl(null);
                 }
-            }
-
-            bool isPendingDefault = PendingEntryIsAtDefault(pending, keyType, valueType);
-            GUIContent resetContent = EditorGUIUtility.TrTextContent(
-                "Reset",
-                "Restore pending key/value to their defaults"
-            );
-            using (new EditorGUI.DisabledScope(isPendingDefault))
-            {
-                GUIStyle resetStyle = SolidButtonStyles.GetSolidButtonStyle("Reset", GUI.enabled);
-                if (GUI.Button(resetRect, resetContent, resetStyle))
+                if (availableInfoWidth > 0f && !string.IsNullOrEmpty(infoMessage))
                 {
-                    ResetPendingEntryToDefault(pending, keyType, valueType);
-                    GUI.FocusControl(null);
+                    Rect infoRect = new(infoX, buttonsRect.y, availableInfoWidth, rowHeight);
+                    GUI.Label(infoRect, infoMessage, EditorStyles.miniLabel);
+                }
+
+                using (new EditorGUI.DisabledScope(!canCommit))
+                {
+                    string tooltip;
+                    if (entryAlreadyExists)
+                    {
+                        tooltip = "Current item already exists in the dictionary.";
+                    }
+                    else if (existingIndex >= 0)
+                    {
+                        tooltip = "Overwrite the existing entry with this key.";
+                    }
+                    else if (isBlankStringKey)
+                    {
+                        string descriptor = string.IsNullOrEmpty(pendingKeyString)
+                            ? "empty string"
+                            : "whitespace-only string";
+                        tooltip = $"Add a new entry using a {descriptor} key.";
+                    }
+                    else
+                    {
+                        tooltip = "Add a new entry to the dictionary.";
+                    }
+
+                    GUIContent addContent = EditorGUIUtility.TrTextContent(buttonLabel, tooltip);
+
+                    string styleKey =
+                        existingIndex >= 0 ? "Overwrite"
+                        : isBlankStringKey ? "AddEmpty"
+                        : "Add";
+                    GUIStyle addStyle = SolidButtonStyles.GetSolidButtonStyle(
+                        styleKey,
+                        GUI.enabled
+                    );
+
+                    if (GUI.Button(addRect, addContent, addStyle))
+                    {
+                        CommitResult result = CommitEntry(
+                            keysProperty,
+                            valuesProperty,
+                            keyType,
+                            valueType,
+                            pending,
+                            existingIndex,
+                            dictionaryProperty
+                        );
+                        if (result.added)
+                        {
+                            pending.key = GetDefaultValue(keyType);
+                            pending.value = GetDefaultValue(valueType);
+                            ReleasePendingWrapper(pending, false);
+                            ReleasePendingWrapper(pending, true);
+                        }
+
+                        if (result.index >= 0)
+                        {
+                            int targetPage = GetPageForIndex(result.index, pagination.pageSize);
+                            int totalPages = GetTotalPages(
+                                keysProperty.arraySize,
+                                pagination.pageSize
+                            );
+                            pagination.pageIndex = Mathf.Clamp(targetPage, 0, totalPages - 1);
+                            pagination.selectedIndex = result.index;
+
+                            string listKey = GetListKey(dictionaryProperty);
+                            ListPageCache cache = EnsurePageCache(
+                                listKey,
+                                keysProperty,
+                                pagination
+                            );
+                            SyncListSelectionWithPagination(list, pagination, cache);
+                        }
+
+                        GUI.FocusControl(null);
+                    }
+                }
+
+                bool isPendingDefault = PendingEntryIsAtDefault(pending, keyType, valueType);
+                GUIContent resetContent = EditorGUIUtility.TrTextContent(
+                    "Reset",
+                    "Restore pending key/value to their defaults"
+                );
+                using (new EditorGUI.DisabledScope(isPendingDefault))
+                {
+                    GUIStyle resetStyle = SolidButtonStyles.GetSolidButtonStyle(
+                        "Reset",
+                        GUI.enabled
+                    );
+                    if (GUI.Button(resetRect, resetContent, resetStyle))
+                    {
+                        ResetPendingEntryToDefault(pending, keyType, valueType);
+                        GUI.FocusControl(null);
+                    }
+                }
+
+                if (adjustColor)
+                {
+                    GUI.color = previousColor;
+                }
+
+                GUI.EndGroup();
+
+                y = containerRect.yMax;
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        private static float ResolvePendingFoldoutToggleOffset(
+            SerializedProperty dictionaryProperty
+        )
+        {
+            SerializedObject serializedObject = dictionaryProperty?.serializedObject;
+            if (!TargetsUnityHelpersSettings(serializedObject))
+            {
+                return PendingFoldoutToggleOffset;
+            }
+
+            return PendingFoldoutToggleOffsetProjectSettings;
+        }
+
+        private static bool TargetsUnityHelpersSettings(SerializedObject serializedObject)
+        {
+            if (serializedObject == null)
+            {
+                return false;
+            }
+
+            if (serializedObject.targetObject is UnityHelpersSettings)
+            {
+                return true;
+            }
+
+            Object[] targets = serializedObject.targetObjects;
+            if (targets == null || targets.Length == 0)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < targets.Length; index++)
+            {
+                if (targets[index] is UnityHelpersSettings)
+                {
+                    return true;
                 }
             }
 
-            if (adjustColor)
-            {
-                GUI.color = previousColor;
-            }
-
-            GUI.EndGroup();
-
-            y = containerRect.yMax;
+            return false;
         }
 
         private static string GetPendingInfoMessage(
@@ -3575,6 +3812,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return _footerLabelStyle;
         }
 
+        private static GUIStyle GetPendingFoldoutLabelStyle()
+        {
+            if (_pendingFoldoutLabelStyle != null)
+            {
+                return _pendingFoldoutLabelStyle;
+            }
+
+            _pendingFoldoutLabelStyle = new GUIStyle(EditorStyles.label)
+            {
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleLeft,
+            };
+
+            return _pendingFoldoutLabelStyle;
+        }
+
         private static float GetPendingFieldHeight(
             PendingEntry pending,
             Type fieldType,
@@ -3595,7 +3848,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 || fieldType.IsPrimitive
                 || fieldType.IsEnum
                 || typeof(Object).IsAssignableFrom(fieldType)
-                || fieldType.IsValueType
                 || !TypeSupportsComplexEditing(fieldType)
             )
             {
@@ -3606,6 +3858,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (context.Property == null)
             {
                 return defaultHeight;
+            }
+
+            if (TypeSupportsComplexEditing(fieldType))
+            {
+                context.Property.isExpanded = true;
             }
 
             return EditorGUI.GetPropertyHeight(context.Property, true);
@@ -3779,7 +4036,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (
                 pending == null
                 || !TypeSupportsComplexEditing(type)
-                || (type.IsValueType && !typeof(Object).IsAssignableFrom(type))
                 || typeof(Object).IsAssignableFrom(type)
                 || type == typeof(string)
             )
@@ -3797,26 +4053,35 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             object wrapperValue = context.Wrapper.GetValue();
             if (!ValuesEqual(wrapperValue, targetValue))
             {
-                context.Wrapper.SetValue(CloneComplexValue(targetValue, type));
-                context.Serialized.Update();
-                context.Serialized.ApplyModifiedPropertiesWithoutUndo();
+                object clone = CloneComplexValue(targetValue, type);
+                context.Wrapper.SetValue(clone);
+                SyncPendingWrapperManagedReference(context, clone);
             }
 
             if (type.IsClass && context.Wrapper.GetValue() == null)
             {
-                context.Wrapper.SetValue(GetDefaultValue(type));
-                context.Serialized.Update();
-                context.Serialized.ApplyModifiedPropertiesWithoutUndo();
+                object defaultValue = GetDefaultValue(type);
+                context.Wrapper.SetValue(defaultValue);
+                SyncPendingWrapperManagedReference(context, defaultValue);
             }
 
-            EditorGUI.BeginChangeCheck();
-            EditorGUI.PropertyField(rect, context.Property, content, includeChildren: true);
-            if (EditorGUI.EndChangeCheck())
+            int previousIndent = EditorGUI.indentLevel;
+            EditorGUI.indentLevel = Mathf.Max(0, previousIndent - 1);
+            try
             {
-                ApplyModifiedPropertiesWithUndoFallback(context.Serialized);
-                context.Serialized.Update();
-                object updated = context.Wrapper.GetValue();
-                current = CloneComplexValue(updated, type);
+                EditorGUI.BeginChangeCheck();
+                EditorGUI.PropertyField(rect, context.Property, content, includeChildren: true);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    ApplyModifiedPropertiesWithUndoFallback(context.Serialized);
+                    context.Serialized.Update();
+                    object updated = context.Wrapper.GetValue();
+                    current = CloneComplexValue(updated, type);
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndent;
             }
 
             return true;
@@ -3930,6 +4195,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return true;
             }
 
+            if (IsSimplePendingFieldType(type))
+            {
+                return false;
+            }
+
             if (type.IsArray)
             {
                 return TypeSupportsComplexEditing(type.GetElementType());
@@ -3941,6 +4211,84 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return type.IsSerializable;
+        }
+
+        private static bool IsSimplePendingFieldType(Type type)
+        {
+            if (type == null)
+            {
+                return false;
+            }
+
+            if (type.IsPrimitive || type.IsEnum)
+            {
+                return true;
+            }
+
+            return type == typeof(string)
+                || type == typeof(decimal)
+                || type == typeof(Vector2)
+                || type == typeof(Vector3)
+                || type == typeof(Vector4)
+                || type == typeof(Vector2Int)
+                || type == typeof(Vector3Int)
+                || type == typeof(Rect)
+                || type == typeof(RectInt)
+                || type == typeof(Bounds)
+                || type == typeof(BoundsInt)
+                || type == typeof(Color)
+                || type == typeof(AnimationCurve);
+        }
+
+        private static bool ValueTypeSupportsFoldout(Type type)
+        {
+            if (type == null)
+            {
+                return false;
+            }
+
+            if (typeof(Object).IsAssignableFrom(type))
+            {
+                return false;
+            }
+
+            if (PaletteValueRenderers != null && PaletteValueRenderers.ContainsKey(type))
+            {
+                return false;
+            }
+
+            if (IsSimplePendingFieldType(type))
+            {
+                return false;
+            }
+
+            return TypeSupportsComplexEditing(type);
+        }
+
+        private static bool PendingValueSupportsFoldout(PendingEntry pending, Type valueType)
+        {
+            if (pending == null || !ValueTypeSupportsFoldout(valueType))
+            {
+                return false;
+            }
+
+            PendingWrapperContext context = EnsurePendingWrapper(
+                pending,
+                valueType,
+                isValueField: true
+            );
+            if (context.Property == null)
+            {
+                return false;
+            }
+
+            context.Property.isExpanded = true;
+            return SerializedPropertySupportsFoldout(context.Property);
+        }
+
+        private static bool SerializedPropertySupportsFoldout(SerializedProperty property)
+        {
+            return property != null && property.hasVisibleChildren;
         }
 
         private static PendingWrapperContext EnsurePendingWrapper(
@@ -3998,6 +4346,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             serialized.Update();
 
             return new PendingWrapperContext(wrapper, serialized, property);
+        }
+
+        private static void SyncPendingWrapperManagedReference(
+            PendingWrapperContext context,
+            object newValue
+        )
+        {
+            if (context.Property == null || context.Serialized == null)
+            {
+                return;
+            }
+
+            context.Serialized.Update();
+            context.Property.managedReferenceValue = newValue;
+            context.Serialized.ApplyModifiedPropertiesWithoutUndo();
+            context.Serialized.Update();
         }
 
         private static void ReleasePendingWrapper(PendingEntry pending, bool isValueField)

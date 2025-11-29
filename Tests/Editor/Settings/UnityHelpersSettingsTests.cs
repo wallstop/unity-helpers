@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
 
     public sealed class UnityHelpersSettingsTests
@@ -733,7 +734,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
             );
-            HashSet<string> skipSnapshot = CloneSkipSet(settings, WButtonSkipFieldName);
+            HashSet<string> skipSnapshot = CloneSkipSet(settings.WButtonCustomColorSkipAutoSuggest);
 
             try
             {
@@ -752,7 +753,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     PaletteKey
                 );
 
-                InvokeEnsureMethod(settings, "EnsureWButtonCustomColorDefaults");
+                settings.EnsureWButtonCustomColorDefaults();
                 serialized.Update();
 
                 (Color button, Color text) = GetPaletteEntryColors(
@@ -764,7 +765,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
 
                 AssertColorsApproximately(Color.white, button);
                 AssertColorsApproximately(Color.black, text);
-                HashSet<string> skipSet = GetSkipSet(settings, WButtonSkipFieldName);
+                HashSet<string> skipSet = settings.WButtonCustomColorSkipAutoSuggest;
                 Assert.IsTrue(
                     skipSet != null && skipSet.Contains(PaletteKey),
                     "Manual edit should remain in the skip set."
@@ -780,7 +781,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
                 );
                 serialized.ApplyModifiedPropertiesWithoutUndo();
-                RestoreSkipSet(settings, WButtonSkipFieldName, skipSnapshot);
+                settings.WButtonCustomColorSkipAutoSuggest = CloneSkipSet(skipSnapshot);
             }
         }
 
@@ -801,7 +802,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
             );
-            HashSet<string> skipSnapshot = CloneSkipSet(settings, WButtonSkipFieldName);
+            HashSet<string> skipSnapshot = CloneSkipSet(settings.WButtonCustomColorSkipAutoSuggest);
 
             try
             {
@@ -815,7 +816,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 );
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
-                InvokeEnsureMethod(settings, "EnsureWButtonCustomColorDefaults");
+                settings.EnsureWButtonCustomColorDefaults();
                 serialized.Update();
 
                 (Color _, Color text) = GetPaletteEntryColors(
@@ -840,7 +841,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
                 );
                 serialized.ApplyModifiedPropertiesWithoutUndo();
-                RestoreSkipSet(settings, WButtonSkipFieldName, skipSnapshot);
+                settings.WButtonCustomColorSkipAutoSuggest = CloneSkipSet(skipSnapshot);
             }
         }
 
@@ -858,10 +859,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             PaletteEntrySnapshot snapshot = CapturePaletteEntrySnapshot(
                 paletteProperty,
                 PaletteKey,
-                BackgroundColorField,
-                GroupTextColorField
+                UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorBackground,
+                UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorText
             );
-            HashSet<string> skipSnapshot = CloneSkipSet(settings, WGroupSkipFieldName);
+            HashSet<string> skipSnapshot = CloneSkipSet(settings.WGroupCustomColorSkipAutoSuggest);
 
             try
             {
@@ -870,8 +871,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     PaletteKey,
                     Color.white,
                     Color.black,
-                    BackgroundColorField,
-                    GroupTextColorField
+                    UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorBackground,
+                    UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorText
                 );
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
@@ -880,14 +881,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     PaletteKey
                 );
 
-                InvokeEnsureMethod(settings, "EnsureWGroupCustomColorDefaults");
+                settings.EnsureWGroupCustomColorDefaults();
                 serialized.Update();
 
                 (Color background, Color text) = GetPaletteEntryColors(
                     paletteProperty,
                     PaletteKey,
-                    BackgroundColorField,
-                    GroupTextColorField
+                    UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorBackground,
+                    UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorText
                 );
 
                 AssertColorsApproximately(Color.white, background);
@@ -899,11 +900,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     paletteProperty,
                     PaletteKey,
                     snapshot,
-                    BackgroundColorField,
-                    GroupTextColorField
+                    UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorBackground,
+                    UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorText
                 );
                 serialized.ApplyModifiedPropertiesWithoutUndo();
-                RestoreSkipSet(settings, WGroupSkipFieldName, skipSnapshot);
+                settings.WGroupCustomColorSkipAutoSuggest = CloneSkipSet(skipSnapshot);
             }
         }
 
@@ -924,38 +925,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
             );
-            HashSet<string> skipSnapshot = CloneSkipSet(settings, WButtonSkipFieldName);
+            HashSet<string> skipSnapshot = CloneSkipSet(settings.WButtonCustomColorSkipAutoSuggest);
 
             try
             {
                 SerializableDictionaryPropertyDrawer drawer = new();
-                Type paletteValueType = typeof(UnityHelpersSettings).GetNestedType(
-                    "WButtonCustomColor",
-                    BindingFlags.Instance | BindingFlags.NonPublic
-                );
-                Assert.NotNull(paletteValueType);
-
-                object paletteValue = Activator.CreateInstance(paletteValueType, nonPublic: true);
-                FieldInfo buttonField = paletteValueType.GetField(
-                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
-                    BindingFlags.Instance | BindingFlags.NonPublic
-                );
-                FieldInfo textField = paletteValueType.GetField(
-                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText,
-                    BindingFlags.Instance | BindingFlags.NonPublic
-                );
-                buttonField.SetValue(paletteValue, Color.cyan);
-                textField.SetValue(paletteValue, Color.black);
-
-                SerializableDictionaryPropertyDrawer.PendingEntry pending =
-                    drawer.GetOrCreatePendingEntry(
-                        paletteProperty,
-                        typeof(string),
-                        paletteValueType,
-                        isSortedDictionary: false
-                    );
-                pending.key = PaletteKey;
-                pending.value = paletteValue;
+                Type paletteValueType = typeof(UnityHelpersSettings.WButtonCustomColor);
+                UnityHelpersSettings.WButtonCustomColor paletteValue = new()
+                {
+                    ButtonColor = Color.cyan,
+                    TextColor = Color.black,
+                };
 
                 SerializedProperty keysProperty = paletteProperty.FindPropertyRelative(
                     SerializableDictionarySerializedPropertyNames.Keys
@@ -969,13 +949,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     valuesProperty,
                     typeof(string),
                     paletteValueType,
-                    pending,
-                    existingIndex: -1,
-                    paletteProperty
+                    PaletteKey,
+                    paletteValue,
+                    dictionaryProperty: paletteProperty,
+                    existingIndex: -1
                 );
 
                 serialized.Update();
-                HashSet<string> skipSet = GetSkipSet(settings, WButtonSkipFieldName);
+                HashSet<string> skipSet = settings.WButtonCustomColorSkipAutoSuggest;
                 Assert.IsTrue(
                     skipSet != null && skipSet.Contains(PaletteKey),
                     "Drawer commit should register palette manual edits."
@@ -991,7 +972,75 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
                 );
                 serialized.ApplyModifiedPropertiesWithoutUndo();
-                RestoreSkipSet(settings, WButtonSkipFieldName, skipSnapshot);
+                settings.WButtonCustomColorSkipAutoSuggest = CloneSkipSet(skipSnapshot);
+            }
+        }
+
+        [Test]
+        public void SerializableDictionaryDrawerCommitRegistersGroupPaletteManualEdit()
+        {
+            const string PaletteKey = "EditorDrawerGroupPaletteKey";
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            using SerializedObject serialized = new SerializedObject(settings);
+            serialized.Update();
+
+            SerializedProperty paletteProperty = serialized.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColors
+            );
+            PaletteEntrySnapshot snapshot = CapturePaletteEntrySnapshot(
+                paletteProperty,
+                PaletteKey,
+                UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorBackground,
+                UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorText
+            );
+            HashSet<string> skipSnapshot = CloneSkipSet(settings.WGroupCustomColorSkipAutoSuggest);
+
+            try
+            {
+                SerializableDictionaryPropertyDrawer drawer = new();
+                Type paletteValueType = typeof(UnityHelpersSettings.WGroupCustomColor);
+                UnityHelpersSettings.WGroupCustomColor paletteValue = new()
+                {
+                    BackgroundColor = Color.magenta,
+                    TextColor = Color.white,
+                };
+
+                SerializedProperty keysProperty = paletteProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Keys
+                );
+                SerializedProperty valuesProperty = paletteProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Values
+                );
+
+                drawer.CommitEntry(
+                    keysProperty,
+                    valuesProperty,
+                    typeof(string),
+                    paletteValueType,
+                    PaletteKey,
+                    paletteValue,
+                    dictionaryProperty: paletteProperty,
+                    existingIndex: -1
+                );
+
+                serialized.Update();
+                HashSet<string> skipSet = settings.WGroupCustomColorSkipAutoSuggest;
+                Assert.IsTrue(
+                    skipSet != null && skipSet.Contains(PaletteKey),
+                    "Drawer commit should register group palette manual edits."
+                );
+            }
+            finally
+            {
+                RestorePaletteEntry(
+                    paletteProperty,
+                    PaletteKey,
+                    snapshot,
+                    UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorBackground,
+                    UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorText
+                );
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                settings.WGroupCustomColorSkipAutoSuggest = CloneSkipSet(skipSnapshot);
             }
         }
 
@@ -1006,11 +1055,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             Assert.That(Mathf.Abs(expected.b - actual.b), Is.LessThanOrEqualTo(tolerance));
             Assert.That(Mathf.Abs(expected.a - actual.a), Is.LessThanOrEqualTo(tolerance));
         }
-
-        private const string WButtonSkipFieldName = "wbuttonCustomColorSkipAutoSuggest";
-        private const string WGroupSkipFieldName = "wgroupCustomColorSkipAutoSuggest";
-        private const string BackgroundColorField = "backgroundColor";
-        private const string GroupTextColorField = "textColor";
 
         private readonly struct PaletteEntrySnapshot
         {
@@ -1168,55 +1212,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             return -1;
         }
 
-        private static void InvokeEnsureMethod(UnityHelpersSettings settings, string methodName)
+        private static HashSet<string> CloneSkipSet(HashSet<string> source)
         {
-            MethodInfo method = typeof(UnityHelpersSettings).GetMethod(
-                methodName,
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.NotNull(method, $"Unable to resolve method '{methodName}'.");
-            method.Invoke(settings, null);
-        }
-
-        private static HashSet<string> CloneSkipSet(UnityHelpersSettings settings, string fieldName)
-        {
-            HashSet<string> existing = GetSkipSet(settings, fieldName);
-            return existing != null
-                ? new HashSet<string>(existing, StringComparer.OrdinalIgnoreCase)
+            return source != null
+                ? new HashSet<string>(source, StringComparer.OrdinalIgnoreCase)
                 : null;
-        }
-
-        private static HashSet<string> GetSkipSet(UnityHelpersSettings settings, string fieldName)
-        {
-            FieldInfo field = typeof(UnityHelpersSettings).GetField(
-                fieldName,
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.NotNull(field, $"Unable to resolve field '{fieldName}'.");
-            return field.GetValue(settings) as HashSet<string>;
-        }
-
-        private static void RestoreSkipSet(
-            UnityHelpersSettings settings,
-            string fieldName,
-            HashSet<string> snapshot
-        )
-        {
-            FieldInfo field = typeof(UnityHelpersSettings).GetField(
-                fieldName,
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.NotNull(field, $"Unable to resolve field '{fieldName}'.");
-            if (snapshot == null)
-            {
-                field.SetValue(settings, null);
-                return;
-            }
-
-            field.SetValue(
-                settings,
-                new HashSet<string>(snapshot, StringComparer.OrdinalIgnoreCase)
-            );
         }
 
         private static bool ColorsApproximatelyEqual(Color a, Color b, float tolerance = 0.01f)
