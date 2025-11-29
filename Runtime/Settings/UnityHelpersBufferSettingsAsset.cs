@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Settings
 {
     using UnityEngine;
+    using UnityEngine.Serialization;
     using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
@@ -12,59 +13,63 @@ namespace WallstopStudios.UnityHelpers.Settings
         /// Resource path (used with Resources.Load) where the settings asset is stored.
         /// </summary>
         public const string ResourcePath =
-            "WallstopStudios/UnityHelpers/UnityHelpersBufferSettings";
+            "Wallstop Studios/Unity Helpers/UnityHelpersBufferSettings";
 
         /// <summary>
         /// AssetDatabase path used by the editor to create/manage the asset.
         /// </summary>
         public const string AssetPath =
-            "Assets/Resources/WallstopStudios/UnityHelpers/UnityHelpersBufferSettings.asset";
+            "Assets/Resources/Wallstop Studios/Unity Helpers/UnityHelpersBufferSettings.asset";
 
-        internal const string ApplyOnLoadPropertyName = nameof(applyOnLoad);
+        internal const string ApplyOnLoadPropertyName = nameof(_applyOnLoad);
         internal const string QuantizationStepSecondsPropertyName = nameof(
-            waitInstructionQuantizationStepSeconds
+            _waitInstructionQuantizationStepSeconds
         );
         internal const string MaxDistinctEntriesPropertyName = nameof(
-            waitInstructionMaxDistinctEntries
+            _waitInstructionMaxDistinctEntries
         );
-        internal const string UseLruEvictionPropertyName = nameof(waitInstructionUseLruEviction);
+        internal const string UseLruEvictionPropertyName = nameof(_waitInstructionUseLruEviction);
 
+        [FormerlySerializedAs("applyOnLoad")]
         [SerializeField]
-        private bool applyOnLoad = true;
+        private bool _applyOnLoad = true;
 
+        [FormerlySerializedAs("waitInstructionQuantizationStepSeconds")]
         [SerializeField]
         [Min(0f)]
-        private float waitInstructionQuantizationStepSeconds = 0f;
+        private float _waitInstructionQuantizationStepSeconds = 0f;
 
+        [FormerlySerializedAs("waitInstructionMaxDistinctEntries")]
         [SerializeField]
         [Min(0)]
-        private int waitInstructionMaxDistinctEntries =
+        private int _waitInstructionMaxDistinctEntries =
             Buffers.WaitInstructionDefaultMaxDistinctEntries;
 
+        [FormerlySerializedAs("waitInstructionUseLruEviction")]
         [SerializeField]
-        private bool waitInstructionUseLruEviction;
+        private bool _waitInstructionUseLruEviction;
 
         /// <summary>
         /// Gets whether the defaults should be applied automatically on domain/runtime load.
         /// </summary>
-        public bool ApplyOnLoad => applyOnLoad;
+        public bool ApplyOnLoad => _applyOnLoad;
 
         /// <summary>
         /// Gets the sanitized quantization step (0 disables quantization).
         /// </summary>
         public float QuantizationStepSeconds =>
-            SanitizeQuantization(waitInstructionQuantizationStepSeconds);
+            SanitizeQuantization(_waitInstructionQuantizationStepSeconds);
 
         /// <summary>
         /// Gets the sanitized distinct entry limit (0 = unbounded).
         /// </summary>
         public int MaxDistinctEntries =>
-            SanitizeMaxDistinctEntries(waitInstructionMaxDistinctEntries);
+            SanitizeMaxDistinctEntries(_waitInstructionMaxDistinctEntries);
 
         /// <summary>
         /// Gets whether LRU eviction should be enabled when the cache hits the distinct entry limit.
         /// </summary>
-        public bool UseLruEviction => waitInstructionUseLruEviction;
+        public bool UseLruEviction => _waitInstructionUseLruEviction;
 
         /// <summary>
         /// Applies the stored defaults to the Buffers wait-instruction caches.
@@ -73,7 +78,7 @@ namespace WallstopStudios.UnityHelpers.Settings
         {
             Buffers.WaitInstructionQuantizationStepSeconds = QuantizationStepSeconds;
             Buffers.WaitInstructionMaxDistinctEntries = MaxDistinctEntries;
-            Buffers.WaitInstructionUseLruEviction = waitInstructionUseLruEviction;
+            Buffers.WaitInstructionUseLruEviction = _waitInstructionUseLruEviction;
         }
 
         /// <summary>
@@ -81,9 +86,10 @@ namespace WallstopStudios.UnityHelpers.Settings
         /// </summary>
         public void SyncFromRuntime()
         {
-            waitInstructionQuantizationStepSeconds = Buffers.WaitInstructionQuantizationStepSeconds;
-            waitInstructionMaxDistinctEntries = Buffers.WaitInstructionMaxDistinctEntries;
-            waitInstructionUseLruEviction = Buffers.WaitInstructionUseLruEviction;
+            _waitInstructionQuantizationStepSeconds =
+                Buffers.WaitInstructionQuantizationStepSeconds;
+            _waitInstructionMaxDistinctEntries = Buffers.WaitInstructionMaxDistinctEntries;
+            _waitInstructionUseLruEviction = Buffers.WaitInstructionUseLruEviction;
         }
 
         private static float SanitizeQuantization(float step)

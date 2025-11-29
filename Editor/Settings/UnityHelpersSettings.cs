@@ -619,6 +619,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [HideInInspector]
         private bool serializableTypePatternsInitialized;
 
+        [NonSerialized]
+        private HashSet<string> wbuttonCustomColorSkipAutoSuggest = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase
+        );
+
+        [NonSerialized]
+        private HashSet<string> wgroupCustomColorSkipAutoSuggest = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase
+        );
+
         [Serializable]
         internal sealed class SerializableTypeIgnorePattern
         {
@@ -1351,6 +1361,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return instance.serializableSetDuplicateTweenCycles;
         }
 
+        internal static void RegisterPaletteManualEdit(string propertyPath, string key)
+        {
+            if (string.IsNullOrWhiteSpace(propertyPath) || string.IsNullOrWhiteSpace(key))
+            {
+                return;
+            }
+
+            instance?.RegisterPaletteManualEditInternal(propertyPath, key);
+        }
+
         internal static class SerializedPropertyNames
         {
             internal const string SerializableTypeIgnorePatterns = nameof(
@@ -1682,6 +1702,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     continue;
                 }
 
+                if (ShouldSkipWButtonAutoSuggest(entry.Key))
+                {
+                    continue;
+                }
+
                 bool needsSuggestion =
                     value.ButtonColor.maxColorComponent <= 0f
                     || (
@@ -1710,6 +1735,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             return changed;
+        }
+
+        private bool ShouldSkipWButtonAutoSuggest(string key)
+        {
+            return ShouldSkipAutoSuggest(wbuttonCustomColorSkipAutoSuggest, key);
         }
 
         private bool EnsureWButtonThemeEntry(string key, Color buttonColor, Color defaultTextColor)
@@ -1845,6 +1875,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     continue;
                 }
 
+                if (ShouldSkipWGroupAutoSuggest(entry.Key))
+                {
+                    continue;
+                }
+
                 bool needsSuggestion =
                     value.BackgroundColor.maxColorComponent <= 0f
                     || (
@@ -1873,6 +1908,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             return changed;
+        }
+
+        private bool ShouldSkipWGroupAutoSuggest(string key)
+        {
+            return ShouldSkipAutoSuggest(wgroupCustomColorSkipAutoSuggest, key);
         }
 
         private bool EnsureWEnumToggleButtonsCustomColorDefaults()
@@ -2018,6 +2058,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             themeColor.EnsureReadableText();
             wgroupCustomColors[key] = themeColor;
             return true;
+        }
+
+        private static bool ShouldSkipAutoSuggest(HashSet<string> skipSet, string key)
+        {
+            if (skipSet == null || string.IsNullOrWhiteSpace(key))
+            {
+                return false;
+            }
+
+            return skipSet.Contains(key.Trim());
         }
 
         private static bool IsReservedWGroupColorKey(string key)
@@ -2178,6 +2228,44 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             return normalized;
+        }
+
+        private void RegisterPaletteManualEditInternal(string propertyPath, string key)
+        {
+            string trimmedKey = key?.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedKey))
+            {
+                return;
+            }
+
+            if (
+                string.Equals(
+                    propertyPath,
+                    SerializedPropertyNames.WButtonCustomColors,
+                    StringComparison.Ordinal
+                )
+            )
+            {
+                wbuttonCustomColorSkipAutoSuggest ??= new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase
+                );
+                wbuttonCustomColorSkipAutoSuggest.Add(trimmedKey);
+                return;
+            }
+
+            if (
+                string.Equals(
+                    propertyPath,
+                    SerializedPropertyNames.WGroupCustomColors,
+                    StringComparison.Ordinal
+                )
+            )
+            {
+                wgroupCustomColorSkipAutoSuggest ??= new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase
+                );
+                wgroupCustomColorSkipAutoSuggest.Add(trimmedKey);
+            }
         }
 
         private string NormalizeWEnumToggleButtonsColorKey(string colorKey)
@@ -3051,6 +3139,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     serializedSettings.UpdateIfRequiredOrScript();
 
                     bool dataChanged = false;
+                    bool palettePropertyChanged = false;
                     HashSet<string> waitInstructionPropertiesDrawn = new();
 
                     using (new LabelWidthScope(SettingsLabelWidth))
@@ -3305,6 +3394,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 if (EditorGUI.EndChangeCheck())
                                 {
                                     dataChanged = true;
+                                    palettePropertyChanged = true;
                                 }
                                 return true;
                             }
@@ -3326,6 +3416,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 if (EditorGUI.EndChangeCheck())
                                 {
                                     dataChanged = true;
+                                    palettePropertyChanged = true;
                                 }
                                 return true;
                             }
@@ -3347,6 +3438,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 if (EditorGUI.EndChangeCheck())
                                 {
                                     dataChanged = true;
+                                    palettePropertyChanged = true;
                                 }
                                 return true;
                             }
@@ -3824,6 +3916,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
                     bool guiChanged = EditorGUI.EndChangeCheck();
                     bool applied = serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+                    PaletteSerializationDiagnostics.ReportInspectorApplyResult(
+                        serializedSettings,
+                        palettePropertyChanged,
+                        dataChanged,
+                        guiChanged,
+                        applied
+                    );
                     if (!dataChanged && !guiChanged && !applied)
                     {
                         return;

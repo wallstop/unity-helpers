@@ -320,7 +320,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             else if (
                 _animationSourcesProp.arraySize == 0
-                || _animationSourcesProp.FindPropertyRelative("Array.size").intValue == 0
                 || animationSources.TrueForAll(val => Objects.Null(val))
             )
             {

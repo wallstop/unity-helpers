@@ -141,10 +141,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 SerializedProperty keyProperty = keys.GetArrayElementAtIndex(index);
                 SerializedProperty valueProperty = values.GetArrayElementAtIndex(index);
                 SerializedProperty buttonColorProperty = valueProperty.FindPropertyRelative(
-                    "buttonColor"
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton
                 );
                 SerializedProperty textColorProperty = valueProperty.FindPropertyRelative(
-                    "textColor"
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
                 );
                 originalEntries.Add(
                     (
@@ -174,8 +174,16 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 keyProperty.stringValue = colorKey;
 
                 SerializedProperty valueProperty = values.GetArrayElementAtIndex(entryIndex);
-                valueProperty.FindPropertyRelative("buttonColor").colorValue = expectedColor;
-                valueProperty.FindPropertyRelative("textColor").colorValue = expectedTextColor;
+                valueProperty
+                    .FindPropertyRelative(
+                        UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton
+                    )
+                    .colorValue = expectedColor;
+                valueProperty
+                    .FindPropertyRelative(
+                        UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+                    )
+                    .colorValue = expectedTextColor;
 
                 serialized.ApplyModifiedPropertiesWithoutUndo();
                 settings.SaveSettings();
@@ -203,9 +211,16 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                     SerializedProperty keyProperty = keys.GetArrayElementAtIndex(index);
                     keyProperty.stringValue = original.Key;
                     SerializedProperty valueProperty = values.GetArrayElementAtIndex(index);
-                    valueProperty.FindPropertyRelative("buttonColor").colorValue =
-                        original.ButtonColor;
-                    valueProperty.FindPropertyRelative("textColor").colorValue = original.TextColor;
+                    valueProperty
+                        .FindPropertyRelative(
+                            UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton
+                        )
+                        .colorValue = original.ButtonColor;
+                    valueProperty
+                        .FindPropertyRelative(
+                            UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+                        )
+                        .colorValue = original.TextColor;
                 }
                 serialized.ApplyModifiedPropertiesWithoutUndo();
                 settings.SaveSettings();

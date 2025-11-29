@@ -381,7 +381,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                     SerializedProperty entryProp =
                                         sourceFolderEntriesProp.GetArrayElementAtIndex(j);
                                     SerializedProperty pathProp = entryProp.FindPropertyRelative(
-                                        "folderPath"
+                                        nameof(SourceFolderEntry.folderPath)
                                     );
                                     if (
                                         string.Equals(
@@ -408,8 +408,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                         sourceFolderEntriesProp.GetArrayElementAtIndex(
                                             sourceFolderEntriesProp.arraySize - 1
                                         );
-                                    newEntryProp.FindPropertyRelative("folderPath").stringValue =
-                                        relativePath;
+                                    newEntryProp
+                                        .FindPropertyRelative(nameof(SourceFolderEntry.folderPath))
+                                        .stringValue = relativePath;
 
                                     serializedConfig.ApplyModifiedProperties();
                                     this.Log(

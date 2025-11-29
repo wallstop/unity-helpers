@@ -716,6 +716,285 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             AssertColorsApproximately(expectedText, groupEntry.TextColor);
         }
 
+        [Test]
+        public void EnsureWButtonCustomColorDefaults_ManualEditSkipsAutoSuggestion()
+        {
+            const string PaletteKey = "EditorManualWButton";
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            using SerializedObject serialized = new SerializedObject(settings);
+            serialized.Update();
+
+            SerializedProperty paletteProperty = serialized.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            PaletteEntrySnapshot snapshot = CapturePaletteEntrySnapshot(
+                paletteProperty,
+                PaletteKey,
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+            );
+            HashSet<string> skipSnapshot = CloneSkipSet(settings, WButtonSkipFieldName);
+
+            try
+            {
+                SetPaletteEntryColors(
+                    paletteProperty,
+                    PaletteKey,
+                    Color.white,
+                    Color.black,
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+                );
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                UnityHelpersSettings.RegisterPaletteManualEdit(
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors,
+                    PaletteKey
+                );
+
+                InvokeEnsureMethod(settings, "EnsureWButtonCustomColorDefaults");
+                serialized.Update();
+
+                (Color button, Color text) = GetPaletteEntryColors(
+                    paletteProperty,
+                    PaletteKey,
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+                );
+
+                AssertColorsApproximately(Color.white, button);
+                AssertColorsApproximately(Color.black, text);
+                HashSet<string> skipSet = GetSkipSet(settings, WButtonSkipFieldName);
+                Assert.IsTrue(
+                    skipSet != null && skipSet.Contains(PaletteKey),
+                    "Manual edit should remain in the skip set."
+                );
+            }
+            finally
+            {
+                RestorePaletteEntry(
+                    paletteProperty,
+                    PaletteKey,
+                    snapshot,
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+                );
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                RestoreSkipSet(settings, WButtonSkipFieldName, skipSnapshot);
+            }
+        }
+
+        [Test]
+        public void EnsureWButtonCustomColorDefaults_SuggestsColorsWithoutManualEdit()
+        {
+            const string PaletteKey = "EditorAutoWButton";
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            using SerializedObject serialized = new SerializedObject(settings);
+            serialized.Update();
+
+            SerializedProperty paletteProperty = serialized.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            PaletteEntrySnapshot snapshot = CapturePaletteEntrySnapshot(
+                paletteProperty,
+                PaletteKey,
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+            );
+            HashSet<string> skipSnapshot = CloneSkipSet(settings, WButtonSkipFieldName);
+
+            try
+            {
+                SetPaletteEntryColors(
+                    paletteProperty,
+                    PaletteKey,
+                    Color.white,
+                    Color.black,
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+                );
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                InvokeEnsureMethod(settings, "EnsureWButtonCustomColorDefaults");
+                serialized.Update();
+
+                (Color _, Color text) = GetPaletteEntryColors(
+                    paletteProperty,
+                    PaletteKey,
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+                );
+
+                Assert.IsFalse(
+                    ColorsApproximatelyEqual(Color.black, text),
+                    "Auto-suggestion should adjust the text color when no manual edit is present."
+                );
+            }
+            finally
+            {
+                RestorePaletteEntry(
+                    paletteProperty,
+                    PaletteKey,
+                    snapshot,
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+                );
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                RestoreSkipSet(settings, WButtonSkipFieldName, skipSnapshot);
+            }
+        }
+
+        [Test]
+        public void EnsureWGroupCustomColorDefaults_ManualEditSkipsAutoSuggestion()
+        {
+            const string PaletteKey = "EditorManualWGroup";
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            using SerializedObject serialized = new SerializedObject(settings);
+            serialized.Update();
+
+            SerializedProperty paletteProperty = serialized.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColors
+            );
+            PaletteEntrySnapshot snapshot = CapturePaletteEntrySnapshot(
+                paletteProperty,
+                PaletteKey,
+                BackgroundColorField,
+                GroupTextColorField
+            );
+            HashSet<string> skipSnapshot = CloneSkipSet(settings, WGroupSkipFieldName);
+
+            try
+            {
+                SetPaletteEntryColors(
+                    paletteProperty,
+                    PaletteKey,
+                    Color.white,
+                    Color.black,
+                    BackgroundColorField,
+                    GroupTextColorField
+                );
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                UnityHelpersSettings.RegisterPaletteManualEdit(
+                    UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColors,
+                    PaletteKey
+                );
+
+                InvokeEnsureMethod(settings, "EnsureWGroupCustomColorDefaults");
+                serialized.Update();
+
+                (Color background, Color text) = GetPaletteEntryColors(
+                    paletteProperty,
+                    PaletteKey,
+                    BackgroundColorField,
+                    GroupTextColorField
+                );
+
+                AssertColorsApproximately(Color.white, background);
+                AssertColorsApproximately(Color.black, text);
+            }
+            finally
+            {
+                RestorePaletteEntry(
+                    paletteProperty,
+                    PaletteKey,
+                    snapshot,
+                    BackgroundColorField,
+                    GroupTextColorField
+                );
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                RestoreSkipSet(settings, WGroupSkipFieldName, skipSnapshot);
+            }
+        }
+
+        [Test]
+        public void SerializableDictionaryDrawerCommit_RegistersManualEditForPalette()
+        {
+            const string PaletteKey = "EditorDrawerPaletteKey";
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            using SerializedObject serialized = new SerializedObject(settings);
+            serialized.Update();
+
+            SerializedProperty paletteProperty = serialized.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            PaletteEntrySnapshot snapshot = CapturePaletteEntrySnapshot(
+                paletteProperty,
+                PaletteKey,
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+            );
+            HashSet<string> skipSnapshot = CloneSkipSet(settings, WButtonSkipFieldName);
+
+            try
+            {
+                SerializableDictionaryPropertyDrawer drawer = new();
+                Type paletteValueType = typeof(UnityHelpersSettings).GetNestedType(
+                    "WButtonCustomColor",
+                    BindingFlags.Instance | BindingFlags.NonPublic
+                );
+                Assert.NotNull(paletteValueType);
+
+                object paletteValue = Activator.CreateInstance(paletteValueType, nonPublic: true);
+                FieldInfo buttonField = paletteValueType.GetField(
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
+                    BindingFlags.Instance | BindingFlags.NonPublic
+                );
+                FieldInfo textField = paletteValueType.GetField(
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText,
+                    BindingFlags.Instance | BindingFlags.NonPublic
+                );
+                buttonField.SetValue(paletteValue, Color.cyan);
+                textField.SetValue(paletteValue, Color.black);
+
+                SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                    drawer.GetOrCreatePendingEntry(
+                        paletteProperty,
+                        typeof(string),
+                        paletteValueType,
+                        isSortedDictionary: false
+                    );
+                pending.key = PaletteKey;
+                pending.value = paletteValue;
+
+                SerializedProperty keysProperty = paletteProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Keys
+                );
+                SerializedProperty valuesProperty = paletteProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Values
+                );
+
+                drawer.CommitEntry(
+                    keysProperty,
+                    valuesProperty,
+                    typeof(string),
+                    paletteValueType,
+                    pending,
+                    existingIndex: -1,
+                    paletteProperty
+                );
+
+                serialized.Update();
+                HashSet<string> skipSet = GetSkipSet(settings, WButtonSkipFieldName);
+                Assert.IsTrue(
+                    skipSet != null && skipSet.Contains(PaletteKey),
+                    "Drawer commit should register palette manual edits."
+                );
+            }
+            finally
+            {
+                RestorePaletteEntry(
+                    paletteProperty,
+                    PaletteKey,
+                    snapshot,
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+                );
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                RestoreSkipSet(settings, WButtonSkipFieldName, skipSnapshot);
+            }
+        }
+
         private static void AssertColorsApproximately(
             Color expected,
             Color actual,
@@ -726,6 +1005,226 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             Assert.That(Mathf.Abs(expected.g - actual.g), Is.LessThanOrEqualTo(tolerance));
             Assert.That(Mathf.Abs(expected.b - actual.b), Is.LessThanOrEqualTo(tolerance));
             Assert.That(Mathf.Abs(expected.a - actual.a), Is.LessThanOrEqualTo(tolerance));
+        }
+
+        private const string WButtonSkipFieldName = "wbuttonCustomColorSkipAutoSuggest";
+        private const string WGroupSkipFieldName = "wgroupCustomColorSkipAutoSuggest";
+        private const string BackgroundColorField = "backgroundColor";
+        private const string GroupTextColorField = "textColor";
+
+        private readonly struct PaletteEntrySnapshot
+        {
+            public PaletteEntrySnapshot(bool exists, Color button, Color text)
+            {
+                Exists = exists;
+                Button = button;
+                Text = text;
+            }
+
+            public bool Exists { get; }
+            public Color Button { get; }
+            public Color Text { get; }
+        }
+
+        private static PaletteEntrySnapshot CapturePaletteEntrySnapshot(
+            SerializedProperty dictionaryProperty,
+            string key,
+            string buttonField,
+            string textField
+        )
+        {
+            (SerializedProperty keys, SerializedProperty values) = GetDictionaryArrays(
+                dictionaryProperty
+            );
+            int index = FindDictionaryIndex(keys, key);
+            if (index < 0)
+            {
+                return new PaletteEntrySnapshot(false, default, default);
+            }
+
+            SerializedProperty valueProperty = values.GetArrayElementAtIndex(index);
+            Color button =
+                valueProperty.FindPropertyRelative(buttonField)?.colorValue ?? Color.clear;
+            Color text = valueProperty.FindPropertyRelative(textField)?.colorValue ?? Color.clear;
+            return new PaletteEntrySnapshot(true, button, text);
+        }
+
+        private static void RestorePaletteEntry(
+            SerializedProperty dictionaryProperty,
+            string key,
+            PaletteEntrySnapshot snapshot,
+            string buttonField,
+            string textField
+        )
+        {
+            if (snapshot.Exists)
+            {
+                SetPaletteEntryColors(
+                    dictionaryProperty,
+                    key,
+                    snapshot.Button,
+                    snapshot.Text,
+                    buttonField,
+                    textField
+                );
+            }
+            else
+            {
+                RemovePaletteEntry(dictionaryProperty, key);
+            }
+        }
+
+        private static void SetPaletteEntryColors(
+            SerializedProperty dictionaryProperty,
+            string key,
+            Color buttonColor,
+            Color textColor,
+            string buttonField,
+            string textField
+        )
+        {
+            (SerializedProperty keys, SerializedProperty values) = GetDictionaryArrays(
+                dictionaryProperty
+            );
+            int index = FindDictionaryIndex(keys, key);
+            if (index < 0)
+            {
+                index = keys.arraySize;
+                keys.InsertArrayElementAtIndex(index);
+                values.InsertArrayElementAtIndex(index);
+                keys.GetArrayElementAtIndex(index).stringValue = key;
+            }
+
+            SerializedProperty valueProperty = values.GetArrayElementAtIndex(index);
+            valueProperty.FindPropertyRelative(buttonField).colorValue = buttonColor;
+            valueProperty.FindPropertyRelative(textField).colorValue = textColor;
+        }
+
+        private static (Color Button, Color Text) GetPaletteEntryColors(
+            SerializedProperty dictionaryProperty,
+            string key,
+            string buttonField,
+            string textField
+        )
+        {
+            (SerializedProperty keys, SerializedProperty values) = GetDictionaryArrays(
+                dictionaryProperty
+            );
+            int index = FindDictionaryIndex(keys, key);
+            Assert.GreaterOrEqual(index, 0, $"Palette entry '{key}' was not found.");
+
+            SerializedProperty valueProperty = values.GetArrayElementAtIndex(index);
+            return (
+                valueProperty.FindPropertyRelative(buttonField).colorValue,
+                valueProperty.FindPropertyRelative(textField).colorValue
+            );
+        }
+
+        private static void RemovePaletteEntry(SerializedProperty dictionaryProperty, string key)
+        {
+            (SerializedProperty keys, SerializedProperty values) = GetDictionaryArrays(
+                dictionaryProperty
+            );
+            int index = FindDictionaryIndex(keys, key);
+            if (index < 0)
+            {
+                return;
+            }
+
+            keys.DeleteArrayElementAtIndex(index);
+            values.DeleteArrayElementAtIndex(index);
+        }
+
+        private static (SerializedProperty Keys, SerializedProperty Values) GetDictionaryArrays(
+            SerializedProperty dictionaryProperty
+        )
+        {
+            SerializedProperty keys = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty values = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+            return (keys, values);
+        }
+
+        private static int FindDictionaryIndex(SerializedProperty keysProperty, string targetKey)
+        {
+            for (int index = 0; index < keysProperty.arraySize; index++)
+            {
+                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
+                if (
+                    string.Equals(
+                        keyProperty.stringValue,
+                        targetKey,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    return index;
+                }
+            }
+
+            return -1;
+        }
+
+        private static void InvokeEnsureMethod(UnityHelpersSettings settings, string methodName)
+        {
+            MethodInfo method = typeof(UnityHelpersSettings).GetMethod(
+                methodName,
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            Assert.NotNull(method, $"Unable to resolve method '{methodName}'.");
+            method.Invoke(settings, null);
+        }
+
+        private static HashSet<string> CloneSkipSet(UnityHelpersSettings settings, string fieldName)
+        {
+            HashSet<string> existing = GetSkipSet(settings, fieldName);
+            return existing != null
+                ? new HashSet<string>(existing, StringComparer.OrdinalIgnoreCase)
+                : null;
+        }
+
+        private static HashSet<string> GetSkipSet(UnityHelpersSettings settings, string fieldName)
+        {
+            FieldInfo field = typeof(UnityHelpersSettings).GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            Assert.NotNull(field, $"Unable to resolve field '{fieldName}'.");
+            return field.GetValue(settings) as HashSet<string>;
+        }
+
+        private static void RestoreSkipSet(
+            UnityHelpersSettings settings,
+            string fieldName,
+            HashSet<string> snapshot
+        )
+        {
+            FieldInfo field = typeof(UnityHelpersSettings).GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            Assert.NotNull(field, $"Unable to resolve field '{fieldName}'.");
+            if (snapshot == null)
+            {
+                field.SetValue(settings, null);
+                return;
+            }
+
+            field.SetValue(
+                settings,
+                new HashSet<string>(snapshot, StringComparer.OrdinalIgnoreCase)
+            );
+        }
+
+        private static bool ColorsApproximatelyEqual(Color a, Color b, float tolerance = 0.01f)
+        {
+            return Mathf.Abs(a.r - b.r) <= tolerance
+                && Mathf.Abs(a.g - b.g) <= tolerance
+                && Mathf.Abs(a.b - b.b) <= tolerance
+                && Mathf.Abs(a.a - b.a) <= tolerance;
         }
     }
 }

@@ -68,6 +68,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Color DuplicateSecondaryColor = new(0.96f, 0.45f, 0.45f, 0.65f);
         private static readonly Color DuplicateOutlineColor = new(0.65f, 0.18f, 0.18f, 0.9f);
         private static readonly Color NullKeyHighlightColor = new(0.84f, 0.2f, 0.2f, 0.6f);
+        private static readonly Dictionary<Type, PaletteValueRenderer> PaletteValueRenderers =
+            BuildPaletteValueRenderers();
         private static readonly GUIContent DuplicateTooltipContent = new();
         private static readonly GUIContent DuplicateIconContentCache = new();
         private static readonly GUIContent NullKeyTooltipContent = new();
@@ -235,7 +237,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     EditorGUI.indentLevel = previousIndent;
                 }
 
-                bool applied = serializedObject.ApplyModifiedProperties();
+                bool applied = ApplyModifiedPropertiesWithUndoFallback(
+                    serializedObject,
+                    property,
+                    "OnGUI::ListApply"
+                );
                 if (applied)
                 {
                     SyncRuntimeDictionary(property);
@@ -335,7 +341,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 height += warningHeight + spacing;
             }
 
-            float pendingHeight = GetPendingSectionHeight(pending);
+            float pendingHeight = GetPendingSectionHeight(pending, keyType, valueType);
             height += pendingHeight + spacing;
 
             ReorderableList list = GetOrCreateList(property);
@@ -618,6 +624,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 if (EditorGUI.EndChangeCheck())
                 {
                     InvalidateKeyCache(key);
+                    ApplyAndSyncPaletteRowChange(dictionaryProperty, "KeyFieldChanged");
                 }
 
                 EditorGUI.BeginChangeCheck();
@@ -625,6 +632,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 if (EditorGUI.EndChangeCheck())
                 {
                     MarkListCacheDirty(key);
+                    ApplyAndSyncPaletteRowChange(dictionaryProperty, "ValueFieldChanged");
                 }
             };
 
@@ -1960,7 +1968,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             keysProperty.DeleteArrayElementAtIndex(removeIndex);
             valuesProperty.DeleteArrayElementAtIndex(removeIndex);
-            serializedObject.ApplyModifiedProperties();
+            ApplyModifiedPropertiesWithUndoFallback(
+                serializedObject,
+                dictionaryProperty,
+                "RemoveEntry"
+            );
             serializedObject.Update();
             SyncRuntimeDictionary(dictionaryProperty);
             foreach (Object target in serializedObject.targetObjects)
@@ -2022,7 +2034,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             keysProperty.ClearArray();
             valuesProperty.ClearArray();
-            serializedObject.ApplyModifiedProperties();
+            ApplyModifiedPropertiesWithUndoFallback(
+                serializedObject,
+                dictionaryProperty,
+                "ClearEntries"
+            );
             SyncRuntimeDictionary(dictionaryProperty);
 
             ClampPaginationState(pagination, keysProperty.arraySize);
@@ -2166,7 +2182,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 foldoutProgress = pending.isExpanded ? 1f : 0f;
             }
 
-            float sectionHeight = GetPendingSectionHeight(foldoutProgress);
+            PendingSectionMetrics pendingMetrics = CalculatePendingSectionMetrics(
+                pending,
+                keyType,
+                valueType
+            );
+            float sectionHeight = pendingMetrics.EvaluateHeight(foldoutProgress);
             float rowHeight = EditorGUIUtility.singleLineHeight;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
 
@@ -2216,7 +2237,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     foldoutProgress = expanded ? 1f : 0f;
                 }
 
-                sectionHeight = GetPendingSectionHeight(foldoutProgress);
+                sectionHeight = pendingMetrics.EvaluateHeight(foldoutProgress);
                 RequestRepaint();
             }
 
@@ -2244,11 +2265,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
             }
 
-            Rect keyRect = new(PendingSectionPadding, innerY, innerWidth, rowHeight);
+            float keyHeight = pendingMetrics.KeyHeight;
+            Rect keyRect = new(PendingSectionPadding, innerY, innerWidth, keyHeight);
             pending.key = DrawFieldForType(keyRect, "Key", pending.key, keyType, pending, false);
-            innerY += rowHeight + spacing;
+            innerY += keyHeight + spacing;
 
-            Rect valueRect = new(PendingSectionPadding, innerY, innerWidth, rowHeight);
+            float valueHeight = pendingMetrics.ValueHeight;
+            Rect valueRect = new(PendingSectionPadding, innerY, innerWidth, valueHeight);
             pending.value = DrawFieldForType(
                 valueRect,
                 "Value",
@@ -2257,7 +2280,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 pending,
                 true
             );
-            innerY += rowHeight + spacing;
+            innerY += valueHeight + spacing;
 
             bool keySupported = IsTypeSupported(keyType);
             bool valueSupported = IsTypeSupported(valueType);
@@ -2471,18 +2494,65 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ReleasePendingWrapper(pending, true);
         }
 
-        private static float GetPendingSectionHeight(float foldoutProgress)
+        private static PendingSectionMetrics CalculatePendingSectionMetrics(
+            PendingEntry pending,
+            Type keyType,
+            Type valueType
+        )
         {
             float rowHeight = EditorGUIUtility.singleLineHeight;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
-            float baseHeight = rowHeight * 1f + PendingSectionPadding * 2f;
-            float expandedExtraHeight = rowHeight * 3f + spacing * 3f;
-            return baseHeight + expandedExtraHeight * Mathf.Clamp01(foldoutProgress);
+            float keyHeight = GetPendingFieldHeight(pending, keyType, isValueField: false);
+            float valueHeight = GetPendingFieldHeight(pending, valueType, isValueField: true);
+            float collapsedHeight = rowHeight + PendingSectionPadding * 2f;
+            float expandedExtraHeight =
+                spacing + keyHeight + spacing + valueHeight + spacing + rowHeight;
+            return new PendingSectionMetrics(
+                collapsedHeight,
+                expandedExtraHeight,
+                keyHeight,
+                valueHeight
+            );
         }
 
-        private static float GetPendingSectionHeight(PendingEntry pending)
+        private static float GetPendingSectionHeight(
+            PendingEntry pending,
+            Type keyType,
+            Type valueType
+        )
         {
-            return GetPendingSectionHeight(GetPendingFoldoutProgress(pending));
+            PendingSectionMetrics metrics = CalculatePendingSectionMetrics(
+                pending,
+                keyType,
+                valueType
+            );
+            return metrics.EvaluateHeight(GetPendingFoldoutProgress(pending));
+        }
+
+        private readonly struct PendingSectionMetrics
+        {
+            public float CollapsedHeight { get; }
+            public float ExpandedExtraHeight { get; }
+            public float KeyHeight { get; }
+            public float ValueHeight { get; }
+
+            public PendingSectionMetrics(
+                float collapsedHeight,
+                float expandedExtraHeight,
+                float keyHeight,
+                float valueHeight
+            )
+            {
+                CollapsedHeight = collapsedHeight;
+                ExpandedExtraHeight = expandedExtraHeight;
+                KeyHeight = keyHeight;
+                ValueHeight = valueHeight;
+            }
+
+            public float EvaluateHeight(float foldoutProgress)
+            {
+                return CollapsedHeight + ExpandedExtraHeight * Mathf.Clamp01(foldoutProgress);
+            }
         }
 
         internal CommitResult CommitEntry(
@@ -2542,6 +2612,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     existingIndex
                 );
                 SetPropertyValue(valueProperty, pending.value, valueType);
+                RegisterPaletteManualEditForKey(dictionaryProperty, pending.key, keyType);
                 affectedIndex = existingIndex;
             }
             else
@@ -2560,11 +2631,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 SetPropertyValue(keyProperty, pending.key, keyType);
                 SetPropertyValue(valueProperty, pending.value, valueType);
+                RegisterPaletteManualEditForKey(dictionaryProperty, pending.key, keyType);
                 addedNewEntry = true;
                 affectedIndex = insertIndex;
             }
 
-            serializedObject.ApplyModifiedProperties();
+            ApplyModifiedPropertiesWithUndoFallback(
+                serializedObject,
+                dictionaryProperty,
+                "CommitEntry"
+            );
             serializedObject.Update();
             SyncRuntimeDictionary(dictionaryProperty);
 
@@ -3000,7 +3076,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 SetPropertyValue(valueProperty, snapshot.value, valueType);
             }
 
-            serializedObject.ApplyModifiedProperties();
+            ApplyModifiedPropertiesWithUndoFallback(
+                serializedObject,
+                dictionaryProperty,
+                "SortEntries"
+            );
             SyncRuntimeDictionary(dictionaryProperty);
 
             string listKey = GetListKey(dictionaryProperty);
@@ -3177,6 +3257,126 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return keyBuilder.ToString();
+        }
+
+        internal static bool ApplyModifiedPropertiesWithUndoFallback(
+            SerializedObject serializedObject
+        )
+        {
+            return ApplyModifiedPropertiesWithUndoFallback(
+                serializedObject,
+                propertyPath: null,
+                operation: null,
+                static so => so.ApplyModifiedProperties(),
+                static so => so.ApplyModifiedPropertiesWithoutUndo()
+            );
+        }
+
+        internal static bool ApplyModifiedPropertiesWithUndoFallback(
+            SerializedObject serializedObject,
+            SerializedProperty contextProperty,
+            string operation
+        )
+        {
+            string propertyPath = contextProperty != null ? contextProperty.propertyPath : null;
+            return ApplyModifiedPropertiesWithUndoFallback(
+                serializedObject,
+                propertyPath,
+                operation,
+                static so => so.ApplyModifiedProperties(),
+                static so => so.ApplyModifiedPropertiesWithoutUndo()
+            );
+        }
+
+        internal static bool ApplyModifiedPropertiesWithUndoFallback(
+            SerializedObject serializedObject,
+            Func<SerializedObject, bool> applyWithUndo,
+            Func<SerializedObject, bool> applyWithoutUndo
+        )
+        {
+            return ApplyModifiedPropertiesWithUndoFallback(
+                serializedObject,
+                propertyPath: null,
+                operation: null,
+                applyWithUndo,
+                applyWithoutUndo
+            );
+        }
+
+        private static bool ApplyModifiedPropertiesWithUndoFallback(
+            SerializedObject serializedObject,
+            string propertyPath,
+            string operation,
+            Func<SerializedObject, bool> applyWithUndo,
+            Func<SerializedObject, bool> applyWithoutUndo
+        )
+        {
+            if (serializedObject == null)
+            {
+                return false;
+            }
+
+            Func<SerializedObject, bool> applyFunc =
+                applyWithUndo ?? (static so => so.ApplyModifiedProperties());
+            Func<SerializedObject, bool> fallbackFunc =
+                applyWithoutUndo ?? (static so => so.ApplyModifiedPropertiesWithoutUndo());
+
+            bool hadChangesBefore = serializedObject.hasModifiedProperties;
+            if (applyFunc(serializedObject))
+            {
+                PaletteSerializationDiagnostics.ReportDrawerApplyResult(
+                    serializedObject,
+                    propertyPath,
+                    operation,
+                    PaletteSerializationDiagnostics.DrawerApplyResult.UndoPathSucceeded,
+                    hadChangesBefore,
+                    serializedObject.hasModifiedProperties
+                );
+                return true;
+            }
+
+            bool fallbackApplied = fallbackFunc(serializedObject);
+            PaletteSerializationDiagnostics.ReportDrawerApplyResult(
+                serializedObject,
+                propertyPath,
+                operation,
+                fallbackApplied
+                    ? PaletteSerializationDiagnostics.DrawerApplyResult.FallbackPathSucceeded
+                    : PaletteSerializationDiagnostics.DrawerApplyResult.Failed,
+                hadChangesBefore,
+                serializedObject.hasModifiedProperties
+            );
+            return fallbackApplied;
+        }
+
+        private static void ApplyAndSyncPaletteRowChange(
+            SerializedProperty dictionaryProperty,
+            string operation
+        )
+        {
+            if (
+                dictionaryProperty == null
+                || !PaletteSerializationDiagnostics.IsPaletteProperty(
+                    dictionaryProperty.propertyPath
+                )
+            )
+            {
+                return;
+            }
+
+            SerializedObject serializedObject = dictionaryProperty.serializedObject;
+            bool applied = ApplyModifiedPropertiesWithUndoFallback(
+                serializedObject,
+                dictionaryProperty,
+                operation
+            );
+            if (!applied)
+            {
+                return;
+            }
+
+            serializedObject.Update();
+            SyncRuntimeDictionary(dictionaryProperty);
         }
 
         private static bool KeyIsValid(Type keyType, object keyValue)
@@ -3375,6 +3575,42 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return _footerLabelStyle;
         }
 
+        private static float GetPendingFieldHeight(
+            PendingEntry pending,
+            Type fieldType,
+            bool isValueField
+        )
+        {
+            PaletteValueRenderer paletteRenderer = ResolvePaletteValueRenderer(fieldType);
+            if (paletteRenderer != null)
+            {
+                return paletteRenderer.Height;
+            }
+
+            float defaultHeight = EditorGUIUtility.singleLineHeight;
+            if (
+                pending == null
+                || fieldType == null
+                || fieldType == typeof(string)
+                || fieldType.IsPrimitive
+                || fieldType.IsEnum
+                || typeof(Object).IsAssignableFrom(fieldType)
+                || fieldType.IsValueType
+                || !TypeSupportsComplexEditing(fieldType)
+            )
+            {
+                return defaultHeight;
+            }
+
+            PendingWrapperContext context = EnsurePendingWrapper(pending, fieldType, isValueField);
+            if (context.Property == null)
+            {
+                return defaultHeight;
+            }
+
+            return EditorGUI.GetPropertyHeight(context.Property, true);
+        }
+
         internal static object DrawFieldForType(
             Rect rect,
             string label,
@@ -3385,6 +3621,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             GUIContent content = new(label);
+
+            if (TryDrawPaletteValueField(rect, content, ref current, type))
+            {
+                return current;
+            }
 
             if (TryDrawComplexTypeField(rect, content, ref current, type, pending, isValueField))
             {
@@ -3572,13 +3813,80 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EditorGUI.PropertyField(rect, context.Property, content, includeChildren: true);
             if (EditorGUI.EndChangeCheck())
             {
-                context.Serialized.ApplyModifiedProperties();
+                ApplyModifiedPropertiesWithUndoFallback(context.Serialized);
                 context.Serialized.Update();
                 object updated = context.Wrapper.GetValue();
                 current = CloneComplexValue(updated, type);
             }
 
             return true;
+        }
+
+        private static bool TryDrawPaletteValueField(
+            Rect rect,
+            GUIContent label,
+            ref object current,
+            Type type
+        )
+        {
+            PaletteValueRenderer renderer = ResolvePaletteValueRenderer(type);
+            if (renderer == null)
+            {
+                return false;
+            }
+
+            object working = EnsurePaletteValueInstance(current, type);
+            renderer.Draw(rect, label, ref working);
+            current = working;
+            return true;
+        }
+
+        private static PaletteValueRenderer ResolvePaletteValueRenderer(Type type)
+        {
+            if (type == null || PaletteValueRenderers == null)
+            {
+                return null;
+            }
+
+            return PaletteValueRenderers.GetValueOrDefault(type);
+        }
+
+        private static void RegisterPaletteManualEditForKey(
+            SerializedProperty dictionaryProperty,
+            object key,
+            Type keyType
+        )
+        {
+            if (
+                dictionaryProperty == null
+                || keyType != typeof(string)
+                || key is not string colorKey
+                || string.IsNullOrWhiteSpace(colorKey)
+                || !PaletteSerializationDiagnostics.IsPaletteProperty(
+                    dictionaryProperty.propertyPath
+                )
+            )
+            {
+                return;
+            }
+
+            SerializedObject serializedObject = dictionaryProperty.serializedObject;
+            Object[] targets = serializedObject.targetObjects;
+            if (targets == null || targets.Length == 0)
+            {
+                return;
+            }
+
+            for (int index = 0; index < targets.Length; index++)
+            {
+                if (targets[index] is UnityHelpersSettings)
+                {
+                    UnityHelpersSettings.RegisterPaletteManualEdit(
+                        dictionaryProperty.propertyPath,
+                        colorKey
+                    );
+                }
+            }
         }
 
         private static bool IsTypeSupported(Type type)
@@ -4176,6 +4484,351 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public SerializedObject Serialized { get; }
 
             public SerializedProperty Property { get; }
+        }
+
+        private static Dictionary<Type, PaletteValueRenderer> BuildPaletteValueRenderers()
+        {
+            Dictionary<Type, PaletteValueRenderer> renderers = new();
+            Type settingsType = typeof(UnityHelpersSettings);
+            TryRegisterDualColorPaletteRenderer(
+                renderers,
+                settingsType,
+                "WButtonCustomColor",
+                "Button",
+                "buttonColor",
+                "Text",
+                "textColor"
+            );
+            TryRegisterDualColorPaletteRenderer(
+                renderers,
+                settingsType,
+                "WGroupCustomColor",
+                "Background",
+                "backgroundColor",
+                "Text",
+                "textColor"
+            );
+            TryRegisterWEnumPaletteRenderer(renderers, settingsType);
+            return renderers;
+        }
+
+        private static void TryRegisterDualColorPaletteRenderer(
+            IDictionary<Type, PaletteValueRenderer> renderers,
+            Type containerType,
+            string nestedTypeName,
+            string firstLabel,
+            string firstFieldName,
+            string secondLabel,
+            string secondFieldName
+        )
+        {
+            Type nestedType = containerType.GetNestedType(
+                nestedTypeName,
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            if (nestedType == null)
+            {
+                return;
+            }
+
+            FieldInfo firstField = nestedType.GetField(
+                firstFieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            FieldInfo secondField = nestedType.GetField(
+                secondFieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            if (firstField == null || secondField == null)
+            {
+                return;
+            }
+
+            PaletteValueRenderer renderer = PaletteValueRenderer.CreateDualColorRenderer(
+                nestedType,
+                firstField,
+                EditorGUIUtility.TrTextContent(firstLabel),
+                secondField,
+                EditorGUIUtility.TrTextContent(secondLabel)
+            );
+
+            if (renderer != null)
+            {
+                renderers[nestedType] = renderer;
+            }
+        }
+
+        private static void TryRegisterWEnumPaletteRenderer(
+            IDictionary<Type, PaletteValueRenderer> renderers,
+            Type containerType
+        )
+        {
+            Type nestedType = containerType.GetNestedType(
+                "WEnumToggleButtonsCustomColor",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            if (nestedType == null)
+            {
+                return;
+            }
+
+            FieldInfo selectedBackground = nestedType.GetField(
+                "selectedBackgroundColor",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            FieldInfo selectedText = nestedType.GetField(
+                "selectedTextColor",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            FieldInfo inactiveBackground = nestedType.GetField(
+                "inactiveBackgroundColor",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            FieldInfo inactiveText = nestedType.GetField(
+                "inactiveTextColor",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            if (
+                selectedBackground == null
+                || selectedText == null
+                || inactiveBackground == null
+                || inactiveText == null
+            )
+            {
+                return;
+            }
+
+            PaletteValueRenderer renderer = PaletteValueRenderer.CreateWEnumRenderer(
+                nestedType,
+                selectedBackground,
+                EditorGUIUtility.TrTextContent("Selected BG"),
+                selectedText,
+                EditorGUIUtility.TrTextContent("Selected Text"),
+                inactiveBackground,
+                EditorGUIUtility.TrTextContent("Inactive BG"),
+                inactiveText,
+                EditorGUIUtility.TrTextContent("Inactive Text")
+            );
+            if (renderer != null)
+            {
+                renderers[nestedType] = renderer;
+            }
+        }
+
+        private static object EnsurePaletteValueInstance(object current, Type type)
+        {
+            object instance = current;
+            if (instance == null || !type.IsInstanceOfType(instance))
+            {
+                instance = GetDefaultValue(type);
+            }
+
+            return CloneComplexValue(instance, type) ?? instance;
+        }
+
+        private delegate void PaletteValueDrawHandler(
+            Rect rect,
+            GUIContent label,
+            ref object value
+        );
+
+        private sealed class PaletteValueRenderer
+        {
+            private readonly Type _targetType;
+            private readonly Func<float> _heightProvider;
+            private readonly PaletteValueDrawHandler _drawHandler;
+
+            private PaletteValueRenderer(
+                Type targetType,
+                Func<float> heightProvider,
+                PaletteValueDrawHandler drawHandler
+            )
+            {
+                _targetType = targetType;
+                _heightProvider = heightProvider;
+                _drawHandler = drawHandler;
+            }
+
+            public float Height => _heightProvider();
+
+            public void Draw(Rect rect, GUIContent label, ref object value)
+            {
+                _drawHandler(rect, label, ref value);
+            }
+
+            public static PaletteValueRenderer CreateDualColorRenderer(
+                Type targetType,
+                FieldInfo firstField,
+                GUIContent firstLabel,
+                FieldInfo secondField,
+                GUIContent secondLabel
+            )
+            {
+                if (
+                    targetType == null
+                    || firstField == null
+                    || secondField == null
+                    || firstLabel == null
+                    || secondLabel == null
+                )
+                {
+                    return null;
+                }
+
+                return new PaletteValueRenderer(
+                    targetType,
+                    static () => EditorGUIUtility.singleLineHeight,
+                    delegate(Rect rect, GUIContent label, ref object instance)
+                    {
+                        instance = EnsurePaletteValueInstance(instance, targetType);
+                        Rect contentRect = EditorGUI.PrefixLabel(rect, label);
+                        float spacing = EditorGUIUtility.standardVerticalSpacing;
+                        float halfWidth = Mathf.Max(0f, (contentRect.width - spacing) * 0.5f);
+                        Rect firstRect = new(
+                            contentRect.x,
+                            contentRect.y,
+                            halfWidth,
+                            EditorGUIUtility.singleLineHeight
+                        );
+                        Rect secondRect = new(
+                            firstRect.xMax + spacing,
+                            contentRect.y,
+                            halfWidth,
+                            EditorGUIUtility.singleLineHeight
+                        );
+
+                        Color first = (Color)(firstField.GetValue(instance) ?? Color.clear);
+                        Color updatedFirst = EditorGUI.ColorField(firstRect, firstLabel, first);
+                        if (updatedFirst != first)
+                        {
+                            firstField.SetValue(instance, updatedFirst);
+                        }
+
+                        Color second = (Color)(secondField.GetValue(instance) ?? Color.clear);
+                        Color updatedSecond = EditorGUI.ColorField(secondRect, secondLabel, second);
+                        if (updatedSecond != second)
+                        {
+                            secondField.SetValue(instance, updatedSecond);
+                        }
+                    }
+                );
+            }
+
+            public static PaletteValueRenderer CreateWEnumRenderer(
+                Type targetType,
+                FieldInfo selectedBgField,
+                GUIContent selectedBgLabel,
+                FieldInfo selectedTextField,
+                GUIContent selectedTextLabel,
+                FieldInfo inactiveBgField,
+                GUIContent inactiveBgLabel,
+                FieldInfo inactiveTextField,
+                GUIContent inactiveTextLabel
+            )
+            {
+                if (
+                    targetType == null
+                    || selectedBgField == null
+                    || selectedTextField == null
+                    || inactiveBgField == null
+                    || inactiveTextField == null
+                )
+                {
+                    return null;
+                }
+
+                return new PaletteValueRenderer(
+                    targetType,
+                    static () =>
+                        (EditorGUIUtility.singleLineHeight * 2f)
+                        + EditorGUIUtility.standardVerticalSpacing,
+                    delegate(Rect rect, GUIContent label, ref object instance)
+                    {
+                        instance = EnsurePaletteValueInstance(instance, targetType);
+                        Rect contentRect = EditorGUI.PrefixLabel(rect, label);
+                        float rowHeight = EditorGUIUtility.singleLineHeight;
+                        float spacing = EditorGUIUtility.standardVerticalSpacing;
+                        float halfWidth = Mathf.Max(0f, (contentRect.width - spacing) * 0.5f);
+
+                        Rect selectedBgRect = new(
+                            contentRect.x,
+                            contentRect.y,
+                            halfWidth,
+                            rowHeight
+                        );
+                        Rect selectedTextRect = new(
+                            selectedBgRect.xMax + spacing,
+                            contentRect.y,
+                            halfWidth,
+                            rowHeight
+                        );
+                        Rect inactiveBgRect = new(
+                            contentRect.x,
+                            contentRect.y + rowHeight + spacing,
+                            halfWidth,
+                            rowHeight
+                        );
+                        Rect inactiveTextRect = new(
+                            inactiveBgRect.xMax + spacing,
+                            inactiveBgRect.y,
+                            halfWidth,
+                            rowHeight
+                        );
+
+                        Color selectedBg = (Color)(
+                            selectedBgField.GetValue(instance) ?? Color.clear
+                        );
+                        Color updatedSelectedBg = EditorGUI.ColorField(
+                            selectedBgRect,
+                            selectedBgLabel,
+                            selectedBg
+                        );
+                        if (updatedSelectedBg != selectedBg)
+                        {
+                            selectedBgField.SetValue(instance, updatedSelectedBg);
+                        }
+
+                        Color selectedText = (Color)(
+                            selectedTextField.GetValue(instance) ?? Color.clear
+                        );
+                        Color updatedSelectedText = EditorGUI.ColorField(
+                            selectedTextRect,
+                            selectedTextLabel,
+                            selectedText
+                        );
+                        if (updatedSelectedText != selectedText)
+                        {
+                            selectedTextField.SetValue(instance, updatedSelectedText);
+                        }
+
+                        Color inactiveBg = (Color)(
+                            inactiveBgField.GetValue(instance) ?? Color.clear
+                        );
+                        Color updatedInactiveBg = EditorGUI.ColorField(
+                            inactiveBgRect,
+                            inactiveBgLabel,
+                            inactiveBg
+                        );
+                        if (updatedInactiveBg != inactiveBg)
+                        {
+                            inactiveBgField.SetValue(instance, updatedInactiveBg);
+                        }
+
+                        Color inactiveText = (Color)(
+                            inactiveTextField.GetValue(instance) ?? Color.clear
+                        );
+                        Color updatedInactiveText = EditorGUI.ColorField(
+                            inactiveTextRect,
+                            inactiveTextLabel,
+                            inactiveText
+                        );
+                        if (updatedInactiveText != inactiveText)
+                        {
+                            inactiveTextField.SetValue(instance, updatedInactiveText);
+                        }
+                    }
+                );
+            }
         }
 
         internal static void SetPropertyValue(SerializedProperty property, object value, Type type)
@@ -5028,11 +5681,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     baseDictionary.EditorAfterDeserialize();
                     EditorUtility.SetDirty(target);
+                    if (target is UnityHelpersSettings unitySettings)
+                    {
+                        unitySettings.SaveSettings();
+                    }
                 }
                 else if (dictionaryInstance is ISerializationCallbackReceiver receiver)
                 {
                     receiver.OnAfterDeserialize();
                     EditorUtility.SetDirty(target);
+                    if (target is UnityHelpersSettings unitySettings)
+                    {
+                        unitySettings.SaveSettings();
+                    }
                 }
             }
 

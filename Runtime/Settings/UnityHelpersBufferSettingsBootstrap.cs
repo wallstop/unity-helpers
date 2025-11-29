@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Settings
     internal static class UnityHelpersBufferSettingsBootstrap
     {
 #if UNITY_EDITOR
-        private static bool editorAppliedThisDomain;
+        private static bool _editorAppliedThisDomain;
 
         [InitializeOnLoadMethod]
         private static void ApplyInEditor()
@@ -31,12 +31,12 @@ namespace WallstopStudios.UnityHelpers.Settings
 #if UNITY_EDITOR
             if (fromEditorInit)
             {
-                editorAppliedThisDomain = true;
+                _editorAppliedThisDomain = true;
             }
-            else if (editorAppliedThisDomain)
+            else if (_editorAppliedThisDomain)
             {
                 // RuntimeInitializeOnLoadMethod also runs in the editor; avoid double applying.
-                editorAppliedThisDomain = false;
+                _editorAppliedThisDomain = false;
                 return;
             }
 #endif
