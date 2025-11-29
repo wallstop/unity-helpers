@@ -1308,7 +1308,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 yield break;
             }
 
-            using (Buffers<AnimationFileInfo>.List.Get(out List<AnimationFileInfo> filtered))
+            using PooledResource<List<AnimationFileInfo>> filteredResource =
+                Buffers<AnimationFileInfo>.List.Get(out List<AnimationFileInfo> filtered);
             {
                 if (string.IsNullOrWhiteSpace(_filterText))
                 {

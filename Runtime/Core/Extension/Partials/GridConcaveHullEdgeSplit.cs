@@ -131,8 +131,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return new List<FastVector3Int>(convexHull);
             }
             using PooledResource<List<HullEdge>> concaveHullEdgesResource =
-                Buffers<HullEdge>.List.Get();
-            List<HullEdge> concaveHullEdges = concaveHullEdgesResource.resource;
+                Buffers<HullEdge>.List.Get(out List<HullEdge> concaveHullEdges);
             if (concaveHullEdges.Capacity < convexHull.Count)
             {
                 concaveHullEdges.Capacity = convexHull.Count;
@@ -183,8 +182,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 bucketSize: bucketSize
             );
             using PooledResource<List<FastVector3Int>> neighborsBuffer =
-                Buffers<FastVector3Int>.List.Get();
-            List<FastVector3Int> neighbors = neighborsBuffer.resource;
+                Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> neighbors);
             if (neighbors.Capacity < bucketSize)
             {
                 neighbors.Capacity = bucketSize;

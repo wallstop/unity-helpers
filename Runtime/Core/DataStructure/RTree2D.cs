@@ -270,8 +270,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             using PooledResource<Stack<RTreeNode>> nodeBufferResource =
-                Buffers<RTreeNode>.Stack.Get();
-            Stack<RTreeNode> nodesToVisit = nodeBufferResource.resource;
+                Buffers<RTreeNode>.Stack.Get(out Stack<RTreeNode> nodesToVisit);
             nodesToVisit.Push(_head);
 
             while (nodesToVisit.TryPop(out RTreeNode currentNode))

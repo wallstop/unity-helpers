@@ -182,7 +182,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Core.Helper
             MethodInfo[] methods = type.GetMethods(
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
             );
-            using (Buffers<MethodInfo>.List.Get(out List<MethodInfo> result))
+            using PooledResource<List<MethodInfo>> resultResource = Buffers<MethodInfo>.List.Get(
+                out List<MethodInfo> result
+            );
             {
                 for (int i = 0; i < methods.Length; i++)
                 {

@@ -243,8 +243,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
             }
 
-            using PooledResource<List<T>> buffer = Buffers<T>.List.Get();
-            List<T> bufferList = buffer.resource;
+            using PooledResource<List<T>> buffer = Buffers<T>.List.Get(out List<T> bufferList);
             foreach (T element in enumerable)
             {
                 bufferList.Add(element);

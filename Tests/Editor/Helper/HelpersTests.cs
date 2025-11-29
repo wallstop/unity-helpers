@@ -92,8 +92,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Assert.That(Helpers.GetAllLayerNames(), Is.EqualTo(InternalEditorUtility.layers));
 
-            using PooledResource<List<string>> bufferResource = Buffers<string>.List.Get();
-            List<string> buffer = bufferResource.resource;
+            using PooledResource<List<string>> bufferResource = Buffers<string>.List.Get(
+                out List<string> buffer
+            );
             Helpers.GetAllLayerNames(buffer);
             Assert.That(buffer, Is.EqualTo(InternalEditorUtility.layers));
         }

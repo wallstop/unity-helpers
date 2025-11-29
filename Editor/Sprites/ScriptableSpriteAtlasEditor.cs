@@ -629,8 +629,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         case LabelSelectionMode.AnyOf:
                         {
                             using PooledResource<HashSet<string>> setRes =
-                                Buffers<string>.HashSet.Get();
-                            HashSet<string> set = setRes.resource;
+                                Buffers<string>.HashSet.Get(out HashSet<string> set);
                             foreach (string l in entry.labels)
                             {
                                 if (string.IsNullOrWhiteSpace(l))
@@ -762,15 +761,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         {
                             string[] labels = AssetDatabase.GetLabels(mainAsset);
                             using PooledResource<HashSet<string>> entryLabelsRes =
-                                Buffers<string>.HashSet.Get();
-                            HashSet<string> entryLabels = entryLabelsRes.resource;
-                            entryLabels.Clear();
+                                Buffers<string>.HashSet.Get(out HashSet<string> entryLabels);
                             entryLabels.UnionWith(entry.labels);
 
                             using PooledResource<HashSet<string>> assetLabelsRes =
-                                Buffers<string>.HashSet.Get();
-                            HashSet<string> assetLabels = assetLabelsRes.resource;
-                            assetLabels.Clear();
+                                Buffers<string>.HashSet.Get(out HashSet<string> assetLabels);
                             assetLabels.UnionWith(labels);
                             switch (entry.labelSelectionMode)
                             {
@@ -861,15 +856,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             {
                                 string[] labels2 = AssetDatabase.GetLabels(mainAsset2);
                                 using PooledResource<HashSet<string>> exEntryLabelsRes =
-                                    Buffers<string>.HashSet.Get();
-                                HashSet<string> exEntryLabels = exEntryLabelsRes.resource;
-                                exEntryLabels.Clear();
+                                    Buffers<string>.HashSet.Get(out HashSet<string> exEntryLabels);
                                 exEntryLabels.UnionWith(entry.excludeLabels);
 
                                 using PooledResource<HashSet<string>> assetLabelsRes2 =
-                                    Buffers<string>.HashSet.Get();
-                                HashSet<string> assetLabels2 = assetLabelsRes2.resource;
-                                assetLabels2.Clear();
+                                    Buffers<string>.HashSet.Get(out HashSet<string> assetLabels2);
                                 assetLabels2.UnionWith(labels2);
 
                                 switch (entry.excludeLabelSelectionMode)
@@ -1414,8 +1405,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             Undo.RecordObject(config, "Sync Sprites To Scan Result");
 
             // Build the target set = (current ∪ toAdd) \ toRemove
-            using PooledResource<HashSet<Sprite>> targetSetRes = Buffers<Sprite>.HashSet.Get();
-            HashSet<Sprite> targetSet = targetSetRes.resource;
+            using PooledResource<HashSet<Sprite>> targetSetRes = Buffers<Sprite>.HashSet.Get(
+                out HashSet<Sprite> targetSet
+            );
 
             for (int i = 0; i < spritesListProp.arraySize; ++i)
             {

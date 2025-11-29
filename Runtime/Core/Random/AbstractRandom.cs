@@ -859,8 +859,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 return;
             }
 
-            using PooledResource<HashSet<T>> pooledSet = Buffers<T>.HashSet.Get();
-            HashSet<T> set = pooledSet.resource;
+            using PooledResource<HashSet<T>> pooledSet = Buffers<T>.HashSet.Get(out HashSet<T> set);
             foreach (T exclusion in exclusions)
             {
                 if (Array.IndexOf(enumValues, exclusion) < 0)
@@ -871,12 +870,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 set.Add(exclusion);
                 if (set.Count >= enumCount)
                 {
-                    set.Clear();
                     ThrowAllEnumValuesExcluded<T>(enumCount);
                 }
             }
-
-            set.Clear();
         }
 
         private T NextEnumExceptInternal<T>(ReadOnlySpan<T> exclusions)
@@ -1184,8 +1180,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             T[] enumValues = GetEnumValues<T>();
 
-            using PooledResource<HashSet<T>> bufferResource = Buffers<T>.HashSet.Get();
-            HashSet<T> set = bufferResource.resource;
+            using PooledResource<HashSet<T>> bufferResource = Buffers<T>.HashSet.Get(
+                out HashSet<T> set
+            );
             set.Add(exception1);
             set.Add(exception2);
             set.Add(exception3);

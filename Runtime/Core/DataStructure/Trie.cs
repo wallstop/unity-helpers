@@ -239,20 +239,32 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             private readonly PooledResource<
                 Stack<(int node, PooledResource<StringBuilder> sbResource, int sbLength)>
             > _stackResource;
+            private readonly Stack<(
+                int node,
+                PooledResource<StringBuilder> sbResource,
+                int sbLength
+            )> _stack;
             private readonly PooledResource<List<PooledResource<StringBuilder>>> _listResource;
+            private readonly List<PooledResource<StringBuilder>> _stringBuilderResources;
             private string _current;
 
             internal Enumerator(Trie trie)
             {
                 _trie = trie;
-                _stackResource = Buffers<(int, PooledResource<StringBuilder>, int)>.Stack.Get();
-                _listResource = Buffers<PooledResource<StringBuilder>>.List.Get();
+                _stackResource = Buffers<(int, PooledResource<StringBuilder>, int)>.Stack.Get(
+                    out Stack<(int, PooledResource<StringBuilder>, int)> stack
+                );
+                _stack = stack;
+                _listResource = Buffers<PooledResource<StringBuilder>>.List.Get(
+                    out List<PooledResource<StringBuilder>> stringBuilderResources
+                );
+                _stringBuilderResources = stringBuilderResources;
                 _current = null;
 
                 // Initialize with root node
                 PooledResource<StringBuilder> sbResource = Buffers.StringBuilder.Get();
-                _listResource.resource.Add(sbResource);
-                _stackResource.resource.Push((0, sbResource, 0));
+                _stringBuilderResources.Add(sbResource);
+                _stack.Push((0, sbResource, 0));
             }
 
             public string Current => _current;
@@ -260,7 +272,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             public bool MoveNext()
             {
                 while (
-                    _stackResource.resource.TryPop(
+                    _stack.TryPop(
                         out (int node, PooledResource<StringBuilder> sbResource, int sbLength) item
                     )
                 )
@@ -286,12 +298,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         child = _trie._nextSibling[child]
                     )
                     {
-                        PooledResource<StringBuilder> childResource = Buffers.StringBuilder.Get();
-                        _listResource.resource.Add(childResource);
-                        StringBuilder childSb = childResource.resource;
+                        PooledResource<StringBuilder> childResource = Buffers.StringBuilder.Get(
+                            out StringBuilder childSb
+                        );
+                        _stringBuilderResources.Add(childResource);
                         childSb.Append(sb);
                         childSb.Append(_trie._chars[child]);
-                        _stackResource.resource.Push((child, childResource, childSb.Length));
+                        _stack.Push((child, childResource, childSb.Length));
                     }
                 }
 
@@ -312,19 +325,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     child = _trie._nextSibling[child]
                 )
                 {
-                    PooledResource<StringBuilder> childResource = Buffers.StringBuilder.Get();
-                    _listResource.resource.Add(childResource);
-                    StringBuilder childSb = childResource.resource;
+                    PooledResource<StringBuilder> childResource = Buffers.StringBuilder.Get(
+                        out StringBuilder childSb
+                    );
+                    _stringBuilderResources.Add(childResource);
                     childSb.Append(sb);
                     childSb.Append(_trie._chars[child]);
-                    _stackResource.resource.Push((child, childResource, childSb.Length));
+                    _stack.Push((child, childResource, childSb.Length));
                 }
             }
 
             public void Dispose()
             {
                 // Return all pooled StringBuilders to the pool
-                foreach (PooledResource<StringBuilder> resource in _listResource.resource)
+                foreach (PooledResource<StringBuilder> resource in _stringBuilderResources)
                 {
                     resource.Dispose();
                 }
@@ -572,18 +586,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         {
             private readonly Trie<T> _trie;
             private readonly PooledResource<Stack<int>> _stackResource;
+            private readonly Stack<int> _stack;
             private T _current;
 
             internal Enumerator(Trie<T> trie)
             {
                 _trie = trie;
-                _stackResource = Buffers<int>.Stack.Get();
+                _stackResource = Buffers<int>.Stack.Get(out Stack<int> stack);
+                _stack = stack;
                 _current = default;
 
                 // Initialize with root node
                 if (_trie._nodeCount >= 1)
                 {
-                    _stackResource.resource.Push(0);
+                    _stack.Push(0);
                 }
             }
 
@@ -591,7 +607,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             public bool MoveNext()
             {
-                while (_stackResource.resource.TryPop(out int node))
+                while (_stack.TryPop(out int node))
                 {
                     // Check if this node has a value (including root for empty string keys)
                     if (_trie._hasValue[node])
@@ -610,7 +626,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         child = _trie._nextSibling[child]
                     )
                     {
-                        _stackResource.resource.Push(child);
+                        _stack.Push(child);
                     }
                 }
 
@@ -626,7 +642,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     child = _trie._nextSibling[child]
                 )
                 {
-                    _stackResource.resource.Push(child);
+                    _stack.Push(child);
                 }
             }
 

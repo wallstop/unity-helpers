@@ -719,9 +719,9 @@ namespace WallstopStudios.UnityHelpers.Tags
                 }
 
                 using PooledResource<List<CosmeticEffectComponent>> cosmeticEffectsResource =
-                    Buffers<CosmeticEffectComponent>.List.Get();
-                List<CosmeticEffectComponent> cosmeticEffectsBuffer =
-                    cosmeticEffectsResource.resource;
+                    Buffers<CosmeticEffectComponent>.List.Get(
+                        out List<CosmeticEffectComponent> cosmeticEffectsBuffer
+                    );
                 cosmeticEffect.GetComponents(cosmeticEffectsBuffer);
                 foreach (CosmeticEffectComponent cosmeticComponent in cosmeticEffectsBuffer)
                 {
@@ -756,9 +756,9 @@ namespace WallstopStudios.UnityHelpers.Tags
                 }
 
                 using PooledResource<List<CosmeticEffectComponent>> cosmeticEffectsResource =
-                    Buffers<CosmeticEffectComponent>.List.Get();
-                List<CosmeticEffectComponent> cosmeticEffectsBuffer =
-                    cosmeticEffectsResource.resource;
+                    Buffers<CosmeticEffectComponent>.List.Get(
+                        out List<CosmeticEffectComponent> cosmeticEffectsBuffer
+                    );
                 cosmeticEffectData.GetComponents(cosmeticEffectsBuffer);
                 foreach (CosmeticEffectComponent cosmeticComponent in cosmeticEffectsBuffer)
                 {
@@ -793,9 +793,9 @@ namespace WallstopStudios.UnityHelpers.Tags
                     }
 
                     using PooledResource<List<CosmeticEffectComponent>> cosmeticEffectsResource =
-                        Buffers<CosmeticEffectComponent>.List.Get();
-                    List<CosmeticEffectComponent> cosmeticEffectsBuffer =
-                        cosmeticEffectsResource.resource;
+                        Buffers<CosmeticEffectComponent>.List.Get(
+                            out List<CosmeticEffectComponent> cosmeticEffectsBuffer
+                        );
                     cosmeticEffectData.GetComponents(cosmeticEffectsBuffer);
                     foreach (CosmeticEffectComponent cosmeticComponent in cosmeticEffectsBuffer)
                     {
@@ -809,9 +809,9 @@ namespace WallstopStudios.UnityHelpers.Tags
             foreach (CosmeticEffectData cosmeticData in cosmeticDatas)
             {
                 using PooledResource<List<CosmeticEffectComponent>> cosmeticEffectsResource =
-                    Buffers<CosmeticEffectComponent>.List.Get();
-                List<CosmeticEffectComponent> cosmeticEffectsBuffer =
-                    cosmeticEffectsResource.resource;
+                    Buffers<CosmeticEffectComponent>.List.Get(
+                        out List<CosmeticEffectComponent> cosmeticEffectsBuffer
+                    );
                 cosmeticData.GetComponents(cosmeticEffectsBuffer);
                 foreach (CosmeticEffectComponent cosmeticComponent in cosmeticEffectsBuffer)
                 {
@@ -823,9 +823,9 @@ namespace WallstopStudios.UnityHelpers.Tags
             {
                 bool shouldDestroyGameObject = true;
                 using PooledResource<List<CosmeticEffectComponent>> cosmeticEffectsResource =
-                    Buffers<CosmeticEffectComponent>.List.Get();
-                List<CosmeticEffectComponent> cosmeticEffectsBuffer =
-                    cosmeticEffectsResource.resource;
+                    Buffers<CosmeticEffectComponent>.List.Get(
+                        out List<CosmeticEffectComponent> cosmeticEffectsBuffer
+                    );
                 data.GetComponents(cosmeticEffectsBuffer);
                 foreach (CosmeticEffectComponent cosmeticEffect in cosmeticEffectsBuffer)
                 {

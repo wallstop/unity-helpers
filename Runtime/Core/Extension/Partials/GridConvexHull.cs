@@ -565,8 +565,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     {
                         // Sort by distance and add all (excluding duplicates)
                         using PooledResource<float[]> distancesRes =
-                            WallstopFastArrayPool<float>.Get(colinear.Count);
-                        float[] distances = distancesRes.resource;
+                            WallstopFastArrayPool<float>.Get(colinear.Count, out float[] distances);
                         for (int i = 0; i < colinear.Count; ++i)
                         {
                             distances[i] = (float)DistanceSquared(current, colinear[i]);
@@ -645,13 +644,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 out List<int> scratchIndices
             );
             using PooledResource<float[]> distancesResource = WallstopFastArrayPool<float>.Get(
-                Math.Max(1, vectorPoints.Count)
+                Math.Max(1, vectorPoints.Count),
+                out float[] scratchDistances
             );
-            float[] scratchDistances = distancesResource.resource;
             using PooledResource<bool[]> membershipResource = WallstopFastArrayPool<bool>.Get(
-                Math.Max(1, vectorPoints.Count)
+                Math.Max(1, vectorPoints.Count),
+                out bool[] membership
             );
-            bool[] membership = membershipResource.resource;
 
             List<Vector2> vectorHull = BuildConvexHullJarvisFallback(
                 vectorPoints,

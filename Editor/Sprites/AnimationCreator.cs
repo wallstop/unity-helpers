@@ -845,8 +845,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     }
 
                     using PooledResource<List<Sprite>> validFramesResource =
-                        Buffers<Sprite>.List.Get();
-                    List<Sprite> validFrames = validFramesResource.resource;
+                        Buffers<Sprite>.List.Get(out List<Sprite> validFrames);
                     foreach (Sprite f in frames)
                     {
                         if (f != null)

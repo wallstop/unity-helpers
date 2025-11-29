@@ -1434,8 +1434,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return Array.Empty<string>();
             }
 
-            using PooledResource<List<string>> listBuffer = Buffers<string>.List.Get();
-            List<string> words = listBuffer.resource;
+            using PooledResource<List<string>> listBuffer = Buffers<string>.List.Get(
+                out List<string> words
+            );
             using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.GetStringBuilder(
                 input.Length,
                 out StringBuilder currentWord

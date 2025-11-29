@@ -350,9 +350,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             using PooledResource<float[]> angleBufferResource = WallstopFastArrayPool<float>.Get(
-                count
+                count,
+                out float[] angles
             );
-            float[] angles = angleBufferResource.resource;
             for (int i = 0; i < count; ++i)
             {
                 Vector2 candidatePoint = worldPositions[neighborIndices[i]];
@@ -577,9 +577,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             using PooledResource<float[]> angleBufferResource = WallstopFastArrayPool<float>.Get(
-                count
+                count,
+                out float[] angles
             );
-            float[] angles = angleBufferResource.resource;
             for (int i = 0; i < count; ++i)
             {
                 Vector2 candidatePoint = points[neighborIndices[i]];

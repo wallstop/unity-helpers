@@ -32,8 +32,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         public static Rect GetWorldRect(this RectTransform transform)
         {
             using PooledResource<Vector3[]> fourCornersResource =
-                WallstopFastArrayPool<Vector3>.Get(4);
-            Vector3[] fourCorners = fourCornersResource.resource;
+                WallstopFastArrayPool<Vector3>.Get(4, out Vector3[] fourCorners);
             transform.GetWorldCorners(fourCorners);
             float minX = float.MaxValue;
             float maxX = float.MinValue;

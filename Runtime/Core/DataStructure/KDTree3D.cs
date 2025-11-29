@@ -611,8 +611,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return elementsInRange;
             }
 
-            using PooledResource<Stack<KdTreeNode>> stackResource = Buffers<KdTreeNode>.Stack.Get();
-            Stack<KdTreeNode> nodesToVisit = stackResource.resource;
+            using PooledResource<Stack<KdTreeNode>> stackResource = Buffers<KdTreeNode>.Stack.Get(
+                out Stack<KdTreeNode> nodesToVisit
+            );
             nodesToVisit.Push(_head);
 
             ImmutableArray<T> values = elements;

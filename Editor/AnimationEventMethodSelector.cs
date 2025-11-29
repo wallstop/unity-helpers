@@ -87,7 +87,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return;
             }
 
-            using (Buffers<Type>.List.Get(out List<Type> sortedTypes))
+            using PooledResource<List<Type>> sortedTypesResource = Buffers<Type>.List.Get(
+                out List<Type> sortedTypes
+            );
             {
                 foreach (Type type in lookup.Keys)
                 {

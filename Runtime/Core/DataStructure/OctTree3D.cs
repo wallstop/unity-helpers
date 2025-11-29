@@ -526,8 +526,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             using PooledResource<Stack<OctTreeNode>> nodesToVisitResource =
-                Buffers<OctTreeNode>.Stack.Get();
-            Stack<OctTreeNode> nodesToVisit = nodesToVisitResource.resource;
+                Buffers<OctTreeNode>.Stack.Get(out Stack<OctTreeNode> nodesToVisit);
             nodesToVisit.Push(_head);
 
             Entry[] entries = _entries;

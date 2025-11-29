@@ -455,7 +455,6 @@ namespace WallstopStudios.UnityHelpers.Editor
             using PooledResource<HashSet<string>> includeSetLease = Buffers<string>.HashSet.Get(
                 out HashSet<string> includeSet
             );
-            includeSet.Clear();
             for (int i = 0; i < _includeLabels.Count; i++)
             {
                 string s = _includeLabels[i];
@@ -468,7 +467,6 @@ namespace WallstopStudios.UnityHelpers.Editor
             using PooledResource<HashSet<string>> excludeSetLease = Buffers<string>.HashSet.Get(
                 out HashSet<string> excludeSet
             );
-            excludeSet.Clear();
             for (int i = 0; i < _excludeLabels.Count; i++)
             {
                 string s = _excludeLabels[i];
@@ -553,8 +551,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 }
 
                 using PooledResource<List<MonoBehaviour>> componentBufferResource =
-                    Buffers<MonoBehaviour>.List.Get();
-                List<MonoBehaviour> componentBuffer = componentBufferResource.resource;
+                    Buffers<MonoBehaviour>.List.Get(out List<MonoBehaviour> componentBuffer);
                 prefab.GetComponentsInChildren(true, componentBuffer);
 
                 using PooledResource<Dictionary<GameObject, HashSet<Type>>> typeMapLease =
@@ -727,14 +724,12 @@ namespace WallstopStudios.UnityHelpers.Editor
         )
         {
             using PooledResource<List<Transform>> transformBufferResource =
-                Buffers<Transform>.List.Get();
-            List<Transform> transforms = transformBufferResource.resource;
+                Buffers<Transform>.List.Get(out List<Transform> transforms);
             prefabRoot.GetComponentsInChildren(true, transforms);
             foreach (Transform transform in transforms)
             {
                 using PooledResource<List<MonoBehaviour>> componentBuffer =
-                    Buffers<MonoBehaviour>.List.Get();
-                List<MonoBehaviour> components = componentBuffer.resource;
+                    Buffers<MonoBehaviour>.List.Get(out List<MonoBehaviour> components);
                 transform.GetComponents(components);
                 int bufferCount = 0;
                 foreach (MonoBehaviour c in components)
@@ -770,8 +765,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                 }
 
                 using PooledResource<HashSet<GameObject>> setResource =
-                    Buffers<GameObject>.HashSet.Get();
-                HashSet<GameObject> gameObjectsWithComponentsInBuffer = setResource.resource;
+                    Buffers<GameObject>.HashSet.Get(
+                        out HashSet<GameObject> gameObjectsWithComponentsInBuffer
+                    );
                 foreach (MonoBehaviour c in buffer)
                 {
                     if (c != null)
@@ -1016,8 +1012,7 @@ namespace WallstopStudios.UnityHelpers.Editor
         )
         {
             using PooledResource<List<Transform>> transformBufferResource =
-                Buffers<Transform>.List.Get();
-            List<Transform> transforms = transformBufferResource.resource;
+                Buffers<Transform>.List.Get(out List<Transform> transforms);
             prefabRoot.GetComponentsInChildren(true, transforms);
             if (transforms.Count > MaxTransformScanForMissingOwner)
             {
@@ -1284,7 +1279,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                     return;
                 }
                 // Manual copy to avoid LINQ
-                using (Buffers<string>.List.Get(out List<string> list))
+                using PooledResource<List<string>> folderBuffer = Buffers<string>.List.Get(
+                    out List<string> list
+                );
                 {
                     foreach (string s in folders)
                     {

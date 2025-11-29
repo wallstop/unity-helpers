@@ -588,8 +588,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return elementsInRange;
             }
 
-            using PooledResource<Stack<KdTreeNode>> stackResource = Buffers<KdTreeNode>.Stack.Get();
-            Stack<KdTreeNode> nodesToVisit = stackResource.resource;
+            using PooledResource<Stack<KdTreeNode>> stackResource = Buffers<KdTreeNode>.Stack.Get(
+                out Stack<KdTreeNode> nodesToVisit
+            );
             nodesToVisit.Push(_head);
 
             Entry[] entries = _entries;
@@ -738,15 +739,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             using PooledResource<Stack<KdTreeNode>> nodeBufferResource =
-                Buffers<KdTreeNode>.Stack.Get();
-            Stack<KdTreeNode> nodeBuffer = nodeBufferResource.resource;
+                Buffers<KdTreeNode>.Stack.Get(out Stack<KdTreeNode> nodeBuffer);
             nodeBuffer.Push(_head);
-            using PooledResource<HashSet<T>> nearestNeighborBufferResource =
-                Buffers<T>.HashSet.Get();
-            HashSet<T> nearestNeighborBuffer = nearestNeighborBufferResource.resource;
+            using PooledResource<HashSet<T>> nearestNeighborBufferResource = Buffers<T>.HashSet.Get(
+                out HashSet<T> nearestNeighborBuffer
+            );
             using PooledResource<List<Neighbor>> neighborCandidatesResource =
-                Buffers<Neighbor>.List.Get();
-            List<Neighbor> neighborCandidates = neighborCandidatesResource.resource;
+                Buffers<Neighbor>.List.Get(out List<Neighbor> neighborCandidates);
 
             Entry[] entries = _entries;
             int[] indices = _indices;

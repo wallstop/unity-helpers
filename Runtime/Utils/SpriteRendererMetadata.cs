@@ -233,8 +233,9 @@ namespace WallstopStudios.UnityHelpers.Utils
             }
 
             using PooledResource<List<(Component component, Color color)>> colorBufferResource =
-                Buffers<(Component component, Color color)>.List.Get();
-            List<(Component component, Color color)> colorBuffer = colorBufferResource.resource;
+                Buffers<(Component component, Color color)>.List.Get(
+                    out List<(Component component, Color color)> colorBuffer
+                );
             colorBuffer.AddRange(_colorStackCache);
             for (int i = 1; i < colorBuffer.Count; ++i)
             {
@@ -250,9 +251,9 @@ namespace WallstopStudios.UnityHelpers.Utils
 
             using PooledResource<
                 List<(Component component, Material material)>
-            > materialBufferResource = Buffers<(Component component, Material material)>.List.Get();
-            List<(Component component, Material material)> materialBuffer =
-                materialBufferResource.resource;
+            > materialBufferResource = Buffers<(Component component, Material material)>.List.Get(
+                out List<(Component component, Material material)> materialBuffer
+            );
             materialBuffer.AddRange(_materialStackCache);
             for (int i = 1; i < materialBuffer.Count; ++i)
             {
@@ -264,8 +265,9 @@ namespace WallstopStudios.UnityHelpers.Utils
         private void OnDisable()
         {
             using PooledResource<List<(Component component, Color color)>> colorBufferResource =
-                Buffers<(Component component, Color color)>.List.Get();
-            List<(Component component, Color color)> colorBuffer = colorBufferResource.resource;
+                Buffers<(Component component, Color color)>.List.Get(
+                    out List<(Component component, Color color)> colorBuffer
+                );
             colorBuffer.AddRange(_colorStack);
             for (int i = colorBuffer.Count - 1; 1 <= i; --i)
             {
@@ -277,9 +279,9 @@ namespace WallstopStudios.UnityHelpers.Utils
 
             using PooledResource<
                 List<(Component component, Material material)>
-            > materialBufferResource = Buffers<(Component component, Material material)>.List.Get();
-            List<(Component component, Material material)> materialBuffer =
-                materialBufferResource.resource;
+            > materialBufferResource = Buffers<(Component component, Material material)>.List.Get(
+                out List<(Component component, Material material)> materialBuffer
+            );
             materialBuffer.AddRange(_materialStack);
 
             for (int i = materialBuffer.Count - 1; 1 <= i; --i)

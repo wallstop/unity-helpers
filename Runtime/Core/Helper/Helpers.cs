@@ -203,8 +203,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return AllSpriteLabels;
             }
 
-            using PooledResource<List<string>> labelBuffer = Buffers<string>.List.Get();
-            CollectSpriteLabels(labelBuffer.resource);
+            using PooledResource<List<string>> labelBuffer = Buffers<string>.List.Get(
+                out List<string> labels
+            );
+            CollectSpriteLabels(labels);
             return AllSpriteLabels;
 #else
             return Array.Empty<string>();
@@ -283,8 +285,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return CachedLayerNames;
             }
 
-            using PooledResource<List<string>> layerBuffer = Buffers<string>.List.Get();
-            List<string> layers = layerBuffer.resource;
+            using PooledResource<List<string>> layerBuffer = Buffers<string>.List.Get(
+                out List<string> layers
+            );
             for (int i = 0; i < 32; ++i)
             {
                 string name = LayerMask.LayerToName(i);
@@ -342,8 +345,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             destination.Clear();
 
-            using PooledResource<HashSet<string>> labelSetResource = Buffers<string>.HashSet.Get();
-            HashSet<string> labelSet = labelSetResource.resource;
+            using PooledResource<HashSet<string>> labelSetResource = Buffers<string>.HashSet.Get(
+                out HashSet<string> labelSet
+            );
 
             string[] guids = AssetDatabase.FindAssets("t:Sprite");
             foreach (string guid in guids)
@@ -599,10 +603,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// </summary>
         public static GameObject FindChildGameObjectWithTag(this GameObject gameObject, string tag)
         {
-            using PooledResource<List<Transform>> bufferResource = Buffers<Transform>.List.Get();
+            using PooledResource<List<Transform>> bufferResource = Buffers<Transform>.List.Get(
+                out List<Transform> transforms
+            );
             foreach (
                 Transform t in gameObject.transform.IterateOverAllChildrenRecursively(
-                    bufferResource.resource,
+                    transforms,
                     includeSelf: true
                 )
             )
@@ -1009,10 +1015,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             string tag
         )
         {
-            using PooledResource<List<Transform>> bufferResource = Buffers<Transform>.List.Get();
+            using PooledResource<List<Transform>> bufferResource = Buffers<Transform>.List.Get(
+                out List<Transform> transforms
+            );
             foreach (
                 Transform t in gameObject.transform.IterateOverAllChildrenRecursively(
-                    bufferResource.resource,
+                    transforms,
                     includeSelf: true
                 )
             )
@@ -1059,8 +1067,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             int pathCount = collider.pathCount = sprite.GetPhysicsShapeCount();
 
-            using PooledResource<List<Vector2>> pathResource = Buffers<Vector2>.List.Get();
-            List<Vector2> path = pathResource.resource;
+            using PooledResource<List<Vector2>> pathResource = Buffers<Vector2>.List.Get(
+                out List<Vector2> path
+            );
             for (int i = 0; i < pathCount; ++i)
             {
                 path.Clear();
@@ -1309,8 +1318,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         public static void AwakeObject(this GameObject gameObject)
         {
             using PooledResource<List<MonoBehaviour>> componentResource =
-                Buffers<MonoBehaviour>.List.Get();
-            List<MonoBehaviour> components = componentResource.resource;
+                Buffers<MonoBehaviour>.List.Get(out List<MonoBehaviour> components);
             gameObject.GetComponentsInChildren(false, components);
             foreach (MonoBehaviour script in components)
             {

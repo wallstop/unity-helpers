@@ -72,18 +72,18 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int maxSteps = Math.Max(16, totalPoints * 6);
 
             using PooledResource<bool[]> availabilityResource = WallstopFastArrayPool<bool>.Get(
-                totalPoints
+                totalPoints,
+                out bool[] availability
             );
-            bool[] availability = availabilityResource.resource;
 
             using PooledResource<List<int>> neighborIndicesRes = Buffers<int>.List.Get(
                 out List<int> neighborIndices
             );
 
             using PooledResource<float[]> distanceBufferRes = WallstopFastArrayPool<float>.Get(
-                totalPoints
+                totalPoints,
+                out float[] neighborDistances
             );
-            float[] neighborDistances = distanceBufferRes.resource;
 
             List<Vector2> hull = new(totalPoints);
 
@@ -192,22 +192,21 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int maxSteps = Math.Max(16, dataSet.Count * 6);
 
             using PooledResource<bool[]> availabilityResource = WallstopFastArrayPool<bool>.Get(
-                totalPoints
+                totalPoints,
+                out bool[] availability
             );
-            bool[] availability = availabilityResource.resource;
 
             using PooledResource<List<int>> neighborIndicesResource = Buffers<int>.List.Get(
                 out List<int> neighborIndices
             );
 
             using PooledResource<float[]> distanceBufferResource = WallstopFastArrayPool<float>.Get(
-                totalPoints
+                totalPoints,
+                out float[] neighborDistances
             );
-            float[] neighborDistances = distanceBufferResource.resource;
 
             using PooledResource<Vector2[]> worldPositionsResource =
-                WallstopFastArrayPool<Vector2>.Get(totalPoints);
-            Vector2[] worldPositions = worldPositionsResource.resource;
+                WallstopFastArrayPool<Vector2>.Get(totalPoints, out Vector2[] worldPositions);
             for (int i = 0; i < totalPoints; ++i)
             {
                 worldPositions[i] = grid.CellToWorld(dataSet[i]);
@@ -270,9 +269,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return;
             }
             using PooledResource<float[]> distancesResource = WallstopFastArrayPool<float>.Get(
-                count
+                count,
+                out float[] distances
             );
-            float[] distances = distancesResource.resource;
             for (int i = 0; i < count; ++i)
             {
                 distances[i] = (points[i] - origin).sqrMagnitude;
@@ -291,8 +290,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 return;
             }
-            using PooledResource<float[]> angleRes = WallstopFastArrayPool<float>.Get(count);
-            float[] angles = angleRes.resource;
+            using PooledResource<float[]> angleRes = WallstopFastArrayPool<float>.Get(
+                count,
+                out float[] angles
+            );
             for (int i = 0; i < count; ++i)
             {
                 float candidateAngle = CalculateAngle(current, points[i]);
@@ -314,9 +315,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             using PooledResource<float[]> distancesResource = WallstopFastArrayPool<float>.Get(
-                count
+                count,
+                out float[] distances
             );
-            float[] distances = distancesResource.resource;
             for (int i = 0; i < count; ++i)
             {
                 Vector2 worldPosition = grid.CellToWorld(points[i]);
@@ -339,9 +340,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             using PooledResource<float[]> distancesResource = WallstopFastArrayPool<float>.Get(
-                count
+                count,
+                out float[] distances
             );
-            float[] distances = distancesResource.resource;
             for (int i = 0; i < count; ++i)
             {
                 Vector2 worldPosition = grid.CellToWorld(points[i]);
@@ -365,9 +366,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             using PooledResource<float[]> angleBufferResource = WallstopFastArrayPool<float>.Get(
-                count
+                count,
+                out float[] angles
             );
-            float[] angles = angleBufferResource.resource;
             Vector2 currentPoint = grid.CellToWorld(current);
             for (int i = 0; i < count; ++i)
             {

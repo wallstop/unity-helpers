@@ -111,7 +111,9 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
 
             string[] tokens = normalizedSearch.Split(' ');
-            using (Buffers<string>.List.Get(out List<string> searchTerms))
+            using PooledResource<List<string>> searchTermsResource = Buffers<string>.List.Get(
+                out List<string> searchTerms
+            );
             {
                 for (int i = 0; i < tokens.Length; i++)
                 {

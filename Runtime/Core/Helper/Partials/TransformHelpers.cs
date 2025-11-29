@@ -18,8 +18,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return buffer;
             }
 
-            using PooledResource<List<T>> bufferResource = Buffers<T>.List.Get();
-            List<T> internalBuffer = bufferResource.resource;
+            using PooledResource<List<T>> bufferResource = Buffers<T>.List.Get(
+                out List<T> internalBuffer
+            );
             if (includeSelf)
             {
                 component.GetComponents(internalBuffer);
@@ -47,16 +48,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 yield break;
             }
 
-            using PooledResource<List<T>> bufferResource = Buffers<T>.List.Get();
-            List<T> buffer = bufferResource.resource;
-            using PooledResource<List<Transform>> transformResource = Buffers<Transform>.List.Get();
-            foreach (
-                Transform parent in IterateOverAllParents(
-                    component,
-                    transformResource.resource,
-                    includeSelf
-                )
-            )
+            using PooledResource<List<T>> bufferResource = Buffers<T>.List.Get(out List<T> buffer);
+            using PooledResource<List<Transform>> transformResource = Buffers<Transform>.List.Get(
+                out List<Transform> transforms
+            );
+            foreach (Transform parent in IterateOverAllParents(component, transforms, includeSelf))
             {
                 parent.GetComponents(buffer);
                 foreach (T c in buffer)
@@ -78,8 +74,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return buffer;
             }
 
-            using PooledResource<List<T>> internalBufferResource = Buffers<T>.List.Get();
-            List<T> internalBuffer = internalBufferResource.resource;
+            using PooledResource<List<T>> internalBufferResource = Buffers<T>.List.Get(
+                out List<T> internalBuffer
+            );
             if (includeSelf)
             {
                 component.GetComponents(internalBuffer);
@@ -107,8 +104,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 yield break;
             }
 
-            using PooledResource<List<T>> bufferResource = Buffers<T>.List.Get();
-            List<T> buffer = bufferResource.resource;
+            using PooledResource<List<T>> bufferResource = Buffers<T>.List.Get(out List<T> buffer);
             if (includeSelf)
             {
                 component.GetComponents(buffer);
@@ -246,13 +242,15 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 yield return transform;
             }
 
-            using PooledResource<List<Transform>> transformResource = Buffers<Transform>.List.Get();
+            using PooledResource<List<Transform>> transformResource = Buffers<Transform>.List.Get(
+                out List<Transform> transforms
+            );
             for (int i = 0; i < transform.childCount; ++i)
             {
                 foreach (
                     Transform child in IterateOverAllChildrenRecursively(
                         transform.GetChild(i),
-                        transformResource.resource,
+                        transforms,
                         includeSelf: true
                     )
                 )
@@ -314,8 +312,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 yield return transform;
             }
 
-            using PooledResource<Queue<Transform>> queueResource = Buffers<Transform>.Queue.Get();
-            Queue<Transform> iteration = queueResource.resource;
+            using PooledResource<Queue<Transform>> queueResource = Buffers<Transform>.Queue.Get(
+                out Queue<Transform> iteration
+            );
             iteration.Enqueue(transform);
             while (iteration.TryDequeue(out Transform current))
             {

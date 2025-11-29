@@ -78,8 +78,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             if (anyChanged)
             {
                 using PooledResource<HashSet<string>> labelSetResource =
-                    Buffers<string>.HashSet.Get();
-                HashSet<string> labelSet = labelSetResource.resource;
+                    Buffers<string>.HashSet.Get(out HashSet<string> labelSet);
                 foreach (string[] labels in Helpers.CachedLabels.Values)
                 {
                     foreach (string label in labels)
@@ -88,9 +87,9 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                     }
                 }
 
-                using PooledResource<List<string>> orderedLabelsResource =
-                    Buffers<string>.List.Get();
-                List<string> orderedLabels = orderedLabelsResource.resource;
+                using PooledResource<List<string>> orderedLabelsResource = Buffers<string>.List.Get(
+                    out List<string> orderedLabels
+                );
                 orderedLabels.AddRange(labelSet);
                 orderedLabels.Sort(StringComparer.Ordinal);
                 Helpers.SetSpriteLabelCache(orderedLabels, alreadySorted: true);
