@@ -1199,7 +1199,7 @@ Unity Helpers is built with performance as a top priority:
 
 **List Sorting:**
 
-- Multiple adaptive algorithms (`Ghost`, `Meteor`, `Power`, `Grail`, `Pattern-Defeating QuickSort`, `Insertion`, `Shear`, `Tim`, `Jesse`, `Green`, `Ska`, `Drift`, `Ipn`, `Smooth`, `Block`, `IPS4o`, `Power+`, `Glide`, `Flux`, `Indy`, `Sled`) tuned for `IList<T>`
+- Multiple adaptive algorithms (`Ghost`, `Meteor`, `Power`, `Grail`, `Pattern-Defeating QuickSort`, `Insertion`, `Tim`, `Jesse`, `Green`, `Ska`, `Ipn`, `Smooth`, `Block`, `IPS4o`, `Power+`, `Glide`, `Flux`) tuned for `IList<T>`
 - Deterministic datasets (sorted, nearly sorted, shuffled) across sizes from 100 to 1,000,000
 - [📊 IList Sorting Performance Benchmarks](docs/performance/ilist-sorting-performance.md)
 

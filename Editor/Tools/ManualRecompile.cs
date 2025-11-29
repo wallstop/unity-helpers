@@ -10,8 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
     /// </summary>
     public static class ManualRecompile
     {
-        private const string ShortcutId =
-            "Wallstop Studios/Unity Helpers/Request Script Compilation";
+        private const string ShortcutId = "Wallstop Studios/Request Script Compilation";
 
         [MenuItem("Tools/Wallstop Studios/Unity Helpers/Request Script Compilation")]
         public static void RequestFromMenu()

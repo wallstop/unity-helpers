@@ -99,10 +99,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     (IntSortAlgorithm)((list, comparer) => list.PowerSort(comparer))
                 ).SetName("SortingAlgorithmsMatchArraySortPowerSort");
                 yield return new TestCaseData(
-                    "ShearSort",
-                    (IntSortAlgorithm)((list, comparer) => list.ShearSort(comparer))
-                ).SetName("SortingAlgorithmsMatchArraySortShearSort");
-                yield return new TestCaseData(
                     "TimSort",
                     (IntSortAlgorithm)((list, comparer) => list.TimSort(comparer))
                 ).SetName("SortingAlgorithmsMatchArraySortTimSort");
@@ -118,10 +114,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     "SkaSort",
                     (IntSortAlgorithm)((list, comparer) => list.SkaSort(comparer))
                 ).SetName("SortingAlgorithmsMatchArraySortSkaSort");
-                yield return new TestCaseData(
-                    "DriftSort",
-                    (IntSortAlgorithm)((list, comparer) => list.DriftSort(comparer))
-                ).SetName("SortingAlgorithmsMatchArraySortDriftSort");
                 yield return new TestCaseData(
                     "IpnSort",
                     (IntSortAlgorithm)((list, comparer) => list.IpnSort(comparer))
@@ -150,14 +142,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     "FluxSort",
                     (IntSortAlgorithm)((list, comparer) => list.FluxSort(comparer))
                 ).SetName("SortingAlgorithmsMatchArraySortFluxSort");
-                yield return new TestCaseData(
-                    "IndySort",
-                    (IntSortAlgorithm)((list, comparer) => list.IndySort(comparer))
-                ).SetName("SortingAlgorithmsMatchArraySortIndySort");
-                yield return new TestCaseData(
-                    "SledSort",
-                    (IntSortAlgorithm)((list, comparer) => list.SledSort(comparer))
-                ).SetName("SortingAlgorithmsMatchArraySortSledSort");
             }
         }
 
@@ -186,10 +170,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     (TupleSortAlgorithm)((list, comparer) => list.GreenSort(comparer))
                 );
                 yield return new TestCaseData(
-                    "DriftSort",
-                    (TupleSortAlgorithm)((list, comparer) => list.DriftSort(comparer))
-                );
-                yield return new TestCaseData(
                     "BlockMergeSort",
                     (TupleSortAlgorithm)((list, comparer) => list.BlockMergeSort(comparer))
                 );
@@ -200,14 +180,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 yield return new TestCaseData(
                     "GlideSort",
                     (TupleSortAlgorithm)((list, comparer) => list.GlideSort(comparer))
-                );
-                yield return new TestCaseData(
-                    "IndySort",
-                    (TupleSortAlgorithm)((list, comparer) => list.IndySort(comparer))
-                );
-                yield return new TestCaseData(
-                    "SledSort",
-                    (TupleSortAlgorithm)((list, comparer) => list.SledSort(comparer))
                 );
             }
         }
@@ -470,30 +442,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     );
                 }
             }
-        }
-
-        [Test]
-        public void ShearSortHandlesNonSquareCounts()
-        {
-            int[] input = BuildRandomDataset(32, seed: 9001);
-            int[] expected = input.OrderBy(x => x).ToArray();
-            int[] actual = input.ToArray();
-
-            actual.ShearSort(new IntComparer());
-
-            Assert.That(actual, Is.EqualTo(expected));
-        }
-
-        [Test]
-        public void ShearSortHandlesPerfectSquareCounts()
-        {
-            int[] input = BuildRandomDataset(49, seed: 3141);
-            int[] expected = input.OrderBy(x => x).ToArray();
-            int[] actual = input.ToArray();
-
-            actual.ShearSort(new IntComparer());
-
-            Assert.That(actual, Is.EqualTo(expected));
         }
 
         [Test]

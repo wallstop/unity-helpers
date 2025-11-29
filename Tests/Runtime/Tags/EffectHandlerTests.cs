@@ -522,18 +522,77 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             Assert.AreEqual(100f, attributes.health.CurrentValue, 0.01f);
 
             yield return new WaitForSeconds(0.03f);
-            Assert.AreEqual(100f, attributes.health.CurrentValue, 0.01f);
+            Assert.Zero(
+                attributes.notifications.Count,
+                "No periodic ticks should occur before the initial delay elapses."
+            );
 
-            yield return new WaitForSeconds(0.06f);
+            yield return WaitForAttributeNotifications(
+                attributes,
+                expectedCount: 1,
+                timeout: 0.5f,
+                checkpoint: "first periodic tick"
+            );
             Assert.AreEqual(90f, attributes.health.CurrentValue, 0.01f);
 
-            yield return new WaitForSeconds(0.06f);
+            yield return WaitForAttributeNotifications(
+                attributes,
+                expectedCount: 2,
+                timeout: 0.5f,
+                checkpoint: "second periodic tick"
+            );
             Assert.AreEqual(80f, attributes.health.CurrentValue, 0.01f);
 
-            yield return new WaitForSeconds(0.06f);
+            yield return AssertNoAdditionalAttributeNotifications(
+                attributes,
+                expectedCount: 2,
+                holdDuration: 0.2f,
+                checkpoint: "max tick enforcement"
+            );
             Assert.AreEqual(80f, attributes.health.CurrentValue, 0.01f);
 
             handler.RemoveEffect(handle);
+        }
+
+        private static IEnumerator WaitForAttributeNotifications(
+            TestAttributesComponent attributes,
+            int expectedCount,
+            float timeout,
+            string checkpoint
+        )
+        {
+            float elapsed = 0f;
+            while (attributes.notifications.Count < expectedCount && elapsed < timeout)
+            {
+                yield return null;
+                elapsed += Time.deltaTime;
+            }
+
+            Assert.That(
+                attributes.notifications.Count,
+                Is.GreaterThanOrEqualTo(expectedCount),
+                $"{checkpoint} not reached within {timeout:F2}s (saw {attributes.notifications.Count})."
+            );
+        }
+
+        private static IEnumerator AssertNoAdditionalAttributeNotifications(
+            TestAttributesComponent attributes,
+            int expectedCount,
+            float holdDuration,
+            string checkpoint
+        )
+        {
+            float elapsed = 0f;
+            while (elapsed < holdDuration)
+            {
+                Assert.AreEqual(
+                    expectedCount,
+                    attributes.notifications.Count,
+                    $"{checkpoint}: detected unexpected periodic ticks after reaching the expected count."
+                );
+                yield return null;
+                elapsed += Time.deltaTime;
+            }
         }
 
         [UnityTest]

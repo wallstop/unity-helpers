@@ -9,16 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](docs/overview/roadmap.md) for details
 
-### Added
-
-- **Editor tooling**: The “Request Script Compilation” utility now ships with a Unity Shortcut Manager binding (default **Ctrl/Cmd + Alt + R**) so you can trigger it without touching the menu. The shortcut appears under _Wallstop / Request Script Compilation_ and can be remapped like any other Unity shortcut. The existing menu item remains at `Tools ▸ Wallstop Studios ▸ Unity Helpers`.
-- Coroutine wait buffer defaults can now be configured under **Project Settings ▸ Wallstop Studios ▸ Unity Helpers**. The generated `Resources/WallstopStudios/UnityHelpers/UnityHelpersBufferSettings.asset` applies the selected quantization, entry caps, and LRU mode automatically on domain reload or when the player starts (unless your code overrides the values at runtime).
-- Random and Performance runtime test suites now live in their own PlayMode assemblies, keeping namespaces tidy while still wiring markdown benchmark output to the existing docs.
-
-### Changed
-
-- The legacy line-division concave hull overload `BuildConcaveHull(IEnumerable<FastVector3Int>, Grid, float scaleFactor, float concavity)` has been marked `[Obsolete]` and now throws `NotSupportedException`. Use `ConcaveHullStrategy.Knn` or `ConcaveHullStrategy.EdgeSplit` (and their dedicated helpers) instead; the docs now call out this retirement explicitly.
-
 ## [2.2.0]
 
 ### Added
@@ -48,6 +38,9 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Move up/down buttons for reordering collection elements
   - Add/remove buttons with improved visual styling
   - Add `Request Script Recompilation` which will automatically recompile any script changes
+  - The “Request Script Compilation” utility now ships with a Unity Shortcut Manager binding (default **Ctrl/Cmd + Alt + R**) so you can trigger it without touching the menu. The shortcut appears under _Wallstop Studios / Request Script Compilation_ and can be remapped like any other Unity shortcut. The existing menu item remains at `Tools ▸ Wallstop Studios ▸ Unity Helpers`.
+  - Coroutine wait buffer defaults can now be configured under **Project Settings ▸ Wallstop Studios ▸ Unity Helpers**. The generated `Resources/WallstopStudios/UnityHelpers/UnityHelpersBufferSettings.asset` applies the selected quantization, entry caps, and LRU mode automatically on domain reload or when the player starts (unless your code overrides the values at runtime).
+  - Random and Performance runtime test suites now live in their own PlayMode assemblies, keeping namespaces tidy while still wiring markdown benchmark output to the existing docs.
 - **Random Number Generation**: Extended PRNG capabilities
   - Additional random sampling methods with statistical improvements
 - **Grid Concave Hull Reliability**:
@@ -111,6 +104,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Removed `KVector2` (deprecated, use Unity's built-in Vector2)
   - Renamed `KGuid` -> `WGuid`, changed data layout
   - Forced `WallstopFastArrayPool` to force `unmanaged` types. This pool does not clear arrays and can leak references.
+  - The legacy line-division concave hull overload `BuildConcaveHull(IEnumerable<FastVector3Int>, Grid, float scaleFactor, float concavity)` has been marked `[Obsolete]` and now throws `NotSupportedException`. Use `ConcaveHullStrategy.Knn` or `ConcaveHullStrategy.EdgeSplit` (and their dedicated helpers) instead; the docs now call out this retirement explicitly.
 - **API Improvements**:
   - Simplified `TryAdd` methods for collections
   - Enforced `IComparable` constraint where appropriate for sorting

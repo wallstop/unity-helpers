@@ -35,50 +35,38 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// <summary>Power sort algorithm - adaptive mergesort that exploits natural runs.</summary>
         Power = 6,
 
-        /// <summary>Shear sort algorithm - mesh-based alternating row/column sorter adapted for IList.</summary>
-        Shear = 7,
-
         /// <summary>Tim sort algorithm - hybrid stable run-detecting mergesort popularized by Python/Java.</summary>
-        Tim = 8,
+        Tim = 7,
 
         /// <summary>Jesse sort algorithm - dual-patience sort hybrid inspired by Jesse Michel’s research.</summary>
-        Jesse = 9,
+        Jesse = 8,
 
         /// <summary>Green sort algorithm - symmetric merge strategy inspired by greeNsort sustainability work.</summary>
-        Green = 10,
+        Green = 9,
 
         /// <summary>Ska sort algorithm - multi-pivot quicksort adapted from Malte Skarupke’s research.</summary>
-        Ska = 11,
-
-        /// <summary>Drift sort algorithm - stable drift-aware merge strategy from Voultapher’s Rust research.</summary>
-        Drift = 12,
+        Ska = 10,
 
         /// <summary>Ipn sort algorithm - in-place, adaptive quicksort variant from Voultapher’s research.</summary>
-        Ipn = 13,
+        Ipn = 11,
 
         /// <summary>Smooth sort algorithm - weak-heap/smoothsort hybrid optimized for presorted data.</summary>
-        Smooth = 14,
+        Smooth = 12,
 
         /// <summary>Block merge sort (WikiSort-style) - stable low-buffer mergesort.</summary>
-        Block = 15,
+        Block = 13,
 
         /// <summary>IPS4o samplesort - cache-efficient multi-way samplesort.</summary>
-        Ips4o = 16,
+        Ips4o = 14,
 
         /// <summary>Power sort plus - enhanced run-priority mergesort inspired by Wild & Nebel.</summary>
-        PowerPlus = 17,
+        PowerPlus = 15,
 
         /// <summary>Glide sort - stable galloping merges inspired by Rust glidesort.</summary>
-        Glide = 18,
+        Glide = 16,
 
         /// <summary>Flux sort - pattern-defeating dual-pivot quicksort from sort-research.</summary>
-        Flux = 19,
-
-        /// <summary>Indy sort - stable queue-based merge strategy (Rust indiesort).</summary>
-        Indy = 20,
-
-        /// <summary>Sled sort - buffered stable merge leveraging sledsort heuristics.</summary>
-        Sled = 21,
+        Flux = 17,
     }
 
     /// <summary>
@@ -345,11 +333,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     PowerSort(array, comparer);
                     return;
                 }
-                case SortAlgorithm.Shear:
-                {
-                    ShearSort(array, comparer);
-                    return;
-                }
                 case SortAlgorithm.Tim:
                 {
                     TimSort(array, comparer);
@@ -368,11 +351,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 case SortAlgorithm.Ska:
                 {
                     SkaSort(array, comparer);
-                    return;
-                }
-                case SortAlgorithm.Drift:
-                {
-                    DriftSort(array, comparer);
                     return;
                 }
                 case SortAlgorithm.Ipn:
@@ -408,16 +386,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 case SortAlgorithm.Flux:
                 {
                     FluxSort(array, comparer);
-                    return;
-                }
-                case SortAlgorithm.Indy:
-                {
-                    IndySort(array, comparer);
-                    return;
-                }
-                case SortAlgorithm.Sled:
-                {
-                    SledSort(array, comparer);
                     return;
                 }
                 default:
@@ -676,64 +644,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         }
 
         /// <summary>
-        /// Sorts the list using Shear Sort, alternating between row-wise and column-wise passes over a virtual mesh.
-        /// </summary>
-        /// <remarks>
-        /// Implementation reference: Shear Sort (Batcher, 1968), https://en.wikipedia.org/wiki/Shear_sort.
-        /// This adaptation projects the 1D <c>IList&lt;T&gt;</c> into a virtual square mesh and alternates row/column passes.
-        /// </remarks>
-        public static void ShearSort<T, TComparer>(this IList<T> array, TComparer comparer)
-            where TComparer : IComparer<T>
-        {
-            int count = array.Count;
-            if (count < 2)
-            {
-                return;
-            }
-
-            int dimension = 1;
-            while ((long)dimension * dimension < count)
-            {
-                dimension++;
-            }
-
-            int meshCells = dimension * dimension;
-            if (meshCells != count)
-            {
-                // Shear Sort operates on perfect meshes; fall back to a robust quicksort variant otherwise.
-                PatternDefeatingQuickSort(array, comparer);
-                return;
-            }
-
-            int phases = Math.Max(1, (int)Math.Ceiling(Math.Log(meshCells, 2.0))) + 1;
-
-            for (int phase = 0; phase < phases; ++phase)
-            {
-                bool rowPhase = (phase & 1) == 0;
-                if (rowPhase)
-                {
-                    for (int row = 0; row < dimension; ++row)
-                    {
-                        bool ascending = (row & 1) == 0;
-                        ShearSortRow(array, comparer, row, dimension, count, ascending);
-                    }
-                }
-                else
-                {
-                    for (int column = 0; column < dimension; ++column)
-                    {
-                        ShearSortColumn(array, comparer, column, dimension, count);
-                    }
-                }
-            }
-
-            for (int row = 0; row < dimension; ++row)
-            {
-                ShearSortRow(array, comparer, row, dimension, count, true);
-            }
-        }
-
-        /// <summary>
         /// Sorts the list using TimSort, a hybrid stable sort that detects natural runs and merges them adaptively.
         /// </summary>
         /// <remarks>
@@ -945,76 +855,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             SkaSortRange(array, 0, count - 1, comparer, 2 * FloorLog2(count));
-        }
-
-        /// <summary>
-        /// Sorts the list using DriftSort, a stable block merge that eagerly merges regions whose boundaries drift.
-        /// </summary>
-        /// <remarks>
-        /// Implementation reference: DriftSort (Voultapher), https://github.com/Voultapher/sort-research-rs/tree/main/writeup/driftsort_introduction.
-        /// </remarks>
-        public static void DriftSort<T, TComparer>(this IList<T> array, TComparer comparer)
-            where TComparer : IComparer<T>
-        {
-            int count = array.Count;
-            if (count < 2)
-            {
-                return;
-            }
-
-            int blockSize = Math.Max(32, (int)Math.Ceiling(Math.Sqrt(count)));
-            using PooledResource<T[]> bufferLease = WallstopArrayPool<T>.Get(
-                Math.Max(count / 2 + 1, blockSize),
-                out T[] buffer
-            );
-            using PooledResource<List<(int start, int length)>> runsLease = Buffers<(
-                int start,
-                int length
-            )>.List.Get(out List<(int start, int length)> runs);
-            runs.Clear();
-
-            for (int i = 0; i < count; i += blockSize)
-            {
-                int end = Math.Min(count - 1, i + blockSize - 1);
-                InsertionSortRange(array, i, end, comparer);
-                runs.Add((i, end - i + 1));
-            }
-
-            while (runs.Count > 1)
-            {
-                bool merged = false;
-                for (int i = 0; i < runs.Count - 1; ++i)
-                {
-                    (int startA, int lengthA) = runs[i];
-                    (int startB, int lengthB) = runs[i + 1];
-                    int endA = startA + lengthA - 1;
-                    if (comparer.Compare(array[endA], array[startB]) > 0)
-                    {
-                        MergeRuns(array, buffer, startA, lengthA, startB, lengthB, comparer);
-                        runs[i] = (startA, lengthA + lengthB);
-                        runs.RemoveAt(i + 1);
-                        merged = true;
-                        break;
-                    }
-                }
-
-                if (!merged)
-                {
-                    (int start, int length) first = runs[0];
-                    (int start, int length) second = runs[1];
-                    MergeRuns(
-                        array,
-                        buffer,
-                        first.start,
-                        first.length,
-                        second.start,
-                        second.length,
-                        comparer
-                    );
-                    runs[0] = (first.start, first.length + second.length);
-                    runs.RemoveAt(1);
-                }
-            }
         }
 
         /// <summary>
@@ -1679,114 +1519,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             DualPivotQuickSort(array, 0, count - 1, comparer);
-        }
-
-        /// <summary>
-        /// Sorts the list using IndySort, a stable queue-based merge sort.
-        /// </summary>
-        /// <remarks>
-        /// Implementation reference: indiesort (glidesort companion algorithm),
-        /// https://github.com/Voultapher/sort-research-rs/tree/main/writeup/ipnsort_introduction.
-        /// </remarks>
-        public static void IndySort<T, TComparer>(this IList<T> array, TComparer comparer)
-            where TComparer : IComparer<T>
-        {
-            int count = array.Count;
-            if (count < 2)
-            {
-                return;
-            }
-
-            using PooledResource<List<(int start, int length)>> runLease = Buffers<(
-                int start,
-                int length
-            )>.List.Get(out List<(int start, int length)> runs);
-            runs.Clear();
-            CollectNaturalRuns(array, comparer, runs);
-            if (runs.Count <= 1)
-            {
-                return;
-            }
-
-            int bufferLength = Math.Max(32, count / 2 + 1);
-            using PooledResource<T[]> bufferLease = WallstopArrayPool<T>.Get(
-                bufferLength,
-                out T[] buffer
-            );
-
-            int head = 0;
-            while (runs.Count - head > 1)
-            {
-                (int startA, int lengthA) = runs[head];
-                (int startB, int lengthB) = runs[head + 1];
-                MergeRuns(array, buffer, startA, lengthA, startB, lengthB, comparer);
-                runs[head + 1] = (startA, lengthA + lengthB);
-                head++;
-            }
-        }
-
-        /// <summary>
-        /// Sorts the list using SledSort, a stable buffered merge sort tuned for large datasets.
-        /// </summary>
-        /// <remarks>
-        /// Implementation reference: Sledsort (greeNsort portfolio), https://www.greensort.org/portfolio.html.
-        /// </remarks>
-        public static void SledSort<T, TComparer>(this IList<T> array, TComparer comparer)
-            where TComparer : IComparer<T>
-        {
-            int count = array.Count;
-            if (count < 2)
-            {
-                return;
-            }
-
-            using PooledResource<List<(int start, int length)>> runLease = Buffers<(
-                int start,
-                int length
-            )>.List.Get(out List<(int start, int length)> runs);
-            using PooledResource<List<(int start, int length)>> workLease = Buffers<(
-                int start,
-                int length
-            )>.List.Get(out List<(int start, int length)> workRuns);
-            runs.Clear();
-            workRuns.Clear();
-            CollectNaturalRuns(array, comparer, runs);
-            if (runs.Count <= 1)
-            {
-                return;
-            }
-
-            workRuns.AddRange(runs);
-
-            using PooledResource<T[]> bufferLease = WallstopArrayPool<T>.Get(
-                Math.Max(32, count / 2 + 1),
-                out T[] buffer
-            );
-
-            while (workRuns.Count > 1)
-            {
-                (int startA, int lengthA) = workRuns[0];
-                (int startB, int lengthB) = workRuns[1];
-                if (startB < startA)
-                {
-                    (startA, startB) = (startB, startA);
-                    (lengthA, lengthB) = (lengthB, lengthA);
-                }
-
-                MergeRuns(array, buffer, startA, lengthA, startB, lengthB, comparer);
-                workRuns.RemoveAt(0);
-                workRuns.RemoveAt(0);
-
-                int mergedStart = startA;
-                int mergedLength = lengthA + lengthB;
-                int insertIndex = 0;
-                while (insertIndex < workRuns.Count && workRuns[insertIndex].start < mergedStart)
-                {
-                    insertIndex++;
-                }
-
-                workRuns.Insert(insertIndex, (mergedStart, mergedLength));
-            }
         }
 
         /// <summary>
@@ -2728,74 +2460,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             while (rightIndex <= right)
             {
                 array[dest++] = buffer[rightIndex++];
-            }
-        }
-
-        private static void ShearSortRow<T, TComparer>(
-            IList<T> array,
-            TComparer comparer,
-            int row,
-            int dimension,
-            int count,
-            bool ascending
-        )
-            where TComparer : IComparer<T>
-        {
-            int start = row * dimension;
-            if (start >= count)
-            {
-                return;
-            }
-
-            int end = Math.Min(count - 1, start + dimension - 1);
-            if (start == end)
-            {
-                return;
-            }
-
-            for (int i = start + 1; i <= end; ++i)
-            {
-                T key = array[i];
-                int j = i - 1;
-                while (j >= start)
-                {
-                    int compare = comparer.Compare(array[j], key);
-                    bool shouldShift = ascending ? compare > 0 : compare < 0;
-                    if (!shouldShift)
-                    {
-                        break;
-                    }
-                    array[j + 1] = array[j];
-                    j--;
-                }
-                array[j + 1] = key;
-            }
-        }
-
-        private static void ShearSortColumn<T, TComparer>(
-            IList<T> array,
-            TComparer comparer,
-            int column,
-            int dimension,
-            int count
-        )
-            where TComparer : IComparer<T>
-        {
-            if (column >= dimension || column >= count)
-            {
-                return;
-            }
-
-            for (int index = column + dimension; index < count; index += dimension)
-            {
-                T key = array[index];
-                int jIndex = index - dimension;
-                while (jIndex >= column && comparer.Compare(array[jIndex], key) > 0)
-                {
-                    array[jIndex + dimension] = array[jIndex];
-                    jIndex -= dimension;
-                }
-                array[jIndex + dimension] = key;
             }
         }
 

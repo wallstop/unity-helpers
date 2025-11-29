@@ -47,12 +47,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
             new("Grail", SortAlgorithm.Grail, true, int.MaxValue),
             new("Power", SortAlgorithm.Power, true, int.MaxValue),
             new("Insertion", SortAlgorithm.Insertion, true, 10_000),
-            new("Shear", SortAlgorithm.Shear, false, int.MaxValue),
             new("Tim", SortAlgorithm.Tim, true, int.MaxValue),
             new("Jesse", SortAlgorithm.Jesse, false, int.MaxValue),
             new("Green", SortAlgorithm.Green, true, int.MaxValue),
             new("Ska", SortAlgorithm.Ska, false, int.MaxValue),
-            new("Drift", SortAlgorithm.Drift, true, int.MaxValue),
             new("Ipn", SortAlgorithm.Ipn, false, int.MaxValue),
             new("Smooth", SortAlgorithm.Smooth, false, int.MaxValue),
             new("Block", SortAlgorithm.Block, true, int.MaxValue),
@@ -60,8 +58,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
             new("Power+", SortAlgorithm.PowerPlus, true, int.MaxValue),
             new("Glide", SortAlgorithm.Glide, true, int.MaxValue),
             new("Flux", SortAlgorithm.Flux, false, int.MaxValue),
-            new("Indy", SortAlgorithm.Indy, true, int.MaxValue),
-            new("Sled", SortAlgorithm.Sled, true, int.MaxValue),
         };
 
         [Test]
