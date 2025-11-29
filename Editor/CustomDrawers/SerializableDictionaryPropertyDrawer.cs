@@ -33,6 +33,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private readonly Dictionary<string, KeyIndexCache> _keyIndexCaches = new();
         private readonly Dictionary<string, DuplicateKeyState> _duplicateStates = new();
         private readonly Dictionary<string, NullKeyState> _nullKeyStates = new();
+        private readonly Dictionary<string, bool> _rowValueFoldoutStates = new();
         private readonly Dictionary<string, Type> _valueTypes = new();
         internal Rect LastResolvedPosition { get; private set; }
         internal Rect LastListRect { get; private set; }
@@ -46,6 +47,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal const float PendingFoldoutToggleOffsetProjectSettings = 2f;
         internal const float PendingFoldoutLabelPadding = 4f;
         internal const float DictionaryRowFieldPadding = 4f;
+        internal const float DictionaryRowKeyColumnMinWidth = 110f;
+        internal const float DictionaryRowValueColumnMinWidth = 150f;
+        internal const float DictionaryRowComplexValueMinWidth = 230f;
+        internal const float DictionaryRowKeyValueGap = 10f;
+        internal const float DictionaryRowFoldoutGapBoost = 6f;
+        internal const float PendingFieldLabelWidth = 90f;
         internal const float ExpandableValueFoldoutLabelWidth = 16f;
         internal const float PendingExpandableValueFoldoutGutter = 8f;
         internal const float RowExpandableValueFoldoutGutter = 32f;
@@ -91,6 +98,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static GUIStyle _pendingFoldoutLabelStyle;
         private static readonly GUIContent FoldoutSpacerLabel = new(" ");
         private static readonly object NullKeySentinel = new();
+        private static readonly HashSet<Type> PendingWrapperNonEditableTypes = new();
+        private const HideFlags PendingWrapperHideFlags =
+            HideFlags.HideInHierarchy
+            | HideFlags.HideInInspector
+            | HideFlags.DontSaveInEditor
+            | HideFlags.DontSaveInBuild
+            | HideFlags.DontUnloadUnusedAsset;
 
         internal static bool HasLastPendingHeaderRect { get; private set; }
         internal static Rect LastPendingHeaderRect { get; private set; }
@@ -572,13 +586,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
 
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
-                bool valueSupportsFoldoutForHeight =
+                bool valueSupportsFoldout =
                     resolvedValueType != null
                     && ValueTypeSupportsFoldout(resolvedValueType)
                     && SerializedPropertySupportsFoldout(valueProperty);
-                if (valueSupportsFoldoutForHeight)
+                string rowFoldoutStateKey = null;
+                bool previousExpanded = valueProperty != null && valueProperty.isExpanded;
+                if (valueSupportsFoldout && valueProperty != null)
                 {
-                    valueProperty.isExpanded = true;
+                    rowFoldoutStateKey = BuildRowFoldoutStateKey(key, globalIndex);
+                    previousExpanded = EnsureRowFoldoutState(rowFoldoutStateKey, valueProperty);
                 }
                 float keyHeight = EditorGUI.GetPropertyHeight(keyProperty, GUIContent.none, true);
                 float valueHeight = EditorGUI.GetPropertyHeight(
@@ -611,22 +628,34 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     );
                 }
 
-                float gap = 6f;
+                float gap = DictionaryRowKeyValueGap;
                 bool complexValue =
                     resolvedValueType != null && TypeSupportsComplexEditing(resolvedValueType);
-                float keyColumnWidth = complexValue
-                    ? Mathf.Min(Mathf.Max(rect.width * 0.35f, 170f), rect.width - gap - 80f)
-                    : (rect.width - gap) * 0.5f;
-                keyColumnWidth = Mathf.Max(100f, keyColumnWidth);
-                float valueColumnWidth = Mathf.Max(0f, rect.width - keyColumnWidth - gap);
-                if (valueSupportsFoldoutForHeight)
+                if (valueSupportsFoldout)
                 {
-                    float targetValueWidth = Mathf.Max(rect.width * 0.55f, 220f);
-                    targetValueWidth = Mathf.Min(targetValueWidth, rect.width - gap - 110f);
-                    valueColumnWidth = Mathf.Max(valueColumnWidth, targetValueWidth);
-                    keyColumnWidth = Mathf.Max(100f, rect.width - gap - valueColumnWidth);
-                    valueColumnWidth = Mathf.Max(0f, rect.width - keyColumnWidth - gap);
-                    gap += 6f;
+                    gap += DictionaryRowFoldoutGapBoost;
+                }
+
+                float availableWidth = Mathf.Max(0f, rect.width - gap);
+                float minKeyWidth = DictionaryRowKeyColumnMinWidth;
+                float minValueWidth = complexValue
+                    ? DictionaryRowComplexValueMinWidth
+                    : DictionaryRowValueColumnMinWidth;
+                float desiredValueWidth = complexValue
+                    ? Mathf.Max(availableWidth * 0.58f, minValueWidth)
+                    : Mathf.Max(availableWidth * 0.5f, minValueWidth);
+
+                float valueColumnWidth = Mathf.Clamp(
+                    desiredValueWidth,
+                    minValueWidth,
+                    availableWidth
+                );
+                float keyColumnWidth = Mathf.Max(0f, availableWidth - valueColumnWidth);
+
+                if (keyColumnWidth < minKeyWidth)
+                {
+                    keyColumnWidth = Mathf.Min(availableWidth, minKeyWidth);
+                    valueColumnWidth = Mathf.Max(0f, availableWidth - keyColumnWidth);
                 }
 
                 Rect keyRect = new(rect.x, contentY, keyColumnWidth, keyHeight);
@@ -645,8 +674,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 keyRect.width = Mathf.Max(0f, keyRect.width - rowFieldPadding);
                 valueRect.x += rowFieldPadding;
                 valueRect.width = Mathf.Max(0f, valueRect.width - rowFieldPadding);
-
-                bool valueSupportsFoldout = valueSupportsFoldoutForHeight;
 
                 float iconSize = EditorGUIUtility.singleLineHeight;
                 float iconSpacing = 3f;
@@ -706,10 +733,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     valueRect.x += foldoutOffset;
                     valueRect.width = Mathf.Max(0f, valueRect.width - foldoutOffset);
                     LastRowValueFoldoutOffset = foldoutOffset;
-                    if (valueProperty != null && !valueProperty.isExpanded)
-                    {
-                        valueProperty.isExpanded = true;
-                    }
                 }
                 else
                 {
@@ -732,6 +755,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     {
                         EditorGUIUtility.labelWidth = previousLabelWidth;
                     }
+                }
+                if (
+                    valueSupportsFoldout
+                    && valueProperty != null
+                    && rowFoldoutStateKey != null
+                    && valueProperty.isExpanded != previousExpanded
+                )
+                {
+                    _rowValueFoldoutStates[rowFoldoutStateKey] = valueProperty.isExpanded;
+                    MarkListCacheDirty(key);
+                    RequestRepaint();
                 }
                 LastRowValueUsedFoldoutLabel = valueSupportsFoldout;
             };
@@ -1402,6 +1436,39 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             cache.pageIndex = -1;
             cache.pageSize = -1;
             cache.itemCount = -1;
+        }
+
+        private bool EnsureRowFoldoutState(string foldoutKey, SerializedProperty valueProperty)
+        {
+            if (valueProperty == null || string.IsNullOrEmpty(foldoutKey))
+            {
+                return false;
+            }
+
+            if (!_rowValueFoldoutStates.TryGetValue(foldoutKey, out bool state))
+            {
+                state = true;
+                _rowValueFoldoutStates[foldoutKey] = state;
+            }
+
+            valueProperty.isExpanded = state;
+            return state;
+        }
+
+        private static string BuildRowFoldoutStateKey(string cacheKey, int globalIndex)
+        {
+            return string.Concat(cacheKey, ":", globalIndex);
+        }
+
+        internal void SetRowFoldoutStateForTests(string cacheKey, int globalIndex, bool isExpanded)
+        {
+            if (string.IsNullOrEmpty(cacheKey))
+            {
+                return;
+            }
+
+            string foldoutKey = BuildRowFoldoutStateKey(cacheKey, globalIndex);
+            _rowValueFoldoutStates[foldoutKey] = isExpanded;
         }
 
         private static int GetRelativeIndex(ListPageCache cache, int globalIndex)
@@ -2418,14 +2485,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 float keyHeight = pendingMetrics.KeyHeight;
                 Rect keyRect = new(PendingSectionPadding, innerY, innerWidth, keyHeight);
-                pending.key = DrawFieldForType(
-                    keyRect,
-                    "Key",
-                    pending.key,
-                    keyType,
-                    pending,
-                    false
-                );
+                using (new LabelWidthScope(PendingFieldLabelWidth))
+                {
+                    pending.key = DrawFieldForType(
+                        keyRect,
+                        "Key",
+                        pending.key,
+                        keyType,
+                        pending,
+                        false
+                    );
+                }
                 innerY += keyHeight + spacing;
 
                 float valueHeight = pendingMetrics.ValueHeight;
@@ -2439,14 +2509,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     valueRect.x += pendingValueFoldoutOffset;
                     valueRect.width = Mathf.Max(0f, valueRect.width - pendingValueFoldoutOffset);
                 }
-                pending.value = DrawFieldForType(
-                    valueRect,
-                    "Value",
-                    pending.value,
-                    valueType,
-                    pending,
-                    true
-                );
+                using (new LabelWidthScope(PendingFieldLabelWidth))
+                {
+                    pending.value = DrawFieldForType(
+                        valueRect,
+                        "Value",
+                        pending.value,
+                        valueType,
+                        pending,
+                        true
+                    );
+                }
                 LastPendingValueUsedFoldoutLabel = pendingValueSupportsFoldout;
                 LastPendingValueFoldoutOffset = pendingValueFoldoutOffset;
                 if (
@@ -4049,6 +4122,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
+            if (!context.Property.editable)
+            {
+                LogPendingWrapperNotEditable(type, isValueField);
+                EditorGUI.HelpBox(
+                    rect,
+                    "Pending entry value cannot be edited. See console for details.",
+                    MessageType.Warning
+                );
+                return true;
+            }
+
             object targetValue = current ?? GetDefaultValue(type);
             object wrapperValue = context.Wrapper.GetValue();
             if (!ValuesEqual(wrapperValue, targetValue))
@@ -4085,6 +4169,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return true;
+        }
+
+        private static void LogPendingWrapperNotEditable(Type type, bool isValueField)
+        {
+            if (type == null)
+            {
+                return;
+            }
+
+            if (!PendingWrapperNonEditableTypes.Add(type))
+            {
+                return;
+            }
+
+            string fieldLabel = isValueField ? "value" : "key";
+            Debug.LogWarning(
+                $"Pending entry {fieldLabel} type {type.FullName} is not editable because the temporary wrapper SerializedProperty is read-only. Verify the wrapper hide flags and ensure the type supports [System.Serializable] data."
+            );
         }
 
         private static bool TryDrawPaletteValueField(
@@ -4313,7 +4415,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (wrapper == null)
             {
                 wrapper = ScriptableObject.CreateInstance<PendingValueWrapper>();
-                wrapper.hideFlags = HideFlags.HideAndDontSave;
+                wrapper.hideFlags = PendingWrapperHideFlags;
                 serialized = null;
                 property = null;
             }
@@ -4848,6 +4950,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public SerializedObject Serialized { get; }
 
             public SerializedProperty Property { get; }
+        }
+
+        private readonly struct LabelWidthScope : IDisposable
+        {
+            private readonly float _previousWidth;
+
+            public LabelWidthScope(float width)
+            {
+                _previousWidth = EditorGUIUtility.labelWidth;
+                EditorGUIUtility.labelWidth = width;
+            }
+
+            public void Dispose()
+            {
+                EditorGUIUtility.labelWidth = _previousWidth;
+            }
         }
 
         private static Dictionary<Type, PaletteValueRenderer> BuildPaletteValueRenderers()

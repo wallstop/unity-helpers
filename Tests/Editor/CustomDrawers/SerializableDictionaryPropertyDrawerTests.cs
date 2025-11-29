@@ -1454,6 +1454,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 pending.valueWrapperProperty,
                 "Managed reference property should exist for struct value wrappers."
             );
+            Assert.IsTrue(
+                pending.valueWrapperProperty.editable,
+                "Pending value wrapper property should remain editable."
+            );
 
             SerializedProperty color1Property = pending.valueWrapperProperty.FindPropertyRelative(
                 nameof(ColorData.color1)
@@ -2004,6 +2008,146 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 groupedValueRect.xMin,
                 Is.EqualTo(baselineValueRect.xMin + LeftPadding).Within(0.0001f),
                 "Value field should shift by the group padding."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator DictionaryRowComplexValueReservesGapAndWidth()
+        {
+            ComplexValueDictionaryHost host = CreateScriptableObject<ComplexValueDictionaryHost>();
+            host.dictionary.Add(
+                "Accent",
+                new ComplexValue { button = Color.cyan, text = Color.black }
+            );
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ComplexValueDictionaryHost.dictionary)
+            );
+            ForcePopulateComplexDictionarySerializedData(host, dictionaryProperty);
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(ComplexValueDictionaryHost),
+                nameof(ComplexValueDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new(0f, 0f, 640f, 520f);
+            GUIContent label = new("Dictionary");
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                drawer.OnGUI(controlRect, dictionaryProperty, label);
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastRowRects,
+                "Expected dictionary row layout to be tracked."
+            );
+
+            float actualGap =
+                SerializableDictionaryPropertyDrawer.LastRowValueRect.xMin
+                - SerializableDictionaryPropertyDrawer.LastRowKeyRect.xMax;
+            float expectedGap =
+                SerializableDictionaryPropertyDrawer.DictionaryRowKeyValueGap
+                + SerializableDictionaryPropertyDrawer.DictionaryRowFoldoutGapBoost;
+
+            Assert.That(
+                actualGap,
+                Is.EqualTo(expectedGap).Within(0.0001f),
+                "Complex value rows should reserve the configured key/value gap."
+            );
+
+            float minValueWidth =
+                SerializableDictionaryPropertyDrawer.DictionaryRowComplexValueMinWidth;
+            Assert.That(
+                SerializableDictionaryPropertyDrawer.LastRowValueRect.width,
+                Is.GreaterThanOrEqualTo(minValueWidth - 0.0001f),
+                "Complex value rows should preserve the minimum value column width."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator DictionaryRowFoldoutCollapseAdjustsHeight()
+        {
+            ComplexValueDictionaryHost host = CreateScriptableObject<ComplexValueDictionaryHost>();
+            host.dictionary.Add(
+                "Accent",
+                new ComplexValue { button = Color.blue, text = Color.white }
+            );
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ComplexValueDictionaryHost.dictionary)
+            );
+            ForcePopulateComplexDictionarySerializedData(host, dictionaryProperty);
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(ComplexValueDictionaryHost),
+                nameof(ComplexValueDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new(0f, 0f, 360f, 520f);
+            GUIContent label = new("Dictionary");
+            string cacheKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                drawer.OnGUI(controlRect, dictionaryProperty, label);
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastRowRects,
+                "Baseline draw should capture dictionary row layout."
+            );
+            float expandedHeight = SerializableDictionaryPropertyDrawer.LastRowValueRect.height;
+
+            drawer.SetRowFoldoutStateForTests(cacheKey, 0, false);
+            drawer.MarkListCacheDirty(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                drawer.OnGUI(controlRect, dictionaryProperty, label);
+            });
+
+            float collapsedHeight = SerializableDictionaryPropertyDrawer.LastRowValueRect.height;
+            Assert.Less(
+                collapsedHeight,
+                expandedHeight - 0.0001f,
+                "Collapsing the value foldout should reduce the rendered height."
+            );
+
+            drawer.SetRowFoldoutStateForTests(cacheKey, 0, true);
+            drawer.MarkListCacheDirty(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                drawer.OnGUI(controlRect, dictionaryProperty, label);
+            });
+
+            float reopenedHeight = SerializableDictionaryPropertyDrawer.LastRowValueRect.height;
+            Assert.That(
+                reopenedHeight,
+                Is.EqualTo(expandedHeight).Within(0.0001f),
+                "Re-expanding the value foldout should restore the original height."
             );
         }
 
