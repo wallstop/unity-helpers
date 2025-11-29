@@ -4,6 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
+    using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using Vector3 = UnityEngine.Vector3;
 
@@ -378,7 +379,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             KdTree3D<Vector3> kd = new(points, p => p);
             OctTree3D<Vector3> oct = new(points, p => p);
 
-            System.Random random = new(0xBADC0DE);
+            IRandom random = new PcgRandom(0xBADC0DE);
             List<Vector3> kdResults = new();
             List<Vector3> octResults = new();
 
@@ -454,7 +455,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             return new Bounds(center, size);
         }
 
-        private static Bounds CreateRandomBounds(System.Random random, Vector3Int gridSize)
+        private static Bounds CreateRandomBounds(IRandom random, Vector3Int gridSize)
         {
             Vector3 center = new(
                 RandomRange(random, -2f, gridSize.x + 2f),
@@ -469,7 +470,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             return new Bounds(center, size);
         }
 
-        private static float RandomRange(System.Random random, float min, float max)
+        private static float RandomRange(IRandom random, float min, float max)
         {
             return (float)(min + random.NextDouble() * (max - min));
         }

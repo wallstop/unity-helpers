@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEngine.UI;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class UnityExtensionsComprehensiveTests : CommonTestBase
@@ -20,7 +21,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             int seed = 1337
         )
         {
-            System.Random rng = new(seed);
+            IRandom rng = new PcgRandom(seed);
             List<FastVector3Int> points = new(count);
             for (int i = 0; i < count; ++i)
             {
@@ -38,7 +39,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             int seed = 42
         )
         {
-            System.Random rng = new(seed);
+            IRandom rng = new PcgRandom(seed);
             List<FastVector3Int> points = new(count);
             for (int i = 0; i < count; ++i)
             {
@@ -1115,7 +1116,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void FastVectorConcaveHullGridlessRandomCloudsRemainInsideConvexHull()
         {
-            System.Random masterRng = new(1234);
+            IRandom masterRng = new PcgRandom(1234);
             HullRegressionRecorder recorder = new(
                 nameof(FastVectorConcaveHullGridlessRandomCloudsRemainInsideConvexHull)
             );
@@ -1123,7 +1124,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             for (int trial = 0; trial < 5; ++trial)
             {
                 int trialSeed = masterRng.Next();
-                System.Random rng = new(trialSeed);
+                IRandom rng = new PcgRandom(trialSeed);
                 int count = rng.Next(10, 40);
                 List<FastVector3Int> points = new(count);
                 for (int i = 0; i < count; ++i)
@@ -1194,7 +1195,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void FastVectorConcaveHullGridlessHandlesNearColinearNoise()
         {
             List<FastVector3Int> points = new();
-            System.Random rng = new(555);
+            IRandom rng = new PcgRandom(555);
             for (int i = 0; i < 24; ++i)
             {
                 double jitter = (rng.NextDouble() - 0.5) * 0.02;

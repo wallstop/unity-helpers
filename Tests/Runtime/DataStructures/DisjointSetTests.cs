@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using System.Linq;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
+    using WallstopStudios.UnityHelpers.Core.Random;
 
     public sealed class DisjointSetTests
     {
@@ -787,7 +788,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void StressTestRandomUnions()
         {
             DisjointSet ds = new(1000);
-            Random rng = new(42);
+            IRandom rng = new PcgRandom(42);
 
             for (int i = 0; i < 5000; i++)
             {

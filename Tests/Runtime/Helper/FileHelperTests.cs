@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class FileHelperTests : CommonTestBase
@@ -471,7 +472,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             string sourceFile = Path.Combine(_testDirectory, "exact_source.txt");
             string destinationFile = Path.Combine(_testDirectory, "exact_destination.txt");
             byte[] randomContent = new byte[4096];
-            System.Random random = new(42);
+            IRandom random = new PcgRandom(42);
             random.NextBytes(randomContent);
             File.WriteAllBytes(sourceFile, randomContent);
 

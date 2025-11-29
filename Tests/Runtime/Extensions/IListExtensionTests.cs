@@ -239,7 +239,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
         private static int[] BuildRandomDataset(int length, int seed)
         {
-            System.Random random = new System.Random(seed);
+            IRandom random = new PcgRandom(seed);
             int[] data = new int[length];
             for (int i = 0; i < length; ++i)
             {
@@ -290,7 +290,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             int seed
         )
         {
-            System.Random random = new System.Random(seed);
+            IRandom random = new PcgRandom(seed);
             List<int> values = new List<int>(length);
             bool ascending = true;
             int current = 0;

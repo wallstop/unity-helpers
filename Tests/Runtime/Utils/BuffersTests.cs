@@ -440,7 +440,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             const int iterations = 1000;
             const int maxSize = 100;
-            Random random = new(42);
+            IRandom random = new PcgRandom(42);
 
             for (int i = 0; i < iterations; i++)
             {

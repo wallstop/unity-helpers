@@ -718,7 +718,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
         private static List<Vector2> AddJitter(IEnumerable<Vector2> points, float maxDeviation)
         {
-            System.Random random = new(1337);
+            IRandom random = new PcgRandom(1337);
             List<Vector2> jittered = new();
             foreach (Vector2 point in points)
             {
