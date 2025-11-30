@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
 
     [CustomPropertyDrawer(typeof(WShowIfAttribute))]
     public sealed class WShowIfPropertyDrawer : PropertyDrawer
@@ -234,7 +235,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return static _ => null;
             }
 
-            List<MemberPathSegment> segments = ParseMemberPath(memberPath);
+            using PooledResource<List<MemberPathSegment>> segmentsLease =
+                Buffers<MemberPathSegment>.GetList(4, out List<MemberPathSegment> segments);
+
+            ParseMemberPath(memberPath, segments);
             if (segments.Count == 0)
             {
                 return static _ => null;
@@ -809,10 +813,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return false;
         }
 
-        private static List<MemberPathSegment> ParseMemberPath(string memberPath)
+        private static void ParseMemberPath(string memberPath, List<MemberPathSegment> segments)
         {
+            if (segments == null)
+            {
+                throw new ArgumentNullException(nameof(segments));
+            }
+
+            segments.Clear();
+
+            if (string.IsNullOrEmpty(memberPath))
+            {
+                return;
+            }
+
             string[] rawSegments = memberPath.Split('.');
-            List<MemberPathSegment> segments = new(rawSegments.Length);
+            using PooledResource<List<int>> indicesLease = Buffers<int>.List.Get(
+                out List<int> indices
+            );
+
             for (int index = 0; index < rawSegments.Length; index += 1)
             {
                 string raw = rawSegments[index];
@@ -822,7 +841,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 string name = raw;
-                List<int> indices = new();
+                indices.Clear();
 
                 int bracket = raw.IndexOf('[');
                 if (bracket >= 0)
@@ -852,8 +871,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
                 segments.Add(segment);
             }
-
-            return segments;
         }
 
         private static Type ResolveListElementType(Type type)

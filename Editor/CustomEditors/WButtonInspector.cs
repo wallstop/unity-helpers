@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
+    using WallstopStudios.UnityHelpers.Utils;
 
     [CustomEditor(typeof(UnityEngine.Object), true)]
     [CanEditMultipleObjects]
@@ -17,7 +18,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
         public override void OnInspectorGUI()
         {
-            List<WButtonMethodContext> triggeredContexts = new();
+            using PooledResource<List<WButtonMethodContext>> triggeredContextsLease =
+                Buffers<WButtonMethodContext>.GetList(
+                    4,
+                    out List<WButtonMethodContext> triggeredContexts
+                );
 
             serializedObject.UpdateIfRequiredOrScript();
 

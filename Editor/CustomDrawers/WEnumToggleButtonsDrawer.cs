@@ -1092,7 +1092,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static ToggleOption[] BuildEnumOptions(Type enumType, bool isFlags)
         {
             Array values = Enum.GetValues(enumType);
-            List<ToggleOption> options = new(values.Length);
+            using PooledResource<List<ToggleOption>> optionsLease = Buffers<ToggleOption>.GetList(
+                values.Length,
+                out List<ToggleOption> options
+            );
 
             for (int index = 0; index < values.Length; index += 1)
             {
@@ -1117,6 +1120,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 string label = ObjectNames.NicifyVariableName(name);
                 ToggleOption option = new(label, value, numericValue, numericValue == 0UL);
                 options.Add(option);
+            }
+
+            if (options.Count == 0)
+            {
+                return Array.Empty<ToggleOption>();
             }
 
             return options.ToArray();

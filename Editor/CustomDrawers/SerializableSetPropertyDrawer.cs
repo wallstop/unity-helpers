@@ -141,7 +141,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public readonly Dictionary<int, double> animationStartTimes = new();
             public readonly Dictionary<int, bool> primaryFlags = new();
             public readonly Dictionary<object, List<int>> grouping = new();
-            public readonly Stack<List<int>> listPool = new();
+            public readonly Dictionary<List<int>, PooledResource<List<int>>> groupingLeases = new();
             public readonly List<int> animationKeysScratch = new();
             public readonly List<object> groupingKeysScratch = new();
         }
@@ -3144,6 +3144,67 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return state;
         }
 
+        private static List<int> RentGroupingList(DuplicateState state)
+        {
+            PooledResource<List<int>> lease = Buffers<int>.List.Get(out List<int> list);
+            state.groupingLeases[list] = lease;
+            return list;
+        }
+
+        private static void ReleaseGroupingList(DuplicateState state, List<int> list)
+        {
+            if (list == null)
+            {
+                return;
+            }
+
+            list.Clear();
+            if (!state.groupingLeases.Remove(list, out PooledResource<List<int>> lease))
+            {
+                return;
+            }
+
+            lease.Dispose();
+        }
+
+        private static void ReleaseAllGroupingLists(DuplicateState state)
+        {
+            if (state.grouping.Count == 0)
+            {
+                if (state.groupingLeases.Count > 0)
+                {
+                    foreach (
+                        KeyValuePair<
+                            List<int>,
+                            PooledResource<List<int>>
+                        > leaseEntry in state.groupingLeases
+                    )
+                    {
+                        leaseEntry.Key?.Clear();
+                        leaseEntry.Value.Dispose();
+                    }
+
+                    state.groupingLeases.Clear();
+                }
+
+                return;
+            }
+
+            state.groupingKeysScratch.Clear();
+            foreach (KeyValuePair<object, List<int>> bucket in state.grouping)
+            {
+                ReleaseGroupingList(state, bucket.Value);
+                state.groupingKeysScratch.Add(bucket.Key);
+            }
+
+            for (int i = 0; i < state.groupingKeysScratch.Count; i++)
+            {
+                state.grouping.Remove(state.groupingKeysScratch[i]);
+            }
+
+            state.groupingKeysScratch.Clear();
+        }
+
         internal DuplicateState EvaluateDuplicateState(
             SerializedProperty property,
             SerializedProperty itemsProperty,
@@ -3153,23 +3214,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string key = GetPropertyCacheKey(property);
             DuplicateState state = _duplicateStates.GetOrAdd(key);
 
-            if (state.grouping.Count > 0)
-            {
-                state.groupingKeysScratch.Clear();
-                foreach (KeyValuePair<object, List<int>> bucket in state.grouping)
-                {
-                    bucket.Value.Clear();
-                    state.listPool.Push(bucket.Value);
-                    state.groupingKeysScratch.Add(bucket.Key);
-                }
-
-                for (int i = 0; i < state.groupingKeysScratch.Count; i++)
-                {
-                    state.grouping.Remove(state.groupingKeysScratch[i]);
-                }
-
-                state.groupingKeysScratch.Clear();
-            }
+            ReleaseAllGroupingLists(state);
 
             bool hasEvent = Event.current != null;
             EventType eventType = hasEvent ? Event.current.type : EventType.Repaint;
@@ -3204,7 +3249,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 if (!state.grouping.TryGetValue(keyValue, out List<int> list))
                 {
-                    list = state.listPool.Count > 0 ? state.listPool.Pop() : new List<int>(4);
+                    list = RentGroupingList(state);
                     state.grouping[keyValue] = list;
                 }
 
@@ -3231,8 +3276,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 if (indices.Count <= 1)
                 {
-                    indices.Clear();
-                    state.listPool.Push(indices);
+                    ReleaseGroupingList(state, indices);
                     state.grouping.Remove(groupingKey);
                     continue;
                 }
@@ -3270,8 +3314,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     AppendIndexList(summaryBuilder, indices);
                 }
 
-                indices.Clear();
-                state.listPool.Push(indices);
+                ReleaseGroupingList(state, indices);
                 state.grouping.Remove(groupingKey);
             }
 
@@ -3318,7 +3361,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 state.summary = string.Empty;
             }
 
-            state.grouping.Clear();
+            ReleaseAllGroupingLists(state);
 
             return state;
         }

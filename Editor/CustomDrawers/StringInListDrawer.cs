@@ -205,7 +205,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 _dropdown = new DropdownField
                 {
-                    choices = new List<string>(),
+                    choices = _pageChoices,
                     style =
                     {
                         flexGrow = 1f,
@@ -418,7 +418,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 if (_filteredIndices.Count == 0)
                 {
-                    _dropdown.choices = new List<string>();
+                    _pageChoices.Clear();
+                    _dropdown.choices = _pageChoices;
                     _dropdown.SetValueWithoutNotify(string.Empty);
                     SetValueWithoutNotify(string.Empty);
                     _dropdown.SetEnabled(false);
@@ -467,7 +468,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     _pageChoices.Add(_options[optionIndex] ?? string.Empty);
                 }
 
-                _dropdown.choices = new List<string>(_pageChoices);
+                _dropdown.choices = _pageChoices;
 
                 string dropdownValue = string.Empty;
                 if (selectedOptionIndex >= 0)

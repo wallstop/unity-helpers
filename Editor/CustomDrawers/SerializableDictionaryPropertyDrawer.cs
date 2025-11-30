@@ -3977,127 +3977,156 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 Undo.RecordObjects(targets, "Sort Dictionary Keys");
             }
 
-            bool logPaletteSort = PaletteSerializationDiagnostics.ShouldLogPaletteSort(
-                dictionaryProperty,
-                keyType
-            );
-            List<string> paletteKeysBefore = null;
-            List<string> paletteKeysAfterSort = null;
-            if (logPaletteSort)
-            {
-                paletteKeysBefore = CaptureStringKeyOrder(keysProperty);
-            }
+            PooledResource<List<string>> paletteKeysBeforeLease = default;
+            PooledResource<List<string>> paletteKeysAfterSortLease = default;
+            PooledResource<List<string>> paletteKeysSerializedAfterLease = default;
 
-            object selectedKey = null;
-            int selectedIndex = pagination.selectedIndex;
-            if (selectedIndex >= 0 && selectedIndex < count)
+            try
             {
-                SerializedProperty selectedProperty = keysProperty.GetArrayElementAtIndex(
-                    selectedIndex
+                bool logPaletteSort = PaletteSerializationDiagnostics.ShouldLogPaletteSort(
+                    dictionaryProperty,
+                    keyType
                 );
-                selectedKey = GetPropertyValue(selectedProperty, keyType);
-            }
-
-            string listKey = null;
-            using PooledResource<List<KeyValueSnapshot>> entriesLease =
-                Buffers<KeyValueSnapshot>.GetList(count, out List<KeyValueSnapshot> entries);
-            {
-                for (int index = 0; index < count; index++)
+                List<string> paletteKeysBefore = null;
+                List<string> paletteKeysAfterSort = null;
+                List<string> paletteKeysSerializedAfter = null;
+                if (logPaletteSort)
                 {
-                    SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
-                    SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(index);
-                    KeyValueSnapshot snapshot = new()
-                    {
-                        key = GetPropertyValue(keyProperty, keyType),
-                        value = GetPropertyValue(valueProperty, valueType),
-                        originalIndex = index,
-                    };
-                    entries.Add(snapshot);
+                    paletteKeysBeforeLease = Buffers<string>.GetList(
+                        keysProperty?.arraySize ?? 0,
+                        out paletteKeysBefore
+                    );
+                    CaptureStringKeyOrder(keysProperty, paletteKeysBefore);
                 }
 
-                KeyValueSnapshotComparer comparer = new(comparison);
-                entries.Sort(comparer);
-                using PooledResource<List<int>> orderedIndicesLease = Buffers<int>.GetList(
-                    entries.Count,
-                    out List<int> orderedIndices
-                );
+                object selectedKey = null;
+                int selectedIndex = pagination.selectedIndex;
+                if (selectedIndex >= 0 && selectedIndex < count)
                 {
-                    for (int index = 0; index < entries.Count; index++)
+                    SerializedProperty selectedProperty = keysProperty.GetArrayElementAtIndex(
+                        selectedIndex
+                    );
+                    selectedKey = GetPropertyValue(selectedProperty, keyType);
+                }
+
+                string listKey = null;
+                using PooledResource<List<KeyValueSnapshot>> entriesLease =
+                    Buffers<KeyValueSnapshot>.GetList(count, out List<KeyValueSnapshot> entries);
+                {
+                    for (int index = 0; index < count; index++)
                     {
-                        orderedIndices.Add(entries[index].originalIndex);
+                        SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
+                        SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(
+                            index
+                        );
+                        KeyValueSnapshot snapshot = new()
+                        {
+                            key = GetPropertyValue(keyProperty, keyType),
+                            value = GetPropertyValue(valueProperty, valueType),
+                            originalIndex = index,
+                        };
+                        entries.Add(snapshot);
                     }
 
-                    ApplyDictionarySliceOrder(keysProperty, valuesProperty, orderedIndices, 0);
-                }
-
-                if (logPaletteSort)
-                {
-                    paletteKeysAfterSort = CaptureStringKeyOrder(entries);
-                }
-
-                if (logPaletteSort)
-                {
-                    PaletteSerializationDiagnostics.ReportDictionarySort(
-                        dictionaryProperty,
-                        paletteKeysBefore,
-                        paletteKeysAfterSort,
-                        CaptureStringKeyOrder(keysProperty)
+                    KeyValueSnapshotComparer comparer = new(comparison);
+                    entries.Sort(comparer);
+                    using PooledResource<List<int>> orderedIndicesLease = Buffers<int>.GetList(
+                        entries.Count,
+                        out List<int> orderedIndices
                     );
-                }
-
-                ApplyModifiedPropertiesWithUndoFallback(
-                    serializedObject,
-                    dictionaryProperty,
-                    "SortEntries"
-                );
-                SyncRuntimeDictionary(dictionaryProperty);
-
-                listKey = GetListKey(dictionaryProperty);
-                InvalidateKeyCache(listKey);
-                MarkListCacheDirty(listKey);
-                if (!string.IsNullOrEmpty(listKey))
-                {
-                    _sortedOrderHashes[listKey] = ComputeKeyOrderHash(keysProperty, keyType);
-                }
-
-                int newSelectedIndex = -1;
-                if (selectedKey != null)
-                {
-                    for (int index = 0; index < entries.Count; index++)
                     {
-                        if (ValuesEqual(entries[index].key, selectedKey))
+                        for (int index = 0; index < entries.Count; index++)
                         {
-                            newSelectedIndex = index;
-                            break;
+                            orderedIndices.Add(entries[index].originalIndex);
+                        }
+
+                        ApplyDictionarySliceOrder(keysProperty, valuesProperty, orderedIndices, 0);
+                    }
+
+                    if (logPaletteSort)
+                    {
+                        paletteKeysAfterSortLease = Buffers<string>.GetList(
+                            entries.Count,
+                            out paletteKeysAfterSort
+                        );
+                        CaptureStringKeyOrder(entries, paletteKeysAfterSort);
+                    }
+
+                    if (logPaletteSort)
+                    {
+                        paletteKeysSerializedAfterLease = Buffers<string>.GetList(
+                            keysProperty?.arraySize ?? 0,
+                            out paletteKeysSerializedAfter
+                        );
+                        CaptureStringKeyOrder(keysProperty, paletteKeysSerializedAfter);
+                        PaletteSerializationDiagnostics.ReportDictionarySort(
+                            dictionaryProperty,
+                            paletteKeysBefore,
+                            paletteKeysAfterSort,
+                            paletteKeysSerializedAfter
+                        );
+                    }
+
+                    ApplyModifiedPropertiesWithUndoFallback(
+                        serializedObject,
+                        dictionaryProperty,
+                        "SortEntries"
+                    );
+                    SyncRuntimeDictionary(dictionaryProperty);
+
+                    listKey = GetListKey(dictionaryProperty);
+                    InvalidateKeyCache(listKey);
+                    MarkListCacheDirty(listKey);
+                    if (!string.IsNullOrEmpty(listKey))
+                    {
+                        _sortedOrderHashes[listKey] = ComputeKeyOrderHash(keysProperty, keyType);
+                    }
+
+                    int newSelectedIndex = -1;
+                    if (selectedKey != null)
+                    {
+                        for (int index = 0; index < entries.Count; index++)
+                        {
+                            if (ValuesEqual(entries[index].key, selectedKey))
+                            {
+                                newSelectedIndex = index;
+                                break;
+                            }
                         }
                     }
+
+                    if (newSelectedIndex >= 0)
+                    {
+                        pagination.selectedIndex = newSelectedIndex;
+                        int totalPages = GetTotalPages(keysProperty.arraySize, pagination.pageSize);
+                        int targetPage = GetPageForIndex(newSelectedIndex, pagination.pageSize);
+                        pagination.pageIndex = Mathf.Clamp(targetPage, 0, totalPages - 1);
+                    }
+                    else
+                    {
+                        pagination.selectedIndex = Mathf.Min(
+                            keysProperty.arraySize - 1,
+                            pagination.selectedIndex
+                        );
+                        pagination.selectedIndex = Mathf.Max(pagination.selectedIndex, -1);
+                        int totalPages = GetTotalPages(keysProperty.arraySize, pagination.pageSize);
+                        int targetPage = GetPageForIndex(
+                            Mathf.Max(pagination.selectedIndex, 0),
+                            pagination.pageSize
+                        );
+                        pagination.pageIndex = Mathf.Clamp(targetPage, 0, totalPages - 1);
+                    }
                 }
 
-                if (newSelectedIndex >= 0)
-                {
-                    pagination.selectedIndex = newSelectedIndex;
-                    int totalPages = GetTotalPages(keysProperty.arraySize, pagination.pageSize);
-                    int targetPage = GetPageForIndex(newSelectedIndex, pagination.pageSize);
-                    pagination.pageIndex = Mathf.Clamp(targetPage, 0, totalPages - 1);
-                }
-                else
-                {
-                    pagination.selectedIndex = Mathf.Min(
-                        keysProperty.arraySize - 1,
-                        pagination.selectedIndex
-                    );
-                    pagination.selectedIndex = Mathf.Max(pagination.selectedIndex, -1);
-                    int totalPages = GetTotalPages(keysProperty.arraySize, pagination.pageSize);
-                    int targetPage = GetPageForIndex(
-                        Mathf.Max(pagination.selectedIndex, 0),
-                        pagination.pageSize
-                    );
-                    pagination.pageIndex = Mathf.Clamp(targetPage, 0, totalPages - 1);
-                }
+                ListPageCache updatedCache = EnsurePageCache(listKey, keysProperty, pagination);
+                SyncListSelectionWithPagination(list, pagination, updatedCache);
             }
-
-            ListPageCache updatedCache = EnsurePageCache(listKey, keysProperty, pagination);
-            SyncListSelectionWithPagination(list, pagination, updatedCache);
+            finally
+            {
+                paletteKeysSerializedAfterLease.Dispose();
+                paletteKeysAfterSortLease.Dispose();
+                paletteKeysBeforeLease.Dispose();
+            }
 
             GUI.changed = true;
 
@@ -4108,30 +4137,44 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static List<string> CaptureStringKeyOrder(SerializedProperty keysProperty)
+        private static void CaptureStringKeyOrder(
+            SerializedProperty keysProperty,
+            List<string> destination
+        )
         {
-            List<string> keys = new();
+            if (destination == null)
+            {
+                throw new ArgumentNullException(nameof(destination));
+            }
+
+            destination.Clear();
             if (keysProperty == null)
             {
-                return keys;
+                return;
             }
 
             int count = keysProperty.arraySize;
             for (int index = 0; index < count; index++)
             {
                 SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
-                keys.Add(keyProperty?.stringValue ?? "<null>");
+                destination.Add(keyProperty?.stringValue ?? "<null>");
             }
-
-            return keys;
         }
 
-        private static List<string> CaptureStringKeyOrder(List<KeyValueSnapshot> snapshots)
+        private static void CaptureStringKeyOrder(
+            List<KeyValueSnapshot> snapshots,
+            List<string> destination
+        )
         {
-            List<string> keys = new();
+            if (destination == null)
+            {
+                throw new ArgumentNullException(nameof(destination));
+            }
+
+            destination.Clear();
             if (snapshots == null)
             {
-                return keys;
+                return;
             }
 
             for (int index = 0; index < snapshots.Count; index++)
@@ -4139,20 +4182,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 KeyValueSnapshot snapshot = snapshots[index];
                 if (snapshot == null)
                 {
-                    keys.Add("<null>");
+                    destination.Add("<null>");
                     continue;
                 }
 
                 if (snapshot.key is string stringKey)
                 {
-                    keys.Add(stringKey);
+                    destination.Add(stringKey);
                     continue;
                 }
 
-                keys.Add(snapshot.key?.ToString() ?? "<null>");
+                destination.Add(snapshot.key?.ToString() ?? "<null>");
             }
-
-            return keys;
         }
 
         private sealed class KeyValueSnapshot

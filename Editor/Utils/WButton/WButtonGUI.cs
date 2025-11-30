@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Utils;
 
     internal enum WButtonPlacement
     {
@@ -56,50 +57,72 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 return false;
             }
 
-            List<WButtonMethodContext> contexts = BuildContexts(metadataList, targets);
+            using PooledResource<List<WButtonMethodContext>> contextsLease =
+                Buffers<WButtonMethodContext>.GetList(
+                    metadataList.Count,
+                    out List<WButtonMethodContext> contexts
+                );
+            BuildContexts(metadataList, targets, contexts);
             if (contexts.Count == 0)
             {
                 return false;
             }
 
-            SortedDictionary<int, List<WButtonMethodContext>> groups = GroupByDrawOrder(contexts);
+            SortedDictionary<int, List<WButtonMethodContext>> groups = new();
+            Dictionary<int, PooledResource<List<WButtonMethodContext>>> groupLeases = new();
+            GroupByDrawOrder(contexts, groups, groupLeases);
 
-            bool anyDrawn = false;
-            GroupCounts.Clear();
-            GroupNames.Clear();
-            foreach (KeyValuePair<int, List<WButtonMethodContext>> entry in groups)
+            try
             {
-                List<WButtonMethodContext> groupContexts = entry.Value;
-                GroupCounts[entry.Key] = groupContexts?.Count ?? 0;
-                string resolvedGroupName = ResolveGroupName(groupContexts);
-                if (!string.IsNullOrWhiteSpace(resolvedGroupName))
+                bool anyDrawn = false;
+                GroupCounts.Clear();
+                GroupNames.Clear();
+                foreach (KeyValuePair<int, List<WButtonMethodContext>> entry in groups)
                 {
-                    GroupNames[entry.Key] = resolvedGroupName;
+                    List<WButtonMethodContext> groupContexts = entry.Value;
+                    GroupCounts[entry.Key] = groupContexts?.Count ?? 0;
+                    string resolvedGroupName = ResolveGroupName(groupContexts);
+                    if (!string.IsNullOrWhiteSpace(resolvedGroupName))
+                    {
+                        GroupNames[entry.Key] = resolvedGroupName;
+                    }
                 }
-            }
 
-            foreach (KeyValuePair<int, List<WButtonMethodContext>> entry in groups)
+                foreach (KeyValuePair<int, List<WButtonMethodContext>> entry in groups)
+                {
+                    int drawOrder = entry.Key;
+                    bool drawOnTop = drawOrder >= -1;
+                    if (
+                        (placement == WButtonPlacement.Top && drawOnTop)
+                        || (placement == WButtonPlacement.Bottom && !drawOnTop)
+                    )
+                    {
+                        DrawGroup(
+                            drawOrder,
+                            entry.Value,
+                            paginationStates,
+                            foldoutStates,
+                            foldoutBehavior,
+                            triggeredContexts
+                        );
+                        anyDrawn = true;
+                    }
+                }
+
+                return anyDrawn;
+            }
+            finally
             {
-                int drawOrder = entry.Key;
-                bool drawOnTop = drawOrder >= -1;
-                if (
-                    (placement == WButtonPlacement.Top && drawOnTop)
-                    || (placement == WButtonPlacement.Bottom && !drawOnTop)
+                foreach (
+                    KeyValuePair<
+                        int,
+                        PooledResource<List<WButtonMethodContext>>
+                    > entry in groupLeases
                 )
                 {
-                    DrawGroup(
-                        drawOrder,
-                        entry.Value,
-                        paginationStates,
-                        foldoutStates,
-                        foldoutBehavior,
-                        triggeredContexts
-                    );
-                    anyDrawn = true;
+                    entry.Value.Dispose();
                 }
             }
-
-            return anyDrawn;
         }
 
         internal static Dictionary<int, int> GetGroupCountsForTesting()
@@ -112,12 +135,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             return GroupNames;
         }
 
-        private static List<WButtonMethodContext> BuildContexts(
+        private static void BuildContexts(
             IReadOnlyList<WButtonMethodMetadata> metadataList,
-            UnityEngine.Object[] targets
+            UnityEngine.Object[] targets,
+            List<WButtonMethodContext> contexts
         )
         {
-            List<WButtonMethodContext> contexts = new();
+            contexts.Clear();
             for (int index = 0; index < metadataList.Count; index++)
             {
                 WButtonMethodMetadata metadata = metadataList[index];
@@ -145,24 +169,30 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
                 contexts.Add(new WButtonMethodContext(metadata, states, contextTargets));
             }
-
-            return contexts;
         }
 
-        private static SortedDictionary<int, List<WButtonMethodContext>> GroupByDrawOrder(
-            List<WButtonMethodContext> contexts
+        private static void GroupByDrawOrder(
+            List<WButtonMethodContext> contexts,
+            SortedDictionary<int, List<WButtonMethodContext>> groups,
+            Dictionary<int, PooledResource<List<WButtonMethodContext>>> leases
         )
         {
-            SortedDictionary<int, List<WButtonMethodContext>> groups = new();
+            groups.Clear();
+            leases.Clear();
 
             foreach (WButtonMethodContext context in contexts)
             {
                 int drawOrder = context.Metadata.DrawOrder;
-                List<WButtonMethodContext> group = groups.GetOrAdd(drawOrder);
+                if (!groups.TryGetValue(drawOrder, out List<WButtonMethodContext> group))
+                {
+                    PooledResource<List<WButtonMethodContext>> lease =
+                        Buffers<WButtonMethodContext>.GetList(4, out group);
+                    groups[drawOrder] = group;
+                    leases[drawOrder] = lease;
+                }
+
                 group.Add(context);
             }
-
-            return groups;
         }
 
         private static void DrawGroup(

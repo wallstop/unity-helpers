@@ -962,7 +962,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            List<AnimationFileInfo> animationsToDelete = new();
+            using PooledResource<List<AnimationFileInfo>> animationsToDeleteLease =
+                Buffers<AnimationFileInfo>.List.Get(out List<AnimationFileInfo> animationsToDelete);
             for (int i = 0; i < _unchangedAnimations.Count; i++)
             {
                 AnimationFileInfo a = _unchangedAnimations[i];
@@ -1381,7 +1382,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            List<AnimationFileInfo> toDelete = new();
+            using PooledResource<List<AnimationFileInfo>> toDeleteLease =
+                Buffers<AnimationFileInfo>.List.Get(out List<AnimationFileInfo> toDelete);
             for (int i = 0; i < _destinationOrphans.Count; i++)
             {
                 AnimationFileInfo a = _destinationOrphans[i];
@@ -1511,7 +1513,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             try
             {
-                StringBuilder sb = new(4096);
+                using PooledResource<StringBuilder> builderLease = Buffers.GetStringBuilder(
+                    4096,
+                    out StringBuilder sb
+                );
                 sb.AppendLine(
                     $"Animation Copier Preview Report - {DateTime.Now:yyyy-MM-dd HH:mm:ss}"
                 );
@@ -1557,7 +1562,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 );
                 if (!string.IsNullOrWhiteSpace(savePath))
                 {
-                    File.WriteAllText(savePath, sb.ToString());
+                    string report = sb.ToString();
+                    File.WriteAllText(savePath, report);
                     EditorUtility.RevealInFinder(savePath);
                 }
             }

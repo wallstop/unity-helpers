@@ -396,8 +396,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             return config;
         }
 
-        private List<string> GetTargetTexturePaths()
+        private void GetTargetTexturePaths(List<string> destination)
         {
+            if (destination == null)
+            {
+                throw new ArgumentNullException(nameof(destination));
+            }
+            destination.Clear();
             // Build extension filter (normalize)
             using (
                 SetBuffers<string>
@@ -485,7 +490,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         {
                             if (textures == null)
                             {
-                                return new List<string>(unique);
+                                foreach (string path in unique)
+                                {
+                                    destination.Add(path);
+                                }
+                                return;
                             }
 
                             for (int ti = 0; ti < textures.Count; ti++)
@@ -516,7 +525,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             }
                         }
 
-                        return new List<string>(unique);
+                        foreach (string path in unique)
+                        {
+                            destination.Add(path);
+                        }
                     }
                 }
             }
@@ -524,7 +536,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         public void CalculateStats()
         {
-            List<string> targets = GetTargetTexturePaths();
+            using PooledResource<List<string>> targetsLease = Buffers<string>.List.Get(
+                out List<string> targets
+            );
+            GetTargetTexturePaths(targets);
             _totalTexturesToProcess = targets.Count;
             _texturesThatWillChange = 0;
             _assetsThatWillChange.Clear();
@@ -579,7 +594,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            List<string> targets = GetTargetTexturePaths();
+            using PooledResource<List<string>> targetsLease = Buffers<string>.List.Get(
+                out List<string> targets
+            );
+            GetTargetTexturePaths(targets);
             TextureSettingsApplierAPI.Config config = BuildConfig();
             // Warn about unknown platforms prior to apply
             if (platformOverrides != null)

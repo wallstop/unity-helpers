@@ -40,18 +40,30 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             UnityHelpersSettings.WGroupAutoIncludeConfiguration configuration =
                 UnityHelpersSettings.GetWGroupAutoIncludeConfiguration();
             AutoIncludeConfiguration globalConfiguration = ConvertConfiguration(configuration);
-            Dictionary<string, GroupContext> contextsByName = new(StringComparer.OrdinalIgnoreCase);
-            List<GroupContext> contextsInDeclarationOrder = new();
-            List<GroupContext> activeAutoContexts = new();
+
+            WallstopGenericPool<Dictionary<string, GroupContext>> contextsByNamePool =
+                DictionaryBuffer<string, GroupContext>.GetDictionaryPool(
+                    StringComparer.OrdinalIgnoreCase
+                );
+            using PooledResource<Dictionary<string, GroupContext>> contextsByNameLease =
+                contextsByNamePool.Get(out Dictionary<string, GroupContext> contextsByName);
+            using PooledResource<List<GroupContext>> contextsInDeclarationOrderLease =
+                Buffers<GroupContext>.GetList(
+                    descriptors.Count,
+                    out List<GroupContext> contextsInDeclarationOrder
+                );
+            using PooledResource<List<GroupContext>> activeAutoContextsLease =
+                Buffers<GroupContext>.GetList(4, out List<GroupContext> activeAutoContexts);
 
             for (int index = 0; index < descriptors.Count; index++)
             {
                 PropertyDescriptor descriptor = descriptors[index];
                 HashSet<GroupContext> explicitContexts = null;
+                PooledResource<HashSet<GroupContext>> explicitContextsLease = default;
 
                 if (descriptor.GroupAttributes.Count > 0)
                 {
-                    explicitContexts = new HashSet<GroupContext>();
+                    explicitContextsLease = Buffers<GroupContext>.HashSet.Get(out explicitContexts);
                     foreach (WGroupAttribute attribute in descriptor.GroupAttributes)
                     {
                         string normalizedName = NormalizeGroupName(attribute.GroupName);
@@ -105,10 +117,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 {
                     ApplyGroupEnds(descriptor.EndAttributes, activeAutoContexts, contextsByName);
                 }
+
+                explicitContextsLease.Dispose();
             }
 
             List<WGroupDefinition> definitions = new(contextsInDeclarationOrder.Count);
-            Dictionary<string, List<WGroupDefinition>> groupsByAnchor = new(StringComparer.Ordinal);
+            WallstopGenericPool<Dictionary<string, List<WGroupDefinition>>> groupsByAnchorPool =
+                DictionaryBuffer<string, List<WGroupDefinition>>.GetDictionaryPool(
+                    StringComparer.Ordinal
+                );
+            using PooledResource<Dictionary<string, List<WGroupDefinition>>> groupsByAnchorLease =
+                groupsByAnchorPool.Get(
+                    out Dictionary<string, List<WGroupDefinition>> groupsByAnchor
+                );
             Dictionary<string, WGroupDefinition> groupsByName = new(
                 StringComparer.OrdinalIgnoreCase
             );
