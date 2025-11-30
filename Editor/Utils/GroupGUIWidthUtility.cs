@@ -93,6 +93,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         internal static float CurrentLeftPadding => _totalLeftPadding;
         internal static float CurrentRightPadding => _totalRightPadding;
 
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        internal static void ResetForTests()
+        {
+            _totalPadding = 0f;
+            _totalLeftPadding = 0f;
+            _totalRightPadding = 0f;
+        }
+
         internal static IDisposable PushContentPadding(float horizontalPadding)
         {
             return new WidthPaddingScope(horizontalPadding);

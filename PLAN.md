@@ -2,32 +2,31 @@
 
 ## Current Issues
 
-- Finalize documentation + CHANGELOG updates once the latest fixes are validated in Unity 2021/2022.
+- SerializableDictionary + SerializableSet layout fixes are in-flight; need final validation in Unity 2021/2022 test projects before shipping notes.
+- Documentation + CHANGELOG still pending the validation pass above.
 
 ## Objectives
 
-1. Add EditMode coverage for the palette sorting behavior in both Project Settings and grouped inspectors.
-2. Document the refreshed workflow (palette sorting/diagnostics) and update the CHANGELOG after Unity 2021/2022 validation.
-3. Validate Serializable Set drawer parity (pending header alignment, manual-entry perf, row layout) and close any remaining gaps.
+1. Document the refreshed workflow (palette sorting/diagnostics) and update the CHANGELOG after Unity 2021/2022 validation.
+2. Validate Serializable Set drawer parity (pending header alignment, manual-entry perf, row layout) and close any remaining gaps.
 
 ## Implementation Plan
 
-1. **String-Key Sorting Fix (DONE)**
-   - ✅ Reproduced the UnityHelpersSettings ordering anomaly via palette Sort diagnostics.
-   - ✅ Ensured the comparer output persists by reordering the serialized arrays ( `ApplyDictionarySliceOrder` ).
-   - 🔜 Add/Edit EditMode coverage that asserts palette keys sort lexically (Project Settings + grouped inspectors).
-2. **Documentation & Release Notes**
+1. **Documentation & Release Notes**
    - Capture the latest fixes in the CHANGELOG and confirm the updated workflow docs are linked from the release notes.
    - Double-check Unity 2021/2022 validation notes so teams know which editor versions were exercised.
-3. **Serializable Set Validation**
+2. **Serializable Set Validation**
    - Re-run grouped-inspector + Project Settings validation for Serializable Set drawers after the sorting fix to ensure parity is preserved.
    - Update or extend existing EditMode tests if the validation uncovers additional layout gaps.
 
 ## Next Steps
 
-1. Land EditMode coverage that locks the palette dictionary ordering fix (Project Settings + grouped inspectors).
-2. Document the workflow and update CHANGELOG once fixes are validated in Unity 2022.3.51f1.
-3. Validate the Serializable Set drawer parity updates (pending header alignment, manual-entry perf, row layout) across inspectors and document any follow-up tweaks.
+1. Run EditMode validation (Unity 2021.3/2022.3) covering:
+   - `SerializableDictionaryPropertyDrawerTests` (group padding + foldout collapse)
+   - `SerializableCollectionDrawerVisualRegressionTests.SetElementsMatchDictionaryValueAlignment`
+   - Project Settings + grouped inspector smoke tests for Serializable Set/Dictionary drawers
+2. Document the refreshed palette workflow and SerializableDictionary/Set changes, then update the CHANGELOG once validation is green.
+3. Capture any residual follow-ups from the validation pass (additional layout tweaks, perf observations) and schedule them as needed.
 
 ## Future Prevention
 

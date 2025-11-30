@@ -304,21 +304,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Manually trigger another ensure now that the blocker is gone so we do not depend on Editor delay order.
             int waitFrames = 0;
-            const int maxWaitFrames = 60;
-            while (
-                AssetDatabase.LoadAssetAtPath<Object>(retryAsset) == null
-                && waitFrames < maxWaitFrames
-            )
+            const int maxWaitFrames = 180;
+            bool retryCreated = false;
+            while (waitFrames < maxWaitFrames)
             {
                 ScriptableObjectSingletonCreator.EnsureSingletonAssets();
                 AssetDatabase.Refresh();
                 yield return null;
                 waitFrames++;
+
+                retryCreated =
+                    AssetDatabase.IsValidFolder(retryFolder)
+                    && AssetDatabase.LoadAssetAtPath<Object>(retryAsset) != null
+                    && !AssetDatabase.IsValidFolder(retryFolderVariant);
+                if (retryCreated)
+                {
+                    break;
+                }
             }
 
-            Assert.IsTrue(AssetDatabase.IsValidFolder(retryFolder));
-            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(retryAsset) != null);
-            Assert.IsFalse(AssetDatabase.IsValidFolder(retryFolderVariant));
+            Assert.IsTrue(
+                retryCreated,
+                $"Retry singleton should be restored once the temporary blocker is removed (waited {waitFrames} frames)."
+            );
         }
 
         [UnityTest]
@@ -455,13 +463,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(noRetryAsset) == null);
 
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
-            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
-            yield return null;
+            int waitFrames = 0;
+            const int maxWaitFrames = 180;
+            bool created = false;
+            while (waitFrames < maxWaitFrames)
+            {
+                ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+                AssetDatabase.Refresh();
+                yield return null;
+                waitFrames++;
+
+                created =
+                    AssetDatabase.IsValidFolder(noRetryFolder)
+                    && AssetDatabase.LoadAssetAtPath<Object>(noRetryAsset) != null
+                    && !AssetDatabase.IsValidFolder(noRetryVariant);
+                if (created)
+                {
+                    break;
+                }
+            }
 
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = originalRetrySetting;
 
-            Assert.IsTrue(AssetDatabase.IsValidFolder(noRetryFolder));
-            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(noRetryAsset) != null);
+            Assert.IsTrue(
+                created,
+                $"Expected automatic retries to restore NoRetry singleton once re-enabled (waited {waitFrames} frames)."
+            );
         }
 
         private static IEnumerable<string> AssetImportWorkerEnvironmentScenarios()

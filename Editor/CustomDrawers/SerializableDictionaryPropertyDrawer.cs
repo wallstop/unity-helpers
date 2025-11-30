@@ -337,6 +337,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             const float MinimumGroupIndent = 6f;
 
             Rect padded = GroupGUIWidthUtility.ApplyCurrentPadding(position);
+            float leftPadding = GroupGUIWidthUtility.CurrentLeftPadding;
+            float rightPadding = GroupGUIWidthUtility.CurrentRightPadding;
+            if (
+                (leftPadding > 0f || rightPadding > 0f)
+                && Mathf.Approximately(padded.xMin, position.xMin)
+                && Mathf.Approximately(padded.width, position.width)
+            )
+            {
+                padded.xMin += leftPadding;
+                padded.xMax -= rightPadding;
+                if (padded.width < 0f || float.IsNaN(padded.width))
+                {
+                    padded.width = 0f;
+                }
+            }
             Rect indented = EditorGUI.IndentedRect(padded);
 
             if (EditorGUI.indentLevel <= 0)
@@ -530,7 +545,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     globalIndex
                 );
 
-                float rowHeight = CalculateDictionaryRowHeight(keyProperty, valueProperty);
+                bool backgroundValueSupportsFoldout =
+                    valueProperty != null
+                    && resolvedValueType != null
+                    && ValueTypeSupportsFoldout(resolvedValueType)
+                    && SerializedPropertySupportsFoldout(valueProperty);
+
+                float rowHeight = CalculateDictionaryRowHeight(
+                    keyProperty,
+                    valueProperty,
+                    backgroundValueSupportsFoldout
+                );
                 Rect backgroundRect = new(rect.x, rect.y, rect.width, rowHeight);
                 Color rowColor = EditorGUIUtility.isProSkin ? DarkRowColor : LightRowColor;
                 EditorGUI.DrawRect(backgroundRect, rowColor);
@@ -655,9 +680,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
                 bool valueSupportsFoldout =
-                    resolvedValueType != null
-                    && ValueTypeSupportsFoldout(resolvedValueType)
-                    && SerializedPropertySupportsFoldout(valueProperty);
+                    resolvedValueType != null && ValueTypeSupportsFoldout(resolvedValueType);
                 RowFoldoutKey rowFoldoutStateKey = default;
                 bool hasFoldoutStateKey = false;
                 bool rowFoldoutStateChanged = false;
@@ -676,10 +699,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
                 float keyHeight = EditorGUI.GetPropertyHeight(keyProperty, GUIContent.none, true);
-                float valueHeight = EditorGUI.GetPropertyHeight(
+                float valueHeight = CalculateValueContentHeight(
                     valueProperty,
-                    GUIContent.none,
-                    true
+                    valueSupportsFoldout
                 );
                 float contentY = rect.y + spacing;
                 bool hasDuplicate = TryGetDuplicateInfo(
@@ -714,11 +736,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     gap += DictionaryRowFoldoutGapBoost;
                 }
 
-                float availableWidth = Mathf.Max(0f, rect.width - gap);
+                float leftPadding = GroupGUIWidthUtility.CurrentLeftPadding;
+                float rightPadding = GroupGUIWidthUtility.CurrentRightPadding;
+                float horizontalPadding = leftPadding + rightPadding;
+
+                float virtualWidth = rect.width + horizontalPadding;
+                float availableWidth = Mathf.Max(0f, virtualWidth - gap);
                 float minKeyWidth = DictionaryRowKeyColumnMinWidth;
                 float minValueWidth = complexValue
                     ? DictionaryRowComplexValueMinWidth
                     : DictionaryRowValueColumnMinWidth;
+
                 float desiredValueWidth = complexValue
                     ? Mathf.Max(availableWidth * DictionaryRowComplexValueWidthRatio, minValueWidth)
                     : Mathf.Max(availableWidth * DictionaryRowSimpleValueWidthRatio, minValueWidth);
@@ -736,12 +764,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     valueColumnWidth = Mathf.Max(0f, availableWidth - keyColumnWidth);
                 }
 
-                Rect keyRect = new(rect.x, contentY, keyColumnWidth, keyHeight);
+                float virtualRowX = rect.x - leftPadding;
+                Rect keyRect = new(virtualRowX, contentY, keyColumnWidth, keyHeight);
                 Rect valueRect = new(
-                    rect.x + keyColumnWidth + gap,
+                    virtualRowX + keyColumnWidth + gap,
                     contentY,
                     valueColumnWidth,
                     valueHeight
+                );
+
+                keyRect.x += leftPadding;
+                valueRect.x += leftPadding;
+                float rowRightEdge = rect.xMax;
+                keyRect.width = Mathf.Min(keyRect.width, Mathf.Max(0f, rowRightEdge - keyRect.x));
+                valueRect.width = Mathf.Min(
+                    valueRect.width,
+                    Mathf.Max(0f, rowRightEdge - valueRect.x)
                 );
 
                 LastRowOriginalRect = rect;
@@ -809,12 +847,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     valueRect.x += foldoutOffset;
                     valueRect.width = Mathf.Max(0f, valueRect.width - foldoutOffset);
                     LastRowValueFoldoutOffset = foldoutOffset;
+                    float renderedValueHeight;
                     valueChanged = DrawRowFoldoutValue(
                         valueRect,
                         valueProperty,
                         valueLabel,
-                        valueRect.width
+                        valueRect.width,
+                        out renderedValueHeight
                     );
+                    valueRect.height = renderedValueHeight;
                 }
                 else
                 {
@@ -1005,7 +1046,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
 
-                return CalculateDictionaryRowHeight(rowKeyProperty, rowValueProperty);
+                return CalculateDictionaryRowHeight(
+                    rowKeyProperty,
+                    rowValueProperty,
+                    shouldAutoExpand
+                );
             }
         }
 
@@ -1181,7 +1226,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         internal static float CalculateDictionaryRowHeight(
             SerializedProperty keyProperty,
-            SerializedProperty valueProperty
+            SerializedProperty valueProperty,
+            bool valueUsesFoldout = false
         )
         {
             float spacing = EditorGUIUtility.standardVerticalSpacing;
@@ -1191,13 +1237,58 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     : EditorGUIUtility.singleLineHeight;
             float valueHeight =
                 valueProperty != null
-                    ? EditorGUI.GetPropertyHeight(valueProperty, GUIContent.none, true)
+                    ? CalculateValueContentHeight(valueProperty, valueUsesFoldout)
                     : EditorGUIUtility.singleLineHeight;
             float contentHeight = Mathf.Max(
                 EditorGUIUtility.singleLineHeight,
                 Mathf.Max(keyHeight, valueHeight)
             );
             return contentHeight + spacing * 2f;
+        }
+
+        internal static float CalculateValueContentHeight(
+            SerializedProperty valueProperty,
+            bool valueUsesFoldout
+        )
+        {
+            if (!valueUsesFoldout || !SerializedPropertySupportsFoldout(valueProperty))
+            {
+                return EditorGUI.GetPropertyHeight(valueProperty, GUIContent.none, true);
+            }
+
+            return CalculateFoldoutValueHeight(valueProperty);
+        }
+
+        private static float CalculateFoldoutValueHeight(SerializedProperty valueProperty)
+        {
+            float height = EditorGUIUtility.singleLineHeight;
+            if (!valueProperty.isExpanded || !valueProperty.hasVisibleChildren)
+            {
+                return height;
+            }
+
+            float spacing = EditorGUIUtility.standardVerticalSpacing;
+            SerializedProperty iterator = valueProperty.Copy();
+            SerializedProperty endProperty = iterator.GetEndProperty();
+            bool enterChildren = true;
+            int baseDepth = valueProperty.depth;
+
+            while (
+                iterator.NextVisible(enterChildren)
+                && !SerializedProperty.EqualContents(iterator, endProperty)
+            )
+            {
+                enterChildren = false;
+                if (iterator.depth <= baseDepth)
+                {
+                    break;
+                }
+
+                float childHeight = EditorGUI.GetPropertyHeight(iterator, true);
+                height += spacing + childHeight;
+            }
+
+            return height;
         }
 
         internal static Rect ExpandDictionaryRowRect(Rect rect)
@@ -1658,12 +1749,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 if (_rowValueFoldoutStates.TryGetValue(rowKey, out bool state))
                 {
                     valueProperty.isExpanded = state;
+                    continue;
                 }
-                else
-                {
-                    _rowValueFoldoutStates[rowKey] = true;
-                    valueProperty.isExpanded = true;
-                }
+
+                _rowValueFoldoutStates[rowKey] = true;
+                valueProperty.isExpanded = true;
             }
         }
 
@@ -3503,17 +3593,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Rect valueRect,
             SerializedProperty valueProperty,
             GUIContent valueLabel,
-            float valueColumnWidth
+            float valueColumnWidth,
+            out float renderedHeight
         )
         {
             if (valueProperty == null)
             {
+                renderedHeight = EditorGUIUtility.singleLineHeight;
                 return false;
             }
 
             bool changed = false;
             float headerHeight = EditorGUIUtility.singleLineHeight;
             Rect headerRect = new(valueRect.x, valueRect.y, valueRect.width, headerHeight);
+            renderedHeight = headerHeight;
 
             EditorGUI.BeginChangeCheck();
             EditorGUI.PropertyField(headerRect, valueProperty, valueLabel, includeChildren: false);
@@ -3573,6 +3666,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 childY = childRect.yMax + EditorGUIUtility.standardVerticalSpacing;
             }
 
+            renderedHeight = Mathf.Max(
+                headerHeight,
+                (childY - EditorGUIUtility.standardVerticalSpacing) - valueRect.y
+            );
             EditorGUI.indentLevel = previousIndent;
             return changed;
         }
@@ -3583,11 +3680,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             float ratioWidth = Mathf.Max(0f, valueColumnWidth * DictionaryRowChildLabelWidthRatio);
-            if (ratioWidth <= 0f)
-            {
-                return DictionaryRowChildLabelWidthMin;
-            }
-
             float measuredWidth = ratioWidth;
             if (property != null)
             {
@@ -3598,13 +3690,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 measuredWidth = Mathf.Max(0f, labelSize.x + DictionaryRowChildLabelTextPadding);
             }
 
-            float targetWidth =
-                measuredWidth > 0f ? Mathf.Min(ratioWidth, measuredWidth) : ratioWidth;
-            return Mathf.Clamp(
-                targetWidth,
-                DictionaryRowChildLabelWidthMin,
-                DictionaryRowChildLabelWidthMax
+            float availableWidth = Mathf.Max(
+                0f,
+                valueColumnWidth - DictionaryRowChildHorizontalPadding * 2f
             );
+            float maxAllowed = Mathf.Min(
+                DictionaryRowChildLabelWidthMax,
+                Mathf.Max(DictionaryRowChildLabelWidthMin, availableWidth)
+            );
+
+            float targetWidth = measuredWidth > 0f ? measuredWidth : ratioWidth;
+            return Mathf.Clamp(targetWidth, DictionaryRowChildLabelWidthMin, maxAllowed);
         }
 
         private static GUIStyle GetRowChildLabelStyle()
@@ -4437,12 +4533,61 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 object existingValue = GetPropertyValue(existingValueProperty, valueType);
                 matches = ValuesEqual(existingValue, pending.value);
+                if (
+                    !matches
+                    && valueType != null
+                    && pending.value != null
+                    && existingValueProperty != null
+                )
+                {
+                    matches = SerializedValueEquals(
+                        existingValueProperty,
+                        pending.value,
+                        valueType
+                    );
+                }
             }
 
             pending.lastDuplicateCheckIndex = existingIndex;
             pending.lastDuplicateCheckValueRevision = pending.valueRevision;
             pending.lastDuplicateCheckResult = matches;
             return matches;
+        }
+
+        private static bool SerializedValueEquals(
+            SerializedProperty existingValueProperty,
+            object pendingValue,
+            Type valueType
+        )
+        {
+            if (existingValueProperty == null || valueType == null)
+            {
+                return false;
+            }
+
+            PendingValueWrapper wrapper = ScriptableObject.CreateInstance<PendingValueWrapper>();
+            try
+            {
+                object clone = CloneComplexValue(pendingValue, valueType);
+                wrapper.SetValue(clone);
+                SerializedObject serialized = new(wrapper);
+                SerializedProperty wrapperProperty = wrapper.FindValueProperty(serialized);
+                if (wrapperProperty == null)
+                {
+                    return false;
+                }
+
+                serialized.Update();
+                existingValueProperty.serializedObject?.Update();
+                return SerializedProperty.DataEquals(existingValueProperty, wrapperProperty);
+            }
+            finally
+            {
+                if (wrapper != null)
+                {
+                    Object.DestroyImmediate(wrapper);
+                }
+            }
         }
 
         private KeyIndexCache GetOrBuildKeyIndexCache(
@@ -6549,6 +6694,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static bool ValuesEqual(object left, object right)
         {
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+
             if (left is Object leftObj && right is Object rightObj)
             {
                 if (leftObj == null && rightObj == null)
@@ -6562,14 +6712,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
-            if (left == null && right == null)
-            {
-                return true;
-            }
-
             if (left == null || right == null)
             {
-                return false;
+                if (ListsAreNullEquivalent(left, right))
+                {
+                    return true;
+                }
+
+                return left == right;
             }
 
             if (left is IList leftList && right is IList rightList)
@@ -6592,7 +6742,64 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return true;
             }
 
+            Type leftType = left.GetType();
+            Type rightType = right.GetType();
+            if (leftType == rightType && ShouldPerformFieldwiseComparison(leftType))
+            {
+                return FieldwiseValuesEqual(left, right, leftType);
+            }
+
             return left.Equals(right);
+        }
+
+        private static bool ShouldPerformFieldwiseComparison(Type type)
+        {
+            if (type == null)
+            {
+                return false;
+            }
+
+            if (type.IsPrimitive || type.IsEnum)
+            {
+                return false;
+            }
+
+            if (type == typeof(string) || typeof(Object).IsAssignableFrom(type))
+            {
+                return false;
+            }
+
+            return type.IsValueType;
+        }
+
+        private static bool FieldwiseValuesEqual(object left, object right, Type type)
+        {
+            foreach (FieldInfo field in GetSerializableFields(type))
+            {
+                object leftValue = field.GetValue(left);
+                object rightValue = field.GetValue(right);
+                if (!ValuesEqual(leftValue, rightValue))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool ListsAreNullEquivalent(object left, object right)
+        {
+            if (left == null && right is IList rightList)
+            {
+                return rightList.Count == 0;
+            }
+
+            if (right == null && left is IList leftList)
+            {
+                return leftList.Count == 0;
+            }
+
+            return false;
         }
 
         internal static object GetDefaultValue(Type type)

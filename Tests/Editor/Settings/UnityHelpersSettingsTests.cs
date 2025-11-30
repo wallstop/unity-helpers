@@ -6,10 +6,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
     using System.Linq;
     using NUnit.Framework;
     using UnityEditor;
+    using UnityEditorInternal;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
 
     public sealed class UnityHelpersSettingsTests
     {
@@ -819,7 +821,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 settings.EnsureWButtonCustomColorDefaults();
                 serialized.Update();
 
-                (Color _, Color text) = GetPaletteEntryColors(
+                (Color button, Color text) = GetPaletteEntryColors(
                     paletteProperty,
                     PaletteKey,
                     UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
@@ -827,8 +829,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 );
 
                 Assert.IsFalse(
-                    ColorsApproximatelyEqual(Color.black, text),
-                    "Auto-suggestion should adjust the text color when no manual edit is present."
+                    ColorsApproximatelyEqual(Color.white, button),
+                    "Auto-suggestion should replace the placeholder button color."
+                );
+                Color expectedText = WButtonColorUtility.GetReadableTextColor(button);
+                Assert.IsTrue(
+                    ColorsApproximatelyEqual(expectedText, text),
+                    $"Auto-suggested text color should match readability for {button}. Expected {expectedText}, observed {text}."
                 );
             }
             finally
@@ -1044,6 +1051,138 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             }
         }
 
+        [Test]
+        public void PaletteSortButtonOrdersProjectSettingsKeysLexically()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            using SerializedObject serialized = new SerializedObject(settings);
+            serialized.Update();
+
+            SerializedProperty paletteProperty = serialized.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColors
+            );
+            PaletteDictionarySnapshot snapshot = CapturePaletteDictionarySnapshot(
+                paletteProperty,
+                UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorBackground,
+                UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorText
+            );
+
+            try
+            {
+                PaletteDictionaryEntrySnapshot[] testEntries =
+                {
+                    new PaletteDictionaryEntrySnapshot(
+                        "SortZeta",
+                        new Color(0.9f, 0.2f, 0.2f, 1f),
+                        Color.white
+                    ),
+                    new PaletteDictionaryEntrySnapshot(
+                        "SortAlpha",
+                        new Color(0.2f, 0.6f, 0.3f, 1f),
+                        Color.black
+                    ),
+                    new PaletteDictionaryEntrySnapshot(
+                        "SortMid",
+                        new Color(0.2f, 0.3f, 0.8f, 1f),
+                        Color.white
+                    ),
+                };
+
+                OverwritePaletteDictionary(
+                    paletteProperty,
+                    testEntries,
+                    UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorBackground,
+                    UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorText
+                );
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                SerializableDictionaryPropertyDrawer drawer = new();
+                SerializedProperty keysProperty = paletteProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Keys
+                );
+                SerializedProperty valuesProperty = paletteProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Values
+                );
+                SerializableDictionaryPropertyDrawer.PaginationState pagination =
+                    drawer.GetOrCreatePaginationState(paletteProperty);
+                pagination.selectedIndex = 0;
+                ReorderableList list = drawer.GetOrCreateList(paletteProperty);
+
+                drawer.SortDictionaryEntries(
+                    paletteProperty,
+                    keysProperty,
+                    valuesProperty,
+                    typeof(string),
+                    typeof(UnityHelpersSettings.WGroupCustomColor),
+                    Comparison,
+                    pagination,
+                    list
+                );
+
+                serialized.Update();
+                string[] expectedOrder = { "SortAlpha", "SortMid", "SortZeta" };
+                string[] serializedKeys = ExtractDictionaryKeys(keysProperty);
+                List<string> filtered = serializedKeys
+                    .Where(key => key != null && key.StartsWith("Sort", StringComparison.Ordinal))
+                    .ToList();
+                CollectionAssert.AreEqual(
+                    expectedOrder,
+                    filtered,
+                    "Custom palette keys should be sorted lexically."
+                );
+
+                int firstCustomIndex = Array.IndexOf(serializedKeys, expectedOrder[0]);
+                int lastCustomIndex = Array.IndexOf(serializedKeys, expectedOrder[^1]);
+                Assert.GreaterOrEqual(
+                    firstCustomIndex,
+                    0,
+                    "Sorted custom keys should remain in the serialized arrays."
+                );
+                Assert.GreaterOrEqual(
+                    lastCustomIndex,
+                    firstCustomIndex,
+                    "Custom palette keys should remain contiguous after sorting."
+                );
+                Assert.AreEqual(
+                    expectedOrder.Length - 1,
+                    lastCustomIndex - firstCustomIndex,
+                    "Sorted custom palette keys should occupy a single contiguous range."
+                );
+
+                string[] reservedKeys =
+                {
+                    UnityHelpersSettings.WGroupLegacyColorKey,
+                    UnityHelpersSettings.WGroupLightThemeColorKey,
+                    UnityHelpersSettings.WGroupDarkThemeColorKey,
+                };
+                foreach (string reserved in reservedKeys)
+                {
+                    Assert.Contains(
+                        reserved,
+                        serializedKeys,
+                        $"Reserved palette key '{reserved}' should remain serialized."
+                    );
+                }
+            }
+            finally
+            {
+                RestorePaletteDictionary(
+                    paletteProperty,
+                    snapshot,
+                    UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorBackground,
+                    UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorText
+                );
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            int Comparison(object left, object right)
+            {
+                string leftKey = left as string ?? left?.ToString();
+                string rightKey = right as string ?? right?.ToString();
+                return string.CompareOrdinal(leftKey, rightKey);
+            }
+        }
+
         private static void AssertColorsApproximately(
             Color expected,
             Color actual,
@@ -1093,6 +1232,59 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             return new PaletteEntrySnapshot(true, button, text);
         }
 
+        private sealed class PaletteDictionarySnapshot
+        {
+            public PaletteDictionarySnapshot(IReadOnlyList<PaletteDictionaryEntrySnapshot> entries)
+            {
+                Entries = entries ?? Array.Empty<PaletteDictionaryEntrySnapshot>();
+            }
+
+            public IReadOnlyList<PaletteDictionaryEntrySnapshot> Entries { get; }
+        }
+
+        private readonly struct PaletteDictionaryEntrySnapshot
+        {
+            public PaletteDictionaryEntrySnapshot(string key, Color button, Color text)
+            {
+                Key = key;
+                Button = button;
+                Text = text;
+            }
+
+            public string Key { get; }
+            public Color Button { get; }
+            public Color Text { get; }
+        }
+
+        private static PaletteDictionarySnapshot CapturePaletteDictionarySnapshot(
+            SerializedProperty dictionaryProperty,
+            string buttonField,
+            string textField
+        )
+        {
+            (SerializedProperty keysProperty, SerializedProperty valuesProperty) =
+                GetDictionaryArrays(dictionaryProperty);
+            if (keysProperty == null || valuesProperty == null)
+            {
+                return new PaletteDictionarySnapshot(Array.Empty<PaletteDictionaryEntrySnapshot>());
+            }
+
+            List<PaletteDictionaryEntrySnapshot> entries = new(keysProperty.arraySize);
+            for (int index = 0; index < keysProperty.arraySize; index++)
+            {
+                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
+                SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(index);
+                string key = keyProperty.stringValue;
+                Color button =
+                    valueProperty.FindPropertyRelative(buttonField)?.colorValue ?? Color.clear;
+                Color text =
+                    valueProperty.FindPropertyRelative(textField)?.colorValue ?? Color.clear;
+                entries.Add(new PaletteDictionaryEntrySnapshot(key, button, text));
+            }
+
+            return new PaletteDictionarySnapshot(entries);
+        }
+
         private static void RestorePaletteEntry(
             SerializedProperty dictionaryProperty,
             string key,
@@ -1115,6 +1307,66 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             else
             {
                 RemovePaletteEntry(dictionaryProperty, key);
+            }
+        }
+
+        private static void RestorePaletteDictionary(
+            SerializedProperty dictionaryProperty,
+            PaletteDictionarySnapshot snapshot,
+            string buttonField,
+            string textField
+        )
+        {
+            IReadOnlyList<PaletteDictionaryEntrySnapshot> entries =
+                snapshot?.Entries ?? Array.Empty<PaletteDictionaryEntrySnapshot>();
+            OverwritePaletteDictionary(dictionaryProperty, entries, buttonField, textField);
+        }
+
+        private static void OverwritePaletteDictionary(
+            SerializedProperty dictionaryProperty,
+            IReadOnlyList<PaletteDictionaryEntrySnapshot> entries,
+            string buttonField,
+            string textField
+        )
+        {
+            (SerializedProperty keysProperty, SerializedProperty valuesProperty) =
+                GetDictionaryArrays(dictionaryProperty);
+            if (keysProperty == null || valuesProperty == null)
+            {
+                return;
+            }
+
+            keysProperty.ClearArray();
+            valuesProperty.ClearArray();
+
+            if (entries == null || entries.Count == 0)
+            {
+                return;
+            }
+
+            keysProperty.arraySize = entries.Count;
+            valuesProperty.arraySize = entries.Count;
+
+            for (int index = 0; index < entries.Count; index++)
+            {
+                PaletteDictionaryEntrySnapshot entry = entries[index];
+                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
+                keyProperty.stringValue = entry.Key ?? string.Empty;
+
+                SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(index);
+                SerializedProperty backgroundProperty = valueProperty.FindPropertyRelative(
+                    buttonField
+                );
+                if (backgroundProperty != null)
+                {
+                    backgroundProperty.colorValue = entry.Button;
+                }
+
+                SerializedProperty textProperty = valueProperty.FindPropertyRelative(textField);
+                if (textProperty != null)
+                {
+                    textProperty.colorValue = entry.Text;
+                }
             }
         }
 
@@ -1142,6 +1394,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty valueProperty = values.GetArrayElementAtIndex(index);
             valueProperty.FindPropertyRelative(buttonField).colorValue = buttonColor;
             valueProperty.FindPropertyRelative(textField).colorValue = textColor;
+        }
+
+        private static string[] ExtractDictionaryKeys(SerializedProperty keysProperty)
+        {
+            if (keysProperty == null)
+            {
+                return Array.Empty<string>();
+            }
+
+            int count = Mathf.Max(0, keysProperty.arraySize);
+            string[] keys = new string[count];
+            for (int index = 0; index < count; index++)
+            {
+                keys[index] = keysProperty.GetArrayElementAtIndex(index).stringValue;
+            }
+
+            return keys;
         }
 
         private static (Color Button, Color Text) GetPaletteEntryColors(
