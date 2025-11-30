@@ -210,12 +210,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             public override int GetHashCode()
             {
-                unchecked
-                {
-                    int hash = CacheKey != null ? CacheKey.GetHashCode() : 0;
-                    hash = (hash * 397) ^ Index;
-                    return hash;
-                }
+                return Objects.HashCode(CacheKey, Index);
             }
         }
 
@@ -579,7 +574,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         float infoHeight = GetWarningBarHeight();
                         Rect infoRect = new(position.x, y, position.width, infoHeight);
                         EditorGUI.HelpBox(infoRect, "No entries yet.", MessageType.Info);
-                        y = infoRect.yMax + SectionSpacing;
                     }
                     else
                     {
@@ -594,7 +588,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             itemsProperty,
                             pagination
                         );
-                        y = emptyRect.yMax + SectionSpacing;
                     }
                 }
                 else
@@ -602,11 +595,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     string listKey = GetListKey(property);
                     UpdateListContext(
                         listKey,
-                        property,
                         itemsProperty,
                         duplicateState,
                         nullState,
-                        pagination,
                         elementType
                     );
                     ReorderableList list = GetOrCreateList(
@@ -665,7 +656,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     {
                         GUI.Box(listRect, GUIContent.none, EditorStyles.helpBox);
                     }
-                    y = listRect.yMax + SectionSpacing;
                 }
 
                 bool applied = serializedObject.ApplyModifiedProperties();
@@ -800,15 +790,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             string listKey = GetListKey(property);
             propertyPath = property.propertyPath;
-            UpdateListContext(
-                listKey,
-                property,
-                itemsProperty,
-                duplicateState,
-                nullState,
-                pagination,
-                elementType
-            );
+            UpdateListContext(listKey, itemsProperty, duplicateState, nullState, elementType);
             ReorderableList list = GetOrCreateList(
                 listKey,
                 property,
@@ -882,15 +864,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 elementType = inspector.ElementType;
             }
-            UpdateListContext(
-                listKey,
-                property,
-                itemsProperty,
-                duplicateState,
-                nullState,
-                pagination,
-                elementType
-            );
+            UpdateListContext(listKey, itemsProperty, duplicateState, nullState, elementType);
 
             return GetOrCreateList(
                 listKey,
@@ -984,12 +958,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             bool previous = element.isExpanded;
-            if (!_rowFoldoutStates.TryGetValue(foldoutKey, out bool state))
-            {
-                state = true;
-                _rowFoldoutStates[foldoutKey] = state;
-            }
-
+            bool state = _rowFoldoutStates.GetOrAdd(foldoutKey, _ => true);
             element.isExpanded = state;
             stateChanged = previous != state;
             return state;
@@ -1002,28 +971,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            List<RowFoldoutKey> keysToRemove = null;
+            using PooledResource<List<RowFoldoutKey>> keysToRemoveResource =
+                Buffers<RowFoldoutKey>.List.Get(out List<RowFoldoutKey> keysToRemove);
+
             foreach (KeyValuePair<RowFoldoutKey, bool> entry in _rowFoldoutStates)
             {
                 if (entry.Key.IsValid && entry.Key.CacheKey == cacheKey)
                 {
-                    keysToRemove ??= new List<RowFoldoutKey>();
                     keysToRemove.Add(entry.Key);
                 }
             }
 
-            if (keysToRemove == null)
+            foreach (RowFoldoutKey key in keysToRemove)
             {
-                return;
-            }
-
-            for (int i = 0; i < keysToRemove.Count; i++)
-            {
-                _rowFoldoutStates.Remove(keysToRemove[i]);
+                _rowFoldoutStates.Remove(key);
             }
         }
 
-        private void EnsurePaginationBounds(PaginationState state, int totalCount)
+        private static void EnsurePaginationBounds(PaginationState state, int totalCount)
         {
             int pageSize = state.pageSize;
             if (totalCount <= 0)
@@ -1102,11 +1067,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private void UpdateListContext(
             string listKey,
-            SerializedProperty property,
             SerializedProperty itemsProperty,
             DuplicateState duplicateState,
             NullEntryState nullState,
-            PaginationState pagination,
             Type elementType
         )
         {
@@ -1140,12 +1103,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
             else
             {
-                if (hasExisting && existing != null)
+                if (hasExisting)
                 {
                     _lists.Remove(listKey);
                 }
 
-                list = new(
+                list = new ReorderableList(
                     cache.entries,
                     typeof(PageEntry),
                     draggable: true,
@@ -1199,18 +1162,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             SerializedObject serializedObject = property.serializedObject;
             list.drawFooterCallback = rect =>
             {
-                if (serializedObject == null)
-                {
-                    return;
-                }
-
-                SerializedProperty currentProperty = serializedObject.FindProperty(propertyPath);
-                if (currentProperty == null)
-                {
-                    return;
-                }
-
-                SerializedProperty currentItemsProperty = currentProperty.FindPropertyRelative(
+                SerializedProperty currentProperty = serializedObject?.FindProperty(propertyPath);
+                SerializedProperty currentItemsProperty = currentProperty?.FindPropertyRelative(
                     SerializableHashSetSerializedPropertyNames.Items
                 );
                 if (currentItemsProperty == null)
@@ -1270,7 +1223,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            ListPageCache cache = cacheProvider != null ? cacheProvider() : null;
+            ListPageCache cache = cacheProvider?.Invoke();
 
             if (Event.current.type == EventType.Repaint)
             {
@@ -1336,10 +1289,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             bool allowSort = isSortedSet || ElementSupportsManualSorting(elementType);
             bool showSort = PageEntriesNeedSorting(cache, itemsPropertyRef, allowSort);
-            Rect sortRect = default;
             if (showSort)
             {
-                sortRect = new(rightCursor - 60f, verticalCenter, 60f, lineHeight);
+                Rect sortRect = new Rect(rightCursor - 60f, verticalCenter, 60f, lineHeight);
                 bool canSort = showSort;
                 using (new EditorGUI.DisabledScope(!canSort))
                 {
@@ -1729,11 +1681,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     if (foldoutAnim != null)
                     {
                         foldoutAnim.target = expanded;
-                        foldoutProgress = foldoutAnim.faded;
-                    }
-                    else
-                    {
-                        foldoutProgress = pending.isExpanded ? 1f : 0f;
                     }
 
                     sectionHeight = GetPendingSectionHeight(pending);
@@ -1930,7 +1877,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     float warningHeight = GetWarningBarHeight();
                     Rect warningRect = new(innerX, innerY, innerWidth, warningHeight);
                     EditorGUI.HelpBox(warningRect, pending.errorMessage, MessageType.Warning);
-                    innerY = warningRect.yMax + spacing;
                 }
 
                 GUI.color = previousColor;
@@ -2008,11 +1954,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             SerializedProperty property = pending.valueWrapperProperty;
-            if (property == null)
+            if (property != null)
             {
-                PendingWrapperContext context = EnsurePendingWrapper(pending, pending.elementType);
-                property = context.Property;
+                return SerializedPropertySupportsFoldout(property);
             }
+
+            PendingWrapperContext context = EnsurePendingWrapper(pending, pending.elementType);
+            property = context.Property;
 
             return SerializedPropertySupportsFoldout(property);
         }
@@ -2035,9 +1983,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
-            for (int i = 0; i < targets.Length; i++)
+            foreach (Object target in targets)
             {
-                if (targets[i] is UnityHelpersSettings)
+                if (target is UnityHelpersSettings)
                 {
                     return true;
                 }
@@ -4455,19 +4403,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            List<int> orderedIndices = new(cache.entries.Count);
-            foreach (PageEntry entry in cache.entries)
+            using PooledResource<List<int>> orderedIndicesLease = Buffers<int>.GetList(
+                cache.entries.Count,
+                out List<int> orderedIndices
+            );
             {
-                orderedIndices.Add(entry.arrayIndex);
+                foreach (PageEntry entry in cache.entries)
+                {
+                    orderedIndices.Add(entry.arrayIndex);
+                }
+
+                int pageSize = Mathf.Max(1, pagination.pageSize);
+                int maxStart = Mathf.Max(0, itemsProperty.arraySize - orderedIndices.Count);
+                int pageStart = Mathf.Clamp(pagination.page * pageSize, 0, maxStart);
+
+                ApplySliceOrder(itemsProperty, orderedIndices, pageStart);
+                int relativeSelection = Mathf.Clamp(newIndex, 0, orderedIndices.Count - 1);
+                pagination.selectedIndex = pageStart + relativeSelection;
             }
-
-            int pageSize = Mathf.Max(1, pagination.pageSize);
-            int maxStart = Mathf.Max(0, itemsProperty.arraySize - orderedIndices.Count);
-            int pageStart = Mathf.Clamp(pagination.page * pageSize, 0, maxStart);
-
-            ApplySliceOrder(itemsProperty, orderedIndices, pageStart);
-            int relativeSelection = Mathf.Clamp(newIndex, 0, orderedIndices.Count - 1);
-            pagination.selectedIndex = pageStart + relativeSelection;
 
             SerializedObject serializedObject = property.serializedObject;
             serializedObject.ApplyModifiedProperties();

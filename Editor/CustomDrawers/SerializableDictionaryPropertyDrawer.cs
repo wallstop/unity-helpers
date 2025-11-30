@@ -926,25 +926,35 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return;
                 }
 
-                List<int> orderedIndices = new(currentCache.entries.Count);
-                foreach (PageEntry entry in currentCache.entries)
+                using PooledResource<List<int>> orderedIndicesLease = Buffers<int>.GetList(
+                    currentCache.entries.Count,
+                    out List<int> orderedIndices
+                );
                 {
-                    orderedIndices.Add(entry.arrayIndex);
+                    foreach (PageEntry entry in currentCache.entries)
+                    {
+                        orderedIndices.Add(entry.arrayIndex);
+                    }
+
+                    int pageSize = Mathf.Max(1, pagination.pageSize);
+                    int maxStart = Mathf.Max(0, keysProperty.arraySize - orderedIndices.Count);
+                    int pageStart = Mathf.Clamp(pagination.pageIndex * pageSize, 0, maxStart);
+
+                    ApplyDictionarySliceOrder(
+                        keysProperty,
+                        valuesProperty,
+                        orderedIndices,
+                        pageStart
+                    );
+                    int relativeSelection = Mathf.Clamp(list.index, 0, orderedIndices.Count - 1);
+                    pagination.selectedIndex = pageStart + relativeSelection;
+                    InvalidateKeyCache(key);
+                    MarkListCacheDirty(key);
+
+                    ListPageCache refreshedCache = EnsurePageCache(key, keysProperty, pagination);
+                    list.list = refreshedCache.entries;
+                    SyncListSelectionWithPagination(list, pagination, refreshedCache);
                 }
-
-                int pageSize = Mathf.Max(1, pagination.pageSize);
-                int maxStart = Mathf.Max(0, keysProperty.arraySize - orderedIndices.Count);
-                int pageStart = Mathf.Clamp(pagination.pageIndex * pageSize, 0, maxStart);
-
-                ApplyDictionarySliceOrder(keysProperty, valuesProperty, orderedIndices, pageStart);
-                int relativeSelection = Mathf.Clamp(list.index, 0, orderedIndices.Count - 1);
-                pagination.selectedIndex = pageStart + relativeSelection;
-                InvalidateKeyCache(key);
-                MarkListCacheDirty(key);
-
-                ListPageCache refreshedCache = EnsurePageCache(key, keysProperty, pagination);
-                list.list = refreshedCache.entries;
-                SyncListSelectionWithPagination(list, pagination, refreshedCache);
             };
 
             list.onSelectCallback = reorderableList =>
@@ -3988,93 +3998,102 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 selectedKey = GetPropertyValue(selectedProperty, keyType);
             }
 
-            List<KeyValueSnapshot> entries = new(count);
-            for (int index = 0; index < count; index++)
+            string listKey = null;
+            using PooledResource<List<KeyValueSnapshot>> entriesLease =
+                Buffers<KeyValueSnapshot>.GetList(count, out List<KeyValueSnapshot> entries);
             {
-                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
-                SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(index);
-                KeyValueSnapshot snapshot = new()
+                for (int index = 0; index < count; index++)
                 {
-                    key = GetPropertyValue(keyProperty, keyType),
-                    value = GetPropertyValue(valueProperty, valueType),
-                    originalIndex = index,
-                };
-                entries.Add(snapshot);
-            }
-
-            KeyValueSnapshotComparer comparer = new(comparison);
-            entries.Sort(comparer);
-            List<int> orderedIndices = new(entries.Count);
-            for (int index = 0; index < entries.Count; index++)
-            {
-                orderedIndices.Add(entries[index].originalIndex);
-            }
-
-            ApplyDictionarySliceOrder(keysProperty, valuesProperty, orderedIndices, 0);
-
-            if (logPaletteSort)
-            {
-                paletteKeysAfterSort = CaptureStringKeyOrder(entries);
-            }
-
-            if (logPaletteSort)
-            {
-                PaletteSerializationDiagnostics.ReportDictionarySort(
-                    dictionaryProperty,
-                    paletteKeysBefore,
-                    paletteKeysAfterSort,
-                    CaptureStringKeyOrder(keysProperty)
-                );
-            }
-
-            ApplyModifiedPropertiesWithUndoFallback(
-                serializedObject,
-                dictionaryProperty,
-                "SortEntries"
-            );
-            SyncRuntimeDictionary(dictionaryProperty);
-
-            string listKey = GetListKey(dictionaryProperty);
-            InvalidateKeyCache(listKey);
-            MarkListCacheDirty(listKey);
-            if (!string.IsNullOrEmpty(listKey))
-            {
-                _sortedOrderHashes[listKey] = ComputeKeyOrderHash(keysProperty, keyType);
-            }
-
-            int newSelectedIndex = -1;
-            if (selectedKey != null)
-            {
-                for (int index = 0; index < entries.Count; index++)
-                {
-                    if (ValuesEqual(entries[index].key, selectedKey))
+                    SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
+                    SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(index);
+                    KeyValueSnapshot snapshot = new()
                     {
-                        newSelectedIndex = index;
-                        break;
+                        key = GetPropertyValue(keyProperty, keyType),
+                        value = GetPropertyValue(valueProperty, valueType),
+                        originalIndex = index,
+                    };
+                    entries.Add(snapshot);
+                }
+
+                KeyValueSnapshotComparer comparer = new(comparison);
+                entries.Sort(comparer);
+                using PooledResource<List<int>> orderedIndicesLease = Buffers<int>.GetList(
+                    entries.Count,
+                    out List<int> orderedIndices
+                );
+                {
+                    for (int index = 0; index < entries.Count; index++)
+                    {
+                        orderedIndices.Add(entries[index].originalIndex);
+                    }
+
+                    ApplyDictionarySliceOrder(keysProperty, valuesProperty, orderedIndices, 0);
+                }
+
+                if (logPaletteSort)
+                {
+                    paletteKeysAfterSort = CaptureStringKeyOrder(entries);
+                }
+
+                if (logPaletteSort)
+                {
+                    PaletteSerializationDiagnostics.ReportDictionarySort(
+                        dictionaryProperty,
+                        paletteKeysBefore,
+                        paletteKeysAfterSort,
+                        CaptureStringKeyOrder(keysProperty)
+                    );
+                }
+
+                ApplyModifiedPropertiesWithUndoFallback(
+                    serializedObject,
+                    dictionaryProperty,
+                    "SortEntries"
+                );
+                SyncRuntimeDictionary(dictionaryProperty);
+
+                listKey = GetListKey(dictionaryProperty);
+                InvalidateKeyCache(listKey);
+                MarkListCacheDirty(listKey);
+                if (!string.IsNullOrEmpty(listKey))
+                {
+                    _sortedOrderHashes[listKey] = ComputeKeyOrderHash(keysProperty, keyType);
+                }
+
+                int newSelectedIndex = -1;
+                if (selectedKey != null)
+                {
+                    for (int index = 0; index < entries.Count; index++)
+                    {
+                        if (ValuesEqual(entries[index].key, selectedKey))
+                        {
+                            newSelectedIndex = index;
+                            break;
+                        }
                     }
                 }
-            }
 
-            if (newSelectedIndex >= 0)
-            {
-                pagination.selectedIndex = newSelectedIndex;
-                int totalPages = GetTotalPages(keysProperty.arraySize, pagination.pageSize);
-                int targetPage = GetPageForIndex(newSelectedIndex, pagination.pageSize);
-                pagination.pageIndex = Mathf.Clamp(targetPage, 0, totalPages - 1);
-            }
-            else
-            {
-                pagination.selectedIndex = Mathf.Min(
-                    keysProperty.arraySize - 1,
-                    pagination.selectedIndex
-                );
-                pagination.selectedIndex = Mathf.Max(pagination.selectedIndex, -1);
-                int totalPages = GetTotalPages(keysProperty.arraySize, pagination.pageSize);
-                int targetPage = GetPageForIndex(
-                    Mathf.Max(pagination.selectedIndex, 0),
-                    pagination.pageSize
-                );
-                pagination.pageIndex = Mathf.Clamp(targetPage, 0, totalPages - 1);
+                if (newSelectedIndex >= 0)
+                {
+                    pagination.selectedIndex = newSelectedIndex;
+                    int totalPages = GetTotalPages(keysProperty.arraySize, pagination.pageSize);
+                    int targetPage = GetPageForIndex(newSelectedIndex, pagination.pageSize);
+                    pagination.pageIndex = Mathf.Clamp(targetPage, 0, totalPages - 1);
+                }
+                else
+                {
+                    pagination.selectedIndex = Mathf.Min(
+                        keysProperty.arraySize - 1,
+                        pagination.selectedIndex
+                    );
+                    pagination.selectedIndex = Mathf.Max(pagination.selectedIndex, -1);
+                    int totalPages = GetTotalPages(keysProperty.arraySize, pagination.pageSize);
+                    int targetPage = GetPageForIndex(
+                        Mathf.Max(pagination.selectedIndex, 0),
+                        pagination.pageSize
+                    );
+                    pagination.pageIndex = Mathf.Clamp(targetPage, 0, totalPages - 1);
+                }
             }
 
             ListPageCache updatedCache = EnsurePageCache(listKey, keysProperty, pagination);
@@ -4630,23 +4649,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static int ComputeKeyOrderHash(SerializedProperty keysProperty, Type keyType)
         {
-            unchecked
+            if (keysProperty == null || keyType == null)
             {
-                int hash = 17;
-                if (keysProperty == null || keyType == null)
-                {
-                    return hash;
-                }
+                return 17;
+            }
 
-                int count = keysProperty.arraySize;
+            return Objects.EnumerableHashCode(EnumerateKeyPairs(keysProperty, keyType));
+
+            static IEnumerable<(int index, object keyValue)> EnumerateKeyPairs(
+                SerializedProperty property,
+                Type type
+            )
+            {
+                int count = property.arraySize;
                 for (int index = 0; index < count; index++)
                 {
-                    SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
-                    object keyValue = GetPropertyValue(keyProperty, keyType);
-                    hash = (hash * 23) + (keyValue?.GetHashCode() ?? 0);
+                    SerializedProperty keyProperty = property.GetArrayElementAtIndex(index);
+                    yield return (index, GetPropertyValue(keyProperty, type));
                 }
-
-                return hash;
             }
         }
 
@@ -5956,12 +5976,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             public override int GetHashCode()
             {
-                unchecked
-                {
-                    int hash = CacheKey != null ? CacheKey.GetHashCode() : 0;
-                    hash = (hash * 397) ^ Index;
-                    return hash;
-                }
+                return Objects.HashCode(CacheKey, Index);
             }
         }
 

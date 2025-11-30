@@ -469,76 +469,87 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 ? Array.Empty<string>()
                 : _searchString.Split(WhiteSpaceSplitters, StringSplitOptions.RemoveEmptyEntries);
 
-            List<int> matchingIndices = new();
-            for (int i = 0; i < listSize; ++i)
+            using PooledResource<List<int>> matchingIndicesLease = Buffers<int>.List.Get(
+                out List<int> matchingIndices
+            );
             {
-                SerializedProperty elementProp = _animationDataProp.GetArrayElementAtIndex(i);
-                SerializedProperty nameProp = elementProp.FindPropertyRelative(
-                    nameof(AnimationData.animationName)
-                );
-
-                string currentName =
-                    nameProp != null ? nameProp.stringValue ?? string.Empty : string.Empty;
-
-                bool matchesSearch = true;
-                if (searchTerms.Length > 0)
+                for (int i = 0; i < listSize; ++i)
                 {
-                    for (int si = 0; si < searchTerms.Length; si++)
+                    SerializedProperty elementProp = _animationDataProp.GetArrayElementAtIndex(i);
+                    SerializedProperty nameProp = elementProp.FindPropertyRelative(
+                        nameof(AnimationData.animationName)
+                    );
+
+                    string currentName =
+                        nameProp != null ? nameProp.stringValue ?? string.Empty : string.Empty;
+
+                    bool matchesSearch = true;
+                    if (searchTerms.Length > 0)
                     {
-                        if (
-                            currentName.IndexOf(searchTerms[si], StringComparison.OrdinalIgnoreCase)
-                            < 0
-                        )
+                        for (int si = 0; si < searchTerms.Length; si++)
                         {
-                            matchesSearch = false;
-                            break;
+                            if (
+                                currentName.IndexOf(
+                                    searchTerms[si],
+                                    StringComparison.OrdinalIgnoreCase
+                                ) < 0
+                            )
+                            {
+                                matchesSearch = false;
+                                break;
+                            }
                         }
                     }
-                }
 
-                if (matchesSearch)
-                {
-                    matchingIndices.Add(i);
-                }
-            }
-            int matchCount = matchingIndices.Count;
-            string foldoutLabel =
-                $"{_animationDataProp.displayName} (Showing {matchCount} / {listSize})";
-            _animationDataIsExpanded = EditorGUILayout.Foldout(
-                _animationDataIsExpanded,
-                foldoutLabel,
-                true
-            );
-
-            if (_animationDataIsExpanded)
-            {
-                using EditorGUI.IndentLevelScope indent = new();
-                if (matchCount > 0)
-                {
-                    foreach (int index in matchingIndices)
+                    if (matchesSearch)
                     {
-                        SerializedProperty elementProp = _animationDataProp.GetArrayElementAtIndex(
-                            index
-                        );
-
-                        SerializedProperty nameProp = elementProp.FindPropertyRelative(
-                            nameof(AnimationData.animationName)
-                        );
-                        string currentName =
-                            nameProp != null ? nameProp.stringValue ?? string.Empty : string.Empty;
-                        string labelText = string.IsNullOrWhiteSpace(currentName)
-                            ? $"Element {index} (No Name)"
-                            : currentName;
-
-                        EditorGUILayout.PropertyField(elementProp, new GUIContent(labelText), true);
+                        matchingIndices.Add(i);
                     }
                 }
-                else if (listSize > 0)
+                int matchCount = matchingIndices.Count;
+                string foldoutLabel =
+                    $"{_animationDataProp.displayName} (Showing {matchCount} / {listSize})";
+                _animationDataIsExpanded = EditorGUILayout.Foldout(
+                    _animationDataIsExpanded,
+                    foldoutLabel,
+                    true
+                );
+
+                if (_animationDataIsExpanded)
                 {
-                    EditorGUILayout.HelpBox(
-                        $"No animation data matched the search term '{_searchString}'.",
-                        MessageType.Info
-                    );
+                    using EditorGUI.IndentLevelScope indent = new();
+                    if (matchCount > 0)
+                    {
+                        foreach (int index in matchingIndices)
+                        {
+                            SerializedProperty elementProp =
+                                _animationDataProp.GetArrayElementAtIndex(index);
+
+                            SerializedProperty nameProp = elementProp.FindPropertyRelative(
+                                nameof(AnimationData.animationName)
+                            );
+                            string currentName =
+                                nameProp != null
+                                    ? nameProp.stringValue ?? string.Empty
+                                    : string.Empty;
+                            string labelText = string.IsNullOrWhiteSpace(currentName)
+                                ? $"Element {index} (No Name)"
+                                : currentName;
+
+                            EditorGUILayout.PropertyField(
+                                elementProp,
+                                new GUIContent(labelText),
+                                true
+                            );
+                        }
+                    }
+                    else if (listSize > 0)
+                    {
+                        EditorGUILayout.HelpBox(
+                            $"No animation data matched the search term '{_searchString}'.",
+                            MessageType.Info
+                        );
+                    }
                 }
             }
         }
@@ -1192,21 +1203,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private int ComputeSourcesHash()
         {
-            unchecked
+            if (animationSources == null || animationSources.Count == 0)
             {
-                int hash = 17;
-                if (animationSources != null)
+                return 0;
+            }
+
+            return Objects.EnumerableHashCode(EnumerateSourceHashes());
+
+            IEnumerable<(int id, string path)> EnumerateSourceHashes()
+            {
+                for (int i = 0; i < animationSources.Count; i++)
                 {
-                    for (int i = 0; i < animationSources.Count; i++)
-                    {
-                        Object src = animationSources[i];
-                        int id = src != null ? src.GetInstanceID() : 0;
-                        string path = src != null ? AssetDatabase.GetAssetPath(src) : string.Empty;
-                        hash = hash * 31 + id;
-                        hash = hash * 31 + (path?.GetHashCode() ?? 0);
-                    }
+                    Object src = animationSources[i];
+                    int id = src != null ? src.GetInstanceID() : 0;
+                    string path = src != null ? AssetDatabase.GetAssetPath(src) : string.Empty;
+                    yield return (id, path);
                 }
-                return hash;
             }
         }
 

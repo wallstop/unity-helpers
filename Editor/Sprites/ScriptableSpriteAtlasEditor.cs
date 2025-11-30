@@ -1271,124 +1271,127 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             int modifiedCount = 0;
             int errorCount = 0;
-            HashSet<string> processedAssetPaths = new();
-
-            List<TextureImporter> importers = new();
-            AssetDatabase.StartAssetEditing();
-            try
+            using PooledResource<HashSet<string>> processedAssetPathsLease =
+                Buffers<string>.HashSet.Get(out HashSet<string> processedAssetPaths);
+            using PooledResource<List<TextureImporter>> importersLease =
+                Buffers<TextureImporter>.List.Get(out List<TextureImporter> importers);
             {
-                for (int i = 0; i < spritesToProcess.Count; ++i)
+                AssetDatabase.StartAssetEditing();
+                try
                 {
-                    Sprite sprite = spritesToProcess[i];
-                    Utils.EditorUi.ShowProgress(
-                        "Modifying Source Sprite Import Settings",
-                        $"Processing: {sprite.name} ({i + 1}/{spritesToProcess.Count})",
-                        (float)(i + 1) / spritesToProcess.Count
-                    );
-
-                    string assetPath = AssetDatabase.GetAssetPath(sprite.texture);
-                    if (string.IsNullOrWhiteSpace(assetPath))
+                    for (int i = 0; i < spritesToProcess.Count; ++i)
                     {
-                        this.LogWarn(
-                            $"Could not find asset path for sprite's texture: {sprite.name}. Skipping."
+                        Sprite sprite = spritesToProcess[i];
+                        Utils.EditorUi.ShowProgress(
+                            "Modifying Source Sprite Import Settings",
+                            $"Processing: {sprite.name} ({i + 1}/{spritesToProcess.Count})",
+                            (float)(i + 1) / spritesToProcess.Count
                         );
-                        errorCount++;
-                        continue;
-                    }
 
-                    if (!processedAssetPaths.Add(assetPath))
-                    {
-                        continue;
-                    }
+                        string assetPath = AssetDatabase.GetAssetPath(sprite.texture);
+                        if (string.IsNullOrWhiteSpace(assetPath))
+                        {
+                            this.LogWarn(
+                                $"Could not find asset path for sprite's texture: {sprite.name}. Skipping."
+                            );
+                            errorCount++;
+                            continue;
+                        }
 
-                    TextureImporter importer =
-                        AssetImporter.GetAtPath(assetPath) as TextureImporter;
-                    if (importer == null)
-                    {
-                        this.LogWarn(
-                            $"Could not get TextureImporter for asset: {assetPath} (from sprite: {sprite.name}). Skipping."
-                        );
-                        errorCount++;
-                        continue;
-                    }
+                        if (!processedAssetPaths.Add(assetPath))
+                        {
+                            continue;
+                        }
 
-                    bool settingsActuallyModified = false;
+                        TextureImporter importer =
+                            AssetImporter.GetAtPath(assetPath) as TextureImporter;
+                        if (importer == null)
+                        {
+                            this.LogWarn(
+                                $"Could not get TextureImporter for asset: {assetPath} (from sprite: {sprite.name}). Skipping."
+                            );
+                            errorCount++;
+                            continue;
+                        }
 
-                    if (importer.crunchedCompression)
-                    {
-                        importer.crunchedCompression = false;
-                        settingsActuallyModified = true;
-                    }
+                        bool settingsActuallyModified = false;
 
-                    if (importer.textureCompression != TextureImporterCompression.Uncompressed)
-                    {
-                        importer.textureCompression = TextureImporterCompression.Uncompressed;
-                        settingsActuallyModified = true;
-                    }
+                        if (importer.crunchedCompression)
+                        {
+                            importer.crunchedCompression = false;
+                            settingsActuallyModified = true;
+                        }
 
-                    TextureImporterPlatformSettings platformSettings =
-                        importer.GetDefaultPlatformTextureSettings();
-                    bool platformSettingsChangedThisTime = false;
-                    TextureImporterFormat targetFormat = importer.DoesSourceTextureHaveAlpha()
-                        ? TextureImporterFormat.RGBA32
-                        : TextureImporterFormat.RGB24;
+                        if (importer.textureCompression != TextureImporterCompression.Uncompressed)
+                        {
+                            importer.textureCompression = TextureImporterCompression.Uncompressed;
+                            settingsActuallyModified = true;
+                        }
 
-                    if (platformSettings.format != targetFormat)
-                    {
-                        platformSettings.format = targetFormat;
-                        platformSettingsChangedThisTime = true;
-                    }
-                    if (platformSettings.crunchedCompression)
-                    {
-                        platformSettings.crunchedCompression = false;
-                        platformSettingsChangedThisTime = true;
-                    }
-                    if (platformSettings.compressionQuality != 100)
-                    {
-                        platformSettings.compressionQuality = 100;
-                        platformSettingsChangedThisTime = true;
-                    }
+                        TextureImporterPlatformSettings platformSettings =
+                            importer.GetDefaultPlatformTextureSettings();
+                        bool platformSettingsChangedThisTime = false;
+                        TextureImporterFormat targetFormat = importer.DoesSourceTextureHaveAlpha()
+                            ? TextureImporterFormat.RGBA32
+                            : TextureImporterFormat.RGB24;
 
-                    if (platformSettingsChangedThisTime || !platformSettings.overridden)
-                    {
-                        platformSettings.overridden = true;
-                        importer.SetPlatformTextureSettings(platformSettings);
-                        settingsActuallyModified = true;
-                    }
+                        if (platformSettings.format != targetFormat)
+                        {
+                            platformSettings.format = targetFormat;
+                            platformSettingsChangedThisTime = true;
+                        }
+                        if (platformSettings.crunchedCompression)
+                        {
+                            platformSettings.crunchedCompression = false;
+                            platformSettingsChangedThisTime = true;
+                        }
+                        if (platformSettings.compressionQuality != 100)
+                        {
+                            platformSettings.compressionQuality = 100;
+                            platformSettingsChangedThisTime = true;
+                        }
 
-                    if (settingsActuallyModified)
-                    {
-                        importer.SaveAndReimport();
-                        importers.Add(importer);
-                        modifiedCount++;
-                        this.Log(
-                            $"Set import settings for texture: {assetPath} (from sprite: {sprite.name}) to uncompressed ({targetFormat})."
-                        );
+                        if (platformSettingsChangedThisTime || !platformSettings.overridden)
+                        {
+                            platformSettings.overridden = true;
+                            importer.SetPlatformTextureSettings(platformSettings);
+                            settingsActuallyModified = true;
+                        }
+
+                        if (settingsActuallyModified)
+                        {
+                            importer.SaveAndReimport();
+                            importers.Add(importer);
+                            modifiedCount++;
+                            this.Log(
+                                $"Set import settings for texture: {assetPath} (from sprite: {sprite.name}) to uncompressed ({targetFormat})."
+                            );
+                        }
                     }
                 }
-            }
-            finally
-            {
-                AssetDatabase.StopAssetEditing();
-                Utils.EditorUi.ClearProgress();
-            }
+                finally
+                {
+                    AssetDatabase.StopAssetEditing();
+                    Utils.EditorUi.ClearProgress();
+                }
 
-            foreach (TextureImporter importer in importers)
-            {
-                importer.SaveAndReimport();
-            }
+                foreach (TextureImporter importer in importers)
+                {
+                    importer.SaveAndReimport();
+                }
 
-            if (modifiedCount > 0 || errorCount > 0)
-            {
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
-            }
+                if (modifiedCount > 0 || errorCount > 0)
+                {
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
+                }
 
-            string summaryMessage =
-                $"Finished processing source sprite textures for '{config.name}'.\n"
-                + $"Successfully modified importers for: {modifiedCount} textures.\n"
-                + $"Errors/Skipped duplicates: {errorCount + (spritesToProcess.Count - processedAssetPaths.Count)}.";
-            this.Log($"{summaryMessage}");
+                string summaryMessage =
+                    $"Finished processing source sprite textures for '{config.name}'.\n"
+                    + $"Successfully modified importers for: {modifiedCount} textures.\n"
+                    + $"Errors/Skipped duplicates: {errorCount + (spritesToProcess.Count - processedAssetPaths.Count)}.";
+                this.Log($"{summaryMessage}");
+            }
         }
 
         private void SyncListToScanResult(ScriptableSpriteAtlas config, ScanResult result)

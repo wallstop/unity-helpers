@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
+    using WallstopStudios.UnityHelpers.Core.Extension;
 
     public sealed class SpatialTree3DPerformanceTests
     {
@@ -527,11 +528,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
         {
             string key = $"{group}::{label}";
 
-            if (!groupRows.TryGetValue(group, out List<string> rows))
-            {
-                rows = new List<string>();
-                groupRows[group] = rows;
-            }
+            List<string> rows = groupRows.GetOrAdd(group);
 
             if (!rowValues.TryGetValue(key, out Dictionary<string, string> row))
             {

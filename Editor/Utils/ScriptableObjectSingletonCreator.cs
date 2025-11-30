@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using Debug = UnityEngine.Debug;
     using Object = UnityEngine.Object;
@@ -104,11 +105,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 Dictionary<string, List<Type>> byName = new(StringComparer.OrdinalIgnoreCase);
                 foreach (Type t in allCandidates)
                 {
-                    if (!byName.TryGetValue(t.Name, out List<Type> list))
-                    {
-                        list = new List<Type>();
-                        byName[t.Name] = list;
-                    }
+                    List<Type> list = byName.GetOrAdd(t.Name);
                     list.Add(t);
                 }
 

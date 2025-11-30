@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Runtime.CompilerServices;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
@@ -73,11 +74,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public void Insert(Vector2 position, T item)
         {
             FastVector2Int cell = GetCell(position);
-            if (!_grid.TryGetValue(cell, out List<Entry> entries))
-            {
-                entries = new List<Entry>();
-                _grid[cell] = entries;
-            }
+            List<Entry> entries = _grid.GetOrAdd(cell);
             entries.Add(new Entry(position, item));
         }
 

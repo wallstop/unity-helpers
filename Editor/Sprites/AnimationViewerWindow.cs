@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor;
+    using WallstopStudios.UnityHelpers.Utils;
     using WallstopStudios.UnityHelpers.Visuals;
     using WallstopStudios.UnityHelpers.Visuals.UIToolkit;
     using Object = UnityEngine.Object;
@@ -1094,26 +1095,31 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            List<AnimatedSpriteLayer> animatedSpriteLayers = new();
-            if (_loadedEditorLayers.Count > 0)
+            using PooledResource<List<AnimatedSpriteLayer>> layerLease =
+                Buffers<AnimatedSpriteLayer>.List.Get(
+                    out List<AnimatedSpriteLayer> animatedSpriteLayers
+                );
             {
-                foreach (EditorLayerData editorLayer in _loadedEditorLayers)
+                if (_loadedEditorLayers.Count > 0)
                 {
-                    animatedSpriteLayers.Add(new AnimatedSpriteLayer(editorLayer.Sprites));
+                    foreach (EditorLayerData editorLayer in _loadedEditorLayers)
+                    {
+                        animatedSpriteLayers.Add(new AnimatedSpriteLayer(editorLayer.Sprites));
+                    }
                 }
+
+                _animationPreview = new LayeredImage(
+                    animatedSpriteLayers,
+                    Color.clear,
+                    _currentPreviewFps,
+                    updatesSelf: false
+                )
+                {
+                    name = "animationPreviewElement",
+                };
+
+                _previewPanelHost.Add(_animationPreview);
             }
-
-            _animationPreview = new LayeredImage(
-                animatedSpriteLayers,
-                Color.clear,
-                _currentPreviewFps,
-                updatesSelf: false
-            )
-            {
-                name = "animationPreviewElement",
-            };
-
-            _previewPanelHost.Add(_animationPreview);
         }
 
         private void OnFramesContainerDragUpdated(DragUpdatedEvent evt)

@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Extensions;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Utils;
 
     internal static class WGroupLayoutBuilder
     {
@@ -347,50 +348,56 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         )
         {
             List<WGroupDrawOperation> operations = new(descriptors.Count);
-            HashSet<string> consumed = new(StringComparer.Ordinal);
-
-            for (int index = 0; index < descriptors.Count; index++)
+            WallstopGenericPool<HashSet<string>> consumedPool = SetBuffers<string>.GetHashSetPool(
+                StringComparer.Ordinal
+            );
+            using PooledResource<HashSet<string>> consumedLease = consumedPool.Get(
+                out HashSet<string> consumed
+            );
             {
-                PropertyDescriptor descriptor = descriptors[index];
-                string propertyPath = descriptor.PropertyPath;
-                bool anchoredHandled = false;
-
-                if (
-                    groupsByAnchor.TryGetValue(
-                        propertyPath,
-                        out List<WGroupDefinition> anchoredGroups
-                    )
-                )
+                for (int index = 0; index < descriptors.Count; index++)
                 {
-                    anchoredHandled = true;
-                    anchoredGroups.Sort(
-                        (left, right) => left.DeclarationOrder.CompareTo(right.DeclarationOrder)
-                    );
-                    foreach (WGroupDefinition definition in anchoredGroups)
-                    {
-                        operations.Add(new WGroupDrawOperation(definition));
-                        for (
-                            int memberIndex = 0;
-                            memberIndex < definition.PropertyPaths.Count;
-                            memberIndex++
+                    PropertyDescriptor descriptor = descriptors[index];
+                    string propertyPath = descriptor.PropertyPath;
+                    bool anchoredHandled = false;
+
+                    if (
+                        groupsByAnchor.TryGetValue(
+                            propertyPath,
+                            out List<WGroupDefinition> anchoredGroups
                         )
+                    )
+                    {
+                        anchoredHandled = true;
+                        anchoredGroups.Sort(
+                            (left, right) => left.DeclarationOrder.CompareTo(right.DeclarationOrder)
+                        );
+                        foreach (WGroupDefinition definition in anchoredGroups)
                         {
-                            consumed.Add(definition.PropertyPaths[memberIndex]);
+                            operations.Add(new WGroupDrawOperation(definition));
+                            for (
+                                int memberIndex = 0;
+                                memberIndex < definition.PropertyPaths.Count;
+                                memberIndex++
+                            )
+                            {
+                                consumed.Add(definition.PropertyPaths[memberIndex]);
+                            }
                         }
                     }
-                }
 
-                if (anchoredHandled)
-                {
-                    continue;
-                }
+                    if (anchoredHandled)
+                    {
+                        continue;
+                    }
 
-                if (!consumed.Add(propertyPath))
-                {
-                    continue;
-                }
+                    if (!consumed.Add(propertyPath))
+                    {
+                        continue;
+                    }
 
-                operations.Add(new WGroupDrawOperation(propertyPath));
+                    operations.Add(new WGroupDrawOperation(propertyPath));
+                }
             }
 
             return operations;

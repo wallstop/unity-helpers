@@ -193,39 +193,57 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return false;
             }
 
-            List<Type> allTypes = new(lookup.Keys);
-            allTypes.Sort(
-                static (lhs, rhs) =>
-                    string.Compare(lhs.FullName, rhs.FullName, StringComparison.Ordinal)
+            using PooledResource<List<Type>> allTypesLease = Buffers<Type>.List.Get(
+                out List<Type> allTypes
             );
-
-            List<Type> filtered = ApplyTypeSearch(allTypes, item, out bool truncated);
-
-            string[] displayNames = new string[filtered.Count];
-            for (int i = 0; i < filtered.Count; i++)
             {
-                displayNames[i] = filtered[i]?.FullName ?? string.Empty;
-            }
+                foreach (Type type in lookup.Keys)
+                {
+                    allTypes.Add(type);
+                }
 
-            int currentIndex = Math.Max(filtered.IndexOf(item.selectedType), 0);
-            EditorGUI.BeginChangeCheck();
-            int selectedIndex = EditorGUILayout.Popup("TypeName", currentIndex, displayNames);
-            if (EditorGUI.EndChangeCheck())
-            {
-                recordUndo?.Invoke("Change Animation Event Type");
-                item.selectedType = filtered[selectedIndex];
-                item.selectedMethod = null;
-            }
-
-            if (truncated)
-            {
-                EditorGUILayout.HelpBox(
-                    "Result list trimmed. Use Type Search to narrow results.",
-                    MessageType.Info
+                allTypes.Sort(
+                    static (lhs, rhs) =>
+                        string.Compare(lhs.FullName, rhs.FullName, StringComparison.Ordinal)
                 );
-            }
 
-            return item.selectedType != null;
+                using PooledResource<List<Type>> filteredLease = Buffers<Type>.List.Get(
+                    out List<Type> filtered
+                );
+                {
+                    ApplyTypeSearch(allTypes, item, filtered, out bool truncated);
+
+                    string[] displayNames = new string[filtered.Count];
+                    for (int i = 0; i < filtered.Count; i++)
+                    {
+                        displayNames[i] = filtered[i]?.FullName ?? string.Empty;
+                    }
+
+                    int currentIndex = Math.Max(filtered.IndexOf(item.selectedType), 0);
+                    EditorGUI.BeginChangeCheck();
+                    int selectedIndex = EditorGUILayout.Popup(
+                        "TypeName",
+                        currentIndex,
+                        displayNames
+                    );
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        recordUndo?.Invoke("Change Animation Event Type");
+                        item.selectedType = filtered[selectedIndex];
+                        item.selectedMethod = null;
+                    }
+
+                    if (truncated)
+                    {
+                        EditorGUILayout.HelpBox(
+                            "Result list trimmed. Use Type Search to narrow results.",
+                            MessageType.Info
+                        );
+                    }
+
+                    return item.selectedType != null;
+                }
+            }
         }
 
         public static bool DrawMethodSelector(
@@ -244,52 +262,60 @@ namespace WallstopStudios.UnityHelpers.Editor
                 methods = Array.Empty<MethodInfo>();
             }
 
-            List<MethodInfo> buffer = new(methods);
-
-            if (item.selectedMethod == null || !buffer.Contains(item.selectedMethod))
+            using PooledResource<List<MethodInfo>> bufferLease = Buffers<MethodInfo>.List.Get(
+                out List<MethodInfo> buffer
+            );
             {
-                foreach (MethodInfo methodInfo in buffer)
+                for (int i = 0; i < methods.Count; i++)
                 {
-                    if (
-                        string.Equals(
-                            methodInfo.Name,
-                            item.animationEvent.functionName,
-                            StringComparison.Ordinal
-                        )
-                    )
+                    buffer.Add(methods[i]);
+                }
+
+                if (item.selectedMethod == null || !buffer.Contains(item.selectedMethod))
+                {
+                    foreach (MethodInfo methodInfo in buffer)
                     {
-                        item.selectedMethod = methodInfo;
-                        break;
+                        if (
+                            string.Equals(
+                                methodInfo.Name,
+                                item.animationEvent.functionName,
+                                StringComparison.Ordinal
+                            )
+                        )
+                        {
+                            item.selectedMethod = methodInfo;
+                            break;
+                        }
+                    }
+
+                    if (item.selectedMethod != null && !buffer.Contains(item.selectedMethod))
+                    {
+                        buffer.Add(item.selectedMethod);
                     }
                 }
 
-                if (item.selectedMethod != null && !buffer.Contains(item.selectedMethod))
+                string[] methodNames = new string[buffer.Count];
+                int currentIndex = -1;
+                for (int i = 0; i < buffer.Count; i++)
                 {
-                    buffer.Add(item.selectedMethod);
+                    methodNames[i] = buffer[i]?.Name ?? string.Empty;
+                    if (buffer[i] == item.selectedMethod)
+                    {
+                        currentIndex = i;
+                    }
                 }
-            }
 
-            string[] methodNames = new string[buffer.Count];
-            int currentIndex = -1;
-            for (int i = 0; i < buffer.Count; i++)
-            {
-                methodNames[i] = buffer[i]?.Name ?? string.Empty;
-                if (buffer[i] == item.selectedMethod)
+                EditorGUI.BeginChangeCheck();
+                int selectedIndex = EditorGUILayout.Popup("MethodName", currentIndex, methodNames);
+                if (EditorGUI.EndChangeCheck() && selectedIndex >= 0)
                 {
-                    currentIndex = i;
+                    recordUndo?.Invoke("Change Animation Event Method");
+                    item.selectedMethod = buffer[selectedIndex];
+                    item.animationEvent.functionName = item.selectedMethod.Name;
                 }
-            }
 
-            EditorGUI.BeginChangeCheck();
-            int selectedIndex = EditorGUILayout.Popup("MethodName", currentIndex, methodNames);
-            if (EditorGUI.EndChangeCheck() && selectedIndex >= 0)
-            {
-                recordUndo?.Invoke("Change Animation Event Method");
-                item.selectedMethod = buffer[selectedIndex];
-                item.animationEvent.functionName = item.selectedMethod.Name;
+                return item.selectedMethod != null;
             }
-
-            return item.selectedMethod != null;
         }
 
         private static List<string> BuildSearchTerms(string raw)
@@ -328,21 +354,27 @@ namespace WallstopStudios.UnityHelpers.Editor
             return true;
         }
 
-        private static List<Type> ApplyTypeSearch(
+        private static void ApplyTypeSearch(
             List<Type> allTypes,
             AnimationEventItem item,
+            List<Type> filtered,
             out bool truncated
         )
         {
             int limit = string.IsNullOrEmpty(item.typeSearch) ? DefaultTypeLimit : SearchTypeLimit;
-            List<Type> filtered = new(allTypes);
+            filtered.Clear();
+            for (int i = 0; i < allTypes.Count; i++)
+            {
+                filtered.Add(allTypes[i]);
+            }
 
             if (!string.IsNullOrEmpty(item.typeSearch))
             {
                 string searchLower = item.typeSearch.ToLowerInvariant();
                 filtered.Clear();
-                foreach (Type type in allTypes)
+                for (int i = 0; i < allTypes.Count; i++)
                 {
+                    Type type = allTypes[i];
                     string fullName = type.FullName ?? string.Empty;
                     if (
                         fullName.ToLowerInvariant().IndexOf(searchLower, StringComparison.Ordinal)
@@ -362,11 +394,11 @@ namespace WallstopStudios.UnityHelpers.Editor
             if (filtered.Count > limit)
             {
                 truncated = true;
-                return filtered.GetRange(0, limit);
+                filtered.RemoveRange(limit, filtered.Count - limit);
+                return;
             }
 
             truncated = false;
-            return filtered;
         }
     }
 #endif

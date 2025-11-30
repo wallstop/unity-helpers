@@ -1238,11 +1238,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
             }
 
-            if (!_pool.TryGetValue(size, out List<T[]> pool))
-            {
-                pool = new List<T[]>();
-                _pool[size] = pool;
-            }
+            List<T[]> pool = _pool.GetOrAdd(size);
 
             if (pool.Count == 0)
             {
@@ -1260,11 +1256,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         {
             int length = resource.Length;
             Array.Clear(resource, 0, length);
-            if (!_pool.TryGetValue(length, out List<T[]> pool))
-            {
-                pool = new List<T[]>();
-                _pool[resource.Length] = pool;
-            }
+            List<T[]> pool = _pool.GetOrAdd(length);
             pool.Add(resource);
         }
     }

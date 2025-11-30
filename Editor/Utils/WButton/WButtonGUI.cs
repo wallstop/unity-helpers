@@ -649,11 +649,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 return new WButtonPaginationState();
             }
 
-            if (!paginationStates.TryGetValue(drawOrder, out WButtonPaginationState state))
-            {
-                state = new WButtonPaginationState();
-                paginationStates[drawOrder] = state;
-            }
+            WButtonPaginationState state = paginationStates.GetOrAdd(drawOrder);
 
             int pageSize = UnityHelpersSettings.GetWButtonPageSize();
             int pageCount = Mathf.Max(1, Mathf.CeilToInt((float)itemCount / pageSize));
