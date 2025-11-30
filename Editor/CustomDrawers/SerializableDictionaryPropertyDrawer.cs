@@ -211,7 +211,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 string cacheKey = GetListKey(property);
-                _valueTypes[cacheKey] = valueType;
+                CacheValueType(cacheKey, valueType);
                 DuplicateKeyState duplicateState = RefreshDuplicateState(
                     cacheKey,
                     keysProperty,
@@ -366,6 +366,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         /// </example>
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
+            SerializedObject serializedObject = property.serializedObject;
+            serializedObject?.UpdateIfRequiredOrScript();
+
             float height = EditorGUIUtility.singleLineHeight;
 
             if (!property.isExpanded)
@@ -394,13 +397,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return height;
             }
 
+            string cacheKey = GetListKey(property);
+            CacheValueType(cacheKey, valueType);
+
             PendingEntry pending = GetOrCreatePendingEntry(
                 property,
                 keyType,
                 valueType,
                 isSortedDictionary
             );
-            string cacheKey = GetListKey(property);
             DuplicateKeyState duplicateState = RefreshDuplicateState(
                 cacheKey,
                 keysProperty,
@@ -436,7 +441,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal ReorderableList GetOrCreateList(SerializedProperty dictionaryProperty)
         {
             string key = GetListKey(dictionaryProperty);
-            _valueTypes.TryGetValue(key, out Type resolvedValueType);
+            Type resolvedValueType = EnsureValueTypeCached(key, dictionaryProperty);
             PaginationState pagination = GetOrCreatePaginationState(dictionaryProperty);
 
             SerializedProperty keysProperty = ResolveKeysProperty();
@@ -3866,6 +3871,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 Undo.RecordObjects(targets, "Sort Dictionary Keys");
             }
 
+            bool logPaletteSort = PaletteSerializationDiagnostics.ShouldLogPaletteSort(
+                dictionaryProperty,
+                keyType
+            );
+            List<string> paletteKeysBefore = null;
+            List<string> paletteKeysAfterSort = null;
+            if (logPaletteSort)
+            {
+                paletteKeysBefore = CaptureStringKeyOrder(keysProperty);
+            }
+
             object selectedKey = null;
             int selectedIndex = pagination.selectedIndex;
             if (selectedIndex >= 0 && selectedIndex < count)
@@ -3892,14 +3908,27 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             KeyValueSnapshotComparer comparer = new(comparison);
             entries.Sort(comparer);
-
+            List<int> orderedIndices = new(entries.Count);
             for (int index = 0; index < entries.Count; index++)
             {
-                KeyValueSnapshot snapshot = entries[index];
-                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
-                SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(index);
-                SetPropertyValue(keyProperty, snapshot.key, keyType);
-                SetPropertyValue(valueProperty, snapshot.value, valueType);
+                orderedIndices.Add(entries[index].originalIndex);
+            }
+
+            ApplyDictionarySliceOrder(keysProperty, valuesProperty, orderedIndices, 0);
+
+            if (logPaletteSort)
+            {
+                paletteKeysAfterSort = CaptureStringKeyOrder(entries);
+            }
+
+            if (logPaletteSort)
+            {
+                PaletteSerializationDiagnostics.ReportDictionarySort(
+                    dictionaryProperty,
+                    paletteKeysBefore,
+                    paletteKeysAfterSort,
+                    CaptureStringKeyOrder(keysProperty)
+                );
             }
 
             ApplyModifiedPropertiesWithUndoFallback(
@@ -3962,6 +3991,53 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 focusedWindow.Repaint();
             }
+        }
+
+        private static List<string> CaptureStringKeyOrder(SerializedProperty keysProperty)
+        {
+            List<string> keys = new();
+            if (keysProperty == null)
+            {
+                return keys;
+            }
+
+            int count = keysProperty.arraySize;
+            for (int index = 0; index < count; index++)
+            {
+                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
+                keys.Add(keyProperty?.stringValue ?? "<null>");
+            }
+
+            return keys;
+        }
+
+        private static List<string> CaptureStringKeyOrder(List<KeyValueSnapshot> snapshots)
+        {
+            List<string> keys = new();
+            if (snapshots == null)
+            {
+                return keys;
+            }
+
+            for (int index = 0; index < snapshots.Count; index++)
+            {
+                KeyValueSnapshot snapshot = snapshots[index];
+                if (snapshot == null)
+                {
+                    keys.Add("<null>");
+                    continue;
+                }
+
+                if (snapshot.key is string stringKey)
+                {
+                    keys.Add(stringKey);
+                    continue;
+                }
+
+                keys.Add(snapshot.key?.ToString() ?? "<null>");
+            }
+
+            return keys;
         }
 
         private sealed class KeyValueSnapshot
@@ -4035,6 +4111,66 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             keysProperty.arraySize = size;
             valuesProperty.arraySize = size;
+        }
+
+        private void CacheValueType(string cacheKey, Type valueType)
+        {
+            if (string.IsNullOrEmpty(cacheKey) || valueType == null)
+            {
+                return;
+            }
+
+            if (_valueTypes.TryGetValue(cacheKey, out Type existing) && existing == valueType)
+            {
+                return;
+            }
+
+            _valueTypes[cacheKey] = valueType;
+            MarkListCacheDirty(cacheKey);
+        }
+
+        private Type EnsureValueTypeCached(string cacheKey, SerializedProperty dictionaryProperty)
+        {
+            if (string.IsNullOrEmpty(cacheKey))
+            {
+                return null;
+            }
+
+            if (_valueTypes.TryGetValue(cacheKey, out Type cached) && cached != null)
+            {
+                return cached;
+            }
+
+            if (
+                TryResolveKeyValueTypes(
+                    fieldInfo,
+                    out Type _,
+                    out Type resolvedValueType,
+                    out bool _
+                )
+                && resolvedValueType != null
+            )
+            {
+                CacheValueType(cacheKey, resolvedValueType);
+                return resolvedValueType;
+            }
+
+            object dictionaryInstance = GetDictionaryInstance(dictionaryProperty);
+            if (
+                TryResolveKeyValueTypesFromInstance(
+                    dictionaryInstance,
+                    out Type _,
+                    out Type instanceValueType,
+                    out bool _
+                )
+                && instanceValueType != null
+            )
+            {
+                CacheValueType(cacheKey, instanceValueType);
+                return instanceValueType;
+            }
+
+            return null;
         }
 
         internal static string GetListKey(SerializedProperty property)

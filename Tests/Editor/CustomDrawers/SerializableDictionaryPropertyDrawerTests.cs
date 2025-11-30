@@ -2080,6 +2080,115 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
         }
 
+        [Test]
+        public void GetPropertyHeightAutoExpandsComplexRowsOnFirstDraw()
+        {
+            ComplexValueDictionaryHost host = CreateScriptableObject<ComplexValueDictionaryHost>();
+            host.dictionary.Add(
+                "Accent",
+                new ComplexValue { button = Color.cyan, text = Color.black }
+            );
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ComplexValueDictionaryHost.dictionary)
+            );
+            ForcePopulateComplexDictionarySerializedData(host, dictionaryProperty);
+            dictionaryProperty.isExpanded = true;
+
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+            Assert.Greater(valuesProperty.arraySize, 0, "Dictionary should contain test entries.");
+            SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(0);
+            valueProperty.isExpanded = false;
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(ComplexValueDictionaryHost),
+                nameof(ComplexValueDictionaryHost.dictionary)
+            );
+
+            drawer.GetPropertyHeight(dictionaryProperty, GUIContent.none);
+
+            serializedObject.Update();
+            SerializedProperty refreshedValues = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+            SerializedProperty refreshedValue = refreshedValues.GetArrayElementAtIndex(0);
+            Assert.IsTrue(
+                refreshedValue.isExpanded,
+                "GetPropertyHeight should expand complex dictionary rows before the first draw so layout reserves enough space."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator DictionaryRowComplexValueChildControlsHaveSpaceOnFirstDraw()
+        {
+            ComplexValueDictionaryHost host = CreateScriptableObject<ComplexValueDictionaryHost>();
+            host.dictionary.Add(
+                "Accent",
+                new ComplexValue { button = Color.cyan, text = Color.black }
+            );
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ComplexValueDictionaryHost.dictionary)
+            );
+            ForcePopulateComplexDictionarySerializedData(host, dictionaryProperty);
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+            Assert.Greater(valuesProperty.arraySize, 0, "Dictionary should contain test entries.");
+            SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(0);
+            valueProperty.isExpanded = false;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(ComplexValueDictionaryHost),
+                nameof(ComplexValueDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new(0f, 0f, 360f, 520f);
+            GUIContent label = new("Dictionary");
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            // Simulate Unity's layout pass.
+            drawer.GetPropertyHeight(dictionaryProperty, label);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                drawer.OnGUI(controlRect, dictionaryProperty, label);
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastRowChildContentRect,
+                "First draw should record child layout information for complex values."
+            );
+            Assert.Greater(
+                SerializableDictionaryPropertyDrawer.LastRowChildContentRect.height,
+                EditorGUIUtility.singleLineHeight * 1.5f,
+                "Complex value child drawers should receive sufficient height on the first draw."
+            );
+            Assert.Greater(
+                SerializableDictionaryPropertyDrawer.LastRowChildContentRect.width,
+                180f,
+                "Complex value child drawers should receive sufficient width on the first draw."
+            );
+        }
+
         [UnityTest]
         public IEnumerator PendingEntryComplexValueAllocatesFoldoutGutter()
         {

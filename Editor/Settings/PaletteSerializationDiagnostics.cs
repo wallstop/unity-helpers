@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Editor.Settings
 {
     using System;
+    using System.Collections.Generic;
     using System.Text;
     using UnityEditor;
     using UnityEngine;
@@ -129,6 +130,60 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
         }
 
+        internal static bool ShouldLogPaletteSort(
+            SerializedProperty dictionaryProperty,
+            Type keyType
+        )
+        {
+            if (
+                !DiagnosticsEnabled
+                || dictionaryProperty == null
+                || dictionaryProperty.serializedObject == null
+                || keyType != typeof(string)
+            )
+            {
+                return false;
+            }
+
+            if (!IsPaletteProperty(dictionaryProperty.propertyPath))
+            {
+                return false;
+            }
+
+            return ShouldLogForTargets(dictionaryProperty.serializedObject);
+        }
+
+        internal static void ReportDictionarySort(
+            SerializedProperty dictionaryProperty,
+            IReadOnlyList<string> serializedBefore,
+            IReadOnlyList<string> snapshotAfterSort,
+            IReadOnlyList<string> serializedAfter
+        )
+        {
+            if (
+                !DiagnosticsEnabled
+                || dictionaryProperty == null
+                || !IsPaletteProperty(dictionaryProperty.propertyPath)
+            )
+            {
+                return;
+            }
+
+            SerializedObject serializedObject = dictionaryProperty.serializedObject;
+            if (!ShouldLogForTargets(serializedObject))
+            {
+                return;
+            }
+
+            string beforeSequence = FormatKeySequence(serializedBefore);
+            string snapshotSequence = FormatKeySequence(snapshotAfterSort);
+            string afterSequence = FormatKeySequence(serializedAfter);
+            string message =
+                $"{LogPrefix} Sort property={dictionaryProperty.propertyPath} before=[{beforeSequence}] snapshot=[{snapshotSequence}] after=[{afterSequence}]";
+
+            Debug.Log(message, serializedObject?.targetObject);
+        }
+
         private static bool ShouldLog(
             SerializedObject serializedObject,
             string propertyPath,
@@ -180,6 +235,27 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             return false;
+        }
+
+        private static string FormatKeySequence(IReadOnlyList<string> keys)
+        {
+            if (keys == null || keys.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            StringBuilder builder = new();
+            for (int index = 0; index < keys.Count; index++)
+            {
+                if (index > 0)
+                {
+                    builder.Append(", ");
+                }
+
+                builder.Append(keys[index] ?? "<null>");
+            }
+
+            return builder.ToString();
         }
     }
 }

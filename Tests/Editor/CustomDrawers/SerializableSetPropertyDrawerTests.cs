@@ -132,6 +132,94 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        public void GetPropertyHeightAutoExpandsComplexRowsOnFirstDraw()
+        {
+            ComplexSetHost host = CreateScriptableObject<ComplexSetHost>();
+            host.set.Add(new ComplexSetElement());
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(ComplexSetHost.set)
+            );
+            setProperty.isExpanded = true;
+
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            Assert.Greater(itemsProperty.arraySize, 0, "Set should contain test entries.");
+            SerializedProperty elementProperty = itemsProperty.GetArrayElementAtIndex(0);
+            elementProperty.isExpanded = false;
+
+            SerializableSetPropertyDrawer drawer = new();
+            drawer.GetPropertyHeight(setProperty, GUIContent.none);
+
+            serializedObject.Update();
+            SerializedProperty refreshedItems = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            SerializedProperty refreshedElement = refreshedItems.GetArrayElementAtIndex(0);
+            Assert.IsTrue(
+                refreshedElement.isExpanded,
+                "GetPropertyHeight should expand complex set rows before the first draw so layout reserves enough space."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator SetRowComplexValueChildControlsHaveSpaceOnFirstDraw()
+        {
+            ComplexSetHost host = CreateScriptableObject<ComplexSetHost>();
+            host.set.Add(new ComplexSetElement());
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(ComplexSetHost.set)
+            );
+            setProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            Assert.Greater(itemsProperty.arraySize, 0, "Set should contain test entries.");
+            SerializedProperty elementProperty = itemsProperty.GetArrayElementAtIndex(0);
+            elementProperty.isExpanded = false;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer drawer = new();
+            Rect controlRect = new(0f, 0f, 360f, 520f);
+            GUIContent label = new("Set");
+
+            SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+            drawer.GetPropertyHeight(setProperty, label);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                setProperty.serializedObject.UpdateIfRequiredOrScript();
+                drawer.OnGUI(controlRect, setProperty, label);
+            });
+
+            Assert.IsTrue(
+                SerializableSetPropertyDrawer.HasLastRowContentRect,
+                "First draw should capture row content rect for complex set values."
+            );
+            Assert.Greater(
+                SerializableSetPropertyDrawer.LastRowContentRect.height,
+                EditorGUIUtility.singleLineHeight * 1.5f,
+                "Complex set elements should render at full height on the first draw."
+            );
+            Assert.Greater(
+                SerializableSetPropertyDrawer.LastRowContentRect.width,
+                180f,
+                "Complex set elements should render at full width on the first draw."
+            );
+        }
+
+        [Test]
         public void ManualEntryAddsElementToSet()
         {
             StringSetHost host = CreateScriptableObject<StringSetHost>();

@@ -680,6 +680,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
+            SerializedObject serializedObject = property.serializedObject;
+            serializedObject?.UpdateIfRequiredOrScript();
+
             float height = EditorGUIUtility.singleLineHeight;
 
             PaginationState pagination = GetOrCreatePaginationState(property);

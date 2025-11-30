@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using System.Runtime.CompilerServices;
     using NUnit.Framework;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Utils;
 #if !SINGLE_THREADED
@@ -465,6 +466,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
 #if !SINGLE_THREADED
+        private enum ConcurrentScenarioName
+        {
+            WallstopFastArrayPoolConcurrentAccessDifferentSizes,
+            WallstopFastArrayPoolConcurrentAccessSameSize,
+            WallstopFastArrayPoolConcurrentAccessMixedSizes,
+            WallstopFastArrayPoolConcurrentAccessRapidAllocationDeallocation,
+            WallstopFastArrayPoolConcurrentOutOfOrderDispose,
+            WallstopArrayPoolClearOnReuse,
+            WallstopArrayPoolConcurrentMixedSizesClearCheck,
+        }
+
         [TestCaseSource(nameof(WallstopFastArrayPoolConcurrentScenarioCases))]
         public void WallstopFastArrayPoolConcurrentAccessScenarios(ConcurrentScenario scenario)
         {
@@ -563,7 +575,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int operationsPerThread = 100;
 
             ConcurrentScenario scenario = new(
-                nameof(WallstopFastArrayPoolConcurrentAccessDifferentSizes),
+                nameof(ConcurrentScenarioName.WallstopFastArrayPoolConcurrentAccessDifferentSizes),
                 threadCount,
                 async threadId =>
                 {
@@ -603,7 +615,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int arraySize = 25;
 
             ConcurrentScenario scenario = new(
-                nameof(WallstopFastArrayPoolConcurrentAccessSameSize),
+                nameof(ConcurrentScenarioName.WallstopFastArrayPoolConcurrentAccessSameSize),
                 threadCount,
                 threadId =>
                 {
@@ -647,7 +659,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             int[] sizes = { 1, 5, 10, 20, 50, 100 };
 
             ConcurrentScenario scenario = new(
-                nameof(WallstopFastArrayPoolConcurrentAccessMixedSizes),
+                nameof(ConcurrentScenarioName.WallstopFastArrayPoolConcurrentAccessMixedSizes),
                 threadCount,
                 async threadId =>
                 {
@@ -696,7 +708,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int operationsPerThread = 500;
 
             ConcurrentScenario scenario = new(
-                nameof(WallstopFastArrayPoolConcurrentAccessRapidAllocationDeallocation),
+                nameof(
+                    ConcurrentScenarioName.WallstopFastArrayPoolConcurrentAccessRapidAllocationDeallocation
+                ),
                 threadCount,
                 threadId =>
                 {
@@ -734,7 +748,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int allocationsPerThread = 64;
 
             ConcurrentScenario scenario = new(
-                nameof(WallstopFastArrayPoolConcurrentOutOfOrderDispose),
+                nameof(ConcurrentScenarioName.WallstopFastArrayPoolConcurrentOutOfOrderDispose),
                 threadCount,
                 threadId =>
                 {
@@ -802,7 +816,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int arraySize = 32;
 
             ConcurrentScenario scenario = new(
-                nameof(WallstopArrayPoolClearOnReuse),
+                nameof(ConcurrentScenarioName.WallstopArrayPoolClearOnReuse),
                 threadCount,
                 threadId =>
                 {
@@ -844,7 +858,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             int[] sizes = { 2, 7, 13, 21, 34 };
 
             ConcurrentScenario scenario = new(
-                nameof(WallstopArrayPoolConcurrentMixedSizesClearCheck),
+                nameof(ConcurrentScenarioName.WallstopArrayPoolConcurrentMixedSizesClearCheck),
                 threadCount,
                 async threadId =>
                 {
@@ -885,7 +899,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             return new TestCaseData(scenario).SetName(scenario.Name);
         }
 
-        private sealed class ConcurrentScenario
+        public sealed class ConcurrentScenario
         {
             public ConcurrentScenario(string name, int threadCount, Func<int, Task> work)
             {
