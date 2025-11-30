@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Color ThemeAddColor = new(0.25f, 0.68f, 0.38f, 1f);
         private static readonly Color ThemeOverwriteColor = new(0.98f, 0.82f, 0.27f, 1f);
         private static readonly Color ThemeResetColor = new(0.7f, 0.7f, 0.7f, 1f);
+        private static readonly Color ThemeSortColor = new(0.24f, 0.52f, 0.88f, 1f);
         private static readonly Color ThemeDisabledColor = new(0.6f, 0.6f, 0.6f, 1f);
         private static readonly Dictionary<string, GUIStyle> ButtonStyleCache = new();
         private static readonly Dictionary<Color, Texture2D> ColorTextureCache = new();
@@ -86,6 +87,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 case "Remove":
                 case "ClearAll":
                     return ThemeRemoveColor;
+                case "Sort":
+                    return ThemeSortColor;
                 default:
                     return ThemeResetColor;
             }

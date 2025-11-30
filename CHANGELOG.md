@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](docs/overview/roadmap.md) for details
 
+### Changed
+
+- The manual "Request Script Compilation" shortcut now forces an `AssetDatabase.Refresh`, skips duplicate requests when Unity is already compiling, and logs the outcome so new scripts saved outside the editor are picked up immediately.
+
 ## [2.2.0]
 
 ### Added

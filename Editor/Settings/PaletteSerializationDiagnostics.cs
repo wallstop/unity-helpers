@@ -13,6 +13,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
     {
         private const string LogPrefix = "[UnityHelpers][PaletteSerialization]";
 
+#if UNITY_HELPERS_PALETTE_DIAGNOSTICS
+        // Define UNITY_HELPERS_PALETTE_DIAGNOSTICS to re-enable verbose palette logging during investigations.
+        private const bool DiagnosticsEnabled = true;
+#else
+        private const bool DiagnosticsEnabled = false;
+#endif
+
         private static readonly string[] PalettePropertyRoots =
         {
             UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors,
@@ -54,7 +61,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             bool hasChangesAfter
         )
         {
-            if (!ShouldLog(serializedObject, propertyPath, hadChangesBefore, result))
+            if (
+                !DiagnosticsEnabled
+                || !ShouldLog(serializedObject, propertyPath, hadChangesBefore, result)
+            )
             {
                 return;
             }
@@ -99,7 +109,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             bool applyResult
         )
         {
-            if (!paletteChanged || !ShouldLogForTargets(serializedObject))
+            if (!DiagnosticsEnabled || !paletteChanged || !ShouldLogForTargets(serializedObject))
             {
                 return;
             }
@@ -126,7 +136,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             DrawerApplyResult result
         )
         {
-            if (!ShouldLogForTargets(serializedObject) || !IsPaletteProperty(propertyPath))
+            if (
+                !DiagnosticsEnabled
+                || !ShouldLogForTargets(serializedObject)
+                || !IsPaletteProperty(propertyPath)
+            )
             {
                 return false;
             }
@@ -141,7 +155,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         private static bool ShouldLogForTargets(SerializedObject serializedObject)
         {
-            if (serializedObject == null)
+            if (!DiagnosticsEnabled || serializedObject == null)
             {
                 return false;
             }

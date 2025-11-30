@@ -35,6 +35,21 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public StringComplexDictionary dictionary = new();
         }
 
+        private sealed class ColorDataDictionaryHost : ScriptableObject
+        {
+            public StringColorDataDictionary dictionary = new();
+        }
+
+        private sealed class ColorListDictionaryHost : ScriptableObject
+        {
+            public StringColorListDictionary dictionary = new();
+        }
+
+        private sealed class LabelStressDictionaryHost : ScriptableObject
+        {
+            public StringLabelStressDictionary dictionary = new();
+        }
+
         private sealed class ScriptableObjectDictionaryHost : ScriptableObject
         {
             public StringScriptableDictionary dictionary = new();
@@ -74,6 +89,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Serializable]
         private sealed class StringComplexDictionary
             : SerializableDictionary<string, ComplexValue> { }
+
+        [Serializable]
+        private sealed class StringColorDataDictionary
+            : SerializableDictionary<string, ColorData> { }
+
+        [Serializable]
+        private sealed class StringColorListDictionary
+            : SerializableDictionary<string, ColorListData> { }
+
+        [Serializable]
+        private sealed class StringLabelStressDictionary
+            : SerializableDictionary<string, LabelStressValue> { }
 
         [Serializable]
         private sealed class StringScriptableDictionary
@@ -170,6 +197,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public Color color3;
             public Color color4;
             public Color[] otherColors;
+        }
+
+        [Serializable]
+        private struct ColorListData
+        {
+            public List<Color> colors;
+        }
+
+        [Serializable]
+        private struct LabelStressValue
+        {
+            public float shortName;
+            public float RidiculouslyVerboseFieldNameRequiringSpace;
         }
 
         [Test]
@@ -1200,6 +1240,348 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        public void PageEntriesNeedSortingOnlyFlagsCurrentPage()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            int originalPageSize = settings.SerializableDictionaryPageSize;
+            try
+            {
+                int configuredSize = UnityHelpersSettings.MinPageSize + 2;
+                settings.SerializableDictionaryPageSize = configuredSize;
+
+                SerializableDictionaryPropertyDrawer drawer = new();
+                TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+                host.dictionary.Add(1, "one");
+                host.dictionary.Add(2, "two");
+                host.dictionary.Add(4, "four");
+                host.dictionary.Add(3, "three");
+
+                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+                serializedObject.Update();
+                SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                    nameof(TestDictionaryHost.dictionary)
+                );
+                SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Keys
+                );
+
+                SerializableDictionaryPropertyDrawer.PaginationState pagination =
+                    drawer.GetOrCreatePaginationState(dictionaryProperty);
+                pagination.pageIndex = 0;
+                pagination.pageSize = UnityHelpersSettings.GetSerializableDictionaryPageSize();
+
+                string listKey = SerializableDictionaryPropertyDrawer.GetListKey(
+                    dictionaryProperty
+                );
+                SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
+                    listKey,
+                    keysProperty,
+                    pagination
+                );
+
+                Func<object, object, int> comparison = static (left, right) =>
+                {
+                    int leftValue = left is int li ? li : Convert.ToInt32(left);
+                    int rightValue = right is int ri ? ri : Convert.ToInt32(right);
+                    return leftValue.CompareTo(rightValue);
+                };
+
+                bool firstPageNeedsSorting =
+                    SerializableDictionaryPropertyDrawer.PageEntriesNeedSorting(
+                        cache,
+                        keysProperty,
+                        typeof(int),
+                        comparison
+                    );
+                Assert.IsFalse(
+                    firstPageNeedsSorting,
+                    $"First page (keys {DumpIntArray(keysProperty)} indexes {DumpPageEntries(cache)}) should already be sorted."
+                );
+
+                pagination.pageIndex = 1;
+                cache = drawer.EnsurePageCache(listKey, keysProperty, pagination);
+                bool secondPageNeedsSorting =
+                    SerializableDictionaryPropertyDrawer.PageEntriesNeedSorting(
+                        cache,
+                        keysProperty,
+                        typeof(int),
+                        comparison
+                    );
+                Assert.IsTrue(
+                    secondPageNeedsSorting,
+                    $"Second page should report unsorted entries. Keys {DumpIntArray(keysProperty)} indexes {DumpPageEntries(cache)}"
+                );
+            }
+            finally
+            {
+                settings.SerializableDictionaryPageSize = originalPageSize;
+            }
+        }
+
+        [Test]
+        public void CommitEntryPreservesColorDataArrayValues()
+        {
+            ColorDataDictionaryHost host = CreateScriptableObject<ColorDataDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ColorDataDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            ColorData entry = new()
+            {
+                color1 = Color.red,
+                color2 = Color.green,
+                color3 = Color.blue,
+                color4 = Color.white,
+                otherColors = new[] { Color.yellow, Color.cyan },
+            };
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(ColorData),
+                "Accent",
+                entry,
+                dictionaryProperty
+            );
+
+            Assert.IsTrue(result.added, "Expected CommitEntry to add a new entry.");
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+            host.dictionary.EditorAfterDeserialize();
+
+            Assert.That(host.dictionary.Count, Is.EqualTo(1));
+            Assert.IsTrue(host.dictionary.ContainsKey("Accent"));
+            ColorData stored = host.dictionary["Accent"];
+            Assert.That(stored.otherColors, Is.Not.Null);
+            Assert.That(stored.otherColors.Length, Is.EqualTo(2));
+            AssertColorsApproximately(Color.yellow, stored.otherColors[0]);
+            AssertColorsApproximately(Color.cyan, stored.otherColors[1]);
+
+            SerializedProperty storedValue = valuesProperty.GetArrayElementAtIndex(result.index);
+            SerializedProperty otherColorsProperty = storedValue.FindPropertyRelative(
+                nameof(ColorData.otherColors)
+            );
+            Assert.IsNotNull(
+                otherColorsProperty,
+                "Serialized ColorData should expose otherColors."
+            );
+            Assert.That(otherColorsProperty.arraySize, Is.EqualTo(2));
+            AssertColorsApproximately(
+                Color.yellow,
+                otherColorsProperty.GetArrayElementAtIndex(0).colorValue
+            );
+            AssertColorsApproximately(
+                Color.cyan,
+                otherColorsProperty.GetArrayElementAtIndex(1).colorValue
+            );
+        }
+
+        [Test]
+        public void CommitEntryPreservesColorListValues()
+        {
+            ColorListDictionaryHost host = CreateScriptableObject<ColorListDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ColorListDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            ColorListData entry = new()
+            {
+                colors = new List<Color> { Color.red, Color.blue },
+            };
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(ColorListData),
+                "Palette",
+                entry,
+                dictionaryProperty
+            );
+
+            Assert.IsTrue(result.added, "Expected CommitEntry to add a new entry.");
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+            host.dictionary.EditorAfterDeserialize();
+
+            Assert.That(host.dictionary.ContainsKey("Palette"), Is.True);
+            ColorListData stored = host.dictionary["Palette"];
+            Assert.IsNotNull(stored.colors);
+            Assert.That(stored.colors.Count, Is.EqualTo(2));
+            AssertColorsApproximately(Color.red, stored.colors[0]);
+            AssertColorsApproximately(Color.blue, stored.colors[1]);
+        }
+
+        [Test]
+        public void PendingEntryCommitPreservesStringKey()
+        {
+            ColorDataDictionaryHost host = CreateScriptableObject<ColorDataDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ColorDataDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(ColorDataDictionaryHost),
+                nameof(ColorDataDictionaryHost.dictionary)
+            );
+
+            SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                drawer.GetOrCreatePendingEntry(
+                    dictionaryProperty,
+                    typeof(string),
+                    typeof(ColorData),
+                    isSortedDictionary: false
+                );
+            pending.key = "test-input";
+            pending.value = new ColorData { color1 = Color.white };
+
+            SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(ColorData),
+                pending.key,
+                pending.value,
+                dictionaryProperty,
+                existingIndex: -1
+            );
+
+            Assert.IsTrue(result.added, "Expected CommitEntry to add a new entry.");
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+            host.dictionary.EditorAfterDeserialize();
+
+            Assert.IsTrue(host.dictionary.ContainsKey("test-input"));
+        }
+
+        [Test]
+        public void PendingDuplicateCacheInvalidatesAfterDictionaryValueChange()
+        {
+            ColorDataDictionaryHost host = CreateScriptableObject<ColorDataDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ColorDataDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(ColorDataDictionaryHost),
+                nameof(ColorDataDictionaryHost.dictionary)
+            );
+
+            SerializableDictionaryPropertyDrawer.CommitResult initialEntry = drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(ColorData),
+                "Accent",
+                new ColorData { color1 = Color.white },
+                dictionaryProperty
+            );
+            Assert.IsTrue(initialEntry.added, "Expected initial commit to succeed.");
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                drawer.GetOrCreatePendingEntry(
+                    dictionaryProperty,
+                    typeof(string),
+                    typeof(ColorData),
+                    isSortedDictionary: false
+                );
+            pending.key = "Accent";
+            pending.value = new ColorData { color1 = Color.white };
+
+            MethodInfo matchesMethod = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
+                "EntryMatchesExisting",
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
+            Assert.IsNotNull(matchesMethod, "EntryMatchesExisting reflection lookup failed.");
+
+            int storedIndex = initialEntry.index >= 0 ? initialEntry.index : 0;
+            object[] args =
+            {
+                keysProperty,
+                valuesProperty,
+                storedIndex,
+                typeof(string),
+                typeof(ColorData),
+                pending,
+            };
+
+            bool initialMatch = (bool)matchesMethod.Invoke(null, args);
+            Assert.IsTrue(
+                initialMatch,
+                "Pending entry should match the existing dictionary entry."
+            );
+
+            SerializedProperty storedValue = valuesProperty.GetArrayElementAtIndex(storedIndex);
+            SerializedProperty colorProperty = storedValue.FindPropertyRelative(
+                nameof(ColorData.color1)
+            );
+            colorProperty.colorValue = Color.magenta;
+            valuesProperty.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            valuesProperty.serializedObject.Update();
+
+            bool cachedMatch = (bool)matchesMethod.Invoke(null, args);
+            Assert.IsTrue(
+                cachedMatch,
+                "Cached duplicate check should remain true until the cache is invalidated."
+            );
+
+            string cacheKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
+            drawer.InvalidatePendingDuplicateCache(cacheKey);
+
+            bool refreshedMatch = (bool)matchesMethod.Invoke(null, args);
+            Assert.IsFalse(
+                refreshedMatch,
+                "Invalidating the cache should force a fresh duplicate comparison."
+            );
+        }
+
+        [Test]
         public void GetDefaultValueSupportsPrivateSerializableTypes()
         {
             object value = SerializableDictionaryPropertyDrawer.GetDefaultValue(
@@ -1473,6 +1855,201 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [UnityTest]
+        public IEnumerator PendingEntryListValueSupportsEditing()
+        {
+            SerializableDictionaryPropertyDrawer.PendingEntry pending = new();
+            ColorListData initial = new() { colors = new List<Color> { Color.red } };
+            Rect rect = new(0f, 0f, 320f, EditorGUIUtility.singleLineHeight * 5f);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                pending.value = initial;
+                pending.value = SerializableDictionaryPropertyDrawer.DrawFieldForType(
+                    rect,
+                    "Value",
+                    pending.value,
+                    typeof(ColorListData),
+                    pending,
+                    isValueField: true
+                );
+            });
+
+            Assert.IsNotNull(
+                pending.valueWrapperProperty,
+                "List-backed pending values should allocate wrapper properties."
+            );
+
+            SerializedProperty colorsProperty = pending.valueWrapperProperty.FindPropertyRelative(
+                nameof(ColorListData.colors)
+            );
+            Assert.IsNotNull(colorsProperty, "ColorListData should expose the colors list.");
+            Assert.IsTrue(colorsProperty.isArray, "List fields should be serialized as arrays.");
+
+            colorsProperty.arraySize = 2;
+            colorsProperty.GetArrayElementAtIndex(0).colorValue = Color.magenta;
+            colorsProperty.GetArrayElementAtIndex(1).colorValue = Color.yellow;
+            pending.valueWrapperSerialized.ApplyModifiedPropertiesWithoutUndo();
+            pending.valueWrapperSerialized.Update();
+
+            ColorListData updated = (ColorListData)pending.valueWrapper.GetValue();
+            Assert.IsNotNull(updated.colors);
+            Assert.That(updated.colors.Count, Is.EqualTo(2));
+            AssertColorsApproximately(Color.magenta, updated.colors[0]);
+            AssertColorsApproximately(Color.yellow, updated.colors[1]);
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryListValueCommitsChanges()
+        {
+            ColorListDictionaryHost host = CreateScriptableObject<ColorListDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ColorListDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(ColorListDictionaryHost),
+                nameof(ColorListDictionaryHost.dictionary)
+            );
+
+            SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                drawer.GetOrCreatePendingEntry(
+                    dictionaryProperty,
+                    typeof(string),
+                    typeof(ColorListData),
+                    isSortedDictionary: false
+                );
+            pending.key = "Palette";
+            pending.value = new ColorListData { colors = new List<Color> { Color.black } };
+
+            Rect rect = new(0f, 0f, 320f, EditorGUIUtility.singleLineHeight * 5f);
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                pending.value = SerializableDictionaryPropertyDrawer.DrawFieldForType(
+                    rect,
+                    "Value",
+                    pending.value,
+                    typeof(ColorListData),
+                    pending,
+                    isValueField: true
+                );
+            });
+
+            SerializedProperty colorsProperty = pending.valueWrapperProperty.FindPropertyRelative(
+                nameof(ColorListData.colors)
+            );
+            colorsProperty.arraySize = 2;
+            colorsProperty.GetArrayElementAtIndex(0).colorValue = Color.red;
+            colorsProperty.GetArrayElementAtIndex(1).colorValue = Color.cyan;
+            pending.valueWrapperSerialized.ApplyModifiedPropertiesWithoutUndo();
+            pending.valueWrapperSerialized.Update();
+            pending.value = pending.valueWrapper.GetValue();
+
+            SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(ColorListData),
+                pending,
+                -1,
+                dictionaryProperty
+            );
+            Assert.IsTrue(result.added, "Expected the pending list value to be committed.");
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+            host.dictionary.EditorAfterDeserialize();
+
+            Assert.That(host.dictionary.ContainsKey("Palette"));
+            ColorListData stored = host.dictionary["Palette"];
+            Assert.IsNotNull(stored.colors);
+            Assert.That(stored.colors.Count, Is.EqualTo(2));
+            AssertColorsApproximately(Color.red, stored.colors[0]);
+            AssertColorsApproximately(Color.cyan, stored.colors[1]);
+        }
+
+        [Test]
+        public void CommitEntryPreservesScriptableObjectReference()
+        {
+            ScriptableObjectDictionaryHost host =
+                CreateScriptableObject<ScriptableObjectDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ScriptableObjectDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            UnityEngine.Object scriptable =
+                ScriptableObject.CreateInstance<SampleScriptableObject>();
+            scriptable.hideFlags = HideFlags.HideAndDontSave;
+
+            try
+            {
+                SerializableDictionaryPropertyDrawer drawer = new();
+                AssignDictionaryFieldInfo(
+                    drawer,
+                    typeof(ScriptableObjectDictionaryHost),
+                    nameof(ScriptableObjectDictionaryHost.dictionary)
+                );
+
+                SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
+                    keysProperty,
+                    valuesProperty,
+                    typeof(string),
+                    typeof(SampleScriptableObject),
+                    "Asset",
+                    scriptable,
+                    dictionaryProperty
+                );
+
+                Assert.IsTrue(
+                    result.added,
+                    "Expected CommitEntry to add the scriptable object reference."
+                );
+
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                serializedObject.Update();
+                host.dictionary.EditorAfterDeserialize();
+
+                Assert.IsTrue(host.dictionary.ContainsKey("Asset"));
+                Assert.AreSame(
+                    scriptable,
+                    host.dictionary["Asset"],
+                    "Dictionary should retain the committed scriptable object reference."
+                );
+
+                SerializedProperty committedValue = valuesProperty.GetArrayElementAtIndex(
+                    result.index
+                );
+                Assert.AreSame(
+                    scriptable,
+                    committedValue.objectReferenceValue,
+                    "Serialized array should reference the committed scriptable object."
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(scriptable);
+            }
+        }
+
+        [UnityTest]
         public IEnumerator PendingEntryPrimitiveValueDrawsInlineField()
         {
             SerializableDictionaryPropertyDrawer.PendingEntry pending = new();
@@ -1552,6 +2129,82 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     .Within(0.0001f),
                 "Pending value foldout gutter should match the configured width."
             );
+        }
+
+        [Test]
+        public void PaletteCommitTriggersUnityHelpersSettingsSave()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            settings.EnsureWButtonCustomColorDefaults();
+
+            SerializedObject serializedSettings = TrackDisposable(new SerializedObject(settings));
+            serializedSettings.Update();
+            SerializedProperty dictionaryProperty = serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            Assert.IsNotNull(dictionaryProperty, "Expected to find wbuttonCustomColors property.");
+
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+            Assert.IsNotNull(keysProperty);
+            Assert.IsNotNull(valuesProperty);
+
+            const string TestKey = "__TestPaletteProjectSettings";
+            RemoveStringDictionaryEntry(keysProperty, valuesProperty, TestKey);
+            serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+            serializedSettings.Update();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(UnityHelpersSettings),
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+
+            UnityHelpersSettings.WButtonCustomColor value = new()
+            {
+                ButtonColor = Color.magenta,
+                TextColor = Color.yellow,
+            };
+
+            bool saveInvoked = false;
+            void OnSettingsSaved()
+            {
+                saveInvoked = true;
+            }
+
+            UnityHelpersSettings.SettingsSaved += OnSettingsSaved;
+            try
+            {
+                SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
+                    keysProperty,
+                    valuesProperty,
+                    typeof(string),
+                    typeof(UnityHelpersSettings.WButtonCustomColor),
+                    TestKey,
+                    value,
+                    dictionaryProperty,
+                    existingIndex: -1
+                );
+
+                Assert.IsTrue(result.added, "Expected palette entry to be added.");
+                Assert.IsTrue(
+                    saveInvoked,
+                    "UnityHelpersSettings.SaveSettings should be invoked after palette edits."
+                );
+            }
+            finally
+            {
+                UnityHelpersSettings.SettingsSaved -= OnSettingsSaved;
+                RemoveStringDictionaryEntry(keysProperty, valuesProperty, TestKey);
+                serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+                serializedSettings.Update();
+                settings.SaveSettings();
+            }
         }
 
         [UnityTest]
@@ -1919,6 +2572,387 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [UnityTest]
+        public IEnumerator PendingEntryHeaderHonorsGroupPaddingInSettingsContext()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            SerializedObject serializedSettings = TrackDisposable(new SerializedObject(settings));
+            serializedSettings.Update();
+            SerializedProperty paletteProperty = serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            paletteProperty.isExpanded = true;
+            serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(UnityHelpersSettings),
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+
+            Rect controlRect = new(0f, 0f, 360f, 420f);
+            GUIContent label = new("Palette");
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                paletteProperty.serializedObject.UpdateIfRequiredOrScript();
+                drawer.OnGUI(controlRect, paletteProperty, label);
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastPendingHeaderRect,
+                "Baseline draw should capture pending header layout for settings dictionaries."
+            );
+
+            Rect baselineHeader = SerializableDictionaryPropertyDrawer.LastPendingHeaderRect;
+
+            const float LeftPadding = 18f;
+            const float RightPadding = 12f;
+            float horizontalPadding = LeftPadding + RightPadding;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                paletteProperty.serializedObject.UpdateIfRequiredOrScript();
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+                    drawer.OnGUI(controlRect, paletteProperty, label);
+                }
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastPendingHeaderRect,
+                "Grouped draw should capture pending header layout for settings dictionaries."
+            );
+
+            Rect groupedHeader = SerializableDictionaryPropertyDrawer.LastPendingHeaderRect;
+
+            Assert.That(
+                groupedHeader.xMin,
+                Is.EqualTo(baselineHeader.xMin + LeftPadding).Within(0.0001f),
+                "Pending header in Project Settings should respect group padding."
+            );
+            Assert.That(
+                groupedHeader.width,
+                Is.EqualTo(Mathf.Max(0f, baselineHeader.width - horizontalPadding)).Within(0.0001f),
+                "Pending header width in Project Settings should shrink by the applied padding."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryFieldsHonorGroupPadding()
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(TestDictionaryHost),
+                nameof(TestDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new(0f, 0f, 360f, 420f);
+            GUIContent label = new("Dictionary");
+
+            SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                drawer.GetOrCreatePendingEntry(
+                    dictionaryProperty,
+                    typeof(int),
+                    typeof(string),
+                    isSortedDictionary: false
+                );
+            pending.isExpanded = true;
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                pending.isExpanded = true;
+                drawer.OnGUI(controlRect, dictionaryProperty, label);
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastPendingFieldRects,
+                "Baseline draw should capture pending key/value rects."
+            );
+
+            Rect baselineKey = SerializableDictionaryPropertyDrawer.LastPendingKeyFieldRect;
+            Rect baselineValue = SerializableDictionaryPropertyDrawer.LastPendingValueFieldRect;
+
+            const float LeftPadding = 18f;
+            const float RightPadding = 14f;
+            float horizontalPadding = LeftPadding + RightPadding;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+                    pending.isExpanded = true;
+                    drawer.OnGUI(controlRect, dictionaryProperty, label);
+                }
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastPendingFieldRects,
+                "Grouped draw should capture pending key/value rects."
+            );
+
+            Rect groupedKey = SerializableDictionaryPropertyDrawer.LastPendingKeyFieldRect;
+            Rect groupedValue = SerializableDictionaryPropertyDrawer.LastPendingValueFieldRect;
+
+            Assert.That(
+                groupedKey.xMin,
+                Is.EqualTo(baselineKey.xMin + LeftPadding).Within(0.0001f),
+                "Pending key field should shift by the applied left padding."
+            );
+            Assert.That(
+                groupedValue.xMin,
+                Is.EqualTo(baselineValue.xMin + LeftPadding).Within(0.0001f),
+                "Pending value field should shift by the applied left padding."
+            );
+            Assert.That(
+                groupedKey.width,
+                Is.EqualTo(Mathf.Max(0f, baselineKey.width - horizontalPadding)).Within(0.0001f),
+                "Pending key width should shrink by the total group padding."
+            );
+            Assert.That(
+                groupedValue.width,
+                Is.EqualTo(Mathf.Max(0f, baselineValue.width - horizontalPadding)).Within(0.0001f),
+                "Pending value width should shrink by the total group padding."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryFieldsHonorGroupPaddingInSettingsContext()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            SerializedObject serializedSettings = TrackDisposable(new SerializedObject(settings));
+            serializedSettings.Update();
+            SerializedProperty paletteProperty = serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            paletteProperty.isExpanded = true;
+            serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(UnityHelpersSettings),
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+
+            Rect controlRect = new(0f, 0f, 360f, 420f);
+            GUIContent label = new("Palette");
+
+            SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                drawer.GetOrCreatePendingEntry(
+                    paletteProperty,
+                    typeof(string),
+                    typeof(UnityHelpersSettings.WButtonCustomColor),
+                    isSortedDictionary: false
+                );
+            pending.isExpanded = true;
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                paletteProperty.serializedObject.UpdateIfRequiredOrScript();
+                pending.isExpanded = true;
+                drawer.OnGUI(controlRect, paletteProperty, label);
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastPendingFieldRects,
+                "Baseline draw should capture pending key/value rects for settings dictionaries."
+            );
+
+            Rect baselineKey = SerializableDictionaryPropertyDrawer.LastPendingKeyFieldRect;
+            Rect baselineValue = SerializableDictionaryPropertyDrawer.LastPendingValueFieldRect;
+
+            const float LeftPadding = 20f;
+            const float RightPadding = 10f;
+            float horizontalPadding = LeftPadding + RightPadding;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                paletteProperty.serializedObject.UpdateIfRequiredOrScript();
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+                    pending.isExpanded = true;
+                    drawer.OnGUI(controlRect, paletteProperty, label);
+                }
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastPendingFieldRects,
+                "Grouped draw should capture pending key/value rects for settings dictionaries."
+            );
+
+            Rect groupedKey = SerializableDictionaryPropertyDrawer.LastPendingKeyFieldRect;
+            Rect groupedValue = SerializableDictionaryPropertyDrawer.LastPendingValueFieldRect;
+
+            Assert.That(
+                groupedKey.xMin,
+                Is.EqualTo(baselineKey.xMin + LeftPadding).Within(0.0001f),
+                "Pending key field in Project Settings should shift by the applied left padding."
+            );
+            Assert.That(
+                groupedValue.xMin,
+                Is.EqualTo(baselineValue.xMin + LeftPadding).Within(0.0001f),
+                "Pending value field in Project Settings should shift by the applied left padding."
+            );
+            Assert.That(
+                groupedKey.width,
+                Is.EqualTo(Mathf.Max(0f, baselineKey.width - horizontalPadding)).Within(0.0001f),
+                "Pending key width in Project Settings should shrink by the total group padding."
+            );
+            Assert.That(
+                groupedValue.width,
+                Is.EqualTo(Mathf.Max(0f, baselineValue.width - horizontalPadding)).Within(0.0001f),
+                "Pending value width in Project Settings should shrink by the total group padding."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryFoldoutValueRespectsGroupPadding()
+        {
+            ColorDataDictionaryHost host = CreateScriptableObject<ColorDataDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ColorDataDictionaryHost.dictionary)
+            );
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(ColorDataDictionaryHost),
+                nameof(ColorDataDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new(0f, 0f, 420f, 480f);
+            GUIContent label = new("Dictionary");
+
+            SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                drawer.GetOrCreatePendingEntry(
+                    dictionaryProperty,
+                    typeof(string),
+                    typeof(ColorData),
+                    isSortedDictionary: false
+                );
+            pending.isExpanded = true;
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                pending.isExpanded = true;
+                drawer.OnGUI(controlRect, dictionaryProperty, label);
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastPendingFieldRects,
+                "Baseline draw should capture pending field rects."
+            );
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.LastPendingValueUsedFoldoutLabel,
+                "Baseline draw should report a foldout label for complex pending values."
+            );
+            Assert.That(
+                SerializableDictionaryPropertyDrawer.LastPendingValueFoldoutOffset,
+                Is.EqualTo(SerializableDictionaryPropertyDrawer.PendingExpandableValueFoldoutGutter)
+                    .Within(0.0001f),
+                "Baseline foldout gutter should match the configured pending-value gutter."
+            );
+
+            Rect baselineValue = SerializableDictionaryPropertyDrawer.LastPendingValueFieldRect;
+
+            const float LeftPadding = 16f;
+            const float RightPadding = 12f;
+            float horizontalPadding = LeftPadding + RightPadding;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+                    pending.isExpanded = true;
+                    drawer.OnGUI(controlRect, dictionaryProperty, label);
+                }
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastPendingFieldRects,
+                "Grouped draw should capture pending field rects."
+            );
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.LastPendingValueUsedFoldoutLabel,
+                "Grouped draw should still report a foldout label for complex pending values."
+            );
+            Assert.That(
+                SerializableDictionaryPropertyDrawer.LastPendingValueFoldoutOffset,
+                Is.EqualTo(SerializableDictionaryPropertyDrawer.PendingExpandableValueFoldoutGutter)
+                    .Within(0.0001f),
+                "Grouped foldout gutter should match the configured pending-value gutter."
+            );
+
+            Rect groupedValue = SerializableDictionaryPropertyDrawer.LastPendingValueFieldRect;
+
+            Assert.That(
+                groupedValue.xMin,
+                Is.EqualTo(baselineValue.xMin + LeftPadding).Within(0.0001f),
+                "Pending value foldout should shift by the applied left padding."
+            );
+            Assert.That(
+                groupedValue.width,
+                Is.EqualTo(Mathf.Max(0f, baselineValue.width - horizontalPadding)).Within(0.0001f),
+                "Pending value foldout width should shrink by the total group padding."
+            );
+        }
+
+        [UnityTest]
         public IEnumerator DictionaryRowsHonorGroupPadding()
         {
             TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
@@ -2148,6 +3182,262 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 reopenedHeight,
                 Is.EqualTo(expandedHeight).Within(0.0001f),
                 "Re-expanding the value foldout should restore the original height."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator DictionaryRowChildControlsStayInsideValueColumn()
+        {
+            ColorDataDictionaryHost host = CreateScriptableObject<ColorDataDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ColorDataDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            SerializableDictionaryPropertyDrawer.CommitResult commit = drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(ColorData),
+                "Accent",
+                new ColorData
+                {
+                    color1 = Color.red,
+                    color2 = Color.green,
+                    color3 = Color.blue,
+                    color4 = Color.white,
+                    otherColors = new[] { Color.yellow, Color.cyan, Color.magenta },
+                },
+                dictionaryProperty
+            );
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(commit.index);
+            valueProperty.isExpanded = true;
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(ColorDataDictionaryHost),
+                nameof(ColorDataDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new(0f, 0f, 420f, 520f);
+            GUIContent label = new("Dictionary");
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                drawer.OnGUI(controlRect, dictionaryProperty, label);
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastRowRects,
+                "Row layout tracking should record the most recent row."
+            );
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastRowChildContentRect,
+                "Expected at least one child rect to be recorded for complex values."
+            );
+
+            Rect valueRect = SerializableDictionaryPropertyDrawer.LastRowValueRect;
+            Rect childRect = SerializableDictionaryPropertyDrawer.LastRowChildContentRect;
+
+            Assert.That(
+                childRect.xMin,
+                Is.GreaterThanOrEqualTo(valueRect.xMin - 0.0001f),
+                "Child controls should not render outside the value column on the left."
+            );
+            Assert.That(
+                childRect.xMax,
+                Is.LessThanOrEqualTo(valueRect.xMax + 0.0001f),
+                "Child controls should stay within the value column bounds."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator DictionaryRowChildControlsStayInsideValueColumnWithGroupPadding()
+        {
+            ColorDataDictionaryHost host = CreateScriptableObject<ColorDataDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ColorDataDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            SerializableDictionaryPropertyDrawer.CommitResult commit = drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(ColorData),
+                "Accent",
+                new ColorData
+                {
+                    color1 = Color.magenta,
+                    color2 = Color.cyan,
+                    color3 = Color.yellow,
+                    color4 = Color.white,
+                    otherColors = new[] { Color.red, Color.green },
+                },
+                dictionaryProperty
+            );
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(commit.index);
+            valueProperty.isExpanded = true;
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(ColorDataDictionaryHost),
+                nameof(ColorDataDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new(0f, 0f, 420f, 520f);
+            GUIContent label = new("Dictionary");
+
+            const float LeftPadding = 22f;
+            const float RightPadding = 14f;
+            float horizontalPadding = LeftPadding + RightPadding;
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    drawer.OnGUI(controlRect, dictionaryProperty, label);
+                }
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastRowRects,
+                "Grouped draw should capture the most recent row layout."
+            );
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastRowChildContentRect,
+                "Grouped draw should capture at least one child rect for complex values."
+            );
+
+            Rect valueRect = SerializableDictionaryPropertyDrawer.LastRowValueRect;
+            Rect childRect = SerializableDictionaryPropertyDrawer.LastRowChildContentRect;
+
+            Assert.That(
+                childRect.xMin,
+                Is.GreaterThanOrEqualTo(valueRect.xMin - 0.0001f),
+                "Child controls should remain within the left edge of the grouped value column."
+            );
+            Assert.That(
+                childRect.xMax,
+                Is.LessThanOrEqualTo(valueRect.xMax + 0.0001f),
+                "Child controls should remain within the right edge of the grouped value column."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator DictionaryRowChildLabelWidthsAdaptToContent()
+        {
+            LabelStressDictionaryHost host = CreateScriptableObject<LabelStressDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(LabelStressDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            SerializableDictionaryPropertyDrawer.CommitResult commit = drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(LabelStressValue),
+                "Entry",
+                new LabelStressValue
+                {
+                    shortName = 1f,
+                    RidiculouslyVerboseFieldNameRequiringSpace = 2f,
+                },
+                dictionaryProperty
+            );
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(commit.index);
+            valueProperty.isExpanded = true;
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(LabelStressDictionaryHost),
+                nameof(LabelStressDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new(0f, 0f, 420f, 480f);
+            GUIContent label = new("Dictionary");
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                drawer.OnGUI(controlRect, dictionaryProperty, label);
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasRowChildLabelWidthData,
+                "Expected row child label width tracking to capture measurements."
+            );
+
+            float minWidth = SerializableDictionaryPropertyDrawer.LastRowChildMinLabelWidth;
+            float maxWidth = SerializableDictionaryPropertyDrawer.LastRowChildMaxLabelWidth;
+
+            Assert.That(
+                maxWidth,
+                Is.GreaterThan(minWidth + 8f),
+                "Long field names should reserve more width than short field names."
             );
         }
 
@@ -2507,6 +3797,59 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
 
             return string.Join(", ", values);
+        }
+
+        private static string DumpPageEntries(
+            SerializableDictionaryPropertyDrawer.ListPageCache cache
+        )
+        {
+            if (cache?.entries == null || cache.entries.Count == 0)
+            {
+                return "[]";
+            }
+
+            List<int> indices = new(cache.entries.Count);
+            for (int i = 0; i < cache.entries.Count; i++)
+            {
+                indices.Add(cache.entries[i]?.arrayIndex ?? -1);
+            }
+
+            return $"[{string.Join(", ", indices)}]";
+        }
+
+        private static void RemoveStringDictionaryEntry(
+            SerializedProperty keysProperty,
+            SerializedProperty valuesProperty,
+            string key
+        )
+        {
+            if (
+                keysProperty == null
+                || valuesProperty == null
+                || string.IsNullOrEmpty(key)
+                || !keysProperty.isArray
+                || !valuesProperty.isArray
+            )
+            {
+                return;
+            }
+
+            for (int i = 0; i < keysProperty.arraySize; i++)
+            {
+                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(i);
+                if (!string.Equals(keyProperty.stringValue, key, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                keysProperty.DeleteArrayElementAtIndex(i);
+                if (i < valuesProperty.arraySize)
+                {
+                    valuesProperty.DeleteArrayElementAtIndex(i);
+                }
+
+                break;
+            }
         }
 
         private static SerializableDictionaryPropertyDrawer.PendingEntry GetPendingEntry(

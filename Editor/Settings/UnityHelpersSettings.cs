@@ -27,6 +27,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
     )]
     public sealed class UnityHelpersSettings : ScriptableSingleton<UnityHelpersSettings>
     {
+        internal static event Action SettingsSaved;
         public const int MinPageSize = 5;
         public const int MaxPageSize = 500;
         public const int MaxSerializableDictionaryPageSize = 250;
@@ -1567,6 +1568,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             EnsureWGroupCustomColorDefaults();
             ApplyRuntimeConfiguration();
             Save(true);
+            SettingsSaved?.Invoke();
         }
 
         private void ApplyRuntimeConfiguration()

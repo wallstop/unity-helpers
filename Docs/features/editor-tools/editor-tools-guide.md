@@ -1980,6 +1980,7 @@ else
 
 - Menu path: `Tools > Wallstop Studios > Unity Helpers > Request Script Compilation`
 - Shortcut: `Ctrl/Cmd + Alt + R` (configurable via Unity’s Shortcut Manager under _Wallstop / Request Script Compilation_)
+- Behavior: Forces an `AssetDatabase.Refresh` (synchronous import) before calling `CompilationPipeline.RequestScriptCompilation()` and logs whenever Unity is already compiling so scripts created outside the editor are imported immediately.
 
 ---
 

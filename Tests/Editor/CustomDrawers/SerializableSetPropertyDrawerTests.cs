@@ -57,6 +57,25 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public SerializableHashSet<string> secondSet = new();
         }
 
+        private sealed class ComplexSetHost : ScriptableObject
+        {
+            public SerializableHashSet<ComplexSetElement> set = new();
+        }
+
+        [Serializable]
+        private sealed class ComplexSetElement
+        {
+            public Color primary = Color.cyan;
+            public NestedComplexElement nested = new();
+        }
+
+        [Serializable]
+        private sealed class NestedComplexElement
+        {
+            public float intensity = 1.25f;
+            public Vector2 offset = new(0.5f, -0.5f);
+        }
+
         private sealed class PrivateCtorSetHost : ScriptableObject
         {
             public SerializableHashSet<PrivateCtorElement> set = new();
@@ -676,6 +695,61 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 itemsProperty
             );
             Assert.IsFalse(showAfter);
+        }
+
+        [Test]
+        public void PageEntriesNeedSortingOnlyFlagsVisiblePage()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array values = Array.CreateInstance(typeof(int), 4);
+            values.SetValue(1, 0);
+            values.SetValue(2, 1);
+            values.SetValue(4, 2);
+            values.SetValue(3, 3);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            pagination.pageSize = 2;
+
+            string listKey = SerializableSetPropertyDrawer.GetListKey(setProperty);
+            SerializableSetPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
+                listKey,
+                itemsProperty,
+                pagination
+            );
+
+            bool firstPageNeedsSorting = SerializableSetPropertyDrawer.PageEntriesNeedSorting(
+                cache,
+                itemsProperty,
+                allowSort: true
+            );
+            Assert.IsFalse(
+                firstPageNeedsSorting,
+                $"First page should already be sorted. Indexes: {DumpPageEntries(cache)} Values: {DumpIntArray(itemsProperty)}"
+            );
+
+            pagination.page = 1;
+            cache = drawer.EnsurePageCache(listKey, itemsProperty, pagination);
+            bool secondPageNeedsSorting = SerializableSetPropertyDrawer.PageEntriesNeedSorting(
+                cache,
+                itemsProperty,
+                allowSort: true
+            );
+            Assert.IsTrue(
+                secondPageNeedsSorting,
+                $"Second page should require sorting. Indexes: {DumpPageEntries(cache)} Values: {DumpIntArray(itemsProperty)}"
+            );
         }
 
         [Test]
@@ -1561,6 +1635,253 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
         }
 
+        [UnityTest]
+        public IEnumerator ManualEntryHeaderHonorsGroupPadding()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            setProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            pending.isExpanded = true;
+
+            Rect controlRect = new(0f, 0f, 360f, 420f);
+            GUIContent label = new("Set");
+
+            SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                setProperty.serializedObject.UpdateIfRequiredOrScript();
+                pending.isExpanded = true;
+                drawer.OnGUI(controlRect, setProperty, label);
+            });
+
+            Assert.IsTrue(
+                SerializableSetPropertyDrawer.HasLastManualEntryHeaderRect,
+                "Baseline draw should capture the manual entry header layout."
+            );
+
+            Rect baselineHeader = SerializableSetPropertyDrawer.LastManualEntryHeaderRect;
+
+            const float LeftPadding = 20f;
+            const float RightPadding = 12f;
+            float horizontalPadding = LeftPadding + RightPadding;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                setProperty.serializedObject.UpdateIfRequiredOrScript();
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+                    pending.isExpanded = true;
+                    drawer.OnGUI(controlRect, setProperty, label);
+                }
+            });
+
+            Assert.IsTrue(
+                SerializableSetPropertyDrawer.HasLastManualEntryHeaderRect,
+                "Grouped draw should capture the manual entry header layout."
+            );
+
+            Rect groupedHeader = SerializableSetPropertyDrawer.LastManualEntryHeaderRect;
+
+            Assert.That(
+                groupedHeader.xMin,
+                Is.EqualTo(baselineHeader.xMin + LeftPadding).Within(0.0001f),
+                "Manual entry header should shift by the applied left padding."
+            );
+            Assert.That(
+                groupedHeader.width,
+                Is.EqualTo(Mathf.Max(0f, baselineHeader.width - horizontalPadding)).Within(0.0001f),
+                "Manual entry header width should shrink by the total padding."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator ManualEntryValueFieldHonorsGroupPadding()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            setProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            pending.isExpanded = true;
+
+            Rect controlRect = new(0f, 0f, 360f, 420f);
+            GUIContent label = new("Set");
+
+            SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                setProperty.serializedObject.UpdateIfRequiredOrScript();
+                pending.isExpanded = true;
+                drawer.OnGUI(controlRect, setProperty, label);
+            });
+
+            Assert.IsTrue(
+                SerializableSetPropertyDrawer.HasLastManualEntryValueRect,
+                "Baseline draw should capture the manual entry value layout."
+            );
+
+            Rect baselineValue = SerializableSetPropertyDrawer.LastManualEntryValueRect;
+
+            const float LeftPadding = 18f;
+            const float RightPadding = 14f;
+            float horizontalPadding = LeftPadding + RightPadding;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                setProperty.serializedObject.UpdateIfRequiredOrScript();
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+                    pending.isExpanded = true;
+                    drawer.OnGUI(controlRect, setProperty, label);
+                }
+            });
+
+            Assert.IsTrue(
+                SerializableSetPropertyDrawer.HasLastManualEntryValueRect,
+                "Grouped draw should capture the manual entry value layout."
+            );
+
+            Rect groupedValue = SerializableSetPropertyDrawer.LastManualEntryValueRect;
+
+            Assert.That(
+                groupedValue.xMin,
+                Is.EqualTo(baselineValue.xMin + LeftPadding).Within(0.0001f),
+                "Manual entry value field should shift by the applied left padding."
+            );
+            Assert.That(
+                groupedValue.width,
+                Is.EqualTo(Mathf.Max(0f, baselineValue.width - horizontalPadding)).Within(0.0001f),
+                "Manual entry value width should shrink by the total padding."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator RowContentHonorsGroupPadding()
+        {
+            ComplexSetHost host = CreateScriptableObject<ComplexSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array snapshot = Array.CreateInstance(typeof(ComplexSetElement), 1);
+            snapshot.SetValue(
+                new ComplexSetElement
+                {
+                    primary = Color.yellow,
+                    nested = new NestedComplexElement
+                    {
+                        intensity = 2.5f,
+                        offset = new Vector2(3f, 1f),
+                    },
+                },
+                0
+            );
+            inspector.SetSerializedItemsSnapshot(snapshot, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(ComplexSetHost.set)
+            );
+            setProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableSetPropertyDrawer drawer = new();
+            Rect controlRect = new(0f, 0f, 420f, 520f);
+            GUIContent label = new("Set");
+
+            SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                setProperty.serializedObject.UpdateIfRequiredOrScript();
+                drawer.OnGUI(controlRect, setProperty, label);
+            });
+
+            Assert.IsTrue(
+                SerializableSetPropertyDrawer.HasLastRowContentRect,
+                "Baseline draw should capture the row content layout."
+            );
+
+            Rect baselineRow = SerializableSetPropertyDrawer.LastRowContentRect;
+
+            const float LeftPadding = 24f;
+            const float RightPadding = 10f;
+            float horizontalPadding = LeftPadding + RightPadding;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                setProperty.serializedObject.UpdateIfRequiredOrScript();
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+                    drawer.OnGUI(controlRect, setProperty, label);
+                }
+            });
+
+            Assert.IsTrue(
+                SerializableSetPropertyDrawer.HasLastRowContentRect,
+                "Grouped draw should capture the row content layout."
+            );
+
+            Rect groupedRow = SerializableSetPropertyDrawer.LastRowContentRect;
+
+            Assert.That(
+                groupedRow.xMin,
+                Is.EqualTo(baselineRow.xMin + LeftPadding).Within(0.0001f),
+                "Row content should shift by the configured left padding."
+            );
+            Assert.That(
+                groupedRow.width,
+                Is.EqualTo(Mathf.Max(0f, baselineRow.width - horizontalPadding)).Within(0.0001f),
+                "Row content width should shrink by the total padding."
+            );
+        }
+
         private static string DumpIntArray(SerializedProperty property)
         {
             if (property == null || !property.isArray)
@@ -1576,6 +1897,22 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
 
             return string.Join(", ", values);
+        }
+
+        private static string DumpPageEntries(SerializableSetPropertyDrawer.ListPageCache cache)
+        {
+            if (cache?.entries == null || cache.entries.Count == 0)
+            {
+                return "[]";
+            }
+
+            List<int> indices = new(cache.entries.Count);
+            for (int i = 0; i < cache.entries.Count; i++)
+            {
+                indices.Add(cache.entries[i]?.arrayIndex ?? -1);
+            }
+
+            return $"[{string.Join(", ", indices)}]";
         }
     }
 }
