@@ -91,6 +91,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Faster indexing and lookup in serializable data structures
   - Improved drawer update performance for complex inspector hierarchies
   - Data structure conversion optimizations
+  - Minor relational component performance, specifically for children components
 - **Code Quality**:
   - Extensive test coverage additions (4,000+ total tests)
   - Deterministic random number generation tests
