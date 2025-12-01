@@ -339,7 +339,7 @@ public int value = 25;  // Not in list! Shows as standard IntField
 
 ## StringInList
 
-String field constrained to a set of allowed values with search and autocomplete.
+String field constrained to a set of allowed values with an inline dropdown that opens a searchable popup.
 
 ### Basic Usage
 
@@ -351,7 +351,7 @@ public string difficulty = "Normal";
 public string teamColor = "Red";
 ```
 
-![Image placeholder: String dropdown with search box]
+![Image placeholder: String dropdown showing popup with search bar and results]
 
 ---
 
@@ -376,6 +376,34 @@ public static class LocalizationKeys
 
 ---
 
+### Instance Provider (context-aware)
+
+```csharp
+public class StateMachine : MonoBehaviour
+{
+    [StringInList(nameof(BuildAvailableStates))]
+    public string currentState;
+
+    private IEnumerable<string> BuildAvailableStates()
+    {
+        // Instance data drives the dropdown
+        yield return $"{gameObject.name}_Idle";
+        yield return $"{gameObject.name}_Run";
+    }
+
+    public static IEnumerable<string> StaticStates()
+    {
+        // Static helpers still work when referenced by name
+        return new[] { "Global_A", "Global_B" };
+    }
+}
+```
+
+> Passing only a method name instructs the drawer to search the decorated type for a parameterless
+> method. Instance methods run on the serialized object; static methods are also supported.
+
+---
+
 ### Search and Pagination
 
 ```csharp
@@ -392,14 +420,16 @@ public static class SceneLibrary
 }
 ```
 
-![Image placeholder: String list with search box filtering results]
+When the menu contains more entries than the configured limit, clicking the field opens a popup that embeds the search bar and pagination controls directly in the dropdown itself. The inspector row remains single-line, but the popup still supports fast filtering and page navigation.
+
+![Image placeholder: Popup window with search box filtering results]
 
 **Features:**
 
-- Search field filters options dynamically
-- Pagination for large lists (page size: `UnityHelpersSettings.StringInListPageSize`)
-- Clear button to unset value
-- Auto-complete suggestions
+- Dedicated popup hosts search + pagination when the option count exceeds `UnityHelpersSettings.StringInListPageLimit`
+- Inspector row stays single-line; the popup includes filtering, paging, and keyboard navigation
+- Works in both IMGUI and UI Toolkit inspectors (including `SerializableTypeDrawer`)
+- Accepts fixed lists, static provider methods, or instance provider methods resolved on the component
 
 ---
 

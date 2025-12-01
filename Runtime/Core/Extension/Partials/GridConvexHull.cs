@@ -165,7 +165,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         private static List<Vector3Int> BuildConvexHullMonotoneChain(
             IEnumerable<Vector3Int> pointsSet,
             Grid grid,
-            bool includeColinearPoints
+            bool includeColinearPoints,
+            List<Vector3Int> resultBuffer = null
         )
         {
             using PooledResource<List<Vector3Int>> pointsResource = Buffers<Vector3Int>.List.Get(
@@ -184,7 +185,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             DeduplicateSortedVector3Int(points);
             if (points.Count <= 1)
             {
-                return new List<Vector3Int>(points);
+                return CopyHullResult(resultBuffer, points);
             }
 
             // Degenerate: all points are colinear → return endpoints (or all if requested)
@@ -206,11 +207,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 {
                     if (includeColinearPoints)
                     {
-                        return new List<Vector3Int>(points);
+                        return CopyHullResult(resultBuffer, points);
                     }
                     else
                     {
-                        return new List<Vector3Int> { points[0], points[^1] };
+                        return CopyHullPair(resultBuffer, points[0], points[^1]);
                     }
                 }
             }
@@ -257,7 +258,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 upper.Add(p);
             }
 
-            List<Vector3Int> hull = new(lower.Count + upper.Count - 2);
+            List<Vector3Int> hull = PrepareHullResult(resultBuffer, lower.Count + upper.Count - 2);
             for (int i = 0; i < lower.Count; ++i)
             {
                 hull.Add(lower[i]);
@@ -285,7 +286,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         private static List<FastVector3Int> BuildConvexHullMonotoneChain(
             IEnumerable<FastVector3Int> pointsSet,
             Grid grid,
-            bool includeColinearPoints
+            bool includeColinearPoints,
+            List<FastVector3Int> resultBuffer = null
         )
         {
             using PooledResource<List<FastVector3Int>> pointsResource =
@@ -302,7 +304,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             DeduplicateSortedFastVector3Int(points);
             if (points.Count <= 1)
             {
-                return new List<FastVector3Int>(points);
+                return CopyHullResult(resultBuffer, points);
             }
 
             // Degenerate: all points are colinear → return endpoints (or all if requested)
@@ -324,11 +326,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 {
                     if (includeColinearPoints)
                     {
-                        return new List<FastVector3Int>(points);
+                        return CopyHullResult(resultBuffer, points);
                     }
                     else
                     {
-                        return new List<FastVector3Int> { points[0], points[^1] };
+                        return CopyHullPair(resultBuffer, points[0], points[^1]);
                     }
                 }
             }
@@ -375,7 +377,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 upper.Add(p);
             }
 
-            List<FastVector3Int> hull = new(lower.Count + upper.Count - 2);
+            List<FastVector3Int> hull = PrepareHullResult(
+                resultBuffer,
+                lower.Count + upper.Count - 2
+            );
             for (int i = 0; i < lower.Count; ++i)
             {
                 hull.Add(lower[i]);
@@ -403,7 +408,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         private static List<FastVector3Int> BuildConvexHullJarvis(
             IEnumerable<FastVector3Int> pointsSet,
             Grid grid,
-            bool includeColinearPoints
+            bool includeColinearPoints,
+            List<FastVector3Int> resultBuffer = null
         )
         {
             using PooledResource<List<FastVector3Int>> ptsRes = Buffers<FastVector3Int>.List.Get(
@@ -412,7 +418,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             points.AddRange(pointsSet);
             if (points.Count == 0)
             {
-                return new List<FastVector3Int>();
+                return PrepareHullResult(resultBuffer, 0);
             }
 
             points.Sort(
@@ -425,11 +431,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             DeduplicateSortedFastVector3Int(points);
             if (points.Count == 0)
             {
-                return new List<FastVector3Int>();
+                return PrepareHullResult(resultBuffer, 0);
             }
             if (points.Count == 1)
             {
-                return new List<FastVector3Int>(points);
+                return CopyHullResult(resultBuffer, points);
             }
 
             // Find leftmost (then lowest Y) start
@@ -478,7 +484,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                             return cmp != 0 ? cmp : a.y.CompareTo(b.y);
                         }
                     );
-                    return points;
+                    return CopyHullResult(resultBuffer, points);
                 }
                 else
                 {
@@ -497,11 +503,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                             max = w;
                         }
                     }
-                    return new List<FastVector3Int> { min, max };
+                    return CopyHullPair(resultBuffer, min, max);
                 }
             }
 
-            List<FastVector3Int> hull = new(points.Count + 1);
+            List<FastVector3Int> hull = PrepareHullResult(resultBuffer, points.Count + 1);
             FastVector3Int current = start;
             int guard = 0;
             int guardMax = Math.Max(8, points.Count * 8);
@@ -756,6 +762,45 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             long secondX = (long)second.x - origin.x;
             long secondY = (long)second.y - origin.y;
             return firstX * secondY - firstY * secondX;
+        }
+
+        private static List<T> PrepareHullResult<T>(List<T> buffer, int capacityHint)
+        {
+            int targetCapacity = Math.Max(0, capacityHint);
+            if (buffer == null)
+            {
+                return new List<T>(targetCapacity);
+            }
+
+            buffer.Clear();
+            if (buffer.Capacity < targetCapacity)
+            {
+                buffer.Capacity = targetCapacity;
+            }
+            return buffer;
+        }
+
+        private static List<T> CopyHullResult<T>(List<T> buffer, IReadOnlyList<T> source)
+        {
+            List<T> result = PrepareHullResult(buffer, source?.Count ?? 0);
+            if (source == null)
+            {
+                return result;
+            }
+
+            for (int i = 0; i < source.Count; ++i)
+            {
+                result.Add(source[i]);
+            }
+            return result;
+        }
+
+        private static List<T> CopyHullPair<T>(List<T> buffer, T first, T second)
+        {
+            List<T> result = PrepareHullResult(buffer, 2);
+            result.Add(first);
+            result.Add(second);
+            return result;
         }
 
         private static Vector2 ToWorld2D(Grid grid, Vector3Int cell)

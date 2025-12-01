@@ -17,11 +17,116 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     [CustomPropertyDrawer(typeof(StringInListAttribute))]
     public sealed class StringInListDrawer : PropertyDrawer
     {
+        private sealed class PopupState
+        {
+            public string search = string.Empty;
+            public int page;
+            public readonly List<int> filteredIndices = new();
+        }
+
+        private const float ClearWidth = 50f;
+        private const float ButtonWidth = 24f;
+        private const float PageLabelWidth = 90f;
+        private static readonly Dictionary<string, PopupState> PopupStates = new();
+
+        private static PopupState GetOrCreateState(string key)
+        {
+            if (!PopupStates.TryGetValue(key, out PopupState state))
+            {
+                state = new PopupState();
+                PopupStates[key] = state;
+            }
+            return state;
+        }
+
+        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+        {
+            StringInListAttribute stringInList = (StringInListAttribute)attribute;
+            UnityEngine.Object context = property.serializedObject?.targetObject;
+            string[] options = stringInList.GetOptions(context) ?? Array.Empty<string>();
+            int pageSize = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
+            if (options.Length > pageSize && IsSupportedSimpleProperty(property))
+            {
+                return EditorGUIUtility.singleLineHeight;
+            }
+
+            return EditorGUIUtility.singleLineHeight;
+        }
+
+        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+        {
+            StringInListAttribute stringInList = (StringInListAttribute)attribute;
+            UnityEngine.Object context = property.serializedObject?.targetObject;
+            string[] options = stringInList.GetOptions(context) ?? Array.Empty<string>();
+            int pageSize = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
+
+            if (options.Length == 0)
+            {
+                EditorGUI.HelpBox(
+                    position,
+                    "No options available for StringInList.",
+                    MessageType.Info
+                );
+                return;
+            }
+
+            if (IsSupportedArray(property))
+            {
+                EditorGUI.PropertyField(position, property, label, true);
+                return;
+            }
+
+            if (!IsSupportedSimpleProperty(property))
+            {
+                EditorGUI.PropertyField(position, property, label, true);
+                return;
+            }
+
+            if (options.Length > pageSize)
+            {
+                DrawPopupDropdown(position, property, label, options, pageSize);
+                return;
+            }
+
+            EditorGUI.BeginProperty(position, label, property);
+            if (property.propertyType == SerializedPropertyType.String)
+            {
+                int currentIndex = Array.IndexOf(options, property.stringValue);
+                int newIndex = EditorGUI.Popup(position, label.text, currentIndex, options);
+                if (newIndex >= 0 && newIndex < options.Length)
+                {
+                    property.stringValue = options[newIndex];
+                }
+            }
+            else if (property.propertyType == SerializedPropertyType.Integer)
+            {
+                string currentString;
+                if (property.intValue >= 0 && property.intValue < options.Length)
+                {
+                    currentString = options[property.intValue];
+                }
+                else
+                {
+                    currentString = property.intValue.ToString();
+                }
+
+                int currentIndex = Array.IndexOf(options, currentString);
+                int newIndex = EditorGUI.Popup(position, label.text, currentIndex, options);
+                if (newIndex >= 0 && newIndex < options.Length)
+                {
+                    property.intValue = newIndex;
+                }
+            }
+            EditorGUI.EndProperty();
+        }
+
         /// <inheritdoc/>
         public override VisualElement CreatePropertyGUI(SerializedProperty property)
         {
             StringInListAttribute stringInList = (StringInListAttribute)attribute;
-            string[] options = stringInList.List ?? Array.Empty<string>();
+            UnityEngine.Object context = property.serializedObject?.targetObject;
+            string[] options = stringInList.GetOptions(context) ?? Array.Empty<string>();
+            int pageSize = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
 
             if (options.Length == 0)
             {
@@ -40,6 +145,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 PropertyField fallback = new(property) { label = property.displayName };
                 return fallback;
+            }
+
+            if (options.Length > pageSize)
+            {
+                StringInListPopupSelectorElement popupElement = new(options);
+                popupElement.BindProperty(property, property.displayName);
+                return popupElement;
             }
 
             StringInListSelector selector = new(options);
@@ -63,6 +175,459 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string elementType = property.arrayElementType;
             return string.Equals(elementType, "string", StringComparison.Ordinal)
                 || string.Equals(elementType, "int", StringComparison.Ordinal);
+        }
+
+        private static int CalculatePageCount(int pageSize, int filteredCount)
+        {
+            if (filteredCount <= 0)
+            {
+                return 1;
+            }
+
+            return (filteredCount + pageSize - 1) / pageSize;
+        }
+
+        private static void DrawPopupDropdown(
+            Rect position,
+            SerializedProperty property,
+            GUIContent label,
+            string[] options,
+            int pageSize
+        )
+        {
+            string stateKey =
+                $"{property.serializedObject?.targetObject?.GetInstanceID() ?? 0}:{property.propertyPath}";
+            PopupState state = GetOrCreateState(stateKey);
+
+            EditorGUI.BeginProperty(position, label, property);
+            Rect fieldRect = EditorGUI.PrefixLabel(position, label);
+            bool previousMixed = EditorGUI.showMixedValue;
+            EditorGUI.showMixedValue = property.hasMultipleDifferentValues;
+
+            string displayValue = ResolveDisplayValue(property, options);
+            GUIContent buttonContent = new(displayValue);
+            if (EditorGUI.DropdownButton(fieldRect, buttonContent, FocusType.Keyboard))
+            {
+                UnityEditor.PopupWindow.Show(
+                    fieldRect,
+                    new StringInListPopupContent(property, options, state, pageSize)
+                );
+            }
+
+            EditorGUI.showMixedValue = previousMixed;
+
+            EditorGUI.EndProperty();
+        }
+
+        private static int ResolveCurrentSelectionIndex(
+            SerializedProperty property,
+            string[] options
+        )
+        {
+            if (property.propertyType == SerializedPropertyType.String)
+            {
+                string selected = property.stringValue ?? string.Empty;
+                return Array.IndexOf(options, selected);
+            }
+
+            if (property.propertyType == SerializedPropertyType.Integer)
+            {
+                int index = property.intValue;
+                if (index >= 0 && index < options.Length)
+                {
+                    return index;
+                }
+            }
+
+            return -1;
+        }
+
+        private static string ResolveDisplayValue(SerializedProperty property, string[] options)
+        {
+            if (property == null)
+            {
+                return string.Empty;
+            }
+
+            if (property.hasMultipleDifferentValues)
+            {
+                return "\u2014";
+            }
+
+            if (property.propertyType == SerializedPropertyType.String)
+            {
+                string selected = property.stringValue ?? string.Empty;
+                if (Array.IndexOf(options, selected) >= 0)
+                {
+                    return selected;
+                }
+                return selected;
+            }
+
+            if (property.propertyType == SerializedPropertyType.Integer)
+            {
+                int index = property.intValue;
+                if (index >= 0 && index < options.Length)
+                {
+                    return options[index] ?? string.Empty;
+                }
+                return property.intValue.ToString();
+            }
+
+            return string.Empty;
+        }
+
+        private static void ApplySelection(
+            SerializedProperty property,
+            string[] options,
+            int optionIndex
+        )
+        {
+            if (optionIndex < 0 || optionIndex >= options.Length)
+            {
+                return;
+            }
+
+            if (property.propertyType == SerializedPropertyType.String)
+            {
+                property.stringValue = options[optionIndex] ?? string.Empty;
+            }
+            else if (property.propertyType == SerializedPropertyType.Integer)
+            {
+                property.intValue = optionIndex;
+            }
+        }
+
+        private sealed class StringInListPopupContent : PopupWindowContent
+        {
+            private readonly SerializedObject _serializedObject;
+            private readonly string _propertyPath;
+            private readonly string[] _options;
+            private readonly PopupState _state;
+            private readonly bool _isStringProperty;
+            private readonly bool _isIntegerProperty;
+            private int _pageSize;
+
+            public StringInListPopupContent(
+                SerializedProperty property,
+                string[] options,
+                PopupState state,
+                int pageSize
+            )
+            {
+                _serializedObject = property.serializedObject;
+                _propertyPath = property.propertyPath;
+                _options = options ?? Array.Empty<string>();
+                _state = state ?? new PopupState();
+                _isStringProperty = property.propertyType == SerializedPropertyType.String;
+                _isIntegerProperty = property.propertyType == SerializedPropertyType.Integer;
+                _pageSize = Mathf.Max(1, pageSize);
+            }
+
+            public override Vector2 GetWindowSize()
+            {
+                int pageSize = ResolvePageSize();
+                float lineHeight = EditorGUIUtility.singleLineHeight + 4f;
+                float height = 72f + pageSize * lineHeight;
+                return new Vector2(360f, Mathf.Clamp(height, 180f, 460f));
+            }
+
+            public override void OnGUI(Rect rect)
+            {
+                if (_serializedObject == null || string.IsNullOrEmpty(_propertyPath))
+                {
+                    EditorGUILayout.HelpBox(
+                        "Unable to resolve property for StringInList.",
+                        MessageType.Warning
+                    );
+                    return;
+                }
+
+                _serializedObject.UpdateIfRequiredOrScript();
+                SerializedProperty property = _serializedObject.FindProperty(_propertyPath);
+                if (property == null)
+                {
+                    EditorGUILayout.HelpBox(
+                        "Unable to resolve property for StringInList.",
+                        MessageType.Warning
+                    );
+                    return;
+                }
+
+                DrawSearchControls();
+
+                List<int> filtered = _state.filteredIndices;
+                filtered.Clear();
+
+                bool hasSearch = !string.IsNullOrWhiteSpace(_state.search);
+                string searchTerm = _state.search ?? string.Empty;
+                if (hasSearch)
+                {
+                    for (int i = 0; i < _options.Length; i++)
+                    {
+                        string option = _options[i] ?? string.Empty;
+                        if (option.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            filtered.Add(i);
+                        }
+                    }
+                }
+
+                int filteredCount = hasSearch ? filtered.Count : _options.Length;
+                if (filteredCount == 0)
+                {
+                    EditorGUILayout.HelpBox(
+                        "No results match the current search.",
+                        MessageType.Info
+                    );
+                    _state.page = 0;
+                    return;
+                }
+
+                int pageSize = ResolvePageSize();
+                int pageCount = CalculatePageCount(pageSize, filteredCount);
+                _state.page = Mathf.Clamp(_state.page, 0, pageCount - 1);
+
+                if (pageCount > 1)
+                {
+                    DrawPaginationControls(pageCount);
+                }
+                else
+                {
+                    EditorGUILayout.Space(EditorGUIUtility.standardVerticalSpacing);
+                }
+
+                int startIndex = _state.page * pageSize;
+                int endIndex = Math.Min(filteredCount, startIndex + pageSize);
+                int currentSelectionIndex = ResolveCurrentSelectionIndex(property, _options);
+
+                using (new EditorGUILayout.VerticalScope())
+                {
+                    for (int i = startIndex; i < endIndex; i++)
+                    {
+                        int optionIndex = hasSearch ? filtered[i] : i;
+                        string optionLabel = _options[optionIndex] ?? string.Empty;
+                        bool isSelected = optionIndex == currentSelectionIndex;
+                        GUIStyle style = isSelected
+                            ? Styles.SelectedOptionButton
+                            : Styles.OptionButton;
+                        if (
+                            GUILayout.Button(
+                                optionLabel,
+                                style,
+                                GUILayout.ExpandWidth(true),
+                                GUILayout.Height(EditorGUIUtility.singleLineHeight + 2f)
+                            )
+                        )
+                        {
+                            ApplySelection(optionIndex);
+                        }
+                    }
+                }
+            }
+
+            private void DrawSearchControls()
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    GUILayout.Label("Search", GUILayout.Width(55f));
+                    EditorGUI.BeginChangeCheck();
+                    string newSearch = EditorGUILayout.TextField(
+                        _state.search ?? string.Empty,
+                        GUILayout.ExpandWidth(true)
+                    );
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        _state.search = newSearch ?? string.Empty;
+                        _state.page = 0;
+                    }
+
+                    using (new EditorGUI.DisabledScope(string.IsNullOrEmpty(_state.search)))
+                    {
+                        if (GUILayout.Button("Clear", GUILayout.Width(60f)))
+                        {
+                            _state.search = string.Empty;
+                            _state.page = 0;
+                        }
+                    }
+                }
+            }
+
+            private void DrawPaginationControls(int pageCount)
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    GUILayout.FlexibleSpace();
+                    using (new EditorGUI.DisabledScope(_state.page <= 0))
+                    {
+                        if (GUILayout.Button("<", GUILayout.Width(ButtonWidth)))
+                        {
+                            _state.page = Mathf.Max(0, _state.page - 1);
+                        }
+                    }
+
+                    GUILayout.Label(
+                        $"Page {_state.page + 1}/{Mathf.Max(1, pageCount)}",
+                        EditorStyles.centeredGreyMiniLabel,
+                        GUILayout.Width(PageLabelWidth)
+                    );
+
+                    using (new EditorGUI.DisabledScope(_state.page >= pageCount - 1))
+                    {
+                        if (GUILayout.Button(">", GUILayout.Width(ButtonWidth)))
+                        {
+                            _state.page = Mathf.Min(pageCount - 1, _state.page + 1);
+                        }
+                    }
+                    GUILayout.FlexibleSpace();
+                }
+            }
+
+            private int ResolvePageSize()
+            {
+                int resolved = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
+                if (resolved != _pageSize)
+                {
+                    _pageSize = resolved;
+                    _state.page = 0;
+                }
+                return _pageSize;
+            }
+
+            private void ApplySelection(int optionIndex)
+            {
+                if (
+                    optionIndex < 0
+                    || optionIndex >= _options.Length
+                    || _serializedObject == null
+                    || string.IsNullOrEmpty(_propertyPath)
+                )
+                {
+                    return;
+                }
+
+                SerializedObject serializedObject = _serializedObject;
+                Undo.RecordObjects(serializedObject.targetObjects, "Change String In List");
+                serializedObject.Update();
+
+                SerializedProperty property = serializedObject.FindProperty(_propertyPath);
+                if (property == null)
+                {
+                    serializedObject.ApplyModifiedProperties();
+                    return;
+                }
+
+                if (_isStringProperty)
+                {
+                    property.stringValue = _options[optionIndex] ?? string.Empty;
+                }
+                else if (_isIntegerProperty)
+                {
+                    property.intValue = optionIndex;
+                }
+
+                serializedObject.ApplyModifiedProperties();
+                editorWindow?.Close();
+                GUIUtility.ExitGUI();
+            }
+
+            private static class Styles
+            {
+                public static readonly GUIStyle OptionButton;
+                public static readonly GUIStyle SelectedOptionButton;
+
+                static Styles()
+                {
+                    OptionButton = new GUIStyle("Button")
+                    {
+                        alignment = TextAnchor.MiddleLeft,
+                        padding = new RectOffset(6, 6, 2, 2),
+                    };
+                    SelectedOptionButton = new GUIStyle(OptionButton)
+                    {
+                        fontStyle = FontStyle.Bold,
+                    };
+                }
+            }
+        }
+
+        private sealed class StringInListPopupSelectorElement : BaseField<string>
+        {
+            private readonly string[] _options;
+            private SerializedObject _serializedObject;
+            private string _propertyPath = string.Empty;
+            private GUIContent _labelContent = GUIContent.none;
+            private int _pageSize;
+            private readonly IMGUIContainer _imguiContainer;
+
+            private static VisualElement CreateInputElement(out IMGUIContainer container)
+            {
+                container = new IMGUIContainer();
+                return container;
+            }
+
+            public StringInListPopupSelectorElement(string[] options)
+                : base(string.Empty, CreateInputElement(out IMGUIContainer container))
+            {
+                AddToClassList("unity-base-field");
+                AddToClassList("unity-base-field__aligned");
+                labelElement.AddToClassList("unity-base-field__label");
+                labelElement.AddToClassList("unity-label");
+
+                _options = options ?? Array.Empty<string>();
+                _pageSize = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
+
+                _imguiContainer = container;
+                _imguiContainer.style.flexGrow = 1f;
+                _imguiContainer.style.marginLeft = 0f;
+                _imguiContainer.style.paddingLeft = 0f;
+                _imguiContainer.onGUIHandler = OnGUIHandler;
+            }
+
+            public void BindProperty(SerializedProperty property, string label)
+            {
+                _serializedObject = property?.serializedObject;
+                _propertyPath = property?.propertyPath ?? string.Empty;
+                string labelText = label ?? property?.displayName ?? property?.name ?? string.Empty;
+                this.label = labelText;
+                _labelContent = new GUIContent(labelText);
+            }
+
+            public void UnbindProperty()
+            {
+                _serializedObject = null;
+                _propertyPath = string.Empty;
+            }
+
+            private void OnGUIHandler()
+            {
+                if (_serializedObject == null || string.IsNullOrEmpty(_propertyPath))
+                {
+                    return;
+                }
+
+                _serializedObject.UpdateIfRequiredOrScript();
+                SerializedProperty property = _serializedObject.FindProperty(_propertyPath);
+                if (property == null)
+                {
+                    return;
+                }
+
+                string displayValue = ResolveDisplayValue(property, _options);
+                SetValueWithoutNotify(displayValue);
+
+                Rect controlRect = EditorGUILayout.GetControlRect();
+                int resolvedPageSize = Mathf.Max(
+                    1,
+                    UnityHelpersSettings.GetStringInListPageLimit()
+                );
+                if (resolvedPageSize != _pageSize)
+                {
+                    _pageSize = resolvedPageSize;
+                }
+                DrawPopupDropdown(controlRect, property, _labelContent, _options, _pageSize);
+                _serializedObject.ApplyModifiedProperties();
+            }
         }
 
         private sealed class StringInListSelector : BaseField<string>
@@ -95,6 +660,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private int _lastResolvedPageSize;
             private bool _searchVisible;
             private int _suggestionOptionIndex;
+            private int _currentFilteredCount;
 
             private bool _buffersInitialized;
 
@@ -350,7 +916,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private void OnNextPage()
             {
                 int pageSize = ResolvePageSize();
-                int pageCount = GetPageCount(pageSize, _filteredIndices.Count);
+                int pageCount = CalculatePageCount(pageSize, _currentFilteredCount);
                 if (_pageIndex >= pageCount - 1)
                 {
                     return;
@@ -416,19 +982,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     ? (_searchText ?? string.Empty)
                     : string.Empty;
                 bool hasSearch = searchActive && !string.IsNullOrWhiteSpace(effectiveSearch);
-                for (int i = 0; i < _options.Length; i++)
+                if (hasSearch)
                 {
-                    string option = _options[i] ?? string.Empty;
-                    if (
-                        !hasSearch
-                        || option.StartsWith(effectiveSearch, StringComparison.OrdinalIgnoreCase)
-                    )
+                    for (int i = 0; i < _options.Length; i++)
                     {
-                        _filteredIndices.Add(i);
+                        string option = _options[i] ?? string.Empty;
+                        if (option.StartsWith(effectiveSearch, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _filteredIndices.Add(i);
+                        }
                     }
                 }
 
-                if (_filteredIndices.Count == 0)
+                int filteredCount = hasSearch ? _filteredIndices.Count : _options.Length;
+                if (filteredCount == 0)
                 {
                     _pageChoices.Clear();
                     _dropdown.choices = _pageChoices;
@@ -438,15 +1005,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     _noResultsLabel.style.display = DisplayStyle.Flex;
                     UpdatePagination(searchActive, 0, pageSize, 0);
                     UpdateSuggestionDisplay(string.Empty, -1, -1);
+                    _currentFilteredCount = 0;
                     return;
                 }
 
                 _noResultsLabel.style.display = DisplayStyle.None;
 
-                int pageCount = GetPageCount(pageSize, _filteredIndices.Count);
+                int pageCount = CalculatePageCount(pageSize, filteredCount);
                 if (selectedOptionIndex >= 0)
                 {
-                    int filteredIndex = _filteredIndices.IndexOf(selectedOptionIndex);
+                    int filteredIndex = hasSearch
+                        ? _filteredIndices.IndexOf(selectedOptionIndex)
+                        : selectedOptionIndex;
                     if (filteredIndex >= 0)
                     {
                         _pageIndex = filteredIndex / pageSize;
@@ -461,21 +1031,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     _pageIndex = 0;
                 }
 
-                UpdatePagination(searchActive, pageCount, pageSize, _filteredIndices.Count);
+                UpdatePagination(searchActive, pageCount, pageSize, filteredCount);
 
-                bool paginate = searchActive && _filteredIndices.Count > pageSize;
+                bool paginate = searchActive && filteredCount > pageSize;
 
                 _pageOptionIndices.Clear();
                 _pageChoices.Clear();
 
                 int startIndex = paginate ? _pageIndex * pageSize : 0;
                 int endIndex = paginate
-                    ? Math.Min(_filteredIndices.Count, startIndex + pageSize)
-                    : _filteredIndices.Count;
+                    ? Math.Min(filteredCount, startIndex + pageSize)
+                    : filteredCount;
 
                 for (int i = startIndex; i < endIndex; i++)
                 {
-                    int optionIndex = _filteredIndices[i];
+                    int optionIndex = hasSearch ? _filteredIndices[i] : i;
                     _pageOptionIndices.Add(optionIndex);
                     _pageChoices.Add(_options[optionIndex] ?? string.Empty);
                 }
@@ -501,7 +1071,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 SetValueWithoutNotify(dropdownValue);
                 _dropdown.SetEnabled(_pageChoices.Count > 0);
 
-                UpdateSuggestion(searchActive);
+                _currentFilteredCount = filteredCount;
+
+                UpdateSuggestion(hasSearch);
             }
 
             private void EnsureBuffers()
@@ -594,19 +1166,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 _clearButton.SetEnabled(searchActive && !string.IsNullOrEmpty(_searchText));
             }
 
-            private void UpdateSuggestion(bool searchActive)
+            private void UpdateSuggestion(bool hasSearch)
             {
-                if (_filteredIndices.Count == 0)
+                if (!hasSearch || _filteredIndices.Count == 0)
                 {
                     UpdateSuggestionDisplay(string.Empty, -1, -1);
                     return;
                 }
 
-                bool hasSearch = searchActive && !string.IsNullOrEmpty(_searchText);
+                bool searchVisible = hasSearch && !string.IsNullOrEmpty(_searchText);
                 int optionIndex = _filteredIndices[0];
                 string optionValue = _options[optionIndex] ?? string.Empty;
                 bool prefixMatch =
-                    hasSearch
+                    searchVisible
                     && optionValue.StartsWith(_searchText, StringComparison.OrdinalIgnoreCase);
 
                 UpdateSuggestionDisplay(optionValue, optionIndex, prefixMatch ? 0 : -1);
@@ -776,16 +1348,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return -1;
             }
 
-            private static int GetPageCount(int pageSize, int filteredCount)
-            {
-                if (filteredCount <= 0)
-                {
-                    return 1;
-                }
-
-                return (filteredCount + pageSize - 1) / pageSize;
-            }
-
             private void ApplySelection(int optionIndex)
             {
                 if (_boundObject == null || string.IsNullOrEmpty(_propertyPath))
@@ -828,12 +1390,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly List<int> _indices = new();
             private readonly ListView _listView;
             private readonly ToolbarButton _removeButton;
+            private readonly int _pageSize;
 
             public StringInListArrayElement(SerializedProperty property, string[] options)
             {
                 _options = options ?? Array.Empty<string>();
                 _serializedObject = property.serializedObject;
                 _propertyPath = property.propertyPath;
+                _pageSize = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
 
                 AddToClassList("unity-base-field");
                 style.flexDirection = FlexDirection.Column;
@@ -878,32 +1442,48 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private VisualElement MakeItem()
             {
+                if (_options.Length > _pageSize)
+                {
+                    StringInListPopupSelectorElement popup = new(_options)
+                    {
+                        style = { marginBottom = 4f },
+                    };
+                    return popup;
+                }
+
                 StringInListSelector selector = new(_options) { style = { marginBottom = 4f } };
                 return selector;
             }
 
             private void BindItem(VisualElement element, int index)
             {
-                if (element is not StringInListSelector selector)
-                {
-                    return;
-                }
-
                 SerializedProperty arrayProperty = GetArrayProperty();
                 if (arrayProperty == null || index < 0 || index >= arrayProperty.arraySize)
                 {
-                    selector.UnbindProperty();
                     return;
                 }
 
                 SerializedProperty elementProperty = arrayProperty.GetArrayElementAtIndex(index);
-                selector.BindProperty(elementProperty, elementProperty.displayName);
+                if (element is StringInListSelector selector)
+                {
+                    selector.BindProperty(elementProperty, elementProperty.displayName);
+                }
+                else if (element is StringInListPopupSelectorElement popup)
+                {
+                    popup.BindProperty(elementProperty, elementProperty.displayName);
+                }
             }
 
             private void UnbindItem(VisualElement element, int index)
             {
-                StringInListSelector selector = element as StringInListSelector;
-                selector?.UnbindProperty();
+                if (element is StringInListSelector selector)
+                {
+                    selector.UnbindProperty();
+                }
+                else if (element is StringInListPopupSelectorElement popup)
+                {
+                    popup.UnbindProperty();
+                }
             }
 
             private void AddItem()

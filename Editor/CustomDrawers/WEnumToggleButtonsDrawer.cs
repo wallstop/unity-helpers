@@ -1169,7 +1169,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             );
             if (stringInListAttribute != null)
             {
-                string[] values = stringInListAttribute.List ?? Array.Empty<string>();
+                UnityEngine.Object context = property.serializedObject?.targetObject;
+                string[] values =
+                    stringInListAttribute.GetOptions(context) ?? Array.Empty<string>();
                 ToggleOption[] options = new ToggleOption[values.Length];
                 for (int index = 0; index < values.Length; index += 1)
                 {

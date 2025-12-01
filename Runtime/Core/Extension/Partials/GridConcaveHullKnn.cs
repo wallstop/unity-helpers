@@ -61,9 +61,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int attemptNearestNeighbors = Math.Min(totalPoints, nearestNeighbors);
 
             int firstIndex = FindLowestPointIndex(dataSet);
+            List<Vector2> hull = new(totalPoints);
             if (firstIndex < 0)
             {
-                return new List<Vector2>(dataSet);
+                hull.AddRange(dataSet);
+                return hull;
             }
 
             Vector2 firstPoint = dataSet[firstIndex];
@@ -82,8 +84,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 totalPoints,
                 out float[] neighborDistances
             );
-
-            List<Vector2> hull = new(totalPoints);
 
             while (true)
             {
@@ -166,16 +166,28 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
             }
             int totalPoints = dataSet.Count;
+            List<FastVector3Int> hull = new(totalPoints);
             if (totalPoints <= 4)
             {
-                return gridPositions.BuildConvexHull(grid);
+                return BuildConvexHullMonotoneChain(
+                    gridPositions,
+                    grid,
+                    includeColinearPoints: false,
+                    resultBuffer: hull
+                );
             }
 
-            List<FastVector3Int> convexHullSnapshot = dataSet.BuildConvexHull(grid);
-            if (AreAllPointsOnHullEdges(dataSet, convexHullSnapshot))
+            BuildConvexHullMonotoneChain(
+                dataSet,
+                grid,
+                includeColinearPoints: false,
+                resultBuffer: hull
+            );
+            if (AreAllPointsOnHullEdges(dataSet, hull))
             {
-                return convexHullSnapshot;
+                return hull;
             }
+            hull.Clear();
 
             int maximumNearestNeighbors = totalPoints;
             int attemptNearestNeighbors = Math.Min(totalPoints, nearestNeighbors);
@@ -183,7 +195,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int firstIndex = FindLowestGridPointIndex(dataSet, grid);
             if (firstIndex < 0)
             {
-                return new List<FastVector3Int>(dataSet);
+                hull.AddRange(dataSet);
+                return hull;
             }
 
             FastVector3Int firstPoint = dataSet[firstIndex];
@@ -209,8 +222,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 worldPositions[i] = grid.CellToWorld(dataSet[i]);
             }
-
-            List<FastVector3Int> hull = new(totalPoints);
 
             while (true)
             {

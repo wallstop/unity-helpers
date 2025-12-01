@@ -9,10 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](docs/overview/roadmap.md) for details
 
-### Changed
-
-- The manual "Request Script Compilation" shortcut now forces an `AssetDatabase.Refresh`, skips duplicate requests when Unity is already compiling, and logs the outcome so new scripts saved outside the editor are picked up immediately.
-
 ## [2.2.0]
 
 ### Added
@@ -27,6 +23,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - `EnumToggleButtons` for toggle-based enum selection in inspector
   - `WShowIf` conditional display attribute improvements
   - Enhanced dropdown attributes for better property selection
+  - `StringInListAttribute` now supports `[StringInList(nameof(Method))]` to call parameterless instance or static methods on the decorated object, and the drawer exposes the same experience in both IMGUI and UI Toolkit inspectors
 - **Serialization Data Structures**: Production-ready serializable collections
   - `SerializableDictionary<TKey, TValue>` with custom inspector drawer
   - `SerializableSortedDictionary<TKey, TValue>` with ordered iteration
@@ -111,6 +108,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Renamed `KGuid` -> `WGuid`, changed data layout
   - Forced `WallstopFastArrayPool` to force `unmanaged` types. This pool does not clear arrays and can leak references.
   - The legacy line-division concave hull overload `BuildConcaveHull(IEnumerable<FastVector3Int>, Grid, float scaleFactor, float concavity)` has been marked `[Obsolete]` and now throws `NotSupportedException`. Use `ConcaveHullStrategy.Knn` or `ConcaveHullStrategy.EdgeSplit` (and their dedicated helpers) instead; the docs now call out this retirement explicitly.
+  - `StringInList` inspectors now keep the property row single-line and open a dedicated popup that contains search, pagination, and keyboard navigation for large catalogs (applies to both IMGUI and UI Toolkit drawers, including `SerializableType`).
 - **API Improvements**:
   - Simplified `TryAdd` methods for collections
   - Enforced `IComparable` constraint where appropriate for sorting

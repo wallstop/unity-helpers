@@ -67,6 +67,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
+        public void StringInListInstanceMethodUsesContext()
+        {
+            InstanceStringProvider provider = new() { Prefix = "Ctx" };
+            StringInListAttribute attribute = new(nameof(InstanceStringProvider.BuildStates));
+            CollectionAssert.AreEqual(new[] { "Ctx_A", "Ctx_B" }, attribute.GetOptions(provider));
+        }
+
+        [Test]
+        public void StringInListInstanceMethodFallsBackToStatic()
+        {
+            InstanceStringProvider provider = new();
+            StringInListAttribute attribute = new(nameof(InstanceStringProvider.StaticStates));
+            CollectionAssert.AreEqual(
+                new[] { "Static_X", "Static_Y" },
+                attribute.GetOptions(provider)
+            );
+        }
+
+        [Test]
         public void IntDropdownInlineOptionsReturnSameReferences()
         {
             int[] values = { 2, 4, 6 };
@@ -545,6 +564,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             }
 
             public string Identifier { get; }
+        }
+
+        private sealed class InstanceStringProvider
+        {
+            public string Prefix { get; set; } = "Default";
+
+            public string[] BuildStates()
+            {
+                return new[] { $"{Prefix}_A", $"{Prefix}_B" };
+            }
+
+            public static IEnumerable<string> StaticStates()
+            {
+                return new[] { "Static_X", "Static_Y" };
+            }
         }
     }
 }

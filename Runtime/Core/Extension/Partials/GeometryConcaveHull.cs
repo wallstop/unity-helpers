@@ -289,21 +289,25 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 out List<Vector2> points
             );
             points.AddRange(pointsSet);
-            if (points.Count == 0)
+            int pointCount = points.Count;
+            List<Vector2> hull = new(pointCount > 0 ? pointCount + 1 : 0);
+            if (pointCount == 0)
             {
-                return new List<Vector2>();
+                return hull;
             }
 
             points.Sort(Vector2LexicographicalComparison);
             DeduplicateSortedVector2(points);
-            if (points.Count <= 2)
+            pointCount = points.Count;
+            if (pointCount <= 2)
             {
-                return new List<Vector2>(points);
+                hull.AddRange(points);
+                return hull;
             }
             Vector2 start = points[0];
 
             bool allColinear = true;
-            for (int i = 1; i < points.Count - 1; ++i)
+            for (int i = 1; i < pointCount - 1; ++i)
             {
                 if (AreApproximatelyColinear(start, points[^1], points[i]))
                 {
@@ -317,7 +321,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 if (includeColinearPoints)
                 {
-                    return new List<Vector2>(points);
+                    hull.AddRange(points);
+                    return hull;
                 }
                 Vector2 min = start;
                 Vector2 max = start;
@@ -332,13 +337,18 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         max = w;
                     }
                 }
-                return new List<Vector2> { min, max };
+                hull.Add(min);
+                if (max != min)
+                {
+                    hull.Add(max);
+                }
+                return hull;
             }
 
-            List<Vector2> hull = new(points.Count + 1);
+            hull.Capacity = Math.Max(hull.Capacity, pointCount + 1);
             Vector2 current = start;
             int guard = 0;
-            int guardMax = Math.Max(8, points.Count * 8);
+            int guardMax = Math.Max(8, pointCount * 8);
             do
             {
                 hull.Add(current);
@@ -524,17 +534,20 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             points.Sort(Vector2LexicographicalComparison);
             DeduplicateSortedVector2(points);
-            if (points.Count <= 1)
+            int pointCount = points.Count;
+            List<Vector2> hull = new(pointCount > 0 ? pointCount : 0);
+            if (pointCount <= 1)
             {
-                return new List<Vector2>(points);
+                hull.AddRange(points);
+                return hull;
             }
 
-            if (points.Count >= 2)
+            if (pointCount >= 2)
             {
                 Vector2 first = points[0];
                 Vector2 last = points[^1];
                 bool allColinear = true;
-                for (int i = 1; i < points.Count - 1; ++i)
+                for (int i = 1; i < pointCount - 1; ++i)
                 {
                     if (!AreApproximatelyColinear(first, last, points[i]))
                     {
@@ -546,11 +559,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 {
                     if (includeColinearPoints)
                     {
-                        return new List<Vector2>(points);
+                        hull.AddRange(points);
+                        return hull;
                     }
                     else
                     {
-                        return new List<Vector2> { points[0], points[^1] };
+                        hull.Add(points[0]);
+                        if (points.Count > 1)
+                        {
+                            hull.Add(points[^1]);
+                        }
+                        return hull;
                     }
                 }
             }
@@ -603,7 +622,12 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 upper.Add(p);
             }
 
-            List<Vector2> hull = new(lower.Count + upper.Count - 2);
+            int targetCapacity = Math.Max(0, lower.Count + upper.Count - 2);
+            hull.Clear();
+            if (hull.Capacity < targetCapacity)
+            {
+                hull.Capacity = targetCapacity;
+            }
             for (int i = 0; i < lower.Count; ++i)
             {
                 hull.Add(lower[i]);
