@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Tags;
+    using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
     /// Explicit initializer for Relational Components.
@@ -242,6 +243,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return Array.Empty<AttributeMetadataCache.ResolvedRelationalFieldMetadata>();
             }
 
+            PooledResource<
+                List<AttributeMetadataCache.ResolvedRelationalFieldMetadata>
+            > resultLease = default;
             List<AttributeMetadataCache.ResolvedRelationalFieldMetadata> result = null;
             for (int i = 0; i < fields.Length; i++)
             {
@@ -315,7 +319,13 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                         || (!elementType.IsSealed && elementType != typeof(Component))
                     );
 
-                result ??= new List<AttributeMetadataCache.ResolvedRelationalFieldMetadata>();
+                if (result == null)
+                {
+                    resultLease =
+                        Buffers<AttributeMetadataCache.ResolvedRelationalFieldMetadata>.List.Get(
+                            out result
+                        );
+                }
                 result.Add(
                     new AttributeMetadataCache.ResolvedRelationalFieldMetadata(
                         f.Name,
@@ -327,9 +337,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 );
             }
 
-            return result == null
-                ? Array.Empty<AttributeMetadataCache.ResolvedRelationalFieldMetadata>()
-                : result.ToArray();
+            if (result == null)
+            {
+                return Array.Empty<AttributeMetadataCache.ResolvedRelationalFieldMetadata>();
+            }
+
+            AttributeMetadataCache.ResolvedRelationalFieldMetadata[] array = result.ToArray();
+            resultLease.Dispose();
+            return array;
         }
     }
 }

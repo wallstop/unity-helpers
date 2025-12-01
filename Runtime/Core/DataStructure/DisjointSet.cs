@@ -221,15 +221,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 throw new ArgumentNullException(nameof(results));
             }
 
-            using PooledResource<Stack<List<int>>> stackResource = Buffers<List<int>>.Stack.Get(
-                out Stack<List<int>> stack
-            );
-            foreach (List<int> input in results)
+            using PooledResource<Stack<List<int>>> reuseStackResource = Buffers<
+                List<int>
+            >.Stack.Get(out Stack<List<int>> reuseStack);
+            foreach (List<int> existing in results)
             {
-                if (input != null)
+                if (existing != null)
                 {
-                    input.Clear();
-                    stack.Push(input);
+                    existing.Clear();
+                    reuseStack.Push(existing);
                 }
             }
 
@@ -239,6 +239,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 int,
                 List<int>
             >.Dictionary.Get(out Dictionary<int, List<int>> setMap);
+            using PooledResource<List<PooledResource<List<int>>>> scratchLeaseResource = Buffers<
+                PooledResource<List<int>>
+            >.List.Get(out List<PooledResource<List<int>>> scratchLeases);
 
             for (int i = 0; i < _parent.Length; i++)
             {
@@ -247,19 +250,39 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     continue;
                 }
 
-                if (!setMap.TryGetValue(root, out List<int> set))
+                if (!setMap.TryGetValue(root, out List<int> scratch))
                 {
-                    if (!stack.TryPop(out set))
-                    {
-                        set = new List<int>();
-                    }
-
-                    setMap[root] = set;
+                    PooledResource<List<int>> lease = Buffers<int>.List.Get(out scratch);
+                    scratchLeases.Add(lease);
+                    setMap[root] = scratch;
                 }
-                set.Add(i);
+                scratch.Add(i);
             }
 
-            results.AddRange(setMap.Values);
+            foreach (List<int> scratch in setMap.Values)
+            {
+                List<int> destination;
+                if (!reuseStack.TryPop(out destination))
+                {
+                    destination = new List<int>(scratch.Count);
+                }
+                else
+                {
+                    destination.Clear();
+                    if (destination.Capacity < scratch.Count)
+                    {
+                        destination.Capacity = scratch.Count;
+                    }
+                }
+
+                destination.AddRange(scratch);
+                results.Add(destination);
+            }
+
+            for (int i = 0; i < scratchLeases.Count; ++i)
+            {
+                scratchLeases[i].Dispose();
+            }
 
             return results;
         }
@@ -472,7 +495,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 if (!stack.TryPop(out List<T> elementSet))
                 {
-                    elementSet = new List<T>();
+                    elementSet = new List<T>(indexSet.Count);
+                }
+                else
+                {
+                    elementSet.Clear();
+                    if (elementSet.Capacity < indexSet.Count)
+                    {
+                        elementSet.Capacity = indexSet.Count;
+                    }
                 }
 
                 foreach (int i in indexSet)

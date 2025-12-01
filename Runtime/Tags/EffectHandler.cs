@@ -80,6 +80,10 @@ namespace WallstopStudios.UnityHelpers.Tags
         private readonly Dictionary<long, List<PeriodicEffectRuntimeState>> _periodicEffectStates =
             new();
         private readonly Dictionary<long, List<EffectBehavior>> _behaviorsByHandleId = new();
+        private readonly Stack<List<EffectHandle>> _stackHandlePool = new();
+        private readonly Stack<List<EffectBehavior>> _behaviorListPool = new();
+        private readonly Stack<List<PeriodicEffectRuntimeState>> _periodicStateListPool = new();
+        private readonly Stack<List<CosmeticEffectData>> _cosmeticDataListPool = new();
 
         private bool _initialized;
 
@@ -222,7 +226,7 @@ namespace WallstopStudios.UnityHelpers.Tags
 
             if (!_handlesByStackKey.TryGetValue(stackKey, out List<EffectHandle> handles))
             {
-                handles = new List<EffectHandle>();
+                handles = RentHandleList();
                 _handlesByStackKey.Add(stackKey, handles);
             }
 
@@ -263,13 +267,23 @@ namespace WallstopStudios.UnityHelpers.Tags
                     if (handles.Count == 0)
                     {
                         _handlesByStackKey.Remove(stackKey);
+                        RecycleHandleList(handles);
                     }
                 }
 
                 _stackKeyByHandleId.Remove(handleId);
             }
 
-            _periodicEffectStates.Remove(handleId);
+            if (
+                _periodicEffectStates.TryGetValue(
+                    handleId,
+                    out List<PeriodicEffectRuntimeState> periodicStates
+                )
+            )
+            {
+                _periodicEffectStates.Remove(handleId);
+                RecyclePeriodicStateList(periodicStates);
+            }
 
             if (_behaviorsByHandleId.Remove(handleId, out List<EffectBehavior> behaviorInstances))
             {
@@ -285,6 +299,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                     behavior.OnRemove(context);
                     Destroy(behavior);
                 }
+                RecycleBehaviorList(behaviorInstances);
             }
         }
 
@@ -595,7 +610,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                     continue;
                 }
 
-                (runtimeStates ??= new List<PeriodicEffectRuntimeState>()).Add(
+                (runtimeStates ??= RentPeriodicStateList()).Add(
                     new PeriodicEffectRuntimeState(definition, startTime)
                 );
             }
@@ -603,6 +618,10 @@ namespace WallstopStudios.UnityHelpers.Tags
             if (runtimeStates is { Count: > 0 })
             {
                 _periodicEffectStates[handle.id] = runtimeStates;
+            }
+            else if (runtimeStates != null)
+            {
+                RecyclePeriodicStateList(runtimeStates);
             }
         }
 
@@ -623,11 +642,15 @@ namespace WallstopStudios.UnityHelpers.Tags
                 }
 
                 EffectBehavior clone = Instantiate(behavior);
-                (instances ??= new List<EffectBehavior>()).Add(clone);
+                (instances ??= RentBehaviorList()).Add(clone);
             }
 
             if (instances is not { Count: > 0 })
             {
+                if (instances != null)
+                {
+                    RecycleBehaviorList(instances);
+                }
                 return;
             }
 
@@ -715,7 +738,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                         Quaternion.identity
                     );
                     cosmeticEffect.transform.SetParent(transform, true);
-                    (instancedCosmeticData ??= new List<CosmeticEffectData>()).Add(cosmeticEffect);
+                    (instancedCosmeticData ??= RentCosmeticDataList()).Add(cosmeticEffect);
                 }
 
                 using PooledResource<List<CosmeticEffectComponent>> cosmeticEffectsResource =
@@ -731,7 +754,14 @@ namespace WallstopStudios.UnityHelpers.Tags
 
             if (instancedCosmeticData != null)
             {
-                _instancedCosmeticEffects.Add(handle, instancedCosmeticData);
+                if (instancedCosmeticData.Count > 0)
+                {
+                    _instancedCosmeticEffects.Add(handle, instancedCosmeticData);
+                }
+                else
+                {
+                    RecycleCosmeticDataList(instancedCosmeticData);
+                }
             }
         }
 
@@ -845,6 +875,82 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             _ = _instancedCosmeticEffects.Remove(handle);
+            RecycleCosmeticDataList(cosmeticDatas);
+        }
+
+        private List<EffectHandle> RentHandleList()
+        {
+            return _stackHandlePool.Count > 0 ? _stackHandlePool.Pop() : new List<EffectHandle>();
+        }
+
+        private void RecycleHandleList(List<EffectHandle> handles)
+        {
+            if (handles == null)
+            {
+                return;
+            }
+
+            handles.Clear();
+            _stackHandlePool.Push(handles);
+        }
+
+        private List<EffectBehavior> RentBehaviorList()
+        {
+            return _behaviorListPool.Count > 0
+                ? _behaviorListPool.Pop()
+                : new List<EffectBehavior>();
+        }
+
+        private void RecycleBehaviorList(List<EffectBehavior> behaviors)
+        {
+            if (behaviors == null)
+            {
+                return;
+            }
+
+            behaviors.Clear();
+            _behaviorListPool.Push(behaviors);
+        }
+
+        private List<PeriodicEffectRuntimeState> RentPeriodicStateList()
+        {
+            return _periodicStateListPool.Count > 0
+                ? _periodicStateListPool.Pop()
+                : new List<PeriodicEffectRuntimeState>();
+        }
+
+        private void RecyclePeriodicStateList(List<PeriodicEffectRuntimeState> states)
+        {
+            if (states == null)
+            {
+                return;
+            }
+
+            states.Clear();
+            _periodicStateListPool.Push(states);
+        }
+
+        private List<CosmeticEffectData> RentCosmeticDataList()
+        {
+            return _cosmeticDataListPool.Count > 0
+                ? _cosmeticDataListPool.Pop()
+                : new List<CosmeticEffectData>();
+        }
+
+        private void RecycleCosmeticDataList(List<CosmeticEffectData> cosmeticData)
+        {
+            if (cosmeticData == null)
+            {
+                return;
+            }
+
+            for (int i = cosmeticData.Count - 1; i >= 0; --i)
+            {
+                cosmeticData[i] = null;
+            }
+
+            cosmeticData.Clear();
+            _cosmeticDataListPool.Push(cosmeticData);
         }
 
         private void Update()

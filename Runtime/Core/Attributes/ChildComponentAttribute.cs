@@ -477,6 +477,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 Transform,
                 int
             >.Dictionary.Get(out Dictionary<Transform, int> positions);
+            using PooledResource<List<PooledResource<List<Component>>>> groupedLeaseTracker =
+                Buffers<PooledResource<List<Component>>>.List.Get(
+                    out List<PooledResource<List<Component>>> groupedListLeases
+                );
 
             for (int i = 0; i < length; ++i)
             {
@@ -489,7 +493,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 Transform key = candidate.transform;
                 if (!grouped.TryGetValue(key, out List<Component> list))
                 {
-                    list = new List<Component>();
+                    PooledResource<List<Component>> lease = Buffers<Component>.List.Get(out list);
+                    (groupedListLeases ??= new List<PooledResource<List<Component>>>()).Add(lease);
                     grouped.Add(key, list);
                     positions.Add(key, 0);
                 }
@@ -546,17 +551,36 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
             if (writeIndex >= length)
             {
+                DisposeGroupLeases(groupedListLeases);
                 return ordered;
             }
 
             if (writeIndex == 0)
             {
+                DisposeGroupLeases(groupedListLeases);
                 return Array.CreateInstance(elementType, 0);
             }
 
             Array trimmed = Array.CreateInstance(elementType, writeIndex);
             Array.Copy(ordered, 0, trimmed, 0, writeIndex);
+            DisposeGroupLeases(groupedListLeases);
             return trimmed;
+        }
+
+        private static void DisposeGroupLeases(
+            List<PooledResource<List<Component>>> groupedListLeases
+        )
+        {
+            if (groupedListLeases == null)
+            {
+                return;
+            }
+
+            for (int i = groupedListLeases.Count - 1; i >= 0; --i)
+            {
+                groupedListLeases[i].Dispose();
+            }
+            groupedListLeases.Clear();
         }
 
         private static bool AssignChildComponentsFromArray(

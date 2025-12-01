@@ -44,7 +44,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 throw new JsonException($"Invalid token type {reader.TokenType}");
             }
 
-            List<Keyframe> keys = null;
+            Keyframe[] keys = null;
             WrapMode pre = WrapMode.ClampForever;
             WrapMode post = WrapMode.ClampForever;
             bool havePre = false;
@@ -54,9 +54,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
             {
                 if (reader.TokenType == JsonTokenType.EndObject)
                 {
-                    AnimationCurve curve = new(
-                        (keys == null) ? Array.Empty<Keyframe>() : keys.ToArray()
-                    )
+                    AnimationCurve curve = new(keys ?? Array.Empty<Keyframe>())
                     {
                         preWrapMode = havePre ? pre : WrapMode.ClampForever,
                         postWrapMode = havePost ? post : WrapMode.ClampForever,
@@ -73,23 +71,18 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                         {
                             throw new JsonException("keys must be an array");
                         }
-                        using (
-                            PooledResource<List<Keyframe>> pooled = Buffers<Keyframe>.List.Get(
-                                out List<Keyframe> list
-                            )
-                        )
+                        using PooledResource<List<Keyframe>> pooled = Buffers<Keyframe>.List.Get(
+                            out List<Keyframe> list
+                        );
+                        while (reader.Read())
                         {
-                            while (reader.Read())
+                            if (reader.TokenType == JsonTokenType.EndArray)
                             {
-                                if (reader.TokenType == JsonTokenType.EndArray)
-                                {
-                                    break;
-                                }
-                                list.Add(ReadKeyframe(ref reader));
+                                break;
                             }
-                            keys = new List<Keyframe>(list.Count);
-                            keys.AddRange(list);
+                            list.Add(ReadKeyframe(ref reader));
                         }
+                        keys = list.Count == 0 ? Array.Empty<Keyframe>() : list.ToArray();
                     }
                     else if (reader.ValueTextEquals("preWrapMode"))
                     {
