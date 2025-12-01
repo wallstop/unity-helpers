@@ -92,6 +92,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Improved drawer update performance for complex inspector hierarchies
   - Data structure conversion optimizations
   - Minor relational component performance, specifically for children components
+  - Reduced GC across a variety of property drawers, editor tools, and various helpers
 - **Code Quality**:
   - Extensive test coverage additions (4,000+ total tests)
   - Deterministic random number generation tests

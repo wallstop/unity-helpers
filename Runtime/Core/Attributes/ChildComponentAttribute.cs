@@ -494,7 +494,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 if (!grouped.TryGetValue(key, out List<Component> list))
                 {
                     PooledResource<List<Component>> lease = Buffers<Component>.List.Get(out list);
-                    (groupedListLeases ??= new List<PooledResource<List<Component>>>()).Add(lease);
+                    groupedListLeases.Add(lease);
                     grouped.Add(key, list);
                     positions.Add(key, 0);
                 }

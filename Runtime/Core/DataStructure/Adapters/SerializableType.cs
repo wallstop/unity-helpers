@@ -513,25 +513,31 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 return;
             }
 
-            HashSet<string> unique = new(StringComparer.Ordinal);
-            foreach (string pattern in patterns)
+            using (
+                PooledResource<HashSet<string>> uniqueLease = SetBuffers<string>
+                    .GetHashSetPool(StringComparer.Ordinal)
+                    .Get(out HashSet<string> unique)
+            )
             {
-                if (string.IsNullOrWhiteSpace(pattern))
+                foreach (string pattern in patterns)
                 {
-                    continue;
+                    if (string.IsNullOrWhiteSpace(pattern))
+                    {
+                        continue;
+                    }
+
+                    unique.Add(pattern.Trim());
                 }
 
-                unique.Add(pattern.Trim());
-            }
+                if (unique.Count == 0)
+                {
+                    return;
+                }
 
-            if (unique.Count == 0)
-            {
-                return;
-            }
-
-            foreach (string pattern in unique)
-            {
-                GetPatternStats(pattern);
+                foreach (string pattern in unique)
+                {
+                    GetPatternStats(pattern);
+                }
             }
         }
 
@@ -542,30 +548,39 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 return null;
             }
 
-            List<Regex> compiled = new();
-            foreach (string pattern in patterns)
+            using (
+                PooledResource<List<Regex>> listLease = Buffers<Regex>.List.Get(
+                    out List<Regex> compiled
+                )
+            )
             {
-                if (string.IsNullOrWhiteSpace(pattern))
+                foreach (string pattern in patterns)
                 {
-                    continue;
+                    if (string.IsNullOrWhiteSpace(pattern))
+                    {
+                        continue;
+                    }
+
+                    string trimmed = pattern.Trim();
+                    try
+                    {
+                        compiled.Add(
+                            new Regex(
+                                trimmed,
+                                RegexOptions.Compiled | RegexOptions.CultureInvariant
+                            )
+                        );
+                    }
+                    catch (ArgumentException exception)
+                    {
+                        Debug.LogWarning(
+                            $"SerializableTypeCatalog ignore pattern '{trimmed}' is invalid: {exception.Message}"
+                        );
+                    }
                 }
 
-                string trimmed = pattern.Trim();
-                try
-                {
-                    compiled.Add(
-                        new Regex(trimmed, RegexOptions.Compiled | RegexOptions.CultureInvariant)
-                    );
-                }
-                catch (ArgumentException exception)
-                {
-                    Debug.LogWarning(
-                        $"SerializableTypeCatalog ignore pattern '{trimmed}' is invalid: {exception.Message}"
-                    );
-                }
+                return compiled.Count == 0 ? Array.Empty<Regex>() : compiled.ToArray();
             }
-
-            return compiled.ToArray();
         }
 
         private static string[] SanitizePatternInput(IEnumerable<string> patterns)
@@ -575,18 +590,24 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 return null;
             }
 
-            List<string> sanitized = new();
-            foreach (string pattern in patterns)
+            using (
+                PooledResource<List<string>> sanitizedLease = Buffers<string>.List.Get(
+                    out List<string> sanitized
+                )
+            )
             {
-                if (string.IsNullOrWhiteSpace(pattern))
+                foreach (string pattern in patterns)
                 {
-                    continue;
+                    if (string.IsNullOrWhiteSpace(pattern))
+                    {
+                        continue;
+                    }
+
+                    sanitized.Add(pattern.Trim());
                 }
 
-                sanitized.Add(pattern.Trim());
+                return sanitized.Count == 0 ? Array.Empty<string>() : sanitized.ToArray();
             }
-
-            return sanitized.Count == 0 ? Array.Empty<string>() : sanitized.ToArray();
         }
 
         private static bool PatternsEqual(string[] left, string[] right)
@@ -818,18 +839,30 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 }
             }
 
-            List<SerializableTypeDescriptor> filtered = new(source.Length);
-            foreach (SerializableTypeDescriptor descriptor in source)
+            using (
+                PooledResource<List<SerializableTypeDescriptor>> filteredLease =
+                    Buffers<SerializableTypeDescriptor>.List.Get(
+                        out List<SerializableTypeDescriptor> filtered
+                    )
+            )
             {
-                if (descriptor.Matches(key))
+                if (filtered.Capacity < source.Length)
                 {
-                    filtered.Add(descriptor);
+                    filtered.Capacity = source.Length;
                 }
-            }
 
-            SerializableTypeDescriptor[] result = filtered.ToArray();
-            FilterCache[key] = result;
-            return result;
+                foreach (SerializableTypeDescriptor descriptor in source)
+                {
+                    if (descriptor.Matches(key))
+                    {
+                        filtered.Add(descriptor);
+                    }
+                }
+
+                SerializableTypeDescriptor[] result = filtered.ToArray();
+                FilterCache[key] = result;
+                return result;
+            }
         }
 
         private static string FormatDisplayName(Type type)
@@ -867,58 +900,78 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                     return;
                 }
 
-                List<SerializableTypeDescriptor> descriptors = new()
-                {
-                    new SerializableTypeDescriptor(null, string.Empty, NoneDisplayName),
-                };
-
-                IEnumerable<Assembly> assemblies = ReflectionHelpers.GetAllLoadedAssemblies();
-                foreach (Assembly assembly in assemblies)
-                {
-                    if (assembly == null || assembly.IsDynamic)
-                    {
-                        continue;
-                    }
-
-                    Type[] exportedTypes = GetAssemblyTypes(assembly);
-                    foreach (Type type in exportedTypes)
-                    {
-                        if (type == null)
-                        {
-                            continue;
-                        }
-
-                        if (ShouldSkipType(type))
-                        {
-                            continue;
-                        }
-
-                        string normalized = SerializableType.NormalizeTypeName(type);
-                        if (string.IsNullOrEmpty(normalized))
-                        {
-                            continue;
-                        }
-
-                        descriptors.Add(
-                            new SerializableTypeDescriptor(
-                                type,
-                                normalized,
-                                FormatDisplayName(type)
-                            )
-                        );
-                    }
-                }
-
-                descriptors.Sort(
-                    static (left, right) =>
-                        string.Compare(
-                            left.DisplayName,
-                            right.DisplayName,
-                            StringComparison.Ordinal
+                using (
+                    PooledResource<List<SerializableTypeDescriptor>> descriptorsLease =
+                        Buffers<SerializableTypeDescriptor>.List.Get(
+                            out List<SerializableTypeDescriptor> descriptors
                         )
-                );
+                )
+                {
+                    descriptors.Add(
+                        new SerializableTypeDescriptor(null, string.Empty, NoneDisplayName)
+                    );
 
-                _descriptors = descriptors.ToArray();
+                    using (
+                        PooledResource<HashSet<string>> seenTypesLease = SetBuffers<string>
+                            .GetHashSetPool(StringComparer.Ordinal)
+                            .Get(out HashSet<string> seenTypes)
+                    )
+                    {
+                        IEnumerable<Assembly> assemblies =
+                            ReflectionHelpers.GetAllLoadedAssemblies();
+                        foreach (Assembly assembly in assemblies)
+                        {
+                            if (assembly == null || assembly.IsDynamic)
+                            {
+                                continue;
+                            }
+
+                            Type[] exportedTypes = GetAssemblyTypes(assembly);
+                            foreach (Type type in exportedTypes)
+                            {
+                                if (type == null)
+                                {
+                                    continue;
+                                }
+
+                                if (ShouldSkipType(type))
+                                {
+                                    continue;
+                                }
+
+                                string normalized = SerializableType.NormalizeTypeName(type);
+                                if (string.IsNullOrEmpty(normalized))
+                                {
+                                    continue;
+                                }
+
+                                if (!seenTypes.Add(normalized))
+                                {
+                                    continue;
+                                }
+
+                                descriptors.Add(
+                                    new SerializableTypeDescriptor(
+                                        type,
+                                        normalized,
+                                        FormatDisplayName(type)
+                                    )
+                                );
+                            }
+                        }
+                    }
+
+                    descriptors.Sort(
+                        static (left, right) =>
+                            string.Compare(
+                                left.DisplayName,
+                                right.DisplayName,
+                                StringComparison.Ordinal
+                            )
+                    );
+
+                    _descriptors = descriptors.ToArray();
+                }
 
                 _descriptorByName = new Dictionary<string, SerializableTypeDescriptor>(
                     _descriptors.Length,
@@ -1087,45 +1140,54 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                     return;
                 }
 
-                List<TypeSignature> signatures = new();
-                HashSet<string> seenTypes = new(StringComparer.Ordinal);
-
-                IEnumerable<Assembly> assemblies = ReflectionHelpers.GetAllLoadedAssemblies();
-                foreach (Assembly assembly in assemblies)
+                using (
+                    PooledResource<List<TypeSignature>> signaturesLease =
+                        Buffers<TypeSignature>.List.Get(out List<TypeSignature> signatures)
+                )
+                using (
+                    PooledResource<HashSet<string>> seenTypesLease = SetBuffers<string>
+                        .GetHashSetPool(StringComparer.Ordinal)
+                        .Get(out HashSet<string> seenTypes)
+                )
                 {
-                    if (assembly == null || assembly.IsDynamic)
+                    IEnumerable<Assembly> assemblies = ReflectionHelpers.GetAllLoadedAssemblies();
+                    foreach (Assembly assembly in assemblies)
                     {
-                        continue;
-                    }
-
-                    Type[] exportedTypes = GetAssemblyTypes(assembly);
-                    foreach (Type type in exportedTypes)
-                    {
-                        if (type == null)
+                        if (assembly == null || assembly.IsDynamic)
                         {
                             continue;
                         }
 
-                        string assemblyQualifiedName = type.AssemblyQualifiedName ?? string.Empty;
-                        string uniquenessKey = string.IsNullOrEmpty(assemblyQualifiedName)
-                            ? $"{type.FullName ?? type.Name}|{assembly.GetName()?.Name ?? string.Empty}"
-                            : assemblyQualifiedName;
-                        if (!seenTypes.Add(uniquenessKey))
+                        Type[] exportedTypes = GetAssemblyTypes(assembly);
+                        foreach (Type type in exportedTypes)
                         {
-                            continue;
-                        }
+                            if (type == null)
+                            {
+                                continue;
+                            }
 
-                        signatures.Add(
-                            new TypeSignature(
-                                type.Name,
-                                type.FullName ?? string.Empty,
-                                assemblyQualifiedName
-                            )
-                        );
+                            string assemblyQualifiedName =
+                                type.AssemblyQualifiedName ?? string.Empty;
+                            string uniquenessKey = string.IsNullOrEmpty(assemblyQualifiedName)
+                                ? $"{type.FullName ?? type.Name}|{assembly.GetName()?.Name ?? string.Empty}"
+                                : assemblyQualifiedName;
+                            if (!seenTypes.Add(uniquenessKey))
+                            {
+                                continue;
+                            }
+
+                            signatures.Add(
+                                new TypeSignature(
+                                    type.Name,
+                                    type.FullName ?? string.Empty,
+                                    assemblyQualifiedName
+                                )
+                            );
+                        }
                     }
+
+                    _typeSignatures = signatures.ToArray();
                 }
-
-                _typeSignatures = signatures.ToArray();
             }
         }
 

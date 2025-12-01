@@ -5,7 +5,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Runtime.CompilerServices;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
-    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
@@ -39,7 +38,34 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
-        private readonly Dictionary<FastVector3Int, List<Entry>> _grid;
+        private struct EntryBucket : IDisposable
+        {
+            private List<Entry> _entries;
+            private PooledResource<List<Entry>> _lease;
+
+            public List<Entry> Entries => _entries;
+
+            public static EntryBucket Rent()
+            {
+                EntryBucket bucket = default;
+                bucket._lease = Buffers<Entry>.List.Get(out bucket._entries);
+                return bucket;
+            }
+
+            public void Dispose()
+            {
+                if (_entries == null)
+                {
+                    return;
+                }
+
+                _lease.Dispose();
+                _lease = default;
+                _entries = null;
+            }
+        }
+
+        private readonly Dictionary<FastVector3Int, EntryBucket> _grid;
         private readonly float _cellSize;
         private readonly IEqualityComparer<T> _comparer;
 
@@ -68,7 +94,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             _cellSize = cellSize;
             _comparer = comparer ?? EqualityComparer<T>.Default;
-            _grid = new Dictionary<FastVector3Int, List<Entry>>();
+            _grid = new Dictionary<FastVector3Int, EntryBucket>();
         }
 
         /// <summary>
@@ -77,8 +103,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public void Insert(Vector3 position, T item)
         {
             FastVector3Int cell = GetCell(position);
-            List<Entry> entries = _grid.GetOrAdd(cell);
-            entries.Add(new Entry(position, item));
+            if (!_grid.TryGetValue(cell, out EntryBucket bucket))
+            {
+                bucket = EntryBucket.Rent();
+                _grid[cell] = bucket;
+            }
+
+            bucket.Entries.Add(new Entry(position, item));
         }
 
         /// <summary>
@@ -88,10 +119,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public bool Remove(Vector3 position, T item)
         {
             FastVector3Int cell = GetCell(position);
-            if (!_grid.TryGetValue(cell, out List<Entry> entries))
+            if (!_grid.TryGetValue(cell, out EntryBucket bucket))
             {
                 return false;
             }
+
+            List<Entry> entries = bucket.Entries;
 
             for (int i = entries.Count - 1; i >= 0; i--)
             {
@@ -105,6 +138,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 if (entries.Count == 0)
                 {
                     _grid.Remove(cell);
+                    bucket.Dispose();
                 }
                 return true;
             }
@@ -157,12 +191,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                                 centerCell.y + y,
                                 centerCell.z + z
                             );
-                            if (!_grid.TryGetValue(cell, out List<Entry> entries))
+                            if (!_grid.TryGetValue(cell, out EntryBucket bucket))
                             {
                                 continue;
                             }
 
-                            foreach (Entry entry in entries)
+                            foreach (Entry entry in bucket.Entries)
                             {
                                 if (!exactDistance)
                                 {
@@ -197,12 +231,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                                 centerCell.y + y,
                                 centerCell.z + z
                             );
-                            if (!_grid.TryGetValue(cell, out List<Entry> entries))
+                            if (!_grid.TryGetValue(cell, out EntryBucket bucket))
                             {
                                 continue;
                             }
 
-                            foreach (Entry entry in entries)
+                            foreach (Entry entry in bucket.Entries)
                             {
                                 if (!exactDistance)
                                 {
@@ -256,12 +290,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         for (int z = minCell.z; z <= maxCell.z; z++)
                         {
                             FastVector3Int cell = new(x, y, z);
-                            if (!_grid.TryGetValue(cell, out List<Entry> entries))
+                            if (!_grid.TryGetValue(cell, out EntryBucket bucket))
                             {
                                 continue;
                             }
 
-                            foreach (Entry entry in entries)
+                            foreach (Entry entry in bucket.Entries)
                             {
                                 Vector3 pos = entry.position;
                                 if (
@@ -292,12 +326,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         for (int z = minCell.z; z <= maxCell.z; z++)
                         {
                             FastVector3Int cell = new(x, y, z);
-                            if (!_grid.TryGetValue(cell, out List<Entry> entries))
+                            if (!_grid.TryGetValue(cell, out EntryBucket bucket))
                             {
                                 continue;
                             }
 
-                            foreach (Entry entry in entries)
+                            foreach (Entry entry in bucket.Entries)
                             {
                                 Vector3 pos = entry.position;
                                 if (
@@ -325,6 +359,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// </summary>
         public void Clear()
         {
+            foreach (KeyValuePair<FastVector3Int, EntryBucket> kvp in _grid)
+            {
+                EntryBucket bucket = kvp.Value;
+                bucket.Dispose();
+            }
             _grid.Clear();
         }
 
@@ -340,6 +379,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         public void Dispose()
         {
+            Clear();
             SetBuffers<T>.DestroyHashSetPool(_comparer);
         }
     }

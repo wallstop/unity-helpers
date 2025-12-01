@@ -327,16 +327,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             bool removed = formatter.RemoveDecoration(
                 "Demo",
-                out (
-                    string tag,
-                    bool editorOnly,
-                    Func<string, bool> predicate,
-                    Func<string, object, string> formatterDelegate
-                ) removedDecoration
+                out DecorationEntry removedDecoration
             );
 
             Assert.IsTrue(removed);
-            Assert.AreEqual("Demo", removedDecoration.tag);
+            Assert.AreEqual("Demo", removedDecoration.Tag);
 
             string formatted = formatter.Log($"{"value":demo}", pretty: false);
             Assert.AreEqual("value", formatted);

@@ -9,11 +9,33 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
     using Extension;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
     using Debug = UnityEngine.Debug;
     using Object = UnityEngine.Object;
 #if UNITY_EDITOR
     using UnityEditor;
 #endif
+
+    public readonly struct DecorationEntry
+    {
+        internal DecorationEntry(
+            string tag,
+            bool editorOnly,
+            Func<string, bool> predicate,
+            Func<string, object, string> formatter
+        )
+        {
+            Tag = tag;
+            EditorOnly = editorOnly;
+            Predicate = predicate;
+            Formatter = formatter;
+        }
+
+        internal string Tag { get; }
+        internal bool EditorOnly { get; }
+        internal Func<string, bool> Predicate { get; }
+        internal Func<string, object, string> Formatter { get; }
+    }
 
     /// <summary>
     /// Default supported formats:
@@ -46,26 +68,16 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
         /// All currently registered decorations by tag.
         /// </summary>
         public IEnumerable<string> Decorations =>
-            _matchingDecorations.Values.SelectMany(x => x).Select(value => value.tag);
+            _matchingDecorations.Values.SelectMany(x => x).Select(value => value.Tag);
 
-        public IReadOnlyCollection<
-            IReadOnlyList<(
-                string tag,
-                bool editorOnly,
-                Func<string, bool> predicate,
-                Func<string, object, string> formatter
-            )>
-        > MatchingDecorations => _matchingDecorations.Values;
+        public IReadOnlyCollection<IReadOnlyList<DecorationEntry>> MatchingDecorations =>
+            _matchingDecorations.Values;
 
-        private readonly SortedDictionary<
+        private readonly SortedDictionary<int, List<DecorationEntry>> _matchingDecorations = new();
+        private readonly Dictionary<
             int,
-            List<(
-                string tag,
-                bool editorOnly,
-                Func<string, bool> predicate,
-                Func<string, object, string> formatter
-            )>
-        > _matchingDecorations = new();
+            PooledResource<List<DecorationEntry>>
+        > _matchingDecorationLeases = new();
         private readonly Dictionary<string, (int priority, int index)> _decorationLookup = new(
             StringComparer.OrdinalIgnoreCase
         );
@@ -224,31 +236,17 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
             object formatted = arg;
             foreach (string key in _cachedDecorators)
             {
-                foreach (
-                    List<(
-                        string tag,
-                        bool editorOnly,
-                        Func<string, bool> predicate,
-                        Func<string, object, string> formatter
-                    )> matchingDecoration in _matchingDecorations.Values
-                )
+                foreach (List<DecorationEntry> matchingDecoration in _matchingDecorations.Values)
                 {
-                    foreach (
-                        (
-                            string tag,
-                            bool editorOnly,
-                            Func<string, bool> predicate,
-                            Func<string, object, string> matchingFormatter
-                        ) in matchingDecoration
-                    )
+                    foreach (DecorationEntry entry in matchingDecoration)
                     {
                         if (
-                            (Application.isEditor || !editorOnly)
-                            && predicate(key)
-                            && _appliedTags.Add(tag)
+                            (Application.isEditor || !entry.EditorOnly)
+                            && entry.Predicate(key)
+                            && _appliedTags.Add(entry.Tag)
                         )
                         {
-                            formatted = matchingFormatter(key, formatted);
+                            formatted = entry.Formatter(key, formatted);
                         }
                     }
                 }
@@ -469,14 +467,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
 
                 if (existing.priority == priority)
                 {
-                    List<(
-                        string tag,
-                        bool editorOnly,
-                        Func<string, bool> predicate,
-                        Func<string, object, string> formatter
-                    )> decorationsAtPriority = _matchingDecorations[priority];
+                    List<DecorationEntry> decorationsAtPriority = _matchingDecorations[priority];
 
-                    decorationsAtPriority[existing.index] = (tag, editorOnly, predicate, format);
+                    decorationsAtPriority[existing.index] = new DecorationEntry(
+                        tag,
+                        editorOnly,
+                        predicate,
+                        format
+                    );
                     _decorationLookup[tag] = (priority, existing.index);
                     return true;
                 }
@@ -487,26 +485,19 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
             if (
                 !_matchingDecorations.TryGetValue(
                     priority,
-                    out List<(
-                        string tag,
-                        bool editorOnly,
-                        Func<string, bool> predicate,
-                        Func<string, object, string> formatter
-                    )> matchingDecorations
+                    out List<DecorationEntry> matchingDecorations
                 )
             )
             {
-                matchingDecorations = new List<(
-                    string tag,
-                    bool editorOnly,
-                    Func<string, bool> predicate,
-                    Func<string, object, string> formatter
-                )>(1);
+                PooledResource<List<DecorationEntry>> lease = Buffers<DecorationEntry>.List.Get(
+                    out matchingDecorations
+                );
                 _matchingDecorations[priority] = matchingDecorations;
+                _matchingDecorationLeases[priority] = lease;
             }
 
             int indexToInsert = matchingDecorations.Count;
-            matchingDecorations.Add((tag, editorOnly, predicate, format));
+            matchingDecorations.Add(new DecorationEntry(tag, editorOnly, predicate, format));
             _decorationLookup[tag] = (priority, indexToInsert);
             return true;
         }
@@ -517,15 +508,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
         /// <param name="tag">Tag for the decoration ("Bold", "Color", etc.)</param>
         /// <param name="decoration">The removed decoration, if one was found.</param>
         /// <returns>True if a decoration was found for that tag and removed, false otherwise.</returns>
-        public bool RemoveDecoration(
-            string tag,
-            out (
-                string tag,
-                bool editorOnly,
-                Func<string, bool> predicate,
-                Func<string, object, string> formatter
-            ) decoration
-        )
+        public bool RemoveDecoration(string tag, out DecorationEntry decoration)
         {
             if (!_decorationLookup.TryGetValue(tag, out (int priority, int index) existing))
             {
@@ -537,47 +520,42 @@ namespace WallstopStudios.UnityHelpers.Core.Helper.Logging
             return true;
         }
 
-        private (
-            string tag,
-            bool editorOnly,
-            Func<string, bool> predicate,
-            Func<string, object, string> formatter
-        ) RemoveDecorationInternal(int priority, int index)
+        private DecorationEntry RemoveDecorationInternal(int priority, int index)
         {
-            List<(
-                string tag,
-                bool editorOnly,
-                Func<string, bool> predicate,
-                Func<string, object, string> formatter
-            )> decorationsAtPriority = _matchingDecorations[priority];
+            List<DecorationEntry> decorationsAtPriority = _matchingDecorations[priority];
 
-            (
-                string tag,
-                bool editorOnly,
-                Func<string, bool> predicate,
-                Func<string, object, string> formatter
-            ) removed = decorationsAtPriority[index];
+            DecorationEntry removed = decorationsAtPriority[index];
 
             decorationsAtPriority.RemoveAt(index);
-            _decorationLookup.Remove(removed.tag);
+            _decorationLookup.Remove(removed.Tag);
 
             for (int i = index; i < decorationsAtPriority.Count; ++i)
             {
-                (
-                    string tag,
-                    bool editorOnly,
-                    Func<string, bool> predicate,
-                    Func<string, object, string> formatter
-                ) entry = decorationsAtPriority[i];
-                _decorationLookup[entry.tag] = (priority, i);
+                DecorationEntry entry = decorationsAtPriority[i];
+                _decorationLookup[entry.Tag] = (priority, i);
             }
 
             if (decorationsAtPriority.Count == 0)
             {
                 _matchingDecorations.Remove(priority);
+                ReleasePriorityList(priority);
             }
 
             return removed;
+        }
+
+        private void ReleasePriorityList(int priority)
+        {
+            if (
+                _matchingDecorationLeases.TryGetValue(
+                    priority,
+                    out PooledResource<List<DecorationEntry>> lease
+                )
+            )
+            {
+                lease.Dispose();
+                _matchingDecorationLeases.Remove(priority);
+            }
         }
 
         [HideInCallstack]
