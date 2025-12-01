@@ -30,7 +30,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     /// auto-parsing by folders, regex-based grouping, duplicate-resolution, dry-run previews, and
     /// optional case-insensitive grouping.
     /// </summary>
-    /// <remarks>
     /// <para>
     /// Problems this solves: turning folder(s) of sprites into one or many consistent
     /// <see cref="AnimationClip"/> assets with predictable names and frame rates.
@@ -774,7 +773,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     .ToLowerInvariant()
                     .Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
 
-            List<AnimationData> dataToCreate = new();
+            using PooledResource<List<AnimationData>> dataToCreateLease =
+                Buffers<AnimationData>.List.Get(out List<AnimationData> dataToCreate);
             if (searchTerms.Length == 0)
             {
                 dataToCreate.AddRange(animationData);
@@ -1031,7 +1031,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            List<string> searchPaths = new();
+            using PooledResource<List<string>> searchPathsLease = Buffers<string>.List.Get(
+                out List<string> searchPaths
+            );
             for (int i = 0; i < animationSources.Count; i++)
             {
                 Object source = animationSources[i];
@@ -1316,7 +1318,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             int addedCount = 0;
 
-            HashSet<string> usedNames = new(StringComparer.OrdinalIgnoreCase);
+            using PooledResource<HashSet<string>> usedNamesLease = SetBuffers<string>
+                .GetHashSetPool(StringComparer.OrdinalIgnoreCase)
+                .Get(out HashSet<string> usedNames);
             foreach (AnimationData data in animationData)
             {
                 if (!data.isCreatedFromAutoParse && !string.IsNullOrWhiteSpace(data.animationName))
@@ -1477,7 +1481,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             Dictionary<string, Dictionary<string, List<(int index, Sprite sprite)>>> groups =
                 GroupFilteredSprites(withProgress: false);
 
-            HashSet<string> usedNames = new(StringComparer.OrdinalIgnoreCase);
+            using PooledResource<HashSet<string>> usedNamesLease = SetBuffers<string>
+                .GetHashSetPool(StringComparer.OrdinalIgnoreCase)
+                .Get(out HashSet<string> usedNames);
             foreach (AnimationData data in animationData)
             {
                 if (!data.isCreatedFromAutoParse && !string.IsNullOrWhiteSpace(data.animationName))

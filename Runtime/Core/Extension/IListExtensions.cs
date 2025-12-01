@@ -713,106 +713,126 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             using PooledResource<List<List<T>>> descendingLease = Buffers<List<T>>.List.Get(
                 out List<List<T>> descendingPiles
             );
-            ascendingPiles.Clear();
-            descendingPiles.Clear();
+            using PooledResource<List<PooledResource<List<T>>>> ascendingPileLeaseListLease =
+                Buffers<PooledResource<List<T>>>.List.Get(
+                    out List<PooledResource<List<T>>> ascendingPileLeases
+                );
+            using PooledResource<List<PooledResource<List<T>>>> descendingPileLeaseListLease =
+                Buffers<PooledResource<List<T>>>.List.Get(
+                    out List<PooledResource<List<T>>> descendingPileLeases
+                );
 
-            int index = 0;
-            while (index < count)
+            try
             {
-                int runStart = index;
-                index++;
-                if (index == count)
-                {
-                    JessePatienceInsert(ascendingPiles, array[runStart], comparer);
-                    break;
-                }
-
-                int compare = comparer.Compare(array[index - 1], array[index]);
-                bool ascendingRun = compare <= 0;
+                int index = 0;
                 while (index < count)
                 {
-                    int nextCompare = comparer.Compare(array[index - 1], array[index]);
+                    int runStart = index;
+                    index++;
+                    if (index == count)
+                    {
+                        JessePatienceInsert(
+                            ascendingPiles,
+                            ascendingPileLeases,
+                            array[runStart],
+                            comparer
+                        );
+                        break;
+                    }
+
+                    int compare = comparer.Compare(array[index - 1], array[index]);
+                    bool ascendingRun = compare <= 0;
+                    while (index < count)
+                    {
+                        int nextCompare = comparer.Compare(array[index - 1], array[index]);
+                        if (ascendingRun)
+                        {
+                            if (nextCompare <= 0)
+                            {
+                                index++;
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            if (nextCompare >= 0)
+                            {
+                                index++;
+                                continue;
+                            }
+                        }
+                        break;
+                    }
+
+                    int runEnd = index - 1;
                     if (ascendingRun)
                     {
-                        if (nextCompare <= 0)
+                        for (int i = runStart; i <= runEnd; ++i)
                         {
-                            index++;
-                            continue;
+                            JessePatienceInsert(
+                                ascendingPiles,
+                                ascendingPileLeases,
+                                array[i],
+                                comparer
+                            );
                         }
                     }
                     else
                     {
-                        if (nextCompare >= 0)
+                        for (int i = runEnd; i >= runStart; --i)
                         {
-                            index++;
-                            continue;
+                            JessePatienceInsert(
+                                descendingPiles,
+                                descendingPileLeases,
+                                array[i],
+                                comparer
+                            );
                         }
                     }
-                    break;
                 }
 
-                int runEnd = index - 1;
-                if (ascendingRun)
+                using PooledResource<List<JesseCursor<T>>> heapLease = Buffers<
+                    JesseCursor<T>
+                >.List.Get(out List<JesseCursor<T>> heap);
+                InitializeJesseHeap(ascendingPiles, heap, comparer);
+                InitializeJesseHeap(descendingPiles, heap, comparer);
+
+                using PooledResource<T[]> outputLease = WallstopArrayPool<T>.Get(
+                    count,
+                    out T[] output
+                );
+                int outputIndex = 0;
+                while (heap.Count > 0)
                 {
-                    for (int i = runStart; i <= runEnd; ++i)
+                    JesseCursor<T> cursor = heap[0];
+                    output[outputIndex] = cursor.Peek();
+                    outputIndex++;
+                    if (cursor.MoveNext())
                     {
-                        JessePatienceInsert(ascendingPiles, array[i], comparer);
+                        heap[0] = cursor;
+                    }
+                    else
+                    {
+                        heap[0] = heap[heap.Count - 1];
+                        heap.RemoveAt(heap.Count - 1);
+                    }
+
+                    if (heap.Count > 0)
+                    {
+                        JesseHeapSiftDown(heap, 0, comparer);
                     }
                 }
-                else
+
+                for (int i = 0; i < count; ++i)
                 {
-                    for (int i = runEnd; i >= runStart; --i)
-                    {
-                        JessePatienceInsert(descendingPiles, array[i], comparer);
-                    }
+                    array[i] = output[i];
                 }
             }
-
-            using PooledResource<List<JesseCursor<T>>> heapLease = Buffers<JesseCursor<T>>.List.Get(
-                out List<JesseCursor<T>> heap
-            );
-            heap.Clear();
-            InitializeJesseHeap(ascendingPiles, heap, comparer);
-            InitializeJesseHeap(descendingPiles, heap, comparer);
-
-            using PooledResource<T[]> outputLease = WallstopArrayPool<T>.Get(count, out T[] output);
-            int outputIndex = 0;
-            while (heap.Count > 0)
+            finally
             {
-                JesseCursor<T> cursor = heap[0];
-                output[outputIndex] = cursor.Peek();
-                outputIndex++;
-                if (cursor.MoveNext())
-                {
-                    heap[0] = cursor;
-                }
-                else
-                {
-                    heap[0] = heap[heap.Count - 1];
-                    heap.RemoveAt(heap.Count - 1);
-                }
-
-                if (heap.Count > 0)
-                {
-                    JesseHeapSiftDown(heap, 0, comparer);
-                }
+                ClearAndDisposeJessePiles(ascendingPiles, ascendingPileLeases);
+                ClearAndDisposeJessePiles(descendingPiles, descendingPileLeases);
             }
-
-            for (int i = 0; i < count; ++i)
-            {
-                array[i] = output[i];
-            }
-
-            for (int i = 0; i < ascendingPiles.Count; ++i)
-            {
-                ascendingPiles[i].Clear();
-            }
-            for (int i = 0; i < descendingPiles.Count; ++i)
-            {
-                descendingPiles[i].Clear();
-            }
-            ascendingPiles.Clear();
-            descendingPiles.Clear();
         }
 
         /// <summary>
@@ -1345,7 +1365,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 int start,
                 int length
             )>.List.Get(out List<(int start, int length)> runs);
-            runs.Clear();
             CollectNaturalRuns(array, comparer, runs);
             if (runs.Count <= 1)
             {
@@ -1360,7 +1379,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             using PooledResource<List<PowerSortPlusCandidate>> heapLease =
                 Buffers<PowerSortPlusCandidate>.List.Get(out List<PowerSortPlusCandidate> heap);
-            heap.Clear();
 
             using PooledResource<PowerSortPlusNode[]> nodeLease =
                 WallstopArrayPool<PowerSortPlusNode>.Get(runs.Count, out PowerSortPlusNode[] nodes);
@@ -1446,9 +1464,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 int start,
                 int length
             )>.List.Get(out List<(int start, int length)> nextRuns);
-
-            runs.Clear();
-            nextRuns.Clear();
 
             int minRun = Math.Max(GlideSortMinRun, ComputeTimSortMinRun(count));
             int index = 0;
@@ -2592,6 +2607,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         private static void JessePatienceInsert<T, TComparer>(
             List<List<T>> piles,
+            List<PooledResource<List<T>>> pileLeases,
             T value,
             TComparer comparer
         )
@@ -2616,9 +2632,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             if (left == piles.Count)
             {
-                List<T> newPile = new();
+                PooledResource<List<T>> newPileLease = Buffers<T>.List.Get(out List<T> newPile);
                 newPile.Add(value);
                 piles.Add(newPile);
+                pileLeases.Add(newPileLease);
             }
             else
             {
@@ -2685,6 +2702,26 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 (heap[index], heap[smallest]) = (heap[smallest], heap[index]);
                 index = smallest;
             }
+        }
+
+        private static void ClearAndDisposeJessePiles<T>(
+            List<List<T>> piles,
+            List<PooledResource<List<T>>> leases
+        )
+        {
+            for (int i = 0; i < piles.Count; ++i)
+            {
+                piles[i].Clear();
+            }
+
+            for (int i = 0; i < leases.Count; ++i)
+            {
+                PooledResource<List<T>> lease = leases[i];
+                lease.Dispose();
+            }
+
+            piles.Clear();
+            leases.Clear();
         }
 
         private static void JesseHeapSiftUp<T, TComparer>(

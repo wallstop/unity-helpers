@@ -30,17 +30,183 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             EdgeSplit = 2,
         }
 
-        public sealed class ConcaveHullOptions
+        public readonly struct ConcaveHullOptions
         {
-            public ConcaveHullStrategy Strategy = ConcaveHullStrategy.Knn;
-            public int NearestNeighbors = 3;
-            public int BucketSize = 40;
-            public float AngleThreshold = 90f;
+            private const int DefaultNearestNeighbors = 3;
+            private const int DefaultBucketSize = 40;
+            private const float DefaultAngleThreshold = 90f;
+
+            private static readonly ConcaveHullOptions DefaultOptions = new(
+                ConcaveHullStrategy.Knn,
+                DefaultNearestNeighbors,
+                DefaultBucketSize,
+                DefaultAngleThreshold,
+                initialized: true
+            );
+
+            private readonly ConcaveHullStrategy _strategy;
+            private readonly int _nearestNeighbors;
+            private readonly int _bucketSize;
+            private readonly float _angleThreshold;
+            private readonly bool _initialized;
+
+            public ConcaveHullStrategy Strategy =>
+                _initialized ? _strategy : ConcaveHullStrategy.Knn;
+
+            public int NearestNeighbors =>
+                _initialized ? _nearestNeighbors : DefaultNearestNeighbors;
+
+            public int BucketSize => _initialized ? _bucketSize : DefaultBucketSize;
+
+            public float AngleThreshold => _initialized ? _angleThreshold : DefaultAngleThreshold;
+
+            public ConcaveHullOptions(
+                ConcaveHullStrategy strategy,
+                int nearestNeighbors = DefaultNearestNeighbors,
+                int bucketSize = DefaultBucketSize,
+                float angleThreshold = DefaultAngleThreshold
+            )
+                : this(strategy, nearestNeighbors, bucketSize, angleThreshold, initialized: true)
+            { }
+
+            private ConcaveHullOptions(
+                ConcaveHullStrategy strategy,
+                int nearestNeighbors,
+                int bucketSize,
+                float angleThreshold,
+                bool initialized
+            )
+            {
+                _strategy = strategy;
+                _nearestNeighbors = Math.Max(DefaultNearestNeighbors, nearestNeighbors);
+                _bucketSize = Math.Max(1, bucketSize);
+                _angleThreshold = angleThreshold;
+                _initialized = initialized;
+            }
+
+            public static ConcaveHullOptions Default => DefaultOptions;
+
+            public static Builder CreateBuilder()
+            {
+                return new Builder(Default);
+            }
+
+            public static ConcaveHullOptions ForKnn(
+                int nearestNeighbors = DefaultNearestNeighbors,
+                float angleThreshold = DefaultAngleThreshold
+            )
+            {
+                return Default
+                    .WithStrategy(ConcaveHullStrategy.Knn)
+                    .WithNearestNeighbors(nearestNeighbors)
+                    .WithAngleThreshold(angleThreshold);
+            }
+
+            public static ConcaveHullOptions ForEdgeSplit(
+                int bucketSize = DefaultBucketSize,
+                float angleThreshold = DefaultAngleThreshold
+            )
+            {
+                return Default
+                    .WithStrategy(ConcaveHullStrategy.EdgeSplit)
+                    .WithBucketSize(bucketSize)
+                    .WithAngleThreshold(angleThreshold);
+            }
+
+            public ConcaveHullOptions WithStrategy(ConcaveHullStrategy strategy)
+            {
+                return new ConcaveHullOptions(
+                    strategy,
+                    NearestNeighbors,
+                    BucketSize,
+                    AngleThreshold
+                );
+            }
+
+            public ConcaveHullOptions WithNearestNeighbors(int nearestNeighbors)
+            {
+                return new ConcaveHullOptions(
+                    Strategy,
+                    nearestNeighbors,
+                    BucketSize,
+                    AngleThreshold
+                );
+            }
+
+            public ConcaveHullOptions WithBucketSize(int bucketSize)
+            {
+                return new ConcaveHullOptions(
+                    Strategy,
+                    NearestNeighbors,
+                    bucketSize,
+                    AngleThreshold
+                );
+            }
+
+            public ConcaveHullOptions WithAngleThreshold(float angleThreshold)
+            {
+                return new ConcaveHullOptions(
+                    Strategy,
+                    NearestNeighbors,
+                    BucketSize,
+                    angleThreshold
+                );
+            }
+
+            public struct Builder
+            {
+                private ConcaveHullStrategy _strategy;
+                private int _nearestNeighbors;
+                private int _bucketSize;
+                private float _angleThreshold;
+
+                internal Builder(ConcaveHullOptions seed)
+                {
+                    _strategy = seed.Strategy;
+                    _nearestNeighbors = seed.NearestNeighbors;
+                    _bucketSize = seed.BucketSize;
+                    _angleThreshold = seed.AngleThreshold;
+                }
+
+                public Builder WithStrategy(ConcaveHullStrategy strategy)
+                {
+                    _strategy = strategy;
+                    return this;
+                }
+
+                public Builder WithNearestNeighbors(int nearestNeighbors)
+                {
+                    _nearestNeighbors = nearestNeighbors;
+                    return this;
+                }
+
+                public Builder WithBucketSize(int bucketSize)
+                {
+                    _bucketSize = bucketSize;
+                    return this;
+                }
+
+                public Builder WithAngleThreshold(float angleThreshold)
+                {
+                    _angleThreshold = angleThreshold;
+                    return this;
+                }
+
+                public ConcaveHullOptions Build()
+                {
+                    return new ConcaveHullOptions(
+                        _strategy,
+                        _nearestNeighbors,
+                        _bucketSize,
+                        _angleThreshold
+                    );
+                }
+            }
         }
 
         public static List<FastVector3Int> BuildConcaveHull(
             this IReadOnlyCollection<FastVector3Int> positions,
-            ConcaveHullOptions options
+            ConcaveHullOptions? options = null
         )
         {
             if (positions == null)
@@ -48,8 +214,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 throw new ArgumentNullException(nameof(positions));
             }
 
-            options ??= new ConcaveHullOptions();
-            List<FastVector3Int> sourcePoints = ClonePositions(positions);
+            ConcaveHullOptions appliedOptions = options ?? ConcaveHullOptions.Default;
+            using PooledResource<List<FastVector3Int>> sourcePointsLease =
+                Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> sourcePoints);
+            sourcePoints.AddRange(positions);
             using PooledResource<List<Vector2>> vectorPointsResource = Buffers<Vector2>.List.Get(
                 out List<Vector2> vectorPoints
             );
@@ -59,7 +227,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 );
 
             PopulateVectorBuffers(positions, vectorPoints, mapping, out int fallbackZ);
-            List<Vector2> vectorHull = BuildConcaveHullRaw(vectorPoints, options);
+            List<Vector2> vectorHull = BuildConcaveHullRaw(vectorPoints, appliedOptions);
             List<FastVector3Int> fastHull = ConvertVector2HullToFastVector3(
                 vectorHull,
                 mapping,
@@ -70,8 +238,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             MaybeRepairConcaveCorners(
                 fastHull,
                 sourcePoints,
-                options.Strategy,
-                options.AngleThreshold,
+                appliedOptions.Strategy,
+                appliedOptions.AngleThreshold,
                 repairStats
             );
             TrackHullRepairStats(fastHull, repairStats);
@@ -79,8 +247,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             MaybeRepairConcaveCorners(
                 fastHull,
                 sourcePoints,
-                options.Strategy,
-                options.AngleThreshold
+                appliedOptions.Strategy,
+                appliedOptions.AngleThreshold
             );
 #endif
             return fastHull;
@@ -91,11 +259,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int nearestNeighbors = 3
         )
         {
-            ConcaveHullOptions options = new()
-            {
-                Strategy = ConcaveHullStrategy.Knn,
-                NearestNeighbors = Math.Max(3, nearestNeighbors),
-            };
+            ConcaveHullOptions options = ConcaveHullOptions
+                .Default.WithStrategy(ConcaveHullStrategy.Knn)
+                .WithNearestNeighbors(Math.Max(3, nearestNeighbors));
             return positions.BuildConcaveHull(options);
         }
 
@@ -107,12 +273,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             int clampedBucketSize = Math.Max(1, bucketSize);
             float effectiveAngleThreshold = clampedBucketSize <= 1 ? 0f : angleThreshold;
-            ConcaveHullOptions options = new()
-            {
-                Strategy = ConcaveHullStrategy.EdgeSplit,
-                BucketSize = clampedBucketSize,
-                AngleThreshold = effectiveAngleThreshold,
-            };
+            ConcaveHullOptions options = ConcaveHullOptions
+                .Default.WithStrategy(ConcaveHullStrategy.EdgeSplit)
+                .WithBucketSize(clampedBucketSize)
+                .WithAngleThreshold(effectiveAngleThreshold);
             return positions.BuildConcaveHull(options);
         }
 

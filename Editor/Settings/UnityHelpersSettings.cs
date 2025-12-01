@@ -566,6 +566,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             collapsible: true
         )]
         private List<SerializableTypeIgnorePattern> serializableTypeIgnorePatterns = new();
+        private string[] serializableTypeIgnorePatternCache = Array.Empty<string>();
+        private int serializableTypeIgnorePatternCacheVersion = int.MinValue;
 
         [SerializeField]
         [Tooltip(
@@ -1139,10 +1141,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         {
             if (serializableTypeIgnorePatterns == null || serializableTypeIgnorePatterns.Count == 0)
             {
-                return Array.Empty<string>();
+                serializableTypeIgnorePatternCache = Array.Empty<string>();
+                serializableTypeIgnorePatternCacheVersion = 0;
+                return serializableTypeIgnorePatternCache;
             }
 
-            List<string> patterns = new(serializableTypeIgnorePatterns.Count);
+            int version = ComputeSerializableTypePatternVersion();
+            if (version == serializableTypeIgnorePatternCacheVersion)
+            {
+                return serializableTypeIgnorePatternCache;
+            }
+
+            using PooledResource<List<string>> patternsLease = Buffers<string>.List.Get(
+                out List<string> patterns
+            );
+            using PooledResource<HashSet<string>> seenLease = Buffers<string>.HashSet.Get(
+                out HashSet<string> seen
+            );
+
             foreach (SerializableTypeIgnorePattern entry in serializableTypeIgnorePatterns)
             {
                 if (entry == null)
@@ -1157,13 +1173,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 }
 
                 string trimmed = pattern.Trim();
-                if (!patterns.Contains(trimmed))
+                if (seen.Add(trimmed))
                 {
                     patterns.Add(trimmed);
                 }
             }
 
-            return patterns;
+            serializableTypeIgnorePatternCache =
+                patterns.Count == 0 ? Array.Empty<string>() : patterns.ToArray();
+            serializableTypeIgnorePatternCacheVersion = version;
+            return serializableTypeIgnorePatternCache;
         }
 
         /// <summary>
@@ -1177,6 +1196,31 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public static int GetSerializableSetPageSize()
         {
             return Mathf.Clamp(instance.SerializableSetPageSize, MinPageSize, MaxPageSize);
+        }
+
+        private void InvalidateSerializableTypePatternCache()
+        {
+            serializableTypeIgnorePatternCache = Array.Empty<string>();
+            serializableTypeIgnorePatternCacheVersion = int.MinValue;
+        }
+
+        private int ComputeSerializableTypePatternVersion()
+        {
+            if (serializableTypeIgnorePatterns == null || serializableTypeIgnorePatterns.Count == 0)
+            {
+                return 0;
+            }
+
+            HashCode hash = new HashCode();
+            hash.Add(serializableTypeIgnorePatterns.Count);
+            for (int i = 0; i < serializableTypeIgnorePatterns.Count; i++)
+            {
+                SerializableTypeIgnorePattern entry = serializableTypeIgnorePatterns[i];
+                string trimmed = entry?.Pattern?.Trim() ?? string.Empty;
+                hash.Add(trimmed);
+            }
+
+            return hash.ToHashCode();
         }
 
         public static int GetSerializableDictionaryPageSize()
@@ -1596,6 +1640,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         new SerializableTypeIgnorePattern(defaults[index])
                     );
                 }
+                InvalidateSerializableTypePatternCache();
             }
 
             bool changed = !serializableTypePatternsInitialized;

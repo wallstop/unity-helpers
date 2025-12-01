@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
     /// UI Toolkit drawer for <see cref="StringInListAttribute"/> that provides search, pagination, and autocomplete.
@@ -77,9 +78,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly DropdownField _dropdown;
             private readonly Label _noResultsLabel;
             private readonly Label _suggestionHintLabel;
-            private readonly List<int> _filteredIndices = new();
-            private readonly List<int> _pageOptionIndices = new();
-            private readonly List<string> _pageChoices = new();
+            private List<int> _filteredIndices;
+            private PooledResource<List<int>> _filteredIndicesLease;
+            private List<int> _pageOptionIndices;
+            private PooledResource<List<int>> _pageOptionIndicesLease;
+            private List<string> _pageChoices;
+            private PooledResource<List<string>> _pageChoicesLease;
 
             private SerializedObject _boundObject;
             private string _propertyPath = string.Empty;
@@ -92,6 +96,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private bool _searchVisible;
             private int _suggestionOptionIndex;
 
+            private bool _buffersInitialized;
+
             private static VisualElement CreateInputElement(out VisualElement element)
             {
                 element = new VisualElement();
@@ -101,6 +107,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public StringInListSelector(string[] options)
                 : base(string.Empty, CreateInputElement(out VisualElement baseInput))
             {
+                EnsureBuffers();
+                RegisterCallback<AttachToPanelEvent>(OnAttachedToPanel);
+                RegisterCallback<DetachFromPanelEvent>(OnDetachedFromPanel);
+
                 _options = options ?? Array.Empty<string>();
                 _lastResolvedPageSize = Mathf.Max(
                     1,
@@ -369,6 +379,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             private void UpdateFromProperty()
             {
+                EnsureBuffers();
+
                 if (_boundObject == null || string.IsNullOrEmpty(_propertyPath))
                 {
                     return;
@@ -490,6 +502,49 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 _dropdown.SetEnabled(_pageChoices.Count > 0);
 
                 UpdateSuggestion(searchActive);
+            }
+
+            private void EnsureBuffers()
+            {
+                if (_buffersInitialized)
+                {
+                    return;
+                }
+
+                _filteredIndicesLease = Buffers<int>.List.Get(out _filteredIndices);
+                _pageOptionIndicesLease = Buffers<int>.List.Get(out _pageOptionIndices);
+                _pageChoicesLease = Buffers<string>.List.Get(out _pageChoices);
+                _buffersInitialized = true;
+            }
+
+            private void OnAttachedToPanel(AttachToPanelEvent _)
+            {
+                if (!_buffersInitialized)
+                {
+                    EnsureBuffers();
+                }
+            }
+
+            private void OnDetachedFromPanel(DetachFromPanelEvent _)
+            {
+                ReleaseBuffers();
+            }
+
+            private void ReleaseBuffers()
+            {
+                if (!_buffersInitialized)
+                {
+                    return;
+                }
+
+                _filteredIndicesLease.Dispose();
+                _pageOptionIndicesLease.Dispose();
+                _pageChoicesLease.Dispose();
+
+                _filteredIndices = null;
+                _pageOptionIndices = null;
+                _pageChoices = null;
+                _buffersInitialized = false;
             }
 
             private void UpdatePagination(

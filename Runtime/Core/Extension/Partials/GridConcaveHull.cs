@@ -17,18 +17,23 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         public static List<Vector2> BuildConcaveHull(
             this IReadOnlyCollection<Vector2> points,
-            ConcaveHullOptions options
+            ConcaveHullOptions? options = null
         )
         {
-            options ??= new ConcaveHullOptions();
-            List<Vector2> hull = BuildConcaveHullRaw(points, options);
+            ConcaveHullOptions appliedOptions = options ?? ConcaveHullOptions.Default;
+            List<Vector2> hull = BuildConcaveHullRaw(points, appliedOptions);
 
             if (
-                options.Strategy == ConcaveHullStrategy.Knn
-                || ShouldRepairConcaveCorners(options.AngleThreshold)
+                appliedOptions.Strategy == ConcaveHullStrategy.Knn
+                || ShouldRepairConcaveCorners(appliedOptions.AngleThreshold)
             )
             {
-                hull = RepairVector2Hull(points, hull, options.Strategy, options.AngleThreshold);
+                hull = RepairVector2Hull(
+                    points,
+                    hull,
+                    appliedOptions.Strategy,
+                    appliedOptions.AngleThreshold
+                );
             }
 
             return hull;
@@ -39,7 +44,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             ConcaveHullOptions options
         )
         {
-            options ??= new ConcaveHullOptions();
             switch (options.Strategy)
             {
                 case ConcaveHullStrategy.Knn:

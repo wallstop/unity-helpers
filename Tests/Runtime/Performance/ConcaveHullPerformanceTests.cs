@@ -107,12 +107,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
 
             List<FastVector3Int> hull = points.BuildConcaveHull(
                 grid,
-                new UnityExtensions.ConcaveHullOptions
-                {
-                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                    BucketSize = 64,
-                    AngleThreshold = 220f,
-                }
+                UnityExtensions.ConcaveHullOptions.ForEdgeSplit(
+                    bucketSize: 64,
+                    angleThreshold: 220f
+                )
             );
 
             UnityExtensions.ConcaveHullRepairStats stats = UnityExtensions.ProfileConcaveHullRepair(

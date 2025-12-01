@@ -240,23 +240,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             return angleThreshold >= ConcaveCornerRepairThresholdDegrees;
         }
 
-        private static List<FastVector3Int> ClonePositions(
-            IReadOnlyCollection<FastVector3Int> positions
-        )
-        {
-            if (positions == null)
-            {
-                return new List<FastVector3Int>();
-            }
-
-            if (positions is List<FastVector3Int> list)
-            {
-                return new List<FastVector3Int>(list);
-            }
-
-            return new List<FastVector3Int>(positions);
-        }
-
         private static void MaybeRepairConcaveCorners(
             List<FastVector3Int> hull,
             List<FastVector3Int> originalPoints,
@@ -310,6 +293,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             using PooledResource<HashSet<FastVector3Int>> hullSetResource =
                 Buffers<FastVector3Int>.HashSet.Get(out HashSet<FastVector3Int> hullSet);
             hullSet.UnionWith(hull);
+            using PooledResource<List<FastVector3Int>> axisPathLease =
+                Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> axisPathBuffer);
 
             int uniquePointBudget = Math.Max(1, pointSet.Count);
             int iterationGuardLimit = Math.Max(
@@ -349,28 +334,32 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     _ = pointSet.Add(end);
 
 #if ENABLE_CONCAVE_HULL_STATS
-                    List<FastVector3Int> path = TryFindAxisPath(
+                    axisPathBuffer.Clear();
+                    bool foundPath = TryFindAxisPath(
                         start,
                         end,
                         pointSet,
                         allowStraightAxisFallback: false,
+                        axisPathBuffer,
                         stats
                     );
 #else
-                    List<FastVector3Int> path = TryFindAxisPath(
+                    axisPathBuffer.Clear();
+                    bool foundPath = TryFindAxisPath(
                         start,
                         end,
                         pointSet,
-                        allowStraightAxisFallback: false
+                        allowStraightAxisFallback: false,
+                        axisPathBuffer
                     );
 #endif
-                    if (path != null && path.Count > 2)
+                    if (foundPath && axisPathBuffer.Count > 2)
                     {
                         int insertIndex = nextIndex;
                         bool insertedWaypoint = false;
-                        for (int p = 1; p < path.Count - 1; ++p)
+                        for (int p = 1; p < axisPathBuffer.Count - 1; ++p)
                         {
-                            FastVector3Int waypoint = path[p];
+                            FastVector3Int waypoint = axisPathBuffer[p];
                             if (!hullSet.Add(waypoint))
                             {
                                 continue;
@@ -429,17 +418,25 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 #endif
         }
 
-        private static List<FastVector3Int> TryFindAxisPath(
+        private static bool TryFindAxisPath(
             FastVector3Int start,
             FastVector3Int end,
             HashSet<FastVector3Int> pointSet,
-            bool allowStraightAxisFallback
+            bool allowStraightAxisFallback,
+            List<FastVector3Int> result
 #if ENABLE_CONCAVE_HULL_STATS
             ,
             ConcaveHullRepairStats stats
 #endif
         )
         {
+            if (result == null)
+            {
+                throw new ArgumentNullException(nameof(result));
+            }
+
+            result.Clear();
+
             using PooledResource<Queue<FastVector3Int>> queueResource =
                 Buffers<FastVector3Int>.Queue.Get(out Queue<FastVector3Int> frontier);
             using PooledResource<Dictionary<FastVector3Int, FastVector3Int>> parentResource =
@@ -480,26 +477,24 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 if (allowStraightAxisFallback && (start.x == end.x || start.y == end.y))
                 {
-                    return new List<FastVector3Int> { start, end };
+                    result.Add(start);
+                    result.Add(end);
+                    return true;
                 }
 
-                return null;
+                return false;
             }
 
-            using PooledResource<List<FastVector3Int>> pathResource =
-                Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> pathBuffer);
-            pathBuffer.Clear();
-
             FastVector3Int cursor = end;
-            pathBuffer.Add(cursor);
+            result.Add(cursor);
             while (cursor != start)
             {
                 cursor = parents[cursor];
-                pathBuffer.Add(cursor);
+                result.Add(cursor);
             }
 
-            pathBuffer.Reverse();
-            return new List<FastVector3Int>(pathBuffer);
+            result.Reverse();
+            return true;
         }
 
         private static IEnumerable<FastVector3Int> EnumerateAxisNeighbors(
@@ -656,6 +651,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             int count = hull.Count;
+            using PooledResource<List<FastVector3Int>> axisPathLease =
+                Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> axisPathBuffer);
             for (int i = 0; i < count; ++i)
             {
                 FastVector3Int anchor = hull[i];
@@ -665,30 +662,41 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
 
 #if ENABLE_CONCAVE_HULL_STATS
-                List<FastVector3Int> path = TryFindAxisPath(
+                axisPathBuffer.Clear();
+                bool foundPath = TryFindAxisPath(
                     anchor,
                     candidate,
                     pointSet,
                     allowStraightAxisFallback: true,
+                    axisPathBuffer,
                     stats
                 );
 #else
-                List<FastVector3Int> path = TryFindAxisPath(
+                axisPathBuffer.Clear();
+                bool foundPath = TryFindAxisPath(
                     anchor,
                     candidate,
                     pointSet,
-                    allowStraightAxisFallback: true
+                    allowStraightAxisFallback: true,
+                    axisPathBuffer
                 );
 #endif
-                if (path == null || path.Count <= 1)
+                if (!foundPath || axisPathBuffer.Count <= 1)
                 {
                     continue;
                 }
 
 #if ENABLE_CONCAVE_HULL_STATS
-                bool inserted = InsertPathAfterIndex(hull, i, path, hullSet, pointSet, stats);
+                bool inserted = InsertPathAfterIndex(
+                    hull,
+                    i,
+                    axisPathBuffer,
+                    hullSet,
+                    pointSet,
+                    stats
+                );
 #else
-                bool inserted = InsertPathAfterIndex(hull, i, path, hullSet, pointSet);
+                bool inserted = InsertPathAfterIndex(hull, i, axisPathBuffer, hullSet, pointSet);
 #endif
                 if (inserted)
                 {
@@ -988,19 +996,35 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 #endif
 
-            List<FastVector3Int> workingHull = new(hull);
-            List<FastVector3Int> workingOriginal =
-                originalPoints == null ? null : new List<FastVector3Int>(originalPoints);
-            ConcaveHullRepairStats stats = new(workingHull.Count, workingOriginal?.Count ?? 0);
-            MaybeRepairConcaveCorners(
-                workingHull,
-                workingOriginal,
-                strategy,
-                angleThreshold,
-                stats
-            );
-            stats.MarkFinalHullCount(workingHull.Count);
-            return stats;
+            using PooledResource<List<FastVector3Int>> workingHullLease =
+                Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> workingHull);
+            workingHull.AddRange(hull);
+
+            PooledResource<List<FastVector3Int>> workingOriginalLease = default;
+            List<FastVector3Int> workingOriginal = null;
+            if (originalPoints != null)
+            {
+                workingOriginalLease = Buffers<FastVector3Int>.List.Get(out workingOriginal);
+                workingOriginal.AddRange(originalPoints);
+            }
+
+            try
+            {
+                ConcaveHullRepairStats stats = new(workingHull.Count, workingOriginal?.Count ?? 0);
+                MaybeRepairConcaveCorners(
+                    workingHull,
+                    workingOriginal,
+                    strategy,
+                    angleThreshold,
+                    stats
+                );
+                stats.MarkFinalHullCount(workingHull.Count);
+                return stats;
+            }
+            finally
+            {
+                workingOriginalLease.Dispose();
+            }
         }
 #endif
 

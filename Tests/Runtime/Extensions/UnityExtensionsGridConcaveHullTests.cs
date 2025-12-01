@@ -271,12 +271,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Track(owner);
 
             UnityExtensions.ConcaveHullOptions edgeSplitOptions =
-                new UnityExtensions.ConcaveHullOptions
-                {
-                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                    BucketSize = bucketSize,
-                    AngleThreshold = angleThreshold,
-                };
+                UnityExtensions.ConcaveHullOptions.ForEdgeSplit(bucketSize, angleThreshold);
 
             List<FastVector3Int> edgeSplit = points.BuildConcaveHull(grid, edgeSplitOptions);
             AssertRequiredVertices($"{label} edge-split", requiredCorners, edgeSplit);
@@ -547,12 +542,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             Assert.GreaterOrEqual(samples.Count, 10000);
 
-            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
-            {
-                Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                BucketSize = 48,
-                AngleThreshold = 220f,
-            };
+            UnityExtensions.ConcaveHullOptions options =
+                UnityExtensions.ConcaveHullOptions.ForEdgeSplit(
+                    bucketSize: 48,
+                    angleThreshold: 220f
+                );
 
             List<FastVector3Int> hull = samples.BuildConcaveHull(grid, options);
             UnityExtensions.ConcaveHullRepairStats stats = UnityExtensions.ProfileConcaveHullRepair(
@@ -597,12 +591,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 (3, 0)
             );
 
-            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
-            {
-                Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                BucketSize = 8,
-                AngleThreshold = 220f,
-            };
+            UnityExtensions.ConcaveHullOptions options =
+                UnityExtensions.ConcaveHullOptions.ForEdgeSplit(
+                    bucketSize: 8,
+                    angleThreshold: 220f
+                );
 
             List<FastVector3Int> repairedHull = samples.BuildConcaveHull(grid, options);
             UnityExtensions.ConcaveHullRepairStats stats = UnityExtensions.ProfileConcaveHullRepair(
@@ -650,12 +643,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 }
             }
 
-            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
-            {
-                Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                BucketSize = 64,
-                AngleThreshold = 240f,
-            };
+            UnityExtensions.ConcaveHullOptions options =
+                UnityExtensions.ConcaveHullOptions.ForEdgeSplit(
+                    bucketSize: 64,
+                    angleThreshold: 240f
+                );
 
             List<FastVector3Int> hull = samples.BuildConcaveHull(grid, options);
 #if ENABLE_CONCAVE_HULL_STATS
@@ -693,12 +685,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Track(owner);
 
             List<FastVector3Int> samples = CreateSharedThroatSamples();
-            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
-            {
-                Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                BucketSize = 32,
-                AngleThreshold = 240f,
-            };
+            UnityExtensions.ConcaveHullOptions options =
+                UnityExtensions.ConcaveHullOptions.ForEdgeSplit(
+                    bucketSize: 32,
+                    angleThreshold: 240f
+                );
 
             List<FastVector3Int> hull = samples.BuildConcaveHull(grid, options);
             AssertHullSubset(samples, hull);

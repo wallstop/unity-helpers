@@ -24,7 +24,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// exact-distance filtering, and efficient incremental updates for moving items.
     /// </remarks>
     [Serializable]
-    public sealed class SpatialHash3D<T> : IDisposable
+    public sealed class SpatialHash3D<T> : ISpatialHash3D<T>
     {
         private readonly struct Entry
         {

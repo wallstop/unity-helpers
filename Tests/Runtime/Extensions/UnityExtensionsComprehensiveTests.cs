@@ -732,10 +732,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
             List<FastVector3Int> concave = points.BuildConcaveHull(
                 grid,
-                new UnityExtensions.ConcaveHullOptions
-                {
-                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                }
+                UnityExtensions.ConcaveHullOptions.Default.WithStrategy(
+                    UnityExtensions.ConcaveHullStrategy.EdgeSplit
+                )
             );
 
             CollectionAssert.AreEquivalent(convex, concaveEdgeSplit);
@@ -891,10 +890,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
             List<FastVector3Int> concave = points.BuildConcaveHull(
                 grid,
-                new UnityExtensions.ConcaveHullOptions
-                {
-                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                }
+                UnityExtensions.ConcaveHullOptions.Default.WithStrategy(
+                    UnityExtensions.ConcaveHullStrategy.EdgeSplit
+                )
             );
 
             CollectionAssert.AreEquivalent(convex, concaveEdgeSplit);
@@ -921,10 +919,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             List<FastVector3Int> concaveTwoKnn = twoPoints.BuildConcaveHullKnn(grid);
             List<FastVector3Int> concaveTwo = twoPoints.BuildConcaveHull(
                 grid,
-                new UnityExtensions.ConcaveHullOptions
-                {
-                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                }
+                UnityExtensions.ConcaveHullOptions.Default.WithStrategy(
+                    UnityExtensions.ConcaveHullStrategy.EdgeSplit
+                )
             );
             CollectionAssert.AreEquivalent(convexTwo, concaveTwoEdgeSplit);
             CollectionAssert.AreEquivalent(convexTwo, concaveTwoKnn);
@@ -944,10 +941,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             List<FastVector3Int> concaveThreeKnn = threePoints.BuildConcaveHullKnn(grid);
             List<FastVector3Int> concaveThree = threePoints.BuildConcaveHull(
                 grid,
-                new UnityExtensions.ConcaveHullOptions
-                {
-                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                }
+                UnityExtensions.ConcaveHullOptions.Default.WithStrategy(
+                    UnityExtensions.ConcaveHullStrategy.EdgeSplit
+                )
             );
             CollectionAssert.AreEquivalent(convexThree, concaveThreeEdgeSplit);
             CollectionAssert.AreEquivalent(convexThree, concaveThreeKnn);
@@ -966,10 +962,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             List<FastVector3Int> concaveRectKnn = rectangle.BuildConcaveHullKnn(grid);
             List<FastVector3Int> concaveRect = rectangle.BuildConcaveHull(
                 grid,
-                new UnityExtensions.ConcaveHullOptions
-                {
-                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                }
+                UnityExtensions.ConcaveHullOptions.Default.WithStrategy(
+                    UnityExtensions.ConcaveHullStrategy.EdgeSplit
+                )
             );
             CollectionAssert.AreEquivalent(convexRect, concaveRectEdgeSplit);
             CollectionAssert.AreEquivalent(convexRect, concaveRectKnn);
@@ -1032,11 +1027,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Track(owner);
             List<FastVector3Int> points = GenerateRandomPointsSquare(32, 8);
 
-            UnityExtensions.ConcaveHullOptions options = new()
-            {
-                Strategy = UnityExtensions.ConcaveHullStrategy.Knn,
-                NearestNeighbors = 6,
-            };
+            UnityExtensions.ConcaveHullOptions options = UnityExtensions
+                .ConcaveHullOptions.Default.WithStrategy(UnityExtensions.ConcaveHullStrategy.Knn)
+                .WithNearestNeighbors(6);
 
             List<FastVector3Int> gridHull = points.BuildConcaveHull(grid, options);
             List<FastVector3Int> gridlessHull = points.BuildConcaveHull(options);
@@ -1144,12 +1137,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     concaveKnn = points.BuildConcaveHullKnn();
                     concaveEdge = points.BuildConcaveHullEdgeSplit();
                     concaveUnified = points.BuildConcaveHull(
-                        new UnityExtensions.ConcaveHullOptions
-                        {
-                            Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                            BucketSize = 32,
-                            AngleThreshold = 85f,
-                        }
+                        UnityExtensions.ConcaveHullOptions.ForEdgeSplit(
+                            bucketSize: 32,
+                            angleThreshold: 85f
+                        )
                     );
 
                     HashSet<FastVector3Int> input = new(points);
@@ -1287,12 +1278,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Track(owner);
             List<FastVector3Int> points = GenerateRandomPointsSquare(24, 6);
 
-            UnityExtensions.ConcaveHullOptions options = new()
-            {
-                Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                BucketSize = 32,
-                AngleThreshold = 80f,
-            };
+            UnityExtensions.ConcaveHullOptions options =
+                UnityExtensions.ConcaveHullOptions.ForEdgeSplit(
+                    bucketSize: 32,
+                    angleThreshold: 80f
+                );
 
             List<FastVector3Int> gridHull = points.BuildConcaveHull(grid, options);
             List<FastVector3Int> gridlessHull = points.BuildConcaveHull(options);
@@ -1364,10 +1354,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
             List<FastVector3Int> concave = points.BuildConcaveHull(
                 grid,
-                new UnityExtensions.ConcaveHullOptions
-                {
-                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                }
+                UnityExtensions.ConcaveHullOptions.ForEdgeSplit()
             );
 
             CollectionAssert.AreEquivalent(convex, concaveEdgeSplit);
@@ -1390,10 +1377,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
             List<FastVector3Int> concave = points.BuildConcaveHull(
                 grid,
-                new UnityExtensions.ConcaveHullOptions
-                {
-                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                }
+                UnityExtensions.ConcaveHullOptions.ForEdgeSplit()
             );
 
             Assert.AreEqual(1, convex.Count);
@@ -1429,10 +1413,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
             List<FastVector3Int> concave = points.BuildConcaveHull(
                 grid,
-                new UnityExtensions.ConcaveHullOptions
-                {
-                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                }
+                UnityExtensions.ConcaveHullOptions.ForEdgeSplit()
             );
 
             CollectionAssert.AreEquivalent(
@@ -1867,10 +1848,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
             List<FastVector3Int> concave = points.BuildConcaveHull(
                 grid,
-                new UnityExtensions.ConcaveHullOptions
-                {
-                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                }
+                UnityExtensions.ConcaveHullOptions.ForEdgeSplit()
             );
 
             // No duplicates in hulls
@@ -2045,10 +2023,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     concaveKnn = points.BuildConcaveHullKnn(grid);
                     concave = points.BuildConcaveHull(
                         grid,
-                        new UnityExtensions.ConcaveHullOptions
-                        {
-                            Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                        }
+                        UnityExtensions.ConcaveHullOptions.ForEdgeSplit()
                     );
 
                     AssertNoDuplicates(convex, concaveEdgeSplit, concaveKnn, concave);
@@ -2103,10 +2078,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             List<FastVector3Int> concaveKnn = points.BuildConcaveHullKnn(grid);
             List<FastVector3Int> concave = points.BuildConcaveHull(
                 grid,
-                new UnityExtensions.ConcaveHullOptions
-                {
-                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                }
+                UnityExtensions.ConcaveHullOptions.ForEdgeSplit()
             );
 
             // Expected convex corners of cross’s bounding box
@@ -2155,10 +2127,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             List<FastVector3Int> concaveKnn = u.BuildConcaveHullKnn(grid);
             List<FastVector3Int> concave = u.BuildConcaveHull(
                 grid,
-                new UnityExtensions.ConcaveHullOptions
-                {
-                    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                }
+                UnityExtensions.ConcaveHullOptions.ForEdgeSplit()
             );
 
             // Invariants without over-constraining shape

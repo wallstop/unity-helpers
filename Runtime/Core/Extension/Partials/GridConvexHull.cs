@@ -139,11 +139,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     return BuildConvexHullMonotoneChain(pointsSet, grid, includeColinearPoints);
                 case ConvexHullAlgorithm.Jarvis:
                 {
-                    List<FastVector3Int> fast = new();
-                    foreach (Vector3Int p in pointsSet)
+                    using PooledResource<List<FastVector3Int>> fastLease =
+                        Buffers<FastVector3Int>.List.Get(out List<FastVector3Int> fast);
+                    foreach (Vector3Int point in pointsSet)
                     {
-                        fast.Add(new FastVector3Int(p.x, p.y, p.z));
+                        fast.Add(new FastVector3Int(point.x, point.y, point.z));
                     }
+
                     List<FastVector3Int> hullFast = BuildConvexHullJarvis(
                         fast,
                         grid,

@@ -21,12 +21,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             int clampedBucketSize = Math.Max(1, bucketSize);
             float effectiveAngleThreshold = clampedBucketSize <= 1 ? 0f : angleThreshold;
-            ConcaveHullOptions options = new()
-            {
-                Strategy = ConcaveHullStrategy.EdgeSplit,
-                BucketSize = clampedBucketSize,
-                AngleThreshold = effectiveAngleThreshold,
-            };
+            ConcaveHullOptions options = ConcaveHullOptions
+                .Default.WithStrategy(ConcaveHullStrategy.EdgeSplit)
+                .WithBucketSize(clampedBucketSize)
+                .WithAngleThreshold(effectiveAngleThreshold);
             return BuildConcaveHull(points, options);
         }
 
@@ -122,13 +120,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
                 if (unique.Count <= 4)
                 {
-                    return new List<FastVector3Int>(convexHull);
+                    return convexHull;
                 }
             }
 
             if (AreAllPointsOnHullEdges(originalGridPositions, convexHull))
             {
-                return new List<FastVector3Int>(convexHull);
+                return convexHull;
             }
             using PooledResource<List<HullEdge>> concaveHullEdgesResource =
                 Buffers<HullEdge>.List.Get(out List<HullEdge> concaveHullEdges);
@@ -442,7 +440,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
                 if (uniq.Count <= 4)
                 {
-                    return new List<Vector2>(convexHull);
+                    return convexHull;
                 }
             }
             remainingPoints.ExceptWith(convexHull);

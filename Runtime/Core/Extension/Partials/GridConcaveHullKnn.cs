@@ -17,11 +17,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int nearestNeighbors = 3
         )
         {
-            ConcaveHullOptions options = new()
-            {
-                Strategy = ConcaveHullStrategy.Knn,
-                NearestNeighbors = Math.Max(3, nearestNeighbors),
-            };
+            ConcaveHullOptions options = ConcaveHullOptions
+                .Default.WithStrategy(ConcaveHullStrategy.Knn)
+                .WithNearestNeighbors(Math.Max(3, nearestNeighbors));
             return BuildConcaveHull(points, options);
         }
 
@@ -176,7 +174,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             List<FastVector3Int> convexHullSnapshot = dataSet.BuildConvexHull(grid);
             if (AreAllPointsOnHullEdges(dataSet, convexHullSnapshot))
             {
-                return new List<FastVector3Int>(convexHullSnapshot);
+                return convexHullSnapshot;
             }
 
             int maximumNearestNeighbors = totalPoints;

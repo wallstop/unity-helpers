@@ -75,12 +75,10 @@ using WallstopStudios.UnityHelpers.Core.Extension;
 
 // outlinePoints could come from mouse clicks or a baked spline
 List<Vector2> outlinePoints = CollectOutlineSamples();
-UnityExtensions.ConcaveHullOptions outlineOptions = new UnityExtensions.ConcaveHullOptions
-{
-    Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-    BucketSize = 32,
-    AngleThreshold = 70f,
-};
+UnityExtensions.ConcaveHullOptions outlineOptions = UnityExtensions.ConcaveHullOptions.Default
+    .WithStrategy(UnityExtensions.ConcaveHullStrategy.EdgeSplit)
+    .WithBucketSize(32)
+    .WithAngleThreshold(70f);
 
 List<Vector2> hull = outlinePoints.BuildConcaveHull(outlineOptions);
 ```
@@ -95,11 +93,9 @@ using WallstopStudios.UnityHelpers.Core.Extension;
 
 Grid grid = GetComponent<Grid>();
 List<FastVector3Int> tileSamples = CollectTileCoordinates();
-UnityExtensions.ConcaveHullOptions tileOptions = new UnityExtensions.ConcaveHullOptions
-{
-    Strategy = UnityExtensions.ConcaveHullStrategy.Knn,
-    NearestNeighbors = 5,
-};
+UnityExtensions.ConcaveHullOptions tileOptions = UnityExtensions.ConcaveHullOptions.Default
+    .WithStrategy(UnityExtensions.ConcaveHullStrategy.Knn)
+    .WithNearestNeighbors(5);
 
 List<FastVector3Int> gridHull = tileSamples.BuildConcaveHull(grid, tileOptions);
 ```

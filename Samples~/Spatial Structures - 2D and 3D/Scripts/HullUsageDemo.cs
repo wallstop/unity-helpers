@@ -45,12 +45,12 @@ namespace Samples.UnityHelpers.SpatialStructures
         private List<Vector2> RunGridlessExample()
         {
             List<Vector2> pointCloud = CreateGridlessPointCloud();
-            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
-            {
-                Strategy = UnityExtensions.ConcaveHullStrategy.EdgeSplit,
-                BucketSize = Mathf.Max(16, pointCloud.Count / 2),
-                AngleThreshold = 65f,
-            };
+            UnityExtensions.ConcaveHullOptions options = UnityExtensions
+                .ConcaveHullOptions.Default.WithStrategy(
+                    UnityExtensions.ConcaveHullStrategy.EdgeSplit
+                )
+                .WithBucketSize(Mathf.Max(16, pointCloud.Count / 2))
+                .WithAngleThreshold(65f);
             List<Vector2> hull = pointCloud.BuildConcaveHull(options);
             Debug.Log(
                 $"[HullUsageDemo] Gridless hull: {hull.Count} vertices from {pointCloud.Count} samples using {options.Strategy}."
@@ -115,11 +115,9 @@ namespace Samples.UnityHelpers.SpatialStructures
             }
 
             List<FastVector3Int> tileSamples = CreateGridPointCloud();
-            UnityExtensions.ConcaveHullOptions options = new UnityExtensions.ConcaveHullOptions
-            {
-                Strategy = UnityExtensions.ConcaveHullStrategy.Knn,
-                NearestNeighbors = Mathf.Max(3, gridHullNeighbors),
-            };
+            UnityExtensions.ConcaveHullOptions options = UnityExtensions
+                .ConcaveHullOptions.Default.WithStrategy(UnityExtensions.ConcaveHullStrategy.Knn)
+                .WithNearestNeighbors(Mathf.Max(3, gridHullNeighbors));
             List<FastVector3Int> hull = tileSamples.BuildConcaveHull(grid, options);
             Debug.Log(
                 $"[HullUsageDemo] Grid-aware hull: {hull.Count} tiles from {tileSamples.Count} samples using Grid \"{grid.name}\"."
