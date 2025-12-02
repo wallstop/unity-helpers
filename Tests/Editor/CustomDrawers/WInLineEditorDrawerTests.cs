@@ -9,6 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 
     public sealed class WInLineEditorDrawerTests
     {
+        private const string CollapsedTargetPropertyName = nameof(InlineEditorHost.collapsedTarget);
+
         [SetUp]
         public void SetUp()
         {
@@ -24,17 +26,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void HeaderFoldoutControlsInlineHeight()
         {
-            float collapsedHeight = MeasurePropertyHeight(
+            float collapsedHeight = MeasurePropertyHeight<InlineEditorHost>(
                 propertyExpanded: false,
                 setInlineExpanded: false
             );
-            float expandedHeight = MeasurePropertyHeight(
+            float expandedHeight = MeasurePropertyHeight<InlineEditorHost>(
                 propertyExpanded: false,
                 setInlineExpanded: true
             );
             Assert.That(expandedHeight, Is.GreaterThan(collapsedHeight));
 
-            float collapsedAgainHeight = MeasurePropertyHeight(
+            float collapsedAgainHeight = MeasurePropertyHeight<InlineEditorHost>(
                 propertyExpanded: false,
                 setInlineExpanded: false
             );
@@ -44,30 +46,54 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void BuiltInInlineInspectorRemainsSuppressed()
         {
-            float collapsedHeight = MeasurePropertyHeight(propertyExpanded: false);
-            float expandedHeight = MeasurePropertyHeight(propertyExpanded: true);
+            float collapsedHeight = MeasurePropertyHeight<InlineEditorHost>(
+                propertyExpanded: false
+            );
+            float expandedHeight = MeasurePropertyHeight<InlineEditorHost>(propertyExpanded: true);
             Assert.That(expandedHeight, Is.EqualTo(collapsedHeight));
         }
 
-        private static float MeasurePropertyHeight(
+        [Test]
+        public void StandaloneHeaderOnlyDrawnWhenObjectFieldHidden()
+        {
+            float heightWithObjectField = MeasurePropertyHeight<InlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: true
+            );
+            float heightWithStandaloneHeader = MeasurePropertyHeight<HeaderOnlyInlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: true
+            );
+            const float ExpectedHeaderContribution = 22f; // HeaderHeight + Spacing
+            float difference = heightWithStandaloneHeader - heightWithObjectField;
+            Assert.That(difference, Is.EqualTo(ExpectedHeaderContribution).Within(0.001f));
+        }
+
+        private static float MeasurePropertyHeight<THost>(
             bool propertyExpanded,
             bool? setInlineExpanded = null
         )
+            where THost : ScriptableObject
         {
             WInLineEditorDrawer.ClearCachedStateForTesting();
-            InlineEditorHost host = ScriptableObject.CreateInstance<InlineEditorHost>();
+            THost host = ScriptableObject.CreateInstance<THost>();
             InlineEditorTarget target = ScriptableObject.CreateInstance<InlineEditorTarget>();
             host.hideFlags = HideFlags.HideAndDontSave;
             target.hideFlags = HideFlags.HideAndDontSave;
-            host.collapsedTarget = target;
 
             try
             {
                 using SerializedObject serializedHost = new SerializedObject(host);
                 serializedHost.Update();
                 SerializedProperty property = serializedHost.FindProperty(
-                    nameof(InlineEditorHost.collapsedTarget)
+                    CollapsedTargetPropertyName
                 );
+                Assert.That(property, Is.Not.Null);
+                property.objectReferenceValue = target;
+                serializedHost.ApplyModifiedPropertiesWithoutUndo();
+                serializedHost.Update();
+                property = serializedHost.FindProperty(CollapsedTargetPropertyName);
+                Assert.That(property, Is.Not.Null);
                 property.isExpanded = propertyExpanded;
                 if (setInlineExpanded.HasValue)
                 {
@@ -91,6 +117,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         private sealed class InlineEditorHost : ScriptableObject
         {
             [WInLineEditor(WInLineEditorMode.FoldoutCollapsed)]
+            public InlineEditorTarget collapsedTarget;
+        }
+
+        private sealed class HeaderOnlyInlineEditorHost : ScriptableObject
+        {
+            [WInLineEditor(mode: WInLineEditorMode.FoldoutCollapsed, drawObjectField: false)]
             public InlineEditorTarget collapsedTarget;
         }
 

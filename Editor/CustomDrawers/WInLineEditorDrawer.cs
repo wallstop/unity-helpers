@@ -34,6 +34,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Vector2
         >(System.StringComparer.Ordinal);
         private static readonly Dictionary<int, Editor> EditorCache = new Dictionary<int, Editor>();
+        private static readonly GUIContent PingButtonContent = new GUIContent(
+            "⧉",
+            "Ping object in the Project window"
+        );
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
@@ -94,16 +98,28 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 ? EditorGUI.GetPropertyHeight(property, label, false)
                 : EditorGUIUtility.singleLineHeight;
             Rect currentRect = new Rect(position.x, position.y, position.width, fieldHeight);
+
+            WInLineEditorMode mode = ResolveMode(inlineAttribute);
+            string foldoutKey = BuildFoldoutKey(property);
+            bool foldoutState = GetFoldoutState(property, inlineAttribute, mode);
+
             if (inlineAttribute.DrawObjectField)
             {
-                EditorGUI.PropertyField(currentRect, property, label, false);
-                currentRect.y += currentRect.height + EditorGUIUtility.standardVerticalSpacing;
+                foldoutState = DrawInlineObjectReferenceField(
+                    currentRect,
+                    property,
+                    label,
+                    foldoutState,
+                    foldoutKey,
+                    mode
+                );
             }
             else
             {
                 EditorGUI.LabelField(currentRect, label);
-                currentRect.y += currentRect.height + EditorGUIUtility.standardVerticalSpacing;
             }
+
+            currentRect.y += currentRect.height + EditorGUIUtility.standardVerticalSpacing;
 
             Object value = property.objectReferenceValue;
             if (value != null)
@@ -117,7 +133,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         currentRect.width,
                         inlineHeight
                     );
-                    DrawInlineInspector(inlineRect, property, inlineAttribute, label, value);
+                    DrawInlineInspector(
+                        inlineRect,
+                        property,
+                        inlineAttribute,
+                        label,
+                        value,
+                        foldoutState,
+                        foldoutKey,
+                        mode
+                    );
                 }
             }
 
@@ -130,8 +155,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             WInLineEditorMode mode = ResolveMode(inlineAttribute);
+            bool useStandaloneHeader = ShouldDrawStandaloneHeader(inlineAttribute);
             bool showHeader =
-                inlineAttribute.DrawHeader || mode != WInLineEditorMode.AlwaysExpanded;
+                useStandaloneHeader
+                && (inlineAttribute.DrawHeader || mode != WInLineEditorMode.AlwaysExpanded);
             bool foldoutState = GetFoldoutState(property, inlineAttribute, mode);
             bool showBody = mode == WInLineEditorMode.AlwaysExpanded || foldoutState;
 
@@ -155,19 +182,95 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return height;
         }
 
+        private static bool DrawInlineObjectReferenceField(
+            Rect rect,
+            SerializedProperty property,
+            GUIContent label,
+            bool foldoutState,
+            string foldoutKey,
+            WInLineEditorMode mode
+        )
+        {
+            Rect indentedRect = EditorGUI.IndentedRect(rect);
+            int previousIndent = EditorGUI.indentLevel;
+            EditorGUI.indentLevel = 0;
+
+            float labelWidth = Mathf.Min(EditorGUIUtility.labelWidth, indentedRect.width);
+            Rect labelRect = new Rect(
+                indentedRect.x,
+                indentedRect.y,
+                labelWidth,
+                indentedRect.height
+            );
+            Rect fieldRect = new Rect(
+                labelRect.xMax,
+                indentedRect.y,
+                Mathf.Max(0f, indentedRect.width - labelWidth),
+                indentedRect.height
+            );
+
+            EditorGUI.ObjectField(fieldRect, property, GUIContent.none);
+            Object currentValue = property.objectReferenceValue;
+
+            bool showFoldoutToggle =
+                currentValue != null && mode != WInLineEditorMode.AlwaysExpanded;
+            bool showPingButton = currentValue != null;
+            float pingWidth = showPingButton ? PingButtonWidth : 0f;
+            float pingSpacing = showPingButton ? Spacing : 0f;
+            float foldoutWidth = Mathf.Max(0f, labelRect.width - pingWidth - pingSpacing);
+            Rect foldoutRect = new Rect(labelRect.x, labelRect.y, foldoutWidth, labelRect.height);
+
+            GUIContent foldoutLabel = label ?? GUIContent.none;
+            if (showFoldoutToggle)
+            {
+                bool newState = EditorGUI.Foldout(foldoutRect, foldoutState, foldoutLabel, true);
+                if (newState != foldoutState)
+                {
+                    foldoutState = newState;
+                    SetFoldoutState(foldoutKey, foldoutState);
+                }
+            }
+            else
+            {
+                EditorGUI.LabelField(foldoutRect, foldoutLabel);
+            }
+
+            if (showPingButton)
+            {
+                Rect pingRect = new Rect(
+                    labelRect.x + labelRect.width - PingButtonWidth,
+                    labelRect.y,
+                    PingButtonWidth,
+                    labelRect.height
+                );
+                using (new EditorGUI.DisabledScope(currentValue == null))
+                {
+                    if (GUI.Button(pingRect, PingButtonContent, EditorStyles.miniButton))
+                    {
+                        EditorGUIUtility.PingObject(currentValue);
+                    }
+                }
+            }
+
+            EditorGUI.indentLevel = previousIndent;
+            return foldoutState;
+        }
+
         private static void DrawInlineInspector(
             Rect rect,
             SerializedProperty property,
             WInLineEditorAttribute inlineAttribute,
             GUIContent label,
-            Object value
+            Object value,
+            bool foldoutState,
+            string foldoutKey,
+            WInLineEditorMode mode
         )
         {
-            WInLineEditorMode mode = ResolveMode(inlineAttribute);
-            string foldoutKey = BuildFoldoutKey(property);
+            bool useStandaloneHeader = ShouldDrawStandaloneHeader(inlineAttribute);
             bool showHeader =
-                inlineAttribute.DrawHeader || mode != WInLineEditorMode.AlwaysExpanded;
-            bool foldoutState = GetFoldoutState(property, inlineAttribute, mode);
+                useStandaloneHeader
+                && (inlineAttribute.DrawHeader || mode != WInLineEditorMode.AlwaysExpanded);
 
             if (showHeader)
             {
@@ -282,6 +385,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
+        private static bool ShouldDrawStandaloneHeader(WInLineEditorAttribute inlineAttribute)
+        {
+            return !inlineAttribute.DrawObjectField;
+        }
+
         private static bool DrawHeader(
             Rect rect,
             SerializedProperty property,
@@ -328,10 +436,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 EditorGUI.LabelField(labelRect, headerContent, EditorStyles.boldLabel);
             }
 
-            GUIContent pingContent = new GUIContent("⧉", "Ping object in the Project window");
             using (new EditorGUI.DisabledScope(value == null))
             {
-                if (GUI.Button(pingRect, pingContent, EditorStyles.miniButton))
+                if (GUI.Button(pingRect, PingButtonContent, EditorStyles.miniButton))
                 {
                     EditorGUIUtility.PingObject(value);
                 }
