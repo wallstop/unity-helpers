@@ -21,9 +21,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         // Inspired by the Unity Editor Toolbox inline editor drawer (MIT):
         // https://github.com/arimger/Unity-Editor-Toolbox
         private const float HeaderHeight = 20f;
-        private const float PingButtonWidth = 20f;
         private const float Spacing = 2f;
-        private const float ScrollbarThickness = 15f;
+        private const float MinimumFoldoutLabelWidth = 40f;
+        private const float PingButtonPadding = 6f;
+        private const float ContentPadding = 2f;
 
         private static readonly Dictionary<string, bool> FoldoutStates = new Dictionary<
             string,
@@ -34,10 +35,64 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Vector2
         >(System.StringComparer.Ordinal);
         private static readonly Dictionary<int, Editor> EditorCache = new Dictionary<int, Editor>();
+        private static readonly Dictionary<string, float> PropertyWidths = new Dictionary<
+            string,
+            float
+        >(System.StringComparer.Ordinal);
         private static readonly GUIContent PingButtonContent = new GUIContent(
-            "⧉",
+            "Ping",
             "Ping object in the Project window"
         );
+        private const string ScriptPropertyPath = "m_Script";
+
+        private static float GetPingButtonWidth()
+        {
+            GUIStyle style = EditorStyles.miniButton;
+            if (style == null)
+            {
+                return 0f;
+            }
+
+            Vector2 contentSize = style.CalcSize(PingButtonContent);
+            return Mathf.Ceil(contentSize.x + PingButtonPadding);
+        }
+
+        private static float GetHorizontalScrollbarHeight()
+        {
+            GUIStyle scrollbarStyle = GUI.skin != null ? GUI.skin.horizontalScrollbar : null;
+            float height =
+                scrollbarStyle != null && scrollbarStyle.fixedHeight > 0f
+                    ? scrollbarStyle.fixedHeight
+                    : EditorGUIUtility.singleLineHeight;
+            return Mathf.Max(12f, height);
+        }
+
+        private static void SetPropertyWidth(SerializedProperty property, float width)
+        {
+            if (property == null)
+            {
+                return;
+            }
+
+            string key = BuildFoldoutKey(property);
+            PropertyWidths[key] = Mathf.Max(0f, width);
+        }
+
+        private static float GetEstimatedPropertyWidth(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return EditorGUIUtility.currentViewWidth;
+            }
+
+            string key = BuildFoldoutKey(property);
+            if (PropertyWidths.TryGetValue(key, out float width) && width > 0f)
+            {
+                return width;
+            }
+
+            return EditorGUIUtility.currentViewWidth;
+        }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
@@ -54,7 +109,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return height;
             }
 
-            float inlineHeight = CalculateInlineHeight(property, inlineAttribute);
+            float availableWidth = GetEstimatedPropertyWidth(property);
+            float inlineHeight = CalculateInlineHeight(
+                property,
+                inlineAttribute,
+                value,
+                availableWidth
+            );
             return height
                 + (
                     inlineHeight <= 0f
@@ -94,6 +155,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
+            SetPropertyWidth(property, position.width);
+
             float fieldHeight = inlineAttribute.DrawObjectField
                 ? EditorGUI.GetPropertyHeight(property, label, false)
                 : EditorGUIUtility.singleLineHeight;
@@ -124,9 +187,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Object value = property.objectReferenceValue;
             if (value != null)
             {
-                float inlineHeight = CalculateInlineHeight(property, inlineAttribute);
+                float inlineHeight = CalculateInlineHeight(
+                    property,
+                    inlineAttribute,
+                    value,
+                    currentRect.width
+                );
                 if (inlineHeight > 0f)
                 {
+                    InspectorHeightInfo inspectorHeightInfo = ResolveInspectorHeightInfo(
+                        value,
+                        inlineAttribute,
+                        currentRect.width
+                    );
                     Rect inlineRect = new Rect(
                         currentRect.x,
                         currentRect.y,
@@ -141,7 +214,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         value,
                         foldoutState,
                         foldoutKey,
-                        mode
+                        mode,
+                        inspectorHeightInfo
                     );
                 }
             }
@@ -151,7 +225,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static float CalculateInlineHeight(
             SerializedProperty property,
-            WInLineEditorAttribute inlineAttribute
+            WInLineEditorAttribute inlineAttribute,
+            Object value,
+            float availableWidth
         )
         {
             WInLineEditorMode mode = ResolveMode(inlineAttribute);
@@ -173,7 +249,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return height;
             }
 
-            height += inlineAttribute.InspectorHeight;
+            InspectorHeightInfo inspectorHeight = ResolveInspectorHeightInfo(
+                value,
+                inlineAttribute,
+                availableWidth
+            );
+            height += inspectorHeight.DisplayHeight;
             if (inlineAttribute.DrawPreview)
             {
                 height += Spacing + inlineAttribute.PreviewHeight;
@@ -215,9 +296,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool showFoldoutToggle =
                 currentValue != null && mode != WInLineEditorMode.AlwaysExpanded;
             bool showPingButton = currentValue != null;
-            float pingWidth = showPingButton ? PingButtonWidth : 0f;
+            float pingWidth = showPingButton ? GetPingButtonWidth() : 0f;
             float pingSpacing = showPingButton ? Spacing : 0f;
-            float foldoutWidth = Mathf.Max(0f, labelRect.width - pingWidth - pingSpacing);
+            bool hasSpaceForPing =
+                showPingButton
+                && labelRect.width - pingWidth - pingSpacing >= MinimumFoldoutLabelWidth;
+            if (!hasSpaceForPing)
+            {
+                showPingButton = false;
+                pingWidth = 0f;
+                pingSpacing = 0f;
+            }
+
+            float foldoutWidth = Mathf.Max(
+                0f,
+                showPingButton ? labelRect.width - pingWidth - pingSpacing : labelRect.width
+            );
             Rect foldoutRect = new Rect(labelRect.x, labelRect.y, foldoutWidth, labelRect.height);
 
             GUIContent foldoutLabel = label ?? GUIContent.none;
@@ -238,9 +332,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (showPingButton)
             {
                 Rect pingRect = new Rect(
-                    labelRect.x + labelRect.width - PingButtonWidth,
+                    foldoutRect.x + foldoutRect.width + pingSpacing,
                     labelRect.y,
-                    PingButtonWidth,
+                    pingWidth,
                     labelRect.height
                 );
                 using (new EditorGUI.DisabledScope(currentValue == null))
@@ -264,7 +358,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Object value,
             bool foldoutState,
             string foldoutKey,
-            WInLineEditorMode mode
+            WInLineEditorMode mode,
+            InspectorHeightInfo inspectorHeight
         )
         {
             bool useStandaloneHeader = ShouldDrawStandaloneHeader(inlineAttribute);
@@ -304,10 +399,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 rect.x,
                 rect.y,
                 rect.width,
-                inlineAttribute.InspectorHeight
+                inspectorHeight.DisplayHeight
             );
-            DrawInspectorBody(property, inspectorRect, editor, inlineAttribute);
-            rect.y += inlineAttribute.InspectorHeight;
+            DrawInspectorBody(property, inspectorRect, editor, inlineAttribute, inspectorHeight);
+            rect.y += inspectorHeight.DisplayHeight;
 
             if (inlineAttribute.DrawPreview && editor.HasPreviewGUI())
             {
@@ -333,61 +428,281 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             SerializedProperty property,
             Rect rect,
             Editor editor,
-            WInLineEditorAttribute inlineAttribute
+            WInLineEditorAttribute inlineAttribute,
+            InspectorHeightInfo inspectorHeight
         )
         {
             Rect backgroundRect = new Rect(rect.x, rect.y, rect.width, rect.height);
             GUI.Box(backgroundRect, GUIContent.none, EditorStyles.helpBox);
             Rect contentRect = new Rect(
-                backgroundRect.x + 2f,
-                backgroundRect.y + 2f,
-                backgroundRect.width - 4f,
-                backgroundRect.height - 4f
+                backgroundRect.x + ContentPadding,
+                backgroundRect.y,
+                backgroundRect.width - (ContentPadding * 2f),
+                backgroundRect.height
             );
 
             string scrollKey = BuildScrollKey(property);
-            if (inlineAttribute.EnableScrolling)
+            bool useSerializedInspector = inspectorHeight.UsesSerializedInspector;
+            bool needsHorizontalScroll =
+                inlineAttribute.EnableScrolling
+                && inlineAttribute.MinInspectorWidth > 0f
+                && inlineAttribute.MinInspectorWidth - contentRect.width > 0.5f;
+            bool needsVerticalScroll =
+                inlineAttribute.EnableScrolling
+                && inspectorHeight.ContentHeight > contentRect.height + 0.5f;
+            bool useScrollView =
+                inlineAttribute.EnableScrolling && (needsHorizontalScroll || needsVerticalScroll);
+
+            if (useScrollView)
             {
                 Vector2 scrollPosition = GetScrollPosition(scrollKey);
-                float minWidth =
-                    inlineAttribute.MinInspectorWidth <= 0f
-                        ? contentRect.width
-                        : Mathf.Max(
-                            inlineAttribute.MinInspectorWidth,
-                            contentRect.width - ScrollbarThickness
-                        );
-                Rect scrollViewRect = new Rect(0f, 0f, contentRect.width, contentRect.height);
-                Rect viewRect = new Rect(0f, 0f, minWidth, inlineAttribute.InspectorHeight);
+                float viewWidth = needsHorizontalScroll
+                    ? Mathf.Max(inlineAttribute.MinInspectorWidth, contentRect.width)
+                    : contentRect.width;
+                float viewHeight = inspectorHeight.ContentHeight;
 
                 GUI.BeginGroup(contentRect);
+                Rect scrollViewRect = new Rect(0f, 0f, contentRect.width, contentRect.height);
+                Rect viewRect = new Rect(0f, 0f, viewWidth, viewHeight);
                 scrollPosition = GUI.BeginScrollView(
-                    new Rect(0f, 0f, scrollViewRect.width, scrollViewRect.height),
+                    scrollViewRect,
                     scrollPosition,
-                    viewRect
+                    viewRect,
+                    needsHorizontalScroll,
+                    needsVerticalScroll
                 );
-                GUILayout.BeginArea(new Rect(0f, 0f, viewRect.width, viewRect.height));
-                editor.OnInspectorGUI();
-                GUILayout.EndArea();
+                DrawInspectorContents(editor, useSerializedInspector, viewRect);
                 GUI.EndScrollView();
                 GUI.EndGroup();
 
                 ScrollPositions[scrollKey] = scrollPosition;
+                return;
             }
-            else
-            {
-                GUI.BeginGroup(contentRect);
-                GUILayout.BeginArea(
-                    new Rect(0f, 0f, contentRect.width, inlineAttribute.InspectorHeight)
-                );
-                editor.OnInspectorGUI();
-                GUILayout.EndArea();
-                GUI.EndGroup();
-            }
+
+            GUI.BeginGroup(contentRect);
+            Rect drawRect = new Rect(0f, 0f, contentRect.width, inspectorHeight.ContentHeight);
+            DrawInspectorContents(editor, useSerializedInspector, drawRect);
+            GUI.EndGroup();
         }
 
         private static bool ShouldDrawStandaloneHeader(WInLineEditorAttribute inlineAttribute)
         {
             return !inlineAttribute.DrawObjectField;
+        }
+
+        private static void DrawInspectorContents(
+            Editor editor,
+            bool useSerializedInspector,
+            Rect rect
+        )
+        {
+            if (editor == null)
+            {
+                return;
+            }
+
+            if (useSerializedInspector)
+            {
+                DrawSerializedInspector(rect, editor);
+                return;
+            }
+
+            GUILayout.BeginArea(rect);
+            editor.OnInspectorGUI();
+            GUILayout.EndArea();
+        }
+
+        private static void DrawSerializedInspector(Rect rect, Editor editor)
+        {
+            SerializedObject serializedObject = editor.serializedObject;
+            DrawSerializedObject(rect, serializedObject);
+        }
+
+        private static void DrawSerializedObject(Rect rect, SerializedObject serializedObject)
+        {
+            if (serializedObject == null)
+            {
+                return;
+            }
+
+            serializedObject.UpdateIfRequiredOrScript();
+            SerializedProperty iterator = serializedObject.GetIterator();
+            bool enterChildren = true;
+            Rect currentRect = new Rect(rect.x, rect.y, rect.width, 0f);
+            bool firstPropertyDrawn = false;
+            while (iterator.NextVisible(enterChildren))
+            {
+                if (iterator.propertyPath == ScriptPropertyPath)
+                {
+                    enterChildren = false;
+                    continue;
+                }
+
+                if (firstPropertyDrawn)
+                {
+                    currentRect.y += EditorGUIUtility.standardVerticalSpacing;
+                }
+
+                float propertyHeight = EditorGUI.GetPropertyHeight(iterator, true);
+                currentRect.height = propertyHeight;
+                EditorGUI.PropertyField(currentRect, iterator, true);
+                currentRect.y += propertyHeight;
+                enterChildren = false;
+                firstPropertyDrawn = true;
+            }
+
+            serializedObject.ApplyModifiedProperties();
+        }
+
+        private static InspectorHeightInfo ResolveInspectorHeightInfo(
+            Object value,
+            WInLineEditorAttribute inlineAttribute,
+            float availableWidth
+        )
+        {
+            if (value == null)
+            {
+                return InspectorHeightInfo.Empty;
+            }
+
+            Editor editor = GetOrCreateEditor(value);
+            if (TryCalculateDefaultInspectorContentHeight(value, editor, out float contentHeight))
+            {
+                InspectorHeightInfo info = BuildInspectorHeightInfo(
+                    inlineAttribute,
+                    availableWidth,
+                    contentHeight,
+                    true
+                );
+                return info;
+            }
+
+            float fallbackHeight = inlineAttribute.InspectorHeight;
+            return BuildInspectorHeightInfo(inlineAttribute, availableWidth, fallbackHeight, false);
+        }
+
+        private static InspectorHeightInfo BuildInspectorHeightInfo(
+            WInLineEditorAttribute inlineAttribute,
+            float availableWidth,
+            float contentHeight,
+            bool usesSerializedInspector
+        )
+        {
+            float displayHeight = inlineAttribute.EnableScrolling
+                ? Mathf.Min(contentHeight, inlineAttribute.InspectorHeight)
+                : contentHeight;
+
+            float effectiveWidth = Mathf.Max(0f, availableWidth - (ContentPadding * 2f));
+            bool requiresHorizontalScroll =
+                inlineAttribute.EnableScrolling
+                && inlineAttribute.MinInspectorWidth > 0f
+                && inlineAttribute.MinInspectorWidth - effectiveWidth > 0.5f;
+            float horizontalScrollbarHeight = requiresHorizontalScroll
+                ? GetHorizontalScrollbarHeight()
+                : 0f;
+
+            float finalDisplayHeight = displayHeight + horizontalScrollbarHeight;
+            return new InspectorHeightInfo(
+                contentHeight,
+                finalDisplayHeight,
+                usesSerializedInspector,
+                horizontalScrollbarHeight
+            );
+        }
+
+        private static bool TryCalculateDefaultInspectorContentHeight(
+            Object value,
+            Editor editor,
+            out float contentHeight
+        )
+        {
+            contentHeight = 0f;
+            if (!CanUseSerializedInspector(value, editor))
+            {
+                return false;
+            }
+
+            SerializedObject serializedObject =
+                editor != null ? editor.serializedObject : new SerializedObject(value);
+            contentHeight = CalculateSerializedInspectorHeight(serializedObject);
+            return true;
+        }
+
+        private static bool CanUseSerializedInspector(Object value, Editor editor)
+        {
+            if (value == null)
+            {
+                return false;
+            }
+
+            bool supportedTarget = value is ScriptableObject || value is MonoBehaviour;
+            if (!supportedTarget)
+            {
+                return false;
+            }
+
+            if (editor == null)
+            {
+                return true;
+            }
+
+            return editor.GetType() == typeof(Editor);
+        }
+
+        private static float CalculateSerializedInspectorHeight(SerializedObject serializedObject)
+        {
+            if (serializedObject == null)
+            {
+                return 0f;
+            }
+
+            serializedObject.UpdateIfRequiredOrScript();
+            SerializedProperty iterator = serializedObject.GetIterator();
+            bool enterChildren = true;
+            float height = 0f;
+            bool firstPropertyMeasured = false;
+            while (iterator.NextVisible(enterChildren))
+            {
+                if (iterator.propertyPath == ScriptPropertyPath)
+                {
+                    enterChildren = false;
+                    continue;
+                }
+
+                if (firstPropertyMeasured)
+                {
+                    height += EditorGUIUtility.standardVerticalSpacing;
+                }
+
+                height += EditorGUI.GetPropertyHeight(iterator, true);
+                enterChildren = false;
+                firstPropertyMeasured = true;
+            }
+
+            return Mathf.Max(0f, height);
+        }
+
+        private readonly struct InspectorHeightInfo
+        {
+            public InspectorHeightInfo(
+                float contentHeight,
+                float displayHeight,
+                bool usesSerializedInspector,
+                float horizontalScrollbarHeight
+            )
+            {
+                ContentHeight = Mathf.Max(0f, contentHeight);
+                DisplayHeight = Mathf.Max(0f, displayHeight);
+                UsesSerializedInspector = usesSerializedInspector;
+                HorizontalScrollbarHeight = Mathf.Max(0f, horizontalScrollbarHeight);
+            }
+
+            public float ContentHeight { get; }
+            public float DisplayHeight { get; }
+            public bool UsesSerializedInspector { get; }
+            public float HorizontalScrollbarHeight { get; }
+
+            public static InspectorHeightInfo Empty => new InspectorHeightInfo(0f, 0f, false, 0f);
         }
 
         private static bool DrawHeader(
@@ -399,16 +714,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool foldoutState
         )
         {
+            float pingWidth = GetPingButtonWidth();
+            const float HeaderPingSpacing = 4f;
+            bool showPingButton =
+                value != null
+                && rect.width - pingWidth - HeaderPingSpacing >= MinimumFoldoutLabelWidth;
+            float labelWidth = showPingButton
+                ? Mathf.Max(0f, rect.width - pingWidth - HeaderPingSpacing)
+                : rect.width;
+            Rect labelRect = new Rect(rect.x, rect.y, labelWidth, rect.height);
             Rect pingRect = new Rect(
-                rect.xMax - PingButtonWidth,
+                rect.x + labelWidth + (showPingButton ? HeaderPingSpacing : 0f),
                 rect.y,
-                PingButtonWidth,
-                rect.height
-            );
-            Rect labelRect = new Rect(
-                rect.x,
-                rect.y,
-                rect.width - PingButtonWidth - 4f,
+                pingWidth,
                 rect.height
             );
 
@@ -436,11 +754,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 EditorGUI.LabelField(labelRect, headerContent, EditorStyles.boldLabel);
             }
 
-            using (new EditorGUI.DisabledScope(value == null))
+            if (showPingButton)
             {
-                if (GUI.Button(pingRect, PingButtonContent, EditorStyles.miniButton))
+                using (new EditorGUI.DisabledScope(value == null))
                 {
-                    EditorGUIUtility.PingObject(value);
+                    if (GUI.Button(pingRect, PingButtonContent, EditorStyles.miniButton))
+                    {
+                        EditorGUIUtility.PingObject(value);
+                    }
                 }
             }
 
@@ -536,6 +857,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             FoldoutStates.Clear();
             ScrollPositions.Clear();
+            PropertyWidths.Clear();
             foreach (Editor cachedEditor in EditorCache.Values)
             {
                 if (cachedEditor != null)

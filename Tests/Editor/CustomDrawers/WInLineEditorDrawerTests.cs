@@ -69,6 +69,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             Assert.That(difference, Is.EqualTo(ExpectedHeaderContribution).Within(0.001f));
         }
 
+        [Test]
+        public void InlineInspectorOmitsScriptField()
+        {
+            float collapsedHeight = MeasurePropertyHeight<NoScrollInlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: false
+            );
+            float expandedHeight = MeasurePropertyHeight<NoScrollInlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: true
+            );
+            float inlineHeight = expandedHeight - collapsedHeight;
+            float expectedHeight = EditorGUIUtility.singleLineHeight;
+            Assert.That(inlineHeight, Is.EqualTo(expectedHeight).Within(0.01f));
+        }
+
         private static float MeasurePropertyHeight<THost>(
             bool propertyExpanded,
             bool? setInlineExpanded = null
@@ -123,6 +139,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         private sealed class HeaderOnlyInlineEditorHost : ScriptableObject
         {
             [WInLineEditor(mode: WInLineEditorMode.FoldoutCollapsed, drawObjectField: false)]
+            public InlineEditorTarget collapsedTarget;
+        }
+
+        private sealed class NoScrollInlineEditorHost : ScriptableObject
+        {
+            [WInLineEditor(WInLineEditorMode.FoldoutCollapsed, 400f, false, 64f, true, true, false)]
             public InlineEditorTarget collapsedTarget;
         }
 
