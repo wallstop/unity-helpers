@@ -71,6 +71,15 @@ public SerializableHashSet<string> items;  // Uses SerializableSetPageSize
 
 ---
 
+### SerializableSetStartCollapsed
+
+**Default:** On  
+**Applies to:** `SerializableHashSet<T>`, `SerializableSortedSet<T>`
+
+**Description:** Controls whether SerializableSet inspectors start collapsed the first time they are drawn. When enabled, sets render as a single foldout header until the user expands them; when disabled, the inspector opens automatically. This is only a default—explicit script/test changes to `SerializedProperty.isExpanded` or `[WSerializableCollectionFoldout]` overrides still win.
+
+---
+
 ### SerializableDictionaryPageSize
 
 **Default:** 15
@@ -84,6 +93,15 @@ public SerializableHashSet<string> items;  // Uses SerializableSetPageSize
 ```csharp
 public SerializableDictionary<string, GameObject> prefabs;  // Uses SerializableDictionaryPageSize
 ```
+
+---
+
+### SerializableDictionaryStartCollapsed
+
+**Default:** On  
+**Applies to:** `SerializableDictionary<TKey, TValue>`, `SerializableSortedDictionary<TKey, TValue>`
+
+**Description:** Determines whether SerializableDictionary inspectors begin collapsed before any user interaction. Disable this to have dictionaries open automatically in newly created inspectors. Like the set toggle, this only establishes the default; `[WSerializableCollectionFoldout]` or manual changes to `SerializedProperty.isExpanded` take precedence on a per-field basis.
 
 ---
 

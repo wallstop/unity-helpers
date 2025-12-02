@@ -363,6 +363,25 @@ Expandable "New Entry" controls let you configure the exact value that will be i
 
 ---
 
+### Foldout Defaults & Overrides
+
+By default, SerializableSet inspectors start collapsed until you open them. This baseline comes from **Project Settings ▸ Wallstop Studios ▸ Unity Helpers** via the **Serializable Set Start Collapsed** toggle (and the equivalent **Serializable Dictionary Start Collapsed** toggle for dictionaries). You can override the default per-field with `[WSerializableCollectionFoldout]`:
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+[WSerializableCollectionFoldout(WSerializableCollectionFoldoutBehavior.StartExpanded)]
+public SerializableHashSet<string> unlockedBadges = new();
+```
+
+- **Project setting** establishes the initial state only.
+- **`[WSerializableCollectionFoldout]`** can request expanded or collapsed behavior for specific collections.
+- **Explicit changes** to `SerializedProperty.isExpanded` (scripts, custom inspectors, or tests) take ultimate precedence. The drawer now respects those manual decisions, so opting-in via code no longer gets undone by the attribute or the global default.
+
+The attribute applies to both `SerializableHashSet<T>`/`SerializableSortedSet<T>` and the dictionary equivalents, making it straightforward to mix project-wide defaults with per-field intentions.
+
+---
+
 ### Sorted Sets
 
 ```csharp
