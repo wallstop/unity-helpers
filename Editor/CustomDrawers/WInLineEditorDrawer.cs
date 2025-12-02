@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Utils;
 
     [CustomPropertyDrawer(typeof(WInLineEditorAttribute))]
     /// <summary>
@@ -25,7 +26,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float MinimumFoldoutLabelWidth = 40f;
         private const float PingButtonPadding = 6f;
         private const float ContentPadding = 2f;
-        private const float FoldoutOffset = 5f;
+        private const float FoldoutOffset = 6.5f;
+        private const float PingButtonRightMargin = 2f;
 
         private static readonly Dictionary<string, bool> FoldoutStates = new Dictionary<
             string,
@@ -299,19 +301,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool showPingButton = currentValue != null;
             float pingWidth = showPingButton ? GetPingButtonWidth() : 0f;
             float pingSpacing = showPingButton ? Spacing : 0f;
+            float pingRightMargin = showPingButton ? PingButtonRightMargin : 0f;
             bool hasSpaceForPing =
                 showPingButton
-                && labelRect.width - pingWidth - pingSpacing >= MinimumFoldoutLabelWidth;
+                && labelRect.width - pingWidth - pingSpacing - pingRightMargin
+                    >= MinimumFoldoutLabelWidth;
             if (!hasSpaceForPing)
             {
                 showPingButton = false;
                 pingWidth = 0f;
                 pingSpacing = 0f;
+                pingRightMargin = 0f;
             }
 
             float foldoutWidth = Mathf.Max(
                 0f,
-                showPingButton ? labelRect.width - pingWidth - pingSpacing : labelRect.width
+                showPingButton
+                    ? labelRect.width - pingWidth - pingSpacing - pingRightMargin
+                    : labelRect.width
             );
             Rect foldoutRect = new Rect(labelRect.x, labelRect.y, foldoutWidth, labelRect.height);
 
@@ -728,15 +735,29 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             float pingWidth = GetPingButtonWidth();
             const float HeaderPingSpacing = 4f;
-            bool showPingButton =
-                value != null
-                && rect.width - pingWidth - HeaderPingSpacing >= MinimumFoldoutLabelWidth;
+            bool showPingButton = value != null;
+            float headerSpacing = 0f;
+            float headerRightMargin = 0f;
+            if (showPingButton)
+            {
+                headerSpacing = HeaderPingSpacing;
+                headerRightMargin = PingButtonRightMargin;
+                bool hasSpace =
+                    rect.width - pingWidth - headerSpacing - headerRightMargin
+                    >= MinimumFoldoutLabelWidth;
+                if (!hasSpace)
+                {
+                    showPingButton = false;
+                    headerSpacing = 0f;
+                    headerRightMargin = 0f;
+                }
+            }
             float labelWidth = showPingButton
-                ? Mathf.Max(0f, rect.width - pingWidth - HeaderPingSpacing)
+                ? Mathf.Max(0f, rect.width - pingWidth - headerSpacing - headerRightMargin)
                 : rect.width;
             Rect labelRect = new Rect(rect.x, rect.y, labelWidth, rect.height);
             Rect pingRect = new Rect(
-                rect.x + labelWidth + (showPingButton ? HeaderPingSpacing : 0f),
+                rect.x + labelWidth + (showPingButton ? headerSpacing : 0f),
                 rect.y,
                 pingWidth,
                 rect.height

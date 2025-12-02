@@ -157,21 +157,31 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                     // Extra safety: if any asset exists at the exact path, do not create a duplicate.
                     // Prefer to use/move existing assets rather than generating unique names.
-                    string existingGuid = null;
-                    Object existingAtPath = AssetDatabase.LoadAssetAtPath<Object>(targetAssetPath);
-                    if (existingAtPath != null)
-                    {
-                        AssetDatabase.TryGetGUIDAndLocalFileIdentifier(
-                            existingAtPath,
-                            out existingGuid,
-                            out long _
-                        );
-                    }
-
                     Object assetAtTarget = AssetDatabase.LoadAssetAtPath(
                         targetAssetPath,
                         derivedType
                     );
+
+                    string existingGuid = AssetDatabase.AssetPathToGUID(targetAssetPath);
+                    bool fileExistsOnDisk = DoesAssetFileExistOnDisk(targetAssetPath);
+                    if (
+                        !string.IsNullOrEmpty(existingGuid)
+                        && assetAtTarget == null
+                        && !fileExistsOnDisk
+                    )
+                    {
+                        TryRemoveStaleAssetArtifacts(targetAssetPath);
+                        AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+
+                        assetAtTarget = AssetDatabase.LoadAssetAtPath(targetAssetPath, derivedType);
+                        fileExistsOnDisk = DoesAssetFileExistOnDisk(targetAssetPath);
+                        string refreshedGuid = AssetDatabase.AssetPathToGUID(targetAssetPath);
+
+                        existingGuid =
+                            assetAtTarget == null && !fileExistsOnDisk
+                                ? string.Empty
+                                : refreshedGuid;
+                    }
 
                     if (assetAtTarget == null)
                     {
@@ -191,7 +201,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         continue;
                     }
 
-                    // If something already exists at the target path (even of another type), avoid creating another asset.
                     if (!string.IsNullOrEmpty(existingGuid))
                     {
                         Debug.LogWarning(
@@ -200,8 +209,30 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         continue;
                     }
 
+                    if (fileExistsOnDisk)
+                    {
+                        Debug.LogWarning(
+                            $"ScriptableObjectSingletonCreator: Detected on-disk asset at {targetAssetPath} while ensuring {derivedType.FullName}. Unity has not imported it yet; deferring creation until the asset database picks it up."
+                        );
+                        retryRequested = true;
+                        continue;
+                    }
+
                     ScriptableObject instance = ScriptableObject.CreateInstance(derivedType);
-                    AssetDatabase.CreateAsset(instance, targetAssetPath);
+                    try
+                    {
+                        AssetDatabase.CreateAsset(instance, targetAssetPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError(
+                            $"ScriptableObjectSingletonCreator: Failed to create singleton for type {derivedType.FullName} at {targetAssetPath}. {ex.Message}"
+                        );
+                        Object.DestroyImmediate(instance);
+                        retryRequested = true;
+                        continue;
+                    }
+
                     LogVerbose(
                         $"ScriptableObjectSingletonCreator: Created missing singleton for type {derivedType.FullName} at {targetAssetPath}."
                     );
@@ -625,6 +656,84 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             }
 
             return Directory.Exists(absolutePath);
+        }
+
+        private static bool DoesAssetFileExistOnDisk(string assetsRelativePath)
+        {
+            string absolutePath = TryGetAbsoluteAssetsPath(assetsRelativePath);
+            if (string.IsNullOrWhiteSpace(absolutePath))
+            {
+                return false;
+            }
+
+            if (File.Exists(absolutePath))
+            {
+                return true;
+            }
+
+            string metaPath = absolutePath + ".meta";
+            return File.Exists(metaPath);
+        }
+
+        private static bool TryRemoveStaleAssetArtifacts(string assetsRelativePath)
+        {
+            bool removed = false;
+            try
+            {
+                if (AssetDatabase.DeleteAsset(assetsRelativePath))
+                {
+                    removed = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning(
+                    $"ScriptableObjectSingletonCreator: AssetDatabase.DeleteAsset threw while cleaning stale singleton artifacts at '{assetsRelativePath}': {ex.Message}"
+                );
+            }
+
+            string absoluteAssetPath = TryGetAbsoluteAssetsPath(assetsRelativePath);
+            string absoluteMetaPath = TryGetAbsoluteAssetsPath(assetsRelativePath + ".meta");
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(absoluteAssetPath) && File.Exists(absoluteAssetPath))
+                {
+                    File.Delete(absoluteAssetPath);
+                    removed = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning(
+                    $"ScriptableObjectSingletonCreator: Failed deleting stale asset file '{absoluteAssetPath}': {ex.Message}"
+                );
+            }
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(absoluteMetaPath) && File.Exists(absoluteMetaPath))
+                {
+                    File.Delete(absoluteMetaPath);
+                    removed = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning(
+                    $"ScriptableObjectSingletonCreator: Failed deleting stale meta file '{absoluteMetaPath}': {ex.Message}"
+                );
+            }
+
+            if (removed)
+            {
+                AssetDatabase.Refresh();
+                LogVerbose(
+                    $"ScriptableObjectSingletonCreator: Cleared stale artifacts blocking singleton creation at '{assetsRelativePath}'."
+                );
+            }
+
+            return removed;
         }
 
         private static bool EnsureFolderExistsOnDisk(string assetsRelativePath)

@@ -93,6 +93,76 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [UnityTest]
+        public IEnumerator SkipsCreationWhenAssetFileExistsButIsNotImported()
+        {
+            string targetPath = "Assets/Resources/Tests/CreatorPath/CreatorPathSingleton.asset";
+            AssetDatabase.DeleteAsset(targetPath);
+            yield return null;
+
+            EnsureFolder("Assets/Resources/Tests/CreatorPath");
+            DeleteFileIfExists(targetPath);
+            DeleteFileIfExists(targetPath + ".meta");
+
+            string absolutePath = GetAbsolutePath(targetPath);
+            string directory = Path.GetDirectoryName(absolutePath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            File.WriteAllText(absolutePath, "pending import");
+
+            LogAssert.Expect(
+                LogType.Warning,
+                new Regex("on-disk asset.*CreatorPathSingleton", RegexOptions.IgnoreCase)
+            );
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+
+            Assert.IsTrue(File.Exists(absolutePath));
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(targetPath) == null);
+
+            File.Delete(absolutePath);
+            DeleteFileIfExists(targetPath + ".meta");
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(targetPath) != null);
+        }
+
+        [UnityTest]
+        public IEnumerator RecreatesAssetWhenGuidRemainsButFileIsMissing()
+        {
+            string targetPath = "Assets/Resources/Tests/CreatorPath/CreatorPathSingleton.asset";
+            AssetDatabase.DeleteAsset(targetPath);
+            yield return null;
+
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(targetPath) != null);
+
+            string absoluteAsset = GetAbsolutePath(targetPath);
+            if (File.Exists(absoluteAsset))
+            {
+                File.Delete(absoluteAsset);
+            }
+
+            AssetDatabase.Refresh();
+            yield return null;
+
+            Assert.IsTrue(
+                AssetDatabase.AssetPathToGUID(targetPath).Length > 0,
+                "Meta should still exist after deleting only the asset file."
+            );
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(targetPath) == null);
+
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(targetPath) != null);
+        }
+
+        [UnityTest]
         public IEnumerator SkipsCreationWhenTargetPathOccupied()
         {
             // Arrange: Create an occupying asset at the target path
