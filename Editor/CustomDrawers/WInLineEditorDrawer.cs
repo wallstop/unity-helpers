@@ -25,6 +25,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float MinimumFoldoutLabelWidth = 40f;
         private const float PingButtonPadding = 6f;
         private const float ContentPadding = 2f;
+        private const float FoldoutOffset = 5f;
 
         private static readonly Dictionary<string, bool> FoldoutStates = new Dictionary<
             string,
@@ -317,7 +318,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             GUIContent foldoutLabel = label ?? GUIContent.none;
             if (showFoldoutToggle)
             {
-                bool newState = EditorGUI.Foldout(foldoutRect, foldoutState, foldoutLabel, true);
+                Rect adjustedFoldoutRect = new Rect(
+                    foldoutRect.x + FoldoutOffset,
+                    foldoutRect.y,
+                    Mathf.Max(0f, foldoutRect.width - FoldoutOffset),
+                    foldoutRect.height
+                );
+                bool newState = EditorGUI.Foldout(
+                    adjustedFoldoutRect,
+                    foldoutState,
+                    foldoutLabel,
+                    true
+                );
                 if (newState != foldoutState)
                 {
                     foldoutState = newState;
