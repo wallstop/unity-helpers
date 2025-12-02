@@ -46,6 +46,9 @@ What does not auto‑fix:
 - Verify Markdown/code links: `npm run lint:doc-links` (cross-platform wrapper that locates PowerShell automatically)
   - The wrapper lives at `scripts/run-doc-link-lint.js` so you can also run `node ./scripts/run-doc-link-lint.js --verbose` if you are not using npm scripts.
   - The underlying PowerShell script validates intra-repo Markdown links _and_ any `docs/...` references inside source files or scripts. The `lint-doc-links` GitHub Actions workflow runs it on every PR, so run it locally before pushing large doc updates.
+- Refresh allocation scan checklist: `npm run scan:allocations`
+  - Generates/updates `artifacts/allocation-scan.md` with every `new List/HashSet/Dictionary/...` hit under `Runtime`, `Editor`, and `Tests`.
+  - Run this after large feature merges so PLAN.md stays aligned with the latest hot spots.
 
 ## Style and Naming
 

@@ -793,6 +793,36 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         }
 
         [Test]
+        public void InlineEditorFoldoutBehaviorFollowsSettingsValue()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            using SerializedObject serialized = new SerializedObject(settings);
+            serialized.Update();
+
+            SerializedProperty property = serialized.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.InlineEditorFoldoutBehavior
+            );
+            int original = property.enumValueIndex;
+
+            try
+            {
+                property.enumValueIndex = (int)
+                    UnityHelpersSettings.InlineEditorFoldoutBehavior.StartCollapsed;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                Assert.AreEqual(
+                    UnityHelpersSettings.InlineEditorFoldoutBehavior.StartCollapsed,
+                    UnityHelpersSettings.GetInlineEditorFoldoutBehavior()
+                );
+            }
+            finally
+            {
+                property.enumValueIndex = original;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        [Test]
         public void EnsureWButtonCustomColorDefaults_ManualEditSkipsAutoSuggestion()
         {
             const string PaletteKey = "EditorManualWButton";

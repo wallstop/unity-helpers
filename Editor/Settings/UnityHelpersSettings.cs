@@ -156,6 +156,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             EditorGUIUtility.TrTextContent("WGroup Custom Colors");
         private static readonly GUIContent WEnumToggleButtonsCustomColorsContent =
             EditorGUIUtility.TrTextContent("WEnumToggleButtons Custom Colors");
+        private static readonly GUIContent InlineEditorFoldoutBehaviorContent =
+            EditorGUIUtility.TrTextContent(
+                "WInLineEditor Foldout Behavior",
+                "Default foldout state for inline object editors when a field does not specify a mode."
+            );
         private static readonly GUIContent DictionaryFoldoutTweenEnabledContent =
             EditorGUIUtility.TrTextContent(
                 "Tween Dictionary Foldouts",
@@ -270,6 +275,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             None = 0,
             Finite = 1,
             Infinite = 2,
+        }
+
+        public enum InlineEditorFoldoutBehavior
+        {
+            AlwaysOpen = 0,
+            StartExpanded = 1,
+            StartCollapsed = 2,
         }
 
         public readonly struct WGroupAutoIncludeConfiguration
@@ -587,7 +599,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             autoIncludeCount: 0,
             collapsible: true
         )]
-        private List<SerializableTypeIgnorePattern> serializableTypeIgnorePatterns = new();
+        private List<SerializableTypeIgnorePattern> serializableTypeIgnorePatterns;
         private string[] serializableTypeIgnorePatternCache = Array.Empty<string>();
         private int serializableTypeIgnorePatternCacheVersion = int.MinValue;
 
@@ -637,7 +649,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [FormerlySerializedAs("wbuttonPriorityColors")]
 #pragma warning disable CS0618 // Type or member is obsolete
         [HideInInspector]
-        private List<WButtonPriorityColor> legacyWButtonPriorityColors = new();
+        private List<WButtonPriorityColor> legacyWButtonPriorityColors;
 #pragma warning restore CS0618 // Type or member is obsolete
 
         [SerializeField]
@@ -645,14 +657,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private bool serializableTypePatternsInitialized;
 
         [NonSerialized]
-        private HashSet<string> wbuttonCustomColorSkipAutoSuggest = new HashSet<string>(
-            StringComparer.OrdinalIgnoreCase
-        );
+        private HashSet<string> wbuttonCustomColorSkipAutoSuggest;
 
         [NonSerialized]
-        private HashSet<string> wgroupCustomColorSkipAutoSuggest = new HashSet<string>(
-            StringComparer.OrdinalIgnoreCase
-        );
+        private HashSet<string> wgroupCustomColorSkipAutoSuggest;
+
+        [SerializeField]
+        [Tooltip(
+            "Default foldout behavior used by WInLineEditor when a field does not override the mode."
+        )]
+        [WGroup(
+            "InlineEditors",
+            displayName: "Inline Editors",
+            autoIncludeCount: 1,
+            collapsible: true
+        )]
+        private InlineEditorFoldoutBehavior inlineEditorFoldoutBehavior =
+            InlineEditorFoldoutBehavior.StartExpanded;
 
         internal HashSet<string> WButtonCustomColorSkipAutoSuggest
         {
@@ -1494,6 +1515,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return instance.serializableSetDuplicateTweenCycles;
         }
 
+        public static InlineEditorFoldoutBehavior GetInlineEditorFoldoutBehavior()
+        {
+            return instance.inlineEditorFoldoutBehavior;
+        }
+
         internal static void RegisterPaletteManualEdit(string propertyPath, string key)
         {
             if (string.IsNullOrWhiteSpace(propertyPath) || string.IsNullOrWhiteSpace(key))
@@ -1521,6 +1547,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             internal const string WEnumToggleButtonsCustomColors = nameof(
                 wenumToggleButtonsCustomColors
             );
+            internal const string InlineEditorFoldoutBehavior = nameof(inlineEditorFoldoutBehavior);
             internal const string WButtonFoldoutTweenEnabled = nameof(wbuttonFoldoutTweenEnabled);
             internal const string SerializableDictionaryFoldoutTweenEnabled = nameof(
                 serializableDictionaryFoldoutTweenEnabled
@@ -3555,6 +3582,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                     WButtonFoldoutBehaviorContent,
                                     settings.wbuttonFoldoutBehavior,
                                     value => settings.wbuttonFoldoutBehavior = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(inlineEditorFoldoutBehavior),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawEnumPopupField(
+                                    InlineEditorFoldoutBehaviorContent,
+                                    settings.inlineEditorFoldoutBehavior,
+                                    value => settings.inlineEditorFoldoutBehavior = value
                                 );
                                 dataChanged |= changed;
                                 return true;

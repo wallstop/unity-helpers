@@ -474,7 +474,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 position = contentPosition;
 
                 SerializedObject serializedObject = property.serializedObject;
-                serializedObject.UpdateIfRequiredOrScript();
 
                 string propertyPath = property.propertyPath;
                 bool hasInspector = TryGetSetInspector(
@@ -728,7 +727,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
             SerializedObject serializedObject = property.serializedObject;
-            serializedObject?.UpdateIfRequiredOrScript();
 
             float height = EditorGUIUtility.singleLineHeight;
 
@@ -3859,70 +3857,83 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
-            List<object> existingValues = new();
-            if (itemsProperty is { isArray: true })
+            Array snapshot = null;
+            bool hasSerializedArray = itemsProperty is { isArray: true };
+            int estimatedCount = hasSerializedArray ? Math.Max(0, itemsProperty.arraySize) : 0;
+            if (!hasSerializedArray)
             {
-                for (int index = 0; index < itemsProperty.arraySize; index++)
-                {
-                    SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
-                    existingValues.Add(ReadElementData(element).value);
-                }
+                snapshot = inspector.GetSerializedItemsSnapshot();
+                estimatedCount = snapshot?.Length ?? 0;
             }
-            else
+
+            using PooledResource<List<object>> existingValuesLease = Buffers<object>.GetList(
+                Math.Max(estimatedCount, 4),
+                out List<object> existingValues
+            );
             {
-                Array snapshot = inspector.GetSerializedItemsSnapshot();
-                if (snapshot is { Length: > 0 })
+                existingValues.Clear();
+                if (hasSerializedArray)
+                {
+                    for (int index = 0; index < itemsProperty.arraySize; index++)
+                    {
+                        SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
+                        existingValues.Add(ReadElementData(element).value);
+                    }
+                }
+                else if (snapshot is { Length: > 0 })
                 {
                     foreach (object value in snapshot)
                     {
                         existingValues.Add(value);
                     }
                 }
-            }
 
-            foreach (
-                object candidate in GenerateCandidateValues(elementType, inspector.UniqueCount)
-            )
-            {
-                if (inspector.ContainsElement(candidate))
+                foreach (
+                    object candidate in GenerateCandidateValues(elementType, inspector.UniqueCount)
+                )
                 {
-                    continue;
+                    if (inspector.ContainsElement(candidate))
+                    {
+                        continue;
+                    }
+
+                    if (!inspector.TryAddElement(candidate, out object normalizedValue))
+                    {
+                        continue;
+                    }
+
+                    SerializedObject serializedObject = property.serializedObject;
+                    existingValues.Add(normalizedValue);
+
+                    Array updated = Array.CreateInstance(elementType, existingValues.Count);
+                    for (int index = 0; index < existingValues.Count; index++)
+                    {
+                        object coerced = ConvertSnapshotValue(elementType, existingValues[index]);
+                        updated.SetValue(coerced, index);
+                    }
+
+                    inspector.SetSerializedItemsSnapshot(updated, preserveSerializedEntries: true);
+                    inspector.SynchronizeSerializedState();
+
+                    serializedObject.Update();
+                    property = serializedObject.FindProperty(propertyPath);
+                    itemsProperty = property?.FindPropertyRelative(
+                        SerializableHashSetSerializedPropertyNames.Items
+                    );
+                    int totalCount = itemsProperty is { isArray: true }
+                        ? itemsProperty.arraySize
+                        : 0;
+                    EnsurePaginationBounds(pagination, totalCount);
+                    EvaluateDuplicateState(property, itemsProperty, force: true);
+                    EvaluateNullEntryState(property, itemsProperty);
+                    SyncRuntimeSet(property);
+                    if (totalCount > 0)
+                    {
+                        pagination.selectedIndex = totalCount - 1;
+                    }
+                    MarkListCacheDirty(GetPropertyCacheKey(property));
+                    return true;
                 }
-
-                if (!inspector.TryAddElement(candidate, out object normalizedValue))
-                {
-                    continue;
-                }
-
-                SerializedObject serializedObject = property.serializedObject;
-                existingValues.Add(normalizedValue);
-
-                Array updated = Array.CreateInstance(elementType, existingValues.Count);
-                for (int index = 0; index < existingValues.Count; index++)
-                {
-                    object coerced = ConvertSnapshotValue(elementType, existingValues[index]);
-                    updated.SetValue(coerced, index);
-                }
-
-                inspector.SetSerializedItemsSnapshot(updated, preserveSerializedEntries: true);
-                inspector.SynchronizeSerializedState();
-
-                serializedObject.Update();
-                property = serializedObject.FindProperty(propertyPath);
-                itemsProperty = property?.FindPropertyRelative(
-                    SerializableHashSetSerializedPropertyNames.Items
-                );
-                int totalCount = itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0;
-                EnsurePaginationBounds(pagination, totalCount);
-                EvaluateDuplicateState(property, itemsProperty, force: true);
-                EvaluateNullEntryState(property, itemsProperty);
-                SyncRuntimeSet(property);
-                if (totalCount > 0)
-                {
-                    pagination.selectedIndex = totalCount - 1;
-                }
-                MarkListCacheDirty(GetPropertyCacheKey(property));
-                return true;
             }
 
             if (ElementTypeSupportsNull(elementType))
@@ -4689,40 +4700,49 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             int count = itemsProperty.arraySize;
-            List<SetElementData> elements = new(count);
-
-            for (int index = 0; index < count; index++)
+            using PooledResource<List<SetElementData>> elementsLease =
+                Buffers<SetElementData>.GetList(count, out List<SetElementData> elements);
             {
-                SerializedProperty elementProperty = itemsProperty.GetArrayElementAtIndex(index);
-                elements.Add(ReadElementData(elementProperty));
-            }
+                elements.Clear();
 
-            elements.Sort(
-                (left, right) =>
+                for (int index = 0; index < count; index++)
                 {
-                    int comparison = CompareComparableValues(left.comparable, right.comparable);
-                    if (comparison != 0)
-                    {
-                        return comparison;
-                    }
-
-                    string leftFallback = left.value != null ? left.value.ToString() : string.Empty;
-                    string rightFallback =
-                        right.value != null ? right.value.ToString() : string.Empty;
-                    return string.CompareOrdinal(leftFallback, rightFallback);
+                    SerializedProperty elementProperty = itemsProperty.GetArrayElementAtIndex(
+                        index
+                    );
+                    elements.Add(ReadElementData(elementProperty));
                 }
-            );
 
-            for (int index = 0; index < count; index++)
-            {
-                SerializedProperty elementProperty = itemsProperty.GetArrayElementAtIndex(index);
-                WriteElementValue(elementProperty, elements[index]);
-            }
+                elements.Sort(
+                    (left, right) =>
+                    {
+                        int comparison = CompareComparableValues(left.comparable, right.comparable);
+                        if (comparison != 0)
+                        {
+                            return comparison;
+                        }
 
-            inspector.ClearElements();
-            foreach (SetElementData element in elements)
-            {
-                inspector.TryAddElement(element.value, out object _);
+                        string leftFallback =
+                            left.value != null ? left.value.ToString() : string.Empty;
+                        string rightFallback =
+                            right.value != null ? right.value.ToString() : string.Empty;
+                        return string.CompareOrdinal(leftFallback, rightFallback);
+                    }
+                );
+
+                for (int index = 0; index < count; index++)
+                {
+                    SerializedProperty elementProperty = itemsProperty.GetArrayElementAtIndex(
+                        index
+                    );
+                    WriteElementValue(elementProperty, elements[index]);
+                }
+
+                inspector.ClearElements();
+                foreach (SetElementData element in elements)
+                {
+                    inspector.TryAddElement(element.value, out object _);
+                }
             }
 
             inspector.SynchronizeSerializedState();

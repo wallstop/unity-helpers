@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     using Core.Extension;
     using Core.Helper;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     /// <summary>
@@ -76,22 +77,50 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return AllAttributeNames;
             }
 
-            // Fallback to runtime reflection if cache is not available
-            AllAttributeNames = ReflectionHelpers
-                .GetAllLoadedTypes()
-                .Where(type => !type.IsAbstract)
-                .Where(type => type.IsSubclassOf(typeof(AttributesComponent)))
-                .SelectMany(type =>
-                    type.GetFields(
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                    )
-                )
-                .Where(fieldInfo => fieldInfo.FieldType == typeof(Attribute))
-                .Select(fieldInfo => fieldInfo.Name)
-                .Distinct()
-                .Ordered()
-                .ToArray();
+            using PooledResource<HashSet<string>> uniqueNamesLease = Buffers<string>.HashSet.Get(
+                out HashSet<string> uniqueNames
+            );
+            uniqueNames.Clear();
 
+            IEnumerable<Type> loadedTypes = ReflectionHelpers.GetAllLoadedTypes();
+            foreach (Type type in loadedTypes)
+            {
+                if (
+                    type == null
+                    || type.IsAbstract
+                    || !type.IsSubclassOf(typeof(AttributesComponent))
+                )
+                {
+                    continue;
+                }
+
+                FieldInfo[] fields = type.GetFields(
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                );
+                for (int index = 0; index < fields.Length; index++)
+                {
+                    FieldInfo fieldInfo = fields[index];
+                    if (fieldInfo.FieldType == typeof(Attribute))
+                    {
+                        uniqueNames.Add(fieldInfo.Name);
+                    }
+                }
+            }
+
+            if (uniqueNames.Count == 0)
+            {
+                AllAttributeNames = Array.Empty<string>();
+                return AllAttributeNames;
+            }
+
+            using PooledResource<List<string>> orderedNamesLease = Buffers<string>.GetList(
+                uniqueNames.Count,
+                out List<string> orderedNames
+            );
+            orderedNames.Clear();
+            orderedNames.AddRange(uniqueNames);
+            orderedNames.Sort(StringComparer.Ordinal);
+            AllAttributeNames = orderedNames.ToArray();
             return AllAttributeNames;
         }
 
@@ -298,19 +327,19 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// </example>
         public static List<string> GetActiveTags(this Object target, List<string> buffer = null)
         {
-            buffer ??= new List<string>();
-            buffer.Clear();
             if (target == null)
             {
-                return buffer;
+                return buffer ?? new List<string>(0);
             }
 
             if (!target.TryGetComponent(out TagHandler tagHandler))
             {
-                return buffer;
+                return buffer ?? new List<string>(0);
             }
 
-            return tagHandler.GetActiveTags(buffer);
+            List<string> targetBuffer = buffer ?? new List<string>();
+            targetBuffer.Clear();
+            return tagHandler.GetActiveTags(targetBuffer);
         }
 
         /// <summary>
@@ -372,19 +401,24 @@ namespace WallstopStudios.UnityHelpers.Tags
             List<EffectHandle> buffer = null
         )
         {
-            buffer ??= new List<EffectHandle>();
-            buffer.Clear();
+            if (string.IsNullOrEmpty(effectTag))
+            {
+                return buffer ?? new List<EffectHandle>(0);
+            }
+
             if (target == null)
             {
-                return buffer;
+                return buffer ?? new List<EffectHandle>(0);
             }
 
             if (!target.TryGetComponent(out TagHandler tagHandler))
             {
-                return buffer;
+                return buffer ?? new List<EffectHandle>(0);
             }
 
-            return tagHandler.GetHandlesWithTag(effectTag, buffer);
+            List<EffectHandle> targetBuffer = buffer ?? new List<EffectHandle>();
+            targetBuffer.Clear();
+            return tagHandler.GetHandlesWithTag(effectTag, targetBuffer);
         }
 
         /// <summary>
@@ -676,19 +710,19 @@ namespace WallstopStudios.UnityHelpers.Tags
             List<EffectHandle> buffer = null
         )
         {
-            buffer ??= new List<EffectHandle>();
-            buffer.Clear();
             if (target == null)
             {
-                return buffer;
+                return buffer ?? new List<EffectHandle>(0);
             }
 
             if (!target.TryGetComponent(out EffectHandler effectHandler))
             {
-                return buffer;
+                return buffer ?? new List<EffectHandle>(0);
             }
 
-            return effectHandler.GetActiveEffects(buffer);
+            List<EffectHandle> targetBuffer = buffer ?? new List<EffectHandle>();
+            targetBuffer.Clear();
+            return effectHandler.GetActiveEffects(targetBuffer);
         }
 
         /// <summary>

@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using WallstopStudios.UnityHelpers.Tests.Utils;
+    using Object = UnityEngine.Object;
 
     public sealed class SerializableSetPropertyDrawerTests : CommonTestBase
     {
@@ -55,6 +56,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             public SerializableHashSet<string> firstSet = new();
             public SerializableHashSet<string> secondSet = new();
+        }
+
+        private sealed class MixedFieldsSetHost : ScriptableObject
+        {
+            public int scalarValue;
+            public SerializableHashSet<int> set = new();
+        }
+
+        private sealed class SetScalarAfterHost : ScriptableObject
+        {
+            public SerializableHashSet<int> set = new();
+            public int trailingScalar;
         }
 
         private sealed class ComplexSetHost : ScriptableObject
@@ -2086,6 +2099,116 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Is.EqualTo(Mathf.Max(0f, baselineRow.width - horizontalPadding)).Within(0.0001f),
                 "Row content width should shrink by the total padding."
             );
+        }
+
+        [UnityTest]
+        public IEnumerator SetDrawerDoesNotResetUnappliedScalarChanges()
+        {
+            MixedFieldsSetHost host = Track(ScriptableObject.CreateInstance<MixedFieldsSetHost>());
+            SerializedObject serializedHost = TrackDisposable(new SerializedObject(host));
+            serializedHost.Update();
+
+            SerializedProperty scalarProperty = serializedHost.FindProperty(
+                nameof(MixedFieldsSetHost.scalarValue)
+            );
+            SerializedProperty setProperty = serializedHost.FindProperty(
+                nameof(MixedFieldsSetHost.set)
+            );
+
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            Rect controlRect = new Rect(0f, 0f, 320f, 280f);
+            GUIContent label = new GUIContent("Set");
+
+            drawer.GetPropertyHeight(setProperty, label);
+
+            scalarProperty.intValue = 4242;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(controlRect, setProperty, label);
+            });
+
+            serializedHost.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.That(host.scalarValue, Is.EqualTo(4242));
+        }
+
+        [UnityTest]
+        public IEnumerator SetDrawerMultiObjectEditKeepsScalarChanges()
+        {
+            MixedFieldsSetHost first = Track(ScriptableObject.CreateInstance<MixedFieldsSetHost>());
+            MixedFieldsSetHost second = Track(
+                ScriptableObject.CreateInstance<MixedFieldsSetHost>()
+            );
+            SerializedObject serializedHosts = TrackDisposable(
+                new SerializedObject(new Object[] { first, second })
+            );
+            serializedHosts.Update();
+
+            SerializedProperty scalarProperty = serializedHosts.FindProperty(
+                nameof(MixedFieldsSetHost.scalarValue)
+            );
+            SerializedProperty setProperty = serializedHosts.FindProperty(
+                nameof(MixedFieldsSetHost.set)
+            );
+
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            Rect controlRect = new Rect(0f, 0f, 320f, 280f);
+            GUIContent label = new GUIContent("Set");
+
+            drawer.GetPropertyHeight(setProperty, label);
+
+            scalarProperty.intValue = 5150;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(controlRect, setProperty, label);
+            });
+
+            serializedHosts.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.That(
+                first.scalarValue,
+                Is.EqualTo(5150),
+                "First target should retain scalar edit."
+            );
+            Assert.That(
+                second.scalarValue,
+                Is.EqualTo(5150),
+                "Second target should retain scalar edit."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator SetDrawerDoesNotResetTrailingScalarField()
+        {
+            SetScalarAfterHost host = Track(ScriptableObject.CreateInstance<SetScalarAfterHost>());
+            SerializedObject serializedHost = TrackDisposable(new SerializedObject(host));
+            serializedHost.Update();
+
+            SerializedProperty setProperty = serializedHost.FindProperty(
+                nameof(SetScalarAfterHost.set)
+            );
+            SerializedProperty trailingScalar = serializedHost.FindProperty(
+                nameof(SetScalarAfterHost.trailingScalar)
+            );
+
+            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
+            Rect controlRect = new Rect(0f, 0f, 320f, 280f);
+            GUIContent label = new GUIContent("Set");
+
+            drawer.GetPropertyHeight(setProperty, label);
+
+            trailingScalar.intValue = 777;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(controlRect, setProperty, label);
+            });
+
+            serializedHost.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.That(host.trailingScalar, Is.EqualTo(777));
         }
 
         private static string DumpIntArray(SerializedProperty property)

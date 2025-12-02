@@ -490,8 +490,26 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// </example>
         public List<string> GetActiveTags(List<string> buffer = null)
         {
-            buffer ??= new List<string>();
-            buffer.Clear();
+            List<string> target = buffer;
+            if (target != null)
+            {
+                target.Clear();
+            }
+
+            if (_tagCount.Count == 0)
+            {
+                return target ?? new List<string>(0);
+            }
+
+            if (target == null)
+            {
+                target = new List<string>(_tagCount.Count);
+            }
+            else if (target.Capacity < _tagCount.Count)
+            {
+                target.Capacity = _tagCount.Count;
+            }
+
             foreach (KeyValuePair<string, uint> entry in _tagCount)
             {
                 if (entry.Value == 0)
@@ -499,10 +517,10 @@ namespace WallstopStudios.UnityHelpers.Tags
                     continue;
                 }
 
-                buffer.Add(entry.Key);
+                target.Add(entry.Key);
             }
 
-            return buffer;
+            return target;
         }
 
         /// <summary>
@@ -527,13 +545,23 @@ namespace WallstopStudios.UnityHelpers.Tags
             List<EffectHandle> buffer = null
         )
         {
-            buffer ??= new List<EffectHandle>();
-            buffer.Clear();
             if (string.IsNullOrEmpty(effectTag))
             {
-                return buffer;
+                return buffer ?? new List<EffectHandle>(0);
             }
 
+            List<EffectHandle> target = buffer;
+            if (target != null)
+            {
+                target.Clear();
+            }
+
+            if (_effectHandles.Count == 0)
+            {
+                return target ?? new List<EffectHandle>(0);
+            }
+
+            int estimatedCapacity = Math.Min(_effectHandles.Count, 8);
             foreach (EffectHandle handle in _effectHandles.Values)
             {
                 if (
@@ -541,11 +569,12 @@ namespace WallstopStudios.UnityHelpers.Tags
                     && handle.effect.effectTags.Contains(effectTag)
                 )
                 {
-                    buffer.Add(handle);
+                    target ??= new List<EffectHandle>(estimatedCapacity);
+                    target.Add(handle);
                 }
             }
 
-            return buffer;
+            return target ?? new List<EffectHandle>(0);
         }
 
         /// <summary>
@@ -580,31 +609,49 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// </example>
         public List<EffectHandle> RemoveTag(string effectTag, List<EffectHandle> buffer = null)
         {
-            buffer ??= new List<EffectHandle>();
-            buffer.Clear();
             if (string.IsNullOrEmpty(effectTag))
             {
-                return buffer;
+                if (buffer != null)
+                {
+                    buffer.Clear();
+                    return buffer;
+                }
+
+                return new List<EffectHandle>(0);
             }
 
-            foreach (EffectHandle handle in _effectHandles.Values)
+            List<EffectHandle> target = buffer;
+            if (target != null)
             {
-                if (
-                    handle.effect.effectTags != null
-                    && handle.effect.effectTags.Contains(effectTag)
-                )
+                target.Clear();
+            }
+
+            if (_effectHandles.Count > 0)
+            {
+                int estimatedCapacity = Math.Min(_effectHandles.Count, 8);
+                foreach (EffectHandle handle in _effectHandles.Values)
                 {
-                    buffer.Add(handle);
+                    if (
+                        handle.effect.effectTags != null
+                        && handle.effect.effectTags.Contains(effectTag)
+                    )
+                    {
+                        target ??= new List<EffectHandle>(estimatedCapacity);
+                        target.Add(handle);
+                    }
+                }
+
+                if (target != null)
+                {
+                    foreach (EffectHandle handle in target)
+                    {
+                        ForceRemoveTags(handle);
+                    }
                 }
             }
 
-            foreach (EffectHandle handle in buffer)
-            {
-                ForceRemoveTags(handle);
-            }
-
             InternalRemoveTag(effectTag, allInstances: true);
-            return buffer;
+            return target ?? new List<EffectHandle>(0);
         }
 
         /// <summary>

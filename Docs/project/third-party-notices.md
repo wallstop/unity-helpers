@@ -23,6 +23,14 @@ Unity-Serializable-Dictionary
 - License URL: [MIT License](https://opensource.org/licenses/MIT)
 - Notes: Adapted naming and serialization cache handling to align with Wallstop Studios Unity Helpers conventions.
 
+Unity Editor Toolbox (Inline Editor)
+
+- Description: Inline inspector drawer inspiration for editing object references in-place.
+- Upstream: [GitHub repository](https://github.com/arimger/Unity-Editor-Toolbox)
+- License: MIT License
+- License URL: [MIT License](https://opensource.org/licenses/MIT)
+- Notes: Portions of `WInLineEditorDrawer` build upon concepts from the toolbox’s InlineEditor drawer implementation.
+
 Additional notes
 
 - System.Text.Json and other .NET BCL components are used as part of the .NET runtime and are subject to their respective licenses (e.g., MIT for dotnet/runtime). No vendored sources from these components are included in this repository.
@@ -33,7 +41,7 @@ Acknowledgements
 
 Full License Texts
 
-MIT License (Unity-Serializable-Dictionary)
+MIT License (Unity-Serializable-Dictionary, Unity Editor Toolbox Inline Editor)
 
 MIT License
 

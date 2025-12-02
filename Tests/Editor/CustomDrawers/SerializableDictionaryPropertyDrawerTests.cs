@@ -19,6 +19,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using WallstopStudios.UnityHelpers.Tests.Utils;
     using WallstopStudios.UnityHelpers.Utils;
+    using Object = UnityEngine.Object;
 
     public sealed class SerializableDictionaryPropertyDrawerTests : CommonTestBase
     {
@@ -56,6 +57,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         private sealed class LabelStressDictionaryHost : ScriptableObject
         {
             public StringLabelStressDictionary dictionary = new();
+        }
+
+        private sealed class MixedFieldsDictionaryHost : ScriptableObject
+        {
+            public int scalarValue;
+            public IntStringDictionary dictionary = new();
+        }
+
+        private sealed class DictionaryScalarAfterHost : ScriptableObject
+        {
+            public IntStringDictionary dictionary = new();
+            public int trailingScalar;
         }
 
         private sealed class ScriptableObjectDictionaryHost : ScriptableObject
@@ -2369,6 +2382,144 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     .Within(0.0001f),
                 "Pending value foldout gutter should match the configured width."
             );
+        }
+
+        [UnityTest]
+        public IEnumerator DictionaryDrawerDoesNotResetUnappliedScalarChanges()
+        {
+            MixedFieldsDictionaryHost host = Track(
+                ScriptableObject.CreateInstance<MixedFieldsDictionaryHost>()
+            );
+            SerializedObject serializedHost = TrackDisposable(new SerializedObject(host));
+            serializedHost.Update();
+
+            SerializedProperty scalarProperty = serializedHost.FindProperty(
+                nameof(MixedFieldsDictionaryHost.scalarValue)
+            );
+            SerializedProperty dictionaryProperty = serializedHost.FindProperty(
+                nameof(MixedFieldsDictionaryHost.dictionary)
+            );
+
+            SerializableDictionaryPropertyDrawer drawer =
+                new SerializableDictionaryPropertyDrawer();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(MixedFieldsDictionaryHost),
+                nameof(MixedFieldsDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new Rect(0f, 0f, 360f, 320f);
+            GUIContent label = new GUIContent("Dictionary");
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+            drawer.GetPropertyHeight(dictionaryProperty, label);
+
+            scalarProperty.intValue = 1337;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(controlRect, dictionaryProperty, label);
+            });
+
+            serializedHost.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.That(host.scalarValue, Is.EqualTo(1337));
+        }
+
+        [UnityTest]
+        public IEnumerator DictionaryDrawerMultiObjectEditKeepsScalarChanges()
+        {
+            MixedFieldsDictionaryHost first = Track(
+                ScriptableObject.CreateInstance<MixedFieldsDictionaryHost>()
+            );
+            MixedFieldsDictionaryHost second = Track(
+                ScriptableObject.CreateInstance<MixedFieldsDictionaryHost>()
+            );
+            SerializedObject serializedHosts = TrackDisposable(
+                new SerializedObject(new Object[] { first, second })
+            );
+            serializedHosts.Update();
+
+            SerializedProperty scalarProperty = serializedHosts.FindProperty(
+                nameof(MixedFieldsDictionaryHost.scalarValue)
+            );
+            SerializedProperty dictionaryProperty = serializedHosts.FindProperty(
+                nameof(MixedFieldsDictionaryHost.dictionary)
+            );
+
+            SerializableDictionaryPropertyDrawer drawer =
+                new SerializableDictionaryPropertyDrawer();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(MixedFieldsDictionaryHost),
+                nameof(MixedFieldsDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new Rect(0f, 0f, 360f, 320f);
+            GUIContent label = new GUIContent("Dictionary");
+
+            drawer.GetPropertyHeight(dictionaryProperty, label);
+
+            scalarProperty.intValue = 2112;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(controlRect, dictionaryProperty, label);
+            });
+
+            serializedHosts.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.That(
+                first.scalarValue,
+                Is.EqualTo(2112),
+                "First target should keep scalar edit."
+            );
+            Assert.That(
+                second.scalarValue,
+                Is.EqualTo(2112),
+                "Second target should keep scalar edit."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator DictionaryDrawerDoesNotResetTrailingScalarField()
+        {
+            DictionaryScalarAfterHost host = Track(
+                ScriptableObject.CreateInstance<DictionaryScalarAfterHost>()
+            );
+            SerializedObject serializedHost = TrackDisposable(new SerializedObject(host));
+            serializedHost.Update();
+
+            SerializedProperty dictionaryProperty = serializedHost.FindProperty(
+                nameof(DictionaryScalarAfterHost.dictionary)
+            );
+            SerializedProperty trailingScalarProperty = serializedHost.FindProperty(
+                nameof(DictionaryScalarAfterHost.trailingScalar)
+            );
+
+            SerializableDictionaryPropertyDrawer drawer =
+                new SerializableDictionaryPropertyDrawer();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(DictionaryScalarAfterHost),
+                nameof(DictionaryScalarAfterHost.dictionary)
+            );
+
+            Rect controlRect = new Rect(0f, 0f, 360f, 320f);
+            GUIContent label = new GUIContent("Dictionary");
+
+            drawer.GetPropertyHeight(dictionaryProperty, label);
+
+            trailingScalarProperty.intValue = 9001;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(controlRect, dictionaryProperty, label);
+            });
+
+            serializedHost.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.That(host.trailingScalar, Is.EqualTo(9001));
         }
 
         [Test]
