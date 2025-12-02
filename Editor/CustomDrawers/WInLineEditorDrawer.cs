@@ -463,9 +463,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string scrollKey = BuildScrollKey(property);
             bool useSerializedInspector = inspectorHeight.UsesSerializedInspector;
             bool needsHorizontalScroll =
-                inlineAttribute.EnableScrolling
-                && inlineAttribute.MinInspectorWidth > 0f
-                && inlineAttribute.MinInspectorWidth - contentRect.width > 0.5f;
+                inlineAttribute.EnableScrolling && inspectorHeight.RequiresHorizontalScrollbar;
             bool needsVerticalScroll =
                 inlineAttribute.EnableScrolling
                 && inspectorHeight.ContentHeight > contentRect.height + 0.5f;
@@ -585,26 +583,45 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             Editor editor = GetOrCreateEditor(value);
-            if (TryCalculateDefaultInspectorContentHeight(value, editor, out float contentHeight))
+            SerializedObject analysisObject = GetSerializedObjectForAnalysis(editor, value);
+            bool hasSimpleLayout =
+                analysisObject != null && SerializedObjectHasOnlySimpleProperties(analysisObject);
+
+            if (
+                TryCalculateSerializedInspectorHeight(
+                    value,
+                    editor,
+                    analysisObject,
+                    out float contentHeight
+                )
+            )
             {
                 InspectorHeightInfo info = BuildInspectorHeightInfo(
                     inlineAttribute,
                     availableWidth,
                     contentHeight,
-                    true
+                    true,
+                    hasSimpleLayout
                 );
                 return info;
             }
 
             float fallbackHeight = inlineAttribute.InspectorHeight;
-            return BuildInspectorHeightInfo(inlineAttribute, availableWidth, fallbackHeight, false);
+            return BuildInspectorHeightInfo(
+                inlineAttribute,
+                availableWidth,
+                fallbackHeight,
+                false,
+                hasSimpleLayout
+            );
         }
 
         private static InspectorHeightInfo BuildInspectorHeightInfo(
             WInLineEditorAttribute inlineAttribute,
             float availableWidth,
             float contentHeight,
-            bool usesSerializedInspector
+            bool usesSerializedInspector,
+            bool hasSimpleLayout
         )
         {
             float displayHeight = inlineAttribute.EnableScrolling
@@ -612,9 +629,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 : contentHeight;
 
             float effectiveWidth = Mathf.Max(0f, availableWidth - (ContentPadding * 2f));
+            bool shouldRespectMinWidth =
+                inlineAttribute.HasExplicitMinInspectorWidth || !hasSimpleLayout;
             bool requiresHorizontalScroll =
                 inlineAttribute.EnableScrolling
                 && inlineAttribute.MinInspectorWidth > 0f
+                && shouldRespectMinWidth
                 && inlineAttribute.MinInspectorWidth - effectiveWidth > 0.5f;
             float horizontalScrollbarHeight = requiresHorizontalScroll
                 ? GetHorizontalScrollbarHeight()
@@ -625,13 +645,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 contentHeight,
                 finalDisplayHeight,
                 usesSerializedInspector,
-                horizontalScrollbarHeight
+                horizontalScrollbarHeight,
+                requiresHorizontalScroll
             );
         }
 
-        private static bool TryCalculateDefaultInspectorContentHeight(
+        private static bool TryCalculateSerializedInspectorHeight(
             Object value,
             Editor editor,
+            SerializedObject analysisObject,
             out float contentHeight
         )
         {
@@ -642,20 +664,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             SerializedObject serializedObject =
-                editor != null ? editor.serializedObject : new SerializedObject(value);
+                analysisObject
+                ?? (editor != null ? editor.serializedObject : new SerializedObject(value));
             contentHeight = CalculateSerializedInspectorHeight(serializedObject);
             return true;
         }
 
         private static bool CanUseSerializedInspector(Object value, Editor editor)
         {
-            if (value == null)
-            {
-                return false;
-            }
-
-            bool supportedTarget = value is ScriptableObject || value is MonoBehaviour;
-            if (!supportedTarget)
+            if (!SupportsSerializedInspectorTarget(value))
             {
                 return false;
             }
@@ -701,27 +718,104 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return Mathf.Max(0f, height);
         }
 
+        private static SerializedObject GetSerializedObjectForAnalysis(Editor editor, Object value)
+        {
+            if (!SupportsSerializedInspectorTarget(value))
+            {
+                return null;
+            }
+
+            SerializedObject serializedObject =
+                editor != null ? editor.serializedObject : new SerializedObject(value);
+            return serializedObject;
+        }
+
+        private static bool SupportsSerializedInspectorTarget(Object value)
+        {
+            return value is ScriptableObject || value is MonoBehaviour;
+        }
+
+        private static bool SerializedObjectHasOnlySimpleProperties(
+            SerializedObject serializedObject
+        )
+        {
+            if (serializedObject == null)
+            {
+                return false;
+            }
+
+            SerializedProperty iterator = serializedObject.GetIterator();
+            bool enterChildren = true;
+            bool hasAnyProperty = false;
+            while (iterator.NextVisible(enterChildren))
+            {
+                if (iterator.propertyPath == ScriptPropertyPath)
+                {
+                    enterChildren = false;
+                    continue;
+                }
+
+                hasAnyProperty = true;
+                if (!IsSimpleSerializedProperty(iterator))
+                {
+                    return false;
+                }
+
+                enterChildren = false;
+            }
+
+            return hasAnyProperty;
+        }
+
+        private static bool IsSimpleSerializedProperty(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return true;
+            }
+
+            if (property.isArray)
+            {
+                return false;
+            }
+
+            switch (property.propertyType)
+            {
+                case SerializedPropertyType.Generic:
+                case SerializedPropertyType.AnimationCurve:
+                case SerializedPropertyType.Gradient:
+                case SerializedPropertyType.ManagedReference:
+                    return false;
+                default:
+                    return true;
+            }
+        }
+
         private readonly struct InspectorHeightInfo
         {
             public InspectorHeightInfo(
                 float contentHeight,
                 float displayHeight,
                 bool usesSerializedInspector,
-                float horizontalScrollbarHeight
+                float horizontalScrollbarHeight,
+                bool requiresHorizontalScrollbar
             )
             {
                 ContentHeight = Mathf.Max(0f, contentHeight);
                 DisplayHeight = Mathf.Max(0f, displayHeight);
                 UsesSerializedInspector = usesSerializedInspector;
                 HorizontalScrollbarHeight = Mathf.Max(0f, horizontalScrollbarHeight);
+                RequiresHorizontalScrollbar = requiresHorizontalScrollbar;
             }
 
             public float ContentHeight { get; }
             public float DisplayHeight { get; }
             public bool UsesSerializedInspector { get; }
             public float HorizontalScrollbarHeight { get; }
+            public bool RequiresHorizontalScrollbar { get; }
 
-            public static InspectorHeightInfo Empty => new InspectorHeightInfo(0f, 0f, false, 0f);
+            public static InspectorHeightInfo Empty =>
+                new InspectorHeightInfo(0f, 0f, false, 0f, false);
         }
 
         private static bool DrawHeader(
@@ -914,6 +1008,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             string key = BuildFoldoutKey(property);
             FoldoutStates[key] = expanded;
+        }
+
+        internal static bool UsesHorizontalScrollbarForTesting(
+            Object value,
+            WInLineEditorAttribute inlineAttribute,
+            float availableWidth
+        )
+        {
+            if (value == null || inlineAttribute == null)
+            {
+                return false;
+            }
+
+            InspectorHeightInfo inspectorHeightInfo = ResolveInspectorHeightInfo(
+                value,
+                inlineAttribute,
+                availableWidth
+            );
+            return inspectorHeightInfo.RequiresHorizontalScrollbar;
         }
     }
 }

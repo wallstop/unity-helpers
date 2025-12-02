@@ -85,6 +85,68 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             Assert.That(inlineHeight, Is.EqualTo(expectedHeight).Within(0.01f));
         }
 
+        [Test]
+        public void SimpleTargetsDoNotTriggerHorizontalScrollbars()
+        {
+            SimpleInlineEditorTarget target = CreateHiddenInstance<SimpleInlineEditorTarget>();
+            try
+            {
+                WInLineEditorAttribute inlineAttribute = new WInLineEditorAttribute();
+                bool usesScrollbar = WInLineEditorDrawer.UsesHorizontalScrollbarForTesting(
+                    target,
+                    inlineAttribute,
+                    availableWidth: 360f
+                );
+                Assert.That(usesScrollbar, Is.False);
+            }
+            finally
+            {
+                ScriptableObject.DestroyImmediate(target);
+            }
+        }
+
+        [Test]
+        public void ComplexTargetsStillTriggerHorizontalScrollbars()
+        {
+            ArrayInlineEditorTarget target = CreateHiddenInstance<ArrayInlineEditorTarget>();
+            try
+            {
+                WInLineEditorAttribute inlineAttribute = new WInLineEditorAttribute();
+                bool usesScrollbar = WInLineEditorDrawer.UsesHorizontalScrollbarForTesting(
+                    target,
+                    inlineAttribute,
+                    availableWidth: 360f
+                );
+                Assert.That(usesScrollbar, Is.True);
+            }
+            finally
+            {
+                ScriptableObject.DestroyImmediate(target);
+            }
+        }
+
+        [Test]
+        public void ExplicitMinWidthOverridesSimpleTargetHeuristic()
+        {
+            SimpleInlineEditorTarget target = CreateHiddenInstance<SimpleInlineEditorTarget>();
+            try
+            {
+                WInLineEditorAttribute inlineAttribute = new WInLineEditorAttribute(
+                    minInspectorWidth: 720f
+                );
+                bool usesScrollbar = WInLineEditorDrawer.UsesHorizontalScrollbarForTesting(
+                    target,
+                    inlineAttribute,
+                    availableWidth: 360f
+                );
+                Assert.That(usesScrollbar, Is.True);
+            }
+            finally
+            {
+                ScriptableObject.DestroyImmediate(target);
+            }
+        }
+
         private static float MeasurePropertyHeight<THost>(
             bool propertyExpanded,
             bool? setInlineExpanded = null
@@ -130,6 +192,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             }
         }
 
+        private static T CreateHiddenInstance<T>()
+            where T : ScriptableObject
+        {
+            T instance = ScriptableObject.CreateInstance<T>();
+            instance.hideFlags = HideFlags.HideAndDontSave;
+            return instance;
+        }
+
         private sealed class InlineEditorHost : ScriptableObject
         {
             [WInLineEditor(WInLineEditorMode.FoldoutCollapsed)]
@@ -146,6 +216,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             [WInLineEditor(WInLineEditorMode.FoldoutCollapsed, 400f, false, 64f, true, true, false)]
             public InlineEditorTarget collapsedTarget;
+        }
+
+        private sealed class SimpleInlineEditorTarget : ScriptableObject
+        {
+            public int number;
+            public string description;
+        }
+
+        private sealed class ArrayInlineEditorTarget : ScriptableObject
+        {
+            public int[] values = new int[2];
         }
 
         private sealed class InlineEditorTarget : ScriptableObject
