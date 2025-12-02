@@ -44,7 +44,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             {
                 bool expanded = true;
                 bool allowHeader = !definition.HideHeader;
-                if (definition.Collapsible && allowHeader)
+                bool headerHasFoldout = HeaderHasFoldout(definition);
+                if (headerHasFoldout)
                 {
                     expanded = DrawFoldoutHeader(definition, palette, foldoutStates);
                 }
@@ -144,10 +145,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             );
 
             WGroupStyles.DrawHeaderBackground(headerRect, palette.BackgroundColor);
+            bool headerHasFoldout = HeaderHasFoldout(definition);
             Rect foldoutRect = WGroupHeaderVisualUtility.GetContentRect(
                 headerRect,
                 WGroupStyles.HeaderTopPadding,
-                WGroupStyles.HeaderBottomPadding
+                WGroupStyles.HeaderBottomPadding,
+                headerHasFoldout
             );
 
             int originalIndent = EditorGUI.indentLevel;
@@ -199,6 +202,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             WGroupStyles.DrawHeaderBorder(labelRect, palette.BackgroundColor);
             GUILayout.Space(2f);
             return labelRect;
+        }
+
+        private static bool HeaderHasFoldout(WGroupDefinition definition)
+        {
+            if (definition == null)
+            {
+                return false;
+            }
+
+            if (definition.HideHeader)
+            {
+                return false;
+            }
+
+            return definition.Collapsible;
         }
 
         private static void AddContentPadding()
@@ -270,6 +288,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         private const float HorizontalContentPadding = 3f;
         private const float VerticalContentPaddingTop = 1f;
         private const float VerticalContentPaddingBottom = 3f;
+        private const float FoldoutContentOffset = 9f;
 
         internal static void DrawHeaderBackground(Rect rect, Color baseColor)
         {
@@ -284,13 +303,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
         internal static Rect GetContentRect(Rect rect)
         {
-            return GetContentRect(rect, 0f, 0f);
+            return GetContentRect(rect, 0f, 0f, false);
         }
 
         internal static Rect GetContentRect(
             Rect rect,
             float additionalTopPadding,
-            float additionalBottomPadding
+            float additionalBottomPadding,
+            bool includeFoldoutOffset = false
         )
         {
             if (rect.width <= 0f || rect.height <= 0f)
@@ -306,6 +326,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
             contentRect.xMin += horizontal;
             contentRect.xMax -= horizontal;
+
+            if (includeFoldoutOffset)
+            {
+                contentRect.xMin += FoldoutContentOffset;
+            }
             contentRect.yMin += topPadding;
             contentRect.yMax -= bottomPadding;
 
