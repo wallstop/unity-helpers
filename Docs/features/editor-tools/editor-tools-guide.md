@@ -1172,7 +1172,7 @@ Custom property drawers enhance the inspector with conditional display, validati
 - `enableScrolling` — wrap the inspector body in a scroll view for long inspectors.
 - `minInspectorWidth` (default 520) — when the content area is narrower than this width, a horizontal scrollbar appears; set to `0` to disable the safeguard.
 
-> WInLineEditor respects the **Inline Editors** defaults inside Unity Helpers Settings. Leave the `mode` argument unset to inherit the global foldout behaviour, or supply a `WInLineEditorMode` per field to override it.
+> WInLineEditor respects the **Inline Editors** defaults inside Unity Helpers Settings. Leave the `mode` argument unset to inherit the global foldout behaviour, or supply a `WInLineEditorMode` per field to override it. By default, Inline Editors start collapsed to mirror collapsible WGroups, so `[WInLineEditor]` without a mode expands only when you opt into a different setting.
 
 **Examples:**
 

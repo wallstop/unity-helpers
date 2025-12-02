@@ -673,7 +673,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             collapsible: true
         )]
         private InlineEditorFoldoutBehavior inlineEditorFoldoutBehavior =
-            InlineEditorFoldoutBehavior.StartExpanded;
+            InlineEditorFoldoutBehavior.StartCollapsed;
 
         internal HashSet<string> WButtonCustomColorSkipAutoSuggest
         {

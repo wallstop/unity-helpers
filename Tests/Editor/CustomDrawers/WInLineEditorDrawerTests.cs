@@ -1,12 +1,14 @@
 #if UNITY_EDITOR
 namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 {
+    using System;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Internal;
+    using WallstopStudios.UnityHelpers.Editor.Settings;
 
     public sealed class WInLineEditorDrawerTests
     {
@@ -53,6 +55,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             );
             float expandedHeight = MeasurePropertyHeight<InlineEditorHost>(propertyExpanded: true);
             Assert.That(expandedHeight, Is.EqualTo(collapsedHeight));
+        }
+
+        [Test]
+        public void DefaultModeUsesSettingsWhenCollapsed()
+        {
+            using InlineEditorFoldoutBehaviorScope scope = new InlineEditorFoldoutBehaviorScope(
+                UnityHelpersSettings.InlineEditorFoldoutBehavior.StartCollapsed
+            );
+            float expectedCollapsed = MeasurePropertyHeight<DefaultSettingsInlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: false
+            );
+            float defaultHeight = MeasurePropertyHeight<DefaultSettingsInlineEditorHost>(
+                propertyExpanded: false
+            );
+            Assert.That(defaultHeight, Is.EqualTo(expectedCollapsed).Within(0.001f));
+        }
+
+        [Test]
+        public void DefaultModeUsesSettingsWhenExpanded()
+        {
+            using InlineEditorFoldoutBehaviorScope scope = new InlineEditorFoldoutBehaviorScope(
+                UnityHelpersSettings.InlineEditorFoldoutBehavior.StartExpanded
+            );
+            float expectedExpanded = MeasurePropertyHeight<DefaultSettingsInlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: true
+            );
+            float defaultHeight = MeasurePropertyHeight<DefaultSettingsInlineEditorHost>(
+                propertyExpanded: false
+            );
+            Assert.That(defaultHeight, Is.EqualTo(expectedExpanded).Within(0.001f));
         }
 
         [Test]
@@ -243,6 +277,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             public InlineEditorTarget collapsedTarget;
         }
 
+        private sealed class DefaultSettingsInlineEditorHost : ScriptableObject
+        {
+            [WInLineEditor]
+            public InlineEditorTarget collapsedTarget;
+        }
+
         private sealed class HeaderOnlyInlineEditorHost : ScriptableObject
         {
             [WInLineEditor(mode: WInLineEditorMode.FoldoutCollapsed, drawObjectField: false)]
@@ -315,6 +355,51 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         private sealed class InlineEditorTarget : ScriptableObject
         {
             public int sampleValue;
+        }
+
+        private sealed class InlineEditorFoldoutBehaviorScope : IDisposable
+        {
+            private readonly SerializedObject serializedObject;
+            private readonly SerializedProperty property;
+            private readonly int originalValue;
+            private bool disposed;
+
+            public InlineEditorFoldoutBehaviorScope(
+                UnityHelpersSettings.InlineEditorFoldoutBehavior behavior
+            )
+            {
+                UnityHelpersSettings settings = UnityHelpersSettings.instance;
+                serializedObject = new SerializedObject(settings);
+                serializedObject.Update();
+                property = serializedObject.FindProperty(
+                    UnityHelpersSettings.SerializedPropertyNames.InlineEditorFoldoutBehavior
+                );
+                if (property == null)
+                {
+                    serializedObject.Dispose();
+                    throw new InvalidOperationException(
+                        "Could not locate Inline Editors foldout behavior property."
+                    );
+                }
+
+                originalValue = property.enumValueIndex;
+                property.enumValueIndex = (int)behavior;
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            public void Dispose()
+            {
+                if (disposed)
+                {
+                    return;
+                }
+
+                disposed = true;
+                serializedObject.Update();
+                property.enumValueIndex = originalValue;
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                serializedObject.Dispose();
+            }
         }
     }
 }
