@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     public sealed class WInLineEditorDrawerTests
     {
         private const string CollapsedTargetPropertyName = nameof(InlineEditorHost.collapsedTarget);
+        private const float InlinePaddingContribution = 4f;
 
         [SetUp]
         public void SetUp()
@@ -82,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 setInlineExpanded: true
             );
             float inlineHeight = expandedHeight - collapsedHeight;
-            float expectedHeight = EditorGUIUtility.singleLineHeight;
+            float expectedHeight = EditorGUIUtility.singleLineHeight + InlinePaddingContribution;
             Assert.That(inlineHeight, Is.EqualTo(expectedHeight).Within(0.01f));
         }
 
@@ -162,6 +163,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             float inlineHeight = expandedHeight - collapsedHeight;
             Assert.That(inlineHeight, Is.GreaterThan(40f));
             Assert.That(inlineHeight, Is.LessThan(140f));
+        }
+
+        [Test]
+        public void InlineInspectorContentRectAppliesPadding()
+        {
+            Rect outer = new Rect(10f, 20f, 200f, 100f);
+            Rect content = WInLineEditorDrawer.GetInlineContentRectForTesting(outer);
+            Assert.That(content.x, Is.EqualTo(outer.x + 2f));
+            Assert.That(content.y, Is.EqualTo(outer.y + 2f));
+            Assert.That(content.width, Is.EqualTo(outer.width - 4f));
+            Assert.That(content.height, Is.EqualTo(outer.height - 4f));
+        }
+
+        [Test]
+        public void InlineInspectorContentRectClampsHeightToZero()
+        {
+            Rect outer = new Rect(0f, 0f, 4f, 3f);
+            Rect content = WInLineEditorDrawer.GetInlineContentRectForTesting(outer);
+            Assert.That(content.height, Is.EqualTo(0f));
         }
 
         private static float MeasurePropertyHeight<THost>(

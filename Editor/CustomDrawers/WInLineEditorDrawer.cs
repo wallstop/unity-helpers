@@ -454,12 +454,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             Rect backgroundRect = new Rect(rect.x, rect.y, rect.width, rect.height);
             GUI.Box(backgroundRect, GUIContent.none, EditorStyles.helpBox);
-            Rect contentRect = new Rect(
-                backgroundRect.x + ContentPadding,
-                backgroundRect.y,
-                backgroundRect.width - (ContentPadding * 2f),
-                backgroundRect.height
-            );
+            Rect contentRect = GetInlineContentRect(backgroundRect);
 
             string scrollKey = BuildScrollKey(property);
             bool useSerializedInspector = inspectorHeight.UsesSerializedInspector;
@@ -640,13 +635,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 ? GetHorizontalScrollbarHeight()
                 : 0f;
 
-            float finalDisplayHeight = displayHeight + horizontalScrollbarHeight;
+            float paddingContribution = ContentPadding * 2f;
+            float finalDisplayHeight =
+                displayHeight + horizontalScrollbarHeight + paddingContribution;
             return new InspectorHeightInfo(
                 contentHeight,
                 finalDisplayHeight,
                 usesSerializedInspector,
                 horizontalScrollbarHeight,
-                requiresHorizontalScroll
+                requiresHorizontalScroll,
+                paddingContribution
             );
         }
 
@@ -788,7 +786,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 float displayHeight,
                 bool usesSerializedInspector,
                 float horizontalScrollbarHeight,
-                bool requiresHorizontalScrollbar
+                bool requiresHorizontalScrollbar,
+                float paddingHeight
             )
             {
                 ContentHeight = Mathf.Max(0f, contentHeight);
@@ -796,6 +795,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 UsesSerializedInspector = usesSerializedInspector;
                 HorizontalScrollbarHeight = Mathf.Max(0f, horizontalScrollbarHeight);
                 RequiresHorizontalScrollbar = requiresHorizontalScrollbar;
+                PaddingHeight = Mathf.Max(0f, paddingHeight);
             }
 
             public float ContentHeight { get; }
@@ -803,9 +803,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public bool UsesSerializedInspector { get; }
             public float HorizontalScrollbarHeight { get; }
             public bool RequiresHorizontalScrollbar { get; }
+            public float PaddingHeight { get; }
 
             public static InspectorHeightInfo Empty =>
-                new InspectorHeightInfo(0f, 0f, false, 0f, false);
+                new InspectorHeightInfo(0f, 0f, false, 0f, false, 0f);
+        }
+
+        private static Rect GetInlineContentRect(Rect backgroundRect)
+        {
+            return new Rect(
+                backgroundRect.x + ContentPadding,
+                backgroundRect.y + ContentPadding,
+                backgroundRect.width - (ContentPadding * 2f),
+                Mathf.Max(0f, backgroundRect.height - (ContentPadding * 2f))
+            );
+        }
+
+        internal static Rect GetInlineContentRectForTesting(Rect backgroundRect)
+        {
+            return GetInlineContentRect(backgroundRect);
         }
 
         private static bool DrawHeader(
