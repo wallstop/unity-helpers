@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
+    using WallstopStudios.UnityHelpers.Editor.Internal;
 
     public sealed class WInLineEditorDrawerTests
     {
@@ -147,6 +148,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             }
         }
 
+        [Test]
+        public void CustomEditorsRespectMeasuredInlineHeight()
+        {
+            float collapsedHeight = MeasurePropertyHeight<CustomEditorInlineHost>(
+                propertyExpanded: false,
+                setInlineExpanded: false
+            );
+            float expandedHeight = MeasurePropertyHeight<CustomEditorInlineHost>(
+                propertyExpanded: false,
+                setInlineExpanded: true
+            );
+            float inlineHeight = expandedHeight - collapsedHeight;
+            Assert.That(inlineHeight, Is.GreaterThan(40f));
+            Assert.That(inlineHeight, Is.LessThan(140f));
+        }
+
         private static float MeasurePropertyHeight<THost>(
             bool propertyExpanded,
             bool? setInlineExpanded = null
@@ -227,6 +244,52 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         private sealed class ArrayInlineEditorTarget : ScriptableObject
         {
             public int[] values = new int[2];
+        }
+
+        private sealed class CustomEditorInlineHost : ScriptableObject
+        {
+            [WInLineEditor(WInLineEditorMode.FoldoutCollapsed)]
+            public SimpleCustomEditorTarget customTarget;
+        }
+
+        private sealed class SimpleCustomEditorTarget : ScriptableObject
+        {
+            public bool toggle;
+            public int number;
+        }
+
+        [CustomEditor(typeof(SimpleCustomEditorTarget))]
+        private sealed class SimpleCustomEditorTargetEditor : Editor
+        {
+            public override void OnInspectorGUI()
+            {
+                serializedObject.Update();
+                SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
+                if (scriptProperty != null && !InlineInspectorContext.IsActive)
+                {
+                    using (new EditorGUI.DisabledScope(true))
+                    {
+                        EditorGUILayout.PropertyField(scriptProperty, true);
+                    }
+                    EditorGUILayout.Space();
+                }
+
+                SerializedProperty iterator = serializedObject.GetIterator();
+                bool enterChildren = true;
+                while (iterator.NextVisible(enterChildren))
+                {
+                    if (iterator.propertyPath == "m_Script")
+                    {
+                        enterChildren = false;
+                        continue;
+                    }
+
+                    EditorGUILayout.PropertyField(iterator, true);
+                    enterChildren = false;
+                }
+
+                serializedObject.ApplyModifiedProperties();
+            }
         }
 
         private sealed class InlineEditorTarget : ScriptableObject

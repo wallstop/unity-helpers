@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Editor.Internal;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Utils;
 
@@ -525,7 +526,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             GUILayout.BeginArea(rect);
-            editor.OnInspectorGUI();
+            using (InlineInspectorContext.Enter())
+            {
+                editor.OnInspectorGUI();
+            }
             GUILayout.EndArea();
         }
 
@@ -584,23 +588,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             Editor editor = GetOrCreateEditor(value);
             SerializedObject analysisObject = GetSerializedObjectForAnalysis(editor, value);
+            bool hasSerializedData = analysisObject != null;
             bool hasSimpleLayout =
-                analysisObject != null && SerializedObjectHasOnlySimpleProperties(analysisObject);
+                hasSerializedData && SerializedObjectHasOnlySimpleProperties(analysisObject);
+            bool canUseSerializedInspector =
+                hasSerializedData && ShouldUseSerializedInspector(editor);
 
-            if (
-                TryCalculateSerializedInspectorHeight(
-                    value,
-                    editor,
-                    analysisObject,
-                    out float contentHeight
-                )
-            )
+            if (TryCalculateSerializedInspectorHeight(analysisObject, out float contentHeight))
             {
                 InspectorHeightInfo info = BuildInspectorHeightInfo(
                     inlineAttribute,
                     availableWidth,
                     contentHeight,
-                    true,
+                    canUseSerializedInspector,
                     hasSimpleLayout
                 );
                 return info;
@@ -611,7 +611,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 inlineAttribute,
                 availableWidth,
                 fallbackHeight,
-                false,
+                canUseSerializedInspector,
                 hasSimpleLayout
             );
         }
@@ -651,32 +651,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         }
 
         private static bool TryCalculateSerializedInspectorHeight(
-            Object value,
-            Editor editor,
-            SerializedObject analysisObject,
+            SerializedObject serializedObject,
             out float contentHeight
         )
         {
             contentHeight = 0f;
-            if (!CanUseSerializedInspector(value, editor))
+            if (serializedObject == null)
             {
                 return false;
             }
 
-            SerializedObject serializedObject =
-                analysisObject
-                ?? (editor != null ? editor.serializedObject : new SerializedObject(value));
             contentHeight = CalculateSerializedInspectorHeight(serializedObject);
             return true;
         }
 
-        private static bool CanUseSerializedInspector(Object value, Editor editor)
+        private static bool ShouldUseSerializedInspector(Editor editor)
         {
-            if (!SupportsSerializedInspectorTarget(value))
-            {
-                return false;
-            }
-
             if (editor == null)
             {
                 return true;

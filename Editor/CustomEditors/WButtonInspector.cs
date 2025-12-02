@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 #if UNITY_EDITOR
     using System.Collections.Generic;
     using UnityEditor;
+    using WallstopStudios.UnityHelpers.Editor.Internal;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
@@ -27,10 +28,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
             serializedObject.UpdateIfRequiredOrScript();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
-            string scriptPath = null;
-            if (scriptProperty != null)
+            string scriptPath = scriptProperty != null ? scriptProperty.propertyPath : null;
+            bool drawScriptField = scriptProperty != null && !InlineInspectorContext.IsActive;
+            if (drawScriptField)
             {
-                scriptPath = scriptProperty.propertyPath;
                 using (new EditorGUI.DisabledScope(true))
                 {
                     EditorGUILayout.PropertyField(scriptProperty, true);
