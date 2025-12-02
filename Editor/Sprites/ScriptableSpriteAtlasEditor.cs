@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using UnityEngine.U2D;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Extensions;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -401,13 +402,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                                 if (!pathExists)
                                 {
-                                    sourceFolderEntriesProp.InsertArrayElementAtIndex(
-                                        sourceFolderEntriesProp.arraySize
-                                    );
                                     SerializedProperty newEntryProp =
-                                        sourceFolderEntriesProp.GetArrayElementAtIndex(
-                                            sourceFolderEntriesProp.arraySize - 1
-                                        );
+                                        sourceFolderEntriesProp.AppendArrayElement();
                                     newEntryProp
                                         .FindPropertyRelative(nameof(SourceFolderEntry.folderPath))
                                         .stringValue = relativePath;
@@ -1245,10 +1241,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
                 if (!alreadyExists)
                 {
-                    spritesListProp.InsertArrayElementAtIndex(spritesListProp.arraySize);
-                    spritesListProp
-                        .GetArrayElementAtIndex(spritesListProp.arraySize - 1)
-                        .objectReferenceValue = sprite;
+                    SerializedProperty newElement = spritesListProp.AppendArrayElement();
+                    newElement.objectReferenceValue = sprite;
                     addedCount++;
                 }
             }
@@ -1749,12 +1743,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 spritesListProp.DeleteArrayElementAtIndex(spritesListProp.arraySize - 1);
             }
-            int index = 0;
             foreach (Sprite s in targetSet)
             {
-                spritesListProp.InsertArrayElementAtIndex(index);
-                spritesListProp.GetArrayElementAtIndex(index).objectReferenceValue = s;
-                index++;
+                SerializedProperty newElement = spritesListProp.AppendArrayElement();
+                newElement.objectReferenceValue = s;
             }
 
             so.ApplyModifiedProperties();

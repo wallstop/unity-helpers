@@ -219,12 +219,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
                 NullKeyState nullKeyState = RefreshNullKeyState(cacheKey, keysProperty, keyType);
 
+                bool targetsSettings = TargetsUnityHelpersSettings(serializedObject);
+
                 Rect foldoutRect = new(
                     position.x,
                     position.y,
                     position.width,
                     EditorGUIUtility.singleLineHeight
                 );
+                if (!targetsSettings)
+                {
+                    WSerializableCollectionFoldoutUtility.EnsureFoldoutInitialized(
+                        property,
+                        fieldInfo,
+                        WSerializableCollectionFoldoutUtility.SerializableCollectionType.Dictionary
+                    );
+                }
                 property.isExpanded = EditorGUI.Foldout(
                     foldoutRect,
                     property.isExpanded,
@@ -1655,12 +1665,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (_rowValueFoldoutStates.Count > 0)
             {
+                PooledResource<List<RowFoldoutKey>> keysToRemoveLease = default;
                 List<RowFoldoutKey> keysToRemove = null;
                 foreach (KeyValuePair<RowFoldoutKey, bool> entry in _rowValueFoldoutStates)
                 {
                     if (entry.Key.IsValid && entry.Key.CacheKey == cacheKey)
                     {
-                        keysToRemove ??= new List<RowFoldoutKey>();
+                        if (keysToRemove == null)
+                        {
+                            keysToRemoveLease = Buffers<RowFoldoutKey>.List.Get(out keysToRemove);
+                        }
+
                         keysToRemove.Add(entry.Key);
                     }
                 }
@@ -1672,6 +1687,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         _rowValueFoldoutStates.Remove(keysToRemove[index]);
                     }
                 }
+
+                keysToRemoveLease.Dispose();
             }
         }
 

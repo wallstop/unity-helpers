@@ -32,43 +32,51 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
 
             Dictionary<Type, IReadOnlyList<MethodInfo>> filtered = new();
-            List<string> methodSearchTerms = BuildSearchTerms(item.search);
-            List<string> typeSearchTerms = BuildSearchTerms(item.typeSearch);
-
-            foreach (KeyValuePair<Type, IReadOnlyList<MethodInfo>> entry in lookup)
+            using PooledResource<List<string>> methodSearchLease = Buffers<string>.List.Get(
+                out List<string> methodSearchTerms
+            );
+            using PooledResource<List<string>> typeSearchLease = Buffers<string>.List.Get(
+                out List<string> typeSearchTerms
+            );
             {
-                Type type = entry.Key;
+                BuildSearchTerms(item.search, methodSearchTerms);
+                BuildSearchTerms(item.typeSearch, typeSearchTerms);
 
-                if (typeSearchTerms.Count > 0)
+                foreach (KeyValuePair<Type, IReadOnlyList<MethodInfo>> entry in lookup)
                 {
-                    string typeLower =
-                        type.FullName != null ? type.FullName.ToLowerInvariant() : string.Empty;
-                    bool matches = ContainsAllTokens(typeLower, typeSearchTerms);
-                    if (!matches)
+                    Type type = entry.Key;
+
+                    if (typeSearchTerms.Count > 0)
                     {
+                        string typeLower =
+                            type.FullName != null ? type.FullName.ToLowerInvariant() : string.Empty;
+                        bool matches = ContainsAllTokens(typeLower, typeSearchTerms);
+                        if (!matches)
+                        {
+                            continue;
+                        }
+                    }
+
+                    if (methodSearchTerms.Count == 0)
+                    {
+                        filtered[type] = entry.Value;
                         continue;
                     }
-                }
 
-                if (methodSearchTerms.Count == 0)
-                {
-                    filtered[type] = entry.Value;
-                    continue;
-                }
-
-                List<MethodInfo> methodBuffer = new();
-                foreach (MethodInfo method in entry.Value)
-                {
-                    string methodLower = method.Name.ToLowerInvariant();
-                    if (ContainsAllTokens(methodLower, methodSearchTerms))
+                    List<MethodInfo> methodBuffer = new();
+                    foreach (MethodInfo method in entry.Value)
                     {
-                        methodBuffer.Add(method);
+                        string methodLower = method.Name.ToLowerInvariant();
+                        if (ContainsAllTokens(methodLower, methodSearchTerms))
+                        {
+                            methodBuffer.Add(method);
+                        }
                     }
-                }
 
-                if (methodBuffer.Count > 0)
-                {
-                    filtered[type] = methodBuffer;
+                    if (methodBuffer.Count > 0)
+                    {
+                        filtered[type] = methodBuffer;
+                    }
                 }
             }
 
@@ -318,12 +326,12 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
         }
 
-        private static List<string> BuildSearchTerms(string raw)
+        private static void BuildSearchTerms(string raw, List<string> destination)
         {
-            List<string> terms = new();
+            destination.Clear();
             if (string.IsNullOrWhiteSpace(raw))
             {
-                return terms;
+                return;
             }
 
             string[] parts = raw.Split(' ');
@@ -335,13 +343,11 @@ namespace WallstopStudios.UnityHelpers.Editor
                     continue;
                 }
 
-                terms.Add(token.Trim().ToLowerInvariant());
+                destination.Add(token.Trim().ToLowerInvariant());
             }
-
-            return terms;
         }
 
-        private static bool ContainsAllTokens(string haystack, List<string> tokens)
+        private static bool ContainsAllTokens(string haystack, IReadOnlyList<string> tokens)
         {
             for (int i = 0; i < tokens.Count; i++)
             {

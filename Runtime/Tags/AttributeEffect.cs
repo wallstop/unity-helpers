@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Tags
     using System;
     using System.Collections.Generic;
     using System.ComponentModel;
-    using System.Linq;
     using System.Text;
     using System.Text.Json.Serialization;
     using Core.Extension;
@@ -378,10 +377,12 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// <returns>A JSON string representing this effect.</returns>
         public override string ToString()
         {
+            string[] cosmeticEffectNames = BuildCosmeticEffectNames();
+
             return new
             {
                 Description = HumanReadableDescription,
-                CosmeticEffects = CosmeticEffectsForJson,
+                CosmeticEffects = cosmeticEffectNames,
                 modifications,
                 durationType,
                 duration,
@@ -389,9 +390,42 @@ namespace WallstopStudios.UnityHelpers.Tags
             }.ToJson();
         }
 
-        private List<string> CosmeticEffectsForJson =>
-            cosmeticEffects?.Select(cosmeticEffectData => cosmeticEffectData.name).ToList()
-            ?? new List<string>(0);
+        private string[] BuildCosmeticEffectNames()
+        {
+            if (cosmeticEffects == null || cosmeticEffects.Count == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            using PooledResource<List<string>> namesLease = Buffers<string>.List.Get(
+                out List<string> names
+            );
+            {
+                for (int i = 0; i < cosmeticEffects.Count; i++)
+                {
+                    CosmeticEffectData effect = cosmeticEffects[i];
+                    if (effect == null)
+                    {
+                        continue;
+                    }
+
+                    string name = effect.name ?? string.Empty;
+                    if (name.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    names.Add(name);
+                }
+
+                if (names.Count == 0)
+                {
+                    return Array.Empty<string>();
+                }
+
+                return names.ToArray();
+            }
+        }
 
         private string BuildDescription()
         {

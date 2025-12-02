@@ -384,7 +384,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     GetLastAnimationDirectory(),
                     new[] { ".anim" }
                 );
-                _fileSelector.OnFilesSelected += HandleFilesSelectedFromCustomBrowser;
+                _fileSelector.OnFilesSelectedReadOnly += HandleFilesSelectedFromCustomBrowser;
                 _fileSelector.OnCancelled += HideMultiFileSelector;
                 root.Add(_fileSelector);
                 if (root.childCount > 1)
@@ -415,7 +415,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
         }
 
-        private void HandleFilesSelectedFromCustomBrowser(List<string> selectedFullPaths)
+        private void HandleFilesSelectedFromCustomBrowser(
+            IReadOnlyCollection<string> selectedFullPaths
+        )
         {
             HideMultiFileSelector();
 

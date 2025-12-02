@@ -194,14 +194,41 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GUIContent label = new("Set");
 
             SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+            bool heightSetExpandedBefore = setProperty.isExpanded;
+            bool heightRowExpandedBefore = elementProperty.isExpanded;
 
             drawer.GetPropertyHeight(setProperty, label);
+
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            elementProperty = itemsProperty.GetArrayElementAtIndex(0);
+            bool heightSetExpandedAfter = setProperty.isExpanded;
+            bool heightRowExpandedAfter = elementProperty.isExpanded;
+            TestContext.WriteLine(
+                $"Complex row GetPropertyHeight expansion states -> set: {heightSetExpandedBefore}->{heightSetExpandedAfter}, row: {heightRowExpandedBefore}->{heightRowExpandedAfter}"
+            );
+
+            bool drawSetExpandedBefore = setProperty.isExpanded;
+            bool drawRowExpandedBefore = elementProperty.isExpanded;
 
             yield return TestIMGUIExecutor.Run(() =>
             {
                 setProperty.serializedObject.UpdateIfRequiredOrScript();
                 drawer.OnGUI(controlRect, setProperty, label);
             });
+
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            elementProperty = itemsProperty.GetArrayElementAtIndex(0);
+            bool drawSetExpandedAfter = setProperty.isExpanded;
+            bool drawRowExpandedAfter = elementProperty.isExpanded;
+            TestContext.WriteLine(
+                $"Complex row OnGUI expansion states -> set: {drawSetExpandedBefore}->{drawSetExpandedAfter}, row: {drawRowExpandedBefore}->{drawRowExpandedAfter}"
+            );
 
             Assert.IsTrue(
                 SerializableSetPropertyDrawer.HasLastRowContentRect,
@@ -1748,6 +1775,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GUIContent label = new("Set");
 
             SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+            bool baselineSetExpandedBeforeDraw = setProperty.isExpanded;
+            bool baselinePendingExpandedBeforeDraw = pending.isExpanded;
 
             yield return TestIMGUIExecutor.Run(() =>
             {
@@ -1755,6 +1784,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 pending.isExpanded = true;
                 drawer.OnGUI(controlRect, setProperty, label);
             });
+
+            serializedObject.Update();
+            bool baselineSetExpandedAfterDraw = setProperty.isExpanded;
+            TestContext.WriteLine(
+                $"ManualEntryHeader baseline foldout states -> set: {baselineSetExpandedBeforeDraw}->{baselineSetExpandedAfterDraw}, pending: {baselinePendingExpandedBeforeDraw}->{pending.isExpanded}"
+            );
 
             Assert.IsTrue(
                 SerializableSetPropertyDrawer.HasLastManualEntryHeaderRect,
@@ -1766,6 +1801,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             const float LeftPadding = 20f;
             const float RightPadding = 12f;
             float horizontalPadding = LeftPadding + RightPadding;
+
+            bool groupedSetExpandedBeforeDraw = setProperty.isExpanded;
+            bool groupedPendingExpandedBeforeDraw = pending.isExpanded;
 
             yield return TestIMGUIExecutor.Run(() =>
             {
@@ -1783,6 +1821,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     drawer.OnGUI(controlRect, setProperty, label);
                 }
             });
+
+            serializedObject.Update();
+            bool groupedSetExpandedAfterDraw = setProperty.isExpanded;
+            TestContext.WriteLine(
+                $"ManualEntryHeader grouped foldout states -> set: {groupedSetExpandedBeforeDraw}->{groupedSetExpandedAfterDraw}, pending: {groupedPendingExpandedBeforeDraw}->{pending.isExpanded}"
+            );
 
             Assert.IsTrue(
                 SerializableSetPropertyDrawer.HasLastManualEntryHeaderRect,
@@ -1828,6 +1872,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GUIContent label = new("Set");
 
             SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+            bool baselineSetExpandedBeforeDraw = setProperty.isExpanded;
+            bool baselinePendingExpandedBeforeDraw = pending.isExpanded;
 
             yield return TestIMGUIExecutor.Run(() =>
             {
@@ -1835,6 +1881,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 pending.isExpanded = true;
                 drawer.OnGUI(controlRect, setProperty, label);
             });
+
+            serializedObject.Update();
+            bool baselineSetExpandedAfterDraw = setProperty.isExpanded;
+            TestContext.WriteLine(
+                $"ManualEntryValue baseline foldout states -> set: {baselineSetExpandedBeforeDraw}->{baselineSetExpandedAfterDraw}, pending: {baselinePendingExpandedBeforeDraw}->{pending.isExpanded}"
+            );
 
             Assert.IsTrue(
                 SerializableSetPropertyDrawer.HasLastManualEntryValueRect,
@@ -1846,6 +1898,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             const float LeftPadding = 18f;
             const float RightPadding = 14f;
             float horizontalPadding = LeftPadding + RightPadding;
+
+            bool groupedSetExpandedBeforeDraw = setProperty.isExpanded;
+            bool groupedPendingExpandedBeforeDraw = pending.isExpanded;
 
             yield return TestIMGUIExecutor.Run(() =>
             {
@@ -1864,6 +1919,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 }
             });
 
+            serializedObject.Update();
+            bool groupedSetExpandedAfterDraw = setProperty.isExpanded;
+            TestContext.WriteLine(
+                $"ManualEntryValue grouped foldout states -> set: {groupedSetExpandedBeforeDraw}->{groupedSetExpandedAfterDraw}, pending: {groupedPendingExpandedBeforeDraw}->{pending.isExpanded}"
+            );
+
             Assert.IsTrue(
                 SerializableSetPropertyDrawer.HasLastManualEntryValueRect,
                 "Grouped draw should capture the manual entry value layout."
@@ -1880,6 +1941,48 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 groupedValue.width,
                 Is.EqualTo(Mathf.Max(0f, baselineValue.width - horizontalPadding)).Within(0.0001f),
                 "Manual entry value width should shrink by the total padding."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator ManualEntryFoldoutRespectsExplicitExpansionBeforeInitialization()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            setProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer drawer = new();
+            Rect controlRect = new(0f, 0f, 360f, 420f);
+            GUIContent label = new("Set");
+
+            SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+            bool setExpandedBeforeDraw = setProperty.isExpanded;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                setProperty.serializedObject.UpdateIfRequiredOrScript();
+                drawer.OnGUI(controlRect, setProperty, label);
+            });
+
+            serializedObject.Update();
+            bool setExpandedAfterDraw = setProperty.isExpanded;
+            TestContext.WriteLine(
+                $"ManualEntry explicit expansion state -> {setExpandedBeforeDraw}->{setExpandedAfterDraw}"
+            );
+
+            Assert.IsTrue(
+                setExpandedAfterDraw,
+                "Set foldout should remain expanded when explicitly set before the first draw."
+            );
+            Assert.IsTrue(
+                SerializableSetPropertyDrawer.HasLastManualEntryHeaderRect,
+                "Manual entry header should render when the foldout remains expanded."
             );
         }
 
@@ -1917,12 +2020,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GUIContent label = new("Set");
 
             SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+            bool baselineSetExpandedBeforeDraw = setProperty.isExpanded;
 
             yield return TestIMGUIExecutor.Run(() =>
             {
                 setProperty.serializedObject.UpdateIfRequiredOrScript();
                 drawer.OnGUI(controlRect, setProperty, label);
             });
+
+            serializedObject.Update();
+            bool baselineSetExpandedAfterDraw = setProperty.isExpanded;
+            TestContext.WriteLine(
+                $"RowContent baseline set foldout state -> {baselineSetExpandedBeforeDraw}->{baselineSetExpandedAfterDraw}"
+            );
 
             Assert.IsTrue(
                 SerializableSetPropertyDrawer.HasLastRowContentRect,
@@ -1934,6 +2044,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             const float LeftPadding = 24f;
             const float RightPadding = 10f;
             float horizontalPadding = LeftPadding + RightPadding;
+
+            bool groupedSetExpandedBeforeDraw = setProperty.isExpanded;
 
             yield return TestIMGUIExecutor.Run(() =>
             {
@@ -1950,6 +2062,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     drawer.OnGUI(controlRect, setProperty, label);
                 }
             });
+
+            serializedObject.Update();
+            bool groupedSetExpandedAfterDraw = setProperty.isExpanded;
+            TestContext.WriteLine(
+                $"RowContent grouped set foldout state -> {groupedSetExpandedBeforeDraw}->{groupedSetExpandedAfterDraw}"
+            );
 
             Assert.IsTrue(
                 SerializableSetPropertyDrawer.HasLastRowContentRect,

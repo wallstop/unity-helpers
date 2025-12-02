@@ -26,14 +26,19 @@ namespace Samples.UnityHelpers.UIToolkit.Editor
                 filterExtensions: new[] { ".png", ".jpg", ".cs" },
                 persistenceKey: "MultiFileSelectorSampleWindow"
             );
-            selector.OnFilesSelected += OnFilesSelected;
+            selector.OnFilesSelectedReadOnly += OnFilesSelected;
             selector.OnCancelled += OnCancelled;
             rootVisualElement.Add(selector);
         }
 
-        private void OnFilesSelected(List<string> files)
+        private void OnFilesSelected(IReadOnlyCollection<string> files)
         {
-            string first = files.Count > 0 ? files[0] : "<none>";
+            string first = "<none>";
+            foreach (string file in files)
+            {
+                first = file ?? "<none>";
+                break;
+            }
             Debug.Log($"Selected {files.Count} files. First: {first}");
         }
 

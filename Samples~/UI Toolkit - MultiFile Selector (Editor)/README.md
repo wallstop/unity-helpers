@@ -10,4 +10,4 @@ How to use
 What it shows
 
 - Creating and adding `MultiFileSelectorElement` to an EditorWindow.
-- Hooks for `OnFilesSelected` and `OnCancelled`.
+- Hooks for allocation-free `OnFilesSelectedReadOnly` (and legacy `OnFilesSelected`) plus `OnCancelled`.

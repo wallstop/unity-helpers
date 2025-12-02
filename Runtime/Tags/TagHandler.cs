@@ -608,6 +608,20 @@ namespace WallstopStudios.UnityHelpers.Tags
         }
 
         /// <summary>
+        /// Provides an allocation-free view of handles contributing the specified tag.
+        /// </summary>
+        /// <param name="effectTag">The tag to query.</param>
+        public HandleEnumerable EnumerateHandlesWithTag(string effectTag)
+        {
+            if (string.IsNullOrEmpty(effectTag) || _effectHandles.Count == 0)
+            {
+                return HandleEnumerable.Empty;
+            }
+
+            return new HandleEnumerable(_effectHandles.GetEnumerator(), effectTag);
+        }
+
+        /// <summary>
         /// Applies all tags from an effect handle's effect.
         /// Tracks the handle to support later removal via <see cref="ForceRemoveTags"/>.
         /// </summary>
@@ -721,6 +735,169 @@ namespace WallstopStudios.UnityHelpers.Tags
             foreach (string effectTag in effect.effectTags)
             {
                 InternalRemoveTag(effectTag, allInstances: false);
+            }
+        }
+
+        /// <summary>
+        /// Provides an allocation-free enumerable view of the currently active tags.
+        /// </summary>
+        /// <returns>A struct enumerable that yields each active tag exactly once.</returns>
+        public ActiveTagEnumerable EnumerateActiveTags()
+        {
+            if (_tagCount.Count == 0)
+            {
+                return ActiveTagEnumerable.Empty;
+            }
+
+            return new ActiveTagEnumerable(_tagCount);
+        }
+
+        /// <summary>
+        /// Struct-backed enumerable over the active tags without additional allocations.
+        /// </summary>
+        public readonly struct ActiveTagEnumerable
+        {
+            private readonly Dictionary<string, uint> _source;
+
+            internal ActiveTagEnumerable(Dictionary<string, uint> source)
+            {
+                _source = source;
+            }
+
+            public static ActiveTagEnumerable Empty => new ActiveTagEnumerable(null);
+
+            public ActiveTagEnumerator GetEnumerator()
+            {
+                if (_source == null || _source.Count == 0)
+                {
+                    return default;
+                }
+
+                return new ActiveTagEnumerator(_source.GetEnumerator());
+            }
+        }
+
+        /// <summary>
+        /// Struct-backed enumerable over effect handles that contribute a specific tag.
+        /// </summary>
+        public readonly struct HandleEnumerable
+        {
+            private readonly Dictionary<long, EffectHandle>.Enumerator _enumerator;
+            private readonly string _effectTag;
+            private readonly bool _hasData;
+
+            internal HandleEnumerable(
+                Dictionary<long, EffectHandle>.Enumerator enumerator,
+                string effectTag
+            )
+            {
+                _enumerator = enumerator;
+                _effectTag = effectTag;
+                _hasData = true;
+            }
+
+            public static HandleEnumerable Empty => new HandleEnumerable(default, string.Empty);
+
+            public HandleEnumerator GetEnumerator()
+            {
+                if (!_hasData || string.IsNullOrEmpty(_effectTag))
+                {
+                    return default;
+                }
+
+                return new HandleEnumerator(_enumerator, _effectTag);
+            }
+        }
+
+        /// <summary>
+        /// Enumerator that filters effect handles by tag without temporary lists.
+        /// </summary>
+        public struct HandleEnumerator
+        {
+            private Dictionary<long, EffectHandle>.Enumerator _enumerator;
+            private readonly string _effectTag;
+            private bool _hasEnumerator;
+            private EffectHandle _current;
+
+            internal HandleEnumerator(
+                Dictionary<long, EffectHandle>.Enumerator enumerator,
+                string effectTag
+            )
+            {
+                _enumerator = enumerator;
+                _effectTag = effectTag;
+                _hasEnumerator = true;
+                _current = default;
+            }
+
+            public readonly EffectHandle Current => _current;
+
+            public bool MoveNext()
+            {
+                if (!_hasEnumerator)
+                {
+                    return false;
+                }
+
+                while (_enumerator.MoveNext())
+                {
+                    EffectHandle handle = _enumerator.Current.Value;
+                    if (
+                        handle.effect?.effectTags != null
+                        && handle.effect.effectTags.Contains(_effectTag)
+                    )
+                    {
+                        _current = handle;
+                        return true;
+                    }
+                }
+
+                _hasEnumerator = false;
+                _current = default;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Enumerator that skips tags whose counts have dropped to zero.
+        /// </summary>
+        public struct ActiveTagEnumerator
+        {
+            private Dictionary<string, uint>.Enumerator _enumerator;
+            private bool _hasEnumerator;
+            private string _current;
+
+            internal ActiveTagEnumerator(Dictionary<string, uint>.Enumerator enumerator)
+            {
+                _enumerator = enumerator;
+                _hasEnumerator = true;
+                _current = string.Empty;
+            }
+
+            public readonly string Current => _current ?? string.Empty;
+
+            public bool MoveNext()
+            {
+                if (!_hasEnumerator)
+                {
+                    return false;
+                }
+
+                while (_enumerator.MoveNext())
+                {
+                    KeyValuePair<string, uint> entry = _enumerator.Current;
+                    if (entry.Value == 0)
+                    {
+                        continue;
+                    }
+
+                    _current = entry.Key;
+                    return true;
+                }
+
+                _hasEnumerator = false;
+                _current = string.Empty;
+                return false;
             }
         }
     }

@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     using System.Collections.Generic;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Extensions;
 
     [CustomPropertyDrawer(typeof(SourceFolderEntry))]
     public sealed class SourceFolderEntryDrawer : PropertyDrawer
@@ -236,9 +237,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
                         if (GUI.Button(addRect, "+ Add Regex"))
                         {
-                            int idx = regexesProp.arraySize;
-                            regexesProp.InsertArrayElementAtIndex(idx);
-                            regexesProp.GetArrayElementAtIndex(idx).stringValue = string.Empty;
+                            SerializedProperty newRegex = regexesProp.AppendArrayElement();
+                            newRegex.stringValue = string.Empty;
                             property.serializedObject.ApplyModifiedProperties();
                         }
                     }
@@ -314,10 +314,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                         );
                         if (GUI.Button(addExRect, "+ Add Exclude Regex"))
                         {
-                            int idx = excludeRegexesProp.arraySize;
-                            excludeRegexesProp.InsertArrayElementAtIndex(idx);
-                            excludeRegexesProp.GetArrayElementAtIndex(idx).stringValue =
-                                string.Empty;
+                            SerializedProperty newRegex = excludeRegexesProp.AppendArrayElement();
+                            newRegex.stringValue = string.Empty;
                             property.serializedObject.ApplyModifiedProperties();
                         }
                         currentY +=
@@ -394,9 +392,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                         );
                         if (GUI.Button(addExPathRect, "+ Add Exclude Path"))
                         {
-                            int idx = exPathsProp.arraySize;
-                            exPathsProp.InsertArrayElementAtIndex(idx);
-                            exPathsProp.GetArrayElementAtIndex(idx).stringValue = string.Empty;
+                            SerializedProperty updatedPath = exPathsProp.AppendArrayElement();
+                            updatedPath.stringValue = string.Empty;
                             property.serializedObject.ApplyModifiedProperties();
                         }
                         currentY +=

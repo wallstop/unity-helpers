@@ -314,6 +314,41 @@ namespace WallstopStudios.UnityHelpers.Tags
         }
 
         /// <summary>
+        /// Returns an allocation-free enumerable view of the active tags on the target.
+        /// </summary>
+        /// <param name="target">The Unity Object (GameObject or Component) to inspect.</param>
+        /// <returns>A struct enumerable that yields each active tag exactly once.</returns>
+        public static TagHandler.ActiveTagEnumerable EnumerateActiveTags(this Object target)
+        {
+            if (target == null)
+            {
+                return TagHandler.ActiveTagEnumerable.Empty;
+            }
+
+            return target.TryGetComponent(out TagHandler tagHandler)
+                ? tagHandler.EnumerateActiveTags()
+                : TagHandler.ActiveTagEnumerable.Empty;
+        }
+
+        /// <summary>
+        /// Returns an allocation-free enumerable of handles that contribute the specified tag.
+        /// </summary>
+        public static TagHandler.HandleEnumerable EnumerateHandlesWithTag(
+            this Object target,
+            string effectTag
+        )
+        {
+            if (target == null || string.IsNullOrEmpty(effectTag))
+            {
+                return TagHandler.HandleEnumerable.Empty;
+            }
+
+            return target.TryGetComponent(out TagHandler tagHandler)
+                ? tagHandler.EnumerateHandlesWithTag(effectTag)
+                : TagHandler.HandleEnumerable.Empty;
+        }
+
+        /// <summary>
         /// Retrieves all effect handles that contributed a specific tag on the target.
         /// </summary>
         /// <param name="target">The Unity Object (GameObject or Component) to inspect.</param>

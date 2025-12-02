@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Editor
     using System.IO;
     using UnityEngine.Serialization;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
 
     [Serializable]
     public sealed class DirectoryUsageData
@@ -118,111 +119,117 @@ namespace WallstopStudios.UnityHelpers.Editor
                 string[] guids = AssetDatabase.FindAssets(
                     "t:" + nameof(PersistentDirectorySettings)
                 );
-                List<string> candidatePaths = new();
                 using (
-                    WallstopStudios
-                        .UnityHelpers.Utils.SetBuffers<string>.GetHashSetPool(
-                            StringComparer.OrdinalIgnoreCase
-                        )
-                        .Get(out HashSet<string> seen)
+                    PooledResource<List<string>> candidatePathsLease = Buffers<string>.List.Get(
+                        out List<string> candidatePaths
+                    )
                 )
                 {
-                    for (int i = 0; i < guids.Length; i++)
+                    using (
+                        WallstopStudios
+                            .UnityHelpers.Utils.SetBuffers<string>.GetHashSetPool(
+                                StringComparer.OrdinalIgnoreCase
+                            )
+                            .Get(out HashSet<string> seen)
+                    )
                     {
-                        string path = AssetDatabase.GUIDToAssetPath(guids[i]);
-                        if (string.IsNullOrWhiteSpace(path))
+                        for (int i = 0; i < guids.Length; i++)
                         {
-                            continue;
-                        }
-                        string sanitized = SanitizePath(path);
-                        if (seen.Add(sanitized))
-                        {
-                            candidatePaths.Add(sanitized);
+                            string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+                            if (string.IsNullOrWhiteSpace(path))
+                            {
+                                continue;
+                            }
+                            string sanitized = SanitizePath(path);
+                            if (seen.Add(sanitized))
+                            {
+                                candidatePaths.Add(sanitized);
+                            }
                         }
                     }
-                }
 
-                PersistentDirectorySettings target =
-                    AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(targetAssetPath);
+                    PersistentDirectorySettings target =
+                        AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(targetAssetPath);
 
-                if (target == null)
-                {
-                    if (candidatePaths.Count == 0)
+                    if (target == null)
                     {
-                        // Create a fresh asset if none exist anywhere
-                        target = CreateInstance<PersistentDirectorySettings>();
-                        AssetDatabase.CreateAsset(target, targetAssetPath);
+                        if (candidatePaths.Count == 0)
+                        {
+                            // Create a fresh asset if none exist anywhere
+                            target = CreateInstance<PersistentDirectorySettings>();
+                            AssetDatabase.CreateAsset(target, targetAssetPath);
+                            AssetDatabase.SaveAssets();
+                            AssetDatabase.Refresh();
+                        }
+                        else
+                        {
+                            // Take the first found as primary and move it to target
+                            string primaryPath = candidatePaths[0];
+                            target = AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
+                                primaryPath
+                            );
+                            if (target == null)
+                            {
+                                // Fallback to create if unexpected null
+                                target = CreateInstance<PersistentDirectorySettings>();
+                                AssetDatabase.CreateAsset(target, targetAssetPath);
+                            }
+                            else if (!PathsEqual(primaryPath, targetAssetPath))
+                            {
+                                string moveResult = AssetDatabase.MoveAsset(
+                                    primaryPath,
+                                    targetAssetPath
+                                );
+                                if (!string.IsNullOrEmpty(moveResult))
+                                {
+                                    Debug.LogWarning(
+                                        $"Failed to move {nameof(PersistentDirectorySettings)} from {primaryPath} to {targetAssetPath}: {moveResult}. Will create new and merge."
+                                    );
+                                    // Create new target and merge below
+                                    PersistentDirectorySettings newTarget =
+                                        CreateInstance<PersistentDirectorySettings>();
+                                    AssetDatabase.CreateAsset(newTarget, targetAssetPath);
+                                    target = newTarget;
+                                }
+                                else
+                                {
+                                    TryDeleteEmptyParentFolders(primaryPath);
+                                }
+                            }
+                        }
+                    }
+
+                    // Merge any remaining duplicates into target, then delete them
+                    if (target != null && candidatePaths.Count > 0)
+                    {
+                        foreach (string path in candidatePaths)
+                        {
+                            if (PathsEqual(path, targetAssetPath))
+                            {
+                                continue;
+                            }
+
+                            PersistentDirectorySettings other =
+                                AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(path);
+                            if (other == null)
+                            {
+                                continue;
+                            }
+
+                            // Merge data
+                            MergeSettings(target, other);
+                            EditorUtility.SetDirty(target);
+
+                            // Delete old asset and clean empty folders
+                            if (AssetDatabase.DeleteAsset(path))
+                            {
+                                TryDeleteEmptyParentFolders(path);
+                            }
+                        }
+
                         AssetDatabase.SaveAssets();
                         AssetDatabase.Refresh();
                     }
-                    else
-                    {
-                        // Take the first found as primary and move it to target
-                        string primaryPath = candidatePaths[0];
-                        target = AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
-                            primaryPath
-                        );
-                        if (target == null)
-                        {
-                            // Fallback to create if unexpected null
-                            target = CreateInstance<PersistentDirectorySettings>();
-                            AssetDatabase.CreateAsset(target, targetAssetPath);
-                        }
-                        else if (!PathsEqual(primaryPath, targetAssetPath))
-                        {
-                            string moveResult = AssetDatabase.MoveAsset(
-                                primaryPath,
-                                targetAssetPath
-                            );
-                            if (!string.IsNullOrEmpty(moveResult))
-                            {
-                                Debug.LogWarning(
-                                    $"Failed to move {nameof(PersistentDirectorySettings)} from {primaryPath} to {targetAssetPath}: {moveResult}. Will create new and merge."
-                                );
-                                // Create new target and merge below
-                                PersistentDirectorySettings newTarget =
-                                    CreateInstance<PersistentDirectorySettings>();
-                                AssetDatabase.CreateAsset(newTarget, targetAssetPath);
-                                target = newTarget;
-                            }
-                            else
-                            {
-                                TryDeleteEmptyParentFolders(primaryPath);
-                            }
-                        }
-                    }
-                }
-
-                // Merge any remaining duplicates into target, then delete them
-                if (target != null && candidatePaths.Count > 0)
-                {
-                    foreach (string path in candidatePaths)
-                    {
-                        if (PathsEqual(path, targetAssetPath))
-                        {
-                            continue;
-                        }
-
-                        PersistentDirectorySettings other =
-                            AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(path);
-                        if (other == null)
-                        {
-                            continue;
-                        }
-
-                        // Merge data
-                        MergeSettings(target, other);
-                        EditorUtility.SetDirty(target);
-
-                        // Delete old asset and clean empty folders
-                        if (AssetDatabase.DeleteAsset(path))
-                        {
-                            TryDeleteEmptyParentFolders(path);
-                        }
-                    }
-
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
                 }
             }
             catch (Exception e)

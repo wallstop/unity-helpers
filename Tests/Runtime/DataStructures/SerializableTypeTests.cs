@@ -143,17 +143,18 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void DisplayNameIncludesAssemblyAndType()
+        public void DisplayNameUsesNamespaceQualifiedType()
         {
             SerializableType serializable = new(typeof(Dictionary<string, int>));
             string displayName = serializable.DisplayName;
 
-            Assert.IsTrue(displayName.Contains("Dictionary", StringComparison.Ordinal));
-            Assert.IsTrue(
+            StringAssert.Contains("System.Collections.Generic.Dictionary", displayName);
+            Assert.IsFalse(
                 displayName.Contains(
                     typeof(Dictionary<string, int>).Assembly.GetName().Name,
                     StringComparison.Ordinal
-                )
+                ),
+                "Assembly name should not be included in the display label."
             );
         }
 

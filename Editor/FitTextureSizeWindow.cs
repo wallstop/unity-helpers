@@ -130,15 +130,18 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return;
             }
 
-            _textureSourcePaths = new List<Object>();
-            Object defaultFolder = AssetDatabase.LoadAssetAtPath<Object>("Assets/Sprites");
-            if (defaultFolder == null)
+            _textureSourcePaths ??= new List<Object>();
+            if (_textureSourcePaths.Count == 0)
             {
-                return;
-            }
+                Object defaultFolder = AssetDatabase.LoadAssetAtPath<Object>("Assets/Sprites");
+                if (defaultFolder == null)
+                {
+                    return;
+                }
 
-            _textureSourcePaths.Add(defaultFolder);
-            _serializedObject.Update();
+                _textureSourcePaths.Add(defaultFolder);
+                _serializedObject.Update();
+            }
         }
 
         private void OnGUI()

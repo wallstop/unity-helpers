@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
+    using WallstopStudios.UnityHelpers.Editor.Extensions;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
 
@@ -179,6 +180,78 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             {
                 settings.SerializableDictionaryPageSize = originalDictionaryPageSize;
                 settings.SerializableSetPageSize = originalSetPageSize;
+            }
+        }
+
+        [Test]
+        public void SerializableTypeIgnorePatternsCanBeAppendedAndReset()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            using SerializedObject serialized = new SerializedObject(settings);
+            serialized.Update();
+
+            SerializedProperty patterns = serialized.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.SerializableTypeIgnorePatterns
+            );
+            Assert.NotNull(patterns);
+
+            patterns.ClearArray();
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            serialized.Update();
+
+            SerializedProperty element = patterns.AppendArrayElement();
+            element
+                .FindPropertyRelative(
+                    UnityHelpersSettings.SerializedPropertyNames.SerializableTypePattern
+                )
+                .stringValue = "^CustomPattern$";
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            serialized.Update();
+            Assert.That(patterns.arraySize, Is.EqualTo(1));
+
+            patterns.ClearArray();
+            IReadOnlyList<string> defaults = SerializableTypeCatalog.GetDefaultIgnorePatterns();
+            for (int index = 0; index < defaults.Count; index++)
+            {
+                SerializedProperty defaultElement = patterns.AppendArrayElement();
+                defaultElement
+                    .FindPropertyRelative(
+                        UnityHelpersSettings.SerializedPropertyNames.SerializableTypePattern
+                    )
+                    .stringValue = defaults[index];
+            }
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            serialized.Update();
+
+            Assert.That(patterns.arraySize, Is.EqualTo(defaults.Count));
+        }
+
+        [Test]
+        public void SerializableCollectionFoldoutDefaultsAreConfigurable()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            bool originalDictionarySetting = settings.SerializableDictionaryStartCollapsed;
+            bool originalSetSetting = settings.SerializableSetStartCollapsed;
+
+            try
+            {
+                settings.SerializableDictionaryStartCollapsed = false;
+                settings.SerializableSetStartCollapsed = false;
+
+                Assert.IsFalse(UnityHelpersSettings.ShouldStartSerializableDictionaryCollapsed());
+                Assert.IsFalse(UnityHelpersSettings.ShouldStartSerializableSetCollapsed());
+
+                settings.SerializableDictionaryStartCollapsed = true;
+                settings.SerializableSetStartCollapsed = true;
+
+                Assert.IsTrue(UnityHelpersSettings.ShouldStartSerializableDictionaryCollapsed());
+                Assert.IsTrue(UnityHelpersSettings.ShouldStartSerializableSetCollapsed());
+            }
+            finally
+            {
+                settings.SerializableDictionaryStartCollapsed = originalDictionarySetting;
+                settings.SerializableSetStartCollapsed = originalSetSetting;
             }
         }
 

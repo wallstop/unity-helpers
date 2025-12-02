@@ -392,6 +392,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         private static SerializableTypeDescriptor[] _descriptors;
         private static Dictionary<string, SerializableTypeDescriptor> _descriptorByName;
         private static string[] _assemblyQualifiedNames;
+        private static string[] _displayNames;
 
         private static readonly Dictionary<string, SerializableTypeDescriptor[]> FilterCache = new(
             StringComparer.OrdinalIgnoreCase
@@ -404,6 +405,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             "AnonymousType",
             "DisplayClass",
             "PrivateImplementationDetails",
+            @"\bBee\.",
         };
 
         private static Regex[] _defaultIgnoreRegexes;
@@ -452,6 +454,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 _descriptors = null;
                 _descriptorByName = null;
                 _assemblyQualifiedNames = null;
+                _displayNames = null;
                 FilterCache.Clear();
             }
         }
@@ -790,6 +793,45 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         }
 
         /// <summary>
+        /// Attempts to retrieve catalog display information for an assembly-qualified type string.
+        /// </summary>
+        /// <param name="assemblyQualifiedName">Assembly-qualified type name.</param>
+        /// <param name="displayName">Friendly display label.</param>
+        /// <param name="tooltip">Tooltip (typically the assembly-qualified name).</param>
+        /// <returns>True when the descriptor is known.</returns>
+        public static bool TryGetDisplayInfo(
+            string assemblyQualifiedName,
+            out string displayName,
+            out string tooltip
+        )
+        {
+            EnsureCache();
+
+            if (string.IsNullOrEmpty(assemblyQualifiedName))
+            {
+                displayName = NoneDisplayName;
+                tooltip = string.Empty;
+                return true;
+            }
+
+            if (
+                _descriptorByName.TryGetValue(
+                    assemblyQualifiedName,
+                    out SerializableTypeDescriptor descriptor
+                )
+            )
+            {
+                displayName = descriptor.DisplayName;
+                tooltip = descriptor.Tooltip;
+                return true;
+            }
+
+            displayName = assemblyQualifiedName;
+            tooltip = assemblyQualifiedName;
+            return false;
+        }
+
+        /// <summary>
         /// Gets the assembly qualified names used by the inspector list.
         /// </summary>
         /// <returns>An array of assembly qualified names including the none entry.</returns>
@@ -797,6 +839,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         {
             EnsureCache();
             return _assemblyQualifiedNames;
+        }
+
+        /// <summary>
+        /// Gets the display names aligned with <see cref="GetAssemblyQualifiedNames"/>.
+        /// </summary>
+        /// <returns>Array of display labels.</returns>
+        public static string[] GetDisplayNames()
+        {
+            EnsureCache();
+            return _displayNames;
         }
 
         /// <summary>
@@ -876,14 +928,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 out StringBuilder builder
             );
             AppendTypeName(builder, type);
-
-            Assembly assembly = type.Assembly;
-
-            AssemblyName assemblyName = assembly.GetName();
-            builder.Append(" (");
-            builder.Append(assemblyName.Name);
-            builder.Append(')');
             return builder.ToString();
+        }
+
+        private static string FormatTooltip(Type type, string assemblyQualifiedName)
+        {
+            if (!string.IsNullOrEmpty(assemblyQualifiedName))
+            {
+                return assemblyQualifiedName;
+            }
+
+            return type?.AssemblyQualifiedName ?? string.Empty;
         }
 
         private static void EnsureCache()
@@ -908,7 +963,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 )
                 {
                     descriptors.Add(
-                        new SerializableTypeDescriptor(null, string.Empty, NoneDisplayName)
+                        new SerializableTypeDescriptor(
+                            type: null,
+                            assemblyQualifiedName: string.Empty,
+                            displayName: NoneDisplayName,
+                            tooltip: string.Empty
+                        )
                     );
 
                     using (
@@ -954,7 +1014,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                                     new SerializableTypeDescriptor(
                                         type,
                                         normalized,
-                                        FormatDisplayName(type)
+                                        FormatDisplayName(type),
+                                        FormatTooltip(type, normalized)
                                     )
                                 );
                             }
@@ -970,6 +1031,62 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                             )
                     );
 
+                    Dictionary<string, int> displayCounts = new(StringComparer.Ordinal);
+                    for (int i = 0; i < descriptors.Count; i++)
+                    {
+                        string displayName = descriptors[i].DisplayName;
+                        if (string.IsNullOrEmpty(displayName))
+                        {
+                            continue;
+                        }
+
+                        displayCounts.TryGetValue(displayName, out int count);
+                        displayCounts[displayName] = count + 1;
+                    }
+
+                    bool hasDuplicates = false;
+                    foreach (KeyValuePair<string, int> pair in displayCounts)
+                    {
+                        if (pair.Value > 1)
+                        {
+                            hasDuplicates = true;
+                            break;
+                        }
+                    }
+
+                    if (hasDuplicates)
+                    {
+                        for (int i = 0; i < descriptors.Count; i++)
+                        {
+                            SerializableTypeDescriptor descriptor = descriptors[i];
+                            if (
+                                descriptor.Type == null
+                                || string.IsNullOrEmpty(descriptor.DisplayName)
+                                || !displayCounts.TryGetValue(
+                                    descriptor.DisplayName,
+                                    out int occurrences
+                                )
+                                || occurrences <= 1
+                            )
+                            {
+                                continue;
+                            }
+
+                            string assemblyName =
+                                descriptor.Type?.Assembly?.GetName()?.Name ?? string.Empty;
+                            string disambiguated = string.IsNullOrEmpty(assemblyName)
+                                ? descriptor.DisplayName
+                                : $"{descriptor.DisplayName} ({assemblyName})";
+
+                            descriptors[i] = new SerializableTypeDescriptor(
+                                descriptor.Type,
+                                descriptor.AssemblyQualifiedName,
+                                disambiguated,
+                                descriptor.Tooltip
+                            );
+                        }
+                    }
+
                     _descriptors = descriptors.ToArray();
                 }
 
@@ -980,19 +1097,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
                 foreach (SerializableTypeDescriptor descriptor in _descriptors)
                 {
-                    if (
-                        !_descriptorByName.ContainsKey(descriptor.AssemblyQualifiedName)
-                        && !string.IsNullOrEmpty(descriptor.AssemblyQualifiedName)
-                    )
+                    if (!_descriptorByName.ContainsKey(descriptor.AssemblyQualifiedName))
                     {
                         _descriptorByName.Add(descriptor.AssemblyQualifiedName, descriptor);
                     }
                 }
 
                 _assemblyQualifiedNames = new string[_descriptors.Length];
+                _displayNames = new string[_descriptors.Length];
                 for (int index = 0; index < _descriptors.Length; index++)
                 {
                     _assemblyQualifiedNames[index] = _descriptors[index].AssemblyQualifiedName;
+                    _displayNames[index] = _descriptors[index].DisplayName;
                 }
 
                 FilterCache[string.Empty] = _descriptors;
@@ -1237,6 +1353,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             /// <param name="type">Actual runtime type (optional).</param>
             /// <param name="assemblyQualifiedName">Fully qualified name used for serialization.</param>
             /// <param name="displayName">Friendly label displayed in the inspector.</param>
+            /// <param name="tooltip">Optional tooltip (typically assembly-qualified name).</param>
             /// <example>
             /// <code><![CDATA[
             /// SerializableTypeDescriptor descriptor = new SerializableTypeDescriptor(
@@ -1249,12 +1366,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             public SerializableTypeDescriptor(
                 Type type,
                 string assemblyQualifiedName,
-                string displayName
+                string displayName,
+                string tooltip
             )
             {
                 Type = type;
                 AssemblyQualifiedName = assemblyQualifiedName ?? string.Empty;
                 DisplayName = displayName ?? string.Empty;
+                Tooltip = tooltip ?? string.Empty;
             }
 
             public Type Type { get; }
@@ -1262,6 +1381,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             public string AssemblyQualifiedName { get; }
 
             public string DisplayName { get; }
+
+            public string Tooltip { get; }
 
             internal bool Matches(string search)
             {

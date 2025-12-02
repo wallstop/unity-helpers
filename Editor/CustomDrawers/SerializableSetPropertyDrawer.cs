@@ -493,12 +493,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 string foldoutLabel = BuildFoldoutLabel(label);
 
+                bool targetsSettings = TargetsUnityHelpersSettings(serializedObject);
+
                 Rect foldoutRect = new(
                     position.x,
                     position.y,
                     position.width,
                     EditorGUIUtility.singleLineHeight
                 );
+                if (!targetsSettings)
+                {
+                    WSerializableCollectionFoldoutUtility.EnsureFoldoutInitialized(
+                        property,
+                        fieldInfo,
+                        WSerializableCollectionFoldoutUtility.SerializableCollectionType.Set
+                    );
+                }
 
                 property.isExpanded = EditorGUI.Foldout(
                     foldoutRect,

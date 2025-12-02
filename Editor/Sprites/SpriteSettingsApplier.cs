@@ -457,6 +457,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private readonly List<string> _assetsThatWillChange = new();
         private bool _applyCanceled;
         private readonly TextureImporterSettings _settingsBuffer = new();
+        private readonly List<(string fullFilePath, string relativePath)> _targetSpriteBuffer =
+            new();
 
         [MenuItem("Tools/Wallstop Studios/Unity Helpers/Sprite Settings Applier", priority = -2)]
         public static void ShowWindow()
@@ -574,11 +576,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private List<(string fullFilePath, string relativePath)> GetTargetSpritePaths()
         {
-            List<(string fullFilePath, string relativePath)> filePaths = new();
+            List<(string fullFilePath, string relativePath)> filePaths = _targetSpriteBuffer;
+            filePaths.Clear();
             HashSet<string> uniqueRelativePaths = new(StringComparer.OrdinalIgnoreCase);
-
+            using PooledResource<List<string>> folderAssetPathsLease = Buffers<string>.List.Get(
+                out List<string> folderAssetPaths
+            );
             // Collect folder asset paths from user selection
-            List<string> folderAssetPaths = new();
             for (int i = 0; i < _directoriesProp.arraySize; i++)
             {
                 Object dir = _directoriesProp.GetArrayElementAtIndex(i).objectReferenceValue;
@@ -683,7 +687,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     filePaths.Add((string.Empty, assetPath));
                 }
             }
-
             return filePaths;
         }
 

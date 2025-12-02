@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System.Reflection;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
     /// Inspector attribute that constrains a string field to a set of allowed values.
@@ -70,6 +71,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         private readonly string _instanceMethodName;
         private readonly Dictionary<Type, InstanceProviderEntry> _instanceMethodCache;
 
+        internal Type ProviderType { get; }
+
+        internal string ProviderMethodName { get; }
+
         /// <summary>
         /// Uses a fixed list of allowed strings.
         /// Ideal for short, stable option sets baked into the class or created through constants.
@@ -79,6 +84,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         {
             string[] captured = list ?? Array.Empty<string>();
             _getStringList = _ => captured;
+            ProviderType = null;
+            ProviderMethodName = null;
         }
 
         /// <summary>
@@ -98,6 +105,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 AttributeName
             );
             _getStringList = _ => provider();
+            ProviderType = type;
+            ProviderMethodName = methodName;
         }
 
         /// <summary>
@@ -118,6 +127,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             _instanceMethodName = methodName;
             _instanceMethodCache = new Dictionary<Type, InstanceProviderEntry>();
             _getStringList = ResolveInstanceMethodValues;
+            ProviderType = null;
+            ProviderMethodName = methodName;
         }
 
         /// <summary>
@@ -260,12 +271,22 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
             if (result is IEnumerable<string> enumerable)
             {
-                List<string> values = new();
-                foreach (string entry in enumerable)
+                using PooledResource<List<string>> valuesLease = Buffers<string>.List.Get(
+                    out List<string> values
+                );
                 {
-                    values.Add(entry);
+                    foreach (string entry in enumerable)
+                    {
+                        values.Add(entry);
+                    }
+
+                    if (values.Count == 0)
+                    {
+                        return Empty;
+                    }
+
+                    return values.ToArray();
                 }
-                return values.Count == 0 ? Empty : values.ToArray();
             }
 
             Debug.LogError(

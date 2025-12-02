@@ -14,6 +14,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
     internal static class WGroupLayoutBuilder
     {
+        private static readonly WGroupDrawOperation[] EmptyOperations =
+            Array.Empty<WGroupDrawOperation>();
+        private static readonly WGroupDefinition[] EmptyDefinitions =
+            Array.Empty<WGroupDefinition>();
+
         internal static WGroupLayout Build(
             SerializedObject serializedObject,
             string scriptPropertyPath
@@ -31,8 +36,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             if (descriptors.Count == 0)
             {
                 return new WGroupLayout(
-                    new List<WGroupDrawOperation>(0),
-                    new List<WGroupDefinition>(0),
+                    EmptyOperations,
+                    EmptyDefinitions,
                     new Dictionary<string, WGroupDefinition>(StringComparer.OrdinalIgnoreCase)
                 );
             }

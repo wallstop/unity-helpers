@@ -11,6 +11,32 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
     public static class SerializedPropertyExtensions
     {
         /// <summary>
+        /// Appends a new default element to the end of an array/list property and returns it.
+        /// Unlike InsertArrayElementAtIndex, this works even when the array is empty and avoids duplicating the last entry.
+        /// </summary>
+        /// <param name="arrayProperty">Serialized array/list property.</param>
+        /// <returns>The SerializedProperty representing the newly added element.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if arrayProperty is null.</exception>
+        public static SerializedProperty AppendArrayElement(this SerializedProperty arrayProperty)
+        {
+            if (arrayProperty == null)
+            {
+                throw new ArgumentNullException(nameof(arrayProperty));
+            }
+
+            if (!arrayProperty.isArray)
+            {
+                throw new InvalidOperationException(
+                    $"SerializedProperty '{arrayProperty.propertyPath}' is not an array."
+                );
+            }
+
+            int newIndex = arrayProperty.arraySize;
+            arrayProperty.arraySize = newIndex + 1;
+            return arrayProperty.GetArrayElementAtIndex(newIndex);
+        }
+
+        /// <summary>
         /// Gets the instance object that contains (encloses) the given SerializedProperty, along with the field's metadata.
         /// </summary>
         /// <param name="property">The SerializedProperty to reflect upon.</param>

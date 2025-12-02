@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     using System.Collections.Generic;
     using System.IO;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Extensions;
     using Object = UnityEngine.Object;
 
     public static class PersistentDirectoryGUI
@@ -485,8 +486,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
             if (GUILayout.Button("Add New Directory Path", GUILayout.Width(200)))
             {
-                listProp.InsertArrayElementAtIndex(listProp.arraySize);
-                listProp.GetArrayElementAtIndex(listProp.arraySize - 1).stringValue = string.Empty;
+                SerializedProperty newElement = listProp.AppendArrayElement();
+                newElement.stringValue = string.Empty;
             }
         }
 
@@ -563,8 +564,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
             if (GUILayout.Button("Add New Directory Path", GUILayout.Width(200)))
             {
-                listProp.InsertArrayElementAtIndex(listProp.arraySize);
-                listProp.GetArrayElementAtIndex(listProp.arraySize - 1).objectReferenceValue = null;
+                SerializedProperty newElement = listProp.AppendArrayElement();
+                newElement.objectReferenceValue = null;
             }
         }
 

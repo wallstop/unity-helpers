@@ -264,7 +264,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         internal void FindFilesToProcess()
         {
-            _filesToProcess = new List<string>();
+            _filesToProcess ??= new List<string>();
+            _filesToProcess.Clear();
             if (_inputDirectories is not { Count: > 0 })
             {
                 this.LogWarn($"No input directories selected.");

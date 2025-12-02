@@ -102,10 +102,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 "Serializable Set Page Size",
                 "Number of entries displayed per page in SerializableHashSet and SerializableSortedSet inspectors."
             );
+        private static readonly GUIContent SerializableSetStartCollapsedContent =
+            EditorGUIUtility.TrTextContent(
+                "Start Serializable Sets Collapsed",
+                "When enabled, SerializableHashSet and SerializableSortedSet inspectors start collapsed unless overridden per field via SerializableCollectionFoldoutAttribute."
+            );
         private static readonly GUIContent SerializableDictionaryPageSizeContent =
             EditorGUIUtility.TrTextContent(
                 "Serializable Dictionary Page Size",
                 "Number of entries displayed per page in SerializableDictionary and SerializableSortedDictionary inspectors."
+            );
+        private static readonly GUIContent SerializableDictionaryStartCollapsedContent =
+            EditorGUIUtility.TrTextContent(
+                "Start Serializable Dictionaries Collapsed",
+                "When enabled, SerializableDictionary and SerializableSortedDictionary inspectors start collapsed unless overridden with SerializableCollectionFoldoutAttribute."
             );
         private static readonly GUIContent EnumToggleButtonsPageSizeContent =
             EditorGUIUtility.TrTextContent(
@@ -390,10 +400,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         [SerializeField]
         [Tooltip(
+            "Whether SerializableHashSet and SerializableSortedSet inspectors start collapsed when first rendered."
+        )]
+        private bool serializableSetStartCollapsed = true;
+
+        [SerializeField]
+        [Tooltip(
             "Maximum number of entries shown per page when drawing SerializableDictionary/SerializableSortedDictionary inspectors."
         )]
         [Range(MinPageSize, MaxSerializableDictionaryPageSize)]
         private int serializableDictionaryPageSize = DefaultSerializableDictionaryPageSize;
+
+        [SerializeField]
+        [Tooltip(
+            "Whether SerializableDictionary and SerializableSortedDictionary inspectors start collapsed when first rendered."
+        )]
+        private bool serializableDictionaryStartCollapsed = true;
 
         [SerializeField]
         [Tooltip(
@@ -976,6 +998,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         }
 
         /// <summary>
+        /// Configures whether SerializableSet inspectors start collapsed by default.
+        /// </summary>
+        public bool SerializableSetStartCollapsed
+        {
+            get => serializableSetStartCollapsed;
+            set
+            {
+                if (serializableSetStartCollapsed == value)
+                {
+                    return;
+                }
+
+                serializableSetStartCollapsed = value;
+                SaveSettings();
+            }
+        }
+
+        /// <summary>
         /// Retrieves the configured page size for SerializableDictionary inspectors.
         /// </summary>
         public int SerializableDictionaryPageSize
@@ -995,6 +1035,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 }
 
                 serializableDictionaryPageSize = clamped;
+                SaveSettings();
+            }
+        }
+
+        /// <summary>
+        /// Configures whether SerializableDictionary inspectors start collapsed by default.
+        /// </summary>
+        public bool SerializableDictionaryStartCollapsed
+        {
+            get => serializableDictionaryStartCollapsed;
+            set
+            {
+                if (serializableDictionaryStartCollapsed == value)
+                {
+                    return;
+                }
+
+                serializableDictionaryStartCollapsed = value;
                 SaveSettings();
             }
         }
@@ -1198,6 +1256,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return Mathf.Clamp(instance.SerializableSetPageSize, MinPageSize, MaxPageSize);
         }
 
+        /// <summary>
+        /// Determines whether SerializableSet inspectors should start collapsed by default.
+        /// </summary>
+        public static bool ShouldStartSerializableSetCollapsed()
+        {
+            UnityHelpersSettings settings = instance;
+            return settings == null || settings.serializableSetStartCollapsed;
+        }
+
         private void InvalidateSerializableTypePatternCache()
         {
             serializableTypeIgnorePatternCache = Array.Empty<string>();
@@ -1230,6 +1297,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 MinPageSize,
                 MaxSerializableDictionaryPageSize
             );
+        }
+
+        /// <summary>
+        /// Determines whether SerializableDictionary inspectors should start collapsed by default.
+        /// </summary>
+        public static bool ShouldStartSerializableDictionaryCollapsed()
+        {
+            UnityHelpersSettings settings = instance;
+            return settings == null || settings.serializableDictionaryStartCollapsed;
         }
 
         public static int GetEnumToggleButtonsPageSize()
@@ -2940,6 +3016,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return false;
             }
 
+            SerializedObject owner = patternsProperty.serializedObject;
+            bool mutated = false;
             EditorGUI.BeginChangeCheck();
             GUIContent label = new(
                 "SerializableType Ignore Regexes",
@@ -2961,7 +3039,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             for (int index = 0; index < patternsProperty.arraySize; index++)
             {
                 SerializedProperty element = patternsProperty.GetArrayElementAtIndex(index);
-                SerializedProperty patternProperty = element.FindPropertyRelative("pattern");
+                SerializedProperty patternProperty = element.FindPropertyRelative(
+                    SerializedPropertyNames.SerializableTypePattern
+                );
 
                 using (new EditorGUILayout.HorizontalScope())
                 {
@@ -3000,17 +3080,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             {
                 if (GUILayout.Button("Add Regex", GUILayout.Width(110f)))
                 {
-                    int newIndex = patternsProperty.arraySize;
-                    patternsProperty.InsertArrayElementAtIndex(newIndex);
-                    SerializedProperty newElement = patternsProperty.GetArrayElementAtIndex(
-                        newIndex
+                    SerializedProperty patternProperty = AppendSerializableTypePatternElement(
+                        patternsProperty
                     );
-                    SerializedProperty patternProperty = newElement.FindPropertyRelative("pattern");
-                    patternProperty.stringValue = string.Empty;
+                    if (patternProperty != null)
+                    {
+                        patternProperty.stringValue = string.Empty;
+                        mutated = true;
+                    }
+
                     if (initializationFlagProperty != null)
                     {
                         initializationFlagProperty.boolValue = true;
                     }
+
+                    ApplySerializableTypePatternChanges(owner);
                 }
 
                 if (GUILayout.Button("Reset To Defaults", GUILayout.Width(150f)))
@@ -3020,21 +3104,60 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         SerializableTypeCatalog.GetDefaultIgnorePatterns();
                     for (int index = 0; index < defaults.Count; index++)
                     {
-                        patternsProperty.InsertArrayElementAtIndex(index);
-                        SerializedProperty element = patternsProperty.GetArrayElementAtIndex(index);
-                        element.FindPropertyRelative("pattern").stringValue = defaults[index];
+                        SerializedProperty patternProperty = AppendSerializableTypePatternElement(
+                            patternsProperty
+                        );
+                        if (patternProperty != null)
+                        {
+                            patternProperty.stringValue = defaults[index];
+                        }
                     }
+
                     if (initializationFlagProperty != null)
                     {
                         initializationFlagProperty.boolValue = true;
                     }
+
+                    mutated = true;
+                    ApplySerializableTypePatternChanges(owner);
                 }
 
                 GUILayout.FlexibleSpace();
             }
 
             EditorGUI.indentLevel--;
-            return EditorGUI.EndChangeCheck();
+            return EditorGUI.EndChangeCheck() || mutated;
+        }
+
+        private static SerializedProperty AppendSerializableTypePatternElement(
+            SerializedProperty patternsProperty
+        )
+        {
+            if (patternsProperty == null)
+            {
+                return null;
+            }
+
+            int newIndex = Mathf.Max(0, patternsProperty.arraySize);
+            patternsProperty.arraySize = newIndex + 1;
+            SerializedProperty element = patternsProperty.GetArrayElementAtIndex(newIndex);
+            if (element == null)
+            {
+                return null;
+            }
+
+            return element.FindPropertyRelative(SerializedPropertyNames.SerializableTypePattern);
+        }
+
+        private static void ApplySerializableTypePatternChanges(SerializedObject owner)
+        {
+            if (owner == null)
+            {
+                return;
+            }
+
+            owner.ApplyModifiedPropertiesWithoutUndo();
+            owner.Update();
         }
 
         private static bool DrawIntSliderField(
@@ -3203,8 +3326,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
                     bool dataChanged = false;
                     bool palettePropertyChanged = false;
-                    HashSet<string> waitInstructionPropertiesDrawn = new();
 
+                    using (
+                        PooledResource<HashSet<string>> waitInstructionPropertiesLease =
+                            SetBuffers<string>
+                                .GetHashSetPool(StringComparer.Ordinal)
+                                .Get(out HashSet<string> waitInstructionPropertiesDrawn)
+                    )
                     using (new LabelWidthScope(SettingsLabelWidth))
                     {
                         SerializedProperty scriptProperty = serializedSettings.FindProperty(
@@ -3291,6 +3419,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
+                                    nameof(serializableSetStartCollapsed),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawToggleField(
+                                    SerializableSetStartCollapsedContent,
+                                    settings.serializableSetStartCollapsed,
+                                    value => settings.serializableSetStartCollapsed = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
                                     nameof(serializableDictionaryPageSize),
                                     StringComparison.Ordinal
                                 )
@@ -3302,6 +3447,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                     MinPageSize,
                                     MaxSerializableDictionaryPageSize,
                                     value => settings.serializableDictionaryPageSize = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(serializableDictionaryStartCollapsed),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawToggleField(
+                                    SerializableDictionaryStartCollapsedContent,
+                                    settings.serializableDictionaryStartCollapsed,
+                                    value => settings.serializableDictionaryStartCollapsed = value
                                 );
                                 dataChanged |= changed;
                                 return true;
