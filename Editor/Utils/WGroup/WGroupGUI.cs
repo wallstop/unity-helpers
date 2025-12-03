@@ -135,8 +135,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             }
 
             GUIStyle foldoutStyle = WGroupStyles.GetFoldoutStyle(palette.TextColor);
-            float headerHeight =
-                EditorGUIUtility.singleLineHeight + WGroupStyles.HeaderVerticalPadding;
+            float headerHeight = WGroupStyles.GetHeaderHeight(palette.TextColor);
             Rect headerRect = GUILayoutUtility.GetRect(
                 GUIContent.none,
                 foldoutStyle,
@@ -187,10 +186,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
             GUIContent content = EditorGUIUtility.TrTextContent(displayName);
             GUIStyle labelStyle = WGroupStyles.GetHeaderLabelStyle(palette.TextColor);
+            float headerHeight = WGroupStyles.GetHeaderHeight(palette.TextColor);
             Rect labelRect = GUILayoutUtility.GetRect(
                 content,
                 labelStyle,
-                GUILayout.ExpandWidth(true)
+                GUILayout.ExpandWidth(true),
+                GUILayout.Height(headerHeight)
             );
             WGroupStyles.DrawHeaderBackground(labelRect, palette.BackgroundColor);
             Rect contentRect = WGroupHeaderVisualUtility.GetContentRect(
@@ -233,6 +234,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         internal const float HeaderVerticalPadding = 4f;
         private static readonly Dictionary<Color, GUIStyle> FoldoutStyles = new();
         private static readonly Dictionary<Color, GUIStyle> HeaderStyles = new();
+
+        internal static float GetHeaderHeight(Color textColor)
+        {
+            GUIStyle foldoutStyle = GetFoldoutStyle(textColor);
+            GUIStyle headerStyle = GetHeaderLabelStyle(textColor);
+
+            float foldoutLineHeight = Mathf.Max(
+                EditorGUIUtility.singleLineHeight,
+                foldoutStyle.lineHeight
+            );
+            float headerLineHeight = Mathf.Max(
+                EditorGUIUtility.singleLineHeight,
+                headerStyle.lineHeight
+            );
+
+            float tallestLineHeight = Mathf.Max(foldoutLineHeight, headerLineHeight);
+            return tallestLineHeight + HeaderVerticalPadding;
+        }
 
         internal static GUIStyle GetFoldoutStyle(Color textColor)
         {
