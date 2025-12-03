@@ -50,11 +50,27 @@ public class CharacterStats : MonoBehaviour
     string displayName = null,           // Optional: Header text (defaults to groupName)
     int autoIncludeCount = UseGlobalAutoInclude,  // Auto-include N fields (or use global setting)
     bool collapsible = false,            // Enable foldout behavior
-    bool startCollapsed = false,         // Initial collapsed state (if collapsible)
+    bool startCollapsed = false,         // Initial collapsed state
     string colorKey = "Default",         // Color palette key
     bool hideHeader = false              // Draw body without header bar
 )]
 ```
+
+> 💡 Use the optional `CollapseBehavior` named argument (or `startCollapsed: true`) to override the project-wide default configured under **Project Settings ▸ Wallstop Studios ▸ Unity Helpers ▸ Start WGroups Collapsed**. Example:
+>
+> ```csharp
+> [WGroup(
+>     "advanced",
+>     collapsible: true,
+>     CollapseBehavior = WGroupAttribute.WGroupCollapseBehavior.ForceExpanded
+> )]
+> ```
+
+`CollapseBehavior` options:
+
+- `UseProjectSetting` (default) – defers to the Unity Helpers project setting.
+- `ForceExpanded` – always starts expanded.
+- `ForceCollapsed` – always starts collapsed (equivalent to `startCollapsed: true`).
 
 ---
 

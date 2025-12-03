@@ -14,12 +14,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     public sealed class WGroupLayoutBuilderTests : CommonTestBase
     {
         private UnityHelpersSettings.WGroupAutoIncludeConfiguration _previousConfiguration;
+        private bool _previousWGroupStartCollapsed;
 
         [SetUp]
         public override void BaseSetUp()
         {
             base.BaseSetUp();
             _previousConfiguration = UnityHelpersSettings.GetWGroupAutoIncludeConfiguration();
+            _previousWGroupStartCollapsed = UnityHelpersSettings
+                .instance
+                .WGroupFoldoutsStartCollapsed;
         }
 
         [TearDown]
@@ -29,6 +33,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 _previousConfiguration.Mode,
                 _previousConfiguration.RowCount
             );
+            UnityHelpersSettings.instance.WGroupFoldoutsStartCollapsed =
+                _previousWGroupStartCollapsed;
             base.TearDown();
         }
 
@@ -211,6 +217,94 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
+        public void CollapsibleGroupsHonorSettingsDefaultWhenNotExplicit()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            settings.WGroupFoldoutsStartCollapsed = true;
+
+            CollapsibleDefaultAsset collapsedAsset =
+                CreateScriptableObject<CollapsibleDefaultAsset>();
+            using SerializedObject collapsedSerialized = new SerializedObject(collapsedAsset);
+            collapsedSerialized.Update();
+
+            SerializedProperty collapsedScript = collapsedSerialized.FindProperty("m_Script");
+            string collapsedScriptPath =
+                collapsedScript != null ? collapsedScript.propertyPath : null;
+
+            WGroupLayout collapsedLayout = WGroupLayoutBuilder.Build(
+                collapsedSerialized,
+                collapsedScriptPath
+            );
+            Assert.IsTrue(
+                collapsedLayout.TryGetGroup(
+                    "DefaultGroup",
+                    out WGroupDefinition collapsedDefinition
+                )
+            );
+            Assert.That(collapsedDefinition.StartCollapsed, Is.True);
+
+            settings.WGroupFoldoutsStartCollapsed = false;
+            CollapsibleDefaultAsset expandedAsset =
+                CreateScriptableObject<CollapsibleDefaultAsset>();
+            using SerializedObject expandedSerialized = new SerializedObject(expandedAsset);
+            expandedSerialized.Update();
+
+            SerializedProperty expandedScript = expandedSerialized.FindProperty("m_Script");
+            string expandedScriptPath = expandedScript != null ? expandedScript.propertyPath : null;
+
+            WGroupLayout expandedLayout = WGroupLayoutBuilder.Build(
+                expandedSerialized,
+                expandedScriptPath
+            );
+            Assert.IsTrue(
+                expandedLayout.TryGetGroup("DefaultGroup", out WGroupDefinition expandedDefinition)
+            );
+            Assert.That(expandedDefinition.StartCollapsed, Is.False);
+        }
+
+        [Test]
+        public void ExplicitStartCollapsedOverridesSettingsDefault()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            settings.WGroupFoldoutsStartCollapsed = false;
+
+            CollapsibleExplicitCollapsedAsset asset =
+                CreateScriptableObject<CollapsibleExplicitCollapsedAsset>();
+            using SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
+            string scriptPath = scriptProperty != null ? scriptProperty.propertyPath : null;
+
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, scriptPath);
+            Assert.IsTrue(
+                layout.TryGetGroup("ExplicitCollapsed", out WGroupDefinition explicitDefinition)
+            );
+            Assert.That(explicitDefinition.StartCollapsed, Is.True);
+        }
+
+        [Test]
+        public void ExplicitStartExpandedOverridesSettingsDefault()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            settings.WGroupFoldoutsStartCollapsed = true;
+
+            CollapsibleExplicitExpandedAsset asset =
+                CreateScriptableObject<CollapsibleExplicitExpandedAsset>();
+            using SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
+            string scriptPath = scriptProperty != null ? scriptProperty.propertyPath : null;
+
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, scriptPath);
+            Assert.IsTrue(
+                layout.TryGetGroup("ExplicitExpanded", out WGroupDefinition explicitDefinition)
+            );
+            Assert.That(explicitDefinition.StartCollapsed, Is.False);
+        }
+
+        [Test]
         public void ColorKeyRegistrationUsesPalette()
         {
             UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
@@ -301,6 +395,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             public int first;
 
             public int second;
+        }
+
+        private sealed class CollapsibleDefaultAsset : ScriptableObject
+        {
+            [WGroup("DefaultGroup", collapsible: true)]
+            public int first;
+        }
+
+        private sealed class CollapsibleExplicitCollapsedAsset : ScriptableObject
+        {
+            [WGroup("ExplicitCollapsed", collapsible: true, startCollapsed: true)]
+            public int first;
+        }
+
+        private sealed class CollapsibleExplicitExpandedAsset : ScriptableObject
+        {
+            [WGroup(
+                "ExplicitExpanded",
+                collapsible: true,
+                CollapseBehavior = WGroupAttribute.WGroupCollapseBehavior.ForceExpanded
+            )]
+            public int first;
         }
 
         private sealed class ColorKeyAsset : ScriptableObject

@@ -39,6 +39,27 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     public sealed class WGroupAttribute : Attribute
     {
         /// <summary>
+        /// Represents how collapsible groups determine their default foldout state.
+        /// </summary>
+        public enum WGroupCollapseBehavior
+        {
+            /// <summary>
+            /// Uses the Unity Helpers project setting to decide whether the header starts collapsed.
+            /// </summary>
+            UseProjectSetting = 0,
+
+            /// <summary>
+            /// Forces the header to start expanded regardless of project defaults.
+            /// </summary>
+            ForceExpanded = 1,
+
+            /// <summary>
+            /// Forces the header to start collapsed regardless of project defaults.
+            /// </summary>
+            ForceCollapsed = 2,
+        }
+
+        /// <summary>
         /// Sentinel value instructing the drawer to keep auto including members until a matching <see cref="WGroupEndAttribute"/> is reached.
         /// </summary>
         public const int InfiniteAutoInclude = -1;
@@ -86,7 +107,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             DisplayName = string.IsNullOrWhiteSpace(displayName) ? GroupName : displayName.Trim();
             AutoIncludeCount = NormalizeAutoIncludeCount(autoIncludeCount);
             Collapsible = collapsible;
-            StartCollapsed = collapsible && startCollapsed;
+            if (startCollapsed)
+            {
+                CollapseBehavior = WGroupCollapseBehavior.ForceCollapsed;
+            }
             ColorKey = string.IsNullOrWhiteSpace(colorKey) ? null : colorKey.Trim();
             HideHeader = hideHeader;
         }
@@ -112,9 +136,18 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         public bool Collapsible { get; }
 
         /// <summary>
+        /// Gets or sets how the attribute resolves its initial collapse state.
+        /// </summary>
+        public WGroupCollapseBehavior CollapseBehavior { get; set; } =
+            WGroupCollapseBehavior.UseProjectSetting;
+
+        /// <summary>
         /// Gets a value indicating whether a collapsible group should start closed.
         /// </summary>
-        public bool StartCollapsed { get; }
+        public bool StartCollapsed
+        {
+            get { return CollapseBehavior == WGroupCollapseBehavior.ForceCollapsed; }
+        }
 
         /// <summary>
         /// Optional palette key used to resolve colors from <c>UnityHelpersSettings</c>.

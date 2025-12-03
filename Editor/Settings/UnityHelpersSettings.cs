@@ -256,6 +256,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 "Finite Include Count",
                 "Number of additional serialized members appended when auto include mode is Finite."
             );
+        private static readonly GUIContent WGroupStartCollapsedContent =
+            EditorGUIUtility.TrTextContent(
+                "Start WGroups Collapsed",
+                "Default foldout state used when collapsible WGroups do not specify startCollapsed explicitly."
+            );
 
         public enum WButtonActionsPlacement
         {
@@ -610,7 +615,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [WGroup(
             "WGroup Defaults",
             displayName: "WGroup Defaults",
-            autoIncludeCount: 1,
+            autoIncludeCount: 2,
             collapsible: true
         )]
         private WGroupAutoIncludeMode wgroupAutoIncludeMode = WGroupAutoIncludeMode.Infinite;
@@ -625,6 +630,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         )]
         [Range(MinWGroupAutoIncludeRowCount, MaxWGroupAutoIncludeRowCount)]
         private int wgroupAutoIncludeRowCount = DefaultWGroupAutoIncludeRowCount;
+
+        [SerializeField]
+        [Tooltip(
+            "When enabled, collapsible WGroup headers start closed unless the attribute overrides startCollapsed."
+        )]
+        private bool wgroupFoldoutsStartCollapsed = true;
 
         [SerializeField]
         [Tooltip("Named color palette applied to WButton custom color keys.")]
@@ -1079,6 +1090,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         }
 
         /// <summary>
+        /// Configures whether collapsible WGroup headers start closed when their attribute does not specify a preference.
+        /// </summary>
+        public bool WGroupFoldoutsStartCollapsed
+        {
+            get => wgroupFoldoutsStartCollapsed;
+            set
+            {
+                if (wgroupFoldoutsStartCollapsed == value)
+                {
+                    return;
+                }
+
+                wgroupFoldoutsStartCollapsed = value;
+                SaveSettings();
+            }
+        }
+
+        /// <summary>
         /// Gets the configured page size for WEnumToggleButtons groups.
         /// </summary>
         public int EnumToggleButtonsPageSize
@@ -1329,6 +1358,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return settings == null || settings.serializableDictionaryStartCollapsed;
         }
 
+        /// <summary>
+        /// Determines whether collapsible WGroup headers should default to a collapsed state.
+        /// </summary>
+        public static bool ShouldStartWGroupCollapsed()
+        {
+            UnityHelpersSettings settings = instance;
+            return settings == null || settings.wgroupFoldoutsStartCollapsed;
+        }
+
         public static int GetEnumToggleButtonsPageSize()
         {
             return Mathf.Clamp(instance.EnumToggleButtonsPageSize, MinPageSize, MaxPageSize);
@@ -1544,6 +1582,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             internal const string LegacyWButtonPriorityColors = nameof(legacyWButtonPriorityColors);
             internal const string WButtonCustomColors = nameof(wbuttonCustomColors);
             internal const string WGroupCustomColors = nameof(wgroupCustomColors);
+            internal const string WGroupFoldoutsStartCollapsed = nameof(
+                wgroupFoldoutsStartCollapsed
+            );
             internal const string WEnumToggleButtonsCustomColors = nameof(
                 wenumToggleButtonsCustomColors
             );
@@ -4108,6 +4149,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                     MinWGroupAutoIncludeRowCount,
                                     MaxWGroupAutoIncludeRowCount,
                                     value => settings.wgroupAutoIncludeRowCount = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wgroupFoldoutsStartCollapsed),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawToggleField(
+                                    WGroupStartCollapsedContent,
+                                    settings.wgroupFoldoutsStartCollapsed,
+                                    value => settings.wgroupFoldoutsStartCollapsed = value
                                 );
                                 dataChanged |= changed;
                                 return true;

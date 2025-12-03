@@ -256,6 +256,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         }
 
         [Test]
+        public void WGroupFoldoutDefaultIsConfigurable()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            bool originalSetting = settings.WGroupFoldoutsStartCollapsed;
+
+            try
+            {
+                settings.WGroupFoldoutsStartCollapsed = true;
+                Assert.IsTrue(UnityHelpersSettings.ShouldStartWGroupCollapsed());
+
+                settings.WGroupFoldoutsStartCollapsed = false;
+                Assert.IsFalse(UnityHelpersSettings.ShouldStartWGroupCollapsed());
+            }
+            finally
+            {
+                settings.WGroupFoldoutsStartCollapsed = originalSetting;
+            }
+        }
+
+        [Test]
         public void ResolveWButtonPaletteFallsBackToDefault()
         {
             UnityHelpersSettings.WButtonPaletteEntry defaultEntry =

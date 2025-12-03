@@ -433,6 +433,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         {
             private readonly List<PropertyEntry> _entries = new();
             private readonly HashSet<string> _lookup = new(StringComparer.Ordinal);
+            private bool _hasExplicitStartCollapsed;
+            private WGroupAttribute.WGroupCollapseBehavior _collapseBehavior = WGroupAttribute
+                .WGroupCollapseBehavior
+                .UseProjectSetting;
 
             internal GroupContext(string name, int declarationOrder)
             {
@@ -493,11 +497,37 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 if (Collapsible != attribute.Collapsible)
                 {
                     Collapsible = attribute.Collapsible;
+                    if (!Collapsible)
+                    {
+                        StartCollapsed = false;
+                        _hasExplicitStartCollapsed = false;
+                        _collapseBehavior = WGroupAttribute
+                            .WGroupCollapseBehavior
+                            .UseProjectSetting;
+                    }
                 }
 
                 if (attribute.Collapsible)
                 {
-                    StartCollapsed = attribute.StartCollapsed;
+                    _collapseBehavior = attribute.CollapseBehavior;
+
+                    switch (_collapseBehavior)
+                    {
+                        case WGroupAttribute.WGroupCollapseBehavior.ForceCollapsed:
+                            StartCollapsed = true;
+                            _hasExplicitStartCollapsed = true;
+                            break;
+                        case WGroupAttribute.WGroupCollapseBehavior.ForceExpanded:
+                            StartCollapsed = false;
+                            _hasExplicitStartCollapsed = true;
+                            break;
+                        default:
+                            if (!_hasExplicitStartCollapsed)
+                            {
+                                StartCollapsed = UnityHelpersSettings.ShouldStartWGroupCollapsed();
+                            }
+                            break;
+                    }
                 }
 
                 HideHeader = attribute.HideHeader;

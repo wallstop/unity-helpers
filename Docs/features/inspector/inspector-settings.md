@@ -284,6 +284,23 @@ public float mana;
 [WGroupEnd("combat")]
 ```
 
+### WGroupStartCollapsed
+
+**Default:** true  
+**Applies to:** `[WGroup]` with `collapsible: true` when `startCollapsed` is omitted
+
+**Description:** Controls the initial foldout state for collapsible WGroups. Disable this to have collapsible groups start expanded unless the attribute explicitly passes `startCollapsed: true`.
+
+> Projects can still override per group via the `startCollapsed` constructor argument or the `CollapseBehavior` named argument:
+>
+> ```csharp
+> [WGroup(
+>     "advanced",
+>     collapsible: true,
+>     CollapseBehavior = WGroupAttribute.WGroupCollapseBehavior.ForceExpanded
+> )]
+> ```
+
 ---
 
 ### WGroupTweenEnabled
