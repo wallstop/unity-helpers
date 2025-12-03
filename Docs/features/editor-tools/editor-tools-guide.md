@@ -1167,7 +1167,7 @@ Custom property drawers enhance the inspector with conditional display, validati
 
 - `inspectorHeight` (default 200, min 160) — vertical space reserved for the inspector body.
 - `drawObjectField` — hide or show the object picker next to the label.
-- `drawHeader` — draw a bold header with a ping button.
+- `drawHeader` — draw a bold header with a ping button (ping is shown only while a Project window tab is visible).
 - `drawPreview` & `previewHeight` — render the preview area when the target editor exposes one.
 - `enableScrolling` — wrap the inspector body in a scroll view for long inspectors.
 - `minInspectorWidth` (default 520) — when the content area is narrower than this width, a horizontal scrollbar appears; set to `0` to disable the safeguard.
@@ -1209,7 +1209,7 @@ public class AbilityDatabase : ScriptableObject
 - Reuses Unity’s native editors, respecting custom inspectors, validation, and undo.
 - Optional scroll view keeps large inspectors usable without stealing space from the parent inspector.
 - Preview support for assets that implement `HasPreviewGUI`.
-- Header includes a quick “Ping” button so you can jump to the asset when needed.
+- Header includes a quick “Ping” button so you can jump to the asset whenever the Project window is visible.
 
 ---
 

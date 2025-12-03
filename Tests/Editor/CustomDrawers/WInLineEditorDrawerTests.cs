@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Internal;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
 
     public sealed class WInLineEditorDrawerTests
     {
@@ -119,6 +120,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             float inlineHeight = expandedHeight - collapsedHeight;
             float expectedHeight = EditorGUIUtility.singleLineHeight + InlinePaddingContribution;
             Assert.That(inlineHeight, Is.EqualTo(expectedHeight).Within(0.01f));
+        }
+
+        [Test]
+        public void PingButtonsDisabledWhenProjectBrowserHidden()
+        {
+            InlineEditorTarget target = CreateHiddenInstance<InlineEditorTarget>();
+            try
+            {
+                ProjectBrowserVisibilityUtility.SetProjectBrowserVisibilityForTesting(false);
+                Assert.That(WInLineEditorDrawer.ShouldShowPingButton(target), Is.False);
+            }
+            finally
+            {
+                ProjectBrowserVisibilityUtility.SetProjectBrowserVisibilityForTesting(null);
+                ScriptableObject.DestroyImmediate(target);
+            }
+        }
+
+        [Test]
+        public void PingButtonsEnabledWhenProjectBrowserVisible()
+        {
+            InlineEditorTarget target = CreateHiddenInstance<InlineEditorTarget>();
+            try
+            {
+                ProjectBrowserVisibilityUtility.SetProjectBrowserVisibilityForTesting(true);
+                Assert.That(WInLineEditorDrawer.ShouldShowPingButton(target), Is.True);
+            }
+            finally
+            {
+                ProjectBrowserVisibilityUtility.SetProjectBrowserVisibilityForTesting(null);
+                ScriptableObject.DestroyImmediate(target);
+            }
         }
 
         [Test]

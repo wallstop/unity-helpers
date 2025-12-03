@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Internal;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
 
     [CustomPropertyDrawer(typeof(WInLineEditorAttribute))]
@@ -299,7 +300,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             bool showFoldoutToggle =
                 currentValue != null && mode != WInLineEditorMode.AlwaysExpanded;
-            bool showPingButton = currentValue != null;
+            bool showPingButton = ShouldShowPingButton(currentValue);
             float pingWidth = showPingButton ? GetPingButtonWidth() : 0f;
             float pingSpacing = showPingButton ? Spacing : 0f;
             float pingRightMargin = showPingButton ? PingButtonRightMargin : 0f;
@@ -835,7 +836,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             float pingWidth = GetPingButtonWidth();
             const float HeaderPingSpacing = 4f;
-            bool showPingButton = value != null;
+            bool showPingButton = ShouldShowPingButton(value);
             float headerSpacing = 0f;
             float headerRightMargin = 0f;
             if (showPingButton)
@@ -915,6 +916,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 property.serializedObject != null ? property.serializedObject.targetObject : null;
             int id = target != null ? target.GetInstanceID() : 0;
             return $"scroll::{id}::{property.propertyPath}";
+        }
+
+        internal static bool ShouldShowPingButton(Object value)
+        {
+            if (value == null)
+            {
+                return false;
+            }
+
+            return ProjectBrowserVisibilityUtility.IsProjectBrowserVisible();
         }
 
         private static bool GetFoldoutState(
