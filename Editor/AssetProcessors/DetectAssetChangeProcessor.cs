@@ -13,13 +13,23 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
     internal sealed class DetectAssetChangeProcessor : AssetPostprocessor
     {
         private const string TestAssetFolderMarker = "__DetectAssetChangedTests__";
+        private const string SupportedSignatureDescription =
+            "Supported signatures: () with no parameters; (AssetChangeContext context); or (TAsset[] createdAssets, string[] deletedAssetPaths) where TAsset derives from UnityEngine.Object.";
+
+        private enum SubscriptionParameterMode
+        {
+            None,
+            Context,
+            CreatedAndDeleted,
+        }
 
         private sealed class MethodSubscription
         {
             internal Type DeclaringType;
             internal MethodInfo Method;
             internal AssetChangeFlags Flags;
-            internal bool AcceptsContext;
+            internal SubscriptionParameterMode ParameterMode;
+            internal Type CreatedParameterElementType;
         }
 
         private sealed class AssetWatcher
@@ -71,6 +81,43 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         {
             initialized = false;
             WatchersByAssetType.Clear();
+        }
+
+        internal static bool ValidateMethodSignatureForTesting(
+            Type declaringType,
+            string methodName
+        )
+        {
+            if (declaringType == null)
+            {
+                throw new ArgumentNullException(nameof(declaringType));
+            }
+
+            if (string.IsNullOrWhiteSpace(methodName))
+            {
+                throw new ArgumentException(nameof(methodName));
+            }
+
+            BindingFlags flags =
+                BindingFlags.Instance
+                | BindingFlags.Static
+                | BindingFlags.Public
+                | BindingFlags.NonPublic;
+            MethodInfo method = declaringType.GetMethod(methodName, flags);
+            if (method == null)
+            {
+                throw new ArgumentException(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Method {0}.{1} was not found.",
+                        declaringType.FullName,
+                        methodName
+                    ),
+                    nameof(methodName)
+                );
+            }
+
+            return TryResolveParameterMode(declaringType, method, out _, out _);
         }
 
         private static void OnPostprocessAllAssets(
@@ -125,6 +172,10 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                     continue;
                 }
 
+                List<UnityEngine.Object> createdAssetInstances = null;
+                Dictionary<Type, Array> createdAssetArrays = null;
+                string[] deletedPathsArray = null;
+
                 foreach (MethodSubscription subscription in watcher.Subscriptions)
                 {
                     AssetChangeFlags relevant = subscription.Flags & triggeredFlags;
@@ -133,20 +184,18 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                         continue;
                     }
 
-                    AssetChangeContext context = subscription.AcceptsContext
-                        ? new AssetChangeContext(
-                            watcher.AssetType,
-                            relevant,
-                            relevant.HasFlag(AssetChangeFlags.Created)
-                                ? (IReadOnlyList<string>)createdPaths
-                                : Array.Empty<string>(),
-                            relevant.HasFlag(AssetChangeFlags.Deleted)
-                                ? (IReadOnlyList<string>)deletedPaths
-                                : Array.Empty<string>()
-                        )
-                        : null;
+                    object[] args = BuildInvocationArguments(
+                        subscription,
+                        watcher.AssetType,
+                        relevant,
+                        createdPaths,
+                        deletedPaths,
+                        ref createdAssetInstances,
+                        ref createdAssetArrays,
+                        ref deletedPathsArray
+                    );
 
-                    InvokeSubscription(subscription, context);
+                    InvokeSubscription(subscription, args);
                 }
 
                 if (createdPaths.Count > 0)
@@ -167,14 +216,138 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             }
         }
 
-        private static void InvokeSubscription(
+        private static object[] BuildInvocationArguments(
             MethodSubscription subscription,
-            AssetChangeContext context
+            Type assetType,
+            AssetChangeFlags relevantFlags,
+            IReadOnlyList<string> createdPaths,
+            IReadOnlyList<string> deletedPaths,
+            ref List<UnityEngine.Object> createdAssetInstances,
+            ref Dictionary<Type, Array> createdAssetArrays,
+            ref string[] deletedPathsArray
         )
         {
-            object[] args = subscription.AcceptsContext
-                ? new object[] { context }
-                : Array.Empty<object>();
+            switch (subscription.ParameterMode)
+            {
+                case SubscriptionParameterMode.None:
+                    return Array.Empty<object>();
+                case SubscriptionParameterMode.Context:
+                    return new object[]
+                    {
+                        new AssetChangeContext(
+                            assetType,
+                            relevantFlags,
+                            relevantFlags.HasFlag(AssetChangeFlags.Created)
+                                ? (IReadOnlyList<string>)createdPaths
+                                : Array.Empty<string>(),
+                            relevantFlags.HasFlag(AssetChangeFlags.Deleted)
+                                ? (IReadOnlyList<string>)deletedPaths
+                                : Array.Empty<string>()
+                        ),
+                    };
+                case SubscriptionParameterMode.CreatedAndDeleted:
+                    Array createdArgument = relevantFlags.HasFlag(AssetChangeFlags.Created)
+                        ? GetCreatedAssetsArgument(
+                            subscription,
+                            assetType,
+                            createdPaths,
+                            ref createdAssetInstances,
+                            ref createdAssetArrays
+                        )
+                        : Array.CreateInstance(subscription.CreatedParameterElementType, 0);
+                    string[] deletedArgument = relevantFlags.HasFlag(AssetChangeFlags.Deleted)
+                        ? GetDeletedPathsArgument(deletedPaths, ref deletedPathsArray)
+                        : Array.Empty<string>();
+                    return new object[] { createdArgument, deletedArgument };
+                default:
+                    return Array.Empty<object>();
+            }
+        }
+
+        private static Array GetCreatedAssetsArgument(
+            MethodSubscription subscription,
+            Type assetType,
+            IReadOnlyList<string> createdPaths,
+            ref List<UnityEngine.Object> createdAssetInstances,
+            ref Dictionary<Type, Array> createdAssetArrays
+        )
+        {
+            if (createdPaths == null || createdPaths.Count == 0)
+            {
+                return Array.CreateInstance(subscription.CreatedParameterElementType, 0);
+            }
+
+            createdAssetInstances ??= LoadCreatedAssetInstances(assetType, createdPaths);
+            createdAssetArrays ??= new Dictionary<Type, Array>();
+
+            if (
+                !createdAssetArrays.TryGetValue(
+                    subscription.CreatedParameterElementType,
+                    out Array typedArray
+                )
+            )
+            {
+                typedArray = Array.CreateInstance(
+                    subscription.CreatedParameterElementType,
+                    createdAssetInstances.Count
+                );
+                for (int i = 0; i < createdAssetInstances.Count; i++)
+                {
+                    typedArray.SetValue(createdAssetInstances[i], i);
+                }
+
+                createdAssetArrays.Add(subscription.CreatedParameterElementType, typedArray);
+            }
+
+            return typedArray;
+        }
+
+        private static List<UnityEngine.Object> LoadCreatedAssetInstances(
+            Type assetType,
+            IReadOnlyList<string> createdPaths
+        )
+        {
+            List<UnityEngine.Object> instances = new(createdPaths.Count);
+            for (int i = 0; i < createdPaths.Count; i++)
+            {
+                string path = createdPaths[i];
+                UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath(path, assetType);
+                instances.Add(asset);
+            }
+
+            return instances;
+        }
+
+        private static string[] GetDeletedPathsArgument(
+            IReadOnlyList<string> deletedPaths,
+            ref string[] deletedPathsArray
+        )
+        {
+            if (deletedPaths == null || deletedPaths.Count == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            if (deletedPathsArray == null)
+            {
+                deletedPathsArray = new string[deletedPaths.Count];
+                for (int i = 0; i < deletedPaths.Count; i++)
+                {
+                    deletedPathsArray[i] = deletedPaths[i];
+                }
+            }
+
+            return deletedPathsArray;
+        }
+
+        private static void InvokeSubscription(MethodSubscription subscription, object[] args)
+        {
+            if (subscription.Method.IsStatic)
+            {
+                InvokeSubscriptionMethod(subscription, null, args);
+                return;
+            }
+
             foreach (
                 UnityEngine.Object instance in EnumeratePersistedInstances(
                     subscription.DeclaringType
@@ -186,25 +359,34 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                     continue;
                 }
 
-                try
-                {
-                    subscription.Method.Invoke(instance, args);
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogException(
-                        new InvalidOperationException(
-                            string.Format(
-                                CultureInfo.InvariantCulture,
-                                "Failed invoking DetectAssetChanged watcher {0}.{1}",
-                                subscription.DeclaringType.FullName,
-                                subscription.Method.Name
-                            ),
-                            ex
+                InvokeSubscriptionMethod(subscription, instance, args);
+            }
+        }
+
+        private static void InvokeSubscriptionMethod(
+            MethodSubscription subscription,
+            UnityEngine.Object target,
+            object[] args
+        )
+        {
+            try
+            {
+                subscription.Method.Invoke(target, args);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(
+                    new InvalidOperationException(
+                        string.Format(
+                            CultureInfo.InvariantCulture,
+                            "Failed invoking DetectAssetChanged watcher {0}.{1}",
+                            subscription.DeclaringType.FullName,
+                            subscription.Method.Name
                         ),
-                        instance
-                    );
-                }
+                        ex
+                    ),
+                    target
+                );
             }
         }
 
@@ -336,6 +518,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 
                 BindingFlags flags =
                     BindingFlags.Instance
+                    | BindingFlags.Static
                     | BindingFlags.Public
                     | BindingFlags.NonPublic
                     | BindingFlags.DeclaredOnly;
@@ -351,18 +534,32 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                         continue;
                     }
 
-                    if (!ValidateMethodSignature(type, method))
+                    if (
+                        !TryResolveParameterMode(
+                            type,
+                            method,
+                            out SubscriptionParameterMode parameterMode,
+                            out Type createdElementType
+                        )
+                    )
                     {
                         continue;
                     }
 
-                    bool acceptsContext =
-                        method.GetParameters().Length == 1
-                        && method.GetParameters()[0].ParameterType == typeof(AssetChangeContext);
-
                     for (int i = 0; i < attributes.Length; i++)
                     {
                         DetectAssetChangedAttribute attribute = attributes[i];
+                        if (
+                            parameterMode == SubscriptionParameterMode.CreatedAndDeleted
+                            && !ResolutionSupportsAssetType(createdElementType, attribute.AssetType)
+                        )
+                        {
+                            Debug.LogWarning(
+                                $"[DetectAssetChanged] {type.FullName}.{method.Name} expects created asset parameter type {createdElementType.FullName}, which is not compatible with watched asset type {attribute.AssetType.FullName}."
+                            );
+                            continue;
+                        }
+
                         if (
                             !WatchersByAssetType.TryGetValue(
                                 attribute.AssetType,
@@ -380,7 +577,8 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                             DeclaringType = type,
                             Method = method,
                             Flags = attribute.Flags,
-                            AcceptsContext = acceptsContext,
+                            ParameterMode = parameterMode,
+                            CreatedParameterElementType = createdElementType,
                         };
                         watcher.Subscriptions.Add(subscription);
                     }
@@ -408,40 +606,95 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             }
         }
 
-        private static bool ValidateMethodSignature(Type declaringType, MethodInfo method)
+        private static bool TryResolveParameterMode(
+            Type declaringType,
+            MethodInfo method,
+            out SubscriptionParameterMode mode,
+            out Type createdElementType
+        )
         {
-            if (method.IsStatic)
-            {
-                Debug.LogWarning(
-                    $"[DetectAssetChanged] {declaringType.FullName}.{method.Name} must be an instance method."
-                );
-                return false;
-            }
+            mode = SubscriptionParameterMode.None;
+            createdElementType = null;
 
             if (method.ReturnType != typeof(void))
             {
-                Debug.LogWarning(
-                    $"[DetectAssetChanged] {declaringType.FullName}.{method.Name} must return void."
+                LogUnsupportedSignature(
+                    declaringType,
+                    method,
+                    "must return void to receive DetectAssetChanged notifications."
                 );
                 return false;
             }
 
             ParameterInfo[] parameters = method.GetParameters();
+            if (parameters.Length == 0)
+            {
+                mode = SubscriptionParameterMode.None;
+                return true;
+            }
+
+            if (parameters.Length == 1 && parameters[0].ParameterType == typeof(AssetChangeContext))
+            {
+                mode = SubscriptionParameterMode.Context;
+                return true;
+            }
+
             if (
-                parameters.Length > 1
-                || (
-                    parameters.Length == 1
-                    && parameters[0].ParameterType != typeof(AssetChangeContext)
-                )
+                parameters.Length == 2
+                && TryResolveCreatedParameterType(parameters[0].ParameterType, out Type elementType)
+                && parameters[1].ParameterType == typeof(string[])
             )
             {
-                Debug.LogWarning(
-                    $"[DetectAssetChanged] {declaringType.FullName}.{method.Name} must declare zero parameters or a single {nameof(AssetChangeContext)} parameter."
-                );
+                mode = SubscriptionParameterMode.CreatedAndDeleted;
+                createdElementType = elementType;
+                return true;
+            }
+
+            LogUnsupportedSignature(
+                declaringType,
+                method,
+                "has an unsupported parameter signature for DetectAssetChanged."
+            );
+            return false;
+        }
+
+        private static bool TryResolveCreatedParameterType(Type parameterType, out Type elementType)
+        {
+            elementType = null;
+            if (parameterType == null || !parameterType.IsArray)
+            {
+                return false;
+            }
+
+            elementType = parameterType.GetElementType();
+            if (elementType == null || !typeof(UnityEngine.Object).IsAssignableFrom(elementType))
+            {
+                elementType = null;
                 return false;
             }
 
             return true;
+        }
+
+        private static bool ResolutionSupportsAssetType(Type parameterElementType, Type assetType)
+        {
+            if (parameterElementType == null || assetType == null)
+            {
+                return true;
+            }
+
+            return parameterElementType.IsAssignableFrom(assetType);
+        }
+
+        private static void LogUnsupportedSignature(
+            Type declaringType,
+            MethodInfo method,
+            string detail
+        )
+        {
+            Debug.LogError(
+                $"[DetectAssetChanged] {declaringType.FullName}.{method.Name} {detail} {SupportedSignatureDescription}"
+            );
         }
 
         private static bool ShouldSkipPath(string assetPath)

@@ -18,6 +18,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
     public sealed class DetectAssetChangedAttribute : Attribute
     {
+        public DetectAssetChangedAttribute(Type assetType)
+            : this(assetType, AssetChangeFlags.Created | AssetChangeFlags.Deleted) { }
+
         public DetectAssetChangedAttribute(Type assetType, AssetChangeFlags flags)
         {
             if (assetType == null)
