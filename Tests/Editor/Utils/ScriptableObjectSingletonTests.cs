@@ -874,6 +874,35 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield break;
         }
 
+        [UnityTest]
+        public IEnumerator MetadataLoadPathChoosesCanonicalAssetWhenFolderContainsDuplicates()
+        {
+            CreateResourceAsset<DeepPathResourceSingleton>(
+                "Deep/Nested/Singletons/DeepPathResourceSingleton.asset",
+                asset => asset.payload = "canonical"
+            );
+            CreateResourceAsset<DeepPathResourceSingleton>(
+                "Deep/Nested/Singletons/00_Duplicate.asset",
+                asset => asset.payload = "duplicate"
+            );
+
+            using (SingletonCreatorTestScope.RestrictTo(typeof(DeepPathResourceSingleton)))
+            {
+                ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            }
+
+            DeepPathResourceSingleton.ClearInstance();
+            yield return null;
+
+            DeepPathResourceSingleton instance = DeepPathResourceSingleton.Instance;
+
+            Assert.AreEqual("canonical", instance.payload);
+            StringAssert.Contains(
+                "Deep/Nested/Singletons/DeepPathResourceSingleton.asset",
+                AssetDatabase.GetAssetPath(instance)
+            );
+        }
+
         public readonly struct MetadataScenario
         {
             private readonly Action _createAsset;

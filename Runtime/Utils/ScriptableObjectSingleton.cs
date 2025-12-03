@@ -49,6 +49,9 @@ namespace WallstopStudios.UnityHelpers.Utils
         private static readonly HashSet<string> _missingInstanceWarnings = new(
             StringComparer.Ordinal
         );
+#if UNITY_EDITOR
+        private static bool _duplicateMetadataWarningLogged;
+#endif
 
         private static string GetResourcesPath()
         {
@@ -133,7 +136,22 @@ namespace WallstopStudios.UnityHelpers.Utils
                 return false;
             }
 
-            bool added = false;
+            bool loadPathAttempted = false;
+            string loadPath = entry.resourcesLoadPath;
+            if (!string.IsNullOrWhiteSpace(loadPath))
+            {
+                loadPathAttempted = true;
+                T direct = Resources.Load<T>(loadPath);
+                if (direct != null)
+                {
+                    TryAddCandidate(candidates, direct);
+#if UNITY_EDITOR
+                    WarnDuplicateSingletonAssets(type, entry);
+#endif
+                    return candidates.Count > 0;
+                }
+            }
+
             string folder = entry.resourcesPath;
             if (!string.IsNullOrWhiteSpace(folder))
             {
@@ -145,7 +163,10 @@ namespace WallstopStudios.UnityHelpers.Utils
                         TryAddCandidate(candidates, candidate);
                     }
 
-                    added = candidates.Count > 0;
+                    if (candidates.Count > 0)
+                    {
+                        return true;
+                    }
                 }
                 else
                 {
@@ -153,23 +174,12 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
             }
 
-            if (added)
+            if (loadPathAttempted)
             {
-                return true;
+                WarnMetadataLoadFailure(type, loadPath);
             }
 
-            T direct = Resources.Load<T>(entry.resourcesLoadPath);
-            if (direct != null)
-            {
-                TryAddCandidate(candidates, direct);
-                added = true;
-            }
-            else
-            {
-                WarnMetadataLoadFailure(type, entry.resourcesLoadPath);
-            }
-
-            return added;
+            return false;
         }
 
         private static void TryAddCandidate(List<T> candidates, T candidate)
@@ -441,5 +451,90 @@ namespace WallstopStudios.UnityHelpers.Utils
                 return _lazyInstance.Value;
             }
         }
+
+#if UNITY_EDITOR
+        private static void WarnDuplicateSingletonAssets(
+            Type type,
+            ScriptableObjectSingletonMetadata.Entry entry
+        )
+        {
+            if (_duplicateMetadataWarningLogged)
+            {
+                return;
+            }
+
+            string folder = entry.resourcesPath;
+            string loadPath = entry.resourcesLoadPath;
+            if (string.IsNullOrWhiteSpace(folder) || string.IsNullOrWhiteSpace(loadPath))
+            {
+                return;
+            }
+
+            string assetFolder = $"Assets/Resources/{folder}".Replace("\\", "/").TrimEnd('/');
+            if (!AssetDatabase.IsValidFolder(assetFolder))
+            {
+                return;
+            }
+
+            string canonicalAssetPath = BuildCanonicalAssetPath(loadPath);
+            string[] guids = AssetDatabase.FindAssets("t:" + type.Name, new[] { assetFolder });
+            if (guids == null || guids.Length <= 1)
+            {
+                return;
+            }
+
+            List<string> duplicates = new();
+            foreach (string guid in guids)
+            {
+                string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+                if (
+                    string.IsNullOrWhiteSpace(assetPath)
+                    || string.Equals(
+                        assetPath,
+                        canonicalAssetPath,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    continue;
+                }
+
+                UnityEngine.Object candidate = AssetDatabase.LoadAssetAtPath(assetPath, type);
+                if (candidate != null)
+                {
+                    duplicates.Add(assetPath);
+                }
+            }
+
+            if (duplicates.Count == 0)
+            {
+                return;
+            }
+
+            _duplicateMetadataWarningLogged = true;
+            string canonicalLabel = string.IsNullOrWhiteSpace(canonicalAssetPath)
+                ? loadPath
+                : canonicalAssetPath;
+            Debug.LogWarning(
+                $"ScriptableObjectSingleton detected duplicate assets for {type.FullName} under '{assetFolder}'. Using '{canonicalLabel}'. Remove extra copies:{Environment.NewLine} - {string.Join(Environment.NewLine + " - ", duplicates)}"
+            );
+        }
+
+        private static string BuildCanonicalAssetPath(string loadPath)
+        {
+            if (string.IsNullOrWhiteSpace(loadPath))
+            {
+                return null;
+            }
+
+            string sanitized = loadPath.Replace("\\", "/").Trim('/');
+            if (string.IsNullOrEmpty(sanitized))
+            {
+                return null;
+            }
+
+            return $"Assets/Resources/{sanitized}.asset".Replace("//", "/");
+        }
+#endif
     }
 }

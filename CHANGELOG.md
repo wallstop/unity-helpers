@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](docs/overview/roadmap.md) for details
 
+### Added
+
+- Collapsible `WGroup` headers now honor a project-wide **Start WGroups Collapsed** toggle (Project Settings ▸ Wallstop Studios ▸ Unity Helpers), making the default state configurable without touching every attribute.
+
+### Changed
+
+- `WInLineEditor` now inherits the Inline Editors project setting by default, and that setting ships collapsed out of the box to match collapsible WGroup headers. Existing projects can still opt back into expanded or always-open foldouts via Project Settings.
+- `WInLineEditor` ping buttons now only render when a Project window tab is visible, preventing no-op buttons when the Project view is hidden.
+
 ## [2.2.0]
 
 ### Added

@@ -32,11 +32,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float NoResultsVerticalPadding = 6f;
         private const float NoResultsHorizontalPadding = 6f;
         private const float PopupWidth = 360f;
-        private const float PopupMinHeight = 180f;
-        private const float PopupMaxHeight = 460f;
-        private const float EmptyStateHeight = 150f;
         private const float OptionBottomPadding = 6f;
         private const float OptionRowExtraHeight = 1.5f;
+        private const float EmptySearchHorizontalPadding = 32f;
+        private const float EmptySearchExtraPadding = 12f;
+        private const string EmptyResultsMessage = "No results match the current search.";
+        private static readonly GUIContent EmptyResultsContent = new(EmptyResultsMessage);
+        private static float s_cachedOptionControlHeight = -1f;
+        private static float s_cachedOptionRowHeight = -1f;
         private static readonly Dictionary<string, PopupState> PopupStates = new();
 
         private static PopupState GetOrCreateState(string key)
@@ -198,6 +201,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return (filteredCount + pageSize - 1) / pageSize;
         }
 
+        private static int CalculateRowsOnPage(int filteredCount, int pageSize, int currentPage)
+        {
+            if (filteredCount <= 0 || pageSize <= 0)
+            {
+                return 1;
+            }
+
+            int maxPageIndex = CalculatePageCount(pageSize, filteredCount) - 1;
+            int clampedPage = Mathf.Clamp(currentPage, 0, Mathf.Max(0, maxPageIndex));
+            int startIndex = clampedPage * pageSize;
+            int remaining = filteredCount - startIndex;
+            if (remaining <= 0)
+            {
+                return 1;
+            }
+
+            return Mathf.Min(pageSize, remaining);
+        }
+
         private static void DrawPopupDropdown(
             Rect position,
             SerializedProperty property,
@@ -330,6 +352,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private static readonly GUIContent PreviousPageContent = new("<", "Previous page");
             private static readonly GUIContent NextPageContent = new(">", "Next page");
             private int _pageSize;
+            private float _emptyStateMeasuredHeight = -1f;
 
             public StringInListPopupContent(
                 SerializedProperty property,
@@ -352,9 +375,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public override Vector2 GetWindowSize()
             {
                 int pageSize = ResolvePageSize();
-                float lineHeight = EditorGUIUtility.singleLineHeight + 4f;
-                float height = 72f + pageSize * lineHeight;
-                return new Vector2(PopupWidth, Mathf.Clamp(height, PopupMinHeight, PopupMaxHeight));
+                int filteredCount = CalculateFilteredCount();
+                bool includePagination = filteredCount > pageSize;
+                float height;
+                if (filteredCount == 0)
+                {
+                    float measured = _emptyStateMeasuredHeight;
+                    height = CalculateEmptySearchHeight(measuredHelpBoxHeight: measured);
+                    return new Vector2(PopupWidth, height);
+                }
+
+                int pageCount = CalculatePageCount(pageSize, filteredCount);
+                _state.page = Mathf.Clamp(_state.page, 0, pageCount - 1);
+                int rowsOnPage = CalculateRowsOnPage(filteredCount, pageSize, _state.page);
+                includePagination = pageCount > 1;
+                height = CalculatePopupTargetHeight(rowsOnPage, includePagination);
+                return new Vector2(PopupWidth, height);
             }
 
             public override void OnGUI(Rect rect)
@@ -404,17 +440,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
 
                     int filteredCount = hasSearch ? filtered.Count : _options.Length;
+                    int pageSize = ResolvePageSize();
+                    int pageCount = CalculatePageCount(pageSize, filteredCount);
+                    _state.page = Mathf.Clamp(_state.page, 0, pageCount - 1);
                     if (filteredCount == 0)
                     {
                         DrawEmptyResultsMessage();
                         _state.page = 0;
                         return;
                     }
-
-                    int pageSize = ResolvePageSize();
-                    int pageCount = CalculatePageCount(pageSize, filteredCount);
-                    _state.page = Mathf.Clamp(_state.page, 0, pageCount - 1);
-                    EnsureWindowFitsPageSize(pageSize, pageCount);
 
                     if (pageCount > 1)
                     {
@@ -427,6 +461,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     int startIndex = _state.page * pageSize;
                     int endIndex = Math.Min(filteredCount, startIndex + pageSize);
+                    int rowsOnPage = Mathf.Max(1, endIndex - startIndex);
                     int currentSelectionIndex = ResolveCurrentSelectionIndex(property, _options);
 
                     using (new EditorGUILayout.VerticalScope())
@@ -437,8 +472,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             GUIContent optionContent = GetOptionContent(optionIndex);
                             bool isSelected = optionIndex == currentSelectionIndex;
                             GUIStyle style = isSelected
-                                ? Styles.SelectedOptionButton
-                                : Styles.OptionButton;
+                                ? PopupStyles.SelectedOptionButton
+                                : PopupStyles.OptionButton;
                             if (
                                 GUILayout.Button(
                                     optionContent,
@@ -456,6 +491,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             EditorGUIUtility.standardVerticalSpacing + OptionBottomPadding
                         );
                     }
+
+                    bool includePagination = pageCount > 1;
+                    EnsureWindowFitsPageSize(rowsOnPage, includePagination);
+                    _emptyStateMeasuredHeight = -1f;
                 }
             }
 
@@ -489,26 +528,47 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private void DrawEmptyResultsMessage()
             {
                 EditorGUILayout.Space(EditorGUIUtility.standardVerticalSpacing);
-                EditorGUILayout.HelpBox("No results match the current search.", MessageType.Info);
+                EditorGUILayout.HelpBox(EmptyResultsMessage, MessageType.Info);
+                float measuredHelpHeight = TryGetLastRectHeight();
+                if (measuredHelpHeight > 0f)
+                {
+                    _emptyStateMeasuredHeight = measuredHelpHeight;
+                }
                 EditorGUILayout.Space(EditorGUIUtility.standardVerticalSpacing);
-                ForceEmptyStateHeight();
+                float targetHeight = StringInListDrawer.CalculateEmptySearchHeight(
+                    _emptyStateMeasuredHeight
+                );
+                EnsureWindowHeight(targetHeight);
             }
 
-            private void ForceEmptyStateHeight()
+            private void EnsureWindowHeight(float targetHeight)
             {
                 if (editorWindow == null)
                 {
                     return;
                 }
 
-                Vector2 size = editorWindow.position.size;
-                float targetHeight = Mathf.Min(size.y, EmptyStateHeight);
-                if (targetHeight < size.y - 0.5f)
+                Rect windowPosition = editorWindow.position;
+                float delta = Mathf.Abs(windowPosition.height - targetHeight);
+                if (delta <= 0.5f)
                 {
-                    Rect windowPosition = editorWindow.position;
-                    windowPosition.height = targetHeight;
-                    editorWindow.position = windowPosition;
+                    return;
                 }
+
+                windowPosition.height = targetHeight;
+                editorWindow.position = windowPosition;
+            }
+
+            private static float TryGetLastRectHeight()
+            {
+                Event evt = Event.current;
+                if (evt == null || evt.type != EventType.Repaint)
+                {
+                    return -1f;
+                }
+
+                Rect lastRect = GUILayoutUtility.GetLastRect();
+                return lastRect.height > 0f ? lastRect.height : -1f;
             }
 
             private void DrawPaginationControls(int pageCount)
@@ -521,7 +581,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         if (
                             GUILayout.Button(
                                 PreviousPageContent,
-                                Styles.PaginationButtonLeft,
+                                PopupStyles.PaginationButtonLeft,
                                 GUILayout.Width(ButtonWidth + 8f)
                             )
                         )
@@ -532,9 +592,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     GUILayout.Label(
                         $"Page {_state.page + 1}/{Mathf.Max(1, pageCount)}",
-                        Styles.PaginationLabel,
+                        PopupStyles.PaginationLabel,
                         GUILayout.Width(PageLabelWidth),
-                        GUILayout.Height(Styles.PaginationButtonLeft.fixedHeight)
+                        GUILayout.Height(PopupStyles.PaginationButtonLeft.fixedHeight)
                     );
 
                     using (new EditorGUI.DisabledScope(_state.page >= pageCount - 1))
@@ -542,7 +602,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         if (
                             GUILayout.Button(
                                 NextPageContent,
-                                Styles.PaginationButtonRight,
+                                PopupStyles.PaginationButtonRight,
                                 GUILayout.Width(ButtonWidth + 8f)
                             )
                         )
@@ -554,71 +614,38 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
-            private static float s_cachedOptionControlHeight = -1f;
-            private static float s_cachedOptionRowHeight = -1f;
-
-            private static float GetOptionControlHeight()
-            {
-                if (s_cachedOptionControlHeight > 0f)
-                {
-                    return s_cachedOptionControlHeight;
-                }
-
-                float width = PopupWidth - 32f;
-                float measured = Styles.OptionButton.CalcHeight(GUIContent.none, width);
-                if (measured <= 0f || float.IsNaN(measured))
-                {
-                    measured = EditorGUIUtility.singleLineHeight + OptionRowExtraHeight;
-                }
-
-                s_cachedOptionControlHeight = measured;
-                return measured;
-            }
-
-            private static float GetOptionRowHeight()
-            {
-                if (s_cachedOptionRowHeight > 0f)
-                {
-                    return s_cachedOptionRowHeight;
-                }
-
-                RectOffset margin = Styles.OptionButton.margin;
-                float marginHeight = margin != null ? margin.vertical : 0f;
-                s_cachedOptionRowHeight = GetOptionControlHeight() + marginHeight;
-                return s_cachedOptionRowHeight;
-            }
-
-            private void EnsureWindowFitsPageSize(int pageSize, int pageCount)
+            private void EnsureWindowFitsPageSize(int rowsOnPage, bool includePagination)
             {
                 if (editorWindow == null)
                 {
                     return;
                 }
 
-                float searchHeight =
-                    EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
-                float paginationHeight =
-                    pageCount > 1
-                        ? EditorGUIUtility.singleLineHeight
-                            + EditorGUIUtility.standardVerticalSpacing
-                        : EditorGUIUtility.standardVerticalSpacing;
-                float optionListHeight = pageSize * GetOptionRowHeight();
-                float footerHeight =
-                    (EditorGUIUtility.standardVerticalSpacing * 2f)
-                    + OptionBottomPadding
-                    + DropdownBottomPadding;
-                float targetHeight = Mathf.Clamp(
-                    searchHeight + paginationHeight + optionListHeight + footerHeight,
-                    PopupMinHeight,
-                    PopupMaxHeight
-                );
-                Vector2 size = editorWindow.position.size;
-                if (size.y < targetHeight - 0.5f)
+                float measuredHeight = CalculateMeasuredContentHeight(includePagination);
+                float fallbackHeight = CalculatePopupTargetHeight(rowsOnPage, includePagination);
+                float targetHeight = measuredHeight > 0f ? measuredHeight : fallbackHeight;
+                EnsureWindowHeight(targetHeight);
+            }
+
+            private float CalculateMeasuredContentHeight(bool includePagination)
+            {
+                Event current = Event.current;
+                if (current == null || current.type != EventType.Repaint)
                 {
-                    Rect windowPosition = editorWindow.position;
-                    windowPosition.height = targetHeight;
-                    editorWindow.position = windowPosition;
+                    return -1f;
                 }
+
+                Rect lastRect = GUILayoutUtility.GetLastRect();
+                if (lastRect.height <= 0f && lastRect.yMax <= 0f)
+                {
+                    return -1f;
+                }
+
+                float measuredHeight = lastRect.yMax;
+                float minimumHeight =
+                    CalculatePopupChromeHeight(includePagination) + GetOptionRowHeight();
+                float result = Mathf.Max(measuredHeight, minimumHeight);
+                return result;
             }
 
             private int ResolvePageSize()
@@ -630,6 +657,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     _state.page = 0;
                 }
                 return _pageSize;
+            }
+
+            private int CalculateFilteredCount()
+            {
+                if (string.IsNullOrWhiteSpace(_state.search))
+                {
+                    return _options.Length;
+                }
+
+                string searchTerm = _state.search ?? string.Empty;
+                int count = 0;
+                for (int i = 0; i < _options.Length; i++)
+                {
+                    string option = _options[i] ?? string.Empty;
+                    if (option.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        count++;
+                    }
+                }
+                return count;
             }
 
             private void ApplySelection(int optionIndex)
@@ -679,44 +726,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return string.IsNullOrEmpty(tooltip)
                     ? new GUIContent(label)
                     : new GUIContent(label, tooltip);
-            }
-
-            private static class Styles
-            {
-                public static readonly GUIStyle OptionButton;
-                public static readonly GUIStyle SelectedOptionButton;
-                public static readonly GUIStyle PaginationButtonLeft;
-                public static readonly GUIStyle PaginationButtonRight;
-                public static readonly GUIStyle PaginationLabel;
-
-                static Styles()
-                {
-                    OptionButton = new GUIStyle("Button")
-                    {
-                        alignment = TextAnchor.MiddleLeft,
-                        padding = new RectOffset(6, 6, 1, 1),
-                    };
-                    SelectedOptionButton = new GUIStyle(OptionButton)
-                    {
-                        fontStyle = FontStyle.Bold,
-                    };
-                    float paginationHeight = EditorGUIUtility.singleLineHeight + 4f;
-                    PaginationButtonLeft = new GUIStyle(EditorStyles.miniButtonLeft)
-                    {
-                        fixedHeight = paginationHeight,
-                        padding = new RectOffset(6, 6, 0, 0),
-                    };
-                    PaginationButtonRight = new GUIStyle(EditorStyles.miniButtonRight)
-                    {
-                        fixedHeight = paginationHeight,
-                        padding = new RectOffset(6, 6, 0, 0),
-                    };
-                    PaginationLabel = new GUIStyle(EditorStyles.centeredGreyMiniLabel)
-                    {
-                        alignment = TextAnchor.MiddleCenter,
-                        padding = new RectOffset(0, 0, 0, 0),
-                    };
-                }
             }
         }
 
@@ -1896,6 +1905,191 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     nameof(SerializableTypeCatalog.GetAssemblyQualifiedNames),
                     StringComparison.Ordinal
                 );
+        }
+
+        private static float CalculatePopupTargetHeight(int rowsOnPage, bool includePagination)
+        {
+            int clampedRows = Mathf.Max(1, rowsOnPage);
+            float chromeHeight = CalculatePopupChromeHeight(includePagination);
+            float optionListHeight = clampedRows * GetOptionRowHeight();
+            float unclampedHeight = chromeHeight + optionListHeight;
+            return unclampedHeight;
+        }
+
+        private static float CalculatePopupChromeHeight(bool includePagination)
+        {
+            float searchHeight = EditorGUIUtility.singleLineHeight;
+            float paginationHeight = includePagination
+                ? PopupStyles.PaginationButtonLeft.fixedHeight
+                : EditorGUIUtility.standardVerticalSpacing;
+            float footerHeight = EditorGUIUtility.standardVerticalSpacing + OptionBottomPadding;
+            return searchHeight + paginationHeight + footerHeight;
+        }
+
+        private static float CalculateEmptySearchHeight(float measuredHelpBoxHeight = -1f)
+        {
+            GUIStyle helpStyle = EditorStyles.helpBox;
+            int helpMargin = helpStyle.margin?.horizontal ?? 0;
+            float availableWidth = PopupWidth - EmptySearchHorizontalPadding - helpMargin;
+            availableWidth = Mathf.Max(32f, availableWidth);
+            float helpBoxHeight;
+            if (measuredHelpBoxHeight > 0f)
+            {
+                helpBoxHeight = measuredHelpBoxHeight;
+            }
+            else
+            {
+                float calculated = helpStyle.CalcHeight(EmptyResultsContent, availableWidth);
+                float marginVertical = helpStyle.margin?.vertical ?? 0;
+                helpBoxHeight = calculated + marginVertical;
+            }
+
+            float searchRow =
+                EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
+            float topSpacer = EditorGUIUtility.standardVerticalSpacing;
+            float bottomSpacer = EditorGUIUtility.standardVerticalSpacing;
+            float footer =
+                EditorGUIUtility.standardVerticalSpacing
+                + OptionBottomPadding
+                + EmptySearchExtraPadding;
+
+            float result = searchRow + topSpacer + helpBoxHeight + bottomSpacer + footer;
+            return result;
+        }
+
+        private static float GetOptionRowHeight()
+        {
+            if (s_cachedOptionRowHeight > 0f)
+            {
+                return s_cachedOptionRowHeight;
+            }
+
+            float controlHeight = GetOptionControlHeight();
+            RectOffset margin = PopupStyles.OptionButton.margin;
+            float adjustedMargin = 0f;
+            if (margin != null)
+            {
+                // GUILayout collapses part of the vertical margin into the enclosing layout scopes.
+                // Subtract the standard spacing so the cached row height matches the measured repaint height.
+                adjustedMargin = Mathf.Max(
+                    0f,
+                    margin.vertical - EditorGUIUtility.standardVerticalSpacing
+                );
+            }
+            else
+            {
+                adjustedMargin = EditorGUIUtility.standardVerticalSpacing;
+            }
+
+            s_cachedOptionRowHeight = controlHeight + adjustedMargin;
+            return s_cachedOptionRowHeight;
+        }
+
+        private static float GetOptionControlHeight()
+        {
+            if (s_cachedOptionControlHeight > 0f)
+            {
+                return s_cachedOptionControlHeight;
+            }
+
+            float width = PopupWidth - 32f;
+            float measured = PopupStyles.OptionButton.CalcHeight(GUIContent.none, width);
+            if (measured <= 0f || float.IsNaN(measured))
+            {
+                measured = EditorGUIUtility.singleLineHeight + OptionRowExtraHeight;
+            }
+
+            s_cachedOptionControlHeight = measured;
+            return measured;
+        }
+
+        internal static class TestHooks
+        {
+            public static float CalculatePopupTargetHeight(int rowsOnPage, bool includePagination)
+            {
+                return StringInListDrawer.CalculatePopupTargetHeight(rowsOnPage, includePagination);
+            }
+
+            public static float CalculatePopupChromeHeight(bool includePagination)
+            {
+                return StringInListDrawer.CalculatePopupChromeHeight(includePagination);
+            }
+
+            public static float GetOptionRowHeight()
+            {
+                return StringInListDrawer.GetOptionRowHeight();
+            }
+
+            public static float GetOptionControlHeight()
+            {
+                return StringInListDrawer.GetOptionControlHeight();
+            }
+
+            public static int OptionButtonMarginVertical =>
+                PopupStyles.OptionButton.margin?.vertical ?? 0;
+
+            public static float OptionFooterPadding => OptionBottomPadding;
+
+            public static float PaginationButtonHeight =>
+                PopupStyles.PaginationButtonLeft.fixedHeight;
+
+            public static float PopupWidthValue => PopupWidth;
+
+            public static float EmptySearchHorizontalPaddingValue => EmptySearchHorizontalPadding;
+
+            public static string EmptyResultsMessageValue => EmptyResultsMessage;
+
+            public static float EmptySearchExtraPaddingValue => EmptySearchExtraPadding;
+
+            public static float CalculateEmptySearchHeight()
+            {
+                return StringInListDrawer.CalculateEmptySearchHeight();
+            }
+
+            public static float CalculateEmptySearchHeightWithMeasurement(float measuredHelpHeight)
+            {
+                return StringInListDrawer.CalculateEmptySearchHeight(measuredHelpHeight);
+            }
+
+            public static int CalculateRowsOnPage(int filteredCount, int pageSize, int currentPage)
+            {
+                return StringInListDrawer.CalculateRowsOnPage(filteredCount, pageSize, currentPage);
+            }
+        }
+
+        private static class PopupStyles
+        {
+            public static readonly GUIStyle OptionButton;
+            public static readonly GUIStyle SelectedOptionButton;
+            public static readonly GUIStyle PaginationButtonLeft;
+            public static readonly GUIStyle PaginationButtonRight;
+            public static readonly GUIStyle PaginationLabel;
+
+            static PopupStyles()
+            {
+                OptionButton = new GUIStyle("Button")
+                {
+                    alignment = TextAnchor.MiddleLeft,
+                    padding = new RectOffset(6, 6, 1, 1),
+                };
+                SelectedOptionButton = new GUIStyle(OptionButton) { fontStyle = FontStyle.Bold };
+                float paginationHeight = PaginationButtonHeight;
+                PaginationButtonLeft = new GUIStyle(EditorStyles.miniButtonLeft)
+                {
+                    fixedHeight = paginationHeight,
+                    padding = new RectOffset(6, 6, 0, 0),
+                };
+                PaginationButtonRight = new GUIStyle(EditorStyles.miniButtonRight)
+                {
+                    fixedHeight = paginationHeight,
+                    padding = new RectOffset(6, 6, 0, 0),
+                };
+                PaginationLabel = new GUIStyle(EditorStyles.centeredGreyMiniLabel)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    padding = new RectOffset(0, 0, 0, 0),
+                };
+            }
         }
 
         private static string[] GetOptionDisplayArray(
