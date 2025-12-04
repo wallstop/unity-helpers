@@ -911,7 +911,15 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             }
 
             elementType = parameterType.GetElementType();
-            if (elementType == null || !typeof(UnityEngine.Object).IsAssignableFrom(elementType))
+            if (elementType == null)
+            {
+                elementType = null;
+                return false;
+            }
+
+            bool isUnityObjectType = typeof(UnityEngine.Object).IsAssignableFrom(elementType);
+            bool isInterfaceType = elementType.IsInterface;
+            if (!isUnityObjectType && !isInterfaceType)
             {
                 elementType = null;
                 return false;

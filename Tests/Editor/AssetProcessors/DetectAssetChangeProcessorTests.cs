@@ -219,6 +219,8 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 TestAssignableAssetChangeHandler.RecordedDeletedPaths,
                 PayloadAssetPath
             );
+
+            LogAssert.NoUnexpectedReceived();
         }
 
         [Test]
