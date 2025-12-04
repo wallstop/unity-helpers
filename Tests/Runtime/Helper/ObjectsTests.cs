@@ -256,7 +256,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void HashCodeReturnsZeroForNullReferenceUnityObject()
         {
-            int result = Objects.HashCode<object>((Object)null);
+            int result = Objects.HashCode<object>(null);
             Assert.AreEqual(0, result);
         }
 

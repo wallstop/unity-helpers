@@ -53,6 +53,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const int DefaultWGroupAutoIncludeRowCount = 4;
         public const int MinWGroupAutoIncludeRowCount = 0;
         public const int MaxWGroupAutoIncludeRowCount = 32;
+        public const float DefaultDetectAssetChangeLoopWindowSeconds = 15f;
+        public const float MinDetectAssetChangeLoopWindowSeconds = 1f;
+        public const float MaxDetectAssetChangeLoopWindowSeconds = 120f;
         private static readonly Color DefaultLightThemeGroupBackground = new(
             0.90f,
             0.90f,
@@ -235,6 +238,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             EditorGUIUtility.TrTextContent(
                 "Tween Cycle Limit",
                 "Number of shake cycles performed when highlighting duplicate entries. Negative values loop indefinitely."
+            );
+        private static readonly GUIContent DetectAssetChangeLoopWindowContent =
+            EditorGUIUtility.TrTextContent(
+                "Detect Asset Change Loop Window (seconds)",
+                "Time window used to detect repeated DetectAssetChanged callbacks before loop suppression disables them."
             );
         private static readonly GUIContent SerializableSetDuplicateTweenEnabledContent =
             EditorGUIUtility.TrTextContent(
@@ -593,6 +601,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             expectedValues: new object[] { DuplicateRowAnimationMode.Tween }
         )]
         private int duplicateRowTweenCycles = DefaultDuplicateTweenCycles;
+
+        [SerializeField]
+        [Tooltip(
+            "Time window used to detect repeated DetectAssetChanged callbacks before loop suppression engages."
+        )]
+        [Min(MinDetectAssetChangeLoopWindowSeconds)]
+        [WGroup(
+            "Detect Asset Changes",
+            displayName: "Detect Asset Changes",
+            autoIncludeCount: 1,
+            collapsible: true
+        )]
+        private float detectAssetChangeLoopWindowSeconds =
+            DefaultDetectAssetChangeLoopWindowSeconds;
 
         [SerializeField]
         [Tooltip(
@@ -1245,6 +1267,36 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
         }
 
+        /// <summary>
+        /// Duration used to detect repeated DetectAssetChanged callbacks before loop suppression activates.
+        /// </summary>
+        public float DetectAssetChangeLoopWindowSeconds
+        {
+            get =>
+                Mathf.Clamp(
+                    detectAssetChangeLoopWindowSeconds <= 0f
+                        ? DefaultDetectAssetChangeLoopWindowSeconds
+                        : detectAssetChangeLoopWindowSeconds,
+                    MinDetectAssetChangeLoopWindowSeconds,
+                    MaxDetectAssetChangeLoopWindowSeconds
+                );
+            set
+            {
+                float clamped = Mathf.Clamp(
+                    value <= 0f ? DefaultDetectAssetChangeLoopWindowSeconds : value,
+                    MinDetectAssetChangeLoopWindowSeconds,
+                    MaxDetectAssetChangeLoopWindowSeconds
+                );
+                if (Mathf.Approximately(clamped, detectAssetChangeLoopWindowSeconds))
+                {
+                    return;
+                }
+
+                detectAssetChangeLoopWindowSeconds = clamped;
+                SaveSettings();
+            }
+        }
+
         internal IReadOnlyList<string> GetSerializableTypeIgnorePatterns()
         {
             if (serializableTypeIgnorePatterns == null || serializableTypeIgnorePatterns.Count == 0)
@@ -1383,6 +1435,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 instance.WButtonHistorySize,
                 MinWButtonHistorySize,
                 MaxWButtonHistorySize
+            );
+        }
+
+        public static float GetDetectAssetChangeLoopWindowSeconds()
+        {
+            UnityHelpersSettings settings = instance;
+            if (settings == null)
+            {
+                return DefaultDetectAssetChangeLoopWindowSeconds;
+            }
+
+            return Mathf.Clamp(
+                settings.DetectAssetChangeLoopWindowSeconds,
+                MinDetectAssetChangeLoopWindowSeconds,
+                MaxDetectAssetChangeLoopWindowSeconds
             );
         }
 
@@ -1605,6 +1672,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             internal const string FoldoutTweenSettingsInitialized = nameof(
                 foldoutTweenSettingsInitialized
             );
+            internal const string DetectAssetChangeLoopWindowSeconds = nameof(
+                detectAssetChangeLoopWindowSeconds
+            );
 #pragma warning disable CS0618 // Type or member is obsolete
             internal const string WButtonPriority = nameof(WButtonPriorityColor.priority);
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -1711,6 +1781,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     : serializableSortedSetFoldoutSpeed,
                 MinFoldoutSpeed,
                 MaxFoldoutSpeed
+            );
+            detectAssetChangeLoopWindowSeconds = Mathf.Clamp(
+                detectAssetChangeLoopWindowSeconds <= 0f
+                    ? DefaultDetectAssetChangeLoopWindowSeconds
+                    : detectAssetChangeLoopWindowSeconds,
+                MinDetectAssetChangeLoopWindowSeconds,
+                MaxDetectAssetChangeLoopWindowSeconds
             );
             if (EnsureFoldoutTweenDefaults())
             {
@@ -4069,6 +4146,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                     DuplicateTweenCyclesContent,
                                     settings.duplicateRowTweenCycles,
                                     value => settings.duplicateRowTweenCycles = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(detectAssetChangeLoopWindowSeconds),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawFloatSliderField(
+                                    DetectAssetChangeLoopWindowContent,
+                                    settings.DetectAssetChangeLoopWindowSeconds,
+                                    MinDetectAssetChangeLoopWindowSeconds,
+                                    MaxDetectAssetChangeLoopWindowSeconds,
+                                    value => settings.detectAssetChangeLoopWindowSeconds = value,
+                                    true
                                 );
                                 dataChanged |= changed;
                                 return true;

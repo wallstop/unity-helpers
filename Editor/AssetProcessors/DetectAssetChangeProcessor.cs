@@ -8,13 +8,23 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Settings;
 
     internal sealed class DetectAssetChangeProcessor : AssetPostprocessor
     {
         private const string TestAssetFolderMarker = "__DetectAssetChangedTests__";
         private const string SupportedSignatureDescription =
             "Supported signatures: () with no parameters; (AssetChangeContext context); or (TAsset[] createdAssets, string[] deletedAssetPaths) where TAsset derives from UnityEngine.Object.";
+        private const string InfiniteLoopWarning =
+            "[DetectAssetChanged] Detected a potentially infinite asset change loop triggered by DetectAssetChanged handlers. Additional change batches will be skipped to prevent recursion until the editor domain reloads. Please fix the offending callbacks.";
+
+        internal const int MaxPendingChangeSetsPerCycle = 32;
+        internal const int MaxConsecutiveChangeSetsWithinWindow = 128;
+
+        private static readonly Func<double> DefaultTimeProvider = () =>
+            EditorApplication.timeSinceStartup;
 
         private enum SubscriptionParameterMode
         {
@@ -25,35 +35,82 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 
         private sealed class MethodSubscription
         {
-            internal Type DeclaringType;
-            internal MethodInfo Method;
-            internal AssetChangeFlags Flags;
-            internal SubscriptionParameterMode ParameterMode;
-            internal Type CreatedParameterElementType;
+            internal Type _declaringType;
+            internal MethodInfo _method;
+            internal AssetChangeFlags _flags;
+            internal SubscriptionParameterMode _parameterMode;
+            internal Type _createdParameterElementType;
         }
 
         private sealed class AssetWatcher
         {
-            internal AssetWatcher(Type assetType)
+            internal AssetWatcher(Type assetType, bool includeAssignableTypes)
             {
                 AssetType = assetType;
+                IncludeAssignableTypes = includeAssignableTypes;
                 KnownAssetPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 Subscriptions = new List<MethodSubscription>();
             }
 
             internal Type AssetType { get; }
+            internal bool IncludeAssignableTypes { get; private set; }
             internal HashSet<string> KnownAssetPaths { get; }
             internal List<MethodSubscription> Subscriptions { get; }
+
+            internal void EnableAssignableMatching()
+            {
+                IncludeAssignableTypes = true;
+            }
+        }
+
+        private sealed class PendingAssetChangeSet
+        {
+            internal PendingAssetChangeSet(
+                IReadOnlyList<string> imported,
+                IReadOnlyList<string> deleted,
+                IReadOnlyList<string> moved,
+                IReadOnlyList<string> movedFrom
+            )
+            {
+                Imported = imported ?? Array.Empty<string>();
+                Deleted = deleted ?? Array.Empty<string>();
+                Moved = moved ?? Array.Empty<string>();
+                MovedFrom = movedFrom ?? Array.Empty<string>();
+            }
+
+            internal IReadOnlyList<string> Imported { get; }
+            internal IReadOnlyList<string> Deleted { get; }
+            internal IReadOnlyList<string> Moved { get; }
+            internal IReadOnlyList<string> MovedFrom { get; }
         }
 
         private static readonly Dictionary<Type, AssetWatcher> WatchersByAssetType = new();
-        private static bool initialized;
-        private static bool includeTestAssets;
+        private static readonly Queue<PendingAssetChangeSet> PendingAssetChanges = new();
+        private static bool _initialized;
+        private static bool _includeTestAssets;
+        private static bool _processingAssetChanges;
+        private static bool _loopProtectionActive;
+        private static int _consecutiveChangeBatches;
+        private static double _lastChangeProcessTimestamp;
+        private static Func<double> _timeProvider = DefaultTimeProvider;
+        private static double? _loopWindowSecondsOverride;
+
+        internal static Func<double> TimeProvider
+        {
+            get => _timeProvider;
+            set => _timeProvider = value ?? DefaultTimeProvider;
+        }
+
+        internal static double? LoopWindowSecondsOverride
+        {
+            get => _loopWindowSecondsOverride;
+            set => _loopWindowSecondsOverride = value;
+        }
 
         internal static bool IncludeTestAssets
         {
-            get => includeTestAssets;
-            set => includeTestAssets = value;
+            get => _includeTestAssets;
+            set => _includeTestAssets = value;
         }
 
         static DetectAssetChangeProcessor()
@@ -69,7 +126,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         )
         {
             EnsureInitialized();
-            HandleAssetChanges(
+            EnqueueAssetChanges(
                 imported ?? Array.Empty<string>(),
                 deleted ?? Array.Empty<string>(),
                 moved ?? Array.Empty<string>(),
@@ -79,8 +136,15 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 
         internal static void ResetForTesting()
         {
-            initialized = false;
+            _initialized = false;
             WatchersByAssetType.Clear();
+            PendingAssetChanges.Clear();
+            _processingAssetChanges = false;
+            _loopProtectionActive = false;
+            _consecutiveChangeBatches = 0;
+            _lastChangeProcessTimestamp = 0;
+            TimeProvider = DefaultTimeProvider;
+            LoopWindowSecondsOverride = null;
         }
 
         internal static bool ValidateMethodSignatureForTesting(
@@ -133,16 +197,94 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                 return;
             }
 
-            HandleAssetChanges(importedAssets, deletedAssets, movedAssets, movedFromAssetPaths);
+            EnqueueAssetChanges(importedAssets, deletedAssets, movedAssets, movedFromAssetPaths);
         }
 
-        private static void HandleAssetChanges(
+        private static void EnqueueAssetChanges(
             IReadOnlyList<string> importedAssets,
             IReadOnlyList<string> deletedAssets,
             IReadOnlyList<string> movedAssets,
             IReadOnlyList<string> movedFromAssetPaths
         )
         {
+            if (_loopProtectionActive)
+            {
+                PendingAssetChanges.Clear();
+                return;
+            }
+
+            PendingAssetChanges.Enqueue(
+                new PendingAssetChangeSet(
+                    importedAssets,
+                    deletedAssets,
+                    movedAssets,
+                    movedFromAssetPaths
+                )
+            );
+            ProcessPendingAssetChanges();
+        }
+
+        private static void ProcessPendingAssetChanges()
+        {
+            if (_loopProtectionActive)
+            {
+                PendingAssetChanges.Clear();
+                return;
+            }
+
+            if (_processingAssetChanges)
+            {
+                return;
+            }
+
+            _processingAssetChanges = true;
+            int processedBatches = 0;
+            try
+            {
+                while (PendingAssetChanges.Count > 0)
+                {
+                    PendingAssetChangeSet changeSet = PendingAssetChanges.Dequeue();
+                    bool handled = HandleAssetChanges(
+                        changeSet.Imported,
+                        changeSet.Deleted,
+                        changeSet.Moved,
+                        changeSet.MovedFrom
+                    );
+
+                    if (handled)
+                    {
+                        processedBatches++;
+                        if (processedBatches >= MaxPendingChangeSetsPerCycle)
+                        {
+                            EnterLoopProtection();
+                            break;
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                _processingAssetChanges = false;
+                if (!_loopProtectionActive && processedBatches > 0)
+                {
+                    UpdateLoopWindow(processedBatches);
+                }
+            }
+        }
+
+        private static bool HandleAssetChanges(
+            IReadOnlyList<string> importedAssets,
+            IReadOnlyList<string> deletedAssets,
+            IReadOnlyList<string> movedAssets,
+            IReadOnlyList<string> movedFromAssetPaths
+        )
+        {
+            if (_loopProtectionActive)
+            {
+                return false;
+            }
+
+            bool handledChange = false;
             foreach (AssetWatcher watcher in WatchersByAssetType.Values)
             {
                 List<string> createdPaths = CollectCreatedAssets(
@@ -172,13 +314,14 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                     continue;
                 }
 
+                handledChange = true;
                 List<UnityEngine.Object> createdAssetInstances = null;
                 Dictionary<Type, Array> createdAssetArrays = null;
                 string[] deletedPathsArray = null;
 
                 foreach (MethodSubscription subscription in watcher.Subscriptions)
                 {
-                    AssetChangeFlags relevant = subscription.Flags & triggeredFlags;
+                    AssetChangeFlags relevant = subscription._flags & triggeredFlags;
                     if (relevant == AssetChangeFlags.None)
                     {
                         continue;
@@ -200,20 +343,22 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 
                 if (createdPaths.Count > 0)
                 {
-                    for (int i = 0; i < createdPaths.Count; i++)
+                    foreach (string assetPath in createdPaths)
                     {
-                        watcher.KnownAssetPaths.Add(createdPaths[i]);
+                        watcher.KnownAssetPaths.Add(assetPath);
                     }
                 }
 
                 if (deletedPaths.Count > 0)
                 {
-                    for (int i = 0; i < deletedPaths.Count; i++)
+                    foreach (string deletedPath in deletedPaths)
                     {
-                        watcher.KnownAssetPaths.Remove(deletedPaths[i]);
+                        watcher.KnownAssetPaths.Remove(deletedPath);
                     }
                 }
             }
+
+            return handledChange;
         }
 
         private static object[] BuildInvocationArguments(
@@ -227,7 +372,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             ref string[] deletedPathsArray
         )
         {
-            switch (subscription.ParameterMode)
+            switch (subscription._parameterMode)
             {
                 case SubscriptionParameterMode.None:
                     return Array.Empty<object>();
@@ -237,16 +382,16 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                         new AssetChangeContext(
                             assetType,
                             relevantFlags,
-                            relevantFlags.HasFlag(AssetChangeFlags.Created)
-                                ? (IReadOnlyList<string>)createdPaths
+                            relevantFlags.HasFlagNoAlloc(AssetChangeFlags.Created)
+                                ? createdPaths
                                 : Array.Empty<string>(),
-                            relevantFlags.HasFlag(AssetChangeFlags.Deleted)
-                                ? (IReadOnlyList<string>)deletedPaths
+                            relevantFlags.HasFlagNoAlloc(AssetChangeFlags.Deleted)
+                                ? deletedPaths
                                 : Array.Empty<string>()
                         ),
                     };
                 case SubscriptionParameterMode.CreatedAndDeleted:
-                    Array createdArgument = relevantFlags.HasFlag(AssetChangeFlags.Created)
+                    Array createdArgument = relevantFlags.HasFlagNoAlloc(AssetChangeFlags.Created)
                         ? GetCreatedAssetsArgument(
                             subscription,
                             assetType,
@@ -254,8 +399,10 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                             ref createdAssetInstances,
                             ref createdAssetArrays
                         )
-                        : Array.CreateInstance(subscription.CreatedParameterElementType, 0);
-                    string[] deletedArgument = relevantFlags.HasFlag(AssetChangeFlags.Deleted)
+                        : Array.CreateInstance(subscription._createdParameterElementType, 0);
+                    string[] deletedArgument = relevantFlags.HasFlagNoAlloc(
+                        AssetChangeFlags.Deleted
+                    )
                         ? GetDeletedPathsArgument(deletedPaths, ref deletedPathsArray)
                         : Array.Empty<string>();
                     return new object[] { createdArgument, deletedArgument };
@@ -274,7 +421,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         {
             if (createdPaths == null || createdPaths.Count == 0)
             {
-                return Array.CreateInstance(subscription.CreatedParameterElementType, 0);
+                return Array.CreateInstance(subscription._createdParameterElementType, 0);
             }
 
             createdAssetInstances ??= LoadCreatedAssetInstances(assetType, createdPaths);
@@ -282,13 +429,13 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 
             if (
                 !createdAssetArrays.TryGetValue(
-                    subscription.CreatedParameterElementType,
+                    subscription._createdParameterElementType,
                     out Array typedArray
                 )
             )
             {
                 typedArray = Array.CreateInstance(
-                    subscription.CreatedParameterElementType,
+                    subscription._createdParameterElementType,
                     createdAssetInstances.Count
                 );
                 for (int i = 0; i < createdAssetInstances.Count; i++)
@@ -296,7 +443,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                     typedArray.SetValue(createdAssetInstances[i], i);
                 }
 
-                createdAssetArrays.Add(subscription.CreatedParameterElementType, typedArray);
+                createdAssetArrays.Add(subscription._createdParameterElementType, typedArray);
             }
 
             return typedArray;
@@ -308,10 +455,13 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         )
         {
             List<UnityEngine.Object> instances = new(createdPaths.Count);
+            Type loadType = typeof(UnityEngine.Object).IsAssignableFrom(assetType)
+                ? assetType
+                : typeof(UnityEngine.Object);
             for (int i = 0; i < createdPaths.Count; i++)
             {
                 string path = createdPaths[i];
-                UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath(path, assetType);
+                UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath(path, loadType);
                 instances.Add(asset);
             }
 
@@ -342,7 +492,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 
         private static void InvokeSubscription(MethodSubscription subscription, object[] args)
         {
-            if (subscription.Method.IsStatic)
+            if (subscription._method.IsStatic)
             {
                 InvokeSubscriptionMethod(subscription, null, args);
                 return;
@@ -350,7 +500,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 
             foreach (
                 UnityEngine.Object instance in EnumeratePersistedInstances(
-                    subscription.DeclaringType
+                    subscription._declaringType
                 )
             )
             {
@@ -371,7 +521,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         {
             try
             {
-                subscription.Method.Invoke(target, args);
+                subscription._method.Invoke(target, args);
             }
             catch (Exception ex)
             {
@@ -380,8 +530,8 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                         string.Format(
                             CultureInfo.InvariantCulture,
                             "Failed invoking DetectAssetChanged watcher {0}.{1}",
-                            subscription.DeclaringType.FullName,
-                            subscription.Method.Name
+                            subscription._declaringType.FullName,
+                            subscription._method.Name
                         ),
                         ex
                     ),
@@ -495,12 +645,12 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 
         private static void EnsureInitialized()
         {
-            if (initialized)
+            if (_initialized)
             {
                 return;
             }
 
-            initialized = true;
+            _initialized = true;
             BuildWatchers();
         }
 
@@ -508,7 +658,9 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         {
             WatchersByAssetType.Clear();
 
-            IEnumerable<Type> loadedTypes = ReflectionHelpers.GetAllLoadedTypes();
+            Type[] loadedTypes =
+                ReflectionHelpers.GetAllLoadedTypes()?.Where(t => t != null).ToArray()
+                ?? Array.Empty<Type>();
             foreach (Type type in loadedTypes)
             {
                 if (type == null || type.IsAbstract)
@@ -546,9 +698,8 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                         continue;
                     }
 
-                    for (int i = 0; i < attributes.Length; i++)
+                    foreach (DetectAssetChangedAttribute attribute in attributes)
                     {
-                        DetectAssetChangedAttribute attribute = attributes[i];
                         if (
                             parameterMode == SubscriptionParameterMode.CreatedAndDeleted
                             && !ResolutionSupportsAssetType(createdElementType, attribute.AssetType)
@@ -560,6 +711,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                             continue;
                         }
 
+                        bool includeAssignableTypes = attribute.IncludeAssignableTypes;
                         if (
                             !WatchersByAssetType.TryGetValue(
                                 attribute.AssetType,
@@ -567,18 +719,23 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                             )
                         )
                         {
-                            watcher = new AssetWatcher(attribute.AssetType);
-                            PopulateKnownAssetPaths(watcher);
+                            watcher = new AssetWatcher(attribute.AssetType, includeAssignableTypes);
+                            PopulateKnownAssetPaths(watcher, loadedTypes);
                             WatchersByAssetType.Add(attribute.AssetType, watcher);
+                        }
+                        else if (includeAssignableTypes && !watcher.IncludeAssignableTypes)
+                        {
+                            watcher.EnableAssignableMatching();
+                            PopulateKnownAssetPaths(watcher, loadedTypes);
                         }
 
                         MethodSubscription subscription = new()
                         {
-                            DeclaringType = type,
-                            Method = method,
-                            Flags = attribute.Flags,
-                            ParameterMode = parameterMode,
-                            CreatedParameterElementType = createdElementType,
+                            _declaringType = type,
+                            _method = method,
+                            _flags = attribute.Flags,
+                            _parameterMode = parameterMode,
+                            _createdParameterElementType = createdElementType,
                         };
                         watcher.Subscriptions.Add(subscription);
                     }
@@ -586,22 +743,109 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             }
         }
 
-        private static void PopulateKnownAssetPaths(AssetWatcher watcher)
+        private static void PopulateKnownAssetPaths(
+            AssetWatcher watcher,
+            IReadOnlyList<Type> loadedTypes
+        )
         {
-            string filter = $"t:{watcher.AssetType.Name}";
-            string[] guids = AssetDatabase.FindAssets(filter);
-            for (int i = 0; i < guids.Length; i++)
+            if (watcher == null)
             {
-                string path = AssetDatabase.GUIDToAssetPath(guids[i]);
-                if (ShouldSkipPath(path))
+                return;
+            }
+
+            foreach (
+                Type searchType in ResolveSearchableAssetTypes(
+                    watcher.AssetType,
+                    watcher.IncludeAssignableTypes,
+                    loadedTypes
+                )
+            )
+            {
+                string filter = $"t:{searchType.Name}";
+                string[] guids = AssetDatabase.FindAssets(filter);
+                for (int i = 0; i < guids.Length; i++)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+                    if (ShouldSkipPath(path))
+                    {
+                        continue;
+                    }
+
+                    Type mainType = AssetDatabase.GetMainAssetTypeAtPath(path);
+                    if (mainType != null && watcher.AssetType.IsAssignableFrom(mainType))
+                    {
+                        watcher.KnownAssetPaths.Add(path);
+                    }
+                }
+            }
+        }
+
+        private static IEnumerable<Type> ResolveSearchableAssetTypes(
+            Type requestedAssetType,
+            bool includeAssignableTypes,
+            IReadOnlyList<Type> loadedTypes
+        )
+        {
+            if (requestedAssetType == null)
+            {
+                yield break;
+            }
+
+            bool isUnityObjectType = typeof(UnityEngine.Object).IsAssignableFrom(
+                requestedAssetType
+            );
+            HashSet<Type> yieldedTypes;
+            if (isUnityObjectType)
+            {
+                yield return requestedAssetType;
+                if (!includeAssignableTypes)
+                {
+                    yield break;
+                }
+
+                yieldedTypes = new HashSet<Type> { requestedAssetType };
+            }
+            else
+            {
+                if (!includeAssignableTypes)
+                {
+                    yield break;
+                }
+
+                yieldedTypes = new HashSet<Type>();
+            }
+
+            if (loadedTypes == null)
+            {
+                yield break;
+            }
+
+            for (int i = 0; i < loadedTypes.Count; i++)
+            {
+                Type candidate = loadedTypes[i];
+                if (candidate == null)
                 {
                     continue;
                 }
 
-                Type mainType = AssetDatabase.GetMainAssetTypeAtPath(path);
-                if (mainType != null && watcher.AssetType.IsAssignableFrom(mainType))
+                if (!typeof(UnityEngine.Object).IsAssignableFrom(candidate))
                 {
-                    watcher.KnownAssetPaths.Add(path);
+                    continue;
+                }
+
+                if (candidate.IsAbstract || candidate == requestedAssetType)
+                {
+                    continue;
+                }
+
+                if (!requestedAssetType.IsAssignableFrom(candidate))
+                {
+                    continue;
+                }
+
+                if (yieldedTypes.Add(candidate))
+                {
+                    yield return candidate;
                 }
             }
         }
@@ -686,6 +930,63 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             return parameterElementType.IsAssignableFrom(assetType);
         }
 
+        private static void UpdateLoopWindow(int processedBatches)
+        {
+            double now = TimeProvider();
+            double loopWindow = ResolveLoopWindowSeconds();
+            if (loopWindow <= 0d)
+            {
+                loopWindow = UnityHelpersSettings.DefaultDetectAssetChangeLoopWindowSeconds;
+            }
+
+            if (now - _lastChangeProcessTimestamp > loopWindow)
+            {
+                _consecutiveChangeBatches = 0;
+            }
+
+            _lastChangeProcessTimestamp = now;
+            _consecutiveChangeBatches += processedBatches;
+            if (_consecutiveChangeBatches >= MaxConsecutiveChangeSetsWithinWindow)
+            {
+                EnterLoopProtection();
+            }
+        }
+
+        private static double ResolveLoopWindowSeconds()
+        {
+            if (_loopWindowSecondsOverride is > 0d)
+            {
+                return _loopWindowSecondsOverride.Value;
+            }
+
+            double configured;
+            try
+            {
+                configured = UnityHelpersSettings.GetDetectAssetChangeLoopWindowSeconds();
+            }
+            catch (Exception)
+            {
+                configured = UnityHelpersSettings.DefaultDetectAssetChangeLoopWindowSeconds;
+            }
+
+            return configured < UnityHelpersSettings.MinDetectAssetChangeLoopWindowSeconds
+                ? UnityHelpersSettings.MinDetectAssetChangeLoopWindowSeconds
+                : configured;
+        }
+
+        private static void EnterLoopProtection()
+        {
+            if (_loopProtectionActive)
+            {
+                return;
+            }
+
+            _loopProtectionActive = true;
+            _consecutiveChangeBatches = 0;
+            PendingAssetChanges.Clear();
+            Debug.LogError(InfiniteLoopWarning);
+        }
+
         private static void LogUnsupportedSignature(
             Type declaringType,
             MethodInfo method,
@@ -705,7 +1006,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             }
 
             if (
-                !includeTestAssets
+                !_includeTestAssets
                 && assetPath.IndexOf(TestAssetFolderMarker, StringComparison.OrdinalIgnoreCase) >= 0
             )
             {

@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.AssetProcessors
+namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 {
     using System;
     using System.Collections.Generic;
@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.AssetProcessors
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
+    using WallstopStudios.UnityHelpers.Editor.Settings;
     using Object = UnityEngine.Object;
 
     public sealed class DetectAssetChangeProcessorTests
@@ -18,6 +19,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.AssetProcessors
         private const string PayloadAssetPath = Root + "/Payload.asset";
         private const string DetailedHandlerAssetPath = Root + "/DetailedHandler.asset";
         private const string AlternatePayloadAssetPath = Root + "/AlternatePayload.asset";
+        private const string AssignableHandlerAssetPath = Root + "/AssignableHandler.asset";
+
+        private Func<double> _originalTimeProvider;
+        private float _originalLoopWindowSeconds;
 
         [SetUp]
         public void SetUp()
@@ -26,8 +31,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.AssetProcessors
             EnsureFolder();
             EnsureHandlerAsset<TestDetectAssetChangeHandler>(HandlerAssetPath);
             EnsureHandlerAsset<TestDetailedSignatureHandler>(DetailedHandlerAssetPath);
+            EnsureHandlerAsset<TestAssignableAssetChangeHandler>(AssignableHandlerAssetPath);
             ClearTestState();
             DetectAssetChangeProcessor.ResetForTesting();
+            _originalTimeProvider = DetectAssetChangeProcessor.TimeProvider;
+            _originalLoopWindowSeconds = UnityHelpersSettings
+                .instance
+                .DetectAssetChangeLoopWindowSeconds;
         }
 
         [TearDown]
@@ -38,6 +48,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.AssetProcessors
             DeleteAssetIfExists(AlternatePayloadAssetPath);
             DeleteAssetIfExists(HandlerAssetPath);
             DeleteAssetIfExists(DetailedHandlerAssetPath);
+            DeleteAssetIfExists(AssignableHandlerAssetPath);
 
             if (AssetDatabase.IsValidFolder(Root))
             {
@@ -47,6 +58,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.AssetProcessors
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             ClearTestState();
+            DetectAssetChangeProcessor.TimeProvider = _originalTimeProvider;
+            DetectAssetChangeProcessor.LoopWindowSecondsOverride = null;
+
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            if (
+                !Mathf.Approximately(
+                    settings.DetectAssetChangeLoopWindowSeconds,
+                    _originalLoopWindowSeconds
+                )
+            )
+            {
+                settings.DetectAssetChangeLoopWindowSeconds = _originalLoopWindowSeconds;
+            }
         }
 
         [Test]
@@ -165,6 +189,39 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.AssetProcessors
         }
 
         [Test]
+        public void InterfaceHandlersReceiveAssignableAssets()
+        {
+            CreatePayloadAsset();
+
+            DetectAssetChangeProcessor.ProcessChangesForTesting(
+                new[] { PayloadAssetPath },
+                null,
+                null,
+                null
+            );
+
+            Assert.AreEqual(1, TestAssignableAssetChangeHandler.RecordedCreated.Count);
+            Assert.IsInstanceOf<TestDetectableAsset>(
+                TestAssignableAssetChangeHandler.RecordedCreated[0]
+            );
+
+            TestAssignableAssetChangeHandler.Clear();
+            DetectAssetChangeProcessor.ResetForTesting();
+
+            DetectAssetChangeProcessor.ProcessChangesForTesting(
+                null,
+                new[] { PayloadAssetPath },
+                null,
+                null
+            );
+
+            CollectionAssert.Contains(
+                TestAssignableAssetChangeHandler.RecordedDeletedPaths,
+                PayloadAssetPath
+            );
+        }
+
+        [Test]
         public void SingleMethodCanWatchMultipleAssetTypes()
         {
             CreatePayloadAsset();
@@ -214,6 +271,130 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.AssetProcessors
                 AssetChangeFlags.Deleted,
                 TestMultiAttributeHandler.RecordedInvocations[0].Flags
             );
+        }
+
+        [Test]
+        public void ReentrantHandlersQueueChangesInsteadOfRecursing()
+        {
+            TestReentrantHandler.Configure(PayloadAssetPath);
+            CreatePayloadAsset();
+
+            DetectAssetChangeProcessor.ProcessChangesForTesting(
+                new[] { PayloadAssetPath },
+                null,
+                null,
+                null
+            );
+
+            Assert.AreEqual(2, TestReentrantHandler.InvocationCount);
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void InfiniteLoopingHandlersAreSuppressed()
+        {
+            CreatePayloadAsset();
+
+            double fakeTime = 0;
+            DetectAssetChangeProcessor.TimeProvider = () => fakeTime;
+
+            LogAssert.Expect(
+                LogType.Error,
+                new Regex("potentially infinite asset change loop", RegexOptions.IgnoreCase)
+            );
+
+            int limit = DetectAssetChangeProcessor.MaxConsecutiveChangeSetsWithinWindow;
+            for (int i = 0; i < limit + 5; i++)
+            {
+                fakeTime += 0.001;
+                DetectAssetChangeProcessor.ProcessChangesForTesting(
+                    new[] { PayloadAssetPath },
+                    null,
+                    null,
+                    null
+                );
+            }
+
+            Assert.AreEqual(limit, TestLoopingHandler.InvocationCount);
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void ChangeBatchesWithGapsLongerThanWindowAreNotSuppressed()
+        {
+            CreatePayloadAsset();
+
+            double fakeTime = 0;
+            DetectAssetChangeProcessor.TimeProvider = () => fakeTime;
+            DetectAssetChangeProcessor.LoopWindowSecondsOverride = 5d;
+
+            int iterations = DetectAssetChangeProcessor.MaxConsecutiveChangeSetsWithinWindow + 5;
+            for (int i = 0; i < iterations; i++)
+            {
+                fakeTime += 6d;
+                DetectAssetChangeProcessor.ProcessChangesForTesting(
+                    new[] { PayloadAssetPath },
+                    null,
+                    null,
+                    null
+                );
+            }
+
+            Assert.AreEqual(iterations, TestLoopingHandler.InvocationCount);
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void LoopWindowSettingDetectsSlowlyRecurringChanges()
+        {
+            CreatePayloadAsset();
+
+            double fakeTime = 0;
+            DetectAssetChangeProcessor.TimeProvider = () => fakeTime;
+
+            int limit = DetectAssetChangeProcessor.MaxConsecutiveChangeSetsWithinWindow;
+            int iterations = limit + 5;
+
+            for (int i = 0; i < iterations; i++)
+            {
+                fakeTime += 20d;
+                DetectAssetChangeProcessor.ProcessChangesForTesting(
+                    new[] { PayloadAssetPath },
+                    null,
+                    null,
+                    null
+                );
+            }
+
+            Assert.AreEqual(iterations, TestLoopingHandler.InvocationCount);
+            LogAssert.NoUnexpectedReceived();
+
+            DetectAssetChangeProcessor.ResetForTesting();
+            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ClearTestState();
+
+            UnityHelpersSettings.instance.DetectAssetChangeLoopWindowSeconds = 45f;
+            fakeTime = 0d;
+            DetectAssetChangeProcessor.TimeProvider = () => fakeTime;
+
+            LogAssert.Expect(
+                LogType.Error,
+                new Regex("potentially infinite asset change loop", RegexOptions.IgnoreCase)
+            );
+
+            for (int i = 0; i < iterations; i++)
+            {
+                fakeTime += 20d;
+                DetectAssetChangeProcessor.ProcessChangesForTesting(
+                    new[] { PayloadAssetPath },
+                    null,
+                    null,
+                    null
+                );
+            }
+
+            Assert.AreEqual(limit, TestLoopingHandler.InvocationCount);
+            LogAssert.NoUnexpectedReceived();
         }
 
         [Test]
@@ -323,10 +504,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.AssetProcessors
             TestDetailedSignatureHandler.Clear();
             TestStaticAssetChangeHandler.Clear();
             TestMultiAttributeHandler.Clear();
+            TestReentrantHandler.Clear();
+            TestLoopingHandler.Clear();
+            TestAssignableAssetChangeHandler.Clear();
         }
     }
 
-    internal sealed class TestDetectableAsset : ScriptableObject { }
+    internal interface ITestDetectableContract { }
+
+    internal sealed class TestDetectableAsset : ScriptableObject, ITestDetectableContract { }
 
     internal sealed class TestDetectAssetChangeHandler : ScriptableObject
     {
@@ -348,17 +534,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.AssetProcessors
 
     internal sealed class TestDetailedSignatureHandler : ScriptableObject
     {
-        private static TestDetectableAsset[] lastCreatedAssets = Array.Empty<TestDetectableAsset>();
-        private static string[] lastDeletedPaths = Array.Empty<string>();
+        private static TestDetectableAsset[] _lastCreatedAssets =
+            Array.Empty<TestDetectableAsset>();
+        private static string[] _lastDeletedPaths = Array.Empty<string>();
 
-        public static TestDetectableAsset[] LastCreatedAssets => lastCreatedAssets;
+        public static TestDetectableAsset[] LastCreatedAssets => _lastCreatedAssets;
 
-        public static string[] LastDeletedPaths => lastDeletedPaths;
+        public static string[] LastDeletedPaths => _lastDeletedPaths;
 
         public static void Clear()
         {
-            lastCreatedAssets = Array.Empty<TestDetectableAsset>();
-            lastDeletedPaths = Array.Empty<string>();
+            _lastCreatedAssets = Array.Empty<TestDetectableAsset>();
+            _lastDeletedPaths = Array.Empty<string>();
         }
 
         [DetectAssetChanged(
@@ -367,8 +554,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.AssetProcessors
         )]
         private void OnDetailedChange(TestDetectableAsset[] createdAssets, string[] deletedPaths)
         {
-            lastCreatedAssets = createdAssets ?? Array.Empty<TestDetectableAsset>();
-            lastDeletedPaths = deletedPaths ?? Array.Empty<string>();
+            _lastCreatedAssets = createdAssets ?? Array.Empty<TestDetectableAsset>();
+            _lastDeletedPaths = deletedPaths ?? Array.Empty<string>();
         }
     }
 
@@ -391,6 +578,56 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.AssetProcessors
     }
 
     internal sealed class TestAlternateDetectableAsset : ScriptableObject { }
+
+    internal sealed class TestAssignableAssetChangeHandler : ScriptableObject
+    {
+        private static readonly List<ITestDetectableContract> recordedCreated =
+            new List<ITestDetectableContract>();
+        private static readonly List<string> recordedDeletedPaths = new();
+
+        public static IReadOnlyList<ITestDetectableContract> RecordedCreated => recordedCreated;
+
+        public static IReadOnlyList<string> RecordedDeletedPaths => recordedDeletedPaths;
+
+        public static void Clear()
+        {
+            recordedCreated.Clear();
+            recordedDeletedPaths.Clear();
+        }
+
+        [DetectAssetChanged(
+            typeof(ITestDetectableContract),
+            AssetChangeFlags.Created | AssetChangeFlags.Deleted,
+            DetectAssetChangedOptions.IncludeAssignableTypes
+        )]
+        private void OnAssignableAssetChanged(
+            ITestDetectableContract[] createdAssets,
+            string[] deletedPaths
+        )
+        {
+            recordedCreated.Clear();
+            recordedDeletedPaths.Clear();
+
+            if (createdAssets != null)
+            {
+                for (int i = 0; i < createdAssets.Length; i++)
+                {
+                    if (createdAssets[i] != null)
+                    {
+                        recordedCreated.Add(createdAssets[i]);
+                    }
+                }
+            }
+
+            if (deletedPaths != null)
+            {
+                for (int i = 0; i < deletedPaths.Length; i++)
+                {
+                    recordedDeletedPaths.Add(deletedPaths[i]);
+                }
+            }
+        }
+    }
 
     internal static class TestMultiAttributeHandler
     {
@@ -422,6 +659,65 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.AssetProcessors
         public Type AssetType { get; }
 
         public AssetChangeFlags Flags { get; }
+    }
+
+    internal static class TestReentrantHandler
+    {
+        private static int _invocationCount;
+        private static bool _triggerNestedChange;
+        private static string _watchedPath;
+
+        public static int InvocationCount => _invocationCount;
+
+        public static void Configure(string assetPath)
+        {
+            _watchedPath = assetPath;
+            _triggerNestedChange = true;
+        }
+
+        public static void Clear()
+        {
+            _invocationCount = 0;
+            _triggerNestedChange = false;
+            _watchedPath = null;
+        }
+
+        [DetectAssetChanged(typeof(TestDetectableAsset))]
+        private static void OnReentrantChange(AssetChangeContext context)
+        {
+            _invocationCount++;
+            if (
+                _triggerNestedChange
+                && _invocationCount == 1
+                && !string.IsNullOrEmpty(_watchedPath)
+            )
+            {
+                DetectAssetChangeProcessor.ProcessChangesForTesting(
+                    new[] { _watchedPath },
+                    null,
+                    null,
+                    null
+                );
+            }
+        }
+    }
+
+    internal static class TestLoopingHandler
+    {
+        private static int _invocationCount;
+
+        public static int InvocationCount => _invocationCount;
+
+        public static void Clear()
+        {
+            _invocationCount = 0;
+        }
+
+        [DetectAssetChanged(typeof(TestDetectableAsset))]
+        private static void OnLoopingChange(AssetChangeContext context)
+        {
+            _invocationCount++;
+        }
     }
 
     internal sealed class TestInvalidReturnTypeHandler : ScriptableObject

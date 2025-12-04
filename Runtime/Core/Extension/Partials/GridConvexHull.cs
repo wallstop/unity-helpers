@@ -576,7 +576,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                             WallstopFastArrayPool<float>.Get(colinear.Count, out float[] distances);
                         for (int i = 0; i < colinear.Count; ++i)
                         {
-                            distances[i] = (float)DistanceSquared(current, colinear[i]);
+                            distances[i] = DistanceSquared(current, colinear[i]);
                         }
                         SelectionSort(colinear, distances, colinear.Count);
 
@@ -811,7 +811,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
         private static Vector2 ToWorld2D(Grid grid, FastVector3Int cell)
         {
-            Vector3 world = grid.CellToWorld((Vector3Int)cell);
+            Vector3 world = grid.CellToWorld(cell);
             return new Vector2(world.x, world.y);
         }
 

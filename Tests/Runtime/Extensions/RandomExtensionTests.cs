@@ -487,7 +487,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             List<string> items = new() { "item" };
             Assert.Throws<ArgumentNullException>(() =>
-                PRNG.Instance.NextWeightedElement(items, (IReadOnlyList<float>)null)
+                PRNG.Instance.NextWeightedElement(items, null)
             );
         }
 
