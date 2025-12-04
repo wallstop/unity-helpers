@@ -1402,6 +1402,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             _mainThreadConfirmationPending = false;
             _capturedMainThreadId = 0;
         }
+
+        [Conditional("UNITY_INCLUDE_TESTS")]
+        internal static void ResetRetryStateForTests()
+        {
+            _retryAttempts = 0;
+            CancelScheduledEnsureInvocation();
+        }
     }
 #endif
 }

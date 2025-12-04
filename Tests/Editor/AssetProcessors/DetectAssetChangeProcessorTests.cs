@@ -77,6 +77,8 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         public void InvokesHandlersWhenAssetsAreCreated()
         {
             CreatePayloadAsset();
+            // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
+            ClearTestState();
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
                 new[] { PayloadAssetPath },
@@ -85,7 +87,11 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 null
             );
 
-            Assert.AreEqual(1, TestDetectAssetChangeHandler.RecordedContexts.Count);
+            Assert.AreEqual(
+                1,
+                TestDetectAssetChangeHandler.RecordedContexts.Count,
+                $"Expected 1 invocation but got {TestDetectAssetChangeHandler.RecordedContexts.Count}"
+            );
             AssetChangeContext context = TestDetectAssetChangeHandler.RecordedContexts[0];
             Assert.AreEqual(AssetChangeFlags.Created, context.Flags);
             CollectionAssert.Contains(context.CreatedAssetPaths, PayloadAssetPath);
@@ -95,6 +101,8 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         public void InvokesHandlersWhenAssetsAreDeleted()
         {
             CreatePayloadAsset();
+            // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
+            ClearTestState();
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
                 new[] { PayloadAssetPath },
@@ -112,7 +120,11 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 null
             );
 
-            Assert.AreEqual(1, TestDetectAssetChangeHandler.RecordedContexts.Count);
+            Assert.AreEqual(
+                1,
+                TestDetectAssetChangeHandler.RecordedContexts.Count,
+                $"Expected 1 invocation but got {TestDetectAssetChangeHandler.RecordedContexts.Count}"
+            );
             AssetChangeContext context = TestDetectAssetChangeHandler.RecordedContexts[0];
             Assert.AreEqual(AssetChangeFlags.Deleted, context.Flags);
             CollectionAssert.Contains(context.DeletedAssetPaths, PayloadAssetPath);
@@ -122,6 +134,8 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         public void StaticHandlersReceiveNotificationsForAssetChanges()
         {
             CreatePayloadAsset();
+            // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
+            ClearTestState();
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
                 new[] { PayloadAssetPath },
@@ -130,7 +144,11 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 null
             );
 
-            Assert.AreEqual(1, TestStaticAssetChangeHandler.RecordedContexts.Count);
+            Assert.AreEqual(
+                1,
+                TestStaticAssetChangeHandler.RecordedContexts.Count,
+                $"Expected 1 invocation but got {TestStaticAssetChangeHandler.RecordedContexts.Count}"
+            );
             Assert.AreEqual(
                 AssetChangeFlags.Created,
                 TestStaticAssetChangeHandler.RecordedContexts[0].Flags
@@ -145,7 +163,11 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 null
             );
 
-            Assert.AreEqual(1, TestStaticAssetChangeHandler.RecordedContexts.Count);
+            Assert.AreEqual(
+                1,
+                TestStaticAssetChangeHandler.RecordedContexts.Count,
+                $"Expected 1 invocation but got {TestStaticAssetChangeHandler.RecordedContexts.Count}"
+            );
             Assert.AreEqual(
                 AssetChangeFlags.Deleted,
                 TestStaticAssetChangeHandler.RecordedContexts[0].Flags
@@ -156,6 +178,8 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         public void DetailedSignatureReceivesCreatedAssetsAndDeletedPaths()
         {
             CreatePayloadAsset();
+            // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
+            ClearTestState();
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
                 new[] { PayloadAssetPath },
@@ -164,7 +188,11 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 null
             );
 
-            Assert.AreEqual(1, TestDetailedSignatureHandler.LastCreatedAssets.Length);
+            Assert.AreEqual(
+                1,
+                TestDetailedSignatureHandler.LastCreatedAssets.Length,
+                $"Expected 1 created asset but got {TestDetailedSignatureHandler.LastCreatedAssets.Length}"
+            );
             Assert.NotNull(TestDetailedSignatureHandler.LastCreatedAssets[0]);
             Assert.AreEqual(
                 PayloadAssetPath,
@@ -192,6 +220,8 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         public void InterfaceHandlersReceiveAssignableAssets()
         {
             CreatePayloadAsset();
+            // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
+            ClearTestState();
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
                 new[] { PayloadAssetPath },
@@ -200,13 +230,18 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 null
             );
 
-            Assert.AreEqual(1, TestAssignableAssetChangeHandler.RecordedCreated.Count);
+            Assert.AreEqual(
+                1,
+                TestAssignableAssetChangeHandler.RecordedCreated.Count,
+                $"Expected 1 created asset but got {TestAssignableAssetChangeHandler.RecordedCreated.Count}"
+            );
             Assert.IsInstanceOf<TestDetectableAsset>(
                 TestAssignableAssetChangeHandler.RecordedCreated[0]
             );
 
             TestAssignableAssetChangeHandler.Clear();
             DetectAssetChangeProcessor.ResetForTesting();
+            DetectAssetChangeProcessor.IncludeTestAssets = true;
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
                 null,
@@ -228,6 +263,8 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         {
             CreatePayloadAsset();
             CreateAlternatePayloadAsset();
+            // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
+            ClearTestState();
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
                 new[] { PayloadAssetPath },
@@ -236,7 +273,11 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 null
             );
 
-            Assert.AreEqual(1, TestMultiAttributeHandler.RecordedInvocations.Count);
+            Assert.AreEqual(
+                1,
+                TestMultiAttributeHandler.RecordedInvocations.Count,
+                $"Expected 1 invocation but got {TestMultiAttributeHandler.RecordedInvocations.Count}"
+            );
             Assert.AreEqual(
                 typeof(TestDetectableAsset),
                 TestMultiAttributeHandler.RecordedInvocations[0].AssetType
@@ -255,7 +296,11 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 null
             );
 
-            Assert.AreEqual(0, TestMultiAttributeHandler.RecordedInvocations.Count);
+            Assert.AreEqual(
+                0,
+                TestMultiAttributeHandler.RecordedInvocations.Count,
+                "TestAlternateDetectableAsset should not trigger Created flag handler"
+            );
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
                 null,
@@ -264,7 +309,11 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 null
             );
 
-            Assert.AreEqual(1, TestMultiAttributeHandler.RecordedInvocations.Count);
+            Assert.AreEqual(
+                1,
+                TestMultiAttributeHandler.RecordedInvocations.Count,
+                $"Expected 1 invocation but got {TestMultiAttributeHandler.RecordedInvocations.Count}"
+            );
             Assert.AreEqual(
                 typeof(TestAlternateDetectableAsset),
                 TestMultiAttributeHandler.RecordedInvocations[0].AssetType
@@ -278,8 +327,10 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         [Test]
         public void ReentrantHandlersQueueChangesInsteadOfRecursing()
         {
-            TestReentrantHandler.Configure(PayloadAssetPath);
             CreatePayloadAsset();
+            // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
+            ClearTestState();
+            TestReentrantHandler.Configure(PayloadAssetPath);
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
                 new[] { PayloadAssetPath },
@@ -288,7 +339,11 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 null
             );
 
-            Assert.AreEqual(2, TestReentrantHandler.InvocationCount);
+            Assert.AreEqual(
+                2,
+                TestReentrantHandler.InvocationCount,
+                $"Expected 2 invocations (initial + reentrant) but got {TestReentrantHandler.InvocationCount}"
+            );
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -296,6 +351,8 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         public void InfiniteLoopingHandlersAreSuppressed()
         {
             CreatePayloadAsset();
+            // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
+            ClearTestState();
 
             double fakeTime = 0;
             DetectAssetChangeProcessor.TimeProvider = () => fakeTime;
@@ -317,7 +374,11 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 );
             }
 
-            Assert.AreEqual(limit, TestLoopingHandler.InvocationCount);
+            Assert.AreEqual(
+                limit,
+                TestLoopingHandler.InvocationCount,
+                $"Expected {limit} invocations (loop protection limit) but got {TestLoopingHandler.InvocationCount}"
+            );
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -325,6 +386,8 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         public void ChangeBatchesWithGapsLongerThanWindowAreNotSuppressed()
         {
             CreatePayloadAsset();
+            // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
+            ClearTestState();
 
             double fakeTime = 0;
             DetectAssetChangeProcessor.TimeProvider = () => fakeTime;
@@ -342,7 +405,11 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 );
             }
 
-            Assert.AreEqual(iterations, TestLoopingHandler.InvocationCount);
+            Assert.AreEqual(
+                iterations,
+                TestLoopingHandler.InvocationCount,
+                $"Expected {iterations} invocations (gaps prevent loop detection) but got {TestLoopingHandler.InvocationCount}"
+            );
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -350,6 +417,8 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         public void LoopWindowSettingDetectsSlowlyRecurringChanges()
         {
             CreatePayloadAsset();
+            // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
+            ClearTestState();
 
             double fakeTime = 0;
             DetectAssetChangeProcessor.TimeProvider = () => fakeTime;
@@ -368,7 +437,11 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 );
             }
 
-            Assert.AreEqual(iterations, TestLoopingHandler.InvocationCount);
+            Assert.AreEqual(
+                iterations,
+                TestLoopingHandler.InvocationCount,
+                $"Expected {iterations} invocations (default window allows) but got {TestLoopingHandler.InvocationCount}"
+            );
             LogAssert.NoUnexpectedReceived();
 
             DetectAssetChangeProcessor.ResetForTesting();
@@ -395,7 +468,11 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 );
             }
 
-            Assert.AreEqual(limit, TestLoopingHandler.InvocationCount);
+            Assert.AreEqual(
+                limit,
+                TestLoopingHandler.InvocationCount,
+                $"Expected {limit} invocations (longer window triggers limit) but got {TestLoopingHandler.InvocationCount}"
+            );
             LogAssert.NoUnexpectedReceived();
         }
 
@@ -451,6 +528,111 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 
             Assert.IsFalse(isValid);
             LogAssert.NoUnexpectedReceived();
+        }
+
+        // Data-driven tests for method signature validation
+        [TestCase(
+            typeof(TestValidNoParametersHandler),
+            "OnValidNoParameters",
+            true,
+            TestName = "SignatureValidation.NoParameters.Valid"
+        )]
+        [TestCase(
+            typeof(TestValidContextHandler),
+            "OnValidContext",
+            true,
+            TestName = "SignatureValidation.ContextParameter.Valid"
+        )]
+        [TestCase(
+            typeof(TestValidDetailedHandler),
+            "OnValidDetailed",
+            true,
+            TestName = "SignatureValidation.DetailedSignature.Valid"
+        )]
+        [TestCase(
+            typeof(TestInvalidReturnTypeHandler),
+            "OnInvalidReturnType",
+            false,
+            TestName = "SignatureValidation.NonVoidReturn.Invalid"
+        )]
+        [TestCase(
+            typeof(TestInvalidParameterHandler),
+            "OnInvalidSingleParameter",
+            false,
+            TestName = "SignatureValidation.WrongSingleParam.Invalid"
+        )]
+        [TestCase(
+            typeof(TestInvalidCreatedParameterHandler),
+            "OnInvalidCreated",
+            false,
+            TestName = "SignatureValidation.NonArrayCreated.Invalid"
+        )]
+        public void MethodSignatureValidationDataDriven(
+            Type declaringType,
+            string methodName,
+            bool expectedValid
+        )
+        {
+            if (!expectedValid)
+            {
+                // Expect error log for invalid signatures
+                LogAssert.Expect(
+                    LogType.Error,
+                    new Regex(
+                        $"{declaringType.Name}\\.{methodName}.*Supported signatures",
+                        RegexOptions.Singleline
+                    )
+                );
+            }
+
+            bool isValid = DetectAssetChangeProcessor.ValidateMethodSignatureForTesting(
+                declaringType,
+                methodName
+            );
+
+            Assert.AreEqual(
+                expectedValid,
+                isValid,
+                $"Method {declaringType.Name}.{methodName} should be {(expectedValid ? "valid" : "invalid")}"
+            );
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void EmptyChangeListsDoNotTriggerHandlers()
+        {
+            CreatePayloadAsset();
+            ClearTestState();
+
+            // Process empty changes
+            DetectAssetChangeProcessor.ProcessChangesForTesting(
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>(),
+                Array.Empty<string>()
+            );
+
+            Assert.AreEqual(
+                0,
+                TestDetectAssetChangeHandler.RecordedContexts.Count,
+                "Empty change lists should not trigger handlers"
+            );
+        }
+
+        [Test]
+        public void NullChangeListsDoNotTriggerHandlers()
+        {
+            CreatePayloadAsset();
+            ClearTestState();
+
+            // Process null changes
+            DetectAssetChangeProcessor.ProcessChangesForTesting(null, null, null, null);
+
+            Assert.AreEqual(
+                0,
+                TestDetectAssetChangeHandler.RecordedContexts.Count,
+                "Null change lists should not trigger handlers"
+            );
         }
 
         private static void CreatePayloadAsset()
@@ -743,6 +925,32 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         private void OnInvalidCreated(TestDetectableAsset created, string[] deletedPaths)
         {
             _ = created;
+            _ = deletedPaths;
+        }
+    }
+
+    // Valid handler signatures for data-driven tests
+    internal sealed class TestValidNoParametersHandler : ScriptableObject
+    {
+        private void OnValidNoParameters()
+        {
+            // No-op handler with valid no-parameter signature
+        }
+    }
+
+    internal sealed class TestValidContextHandler : ScriptableObject
+    {
+        private void OnValidContext(AssetChangeContext context)
+        {
+            _ = context;
+        }
+    }
+
+    internal sealed class TestValidDetailedHandler : ScriptableObject
+    {
+        private void OnValidDetailed(TestDetectableAsset[] createdAssets, string[] deletedPaths)
+        {
+            _ = createdAssets;
             _ = deletedPaths;
         }
     }

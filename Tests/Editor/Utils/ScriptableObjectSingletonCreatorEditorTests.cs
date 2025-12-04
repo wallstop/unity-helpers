@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using System.Collections;
     using System.Collections.Generic;
     using System.IO;
+    using System.Text.RegularExpressions;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -34,6 +35,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.TypeFilter = static type =>
                 type == typeof(CreatorPathSingleton) || type == typeof(NestedDiskSingleton);
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
+            ScriptableObjectSingletonCreator.ResetRetryStateForTests();
             DeleteAssetIfExists(TargetAssetPath);
             yield return null;
             DeleteAssetIfExists(WrongAssetPath);
@@ -79,6 +81,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = false;
             ScriptableObjectSingletonCreator.TypeFilter = null;
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
+            ScriptableObjectSingletonCreator.ResetRetryStateForTests();
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             yield return null;
@@ -408,6 +411,145 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             public override string ToString()
             {
                 return string.IsNullOrEmpty(Name) ? base.ToString() : Name;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator SkipsCreationWhenAssetFileExistsButIsNotImported()
+        {
+            DeleteAssetIfExists(TargetAssetPath);
+            yield return null;
+
+            EnsureFolder(TargetFolder);
+            DeleteFileIfExists(TargetAssetPath);
+            DeleteFileIfExists(TargetAssetPath + ".meta");
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            yield return null;
+
+            string absolutePath = GetAbsolutePath(TargetAssetPath);
+            string directory = Path.GetDirectoryName(absolutePath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            // Write an invalid asset file - Unity will fail to load it
+            File.WriteAllText(absolutePath, "pending import");
+
+            // Expect the "on-disk asset" warning OR the "target path already occupied" warning
+            // (depends on whether Unity creates a meta file during refresh)
+            // Also expect potential error from Unity trying to load the invalid file
+            LogAssert.Expect(
+                LogType.Error,
+                new Regex(
+                    "Unknown error occurred while loading.*CreatorPathSingleton",
+                    RegexOptions.IgnoreCase
+                )
+            );
+            LogAssert.Expect(
+                LogType.Warning,
+                new Regex(
+                    "(on-disk asset|target path already occupied).*CreatorPathSingleton",
+                    RegexOptions.IgnoreCase
+                )
+            );
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+
+            Assert.IsTrue(File.Exists(absolutePath), "The invalid file should still exist");
+            Assert.IsTrue(
+                AssetDatabase.LoadAssetAtPath<Object>(TargetAssetPath) == null,
+                "No valid asset should be loaded from the invalid file"
+            );
+
+            // Clean up the invalid file and its meta
+            File.Delete(absolutePath);
+            DeleteFileIfExists(TargetAssetPath + ".meta");
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            yield return null;
+
+            // Now EnsureSingletonAssets should create the real asset
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            yield return null;
+
+            Assert.IsTrue(
+                AssetDatabase.LoadAssetAtPath<Object>(TargetAssetPath) != null,
+                "Valid singleton asset should be created after removing the invalid file"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator RecreatesAssetWhenGuidRemainsButFileIsMissing()
+        {
+            DeleteAssetIfExists(TargetAssetPath);
+            yield return null;
+
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(TargetAssetPath) != null);
+
+            string absoluteAsset = GetAbsolutePath(TargetAssetPath);
+            if (File.Exists(absoluteAsset))
+            {
+                File.Delete(absoluteAsset);
+            }
+
+            AssetDatabase.Refresh();
+            yield return null;
+
+            Assert.IsTrue(
+                AssetDatabase.AssetPathToGUID(TargetAssetPath).Length > 0,
+                "Meta should still exist after deleting only the asset file."
+            );
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(TargetAssetPath) == null);
+
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+
+            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(TargetAssetPath) != null);
+        }
+
+        private static string GetAbsolutePath(string assetsRelativePath)
+        {
+            if (string.IsNullOrWhiteSpace(assetsRelativePath))
+            {
+                return string.Empty;
+            }
+
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            if (string.IsNullOrEmpty(projectRoot))
+            {
+                return string.Empty;
+            }
+
+            string normalized = assetsRelativePath.Replace('/', Path.DirectorySeparatorChar);
+            return Path.Combine(projectRoot, normalized);
+        }
+
+        private static void DeleteFileIfExists(string assetsRelativePath)
+        {
+            if (string.IsNullOrWhiteSpace(assetsRelativePath))
+            {
+                return;
+            }
+
+            if (AssetDatabase.DeleteAsset(assetsRelativePath))
+            {
+                return;
+            }
+
+            string absolutePath = GetAbsolutePath(assetsRelativePath);
+            if (!string.IsNullOrEmpty(absolutePath) && File.Exists(absolutePath))
+            {
+                File.Delete(absolutePath);
+            }
+
+            string metaPath = absolutePath + ".meta";
+            if (!string.IsNullOrEmpty(metaPath) && File.Exists(metaPath))
+            {
+                File.Delete(metaPath);
             }
         }
     }

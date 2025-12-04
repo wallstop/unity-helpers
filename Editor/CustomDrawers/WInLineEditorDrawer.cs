@@ -64,7 +64,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static float GetHorizontalScrollbarHeight()
         {
-            GUIStyle scrollbarStyle = GUI.skin != null ? GUI.skin.horizontalScrollbar : null;
+            // Avoid accessing GUI.skin outside OnGUI context - it throws an exception
+            GUIStyle scrollbarStyle = null;
+            try
+            {
+                scrollbarStyle = GUI.skin != null ? GUI.skin.horizontalScrollbar : null;
+            }
+            catch (System.ArgumentException)
+            {
+                // Occurs when called outside OnGUI - use fallback
+            }
+
             float height =
                 scrollbarStyle != null && scrollbarStyle.fixedHeight > 0f
                     ? scrollbarStyle.fixedHeight
@@ -85,18 +95,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static float GetEstimatedPropertyWidth(SerializedProperty property)
         {
-            if (property == null)
+            if (property != null)
+            {
+                string key = BuildFoldoutKey(property);
+                if (PropertyWidths.TryGetValue(key, out float width) && width > 0f)
+                {
+                    return width;
+                }
+            }
+
+            // EditorGUIUtility.currentViewWidth throws when called outside OnGUI context
+            try
             {
                 return EditorGUIUtility.currentViewWidth;
             }
-
-            string key = BuildFoldoutKey(property);
-            if (PropertyWidths.TryGetValue(key, out float width) && width > 0f)
+            catch (System.ArgumentException)
             {
-                return width;
+                // Fallback for calls outside OnGUI - use a reasonable default
+                return 300f;
             }
-
-            return EditorGUIUtility.currentViewWidth;
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
@@ -763,21 +780,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return true;
             }
 
-            if (property.isArray)
-            {
-                return false;
-            }
-
+            // Check property type BEFORE isArray, since strings are arrays internally
+            // but should be considered simple (they render as single-line text fields)
             switch (property.propertyType)
             {
+                case SerializedPropertyType.String:
+                    return true;
                 case SerializedPropertyType.Generic:
                 case SerializedPropertyType.AnimationCurve:
                 case SerializedPropertyType.Gradient:
                 case SerializedPropertyType.ManagedReference:
                     return false;
-                default:
-                    return true;
             }
+
+            if (property.isArray)
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private readonly struct InspectorHeightInfo
@@ -1044,6 +1065,35 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 availableWidth
             );
             return inspectorHeightInfo.RequiresHorizontalScrollbar;
+        }
+
+        /// <summary>
+        /// Test hook to directly check if a SerializedObject has only simple properties.
+        /// This allows unit testing the simple layout detection without full editor integration.
+        /// </summary>
+        internal static bool HasOnlySimplePropertiesForTesting(SerializedObject serializedObject)
+        {
+            return SerializedObjectHasOnlySimpleProperties(serializedObject);
+        }
+
+        /// <summary>
+        /// Test hook to directly check horizontal scrollbar requirement with explicit parameters.
+        /// This bypasses editor creation and allows testing the decision logic directly.
+        /// </summary>
+        internal static bool RequiresHorizontalScrollbarForTesting(
+            bool enableScrolling,
+            float minInspectorWidth,
+            bool hasExplicitMinInspectorWidth,
+            bool hasSimpleLayout,
+            float availableWidth
+        )
+        {
+            float effectiveWidth = Mathf.Max(0f, availableWidth - (ContentPadding * 2f));
+            bool shouldRespectMinWidth = hasExplicitMinInspectorWidth || !hasSimpleLayout;
+            return enableScrolling
+                && minInspectorWidth > 0f
+                && shouldRespectMinWidth
+                && minInspectorWidth - effectiveWidth > 0.5f;
         }
     }
 }

@@ -544,6 +544,9 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             Type declaringType
         )
         {
+            HashSet<string> yieldedPaths = new(StringComparer.OrdinalIgnoreCase);
+
+            // Primary search using Unity's type filter
             string filter = $"t:{declaringType.Name}";
             string[] guids = AssetDatabase.FindAssets(filter);
             for (int i = 0; i < guids.Length; i++)
@@ -557,7 +560,36 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                 UnityEngine.Object instance = AssetDatabase.LoadAssetAtPath(path, declaringType);
                 if (instance != null)
                 {
+                    yieldedPaths.Add(path);
                     yield return instance;
+                }
+            }
+
+            // Fallback for test assets: Unity's t:TypeName filter may fail to find assets
+            // when the class is defined in a file that doesn't match the class name.
+            // Search test directories directly by scanning for ScriptableObject assets.
+            if (_includeTestAssets)
+            {
+                string[] testGuids = AssetDatabase.FindAssets(
+                    "t:ScriptableObject",
+                    new[] { "Assets/" + TestAssetFolderMarker }
+                );
+                for (int i = 0; i < testGuids.Length; i++)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(testGuids[i]);
+                    if (yieldedPaths.Contains(path))
+                    {
+                        continue;
+                    }
+
+                    UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(
+                        path
+                    );
+                    if (asset != null && declaringType.IsInstanceOfType(asset))
+                    {
+                        yieldedPaths.Add(path);
+                        yield return asset;
+                    }
                 }
             }
         }
@@ -663,7 +695,9 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                 ?? Array.Empty<Type>();
             foreach (Type type in loadedTypes)
             {
-                if (type == null || type.IsAbstract)
+                // Skip null types and abstract types, but allow static classes
+                // (static classes are compiled as abstract sealed)
+                if (type == null || (type.IsAbstract && !type.IsSealed))
                 {
                     continue;
                 }
