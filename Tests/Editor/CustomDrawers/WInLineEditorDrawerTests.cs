@@ -943,18 +943,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         }
 
         // Tests for horizontal scroll at very narrow widths
+        // Note: Production logic applies ContentPadding (2px on each side = 4px total) to calculate effectiveWidth.
+        // The MinimumUsableWidth threshold is 200px (applied to effectiveWidth, not availableWidth).
+        // So: availableWidth must be > 204px for effectiveWidth to be >= 200px and avoid scroll for simple layouts.
+        // Edge case: availableWidth=204 -> effectiveWidth=200, which is NOT < 200, so no scroll.
+        // Edge case: availableWidth=203 -> effectiveWidth=199, which IS < 200, so scroll is triggered.
         [TestCase(150f, true, TestName = "NarrowWidth.150px.TriggersScroll")]
         [TestCase(180f, true, TestName = "NarrowWidth.180px.TriggersScroll")]
         [TestCase(199f, true, TestName = "NarrowWidth.199px.TriggersScroll")]
-        [TestCase(200f, false, TestName = "NarrowWidth.200px.NoScroll")]
+        [TestCase(200f, true, TestName = "NarrowWidth.200px.TriggersScroll")] // effectiveWidth=196 < 200
+        [TestCase(203f, true, TestName = "NarrowWidth.203px.TriggersScroll")] // effectiveWidth=199 < 200
+        [TestCase(204f, false, TestName = "NarrowWidth.204px.NoScroll")] // effectiveWidth=200, not < 200
         [TestCase(250f, false, TestName = "NarrowWidth.250px.NoScroll")]
         public void NarrowWidthTriggersHorizontalScroll_DataDriven(
             float availableWidth,
             bool expectedNeedsScroll
         )
         {
-            // When width is very narrow (< 200px), horizontal scroll should trigger
-            // even for simple layouts
+            // Production logic: effectiveWidth = availableWidth - ContentPadding * 2 (4px)
+            // When effectiveWidth < MinimumUsableWidth (200px), horizontal scroll triggers
+            // even for simple layouts.
             bool needsScroll = WInLineEditorDrawer.RequiresHorizontalScrollbarForTesting(
                 enableScrolling: true,
                 minInspectorWidth: 520f, // default
@@ -963,10 +971,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 availableWidth: availableWidth
             );
 
+            // Calculate expected effective width for diagnostic purposes
+            const float ContentPadding = 2f;
+            float effectiveWidth = availableWidth - (ContentPadding * 2f);
+            const float MinimumUsableWidth = 200f;
+
             Assert.That(
                 needsScroll,
                 Is.EqualTo(expectedNeedsScroll),
-                $"At {availableWidth}px width, simple layout scroll should be {expectedNeedsScroll}"
+                $"At {availableWidth}px availableWidth (effectiveWidth={effectiveWidth}px), "
+                    + $"simple layout scroll should be {expectedNeedsScroll}. "
+                    + $"MinimumUsableWidth threshold is {MinimumUsableWidth}px (applied to effectiveWidth)."
             );
         }
 
@@ -1042,6 +1057,94 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             {
                 ScriptableObject.DestroyImmediate(target);
             }
+        }
+
+        // Additional boundary tests for the MinimumUsableWidth threshold
+        // These tests verify that the production constant (MinimumUsableWidth=200, ContentPadding=2)
+        // is correctly accounted for in test expectations.
+        [TestCase(204.5f, false, TestName = "EffectiveWidthBoundary.204.5px.NoScroll")] // effectiveWidth=200.5 >= 200
+        [TestCase(204.0f, false, TestName = "EffectiveWidthBoundary.204px.ExactlyAtThreshold")] // effectiveWidth=200 >= 200
+        [TestCase(203.9f, true, TestName = "EffectiveWidthBoundary.203.9px.JustUnderThreshold")] // effectiveWidth=199.9 < 200
+        [TestCase(203.5f, true, TestName = "EffectiveWidthBoundary.203.5px.TriggersScroll")] // effectiveWidth=199.5 < 200
+        public void EffectiveWidthBoundaryTests(float availableWidth, bool expectedNeedsScroll)
+        {
+            // These tests specifically verify the boundary between scroll/no-scroll
+            // based on the MinimumUsableWidth threshold and ContentPadding calculation.
+            const float ContentPadding = 2f;
+            const float MinimumUsableWidth = 200f;
+            float effectiveWidth = availableWidth - (ContentPadding * 2f);
+            bool expectedBasedOnThreshold = effectiveWidth < MinimumUsableWidth;
+
+            // Sanity check: our manual calculation matches our expected value
+            Assert.That(
+                expectedBasedOnThreshold,
+                Is.EqualTo(expectedNeedsScroll),
+                $"Test case setup error: effectiveWidth={effectiveWidth}, threshold={MinimumUsableWidth}, "
+                    + $"manual calc says needsScroll={expectedBasedOnThreshold}, but expectedNeedsScroll={expectedNeedsScroll}"
+            );
+
+            bool needsScroll = WInLineEditorDrawer.RequiresHorizontalScrollbarForTesting(
+                enableScrolling: true,
+                minInspectorWidth: 520f, // default
+                hasExplicitMinInspectorWidth: false,
+                hasSimpleLayout: true, // simple layout (threshold only applies to simple layouts)
+                availableWidth: availableWidth
+            );
+
+            Assert.That(
+                needsScroll,
+                Is.EqualTo(expectedNeedsScroll),
+                $"At {availableWidth}px availableWidth (effectiveWidth={effectiveWidth}px), "
+                    + $"simple layout scroll should be {expectedNeedsScroll}. "
+                    + $"MinimumUsableWidth={MinimumUsableWidth}px, ContentPadding={ContentPadding}px."
+            );
+        }
+
+        [Test]
+        public void MinimumUsableWidthConstantMatchesProduction()
+        {
+            // This test documents the expected constants and verifies the threshold behavior.
+            // If production code changes these values, this test will fail and alert developers.
+            const float ExpectedContentPadding = 2f;
+            const float ExpectedMinimumUsableWidth = 200f;
+
+            // Test at the exact threshold: availableWidth = MinimumUsableWidth + ContentPadding * 2 = 204
+            // At this point, effectiveWidth = 200, which is NOT < 200, so no scroll
+            float thresholdAvailableWidth =
+                ExpectedMinimumUsableWidth + (ExpectedContentPadding * 2f);
+
+            bool needsScrollAtThreshold = WInLineEditorDrawer.RequiresHorizontalScrollbarForTesting(
+                enableScrolling: true,
+                minInspectorWidth: 520f,
+                hasExplicitMinInspectorWidth: false,
+                hasSimpleLayout: true,
+                availableWidth: thresholdAvailableWidth
+            );
+
+            Assert.That(
+                needsScrollAtThreshold,
+                Is.False,
+                $"At exact threshold availableWidth={thresholdAvailableWidth}px "
+                    + $"(effectiveWidth={ExpectedMinimumUsableWidth}px), scroll should NOT be needed. "
+                    + "If this fails, production constants may have changed."
+            );
+
+            // Test just below threshold
+            bool needsScrollBelowThreshold =
+                WInLineEditorDrawer.RequiresHorizontalScrollbarForTesting(
+                    enableScrolling: true,
+                    minInspectorWidth: 520f,
+                    hasExplicitMinInspectorWidth: false,
+                    hasSimpleLayout: true,
+                    availableWidth: thresholdAvailableWidth - 0.1f
+                );
+
+            Assert.That(
+                needsScrollBelowThreshold,
+                Is.True,
+                $"Just below threshold at availableWidth={thresholdAvailableWidth - 0.1f}px, "
+                    + "scroll SHOULD be needed."
+            );
         }
 
         // ==================== End Width and Layout Tests ====================
