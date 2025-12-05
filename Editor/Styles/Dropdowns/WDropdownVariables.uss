@@ -1,0 +1,72 @@
+/* =============================================================================
+ * WDropdownVariables.uss
+ * CSS Custom Properties for WValueDropDown, StringInList, and IntDropDown
+ * 
+ * This file defines theming variables that adapt to Unity's dark/light themes.
+ * Variables use the --w-dropdown- prefix to avoid collisions.
+ * ============================================================================= */
+
+/* =============================================================================
+ * Dark Theme Variables (Default)
+ * Applied when EditorGUIUtility.isProSkin is true
+ * ============================================================================= */
+:root {
+    /* Container */
+    --w-dropdown-bg: #2D2D2D;
+    --w-dropdown-border: #404040;
+    --w-dropdown-border-radius: 6px;
+    
+    /* Surface Colors */
+    --w-dropdown-surface: #383838;
+    --w-dropdown-surface-hover: #4A4A4A;
+    --w-dropdown-surface-selected: #264F78;
+    
+    /* Accent & Focus */
+    --w-dropdown-accent: #3794FF;
+    --w-dropdown-accent-hover: #4AA3FF;
+    --w-dropdown-focus-ring: rgba(55, 148, 255, 0.4);
+    
+    /* Text Colors */
+    --w-dropdown-text-primary: #CCCCCC;
+    --w-dropdown-text-secondary: #808080;
+    --w-dropdown-text-selected: #FFFFFF;
+    --w-dropdown-text-disabled: #5A5A5A;
+    
+    /* Search Field */
+    --w-dropdown-search-bg: #1E1E1E;
+    --w-dropdown-search-border: #404040;
+    --w-dropdown-search-border-focus: #3794FF;
+    --w-dropdown-search-placeholder: #6E6E6E;
+    
+    /* Selection Indicator */
+    --w-dropdown-indicator-border: #808080;
+    --w-dropdown-indicator-fill: #3794FF;
+    
+    /* Pagination */
+    --w-dropdown-pagination-bg: transparent;
+    --w-dropdown-pagination-hover: #4A4A4A;
+    --w-dropdown-pagination-disabled-opacity: 0.3;
+    
+    /* Animation Timing */
+    --w-dropdown-transition-fast: 100ms;
+    --w-dropdown-transition-normal: 150ms;
+    --w-dropdown-transition-slow: 200ms;
+    
+    /* Spacing */
+    --w-dropdown-spacing-xs: 2px;
+    --w-dropdown-spacing-sm: 4px;
+    --w-dropdown-spacing-md: 8px;
+    --w-dropdown-spacing-lg: 12px;
+    --w-dropdown-spacing-xl: 16px;
+    
+    /* Option Row */
+    --w-dropdown-option-height: 24px;
+    --w-dropdown-option-padding-horizontal: 12px;
+    --w-dropdown-option-padding-vertical: 6px;
+    --w-dropdown-option-border-radius: 4px;
+    --w-dropdown-option-gap: 2px;
+    
+    /* Indicator */
+    --w-dropdown-indicator-size: 16px;
+    --w-dropdown-indicator-border-width: 2px;
+}

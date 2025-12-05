@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
+    using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.Utils;
     using PropertyAttribute = UnityEngine.PropertyAttribute;
 
@@ -18,12 +19,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void CreatePropertyGUIWithoutOptionsReturnsHelpBox()
         {
-            NoOptionsAsset asset = CreateScriptableObject<NoOptionsAsset>();
+            StringInListNoOptionsAsset asset = CreateScriptableObject<StringInListNoOptionsAsset>();
             using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(NoOptionsAsset.unspecified)
+                nameof(StringInListNoOptionsAsset.unspecified)
             );
             Assert.IsNotNull(property, "Failed to locate string property.");
 
@@ -36,13 +37,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void SelectorUpdatesStringSerializedProperty()
         {
-            StringOptionsAsset asset = CreateScriptableObject<StringOptionsAsset>();
+            StringInListStringOptionsAsset asset =
+                CreateScriptableObject<StringInListStringOptionsAsset>();
             asset.state = "Run";
             using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(StringOptionsAsset.state)
+                nameof(StringInListStringOptionsAsset.state)
             );
             Assert.IsNotNull(property, "Failed to locate state property.");
 
@@ -64,13 +66,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void SelectorWritesSelectedIndexToIntegerProperty()
         {
-            IntegerOptionsAsset asset = CreateScriptableObject<IntegerOptionsAsset>();
+            StringInListIntegerOptionsAsset asset =
+                CreateScriptableObject<StringInListIntegerOptionsAsset>();
             asset.selection = 0;
             using SerializedObject serializedObject = new SerializedObject(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(IntegerOptionsAsset.selection)
+                nameof(StringInListIntegerOptionsAsset.selection)
             );
             Assert.IsNotNull(property, "Failed to locate integer-backed dropdown.");
 
@@ -277,25 +280,151 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
         }
 
-        [Serializable]
-        private sealed class NoOptionsAsset : ScriptableObject
+        [Test]
+        public void BackingAttributeIsWValueDropDown()
         {
-            [StringInList]
-            public string unspecified = string.Empty;
+            StringInListAttribute attribute = new("Alpha", "Beta", "Gamma");
+            WValueDropDownAttribute backingAttribute = attribute.BackingAttribute;
+            Assert.IsNotNull(backingAttribute);
+            Assert.That(backingAttribute.ValueType, Is.EqualTo(typeof(string)));
         }
 
-        [Serializable]
-        private sealed class StringOptionsAsset : ScriptableObject
+        [Test]
+        public void InlineListReturnsCorrectOptions()
         {
-            [StringInList("Idle", "Run", "Jump")]
-            public string state = "Idle";
+            StringInListAttribute attribute = new("Option1", "Option2", "Option3");
+            string[] options = attribute.List;
+            Assert.That(options.Length, Is.EqualTo(3));
+            Assert.That(options[0], Is.EqualTo("Option1"));
+            Assert.That(options[1], Is.EqualTo("Option2"));
+            Assert.That(options[2], Is.EqualTo("Option3"));
         }
 
-        [Serializable]
-        private sealed class IntegerOptionsAsset : ScriptableObject
+        [Test]
+        public void StaticProviderReturnsCorrectOptions()
         {
-            [StringInList("Low", "Medium", "High")]
-            public int selection;
+            StringInListAttribute attribute = new(
+                typeof(StringOptionsProvider),
+                nameof(StringOptionsProvider.GetOptions)
+            );
+            string[] options = attribute.List;
+            Assert.That(options.Length, Is.EqualTo(3));
+            Assert.That(options[0], Is.EqualTo("Static1"));
+            Assert.That(options[1], Is.EqualTo("Static2"));
+            Assert.That(options[2], Is.EqualTo("Static3"));
+        }
+
+        [Test]
+        public void InstanceMethodProviderReturnsValues()
+        {
+            StringInListInstanceMethodAsset asset =
+                CreateScriptableObject<StringInListInstanceMethodAsset>();
+            asset.dynamicValues.AddRange(new[] { "Dynamic1", "Dynamic2" });
+            using SerializedObject serializedObject = new SerializedObject(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(StringInListInstanceMethodAsset.selection)
+            );
+            Assert.IsNotNull(property, "Failed to locate instance method backed property.");
+
+            StringInListAttribute attribute = GetAttributeFromProperty<StringInListAttribute>(
+                property
+            );
+            Assert.IsNotNull(attribute, "Failed to retrieve attribute.");
+
+            string[] options = attribute.GetOptions(asset);
+            Assert.That(options.Length, Is.EqualTo(2));
+            Assert.That(options[0], Is.EqualTo("Dynamic1"));
+            Assert.That(options[1], Is.EqualTo("Dynamic2"));
+        }
+
+        [Test]
+        public void InstanceMethodProviderWithNoContextReturnsEmpty()
+        {
+            StringInListAttribute attribute = new(
+                nameof(StringInListInstanceMethodAsset.GetDynamicValues)
+            );
+            string[] options = attribute.GetOptions(null);
+            Assert.That(options.Length, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void RequiresInstanceContextIsTrueForInstanceProvider()
+        {
+            StringInListAttribute attribute = new(
+                nameof(StringInListInstanceMethodAsset.GetDynamicValues)
+            );
+            Assert.That(attribute.RequiresInstanceContext, Is.True);
+        }
+
+        [Test]
+        public void RequiresInstanceContextIsFalseForInlineList()
+        {
+            StringInListAttribute attribute = new("A", "B", "C");
+            Assert.That(attribute.RequiresInstanceContext, Is.False);
+        }
+
+        [Test]
+        public void RequiresInstanceContextIsFalseForStaticProvider()
+        {
+            StringInListAttribute attribute = new(
+                typeof(StringOptionsProvider),
+                nameof(StringOptionsProvider.GetOptions)
+            );
+            Assert.That(attribute.RequiresInstanceContext, Is.False);
+        }
+
+        [Test]
+        public void ProviderTypeAndMethodNameAreStoredCorrectly()
+        {
+            StringInListAttribute attribute = new(
+                typeof(StringOptionsProvider),
+                nameof(StringOptionsProvider.GetOptions)
+            );
+            Assert.That(attribute.ProviderType, Is.EqualTo(typeof(StringOptionsProvider)));
+            Assert.That(
+                attribute.ProviderMethodName,
+                Is.EqualTo(nameof(StringOptionsProvider.GetOptions))
+            );
+        }
+
+        [Test]
+        public void InstanceMethodSetsProviderMethodNameButNotType()
+        {
+            StringInListAttribute attribute = new(
+                nameof(StringInListInstanceMethodAsset.GetDynamicValues)
+            );
+            Assert.That(attribute.ProviderType, Is.Null);
+            Assert.That(
+                attribute.ProviderMethodName,
+                Is.EqualTo(nameof(StringInListInstanceMethodAsset.GetDynamicValues))
+            );
+        }
+
+        [Test]
+        public void EmptyListReturnsEmptyArray()
+        {
+            StringInListAttribute attribute = new();
+            string[] options = attribute.List;
+            Assert.That(options.Length, Is.EqualTo(0));
+        }
+
+        private static T GetAttributeFromProperty<T>(SerializedProperty property)
+            where T : Attribute
+        {
+            if (property == null)
+            {
+                return null;
+            }
+
+            Type targetType = property.serializedObject.targetObject.GetType();
+            FieldInfo field = targetType.GetField(
+                property.name,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+            );
+
+            return field?.GetCustomAttribute<T>();
         }
 
         private static void AssignAttribute(PropertyDrawer drawer, PropertyAttribute attribute)

@@ -1,0 +1,312 @@
+/* =============================================================================
+ * WDropdownStyles.uss
+ * Main stylesheet for WValueDropDown, StringInList, and IntDropDown
+ * 
+ * This file provides the base styling for dropdown components.
+ * Import WDropdownVariables.uss before this file for theming support.
+ * ============================================================================= */
+
+/* =============================================================================
+ * Popup Container
+ * ============================================================================= */
+.w-dropdown-popup {
+    background-color: var(--w-dropdown-bg);
+    border-radius: var(--w-dropdown-border-radius);
+    border-width: 1px;
+    border-color: var(--w-dropdown-border);
+    padding: var(--w-dropdown-spacing-md);
+    flex-direction: column;
+}
+
+/* =============================================================================
+ * Search Field Container
+ * ============================================================================= */
+.w-dropdown-search-container {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: var(--w-dropdown-spacing-md);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.w-dropdown-search-wrapper {
+    flex-grow: 1;
+    position: relative;
+}
+
+.w-dropdown-search {
+    background-color: var(--w-dropdown-search-bg);
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: var(--w-dropdown-search-border);
+    padding: 0;
+    margin: 0;
+    color: var(--w-dropdown-text-primary);
+    -unity-font-style: normal;
+    transition-property: border-color;
+    transition-duration: var(--w-dropdown-transition-fast);
+    min-height: 22px;
+    flex-shrink: 1;
+    overflow: hidden;
+}
+
+.w-dropdown-search > .unity-text-field__input {
+    background-color: transparent;
+    border-width: 0;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin: 0;
+    flex-grow: 1;
+    min-height: 20px;
+}
+
+.w-dropdown-search:focus {
+    border-color: var(--w-dropdown-search-border-focus);
+}
+
+.w-dropdown-search > .unity-text-element {
+    color: var(--w-dropdown-text-primary);
+}
+
+.w-dropdown-search .unity-text-field__placeholder {
+    color: var(--w-dropdown-search-placeholder);
+}
+
+/* Search Icon */
+.w-dropdown-search-icon {
+    position: absolute;
+    left: var(--w-dropdown-spacing-md);
+    top: 50%;
+    translate: 0 -50%;
+    color: var(--w-dropdown-text-secondary);
+    font-size: 12px;
+    -unity-font-style: normal;
+}
+
+/* Clear Button */
+.w-dropdown-clear-button {
+    margin-left: var(--w-dropdown-spacing-sm);
+    padding: var(--w-dropdown-spacing-sm) var(--w-dropdown-spacing-md);
+    background-color: transparent;
+    border-width: 1px;
+    border-color: var(--w-dropdown-border);
+    border-radius: 4px;
+    color: var(--w-dropdown-text-secondary);
+    transition-property: background-color, border-color, color;
+    transition-duration: var(--w-dropdown-transition-normal);
+}
+
+.w-dropdown-clear-button:hover {
+    background-color: var(--w-dropdown-surface-hover);
+    color: var(--w-dropdown-text-primary);
+}
+
+.w-dropdown-clear-button:disabled {
+    opacity: var(--w-dropdown-pagination-disabled-opacity);
+}
+
+/* =============================================================================
+ * Option List Container
+ * ============================================================================= */
+.w-dropdown-options-container {
+    flex-direction: column;
+}
+
+/* =============================================================================
+ * Option Row
+ * ============================================================================= */
+.w-dropdown-option {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--w-dropdown-surface);
+    padding: var(--w-dropdown-option-padding-vertical) var(--w-dropdown-option-padding-horizontal);
+    border-radius: var(--w-dropdown-option-border-radius);
+    margin-bottom: var(--w-dropdown-option-gap);
+    min-height: var(--w-dropdown-option-height);
+    transition-property: background-color;
+    transition-duration: var(--w-dropdown-transition-normal);
+    transition-timing-function: ease-out;
+}
+
+.w-dropdown-option:hover {
+    background-color: var(--w-dropdown-surface-hover);
+}
+
+.w-dropdown-option--hover {
+    background-color: var(--w-dropdown-surface-hover);
+}
+
+.w-dropdown-option--focused {
+    background-color: var(--w-dropdown-surface-hover);
+    border-width: 2px;
+    border-color: var(--w-dropdown-accent);
+}
+
+.w-dropdown-option--selected {
+    background-color: var(--w-dropdown-surface-selected);
+}
+
+.w-dropdown-option--selected:hover {
+    background-color: var(--w-dropdown-surface-selected);
+}
+
+/* Option Label */
+.w-dropdown-option-label {
+    color: var(--w-dropdown-text-primary);
+    -unity-font-style: normal;
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.w-dropdown-option--selected .w-dropdown-option-label {
+    color: var(--w-dropdown-text-selected);
+    -unity-font-style: bold;
+}
+
+/* Selection Indicator (Radio-style) */
+.w-dropdown-option-indicator {
+    width: var(--w-dropdown-indicator-size);
+    height: var(--w-dropdown-indicator-size);
+    border-radius: 50%;
+    border-width: var(--w-dropdown-indicator-border-width);
+    border-color: var(--w-dropdown-indicator-border);
+    background-color: transparent;
+    flex-shrink: 0;
+    margin-left: var(--w-dropdown-spacing-md);
+}
+
+.w-dropdown-option--selected .w-dropdown-option-indicator {
+    background-color: var(--w-dropdown-indicator-fill);
+    border-color: var(--w-dropdown-indicator-fill);
+}
+
+/* =============================================================================
+ * Pagination Controls
+ * ============================================================================= */
+.w-dropdown-pagination {
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    margin-top: var(--w-dropdown-spacing-md);
+    padding: var(--w-dropdown-spacing-sm) 0;
+}
+
+.w-dropdown-pagination-button {
+    background-color: var(--w-dropdown-pagination-bg);
+    border-width: 0;
+    padding: var(--w-dropdown-spacing-sm) var(--w-dropdown-spacing-md);
+    border-radius: 4px;
+    color: var(--w-dropdown-text-primary);
+    min-width: 24px;
+    transition-property: background-color, transform;
+    transition-duration: var(--w-dropdown-transition-normal);
+    transition-timing-function: ease-out;
+}
+
+.w-dropdown-pagination-button:hover {
+    background-color: var(--w-dropdown-surface-hover);
+    scale: 1.05;
+}
+
+.w-dropdown-pagination-button:disabled {
+    opacity: var(--w-dropdown-pagination-disabled-opacity);
+}
+
+.w-dropdown-pagination-button:disabled:hover {
+    background-color: transparent;
+    scale: 1;
+}
+
+.w-dropdown-pagination-label {
+    padding: var(--w-dropdown-spacing-sm) var(--w-dropdown-spacing-lg);
+    color: var(--w-dropdown-text-secondary);
+    -unity-font-style: normal;
+    font-size: 11px;
+}
+
+/* =============================================================================
+ * Suggestion Hint (Autocomplete)
+ * ============================================================================= */
+.w-dropdown-suggestion {
+    color: var(--w-dropdown-accent);
+    font-size: 11px;
+    -unity-font-style: italic;
+    padding: var(--w-dropdown-spacing-sm) 0;
+    margin-left: var(--w-dropdown-spacing-sm);
+}
+
+/* =============================================================================
+ * No Results Message
+ * ============================================================================= */
+.w-dropdown-no-results {
+    padding: var(--w-dropdown-spacing-lg);
+    color: var(--w-dropdown-text-secondary);
+    -unity-text-align: middle-center;
+    -unity-font-style: italic;
+}
+
+/* =============================================================================
+ * Dropdown Button (Inline Field)
+ * ============================================================================= */
+.w-dropdown-button {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--w-dropdown-surface);
+    border-width: 1px;
+    border-color: var(--w-dropdown-border);
+    border-radius: 4px;
+    padding: var(--w-dropdown-spacing-sm) var(--w-dropdown-spacing-md);
+    min-height: 20px;
+    transition-property: border-color, background-color;
+    transition-duration: var(--w-dropdown-transition-normal);
+}
+
+.w-dropdown-button:hover {
+    background-color: var(--w-dropdown-surface-hover);
+    border-color: var(--w-dropdown-accent);
+}
+
+.w-dropdown-button:focus {
+    border-color: var(--w-dropdown-accent);
+}
+
+.w-dropdown-button-label {
+    color: var(--w-dropdown-text-primary);
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.w-dropdown-button-arrow {
+    color: var(--w-dropdown-text-secondary);
+    font-size: 10px;
+    margin-left: var(--w-dropdown-spacing-sm);
+}
+
+/* =============================================================================
+ * Keyboard Focus Indicator
+ * ============================================================================= */
+.w-dropdown-option:focus {
+    border-width: 2px;
+    border-color: var(--w-dropdown-accent);
+}
+
+/* =============================================================================
+ * Animation Classes (Applied via code)
+ * ============================================================================= */
+.w-dropdown-fade-in {
+    opacity: 1;
+    transition-property: opacity;
+    transition-duration: var(--w-dropdown-transition-fast);
+}
+
+.w-dropdown-fade-out {
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 80ms;
+}

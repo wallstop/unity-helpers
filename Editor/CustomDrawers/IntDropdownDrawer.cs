@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
+#if UNITY_EDITOR
     using System;
     using UnityEditor;
     using UnityEngine;
@@ -27,7 +28,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            int[] options = dropdown.Options ?? Array.Empty<int>();
+            UnityEngine.Object context = property.serializedObject?.targetObject;
+            int[] options = dropdown.GetOptions(context) ?? Array.Empty<int>();
             if (options.Length == 0)
             {
                 EditorGUI.PropertyField(position, property, label);
@@ -60,4 +62,5 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
     }
+#endif
 }

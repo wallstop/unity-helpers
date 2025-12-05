@@ -1,0 +1,42 @@
+/* =============================================================================
+ * WDropdownLight.uss
+ * Light Theme Overrides for WValueDropDown, StringInList, and IntDropDown
+ * 
+ * This file overrides variables for Unity's light (Personal) theme.
+ * Apply when EditorGUIUtility.isProSkin is false.
+ * ============================================================================= */
+
+:root {
+    /* Container */
+    --w-dropdown-bg: #F3F3F3;
+    --w-dropdown-border: #D4D4D4;
+    
+    /* Surface Colors */
+    --w-dropdown-surface: #FFFFFF;
+    --w-dropdown-surface-hover: #E8E8E8;
+    --w-dropdown-surface-selected: #CCE4F7;
+    
+    /* Accent & Focus */
+    --w-dropdown-accent: #0078D4;
+    --w-dropdown-accent-hover: #106EBE;
+    --w-dropdown-focus-ring: rgba(0, 120, 212, 0.3);
+    
+    /* Text Colors */
+    --w-dropdown-text-primary: #1E1E1E;
+    --w-dropdown-text-secondary: #6E6E6E;
+    --w-dropdown-text-selected: #1E1E1E;
+    --w-dropdown-text-disabled: #A0A0A0;
+    
+    /* Search Field */
+    --w-dropdown-search-bg: #FFFFFF;
+    --w-dropdown-search-border: #D4D4D4;
+    --w-dropdown-search-border-focus: #0078D4;
+    --w-dropdown-search-placeholder: #9E9E9E;
+    
+    /* Selection Indicator */
+    --w-dropdown-indicator-border: #6E6E6E;
+    --w-dropdown-indicator-fill: #0078D4;
+    
+    /* Pagination */
+    --w-dropdown-pagination-hover: #E8E8E8;
+}

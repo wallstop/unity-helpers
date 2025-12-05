@@ -1,7 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
 #if UNITY_EDITOR
-    using System;
     using System.Collections;
     using NUnit.Framework;
     using System.Reflection;
@@ -10,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
+    using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using WallstopStudios.UnityHelpers.Tests.Utils;
     using PropertyAttribute = UnityEngine.PropertyAttribute;
@@ -73,14 +73,93 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.That(asset.validValue, Is.EqualTo(10));
         }
 
-        [Serializable]
-        private sealed class IntDropdownTestAsset : ScriptableObject
+        [Test]
+        public void InstanceMethodProviderReturnsValues()
         {
-            [IntDropdown(5, 10, 15)]
-            public int missingValue = 5;
+            IntDropdownInstanceMethodAsset asset =
+                CreateScriptableObject<IntDropdownInstanceMethodAsset>();
+            asset.dynamicValues.AddRange(new[] { 100, 200, 300 });
 
-            [IntDropdown(5, 10, 15)]
-            public int validValue = 10;
+            IntDropdownAttribute attribute = new(
+                nameof(IntDropdownInstanceMethodAsset.GetDynamicValues)
+            );
+            int[] options = attribute.GetOptions(asset);
+
+            Assert.That(options.Length, Is.EqualTo(3));
+            Assert.That(options[0], Is.EqualTo(100));
+            Assert.That(options[1], Is.EqualTo(200));
+            Assert.That(options[2], Is.EqualTo(300));
+        }
+
+        [Test]
+        public void InstanceMethodProviderWithNoContextReturnsEmpty()
+        {
+            IntDropdownAttribute attribute = new(
+                nameof(IntDropdownInstanceMethodAsset.GetDynamicValues)
+            );
+            int[] options = attribute.GetOptions(null);
+            Assert.That(options.Length, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void StaticMethodProviderReturnsValues()
+        {
+            IntDropdownAttribute attribute = new(
+                typeof(IntDropdownSource),
+                nameof(IntDropdownSource.GetStaticOptions)
+            );
+            int[] options = attribute.Options;
+
+            Assert.That(options.Length, Is.EqualTo(3));
+            Assert.That(options[0], Is.EqualTo(100));
+            Assert.That(options[1], Is.EqualTo(200));
+            Assert.That(options[2], Is.EqualTo(300));
+        }
+
+        [Test]
+        public void InlineOptionsReturnsCorrectValues()
+        {
+            IntDropdownAttribute attribute = new(1, 2, 3, 4, 5);
+            int[] options = attribute.Options;
+
+            Assert.That(options.Length, Is.EqualTo(5));
+            Assert.That(options[0], Is.EqualTo(1));
+            Assert.That(options[4], Is.EqualTo(5));
+        }
+
+        [Test]
+        public void BackingAttributeIsWValueDropDown()
+        {
+            IntDropdownAttribute attribute = new(10, 20, 30);
+            WValueDropDownAttribute backingAttribute = attribute.BackingAttribute;
+            Assert.IsNotNull(backingAttribute);
+            Assert.That(backingAttribute.ValueType, Is.EqualTo(typeof(int)));
+        }
+
+        [Test]
+        public void RequiresInstanceContextIsTrueForInstanceProvider()
+        {
+            IntDropdownAttribute attribute = new(
+                nameof(IntDropdownInstanceMethodAsset.GetDynamicValues)
+            );
+            Assert.That(attribute.RequiresInstanceContext, Is.True);
+        }
+
+        [Test]
+        public void RequiresInstanceContextIsFalseForInlineList()
+        {
+            IntDropdownAttribute attribute = new(1, 2, 3);
+            Assert.That(attribute.RequiresInstanceContext, Is.False);
+        }
+
+        [Test]
+        public void RequiresInstanceContextIsFalseForStaticProvider()
+        {
+            IntDropdownAttribute attribute = new(
+                typeof(IntDropdownSource),
+                nameof(IntDropdownSource.GetStaticOptions)
+            );
+            Assert.That(attribute.RequiresInstanceContext, Is.False);
         }
 
         private static void AssignAttribute(PropertyDrawer drawer, PropertyAttribute attribute)

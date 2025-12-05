@@ -8,8 +8,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// Designed for authoring config objects, ScriptableObjects, and MonoBehaviours that should be restricted to a known set of valid identifiers (layer masks, level IDs, refresh rates, etc.).
     /// </summary>
     /// <remarks>
-    /// The attribute supports both inline value lists and late-bound providers resolved through reflection.
+    /// <para>
+    /// The attribute supports inline value lists, static providers resolved through reflection, and instance method providers.
     /// Late-binding enables values to track data sets (for example, enums translated to int IDs or editor preferences stored elsewhere).
+    /// </para>
+    /// <para>
+    /// This attribute is implemented using the same underlying infrastructure as <see cref="WValueDropDownAttribute"/>,
+    /// specialized for integer values with a type-safe API.
+    /// </para>
     /// </remarks>
     /// <example>
     /// Inline list:
@@ -17,7 +23,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// [IntDropdown(0, 30, 60, 120)]
     /// public int frameRate;
     /// </code>
-    /// Late-bound provider:
+    /// Static provider:
     /// <code>
     /// [IntDropdown(typeof(FrameRateLibrary), nameof(FrameRateLibrary.GetSupportedFrameRates))]
     /// public int frameRate;
@@ -27,11 +33,25 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     ///     internal static IEnumerable&lt;int&gt; GetSupportedFrameRates() =&gt; new[] { 30, 60, 120 };
     /// }
     /// </code>
+    /// Instance provider:
+    /// <code>
+    /// [IntDropdown(nameof(GetAvailableIds))]
+    /// public int selectedId;
+    ///
+    /// private IEnumerable&lt;int&gt; GetAvailableIds() =&gt; cachedIds;
+    /// </code>
     /// </example>
     public sealed class IntDropdownAttribute : PropertyAttribute
     {
-        private const string AttributeName = "IntDropdownAttribute";
-        private readonly Func<int[]> _getOptions;
+        private static readonly int[] Empty = Array.Empty<int>();
+
+        private readonly WValueDropDownAttribute _backingAttribute;
+
+        /// <summary>
+        /// Gets the underlying <see cref="WValueDropDownAttribute"/> that powers this attribute.
+        /// This enables sharing of infrastructure between both attribute types.
+        /// </summary>
+        internal WValueDropDownAttribute BackingAttribute => _backingAttribute;
 
         /// <summary>
         /// Initializes the attribute with an inline list of integer values that should be exposed in the inspector.
@@ -39,7 +59,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// <param name="options">One or more selectable integer values. The order defined here becomes the dropdown order.</param>
         public IntDropdownAttribute(params int[] options)
         {
-            _getOptions = DropdownValueProvider<int>.FromList(options);
+            _backingAttribute = new WValueDropDownAttribute(options ?? Array.Empty<int>());
         }
 
         /// <summary>
@@ -53,17 +73,71 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// <param name="methodName">Name of the parameterless static method returning the options (for example, <c>nameof(SettingsCache.GetDifficultyIds)</c>).</param>
         public IntDropdownAttribute(Type providerType, string methodName)
         {
-            _getOptions = DropdownValueProvider<int>.FromMethod(
-                providerType,
-                methodName,
-                AttributeName
-            );
+            _backingAttribute = new WValueDropDownAttribute(providerType, methodName, typeof(int));
         }
 
         /// <summary>
-        /// Gets the set of allowed integer values that the dropdown will display.
+        /// Uses a method on the decorated object's type to obtain the allowed integers.
+        /// The method can be instance or static, must be parameterless, and return either int[] or IEnumerable&lt;int&gt;.
+        /// </summary>
+        /// <param name="methodName">Method name declared on the target object's type.</param>
+        public IntDropdownAttribute(string methodName)
+        {
+            _backingAttribute = new WValueDropDownAttribute(methodName, typeof(int));
+        }
+
+        /// <summary>
+        /// Gets the set of allowed integer values that the dropdown will display without context.
+        /// Note: when the attribute targets an instance method, this returns an empty array.
         /// The array is fetched from the configured provider whenever the inspector requests it.
         /// </summary>
-        public int[] Options => _getOptions();
+        public int[] Options => GetOptions(null);
+
+        /// <summary>
+        /// Retrieves the allowed integer options for the supplied context object.
+        /// </summary>
+        /// <param name="context">The object declaring the field/property. Required for instance providers.</param>
+        /// <returns>Resolved option list (never null).</returns>
+        public int[] GetOptions(object context)
+        {
+            if (_backingAttribute == null)
+            {
+                return Empty;
+            }
+
+            object[] options = _backingAttribute.GetOptions(context);
+            if (options == null || options.Length == 0)
+            {
+                return Empty;
+            }
+
+            int[] result = new int[options.Length];
+            for (int i = 0; i < options.Length; i++)
+            {
+                if (options[i] is int intValue)
+                {
+                    result[i] = intValue;
+                }
+                else if (options[i] != null)
+                {
+                    try
+                    {
+                        result[i] = Convert.ToInt32(options[i]);
+                    }
+                    catch
+                    {
+                        result[i] = 0;
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Indicates whether this attribute uses an instance method provider.
+        /// </summary>
+        internal bool RequiresInstanceContext =>
+            _backingAttribute?.RequiresInstanceContext ?? false;
     }
 }

@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Editor.Styles;
     using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
@@ -229,10 +230,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             StringInListAttribute attribute
         )
         {
-            string stateKey =
-                $"{property.serializedObject?.targetObject?.GetInstanceID() ?? 0}:{property.propertyPath}";
-            PopupState state = GetOrCreateState(stateKey);
-
             EditorGUI.BeginProperty(position, label, property);
             Rect fieldRect = EditorGUI.PrefixLabel(position, label);
             bool previousMixed = EditorGUI.showMixedValue;
@@ -247,15 +244,42 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             GUIContent buttonContent = new(displayValue, tooltip);
             if (EditorGUI.DropdownButton(fieldRect, buttonContent, FocusType.Keyboard))
             {
-                UnityEditor.PopupWindow.Show(
+                string[] displayLabels = GetOptionDisplayArray(attribute, options);
+                string[] tooltips = BuildTooltipsArray(attribute, options);
+                WDropdownPopupWindow.ShowForStringInList(
                     fieldRect,
-                    new StringInListPopupContent(property, options, state, pageSize, attribute)
+                    property,
+                    options,
+                    displayLabels,
+                    tooltips,
+                    pageSize
                 );
             }
 
             EditorGUI.showMixedValue = previousMixed;
 
             EditorGUI.EndProperty();
+        }
+
+        private static string[] BuildTooltipsArray(
+            StringInListAttribute attribute,
+            string[] options
+        )
+        {
+            if (!IsSerializableTypeProvider(attribute))
+            {
+                return null;
+            }
+
+            string[] tooltips = new string[options.Length];
+            for (int i = 0; i < options.Length; i++)
+            {
+                if (SerializableTypeCatalog.TryGetDisplayInfo(options[i], out _, out string tip))
+                {
+                    tooltips[i] = tip;
+                }
+            }
+            return tooltips;
         }
 
         private static int ResolveCurrentSelectionIndex(
@@ -876,6 +900,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
                 _suggestionOptionIndex = -1;
 
+                // Apply dropdown styles
+                WDropdownStyleLoader.ApplyStyles(this);
+
                 AddToClassList("unity-base-field");
                 AddToClassList("unity-base-field__aligned");
                 labelElement.AddToClassList("unity-base-field__label");
@@ -898,17 +925,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         paddingLeft = 0f,
                     },
                 };
+                _searchRow.AddToClassList(WDropdownStyleLoader.ClassNames.SearchContainer);
 
                 VisualElement searchWrapper = new()
                 {
                     style = { flexGrow = 1f, position = Position.Relative },
                 };
+                searchWrapper.AddToClassList(WDropdownStyleLoader.ClassNames.SearchWrapper);
 
                 _searchField = new TextField
                 {
                     name = "StringInListSearch",
                     style = { flexGrow = 1f },
                 };
+                _searchField.AddToClassList(WDropdownStyleLoader.ClassNames.Search);
                 _searchField.RegisterValueChangedCallback(OnSearchChanged);
                 _searchField.RegisterCallback<KeyDownEvent>(OnSearchKeyDown);
                 searchWrapper.Add(_searchField);
@@ -918,6 +948,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     text = "Clear",
                     style = { marginLeft = 4f },
                 };
+                _clearButton.AddToClassList(WDropdownStyleLoader.ClassNames.ClearButton);
                 _clearButton.SetEnabled(false);
 
                 _paginationContainer = new VisualElement
@@ -930,6 +961,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         display = DisplayStyle.None,
                     },
                 };
+                _paginationContainer.AddToClassList(WDropdownStyleLoader.ClassNames.Pagination);
 
                 _previousButton = new Button(OnPreviousPage)
                 {
@@ -944,6 +976,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     },
                 };
                 _previousButton.AddToClassList("unity-toolbar-button");
+                _previousButton.AddToClassList(WDropdownStyleLoader.ClassNames.PaginationButton);
 
                 _pageLabel = new Label
                 {
@@ -958,6 +991,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         alignSelf = Align.Center,
                     },
                 };
+                _pageLabel.AddToClassList(WDropdownStyleLoader.ClassNames.PaginationLabel);
+
                 _nextButton = new Button(OnNextPage)
                 {
                     text = ">",
@@ -970,6 +1005,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     },
                 };
                 _nextButton.AddToClassList("unity-toolbar-button");
+                _nextButton.AddToClassList(WDropdownStyleLoader.ClassNames.PaginationButton);
 
                 _paginationContainer.Add(_previousButton);
                 _paginationContainer.Add(_pageLabel);
@@ -993,6 +1029,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     },
                     pickingMode = PickingMode.Ignore,
                 };
+                _suggestionHintLabel.AddToClassList(WDropdownStyleLoader.ClassNames.Suggestion);
                 baseInput.Add(_suggestionHintLabel);
 
                 _dropdown = new DropdownField
@@ -1026,6 +1063,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     },
                 };
                 _noResultsLabel.AddToClassList("unity-help-box");
+                _noResultsLabel.AddToClassList(WDropdownStyleLoader.ClassNames.NoResults);
                 baseInput.Add(_noResultsLabel);
 
                 ApplySearchVisibility(ShouldShowSearch(_lastResolvedPageSize));
