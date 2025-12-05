@@ -103,6 +103,19 @@
 
 .w-dropdown-clear-button:disabled {
     opacity: var(--w-dropdown-pagination-disabled-opacity);
+    background-color: transparent;
+    border-color: var(--w-dropdown-border);
+}
+
+.w-dropdown-clear-button--active {
+    background-color: var(--w-dropdown-surface-hover);
+    border-color: var(--w-dropdown-accent);
+    color: var(--w-dropdown-text-primary);
+}
+
+.w-dropdown-clear-button--active:hover {
+    background-color: var(--w-dropdown-accent);
+    color: var(--w-dropdown-text-selected);
 }
 
 /* =============================================================================

@@ -1,7 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 {
     using System;
-    using System.Collections.Generic;
     using System.Text.RegularExpressions;
     using NUnit.Framework;
     using UnityEditor;

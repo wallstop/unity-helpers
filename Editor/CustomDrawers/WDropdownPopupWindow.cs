@@ -6,8 +6,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.UIElements;
-    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
-    using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Styles;
     using WallstopStudios.UnityHelpers.Utils;
 
@@ -63,6 +61,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float ButtonWidth = 28f;
         private const float PageLabelWidth = 90f;
         private const string NoResultsMessage = "No results match the current search.";
+        private const string ClearButtonActiveClass = "w-dropdown-clear-button--active";
 
         private WDropdownPopupData _data;
         private VisualElement _root;
@@ -708,6 +707,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             bool hasSearch = !string.IsNullOrEmpty(_searchText);
             _clearButton.SetEnabled(hasSearch);
+            if (hasSearch)
+            {
+                _clearButton.AddToClassList(ClearButtonActiveClass);
+            }
+            else
+            {
+                _clearButton.RemoveFromClassList(ClearButtonActiveClass);
+            }
         }
 
         private void UpdateSuggestion()
