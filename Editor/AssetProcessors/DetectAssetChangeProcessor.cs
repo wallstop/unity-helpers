@@ -626,12 +626,27 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                 }
 
                 Type mainType = AssetDatabase.GetMainAssetTypeAtPath(path);
-                if (mainType == null || !assetType.IsAssignableFrom(mainType))
+                if (mainType != null && assetType.IsAssignableFrom(mainType))
                 {
+                    buffer.Add(path);
                     continue;
                 }
 
-                buffer.Add(path);
+                // Fallback for test assets: Unity's GetMainAssetTypeAtPath may return incorrect
+                // types when test classes are defined in files that don't match the class name.
+                // Actually load the asset and check its runtime type.
+                if (
+                    _includeTestAssets
+                    && path.IndexOf(TestAssetFolderMarker, StringComparison.OrdinalIgnoreCase) >= 0
+                )
+                {
+                    UnityEngine.Object loadedAsset =
+                        AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
+                    if (loadedAsset != null && assetType.IsInstanceOfType(loadedAsset))
+                    {
+                        buffer.Add(path);
+                    }
+                }
             }
         }
 
@@ -807,6 +822,33 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 
                     Type mainType = AssetDatabase.GetMainAssetTypeAtPath(path);
                     if (mainType != null && watcher.AssetType.IsAssignableFrom(mainType))
+                    {
+                        watcher.KnownAssetPaths.Add(path);
+                    }
+                }
+            }
+
+            // Fallback for test assets: Unity's type filter may not find assets when test
+            // classes are defined in files that don't match the class name. Scan the test
+            // folder directly and check runtime types.
+            if (_includeTestAssets)
+            {
+                string[] testGuids = AssetDatabase.FindAssets(
+                    "t:ScriptableObject",
+                    new[] { "Assets/" + TestAssetFolderMarker }
+                );
+                for (int i = 0; i < testGuids.Length; i++)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(testGuids[i]);
+                    if (watcher.KnownAssetPaths.Contains(path))
+                    {
+                        continue;
+                    }
+
+                    UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(
+                        path
+                    );
+                    if (asset != null && watcher.AssetType.IsInstanceOfType(asset))
                     {
                         watcher.KnownAssetPaths.Add(path);
                     }

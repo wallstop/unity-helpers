@@ -182,7 +182,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                                 );
                                 if (!string.IsNullOrEmpty(moveResult))
                                 {
-                                    Debug.LogWarning(
+                                    UnityEngine.Debug.LogWarning(
                                         $"Failed to move {nameof(PersistentDirectorySettings)} from {primaryPath} to {targetAssetPath}: {moveResult}. Will create new and merge."
                                     );
                                     // Create new target and merge below
@@ -234,7 +234,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
             catch (Exception e)
             {
-                Debug.LogWarning(
+                UnityEngine.Debug.LogWarning(
                     $"{nameof(PersistentDirectorySettings)} migration encountered an issue: {e.Message}\n{e}"
                 );
             }
@@ -264,7 +264,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                 || string.IsNullOrWhiteSpace(path)
             )
             {
-                Debug.LogWarning("RecordPath: toolName, contextKey, or path cannot be empty.");
+                UnityEngine.Debug.LogWarning(
+                    "RecordPath: toolName, contextKey, or path cannot be empty."
+                );
                 return;
             }
 
@@ -279,7 +281,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                     && !sanitizedPath.StartsWith("Assets/", StringComparison.Ordinal)
                 )
                 {
-                    Debug.LogWarning(
+                    UnityEngine.Debug.LogWarning(
                         $"Recording path '{sanitizedPath}' that is not an 'Assets/' relative path or an absolute path. This might be intentional."
                     );
                 }
@@ -580,7 +582,9 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
             catch (Exception e)
             {
-                Debug.LogError($"Failed to delete {assetOrFolderPath} with error: {e}.");
+                UnityEngine.Debug.LogError(
+                    $"Failed to delete {assetOrFolderPath} with error: {e}."
+                );
             }
         }
     }

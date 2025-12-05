@@ -1,4 +1,3 @@
-#if UNITY_EDITOR
 namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 {
     using System;
@@ -57,6 +56,54 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             Assert.That(expandedHeight, Is.EqualTo(collapsedHeight));
         }
 
+        // Data-driven test for foldout settings behavior
+        [TestCase(
+            UnityHelpersSettings.InlineEditorFoldoutBehavior.StartCollapsed,
+            false,
+            TestName = "FoldoutBehavior.StartCollapsed.InitiallyCollapsed"
+        )]
+        [TestCase(
+            UnityHelpersSettings.InlineEditorFoldoutBehavior.StartExpanded,
+            true,
+            TestName = "FoldoutBehavior.StartExpanded.InitiallyExpanded"
+        )]
+        [TestCase(
+            UnityHelpersSettings.InlineEditorFoldoutBehavior.AlwaysOpen,
+            true,
+            TestName = "FoldoutBehavior.AlwaysOpen.InitiallyExpanded"
+        )]
+        public void DefaultModeUsesSettingsDataDriven(
+            UnityHelpersSettings.InlineEditorFoldoutBehavior behavior,
+            bool expectExpanded
+        )
+        {
+            using InlineEditorFoldoutBehaviorScope scope = new InlineEditorFoldoutBehaviorScope(
+                behavior
+            );
+
+            // Measure height with explicit state matching expected behavior
+            var (expectedHeight, expectedDetails, _) =
+                MeasurePropertyHeightWithDetailedDiagnostics<DefaultSettingsInlineEditorHost>(
+                    propertyExpanded: false,
+                    setInlineExpanded: expectExpanded
+                );
+
+            // Measure height without explicit state (should use settings)
+            var (defaultHeight, defaultDetails, diagnostics) =
+                MeasurePropertyHeightWithDetailedDiagnostics<DefaultSettingsInlineEditorHost>(
+                    propertyExpanded: false
+                );
+
+            Assert.That(
+                defaultHeight,
+                Is.EqualTo(expectedHeight).Within(0.001f),
+                $"With setting {behavior}, expected showBody={expectExpanded}. "
+                    + $"Expected details: showBody={expectedDetails.showBody}, inlineH={expectedDetails.inlineHeight}. "
+                    + $"Default details: showBody={defaultDetails.showBody}, inlineH={defaultDetails.inlineHeight}.\n"
+                    + $"Diagnostics:\n{diagnostics}"
+            );
+        }
+
         [Test]
         public void DefaultModeUsesSettingsWhenCollapsed()
         {
@@ -79,46 +126,160 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             using InlineEditorFoldoutBehaviorScope scope = new InlineEditorFoldoutBehaviorScope(
                 UnityHelpersSettings.InlineEditorFoldoutBehavior.StartExpanded
             );
-            float expectedExpanded = MeasurePropertyHeight<DefaultSettingsInlineEditorHost>(
-                propertyExpanded: false,
-                setInlineExpanded: true
+
+            // Verify the setting was actually applied
+            UnityHelpersSettings.InlineEditorFoldoutBehavior currentBehavior =
+                UnityHelpersSettings.GetInlineEditorFoldoutBehavior();
+            Assert.That(
+                currentBehavior,
+                Is.EqualTo(UnityHelpersSettings.InlineEditorFoldoutBehavior.StartExpanded),
+                "Setting should be StartExpanded but was " + currentBehavior
             );
-            float defaultHeight = MeasurePropertyHeight<DefaultSettingsInlineEditorHost>(
-                propertyExpanded: false
+
+            var (expectedExpanded, detailsExplicit, diagnosticsExplicit) =
+                MeasurePropertyHeightWithDetailedDiagnostics<DefaultSettingsInlineEditorHost>(
+                    propertyExpanded: false,
+                    setInlineExpanded: true
+                );
+            var (defaultHeight, detailsDefault, diagnosticsDefault) =
+                MeasurePropertyHeightWithDetailedDiagnostics<DefaultSettingsInlineEditorHost>(
+                    propertyExpanded: false
+                );
+            Assert.That(
+                defaultHeight,
+                Is.EqualTo(expectedExpanded).Within(0.001f),
+                $"Expected height (explicitly expanded): {expectedExpanded}, "
+                    + $"Default height (should use settings): {defaultHeight}. "
+                    + $"Current foldout behavior setting: {currentBehavior}. "
+                    + $"Explicit details: showBody={detailsExplicit.showBody}, inlineH={detailsExplicit.inlineHeight}. "
+                    + $"Default details: showBody={detailsDefault.showBody}, inlineH={detailsDefault.inlineHeight}\n"
+                    + $"--- Explicit Diagnostics ---\n{diagnosticsExplicit}\n"
+                    + $"--- Default Diagnostics ---\n{diagnosticsDefault}"
             );
-            Assert.That(defaultHeight, Is.EqualTo(expectedExpanded).Within(0.001f));
         }
 
         [Test]
         public void StandaloneHeaderOnlyDrawnWhenObjectFieldHidden()
         {
-            float heightWithObjectField = MeasurePropertyHeight<InlineEditorHost>(
+            // When DrawObjectField=false, a standalone header should be drawn.
+            // We verify this by checking the inline height difference between hosts with and without standalone header.
+            // Note: We compare inline heights, not total heights, because the base height differs
+            // (EditorGUI.GetPropertyHeight returns different values for object fields vs labels).
+            var (_, detailsWithObject) = MeasurePropertyHeightWithDetails<InlineEditorHost>(
                 propertyExpanded: false,
                 setInlineExpanded: true
             );
-            float heightWithStandaloneHeader = MeasurePropertyHeight<HeaderOnlyInlineEditorHost>(
-                propertyExpanded: false,
-                setInlineExpanded: true
+            var (_, detailsWithHeader) =
+                MeasurePropertyHeightWithDetails<HeaderOnlyInlineEditorHost>(
+                    propertyExpanded: false,
+                    setInlineExpanded: true
+                );
+
+            // Verify that the standalone header IS shown when drawObjectField=false
+            Assert.That(
+                detailsWithObject.showHeader,
+                Is.False,
+                "InlineEditorHost (DrawObjectField=true) should NOT show standalone header"
             );
-            const float ExpectedHeaderContribution = 22f; // HeaderHeight + Spacing
-            float difference = heightWithStandaloneHeader - heightWithObjectField;
-            Assert.That(difference, Is.EqualTo(ExpectedHeaderContribution).Within(0.001f));
+            Assert.That(
+                detailsWithHeader.showHeader,
+                Is.True,
+                "HeaderOnlyInlineEditorHost (DrawObjectField=false) should show standalone header"
+            );
+
+            // The inline height difference should be the header contribution (HeaderHeight=20 + Spacing=2)
+            const float ExpectedHeaderContribution = 22f;
+            float inlineHeightDifference =
+                detailsWithHeader.inlineHeight - detailsWithObject.inlineHeight;
+            Assert.That(
+                inlineHeightDifference,
+                Is.EqualTo(ExpectedHeaderContribution).Within(0.001f),
+                $"Inline height with object field: {detailsWithObject.inlineHeight}, "
+                    + $"inline height with standalone header: {detailsWithHeader.inlineHeight}, "
+                    + $"difference: {inlineHeightDifference}, "
+                    + $"expected header contribution: {ExpectedHeaderContribution}. "
+                    + $"Both bodies should have same displayHeight: withObject={detailsWithObject.displayHeight}, withHeader={detailsWithHeader.displayHeight}"
+            );
         }
 
         [Test]
         public void InlineInspectorOmitsScriptField()
         {
-            float collapsedHeight = MeasurePropertyHeight<NoScrollInlineEditorHost>(
-                propertyExpanded: false,
-                setInlineExpanded: false
+            // This test verifies that the Script field (m_Script) is NOT included in the inline inspector height.
+            // We do this by comparing the actual inline height to the expected height based on visible properties.
+
+            // First, calculate the expected content height by measuring all visible properties
+            // except m_Script on InlineEditorTarget
+            InlineEditorTarget target = ScriptableObject.CreateInstance<InlineEditorTarget>();
+            target.hideFlags = HideFlags.HideAndDontSave;
+            float expectedContentHeight = 0f;
+            System.Text.StringBuilder propertyDebug = new();
+            try
+            {
+                using SerializedObject so = new SerializedObject(target);
+                so.Update();
+                SerializedProperty iterator = so.GetIterator();
+                bool enterChildren = true;
+                bool first = true;
+                while (iterator.NextVisible(enterChildren))
+                {
+                    float propHeight = EditorGUI.GetPropertyHeight(iterator, true);
+                    if (iterator.propertyPath == "m_Script")
+                    {
+                        propertyDebug.AppendLine(
+                            $"  {iterator.propertyPath}: {propHeight}px [SKIPPED]"
+                        );
+                        enterChildren = false;
+                        continue;
+                    }
+                    if (!first)
+                    {
+                        expectedContentHeight += EditorGUIUtility.standardVerticalSpacing;
+                    }
+                    expectedContentHeight += propHeight;
+                    propertyDebug.AppendLine($"  {iterator.propertyPath}: {propHeight}px");
+                    enterChildren = false;
+                    first = false;
+                }
+            }
+            finally
+            {
+                ScriptableObject.DestroyImmediate(target);
+            }
+
+            var (collapsedHeight, _, collapsedDiagnostics) =
+                MeasurePropertyHeightWithDetailedDiagnostics<NoScrollInlineEditorHost>(
+                    propertyExpanded: false,
+                    setInlineExpanded: false
+                );
+            var (expandedHeight, _, expandedDiagnostics) =
+                MeasurePropertyHeightWithDetailedDiagnostics<NoScrollInlineEditorHost>(
+                    propertyExpanded: false,
+                    setInlineExpanded: true
+                );
+
+            // The inline height is the difference, minus the standardVerticalSpacing between base and inline
+            float inlineContribution = expandedHeight - collapsedHeight;
+            // inlineContribution = standardVerticalSpacing + inlineHeight
+            float inlineHeight = inlineContribution - EditorGUIUtility.standardVerticalSpacing;
+
+            // Expected: contentHeight + padding (4)
+            float expectedInlineHeight = expectedContentHeight + InlinePaddingContribution;
+
+            Assert.That(
+                inlineHeight,
+                Is.EqualTo(expectedInlineHeight).Within(0.01f),
+                $"Collapsed height: {collapsedHeight}, "
+                    + $"expanded height: {expandedHeight}, "
+                    + $"inline contribution (with spacing): {inlineContribution}, "
+                    + $"inline height: {inlineHeight}, "
+                    + $"expected inline height: {expectedInlineHeight} "
+                    + $"(contentHeight={expectedContentHeight} + padding={InlinePaddingContribution}). "
+                    + $"standardVerticalSpacing: {EditorGUIUtility.standardVerticalSpacing}\n"
+                    + $"--- Expected Properties (test calculation) ---\n{propertyDebug}\n"
+                    + $"--- Collapsed Diagnostics ---\n{collapsedDiagnostics}\n"
+                    + $"--- Expanded Diagnostics ---\n{expandedDiagnostics}"
             );
-            float expandedHeight = MeasurePropertyHeight<NoScrollInlineEditorHost>(
-                propertyExpanded: false,
-                setInlineExpanded: true
-            );
-            float inlineHeight = expandedHeight - collapsedHeight;
-            float expectedHeight = EditorGUIUtility.singleLineHeight + InlinePaddingContribution;
-            Assert.That(inlineHeight, Is.EqualTo(expectedHeight).Within(0.01f));
         }
 
         [Test]
@@ -549,6 +710,403 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             );
         }
 
+        [Test]
+        public void NullTargetReturnsBaseHeight()
+        {
+            // Test that when the target object is null, only the base height is returned
+            WInLineEditorDrawer.ClearCachedStateForTesting();
+            InlineEditorHost host = ScriptableObject.CreateInstance<InlineEditorHost>();
+            host.hideFlags = HideFlags.HideAndDontSave;
+
+            try
+            {
+                using SerializedObject serializedHost = new SerializedObject(host);
+                serializedHost.Update();
+                SerializedProperty property = serializedHost.FindProperty("collapsedTarget");
+                Assert.That(property, Is.Not.Null);
+
+                // Don't assign a target - leave it null
+                Assert.That(
+                    property.objectReferenceValue,
+                    Is.Null,
+                    "Target should be null for this test"
+                );
+
+                // Get the attribute via reflection
+                System.Reflection.FieldInfo targetField = typeof(InlineEditorHost).GetField(
+                    "collapsedTarget",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+                );
+                WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
+                    System.Attribute.GetCustomAttribute(
+                        targetField,
+                        typeof(WInLineEditorAttribute)
+                    );
+
+                // Setup drawer
+                GUIContent label = new GUIContent("Target");
+                WInLineEditorDrawer drawer = new WInLineEditorDrawer();
+                System.Reflection.FieldInfo attributeFieldInfo = typeof(PropertyDrawer).GetField(
+                    "m_Attribute",
+                    System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.NonPublic
+                );
+                attributeFieldInfo.SetValue(drawer, inlineAttribute);
+
+                float height = drawer.GetPropertyHeight(property, label);
+
+                // With null target, should return just base property height (typically singleLineHeight)
+                float expectedMaxHeight = EditorGUIUtility.singleLineHeight + 2f; // Small tolerance
+                Assert.That(
+                    height,
+                    Is.LessThanOrEqualTo(expectedMaxHeight),
+                    $"Height with null target should be base height. Got {height}, expected <= {expectedMaxHeight}"
+                );
+            }
+            finally
+            {
+                ScriptableObject.DestroyImmediate(host);
+            }
+        }
+
+        [Test]
+        public void HeightDoesNotDoubleFromRecursion()
+        {
+            // This test verifies that the fix for recursive GetPropertyHeight calls works correctly.
+            // The bug was that EditorGUI.GetPropertyHeight on the property would trigger Unity
+            // to call our GetPropertyHeight again, causing height doubling.
+            WInLineEditorDrawer.ClearCachedStateForTesting();
+
+            float collapsedHeight = MeasurePropertyHeight<InlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: false
+            );
+            float expandedHeight = MeasurePropertyHeight<InlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: true
+            );
+
+            float inlineContribution = expandedHeight - collapsedHeight;
+            float spacing = EditorGUIUtility.standardVerticalSpacing;
+
+            // The inline contribution should be spacing + inline height
+            // With the recursion bug, this would be roughly double
+            float maxReasonableInlineContribution = 100f; // A reasonable upper bound for a simple inline inspector
+
+            Assert.That(
+                inlineContribution,
+                Is.LessThan(maxReasonableInlineContribution),
+                $"Inline contribution ({inlineContribution}) is suspiciously large. "
+                    + "This may indicate height recursion. "
+                    + $"Collapsed: {collapsedHeight}, Expanded: {expandedHeight}"
+            );
+
+            // The inline height (minus spacing) should be close to the expected value:
+            // content height (one property ~18px) + padding (4px) = ~22px
+            float inlineHeight = inlineContribution - spacing;
+            float expectedApproxInlineHeight = EditorGUIUtility.singleLineHeight + 4f; // ~22px
+
+            Assert.That(
+                inlineHeight,
+                Is.EqualTo(expectedApproxInlineHeight).Within(10f), // Allow some tolerance for different editors
+                $"Inline height ({inlineHeight}) should be approximately {expectedApproxInlineHeight}. "
+                    + "Large deviation may indicate height calculation issues."
+            );
+        }
+
+        // Data-driven test for explicit inline editor modes
+        [TestCase(
+            WInLineEditorMode.FoldoutCollapsed,
+            false,
+            TestName = "ExplicitMode.FoldoutCollapsed.InitiallyCollapsed"
+        )]
+        [TestCase(
+            WInLineEditorMode.FoldoutExpanded,
+            true,
+            TestName = "ExplicitMode.FoldoutExpanded.InitiallyExpanded"
+        )]
+        [TestCase(
+            WInLineEditorMode.AlwaysExpanded,
+            true,
+            TestName = "ExplicitMode.AlwaysExpanded.AlwaysShows"
+        )]
+        public void ExplicitModeInitialFoldoutState(WInLineEditorMode mode, bool expectExpanded)
+        {
+            WInLineEditorDrawer.ClearCachedStateForTesting();
+
+            // Create a host with the specified mode
+            ExplicitModeTestHost host = ScriptableObject.CreateInstance<ExplicitModeTestHost>();
+            host.hideFlags = HideFlags.HideAndDontSave;
+
+            InlineEditorTarget target = ScriptableObject.CreateInstance<InlineEditorTarget>();
+            target.hideFlags = HideFlags.HideAndDontSave;
+
+            try
+            {
+                using SerializedObject serializedHost = new SerializedObject(host);
+                serializedHost.Update();
+
+                // Find the property with the correct mode
+                string propertyName = mode switch
+                {
+                    WInLineEditorMode.FoldoutCollapsed => "foldoutCollapsedTarget",
+                    WInLineEditorMode.FoldoutExpanded => "foldoutExpandedTarget",
+                    WInLineEditorMode.AlwaysExpanded => "alwaysExpandedTarget",
+                    _ => throw new ArgumentException($"Unsupported mode: {mode}"),
+                };
+
+                SerializedProperty property = serializedHost.FindProperty(propertyName);
+                Assert.That(property, Is.Not.Null, $"Property {propertyName} not found");
+
+                property.objectReferenceValue = target;
+                serializedHost.ApplyModifiedPropertiesWithoutUndo();
+                serializedHost.Update();
+                property = serializedHost.FindProperty(propertyName);
+
+                System.Reflection.FieldInfo targetField = typeof(ExplicitModeTestHost).GetField(
+                    propertyName,
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+                );
+                WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
+                    System.Attribute.GetCustomAttribute(
+                        targetField,
+                        typeof(WInLineEditorAttribute)
+                    );
+
+                var details = WInLineEditorDrawer.GetHeightCalculationDetailsForTesting(
+                    property,
+                    inlineAttribute,
+                    target,
+                    500f
+                );
+
+                Assert.That(
+                    details.showBody,
+                    Is.EqualTo(expectExpanded),
+                    $"With mode {mode}, expected showBody={expectExpanded} but got {details.showBody}"
+                );
+            }
+            finally
+            {
+                ScriptableObject.DestroyImmediate(host);
+                ScriptableObject.DestroyImmediate(target);
+            }
+        }
+
+        // ==================== Width and Layout Tests ====================
+
+        [Test]
+        public void SerializedInspectorIsUsedByDefault()
+        {
+            // Verify that the serialized inspector path is used by default
+            // This ensures correct layout without the 50% width issue
+            Assert.That(
+                WInLineEditorDrawer.ForceSerializedInspectorForTesting,
+                Is.True,
+                "ForceSerializedInspector should be true by default to avoid width issues"
+            );
+        }
+
+        [Test]
+        public void LabelWidthIsCalculatedCorrectly()
+        {
+            // Test that labelWidth is calculated as 40% of available width
+            const float availableWidth = 400f;
+            const float expectedLabelWidth = 160f; // 40% of 400
+
+            float calculatedLabelWidth = WInLineEditorDrawer.CalculateLabelWidthForTesting(
+                availableWidth
+            );
+
+            Assert.That(
+                calculatedLabelWidth,
+                Is.EqualTo(expectedLabelWidth).Within(0.01f),
+                $"Label width should be 40% of available width ({availableWidth})"
+            );
+        }
+
+        [TestCase(400f, 160f, TestName = "LabelWidth.400px.Returns160")]
+        [TestCase(500f, 200f, TestName = "LabelWidth.500px.Returns200")]
+        [TestCase(300f, 120f, TestName = "LabelWidth.300px.Returns120")]
+        [TestCase(100f, 40f, TestName = "LabelWidth.100px.Returns40")]
+        public void LabelWidthCalculation_DataDriven(float availableWidth, float expectedLabelWidth)
+        {
+            float calculatedLabelWidth = WInLineEditorDrawer.CalculateLabelWidthForTesting(
+                availableWidth
+            );
+
+            Assert.That(
+                calculatedLabelWidth,
+                Is.EqualTo(expectedLabelWidth).Within(0.01f),
+                $"Label width for {availableWidth}px should be {expectedLabelWidth}px"
+            );
+        }
+
+        // Tests for horizontal scroll at very narrow widths
+        [TestCase(150f, true, TestName = "NarrowWidth.150px.TriggersScroll")]
+        [TestCase(180f, true, TestName = "NarrowWidth.180px.TriggersScroll")]
+        [TestCase(199f, true, TestName = "NarrowWidth.199px.TriggersScroll")]
+        [TestCase(200f, false, TestName = "NarrowWidth.200px.NoScroll")]
+        [TestCase(250f, false, TestName = "NarrowWidth.250px.NoScroll")]
+        public void NarrowWidthTriggersHorizontalScroll_DataDriven(
+            float availableWidth,
+            bool expectedNeedsScroll
+        )
+        {
+            // When width is very narrow (< 200px), horizontal scroll should trigger
+            // even for simple layouts
+            bool needsScroll = WInLineEditorDrawer.RequiresHorizontalScrollbarForTesting(
+                enableScrolling: true,
+                minInspectorWidth: 520f, // default
+                hasExplicitMinInspectorWidth: false,
+                hasSimpleLayout: true, // simple layout
+                availableWidth: availableWidth
+            );
+
+            Assert.That(
+                needsScroll,
+                Is.EqualTo(expectedNeedsScroll),
+                $"At {availableWidth}px width, simple layout scroll should be {expectedNeedsScroll}"
+            );
+        }
+
+        [Test]
+        public void VeryNarrowWidthTriggersScrollForSimpleLayouts()
+        {
+            // Integration test: verify that very narrow widths trigger scroll even for simple targets
+            SimpleInlineEditorTarget target = CreateHiddenInstance<SimpleInlineEditorTarget>();
+            try
+            {
+                // Verify target is detected as simple
+                using SerializedObject serializedObject = new SerializedObject(target);
+                bool isSimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(
+                    serializedObject
+                );
+                Assert.That(
+                    isSimple,
+                    Is.True,
+                    "SimpleInlineEditorTarget should be detected as simple"
+                );
+
+                // At very narrow width (< 200px), even simple targets should get scrollbar
+                WInLineEditorAttribute inlineAttribute = new WInLineEditorAttribute();
+                bool usesScrollbar = WInLineEditorDrawer.UsesHorizontalScrollbarForTesting(
+                    target,
+                    inlineAttribute,
+                    availableWidth: 150f // Very narrow
+                );
+
+                Assert.That(
+                    usesScrollbar,
+                    Is.True,
+                    "Simple targets should trigger horizontal scroll at very narrow widths (< 200px)"
+                );
+            }
+            finally
+            {
+                ScriptableObject.DestroyImmediate(target);
+            }
+        }
+
+        [Test]
+        public void SimpleLayoutAtNormalWidthDoesNotTriggerScroll()
+        {
+            // Verify simple layouts don't trigger scroll at normal widths
+            SimpleInlineEditorTarget target = CreateHiddenInstance<SimpleInlineEditorTarget>();
+            try
+            {
+                using SerializedObject serializedObject = new SerializedObject(target);
+                bool isSimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(
+                    serializedObject
+                );
+                Assert.That(
+                    isSimple,
+                    Is.True,
+                    "SimpleInlineEditorTarget should be detected as simple"
+                );
+
+                WInLineEditorAttribute inlineAttribute = new WInLineEditorAttribute();
+                bool usesScrollbar = WInLineEditorDrawer.UsesHorizontalScrollbarForTesting(
+                    target,
+                    inlineAttribute,
+                    availableWidth: 360f // Normal width
+                );
+
+                Assert.That(
+                    usesScrollbar,
+                    Is.False,
+                    "Simple targets should not trigger horizontal scroll at normal widths"
+                );
+            }
+            finally
+            {
+                ScriptableObject.DestroyImmediate(target);
+            }
+        }
+
+        // ==================== End Width and Layout Tests ====================
+
+        [Test]
+        public void BaseHeightIsConsistentAcrossDrawerCalls()
+        {
+            // Verify that the base property height (singleLineHeight) is used consistently
+            WInLineEditorDrawer.ClearCachedStateForTesting();
+
+            InlineEditorHost host = ScriptableObject.CreateInstance<InlineEditorHost>();
+            host.hideFlags = HideFlags.HideAndDontSave;
+
+            InlineEditorTarget target = ScriptableObject.CreateInstance<InlineEditorTarget>();
+            target.hideFlags = HideFlags.HideAndDontSave;
+
+            try
+            {
+                using SerializedObject serializedHost = new SerializedObject(host);
+                serializedHost.Update();
+                SerializedProperty property = serializedHost.FindProperty("collapsedTarget");
+                property.objectReferenceValue = target;
+                serializedHost.ApplyModifiedPropertiesWithoutUndo();
+                serializedHost.Update();
+                property = serializedHost.FindProperty("collapsedTarget");
+
+                System.Reflection.FieldInfo targetField = typeof(InlineEditorHost).GetField(
+                    "collapsedTarget",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+                );
+                WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
+                    System.Attribute.GetCustomAttribute(
+                        targetField,
+                        typeof(WInLineEditorAttribute)
+                    );
+
+                // Set foldout to collapsed so we only get base height
+                WInLineEditorDrawer.SetInlineFoldoutStateForTesting(property, false);
+
+                GUIContent label = new GUIContent("Target");
+                WInLineEditorDrawer drawer = new WInLineEditorDrawer();
+                System.Reflection.FieldInfo attributeFieldInfo = typeof(PropertyDrawer).GetField(
+                    "m_Attribute",
+                    System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.NonPublic
+                );
+                attributeFieldInfo.SetValue(drawer, inlineAttribute);
+
+                float height = drawer.GetPropertyHeight(property, label);
+
+                // With collapsed state and non-null target, height should be exactly singleLineHeight
+                Assert.That(
+                    height,
+                    Is.EqualTo(EditorGUIUtility.singleLineHeight).Within(0.001f),
+                    $"Collapsed height should be singleLineHeight ({EditorGUIUtility.singleLineHeight}), "
+                        + $"but got {height}"
+                );
+            }
+            finally
+            {
+                ScriptableObject.DestroyImmediate(host);
+                ScriptableObject.DestroyImmediate(target);
+            }
+        }
+
         private static float MeasurePropertyHeight<THost>(
             bool propertyExpanded,
             bool? setInlineExpanded = null
@@ -652,6 +1210,165 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             }
         }
 
+        /// <summary>
+        /// Measures property height and returns detailed calculation info for diagnostics.
+        /// </summary>
+        private static (
+            float height,
+            (
+                float baseHeight,
+                float inlineHeight,
+                bool showHeader,
+                bool showBody,
+                float displayHeight
+            ) details
+        ) MeasurePropertyHeightWithDetails<THost>(
+            bool propertyExpanded,
+            bool? setInlineExpanded = null
+        )
+            where THost : ScriptableObject
+        {
+            var (height, details, _) = MeasurePropertyHeightWithDetailedDiagnostics<THost>(
+                propertyExpanded,
+                setInlineExpanded
+            );
+            return (height, details);
+        }
+
+        /// <summary>
+        /// Measures property height and returns detailed calculation info plus extensive diagnostics.
+        /// </summary>
+        private static (
+            float height,
+            (
+                float baseHeight,
+                float inlineHeight,
+                bool showHeader,
+                bool showBody,
+                float displayHeight
+            ) details,
+            string diagnostics
+        ) MeasurePropertyHeightWithDetailedDiagnostics<THost>(
+            bool propertyExpanded,
+            bool? setInlineExpanded = null
+        )
+            where THost : ScriptableObject
+        {
+            WInLineEditorDrawer.ClearCachedStateForTesting();
+            THost host = ScriptableObject.CreateInstance<THost>();
+            host.hideFlags = HideFlags.HideAndDontSave;
+
+            // Find the first field with WInLineEditorAttribute to determine field name and target type
+            System.Reflection.FieldInfo[] fields = typeof(THost).GetFields(
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+            );
+            System.Reflection.FieldInfo targetField = null;
+            WInLineEditorAttribute inlineAttribute = null;
+            foreach (System.Reflection.FieldInfo field in fields)
+            {
+                WInLineEditorAttribute attr = (WInLineEditorAttribute)
+                    System.Attribute.GetCustomAttribute(field, typeof(WInLineEditorAttribute));
+                if (attr != null)
+                {
+                    targetField = field;
+                    inlineAttribute = attr;
+                    break;
+                }
+            }
+
+            Assert.That(
+                targetField,
+                Is.Not.Null,
+                $"No field with WInLineEditorAttribute found on {typeof(THost).Name}."
+            );
+            Assert.That(
+                inlineAttribute,
+                Is.Not.Null,
+                $"Failed to extract WInLineEditorAttribute from {typeof(THost).Name}."
+            );
+
+            string propertyName = targetField.Name;
+            System.Type fieldType = targetField.FieldType;
+
+            // Create a target of the appropriate type
+            ScriptableObject target =
+                ScriptableObject.CreateInstance(fieldType) as ScriptableObject;
+            Assert.That(target, Is.Not.Null, $"Failed to create instance of {fieldType.Name}.");
+            target.hideFlags = HideFlags.HideAndDontSave;
+
+            try
+            {
+                using SerializedObject serializedHost = new SerializedObject(host);
+                serializedHost.Update();
+                SerializedProperty property = serializedHost.FindProperty(propertyName);
+                Assert.That(
+                    property,
+                    Is.Not.Null,
+                    $"Failed to find property '{propertyName}' on {typeof(THost).Name}."
+                );
+                property.objectReferenceValue = target;
+                serializedHost.ApplyModifiedPropertiesWithoutUndo();
+                serializedHost.Update();
+                property = serializedHost.FindProperty(propertyName);
+                Assert.That(
+                    property,
+                    Is.Not.Null,
+                    $"Failed to re-find property '{propertyName}' after assignment."
+                );
+                property.isExpanded = propertyExpanded;
+                if (setInlineExpanded.HasValue)
+                {
+                    WInLineEditorDrawer.SetInlineFoldoutStateForTesting(
+                        property,
+                        setInlineExpanded.Value
+                    );
+                }
+
+                // Assign the attribute to the drawer using reflection
+                GUIContent label = new GUIContent("Target");
+                WInLineEditorDrawer drawer = new WInLineEditorDrawer();
+                System.Reflection.FieldInfo attributeFieldInfo = typeof(PropertyDrawer).GetField(
+                    "m_Attribute",
+                    System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.NonPublic
+                );
+                Assert.That(
+                    attributeFieldInfo,
+                    Is.Not.Null,
+                    "Failed to find PropertyDrawer.m_Attribute field."
+                );
+                attributeFieldInfo.SetValue(drawer, inlineAttribute);
+
+                float height = drawer.GetPropertyHeight(property, label);
+
+                // Get detailed calculation info for diagnostics
+                var details = WInLineEditorDrawer.GetHeightCalculationDetailsForTesting(
+                    property,
+                    inlineAttribute,
+                    target,
+                    500f // Arbitrary available width for testing
+                );
+
+                // Get extensive diagnostics
+                string diagnostics = WInLineEditorDrawer.GetExtensiveDiagnosticsForTesting(
+                    property,
+                    inlineAttribute,
+                    target,
+                    500f
+                );
+
+                return (height, details, diagnostics);
+            }
+            finally
+            {
+                ScriptableObject.DestroyImmediate(host);
+                if (target != null)
+                {
+                    ScriptableObject.DestroyImmediate(target);
+                }
+            }
+        }
+
         private static T CreateHiddenInstance<T>()
             where T : ScriptableObject
         {
@@ -660,178 +1377,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             return instance;
         }
 
-        private sealed class InlineEditorHost : ScriptableObject
-        {
-            [WInLineEditor(WInLineEditorMode.FoldoutCollapsed)]
-            public InlineEditorTarget collapsedTarget;
-        }
-
-        private sealed class DefaultSettingsInlineEditorHost : ScriptableObject
-        {
-            [WInLineEditor]
-            public InlineEditorTarget collapsedTarget;
-        }
-
-        private sealed class HeaderOnlyInlineEditorHost : ScriptableObject
-        {
-            [WInLineEditor(mode: WInLineEditorMode.FoldoutCollapsed, drawObjectField: false)]
-            public InlineEditorTarget collapsedTarget;
-        }
-
-        private sealed class NoScrollInlineEditorHost : ScriptableObject
-        {
-            [WInLineEditor(WInLineEditorMode.FoldoutCollapsed, 400f, false, 64f, true, true, false)]
-            public InlineEditorTarget collapsedTarget;
-        }
-
-        private sealed class SimpleInlineEditorTarget : ScriptableObject
-        {
-            public int number;
-            public string description;
-        }
-
-        private sealed class ArrayInlineEditorTarget : ScriptableObject
-        {
-            public int[] values = new int[2];
-        }
-
-        // Additional test targets for comprehensive simple property detection testing
-        private sealed class StringOnlyTarget : ScriptableObject
-        {
-            public string text;
-        }
-
-        private sealed class NumericTypesTarget : ScriptableObject
-        {
-            public int intValue;
-            public float floatValue;
-            public double doubleValue;
-            public long longValue;
-        }
-
-        private sealed class BoolAndEnumTarget : ScriptableObject
-        {
-            public bool boolValue;
-            public WInLineEditorMode enumValue;
-        }
-
-        private sealed class VectorTarget : ScriptableObject
-        {
-            public Vector2 vec2;
-            public Vector3 vec3;
-            public Vector4 vec4;
-        }
-
-        private sealed class ColorTarget : ScriptableObject
-        {
-            public Color color;
-        }
-
-        private sealed class ObjectReferenceTarget : ScriptableObject
-        {
-            public UnityEngine.Object objectRef;
-        }
-
-        private sealed class AnimationCurveTarget : ScriptableObject
-        {
-            public AnimationCurve curve;
-        }
-
-        private sealed class ListTarget : ScriptableObject
-        {
-            public System.Collections.Generic.List<int> list;
-        }
-
-        private sealed class NestedClassTarget : ScriptableObject
-        {
-            [System.Serializable]
-            public class NestedData
-            {
-                public int value;
-            }
-
-            public NestedData nested;
-        }
-
-        private sealed class CustomEditorInlineHost : ScriptableObject
-        {
-            [WInLineEditor(WInLineEditorMode.FoldoutCollapsed)]
-            public SimpleCustomEditorTarget customTarget;
-        }
-
-        private sealed class SimpleCustomEditorTarget : ScriptableObject
-        {
-            public bool toggle;
-            public int number;
-        }
-
-        [CustomEditor(typeof(SimpleCustomEditorTarget))]
-        private sealed class SimpleCustomEditorTargetEditor : Editor
-        {
-            public override void OnInspectorGUI()
-            {
-                serializedObject.Update();
-                SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
-                if (scriptProperty != null && !InlineInspectorContext.IsActive)
-                {
-                    using (new EditorGUI.DisabledScope(true))
-                    {
-                        EditorGUILayout.PropertyField(scriptProperty, true);
-                    }
-                    EditorGUILayout.Space();
-                }
-
-                SerializedProperty iterator = serializedObject.GetIterator();
-                bool enterChildren = true;
-                while (iterator.NextVisible(enterChildren))
-                {
-                    if (iterator.propertyPath == "m_Script")
-                    {
-                        enterChildren = false;
-                        continue;
-                    }
-
-                    EditorGUILayout.PropertyField(iterator, true);
-                    enterChildren = false;
-                }
-
-                serializedObject.ApplyModifiedProperties();
-            }
-        }
-
-        private sealed class InlineEditorTarget : ScriptableObject
-        {
-            public int sampleValue;
-        }
+        // Test ScriptableObject types are defined in separate files under TestTypes/
+        // to avoid Unity complaining about ScriptableObjects in non-standalone files.
 
         private sealed class InlineEditorFoldoutBehaviorScope : IDisposable
         {
-            private readonly SerializedObject serializedObject;
-            private readonly SerializedProperty property;
-            private readonly int originalValue;
+            private readonly UnityHelpersSettings.InlineEditorFoldoutBehavior originalValue;
+            private readonly System.Reflection.FieldInfo fieldInfo;
+            private readonly UnityHelpersSettings settings;
             private bool disposed;
 
             public InlineEditorFoldoutBehaviorScope(
                 UnityHelpersSettings.InlineEditorFoldoutBehavior behavior
             )
             {
-                UnityHelpersSettings settings = UnityHelpersSettings.instance;
-                serializedObject = new SerializedObject(settings);
-                serializedObject.Update();
-                property = serializedObject.FindProperty(
-                    UnityHelpersSettings.SerializedPropertyNames.InlineEditorFoldoutBehavior
+                settings = UnityHelpersSettings.instance;
+
+                // Use reflection to directly set the field, bypassing serialization delays
+                fieldInfo = typeof(UnityHelpersSettings).GetField(
+                    "inlineEditorFoldoutBehavior",
+                    System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.NonPublic
                 );
-                if (property == null)
+                if (fieldInfo == null)
                 {
-                    serializedObject.Dispose();
                     throw new InvalidOperationException(
-                        "Could not locate Inline Editors foldout behavior property."
+                        "Could not locate inlineEditorFoldoutBehavior field via reflection."
                     );
                 }
 
-                originalValue = property.enumValueIndex;
-                property.enumValueIndex = (int)behavior;
-                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                originalValue = (UnityHelpersSettings.InlineEditorFoldoutBehavior)
+                    fieldInfo.GetValue(settings);
+                fieldInfo.SetValue(settings, behavior);
             }
 
             public void Dispose()
@@ -842,12 +1419,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 }
 
                 disposed = true;
-                serializedObject.Update();
-                property.enumValueIndex = originalValue;
-                serializedObject.ApplyModifiedPropertiesWithoutUndo();
-                serializedObject.Dispose();
+                fieldInfo.SetValue(settings, originalValue);
             }
         }
     }
 }
-#endif
