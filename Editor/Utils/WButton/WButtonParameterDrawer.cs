@@ -2,11 +2,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 {
 #if UNITY_EDITOR
     using System;
+    using System.Collections.Generic;
     using UnityEditor;
     using UnityEngine;
 
     internal static class WButtonParameterDrawer
     {
+        private static readonly Dictionary<string, GUIContent> ParameterLabelCache = new(
+            StringComparer.Ordinal
+        );
+        private static readonly Dictionary<string, GUIContent> NullableLabelCache = new(
+            StringComparer.Ordinal
+        );
+        private static readonly Dictionary<int, GUIContent> ElementLabelCache = new();
+        private static readonly GUIContent SizeContent = new("Size");
+
         internal static bool DrawParameters(WButtonMethodState[] states)
         {
             if (states == null || states.Length == 0)
@@ -70,7 +80,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             if (isNullable)
             {
                 bool isNull = currentValue == null;
-                GUIContent nullLabel = new($"{label.text} (Null)", label.tooltip);
+                string nullKey = label.text;
+                if (!NullableLabelCache.TryGetValue(nullKey, out GUIContent nullLabel))
+                {
+                    nullLabel = new GUIContent($"{label.text} (Null)", label.tooltip);
+                    NullableLabelCache[nullKey] = nullLabel;
+                }
                 bool newIsNull = EditorGUILayout.Toggle(nullLabel, isNull);
                 if (newIsNull)
                 {
@@ -254,7 +269,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             EditorGUI.indentLevel++;
 
             int updatedLength = EditorGUILayout.IntField(
-                new GUIContent("Size"),
+                SizeContent,
                 currentLength < 0 ? 0 : currentLength
             );
             if (updatedLength < 0)
@@ -280,7 +295,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 for (int elementIndex = 0; elementIndex < value.Length; elementIndex++)
                 {
                     object elementValue = value.GetValue(elementIndex);
-                    GUIContent elementLabel = new($"Element {elementIndex}");
+                    if (!ElementLabelCache.TryGetValue(elementIndex, out GUIContent elementLabel))
+                    {
+                        elementLabel = new GUIContent($"Element {elementIndex}");
+                        ElementLabelCache[elementIndex] = elementLabel;
+                    }
                     EditorGUI.BeginChangeCheck();
                     object updatedElement = DrawElementField(
                         elementLabel,
@@ -423,9 +442,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
         private static GUIContent GetParameterLabel(WButtonParameterMetadata metadata)
         {
+            string cacheKey = metadata.Name;
+            if (ParameterLabelCache.TryGetValue(cacheKey, out GUIContent cached))
+            {
+                return cached;
+            }
+
             string nicified = ObjectNames.NicifyVariableName(metadata.Name);
             string tooltip = metadata.ParameterType.Name;
-            return new GUIContent(nicified, tooltip);
+            GUIContent label = new(nicified, tooltip);
+            ParameterLabelCache[cacheKey] = label;
+            return label;
         }
     }
 #endif

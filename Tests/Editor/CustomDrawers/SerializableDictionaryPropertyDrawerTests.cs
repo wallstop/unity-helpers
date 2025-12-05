@@ -279,9 +279,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     drawer.GetOrCreatePaginationState(dictionaryProperty);
                 drawer.GetOrCreateList(dictionaryProperty);
 
-                string listKey = SerializableDictionaryPropertyDrawer.GetListKey(
-                    dictionaryProperty
-                );
+                string listKey = drawer.GetListKey(dictionaryProperty);
                 SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
                     listKey,
                     keysProperty,
@@ -532,9 +530,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
                 ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
 
-                string listKey = SerializableDictionaryPropertyDrawer.GetListKey(
-                    dictionaryProperty
-                );
+                string listKey = drawer.GetListKey(dictionaryProperty);
 
                 SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
                     listKey,
@@ -596,7 +592,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             drawer.GetOrCreateList(dictionaryProperty);
 
-            string listKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
+            string listKey = drawer.GetListKey(dictionaryProperty);
 
             SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
                 listKey,
@@ -651,9 +647,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
                 ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
 
-                string listKey = SerializableDictionaryPropertyDrawer.GetListKey(
-                    dictionaryProperty
-                );
+                string listKey = drawer.GetListKey(dictionaryProperty);
                 SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
                     listKey,
                     keysProperty,
@@ -721,9 +715,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
                 SerializableDictionaryPropertyDrawer.PaginationState pagination =
                     drawer.GetOrCreatePaginationState(dictionaryProperty);
-                string listKey = SerializableDictionaryPropertyDrawer.GetListKey(
-                    dictionaryProperty
-                );
+                string listKey = drawer.GetListKey(dictionaryProperty);
 
                 SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
                     listKey,
@@ -795,9 +787,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 pagination.selectedIndex = 20;
 
                 ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
-                string listKey = SerializableDictionaryPropertyDrawer.GetListKey(
-                    dictionaryProperty
-                );
+                string listKey = drawer.GetListKey(dictionaryProperty);
 
                 SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
                     listKey,
@@ -1374,7 +1364,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             pagination.pageIndex = 0;
             pagination.pageSize = 2;
 
-            string listKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
+            string listKey = drawer.GetListKey(dictionaryProperty);
             SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
                 listKey,
                 keysProperty,
@@ -1714,7 +1704,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 "Cached duplicate check should remain true until the cache is invalidated."
             );
 
-            string cacheKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
             drawer.InvalidatePendingDuplicateCache(cacheKey);
 
             bool refreshedMatch = (bool)matchesMethod.Invoke(null, args);
@@ -3564,7 +3554,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Rect controlRect = new(0f, 0f, 360f, 520f);
             GUIContent label = new("Dictionary");
-            string cacheKey = SerializableDictionaryPropertyDrawer.GetListKey(dictionaryProperty);
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
 
             SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
             yield return TestIMGUIExecutor.Run(() =>

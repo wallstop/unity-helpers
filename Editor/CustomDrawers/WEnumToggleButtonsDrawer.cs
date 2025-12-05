@@ -42,16 +42,35 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ">>",
             "Last Page"
         );
-        private static readonly GUIStyle SummaryStyle = new(EditorStyles.wordWrappedMiniLabel)
+        private static readonly GUIContent SelectAllContent = new("All");
+        private static readonly GUIContent SelectNoneContent = new("None");
+        private static readonly GUIContent OutOfViewContent = new();
+        private static GUIStyle _summaryStyle;
+        private static GUIStyle SummaryStyle
         {
-            fontStyle = FontStyle.Italic,
-        };
+            get
+            {
+                if (_summaryStyle == null)
+                {
+                    _summaryStyle = new GUIStyle(EditorStyles.wordWrappedMiniLabel)
+                    {
+                        fontStyle = FontStyle.Italic,
+                    };
+                }
+                return _summaryStyle;
+            }
+        }
         private static readonly Dictionary<ButtonStyleCacheKey, GUIStyle> ButtonStyleCache = new(
             new ButtonStyleCacheKeyComparer()
         );
         private static readonly Dictionary<Color, Texture2D> SolidTextureCache = new(
             new ColorComparer()
         );
+
+        internal static void ClearCache()
+        {
+            WEnumToggleButtonsUtility.ClearCache();
+        }
 
         private static float EstimateContentWidth()
         {
@@ -374,7 +393,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 bool selectAllPressed = GUI.Toggle(
                     selectAllRect,
                     allActive,
-                    new GUIContent("All"),
+                    SelectAllContent,
                     style
                 );
 
@@ -409,7 +428,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 bool selectNonePressed = GUI.Toggle(
                     selectNoneRect,
                     noneActive,
-                    new GUIContent("None"),
+                    SelectNoneContent,
                     style
                 );
 
@@ -563,7 +582,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 string joined = string.Join(", ", outOfView);
                 string text = $"Current (out of view): {joined}";
-                return new SelectionSummary(true, new GUIContent(text));
+                OutOfViewContent.text = text;
+                return new SelectionSummary(true, OutOfViewContent);
             }
             finally
             {
@@ -828,6 +848,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
     internal static class WEnumToggleButtonsUtility
     {
+        private static readonly Dictionary<Type, ToggleOption[]> EnumOptionsCache = new();
+        private static readonly Dictionary<Type, ToggleSet> ToggleSetCache = new();
+
+        internal static void ClearCache()
+        {
+            EnumOptionsCache.Clear();
+            ToggleSetCache.Clear();
+        }
+
         internal static int ResolvePageSize(WEnumToggleButtonsAttribute attribute)
         {
             int overrideSize = attribute?.PageSize ?? 0;
@@ -883,18 +912,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return ToggleSet.Empty;
                 }
 
+                if (ToggleSetCache.TryGetValue(enumType, out ToggleSet cachedToggleSet))
+                {
+                    return cachedToggleSet;
+                }
+
                 bool isFlags = ReflectionHelpers.HasAttributeSafe<FlagsAttribute>(
                     enumType,
                     inherit: true
                 );
-                ToggleOption[] enumOptions = BuildEnumOptions(enumType, isFlags);
+                ToggleOption[] enumOptions = GetCachedEnumOptions(enumType, isFlags);
                 if (enumOptions.Length == 0)
                 {
+                    ToggleSetCache[enumType] = ToggleSet.Empty;
                     return ToggleSet.Empty;
                 }
 
                 ToggleSource source = isFlags ? ToggleSource.FlaggedEnum : ToggleSource.Enum;
-                return new ToggleSet(enumOptions, isFlags, source, enumType);
+                ToggleSet toggleSet = new(enumOptions, isFlags, source, enumType);
+                ToggleSetCache[enumType] = toggleSet;
+                return toggleSet;
             }
 
             ToggleOption[] dropdownOptions = BuildDropdownOptions(property, resolvedFieldInfo);
@@ -905,6 +942,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             Type valueType = resolvedFieldInfo != null ? resolvedFieldInfo.FieldType : null;
             return new ToggleSet(dropdownOptions, false, ToggleSource.Dropdown, valueType);
+        }
+
+        private static ToggleOption[] GetCachedEnumOptions(Type enumType, bool isFlags)
+        {
+            if (EnumOptionsCache.TryGetValue(enumType, out ToggleOption[] cached))
+            {
+                return cached;
+            }
+
+            ToggleOption[] options = BuildEnumOptions(enumType, isFlags);
+            EnumOptionsCache[enumType] = options;
+            return options;
         }
 
         internal static LayoutMetrics CalculateLayout(

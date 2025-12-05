@@ -850,7 +850,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 drawer.GetOrCreatePaginationState(setProperty);
             pagination.pageSize = 2;
 
-            string listKey = SerializableSetPropertyDrawer.GetListKey(setProperty);
+            string listKey = drawer.GetListKey(setProperty);
             SerializableSetPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
                 listKey,
                 itemsProperty,

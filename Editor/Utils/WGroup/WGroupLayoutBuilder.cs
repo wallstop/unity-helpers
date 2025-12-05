@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
     using System.Collections.Generic;
     using System.Reflection;
     using UnityEditor;
+    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
@@ -19,6 +20,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         private static readonly WGroupDefinition[] EmptyDefinitions =
             Array.Empty<WGroupDefinition>();
 
+        private static readonly Dictionary<Type, WGroupLayout> LayoutCache = new();
+        private static readonly Dictionary<Type, TypePropertyMetadata> PropertyMetadataCache =
+            new();
+        private static readonly List<WGroupAttribute> EmptyGroupAttributes = new(0);
+        private static readonly List<WGroupEndAttribute> EmptyEndAttributes = new(0);
+        private static readonly WGroupLayout EmptyLayout = new(
+            EmptyOperations,
+            EmptyDefinitions,
+            new Dictionary<string, WGroupDefinition>(0)
+        );
+
+        internal static void ClearCache()
+        {
+            LayoutCache.Clear();
+            PropertyMetadataCache.Clear();
+        }
+
         internal static WGroupLayout Build(
             SerializedObject serializedObject,
             string scriptPropertyPath
@@ -29,17 +47,127 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 throw new ArgumentNullException(nameof(serializedObject));
             }
 
-            List<PropertyDescriptor> descriptors = CollectPropertyDescriptors(
-                serializedObject,
-                scriptPropertyPath
-            );
-            if (descriptors.Count == 0)
+            UnityEngine.Object targetObject = serializedObject.targetObject;
+            if (targetObject == null)
             {
-                return new WGroupLayout(
-                    EmptyOperations,
-                    EmptyDefinitions,
-                    new Dictionary<string, WGroupDefinition>(StringComparer.OrdinalIgnoreCase)
+                return EmptyLayout;
+            }
+
+            Type targetType = targetObject.GetType();
+
+            if (LayoutCache.TryGetValue(targetType, out WGroupLayout cachedLayout))
+            {
+                return cachedLayout;
+            }
+
+            TypePropertyMetadata typeMetadata = GetOrCreatePropertyMetadata(targetType);
+            if (typeMetadata.PropertyCount == 0)
+            {
+                LayoutCache[targetType] = EmptyLayout;
+                return EmptyLayout;
+            }
+
+            WGroupLayout layout = BuildLayoutFromMetadata(typeMetadata, scriptPropertyPath);
+            LayoutCache[targetType] = layout;
+            return layout;
+        }
+
+        private static TypePropertyMetadata GetOrCreatePropertyMetadata(Type targetType)
+        {
+            if (PropertyMetadataCache.TryGetValue(targetType, out TypePropertyMetadata cached))
+            {
+                return cached;
+            }
+
+            TypePropertyMetadata metadata = BuildTypePropertyMetadata(targetType);
+            PropertyMetadataCache[targetType] = metadata;
+            return metadata;
+        }
+
+        private static TypePropertyMetadata BuildTypePropertyMetadata(Type targetType)
+        {
+            List<PropertyMetadataEntry> entries = new();
+            Type currentType = targetType;
+
+            while (currentType != null && currentType != typeof(UnityEngine.Object))
+            {
+                FieldInfo[] fields = currentType.GetFields(
+                    BindingFlags.Instance
+                        | BindingFlags.Public
+                        | BindingFlags.NonPublic
+                        | BindingFlags.DeclaredOnly
                 );
+
+                foreach (FieldInfo field in fields)
+                {
+                    if (!IsSerializableField(field))
+                    {
+                        continue;
+                    }
+
+                    WGroupAttribute[] groupAttrs = field.GetAllAttributesSafe<WGroupAttribute>(
+                        inherit: true
+                    );
+                    WGroupEndAttribute[] endAttrs = field.GetAllAttributesSafe<WGroupEndAttribute>(
+                        inherit: true
+                    );
+
+                    List<WGroupAttribute> groupList =
+                        groupAttrs != null && groupAttrs.Length > 0
+                            ? new List<WGroupAttribute>(groupAttrs)
+                            : EmptyGroupAttributes;
+                    List<WGroupEndAttribute> endList =
+                        endAttrs != null && endAttrs.Length > 0
+                            ? new List<WGroupEndAttribute>(endAttrs)
+                            : EmptyEndAttributes;
+
+                    entries.Add(new PropertyMetadataEntry(field.Name, groupList, endList));
+                }
+
+                currentType = currentType.BaseType;
+            }
+
+            return new TypePropertyMetadata(entries);
+        }
+
+        private static bool IsSerializableField(FieldInfo field)
+        {
+            if (field.IsStatic || field.IsInitOnly)
+            {
+                return false;
+            }
+
+            if (field.IsPublic)
+            {
+                if (field.IsDefined(typeof(NonSerializedAttribute), false))
+                {
+                    return false;
+                }
+                return true;
+            }
+
+            if (field.IsDefined(typeof(SerializeField), false))
+            {
+                return true;
+            }
+
+            if (field.IsDefined(typeof(SerializeReference), false))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static WGroupLayout BuildLayoutFromMetadata(
+            TypePropertyMetadata typeMetadata,
+            string scriptPropertyPath
+        )
+        {
+            IReadOnlyList<PropertyMetadataEntry> entries = typeMetadata.Entries;
+            if (entries.Count == 0)
+            {
+                return EmptyLayout;
             }
 
             UnityHelpersSettings.WGroupAutoIncludeConfiguration configuration =
@@ -54,11 +182,41 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 contextsByNamePool.Get(out Dictionary<string, GroupContext> contextsByName);
             using PooledResource<List<GroupContext>> contextsInDeclarationOrderLease =
                 Buffers<GroupContext>.GetList(
-                    descriptors.Count,
+                    entries.Count,
                     out List<GroupContext> contextsInDeclarationOrder
                 );
             using PooledResource<List<GroupContext>> activeAutoContextsLease =
                 Buffers<GroupContext>.GetList(4, out List<GroupContext> activeAutoContexts);
+
+            List<PropertyDescriptor> descriptors = new(entries.Count);
+            for (int i = 0; i < entries.Count; i++)
+            {
+                PropertyMetadataEntry entry = entries[i];
+                if (
+                    !string.IsNullOrEmpty(scriptPropertyPath)
+                    && string.Equals(
+                        entry.PropertyPath,
+                        scriptPropertyPath,
+                        StringComparison.Ordinal
+                    )
+                )
+                {
+                    continue;
+                }
+
+                descriptors.Add(
+                    new PropertyDescriptor(
+                        entry.PropertyPath,
+                        entry.GroupAttributes,
+                        entry.EndAttributes
+                    )
+                );
+            }
+
+            if (descriptors.Count == 0)
+            {
+                return EmptyLayout;
+            }
 
             for (int index = 0; index < descriptors.Count; index++)
             {
@@ -158,65 +316,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
             List<WGroupDrawOperation> operations = BuildDrawOperations(descriptors, groupsByAnchor);
             return new WGroupLayout(operations, definitions, groupsByName);
-        }
-
-        private static List<PropertyDescriptor> CollectPropertyDescriptors(
-            SerializedObject serializedObject,
-            string scriptPropertyPath
-        )
-        {
-            List<PropertyDescriptor> descriptors = new();
-            SerializedProperty iterator = serializedObject.GetIterator();
-            bool enterChildren = true;
-            while (iterator.NextVisible(enterChildren))
-            {
-                enterChildren = false;
-                if (
-                    !string.IsNullOrEmpty(scriptPropertyPath)
-                    && string.Equals(
-                        iterator.propertyPath,
-                        scriptPropertyPath,
-                        StringComparison.Ordinal
-                    )
-                )
-                {
-                    continue;
-                }
-
-                iterator.GetEnclosingObject(out FieldInfo fieldInfo);
-
-                List<WGroupAttribute> groupAttributes = CollectAttributes<WGroupAttribute>(
-                    fieldInfo
-                );
-                List<WGroupEndAttribute> endAttributes = CollectAttributes<WGroupEndAttribute>(
-                    fieldInfo
-                );
-                PropertyDescriptor descriptor = new(
-                    iterator.propertyPath,
-                    groupAttributes,
-                    endAttributes
-                );
-                descriptors.Add(descriptor);
-            }
-
-            return descriptors;
-        }
-
-        private static List<TAttribute> CollectAttributes<TAttribute>(FieldInfo fieldInfo)
-            where TAttribute : Attribute
-        {
-            if (fieldInfo == null)
-            {
-                return new List<TAttribute>();
-            }
-
-            TAttribute[] attributes = fieldInfo.GetAllAttributesSafe<TAttribute>(inherit: true);
-            if (attributes == null || attributes.Length == 0)
-            {
-                return new List<TAttribute>();
-            }
-
-            return new List<TAttribute>(attributes);
         }
 
         private static AutoIncludeConfiguration ConvertConfiguration(
@@ -769,6 +868,38 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
             return GroupsByName.TryGetValue(groupName.Trim(), out definition);
         }
+    }
+
+    internal sealed class TypePropertyMetadata
+    {
+        internal TypePropertyMetadata(List<PropertyMetadataEntry> entries)
+        {
+            Entries = entries;
+        }
+
+        internal IReadOnlyList<PropertyMetadataEntry> Entries { get; }
+
+        internal int PropertyCount => Entries.Count;
+    }
+
+    internal readonly struct PropertyMetadataEntry
+    {
+        internal PropertyMetadataEntry(
+            string propertyPath,
+            List<WGroupAttribute> groupAttributes,
+            List<WGroupEndAttribute> endAttributes
+        )
+        {
+            PropertyPath = propertyPath;
+            GroupAttributes = groupAttributes;
+            EndAttributes = endAttributes;
+        }
+
+        internal string PropertyPath { get; }
+
+        internal List<WGroupAttribute> GroupAttributes { get; }
+
+        internal List<WGroupEndAttribute> EndAttributes { get; }
     }
 #endif
 }

@@ -49,6 +49,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIContent PreviousPageContent = new("<", "Previous Page");
         private static readonly GUIContent NextPageContent = new(">", "Next Page");
         private static readonly GUIContent LastPageContent = new(">>", "Last Page");
+        private static readonly GUIContent PaginationPageLabelContent = new();
         private static readonly object NullComparable = new();
 
         private static readonly GUIStyle AddButtonStyle = CreateSolidButtonStyle(
@@ -113,6 +114,63 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private readonly Dictionary<string, ListPageCache> _pageCaches = new();
         private readonly Dictionary<string, SetListRenderContext> _listContexts = new();
         private readonly Dictionary<RowFoldoutKey, bool> _rowFoldoutStates = new();
+        private readonly Dictionary<string, HeightCacheEntry> _heightCache = new();
+        private readonly Dictionary<RowRenderKey, RowRenderData> _rowRenderCache = new();
+
+        private string _cachedPropertyPath;
+        private string _cachedListKey;
+        private int _lastDuplicateRefreshFrame = -1;
+        private int _lastNullEntryRefreshFrame = -1;
+        private int _lastRowRenderCacheFrame = -1;
+
+        private sealed class HeightCacheEntry
+        {
+            public float height;
+            public int arraySize;
+            public bool isExpanded;
+            public bool hasNullEntries;
+            public bool hasDuplicates;
+            public int frameNumber;
+        }
+
+        private readonly struct RowRenderKey : IEquatable<RowRenderKey>
+        {
+            public readonly string listKey;
+            public readonly int globalIndex;
+
+            public RowRenderKey(string listKey, int globalIndex)
+            {
+                this.listKey = listKey;
+                this.globalIndex = globalIndex;
+            }
+
+            public bool Equals(RowRenderKey other)
+            {
+                return globalIndex == other.globalIndex && listKey == other.listKey;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is RowRenderKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    return ((listKey != null ? listKey.GetHashCode() : 0) * 397) ^ globalIndex;
+                }
+            }
+        }
+
+        private sealed class RowRenderData
+        {
+            public SerializedProperty itemProperty;
+            public float rowHeight;
+            public float itemHeight;
+            public bool isValid;
+        }
+
         internal Rect LastResolvedPosition { get; private set; }
         internal Rect LastItemsContainerRect { get; private set; }
         internal bool HasItemsContainerRect { get; private set; }
@@ -726,15 +784,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
-            SerializedObject serializedObject = property.serializedObject;
-
-            float height = EditorGUIUtility.singleLineHeight;
+            float baseHeight = EditorGUIUtility.singleLineHeight;
 
             PaginationState pagination = GetOrCreatePaginationState(property);
 
             if (!property.isExpanded)
             {
-                return height + InspectorHeightPadding;
+                return baseHeight + InspectorHeightPadding;
             }
 
             SerializedProperty itemsProperty = property.FindPropertyRelative(
@@ -751,20 +807,43 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             );
             Type elementType = inspector?.ElementType;
 
+            string cacheKey = GetPropertyCacheKey(property);
+            int currentFrame = Time.frameCount;
+
+            DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
+            NullEntryState nullState = EvaluateNullEntryState(property, itemsProperty);
+
+            bool hasNullEntries =
+                nullState.hasNullEntries && !string.IsNullOrEmpty(nullState.summary);
+            bool hasDuplicates =
+                duplicateState.hasDuplicates && !string.IsNullOrEmpty(duplicateState.summary);
+
+            if (_heightCache.TryGetValue(cacheKey, out HeightCacheEntry cached))
+            {
+                if (
+                    cached.frameNumber == currentFrame
+                    && cached.arraySize == totalCount
+                    && cached.isExpanded == property.isExpanded
+                    && cached.hasNullEntries == hasNullEntries
+                    && cached.hasDuplicates == hasDuplicates
+                )
+                {
+                    return cached.height;
+                }
+            }
+
+            float height = baseHeight;
             float footerHeight = GetFooterHeight();
             height += SectionSpacing;
 
             EnsurePaginationBounds(pagination, totalCount);
 
-            DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
-            NullEntryState nullState = EvaluateNullEntryState(property, itemsProperty);
-
-            if (nullState.hasNullEntries && !string.IsNullOrEmpty(nullState.summary))
+            if (hasNullEntries)
             {
                 height += GetWarningBarHeight() + SectionSpacing;
             }
 
-            if (duplicateState.hasDuplicates && !string.IsNullOrEmpty(duplicateState.summary))
+            if (hasDuplicates)
             {
                 height += GetWarningBarHeight() + SectionSpacing;
             }
@@ -789,11 +868,31 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     height += pendingHeightWithSpacing;
                     height += GetWarningBarHeight() + SectionSpacing;
-                    return height + InspectorHeightPadding;
+                    float emptyWithPendingHeight = height + InspectorHeightPadding;
+                    CacheHeight(
+                        cacheKey,
+                        emptyWithPendingHeight,
+                        totalCount,
+                        property.isExpanded,
+                        hasNullEntries,
+                        hasDuplicates,
+                        currentFrame
+                    );
+                    return emptyWithPendingHeight;
                 }
 
                 height += GetEmptySetDrawerHeight() + SectionSpacing;
-                return height + InspectorHeightPadding;
+                float emptyHeight = height + InspectorHeightPadding;
+                CacheHeight(
+                    cacheKey,
+                    emptyHeight,
+                    totalCount,
+                    property.isExpanded,
+                    hasNullEntries,
+                    hasDuplicates,
+                    currentFrame
+                );
+                return emptyHeight;
             }
 
             string listKey = GetListKey(property);
@@ -821,7 +920,40 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 height += pendingHeightWithSpacing;
             }
 
-            return height + InspectorHeightPadding;
+            float finalHeight = height + InspectorHeightPadding;
+            CacheHeight(
+                cacheKey,
+                finalHeight,
+                totalCount,
+                property.isExpanded,
+                hasNullEntries,
+                hasDuplicates,
+                currentFrame
+            );
+            return finalHeight;
+        }
+
+        private void CacheHeight(
+            string cacheKey,
+            float height,
+            int arraySize,
+            bool isExpanded,
+            bool hasNullEntries,
+            bool hasDuplicates,
+            int frameNumber
+        )
+        {
+            if (!_heightCache.TryGetValue(cacheKey, out HeightCacheEntry entry))
+            {
+                entry = new HeightCacheEntry();
+                _heightCache[cacheKey] = entry;
+            }
+            entry.height = height;
+            entry.arraySize = arraySize;
+            entry.isExpanded = isExpanded;
+            entry.hasNullEntries = hasNullEntries;
+            entry.hasDuplicates = hasDuplicates;
+            entry.frameNumber = frameNumber;
         }
 
         internal PaginationState GetOrCreatePaginationState(SerializedProperty property)
@@ -896,7 +1028,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return context;
         }
 
-        private static string GetPropertyCacheKey(SerializedProperty property)
+        private string GetPropertyCacheKey(SerializedProperty property)
+        {
+            string propertyPath = property?.propertyPath;
+            if (
+                propertyPath != null
+                && string.Equals(_cachedPropertyPath, propertyPath, StringComparison.Ordinal)
+            )
+            {
+                return _cachedListKey;
+            }
+
+            string key = BuildPropertyCacheKey(property);
+            _cachedPropertyPath = propertyPath;
+            _cachedListKey = key;
+            return key;
+        }
+
+        private static string BuildPropertyCacheKey(SerializedProperty property)
         {
             if (property == null)
             {
@@ -943,7 +1092,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return keyBuilder.ToString();
         }
 
-        internal static string GetListKey(SerializedProperty property)
+        internal string GetListKey(SerializedProperty property)
         {
             return GetPropertyCacheKey(property);
         }
@@ -1491,10 +1640,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     totalCount > 0 ? Mathf.Max(1, (totalCount + pageSize - 1) / pageSize) : 1;
                 int currentPage =
                     totalCount > 0 ? Mathf.Clamp(pagination.page + 1, 1, pageCount) : 0;
-                string labelText = totalCount == 0 ? "Page 0/0" : $"Page {currentPage}/{pageCount}";
+                PaginationPageLabelContent.text =
+                    totalCount == 0 ? "Page 0/0" : $"Page {currentPage}/{pageCount}";
                 float labelY = controlsRect.y + labelCenterOffset + PaginationLabelVerticalOffset;
                 Rect labelRect = new(cursor, labelY, labelWidth, labelHeight);
-                EditorGUI.LabelField(labelRect, labelText, EditorStyles.miniLabel);
+                EditorGUI.LabelField(labelRect, PaginationPageLabelContent, EditorStyles.miniLabel);
                 cursor = labelRect.xMax + ButtonSpacing;
             }
 
@@ -2342,7 +2492,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static void RequestRepaint()
         {
-            InternalEditorUtility.RepaintAllViews();
+            EditorWindow focusedWindow = EditorWindow.focusedWindow;
+            if (focusedWindow != null)
+            {
+                focusedWindow.Repaint();
+            }
+            else
+            {
+                InternalEditorUtility.RepaintAllViews();
+            }
         }
 
         internal static object DrawFieldForType(
@@ -3092,6 +3250,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string key = GetPropertyCacheKey(property);
             NullEntryState state = _nullEntryStates.GetOrAdd(key);
 
+            int currentFrame = Time.frameCount;
+            bool alreadyRefreshedThisFrame = _lastNullEntryRefreshFrame == currentFrame;
+            _lastNullEntryRefreshFrame = currentFrame;
+
+            if (alreadyRefreshedThisFrame)
+            {
+                return state;
+            }
+
             bool hasEvent = Event.current != null;
             EventType eventType = hasEvent ? Event.current.type : EventType.Repaint;
             if (eventType != EventType.Repaint)
@@ -3221,6 +3388,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             string key = GetPropertyCacheKey(property);
             DuplicateState state = _duplicateStates.GetOrAdd(key);
+
+            int currentFrame = Time.frameCount;
+            bool alreadyRefreshedThisFrame = _lastDuplicateRefreshFrame == currentFrame;
+
+            if (!force)
+            {
+                _lastDuplicateRefreshFrame = currentFrame;
+                if (alreadyRefreshedThisFrame)
+                {
+                    return state;
+                }
+            }
 
             ReleaseAllGroupingLists(state);
 
@@ -4153,6 +4332,58 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             sharedSerializedObject.UpdateIfRequiredOrScript();
         }
 
+        private RowRenderData GetOrCreateRowRenderData(
+            string listKey,
+            int arrayIndex,
+            SerializedProperty itemsProperty,
+            Type elementType
+        )
+        {
+            int currentFrame = Time.frameCount;
+            if (_lastRowRenderCacheFrame != currentFrame)
+            {
+                _rowRenderCache.Clear();
+                _lastRowRenderCacheFrame = currentFrame;
+            }
+
+            RowRenderKey cacheKey = new(listKey, arrayIndex);
+            if (_rowRenderCache.TryGetValue(cacheKey, out RowRenderData cached))
+            {
+                return cached;
+            }
+
+            RowRenderData data = new();
+
+            if (
+                itemsProperty == null
+                || !itemsProperty.isArray
+                || arrayIndex < 0
+                || arrayIndex >= itemsProperty.arraySize
+            )
+            {
+                data.isValid = false;
+                _rowRenderCache[cacheKey] = data;
+                return data;
+            }
+
+            data.itemProperty = itemsProperty.GetArrayElementAtIndex(arrayIndex);
+            data.isValid = true;
+
+            bool valueSupportsFoldout = ShouldUseElementFoldout(elementType, data.itemProperty);
+
+            data.itemHeight = SerializableDictionaryPropertyDrawer.CalculateValueContentHeight(
+                data.itemProperty,
+                valueSupportsFoldout
+            );
+
+            float padding = EditorGUIUtility.standardVerticalSpacing * 2f;
+            data.rowHeight =
+                Mathf.Max(data.itemHeight, EditorGUIUtility.singleLineHeight) + padding;
+
+            _rowRenderCache[cacheKey] = data;
+            return data;
+        }
+
         private float GetSetListElementHeight(
             string listKey,
             ListPageCache cache,
@@ -4176,25 +4407,30 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             int arrayIndex = cache.entries[relativeIndex].arrayIndex;
-            if (arrayIndex < 0 || arrayIndex >= itemsProperty.arraySize)
+
+            RowRenderData rowData = GetOrCreateRowRenderData(
+                listKey,
+                arrayIndex,
+                itemsProperty,
+                context.elementType
+            );
+
+            if (!rowData.isValid)
             {
                 return EditorGUIUtility.singleLineHeight;
             }
 
-            SerializedProperty element = itemsProperty.GetArrayElementAtIndex(arrayIndex);
-            bool valueSupportsFoldout = ShouldUseElementFoldout(context.elementType, element);
+            bool valueSupportsFoldout = ShouldUseElementFoldout(
+                context.elementType,
+                rowData.itemProperty
+            );
             if (valueSupportsFoldout)
             {
                 RowFoldoutKey foldoutKey = BuildRowFoldoutKey(listKey, arrayIndex);
-                EnsureRowFoldoutState(foldoutKey, element, out _);
+                EnsureRowFoldoutState(foldoutKey, rowData.itemProperty, out _);
             }
 
-            float propertyHeight = SerializableDictionaryPropertyDrawer.CalculateValueContentHeight(
-                element,
-                valueSupportsFoldout
-            );
-            float padding = EditorGUIUtility.standardVerticalSpacing * 2f;
-            return Mathf.Max(propertyHeight, EditorGUIUtility.singleLineHeight) + padding;
+            return rowData.rowHeight;
         }
 
         private void DrawSetListElement(
@@ -4221,12 +4457,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             int arrayIndex = cache.entries[relativeIndex].arrayIndex;
-            if (arrayIndex < 0 || arrayIndex >= itemsProperty.arraySize)
+
+            RowRenderData rowData = GetOrCreateRowRenderData(
+                listKey,
+                arrayIndex,
+                itemsProperty,
+                context.elementType
+            );
+
+            if (!rowData.isValid)
             {
                 return;
             }
 
-            SerializedProperty element = itemsProperty.GetArrayElementAtIndex(arrayIndex);
+            SerializedProperty element = rowData.itemProperty;
             bool valueSupportsFoldout = ShouldUseElementFoldout(context.elementType, element);
             RowFoldoutKey foldoutKey = default;
             bool hasFoldoutKey = false;

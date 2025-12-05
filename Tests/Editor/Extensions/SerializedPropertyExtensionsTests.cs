@@ -17,6 +17,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     /// </summary>
     public sealed class SerializedPropertyExtensionsTests : CommonTestBase
     {
+        [SetUp]
+        public override void BaseSetUp()
+        {
+            base.BaseSetUp();
+            SerializedPropertyExtensions.ClearCache();
+        }
+
+        [TearDown]
+        public override void TearDown()
+        {
+            SerializedPropertyExtensions.ClearCache();
+            base.TearDown();
+        }
+
         [Serializable]
         private class Inner
         {

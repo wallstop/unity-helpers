@@ -47,6 +47,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
         private readonly WValueDropDownAttribute _backingAttribute;
 
+        private object[] _cachedSourceOptions;
+        private int[] _cachedIntOptions;
+
         /// <summary>
         /// Gets the underlying <see cref="WValueDropDownAttribute"/> that powers this attribute.
         /// This enables sharing of infrastructure between both attribute types.
@@ -111,6 +114,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return Empty;
             }
 
+            if (ReferenceEquals(options, _cachedSourceOptions) && _cachedIntOptions != null)
+            {
+                return _cachedIntOptions;
+            }
+
             int[] result = new int[options.Length];
             for (int i = 0; i < options.Length; i++)
             {
@@ -130,6 +138,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     }
                 }
             }
+
+            _cachedSourceOptions = options;
+            _cachedIntOptions = result;
 
             return result;
         }

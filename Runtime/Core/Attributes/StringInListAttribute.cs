@@ -42,6 +42,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
         private readonly WValueDropDownAttribute _backingAttribute;
 
+        private object[] _cachedSourceOptions;
+        private string[] _cachedStringOptions;
+
         internal Type ProviderType => _backingAttribute?.ProviderType;
 
         internal string ProviderMethodName => _backingAttribute?.ProviderMethodName;
@@ -110,11 +113,19 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return Empty;
             }
 
+            if (ReferenceEquals(options, _cachedSourceOptions) && _cachedStringOptions != null)
+            {
+                return _cachedStringOptions;
+            }
+
             string[] result = new string[options.Length];
             for (int i = 0; i < options.Length; i++)
             {
                 result[i] = options[i] as string ?? options[i]?.ToString() ?? string.Empty;
             }
+
+            _cachedSourceOptions = options;
+            _cachedStringOptions = result;
 
             return result;
         }

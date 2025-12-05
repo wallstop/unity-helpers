@@ -22,8 +22,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         private static readonly Dictionary<int, int> GroupCounts = new();
         private static readonly Dictionary<int, string> GroupNames = new();
         private static readonly Dictionary<int, AnimBool> FoldoutAnimations = new();
+        private static readonly Dictionary<int, GUIContent> GroupHeaderCache = new();
         private static readonly GUIContent ClearHistoryContent = new("Clear History");
         private static readonly GUIContent RecentResultsHeaderContent = new("Recent Results");
+        private static readonly GUIContent ReusableGroupHeaderContent = new();
+
+        private static readonly SortedDictionary<int, List<WButtonMethodContext>> ReusableGroups =
+            new();
+        private static readonly Dictionary<
+            int,
+            PooledResource<List<WButtonMethodContext>>
+        > ReusableGroupLeases = new();
+        private static readonly Dictionary<string, GUIContent> ButtonDisplayNameCache = new(
+            StringComparer.Ordinal
+        );
+
         private const float ClearHistoryButtonPadding = 12f;
         private const float ClearHistoryMinWidth = 96f;
         private const float ClearHistorySpacing = 6f;
@@ -68,8 +81,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 return false;
             }
 
-            SortedDictionary<int, List<WButtonMethodContext>> groups = new();
-            Dictionary<int, PooledResource<List<WButtonMethodContext>>> groupLeases = new();
+            SortedDictionary<int, List<WButtonMethodContext>> groups = ReusableGroups;
+            Dictionary<int, PooledResource<List<WButtonMethodContext>>> groupLeases =
+                ReusableGroupLeases;
             GroupByDrawOrder(contexts, groups, groupLeases);
 
             try
@@ -142,24 +156,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         )
         {
             contexts.Clear();
+            int targetCount = targets.Length;
+
             for (int index = 0; index < metadataList.Count; index++)
             {
                 WButtonMethodMetadata metadata = metadataList[index];
-                WButtonMethodState[] states = new WButtonMethodState[targets.Length];
-                UnityEngine.Object[] contextTargets = new UnityEngine.Object[targets.Length];
                 bool allValid = true;
-                for (int targetIndex = 0; targetIndex < targets.Length; targetIndex++)
+
+                for (int targetIndex = 0; targetIndex < targetCount; targetIndex++)
                 {
-                    UnityEngine.Object target = targets[targetIndex];
-                    if (target == null)
+                    if (targets[targetIndex] == null)
                     {
                         allValid = false;
                         break;
                     }
-
-                    WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-                    states[targetIndex] = targetState.GetOrCreateMethodState(metadata);
-                    contextTargets[targetIndex] = target;
                 }
 
                 if (!allValid)
@@ -167,8 +177,84 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                     continue;
                 }
 
-                contexts.Add(new WButtonMethodContext(metadata, states, contextTargets));
+                WButtonMethodContext existingContext = FindCachedContext(metadata, targets);
+                if (existingContext != null)
+                {
+                    contexts.Add(existingContext);
+                    continue;
+                }
+
+                WButtonMethodState[] states = new WButtonMethodState[targetCount];
+                UnityEngine.Object[] contextTargets = new UnityEngine.Object[targetCount];
+
+                for (int targetIndex = 0; targetIndex < targetCount; targetIndex++)
+                {
+                    UnityEngine.Object target = targets[targetIndex];
+                    WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
+                    states[targetIndex] = targetState.GetOrCreateMethodState(metadata);
+                    contextTargets[targetIndex] = target;
+                }
+
+                WButtonMethodContext context = new(metadata, states, contextTargets);
+                CacheContext(metadata, targets, context);
+                contexts.Add(context);
             }
+        }
+
+        private static readonly Dictionary<ContextCacheKey, WButtonMethodContext> ContextCache =
+            new();
+
+        private static WButtonMethodContext FindCachedContext(
+            WButtonMethodMetadata metadata,
+            UnityEngine.Object[] targets
+        )
+        {
+            ContextCacheKey key = new(metadata, targets);
+            if (ContextCache.TryGetValue(key, out WButtonMethodContext context))
+            {
+                if (ValidateContext(context, targets))
+                {
+                    return context;
+                }
+                ContextCache.Remove(key);
+            }
+            return null;
+        }
+
+        private static void CacheContext(
+            WButtonMethodMetadata metadata,
+            UnityEngine.Object[] targets,
+            WButtonMethodContext context
+        )
+        {
+            ContextCacheKey key = new(metadata, targets);
+            ContextCache[key] = context;
+        }
+
+        private static bool ValidateContext(
+            WButtonMethodContext context,
+            UnityEngine.Object[] targets
+        )
+        {
+            UnityEngine.Object[] contextTargets = context.Targets;
+            if (contextTargets.Length != targets.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < targets.Length; i++)
+            {
+                if (!ReferenceEquals(contextTargets[i], targets[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        internal static void ClearContextCache()
+        {
+            ContextCache.Clear();
         }
 
         private static void GroupByDrawOrder(
@@ -437,7 +523,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 && !string.IsNullOrWhiteSpace(customName)
             )
             {
-                return new GUIContent(customName, baseLabel.tooltip);
+                if (!GroupHeaderCache.TryGetValue(drawOrder, out GUIContent cached))
+                {
+                    cached = new GUIContent(customName, baseLabel.tooltip);
+                    GroupHeaderCache[drawOrder] = cached;
+                }
+                else if (!string.Equals(cached.text, customName, StringComparison.Ordinal))
+                {
+                    cached.text = customName;
+                    cached.tooltip = baseLabel.tooltip;
+                }
+                return cached;
             }
 
             if (GroupCounts.Count <= 1)
@@ -451,7 +547,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             }
 
             string textWithOrder = $"{baseLabel.text} ({drawOrder})";
-            return new GUIContent(textWithOrder, baseLabel.tooltip);
+            if (!GroupHeaderCache.TryGetValue(drawOrder, out GUIContent cachedWithOrder))
+            {
+                cachedWithOrder = new GUIContent(textWithOrder, baseLabel.tooltip);
+                GroupHeaderCache[drawOrder] = cachedWithOrder;
+            }
+            else if (!string.Equals(cachedWithOrder.text, textWithOrder, StringComparison.Ordinal))
+            {
+                cachedWithOrder.text = textWithOrder;
+                cachedWithOrder.tooltip = baseLabel.tooltip;
+            }
+            return cachedWithOrder;
         }
 
         private static string ResolveGroupName(List<WButtonMethodContext> contexts)
@@ -499,8 +605,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 palette.ButtonColor,
                 palette.TextColor
             );
+
+            if (
+                !ButtonDisplayNameCache.TryGetValue(
+                    metadata.DisplayName,
+                    out GUIContent buttonContent
+                )
+            )
+            {
+                buttonContent = new GUIContent(metadata.DisplayName);
+                ButtonDisplayNameCache[metadata.DisplayName] = buttonContent;
+            }
+
             Rect buttonRect = GUILayoutUtility.GetRect(
-                new GUIContent(metadata.DisplayName),
+                buttonContent,
                 buttonStyle,
                 GUILayout.Height(WButtonStyles.ButtonHeight),
                 GUILayout.ExpandWidth(true)
@@ -731,6 +849,56 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         internal void ResetTrigger()
         {
             InvocationRequested = false;
+        }
+    }
+
+    internal readonly struct ContextCacheKey : IEquatable<ContextCacheKey>
+    {
+        private readonly WButtonMethodMetadata _metadata;
+        private readonly int _targetHash;
+
+        internal ContextCacheKey(WButtonMethodMetadata metadata, UnityEngine.Object[] targets)
+        {
+            _metadata = metadata;
+            _targetHash = ComputeTargetHash(targets);
+        }
+
+        private static int ComputeTargetHash(UnityEngine.Object[] targets)
+        {
+            if (targets == null || targets.Length == 0)
+            {
+                return 0;
+            }
+            unchecked
+            {
+                int hash = 17;
+                for (int i = 0; i < targets.Length; i++)
+                {
+                    UnityEngine.Object target = targets[i];
+                    int instanceId = target != null ? target.GetInstanceID() : 0;
+                    hash = hash * 31 + instanceId;
+                }
+                return hash;
+            }
+        }
+
+        public bool Equals(ContextCacheKey other)
+        {
+            return ReferenceEquals(_metadata, other._metadata) && _targetHash == other._targetHash;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is ContextCacheKey other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int metadataHash = _metadata != null ? _metadata.GetHashCode() : 0;
+                return (metadataHash * 397) ^ _targetHash;
+            }
         }
     }
 #endif

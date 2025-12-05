@@ -48,34 +48,48 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return EmptyFactory;
             }
 
-            return () => InvokeProvider(resolved, providerType, methodName, attributeName);
+            object cachedSourceResult = null;
+            T[] cachedTypedResult = null;
+
+            return () =>
+            {
+                object result;
+                try
+                {
+                    result = ReflectionHelpers.InvokeStaticMethod(resolved);
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogError(
+                        $"{attributeName}: Invocation of '{providerType.FullName}.{methodName}' threw {exception.GetType().Name}."
+                    );
+                    return Array.Empty<T>();
+                }
+
+                if (result == null)
+                {
+                    return Array.Empty<T>();
+                }
+
+                if (ReferenceEquals(result, cachedSourceResult) && cachedTypedResult != null)
+                {
+                    return cachedTypedResult;
+                }
+
+                T[] typedResult = ConvertResult(result, providerType, methodName, attributeName);
+                cachedSourceResult = result;
+                cachedTypedResult = typedResult;
+                return typedResult;
+            };
         }
 
-        private static T[] InvokeProvider(
-            MethodInfo method,
+        private static T[] ConvertResult(
+            object result,
             Type providerType,
             string methodName,
             string attributeName
         )
         {
-            object result;
-            try
-            {
-                result = ReflectionHelpers.InvokeStaticMethod(method);
-            }
-            catch (Exception exception)
-            {
-                Debug.LogError(
-                    $"{attributeName}: Invocation of '{providerType.FullName}.{methodName}' threw {exception.GetType().Name}."
-                );
-                return Array.Empty<T>();
-            }
-
-            if (result == null)
-            {
-                return Array.Empty<T>();
-            }
-
             if (result is T[] typedArray)
             {
                 return typedArray;
@@ -208,8 +222,39 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return EmptyFactory;
             }
 
+            object cachedSourceResult = null;
+            object[] cachedNormalizedResult = null;
+
             return () =>
-                InvokeProvider(resolved, providerType, methodName, valueType, attributeName);
+            {
+                object result;
+                try
+                {
+                    result = ReflectionHelpers.InvokeStaticMethod(resolved);
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogError(
+                        $"{attributeName}: Invocation of '{providerType.FullName}.{methodName}' threw {exception.GetType().Name}."
+                    );
+                    return Array.Empty<object>();
+                }
+
+                if (result == null)
+                {
+                    return Array.Empty<object>();
+                }
+
+                if (ReferenceEquals(result, cachedSourceResult) && cachedNormalizedResult != null)
+                {
+                    return cachedNormalizedResult;
+                }
+
+                object[] normalized = NormalizeResult(result, valueType, attributeName);
+                cachedSourceResult = result;
+                cachedNormalizedResult = normalized;
+                return normalized;
+            };
         }
 
         public static Func<object[]> FromMethod(
@@ -259,36 +304,43 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
             Type conversionType = resolvedValueType ?? typeof(object);
 
+            object cachedSourceResult = null;
+            object[] cachedNormalizedResult = null;
+
             return () =>
-                InvokeProvider(resolved, providerType, methodName, conversionType, attributeName);
+            {
+                object result;
+                try
+                {
+                    result = ReflectionHelpers.InvokeStaticMethod(resolved);
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogError(
+                        $"{attributeName}: Invocation of '{providerType.FullName}.{methodName}' threw {exception.GetType().Name}."
+                    );
+                    return Array.Empty<object>();
+                }
+
+                if (result == null)
+                {
+                    return Array.Empty<object>();
+                }
+
+                if (ReferenceEquals(result, cachedSourceResult) && cachedNormalizedResult != null)
+                {
+                    return cachedNormalizedResult;
+                }
+
+                object[] normalized = NormalizeResult(result, conversionType, attributeName);
+                cachedSourceResult = result;
+                cachedNormalizedResult = normalized;
+                return normalized;
+            };
         }
 
-        private static object[] InvokeProvider(
-            MethodInfo method,
-            Type providerType,
-            string methodName,
-            Type valueType,
-            string attributeName
-        )
+        private static object[] NormalizeResult(object result, Type valueType, string attributeName)
         {
-            object result;
-            try
-            {
-                result = ReflectionHelpers.InvokeStaticMethod(method);
-            }
-            catch (Exception exception)
-            {
-                Debug.LogError(
-                    $"{attributeName}: Invocation of '{providerType.FullName}.{methodName}' threw {exception.GetType().Name}."
-                );
-                return Array.Empty<object>();
-            }
-
-            if (result == null)
-            {
-                return Array.Empty<object>();
-            }
-
             if (result is Array array)
             {
                 return NormalizeArray(array, valueType, attributeName);
@@ -300,7 +352,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             }
 
             Debug.LogError(
-                $"{attributeName}: Method '{providerType.FullName}.{methodName}' returned incompatible type '{result.GetType().FullName}'. Expected an array or IEnumerable."
+                $"{attributeName}: Provider returned incompatible type '{result.GetType().FullName}'. Expected an array or IEnumerable."
             );
             return Array.Empty<object>();
         }

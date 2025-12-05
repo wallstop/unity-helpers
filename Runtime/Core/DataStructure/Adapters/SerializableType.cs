@@ -393,6 +393,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         private static Dictionary<string, SerializableTypeDescriptor> _descriptorByName;
         private static string[] _assemblyQualifiedNames;
         private static string[] _displayNames;
+        private static string[] _tooltips;
 
         private static readonly Dictionary<string, SerializableTypeDescriptor[]> FilterCache = new(
             StringComparer.OrdinalIgnoreCase
@@ -455,6 +456,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 _descriptorByName = null;
                 _assemblyQualifiedNames = null;
                 _displayNames = null;
+                _tooltips = null;
                 FilterCache.Clear();
             }
         }
@@ -852,6 +854,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         }
 
         /// <summary>
+        /// Gets the tooltips aligned with <see cref="GetAssemblyQualifiedNames"/>.
+        /// </summary>
+        /// <returns>Array of tooltips.</returns>
+        public static string[] GetTooltips()
+        {
+            EnsureCache();
+            return _tooltips;
+        }
+
+        /// <summary>
         /// Retrieves filtered descriptors matching the provided search term.
         /// </summary>
         /// <param name="search">Search term to apply.</param>
@@ -1105,10 +1117,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
                 _assemblyQualifiedNames = new string[_descriptors.Length];
                 _displayNames = new string[_descriptors.Length];
+                _tooltips = new string[_descriptors.Length];
                 for (int index = 0; index < _descriptors.Length; index++)
                 {
                     _assemblyQualifiedNames[index] = _descriptors[index].AssemblyQualifiedName;
                     _displayNames[index] = _descriptors[index].DisplayName;
+                    _tooltips[index] = _descriptors[index].Tooltip;
                 }
 
                 FilterCache[string.Empty] = _descriptors;

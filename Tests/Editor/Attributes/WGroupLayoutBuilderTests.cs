@@ -20,6 +20,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public override void BaseSetUp()
         {
             base.BaseSetUp();
+            WGroupLayoutBuilder.ClearCache();
             _previousConfiguration = UnityHelpersSettings.GetWGroupAutoIncludeConfiguration();
             _previousWGroupStartCollapsed = UnityHelpersSettings
                 .instance
@@ -29,6 +30,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [TearDown]
         public override void TearDown()
         {
+            WGroupLayoutBuilder.ClearCache();
             UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
                 _previousConfiguration.Mode,
                 _previousConfiguration.RowCount

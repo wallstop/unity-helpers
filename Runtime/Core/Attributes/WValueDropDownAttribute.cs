@@ -433,6 +433,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return EmptyFactory;
             }
 
+            T[] cachedTypedValues = null;
+            object[] cachedBoxedValues = null;
+
             return _ =>
             {
                 T[] typedValues = provider();
@@ -441,11 +444,19 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     return Empty;
                 }
 
+                if (ReferenceEquals(typedValues, cachedTypedValues) && cachedBoxedValues != null)
+                {
+                    return cachedBoxedValues;
+                }
+
                 object[] boxedValues = new object[typedValues.Length];
                 for (int index = 0; index < typedValues.Length; index += 1)
                 {
                     boxedValues[index] = typedValues[index];
                 }
+
+                cachedTypedValues = typedValues;
+                cachedBoxedValues = boxedValues;
 
                 return boxedValues;
             };

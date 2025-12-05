@@ -271,14 +271,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return null;
             }
 
-            string[] tooltips = new string[options.Length];
-            for (int i = 0; i < options.Length; i++)
+            string[] tooltips = SerializableTypeCatalog.GetTooltips();
+            if (tooltips == null || tooltips.Length != options.Length)
             {
-                if (SerializableTypeCatalog.TryGetDisplayInfo(options[i], out _, out string tip))
-                {
-                    tooltips[i] = tip;
-                }
+                return null;
             }
+
             return tooltips;
         }
 
