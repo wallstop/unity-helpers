@@ -133,8 +133,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private int _lastDuplicateRefreshFrame = -1;
         private int _lastNullEntryRefreshFrame = -1;
         private int _lastRowRenderCacheFrame = -1;
-        private int _lastSortedSetCacheFrame = -1;
-        private int _lastInspectorCacheFrame = -1;
         private int _lastItemsPropertyCacheFrame = -1;
 
         private sealed class CachedItemsProperty

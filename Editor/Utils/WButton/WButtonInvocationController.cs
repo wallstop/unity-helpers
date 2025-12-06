@@ -789,6 +789,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             InternalEditorUtility.RepaintAllViews();
         }
 
+        private static readonly object MainThreadQueueLock = new();
+        private static readonly Queue<Action> MainThreadQueue = new();
+        private static bool _isUpdateSubscribed;
+
         private static void EnqueueOnMainThread(Action action)
         {
             if (action == null)
@@ -796,7 +800,34 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 return;
             }
 
-            EditorApplication.delayCall += () =>
+            lock (MainThreadQueueLock)
+            {
+                MainThreadQueue.Enqueue(action);
+                if (!_isUpdateSubscribed)
+                {
+                    EditorApplication.update += ProcessMainThreadQueue;
+                    _isUpdateSubscribed = true;
+                }
+            }
+        }
+
+        private static void ProcessMainThreadQueue()
+        {
+            Action[] actionsToProcess;
+            lock (MainThreadQueueLock)
+            {
+                if (MainThreadQueue.Count == 0)
+                {
+                    EditorApplication.update -= ProcessMainThreadQueue;
+                    _isUpdateSubscribed = false;
+                    return;
+                }
+
+                actionsToProcess = MainThreadQueue.ToArray();
+                MainThreadQueue.Clear();
+            }
+
+            foreach (Action action in actionsToProcess)
             {
                 try
                 {
@@ -806,7 +837,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 {
                     Debug.LogException(ex);
                 }
-            };
+            }
         }
     }
 #endif

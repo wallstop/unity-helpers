@@ -241,9 +241,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 collapsedLayout.TryGetGroup(
                     "DefaultGroup",
                     out WGroupDefinition collapsedDefinition
-                )
+                ),
+                "Failed to find DefaultGroup in layout"
             );
-            Assert.That(collapsedDefinition.StartCollapsed, Is.True);
+            Assert.That(
+                collapsedDefinition.StartCollapsed,
+                Is.True,
+                $"Expected StartCollapsed=true when WGroupFoldoutsStartCollapsed=true. Actual StartCollapsed={collapsedDefinition.StartCollapsed}, Settings.WGroupFoldoutsStartCollapsed={settings.WGroupFoldoutsStartCollapsed}"
+            );
 
             settings.WGroupFoldoutsStartCollapsed = false;
             CollapsibleDefaultAsset expandedAsset =
@@ -259,9 +264,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 expandedScriptPath
             );
             Assert.IsTrue(
-                expandedLayout.TryGetGroup("DefaultGroup", out WGroupDefinition expandedDefinition)
+                expandedLayout.TryGetGroup("DefaultGroup", out WGroupDefinition expandedDefinition),
+                "Failed to find DefaultGroup in layout after settings change"
             );
-            Assert.That(expandedDefinition.StartCollapsed, Is.False);
+            Assert.That(
+                expandedDefinition.StartCollapsed,
+                Is.False,
+                $"Expected StartCollapsed=false when WGroupFoldoutsStartCollapsed=false. Actual StartCollapsed={expandedDefinition.StartCollapsed}, Settings.WGroupFoldoutsStartCollapsed={settings.WGroupFoldoutsStartCollapsed}"
+            );
         }
 
         [Test]
@@ -304,6 +314,52 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 layout.TryGetGroup("ExplicitExpanded", out WGroupDefinition explicitDefinition)
             );
             Assert.That(explicitDefinition.StartCollapsed, Is.False);
+        }
+
+        [Test]
+        public void SettingsChangeInvalidatesCacheAndReflectsNewDefault()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+
+            settings.WGroupFoldoutsStartCollapsed = true;
+
+            CollapsibleDefaultAsset asset1 = CreateScriptableObject<CollapsibleDefaultAsset>();
+            using SerializedObject serialized1 = new SerializedObject(asset1);
+            serialized1.Update();
+
+            SerializedProperty script1 = serialized1.FindProperty("m_Script");
+            string scriptPath1 = script1 != null ? script1.propertyPath : null;
+
+            WGroupLayout layout1 = WGroupLayoutBuilder.Build(serialized1, scriptPath1);
+            Assert.IsTrue(
+                layout1.TryGetGroup("DefaultGroup", out WGroupDefinition definition1),
+                "First layout should contain DefaultGroup"
+            );
+            Assert.That(
+                definition1.StartCollapsed,
+                Is.True,
+                "First layout should have StartCollapsed=true"
+            );
+
+            settings.WGroupFoldoutsStartCollapsed = false;
+
+            CollapsibleDefaultAsset asset2 = CreateScriptableObject<CollapsibleDefaultAsset>();
+            using SerializedObject serialized2 = new SerializedObject(asset2);
+            serialized2.Update();
+
+            SerializedProperty script2 = serialized2.FindProperty("m_Script");
+            string scriptPath2 = script2 != null ? script2.propertyPath : null;
+
+            WGroupLayout layout2 = WGroupLayoutBuilder.Build(serialized2, scriptPath2);
+            Assert.IsTrue(
+                layout2.TryGetGroup("DefaultGroup", out WGroupDefinition definition2),
+                "Second layout should contain DefaultGroup after cache invalidation"
+            );
+            Assert.That(
+                definition2.StartCollapsed,
+                Is.False,
+                $"Second layout should have StartCollapsed=false after settings change to false. Actual={definition2.StartCollapsed}"
+            );
         }
 
         [Test]

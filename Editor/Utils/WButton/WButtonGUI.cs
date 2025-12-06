@@ -740,7 +740,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 GUILayout.FlexibleSpace();
                 if (cancellable)
                 {
-                    if (GUILayout.Button("Cancel", GUILayout.Width(70f)))
+                    UnityHelpersSettings.WButtonPaletteEntry cancelColors =
+                        UnityHelpersSettings.GetWButtonCancelButtonColors();
+                    GUIStyle cancelStyle = WButtonStyles.GetColoredMiniButtonStyle(
+                        cancelColors.ButtonColor,
+                        cancelColors.TextColor
+                    );
+                    if (GUILayout.Button("Cancel", cancelStyle, GUILayout.Width(70f)))
                     {
                         WButtonInvocationController.CancelActiveInvocations(context);
                     }
@@ -788,7 +794,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                     GUILayout.FlexibleSpace();
                     if (cancellable)
                     {
-                        if (GUILayout.Button("Cancel", GUILayout.Width(70f)))
+                        UnityHelpersSettings.WButtonPaletteEntry cancelColors =
+                            UnityHelpersSettings.GetWButtonCancelButtonColors();
+                        GUIStyle cancelStyle = WButtonStyles.GetColoredMiniButtonStyle(
+                            cancelColors.ButtonColor,
+                            cancelColors.TextColor
+                        );
+                        if (GUILayout.Button("Cancel", cancelStyle, GUILayout.Width(70f)))
                         {
                             WButtonInvocationController.CancelActiveInvocations(context);
                         }
@@ -836,7 +848,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                     buttonWidth,
                     headerRect.height
                 );
-                if (GUI.Button(buttonRect, ClearHistoryContent, EditorStyles.miniButton))
+                UnityHelpersSettings.WButtonPaletteEntry clearHistoryColors =
+                    UnityHelpersSettings.GetWButtonClearHistoryButtonColors();
+                GUIStyle clearHistoryStyle = WButtonStyles.GetColoredMiniButtonStyle(
+                    clearHistoryColors.ButtonColor,
+                    clearHistoryColors.TextColor
+                );
+                if (GUI.Button(buttonRect, ClearHistoryContent, clearHistoryStyle))
                 {
                     state.ClearHistory();
                     GUI.FocusControl(null);

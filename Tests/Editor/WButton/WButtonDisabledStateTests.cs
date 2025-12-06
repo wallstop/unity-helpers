@@ -300,10 +300,26 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Assert.That(runningCount, Is.EqualTo(2), "Both targets should be tracked as running");
 
-            yield return WaitUntil(
+            yield return WaitUntilWithDiagnostics(
                 () =>
                     methodState1.ActiveInvocation == null && methodState2.ActiveInvocation == null,
-                5f
+                5f,
+                () =>
+                    $"methodState1.ActiveInvocation={(methodState1.ActiveInvocation != null ? "Active" : "null")}, "
+                    + $"methodState2.ActiveInvocation={(methodState2.ActiveInvocation != null ? "Active" : "null")}, "
+                    + $"methodState1.History.Count={methodState1.History.Count}, "
+                    + $"methodState2.History.Count={methodState2.History.Count}"
+            );
+
+            Assert.That(
+                methodState1.History.Count,
+                Is.GreaterThan(0),
+                "methodState1 should have recorded history after completion"
+            );
+            Assert.That(
+                methodState2.History.Count,
+                Is.GreaterThan(0),
+                "methodState2 should have recorded history after completion"
             );
         }
 
@@ -660,6 +676,27 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 if (Time.realtimeSinceStartup > endTime)
                 {
                     Assert.Fail("Timed out while waiting for condition.");
+                }
+                yield return null;
+            }
+        }
+
+        private static IEnumerator WaitUntilWithDiagnostics(
+            Func<bool> condition,
+            float timeoutSeconds,
+            Func<string> diagnosticsProvider
+        )
+        {
+            float endTime = Time.realtimeSinceStartup + timeoutSeconds;
+            while (!condition())
+            {
+                if (Time.realtimeSinceStartup > endTime)
+                {
+                    string diagnostics =
+                        diagnosticsProvider?.Invoke() ?? "No diagnostics available";
+                    Assert.Fail(
+                        $"Timed out while waiting for condition. Diagnostics: {diagnostics}"
+                    );
                 }
                 yield return null;
             }

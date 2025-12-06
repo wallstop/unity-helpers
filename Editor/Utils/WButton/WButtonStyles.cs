@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         private static GUIStyle _groupStyle;
         private static GUIStyle _headerStyle;
         private static GUIStyle _baseButtonStyle;
+        private static GUIStyle _baseMiniButtonStyle;
         private static GUIStyle _arrayHeaderStyle;
         private static GUIStyle _foldoutContainerExpanded;
         private static GUIStyle _foldoutContainerCollapsed;
@@ -18,6 +19,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         private static GUIContent _topHeaderContent;
         private static GUIContent _bottomHeaderContent;
         private static readonly Dictionary<ButtonStyleKey, GUIStyle> ColoredButtonStyles = new(
+            new ButtonStyleKeyComparer()
+        );
+        private static readonly Dictionary<ButtonStyleKey, GUIStyle> ColoredMiniButtonStyles = new(
             new ButtonStyleKeyComparer()
         );
         private static readonly Dictionary<Color, Texture2D> SolidColorTextures = new(
@@ -67,6 +71,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                     margin = new RectOffset(1, 1, 1, 3),
                 };
                 return _baseButtonStyle;
+            }
+        }
+
+        private static GUIStyle MiniButtonStyle
+        {
+            get
+            {
+                _baseMiniButtonStyle ??= new GUIStyle(EditorStyles.miniButton)
+                {
+                    wordWrap = false,
+                    fontSize = 10,
+                    richText = false,
+                    alignment = TextAnchor.MiddleCenter,
+                    padding = new RectOffset(4, 4, 2, 2),
+                    margin = new RectOffset(1, 1, 1, 1),
+                };
+                return _baseMiniButtonStyle;
             }
         }
 
@@ -173,6 +194,46 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             style.onActive.background = active;
 
             ColoredButtonStyles[key] = style;
+            return style;
+        }
+
+        internal static GUIStyle GetColoredMiniButtonStyle(Color buttonColor, Color textColor)
+        {
+            GUIStyle baseStyle = MiniButtonStyle;
+            ButtonStyleKey key = new(buttonColor, textColor);
+            if (ColoredMiniButtonStyles.TryGetValue(key, out GUIStyle cached))
+            {
+                return cached;
+            }
+
+            GUIStyle style = new(baseStyle)
+            {
+                normal = { textColor = textColor },
+                focused = { textColor = textColor },
+                active = { textColor = textColor },
+                hover = { textColor = textColor },
+                onNormal = { textColor = textColor },
+                onFocused = { textColor = textColor },
+                onActive = { textColor = textColor },
+                onHover = { textColor = textColor },
+            };
+
+            Texture2D normal = GetSolidTexture(buttonColor);
+            Texture2D hover = GetSolidTexture(WButtonColorUtility.GetHoverColor(buttonColor));
+            Texture2D active = GetSolidTexture(WButtonColorUtility.GetActiveColor(buttonColor));
+
+            style.normal.background = normal;
+            style.focused.background = normal;
+            style.onNormal.background = normal;
+            style.onFocused.background = normal;
+
+            style.hover.background = hover;
+            style.onHover.background = hover;
+
+            style.active.background = active;
+            style.onActive.background = active;
+
+            ColoredMiniButtonStyles[key] = style;
             return style;
         }
 

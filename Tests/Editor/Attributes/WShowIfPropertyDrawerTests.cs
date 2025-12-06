@@ -35,7 +35,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 container,
                 nameof(TestContainer.boolDependent)
             );
-            Assert.False(InvokeShouldShow(drawer, dependentProperty));
+            Assert.False(
+                InvokeShouldShow(drawer, dependentProperty),
+                $"Expected ShouldShow=false when boolCondition=false. Container.boolCondition={container.boolCondition}, SerializedObject hash={serializedObject.Current?.GetHashCode()}"
+            );
 
             container.boolCondition = true;
             dependentProperty = RefreshProperty(
@@ -43,7 +46,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 container,
                 nameof(TestContainer.boolDependent)
             );
-            Assert.True(InvokeShouldShow(drawer, dependentProperty));
+            Assert.True(
+                InvokeShouldShow(drawer, dependentProperty),
+                $"Expected ShouldShow=true when boolCondition=true. Container.boolCondition={container.boolCondition}, SerializedObject hash={serializedObject.Current?.GetHashCode()}"
+            );
         }
 
         [Test]
@@ -73,7 +79,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 container,
                 nameof(TestContainer.boolDependent)
             );
-            Assert.False(InvokeShouldShow(drawer, dependentProperty));
+            Assert.False(
+                InvokeShouldShow(drawer, dependentProperty),
+                $"Expected ShouldShow=false with NotEqual comparison when boolCondition=true. Container.boolCondition={container.boolCondition}, SerializedObject hash={serializedObject.Current?.GetHashCode()}"
+            );
 
             container.boolCondition = false;
             dependentProperty = RefreshProperty(
@@ -81,7 +90,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 container,
                 nameof(TestContainer.boolDependent)
             );
-            Assert.True(InvokeShouldShow(drawer, dependentProperty));
+            Assert.True(
+                InvokeShouldShow(drawer, dependentProperty),
+                $"Expected ShouldShow=true with NotEqual comparison when boolCondition=false. Container.boolCondition={container.boolCondition}, SerializedObject hash={serializedObject.Current?.GetHashCode()}"
+            );
         }
 
         [Test]
@@ -869,6 +881,72 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 nameof(TestContainer.genericComparableDependent)
             );
             Assert.True(InvokeShouldShow(drawer, dependentProperty));
+        }
+
+        [Test]
+        public void MultipleSerializedObjectsForSameTargetEachReflectCorrectState()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(nameof(TestContainer.boolCondition))
+            );
+
+            container.boolCondition = false;
+
+            using SerializedObject serializedObject1 = new SerializedObject(container);
+            serializedObject1.Update();
+            SerializedProperty property1 = serializedObject1.FindProperty(
+                nameof(TestContainer.boolDependent)
+            );
+            Assert.NotNull(property1, "Could not find property in first SerializedObject");
+            bool result1 = InvokeShouldShow(drawer, property1);
+            Assert.False(
+                result1,
+                $"First evaluation should return false when boolCondition=false. Got {result1}"
+            );
+
+            container.boolCondition = true;
+
+            using SerializedObject serializedObject2 = new SerializedObject(container);
+            serializedObject2.Update();
+            SerializedProperty property2 = serializedObject2.FindProperty(
+                nameof(TestContainer.boolDependent)
+            );
+            Assert.NotNull(property2, "Could not find property in second SerializedObject");
+            bool result2 = InvokeShouldShow(drawer, property2);
+            Assert.True(
+                result2,
+                $"Second evaluation with fresh SerializedObject should return true when boolCondition=true. Got {result2}. SerializedObject1 hash={serializedObject1.GetHashCode()}, SerializedObject2 hash={serializedObject2.GetHashCode()}"
+            );
+        }
+
+        [Test]
+        public void RapidConditionChangesWithNewSerializedObjectsReturnCorrectResults()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(nameof(TestContainer.boolCondition))
+            );
+
+            for (int iteration = 0; iteration < 5; iteration++)
+            {
+                bool expectedShow = iteration % 2 == 1;
+                container.boolCondition = expectedShow;
+
+                using SerializedObject serializedObject = new SerializedObject(container);
+                serializedObject.Update();
+                SerializedProperty property = serializedObject.FindProperty(
+                    nameof(TestContainer.boolDependent)
+                );
+                Assert.NotNull(property, $"Could not find property in iteration {iteration}");
+
+                bool actualShow = InvokeShouldShow(drawer, property);
+                Assert.AreEqual(
+                    expectedShow,
+                    actualShow,
+                    $"Iteration {iteration}: Expected ShouldShow={expectedShow} when boolCondition={container.boolCondition}, but got {actualShow}"
+                );
+            }
         }
 
         private static WShowIfPropertyDrawer CreateDrawer(WShowIfAttribute attribute)

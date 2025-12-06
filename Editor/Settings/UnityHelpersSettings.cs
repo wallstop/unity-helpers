@@ -90,6 +90,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private static readonly Color DefaultDarkThemeEnumInactiveColor =
             DefaultDarkThemeButtonColor;
         private static readonly Color DefaultDarkThemeEnumInactiveTextColor = Color.white;
+        private static readonly Color DefaultCancelButtonColor = new(0.85f, 0.2f, 0.2f, 1f);
+        private static readonly Color DefaultCancelButtonTextColor = Color.white;
+        private static readonly Color DefaultClearHistoryButtonColor = new(0.75f, 0.45f, 0.45f, 1f);
+        private static readonly Color DefaultClearHistoryButtonTextColor = Color.white;
         private static readonly Dictionary<int, bool> SettingsGroupFoldoutStates = new();
         private const float SettingsLabelWidth = 260f;
         private const float SettingsMinFieldWidth = 110f;
@@ -155,6 +159,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             );
         private static readonly GUIContent WButtonCustomColorsContent =
             EditorGUIUtility.TrTextContent("WButton Custom Colors");
+        private static readonly GUIContent WButtonCancelButtonColorContent =
+            EditorGUIUtility.TrTextContent(
+                "Cancel Button Color",
+                "Background color for the Cancel button that appears during async WButton execution."
+            );
+        private static readonly GUIContent WButtonCancelButtonTextColorContent =
+            EditorGUIUtility.TrTextContent(
+                "Cancel Button Text Color",
+                "Text color for the Cancel button."
+            );
+        private static readonly GUIContent WButtonClearHistoryButtonColorContent =
+            EditorGUIUtility.TrTextContent(
+                "Clear History Button Color",
+                "Background color for the Clear History button in WButton result history."
+            );
+        private static readonly GUIContent WButtonClearHistoryButtonTextColorContent =
+            EditorGUIUtility.TrTextContent(
+                "Clear History Button Text Color",
+                "Text color for the Clear History button."
+            );
         private static readonly GUIContent WGroupCustomColorsContent =
             EditorGUIUtility.TrTextContent("WGroup Custom Colors");
         private static readonly GUIContent WEnumToggleButtonsCustomColorsContent =
@@ -492,6 +516,31 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [WShowIf(nameof(wbuttonFoldoutTweenEnabled))]
         [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
         private float wbuttonFoldoutSpeed = DefaultFoldoutSpeed;
+
+        [SerializeField]
+        [Tooltip(
+            "Background color for the Cancel button that appears during async WButton execution."
+        )]
+        [WGroupEnd("WButton Layout")]
+        [WGroup(
+            "WButton Colors",
+            displayName: "WButton Colors",
+            autoIncludeCount: 3,
+            collapsible: true
+        )]
+        private Color wbuttonCancelButtonColor = DefaultCancelButtonColor;
+
+        [SerializeField]
+        [Tooltip("Text color for the Cancel button.")]
+        private Color wbuttonCancelButtonTextColor = DefaultCancelButtonTextColor;
+
+        [SerializeField]
+        [Tooltip("Background color for the Clear History button in WButton result history.")]
+        private Color wbuttonClearHistoryButtonColor = DefaultClearHistoryButtonColor;
+
+        [SerializeField]
+        [Tooltip("Text color for the Clear History button.")]
+        private Color wbuttonClearHistoryButtonTextColor = DefaultClearHistoryButtonTextColor;
 
         [SerializeField]
         [Tooltip(
@@ -1125,6 +1174,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 }
 
                 wgroupFoldoutsStartCollapsed = value;
+                WGroupLayoutBuilder.ClearCache();
                 SaveSettings();
             }
         }
@@ -1536,6 +1586,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public static float GetWButtonFoldoutSpeed()
         {
             return Mathf.Clamp(instance.wbuttonFoldoutSpeed, MinFoldoutSpeed, MaxFoldoutSpeed);
+        }
+
+        public static WButtonPaletteEntry GetWButtonCancelButtonColors()
+        {
+            UnityHelpersSettings settings = instance;
+            return new WButtonPaletteEntry(
+                settings.wbuttonCancelButtonColor,
+                settings.wbuttonCancelButtonTextColor
+            );
+        }
+
+        public static WButtonPaletteEntry GetWButtonClearHistoryButtonColors()
+        {
+            UnityHelpersSettings settings = instance;
+            return new WButtonPaletteEntry(
+                settings.wbuttonClearHistoryButtonColor,
+                settings.wbuttonClearHistoryButtonTextColor
+            );
         }
 
         public static bool ShouldTweenSerializableDictionaryFoldouts()
@@ -3413,6 +3481,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return false;
         }
 
+        private static bool DrawColorField(
+            GUIContent content,
+            Color currentValue,
+            Action<Color> setter
+        )
+        {
+            EditorGUI.BeginChangeCheck();
+            Color newValue = EditorGUILayout.ColorField(content, currentValue);
+            if (EditorGUI.EndChangeCheck())
+            {
+                setter(newValue);
+                return true;
+            }
+
+            return false;
+        }
+
         private static void DrawWaitInstructionBufferButtons(UnityHelpersSettings settings)
         {
             using (new EditorGUILayout.HorizontalScope())
@@ -3759,6 +3844,74 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                     MaxFoldoutSpeed,
                                     value => settings.wbuttonFoldoutSpeed = value,
                                     true
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wbuttonCancelButtonColor),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawColorField(
+                                    WButtonCancelButtonColorContent,
+                                    settings.wbuttonCancelButtonColor,
+                                    value => settings.wbuttonCancelButtonColor = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wbuttonCancelButtonTextColor),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawColorField(
+                                    WButtonCancelButtonTextColorContent,
+                                    settings.wbuttonCancelButtonTextColor,
+                                    value => settings.wbuttonCancelButtonTextColor = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wbuttonClearHistoryButtonColor),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawColorField(
+                                    WButtonClearHistoryButtonColorContent,
+                                    settings.wbuttonClearHistoryButtonColor,
+                                    value => settings.wbuttonClearHistoryButtonColor = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(wbuttonClearHistoryButtonTextColor),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawColorField(
+                                    WButtonClearHistoryButtonTextColorContent,
+                                    settings.wbuttonClearHistoryButtonTextColor,
+                                    value => settings.wbuttonClearHistoryButtonTextColor = value
                                 );
                                 dataChanged |= changed;
                                 return true;
