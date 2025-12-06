@@ -48,22 +48,34 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [Test]
         public void StringInListMissingMethodLogsErrorAndReturnsEmpty()
         {
-            Regex pattern = new("StringInListAttribute");
+            Regex pattern = new("WValueDropDownAttribute.*Could not locate.*Missing");
             LogAssert.Expect(LogType.Error, pattern);
             StringInListAttribute attribute = new(typeof(StringProviders), "Missing");
-            CollectionAssert.IsEmpty(attribute.List);
+            string[] result = attribute.List;
+            CollectionAssert.IsEmpty(
+                result,
+                "Expected empty list when provider method is missing, but got: [{0}]",
+                string.Join(", ", result ?? Array.Empty<string>())
+            );
         }
 
         [Test]
         public void StringInListMethodThrowingExceptionLogsErrorAndReturnsEmpty()
         {
-            Regex pattern = new("StringInListAttribute");
+            Regex pattern = new(
+                "WValueDropDownAttribute.*ThrowingProvider.*InvalidOperationException"
+            );
             LogAssert.Expect(LogType.Error, pattern);
             StringInListAttribute attribute = new(
                 typeof(StringProviders),
                 nameof(StringProviders.ThrowingProvider)
             );
-            CollectionAssert.IsEmpty(attribute.List);
+            string[] result = attribute.List;
+            CollectionAssert.IsEmpty(
+                result,
+                "Expected empty list when provider throws, but got: [{0}]",
+                string.Join(", ", result ?? Array.Empty<string>())
+            );
         }
 
         [Test]
@@ -116,22 +128,254 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [Test]
         public void IntDropdownMissingMethodLogsErrorAndReturnsEmpty()
         {
-            Regex pattern = new("IntDropdownAttribute");
+            Regex pattern = new("WValueDropDownAttribute.*Could not locate.*Missing");
             LogAssert.Expect(LogType.Error, pattern);
             IntDropdownAttribute attribute = new(typeof(IntProviders), "Missing");
-            CollectionAssert.IsEmpty(attribute.Options);
+            int[] result = attribute.Options;
+            CollectionAssert.IsEmpty(
+                result,
+                "Expected empty options when provider method is missing, but got: [{0}]",
+                string.Join(", ", result ?? Array.Empty<int>())
+            );
         }
 
         [Test]
         public void IntDropdownMethodThrowingExceptionLogsErrorAndReturnsEmpty()
         {
-            Regex pattern = new("IntDropdownAttribute");
+            Regex pattern = new(
+                "WValueDropDownAttribute.*ThrowingProvider.*InvalidOperationException"
+            );
             LogAssert.Expect(LogType.Error, pattern);
             IntDropdownAttribute attribute = new(
                 typeof(IntProviders),
                 nameof(IntProviders.ThrowingProvider)
             );
-            CollectionAssert.IsEmpty(attribute.Options);
+            int[] result = attribute.Options;
+            CollectionAssert.IsEmpty(
+                result,
+                "Expected empty options when provider throws, but got: [{0}]",
+                string.Join(", ", result ?? Array.Empty<int>())
+            );
+        }
+
+        [TestCase(typeof(StringProviders), "NonExistent", "NonExistent")]
+        [TestCase(typeof(StringProviders), "Missing", "Missing")]
+        [TestCase(typeof(StringProviders), "GetStringValues_Typo", "GetStringValues_Typo")]
+        public void StringInListMissingMethodLogsErrorWithMethodName(
+            Type providerType,
+            string methodName,
+            string expectedMethodInError
+        )
+        {
+            Regex pattern = new(
+                $"WValueDropDownAttribute.*Could not locate.*{expectedMethodInError}"
+            );
+            LogAssert.Expect(LogType.Error, pattern);
+            StringInListAttribute attribute = new(providerType, methodName);
+            CollectionAssert.IsEmpty(
+                attribute.List,
+                "Expected empty list for missing method '{0}' on type '{1}'",
+                methodName,
+                providerType.Name
+            );
+        }
+
+        [TestCase(typeof(IntProviders), "NonExistent", "NonExistent")]
+        [TestCase(typeof(IntProviders), "Missing", "Missing")]
+        [TestCase(typeof(IntProviders), "GetValues_Typo", "GetValues_Typo")]
+        public void IntDropdownMissingMethodLogsErrorWithMethodName(
+            Type providerType,
+            string methodName,
+            string expectedMethodInError
+        )
+        {
+            Regex pattern = new(
+                $"WValueDropDownAttribute.*Could not locate.*{expectedMethodInError}"
+            );
+            LogAssert.Expect(LogType.Error, pattern);
+            IntDropdownAttribute attribute = new(providerType, methodName);
+            CollectionAssert.IsEmpty(
+                attribute.Options,
+                "Expected empty options for missing method '{0}' on type '{1}'",
+                methodName,
+                providerType.Name
+            );
+        }
+
+        [Test]
+        public void StringInListNullProviderTypeLogsErrorAndReturnsEmpty()
+        {
+            Regex pattern = new("WValueDropDownAttribute.*Provider type cannot be null");
+            LogAssert.Expect(LogType.Error, pattern);
+            StringInListAttribute attribute = new((Type)null, "SomeMethod");
+            CollectionAssert.IsEmpty(
+                attribute.List,
+                "Expected empty list when provider type is null"
+            );
+        }
+
+        [Test]
+        public void IntDropdownNullProviderTypeLogsErrorAndReturnsEmpty()
+        {
+            Regex pattern = new("WValueDropDownAttribute.*Provider type cannot be null");
+            LogAssert.Expect(LogType.Error, pattern);
+            IntDropdownAttribute attribute = new(null, "SomeMethod");
+            CollectionAssert.IsEmpty(
+                attribute.Options,
+                "Expected empty options when provider type is null"
+            );
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        public void StringInListNullOrEmptyStaticMethodNameLogsErrorAndReturnsEmpty(
+            string methodName
+        )
+        {
+            Regex pattern = new("WValueDropDownAttribute.*Method name cannot be null or empty");
+            LogAssert.Expect(LogType.Error, pattern);
+            StringInListAttribute attribute = new(typeof(StringProviders), methodName);
+            CollectionAssert.IsEmpty(
+                attribute.List,
+                "Expected empty list when static method name is '{0}'",
+                methodName ?? "<null>"
+            );
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        public void IntDropdownNullOrEmptyStaticMethodNameLogsErrorAndReturnsEmpty(
+            string methodName
+        )
+        {
+            Regex pattern = new("WValueDropDownAttribute.*Method name cannot be null or empty");
+            LogAssert.Expect(LogType.Error, pattern);
+            IntDropdownAttribute attribute = new(typeof(IntProviders), methodName);
+            CollectionAssert.IsEmpty(
+                attribute.Options,
+                "Expected empty options when static method name is '{0}'",
+                methodName ?? "<null>"
+            );
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase("   ")]
+        public void StringInListNullOrEmptyInstanceMethodNameLogsErrorAndReturnsEmpty(
+            string methodName
+        )
+        {
+            Regex pattern = new("WValueDropDownAttribute.*Method name cannot be null or empty");
+            LogAssert.Expect(LogType.Error, pattern);
+            StringInListAttribute attribute = new(methodName);
+            CollectionAssert.IsEmpty(
+                attribute.List,
+                "Expected empty list when instance method name is '{0}'",
+                methodName ?? "<null>"
+            );
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase("   ")]
+        public void IntDropdownNullOrEmptyInstanceMethodNameLogsErrorAndReturnsEmpty(
+            string methodName
+        )
+        {
+            Regex pattern = new("WValueDropDownAttribute.*Method name cannot be null or empty");
+            LogAssert.Expect(LogType.Error, pattern);
+            IntDropdownAttribute attribute = new(methodName);
+            CollectionAssert.IsEmpty(
+                attribute.Options,
+                "Expected empty options when instance method name is '{0}'",
+                methodName ?? "<null>"
+            );
+        }
+
+        [Test]
+        public void StringInListProviderReturningEmptyArrayReturnsEmpty()
+        {
+            StringInListAttribute attribute = new(
+                typeof(EmptyProviders),
+                nameof(EmptyProviders.GetEmptyStrings)
+            );
+            CollectionAssert.IsEmpty(
+                attribute.List,
+                "Expected empty list when provider returns empty array"
+            );
+        }
+
+        [Test]
+        public void IntDropdownProviderReturningEmptyArrayReturnsEmpty()
+        {
+            IntDropdownAttribute attribute = new(
+                typeof(EmptyProviders),
+                nameof(EmptyProviders.GetEmptyInts)
+            );
+            CollectionAssert.IsEmpty(
+                attribute.Options,
+                "Expected empty options when provider returns empty array"
+            );
+        }
+
+        [Test]
+        public void StringInListProviderReturningNullReturnsEmpty()
+        {
+            StringInListAttribute attribute = new(
+                typeof(NullProviders),
+                nameof(NullProviders.GetNullStrings)
+            );
+            CollectionAssert.IsEmpty(
+                attribute.List,
+                "Expected empty list when provider returns null"
+            );
+        }
+
+        [Test]
+        public void IntDropdownProviderReturningNullReturnsEmpty()
+        {
+            IntDropdownAttribute attribute = new(
+                typeof(NullProviders),
+                nameof(NullProviders.GetNullInts)
+            );
+            CollectionAssert.IsEmpty(
+                attribute.Options,
+                "Expected empty options when provider returns null"
+            );
+        }
+
+        [Test]
+        public void StringInListThrowingArgumentExceptionLogsErrorAndReturnsEmpty()
+        {
+            Regex pattern = new(
+                "WValueDropDownAttribute.*ArgumentThrowingProvider.*ArgumentException"
+            );
+            LogAssert.Expect(LogType.Error, pattern);
+            StringInListAttribute attribute = new(
+                typeof(ExceptionProviders),
+                nameof(ExceptionProviders.ArgumentThrowingProvider)
+            );
+            CollectionAssert.IsEmpty(
+                attribute.List,
+                "Expected empty list when provider throws ArgumentException"
+            );
+        }
+
+        [Test]
+        public void StringInListThrowingNullReferenceExceptionLogsErrorAndReturnsEmpty()
+        {
+            Regex pattern = new(
+                "WValueDropDownAttribute.*NullReferenceThrowingProvider.*NullReferenceException"
+            );
+            LogAssert.Expect(LogType.Error, pattern);
+            StringInListAttribute attribute = new(
+                typeof(ExceptionProviders),
+                nameof(ExceptionProviders.NullReferenceThrowingProvider)
+            );
+            CollectionAssert.IsEmpty(
+                attribute.List,
+                "Expected empty list when provider throws NullReferenceException"
+            );
         }
 
         [Test]
@@ -578,6 +822,45 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             public static IEnumerable<string> StaticStates()
             {
                 return new[] { "Static_X", "Static_Y" };
+            }
+        }
+
+        private static class EmptyProviders
+        {
+            public static string[] GetEmptyStrings()
+            {
+                return Array.Empty<string>();
+            }
+
+            public static int[] GetEmptyInts()
+            {
+                return Array.Empty<int>();
+            }
+        }
+
+        private static class NullProviders
+        {
+            public static string[] GetNullStrings()
+            {
+                return null;
+            }
+
+            public static int[] GetNullInts()
+            {
+                return null;
+            }
+        }
+
+        private static class ExceptionProviders
+        {
+            public static string[] ArgumentThrowingProvider()
+            {
+                throw new ArgumentException("Argument error");
+            }
+
+            public static string[] NullReferenceThrowingProvider()
+            {
+                throw new NullReferenceException("Null reference error");
             }
         }
     }
