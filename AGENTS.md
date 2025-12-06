@@ -23,7 +23,7 @@
 - Line endings: CRLF; UTF-8 (no BOM) per `.editorconfig`.
 - C#: explicit types over `var`; braces required; `using` inside namespace.
 - Naming: PascalCase for types/public members; camelCase for fields/locals; interfaces prefixed `I` (e.g., `IResolver`); type params prefixed `T`; events start with `On...`.
-- Do not use underscores in function names, especially test function names.
+- **CRITICAL: Do not use underscores in function names, especially test function names. Use PascalCase throughout (e.g., `GetInvocationStatusNoActiveInvocationReturnsZeroRunningCount` NOT `GetInvocationStatus_NoActiveInvocation_ReturnsZeroRunningCount`).**
 - Do not use regions, anywhere, ever.
 - Avoid `var` wherever possible, use expressive types.
 - Do not use nullable reference types.
@@ -42,6 +42,7 @@
 
 - Frameworks: NUnit + Unity Test Framework (`[Test]`, `[UnityTest]`).
 - Structure tests to mirror `Runtime/` and `Editor/`; name files `*Tests.cs` (e.g., `Tests/Editor/MultiFileSelectorElementTests.cs`).
+- **Test method names must use PascalCase with NO underscores. Example: `AsyncTaskInvocationCompletesAndRecordsHistory` NOT `AsyncTask_Invocation_Completes_And_Records_History`.**
 - Keep tests deterministic; prefer fast EditMode where possible. Long-running tests should use timeouts (see `Tests/Runtime/RuntimeTestTimeouts.cs`).
 - Do not use regions.
 - Try to use minimal comments and instead rely on expressive naming conventions and assertions.

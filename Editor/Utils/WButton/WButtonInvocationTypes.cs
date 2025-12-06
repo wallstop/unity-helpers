@@ -22,6 +22,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
     internal sealed class WButtonResultEntry
     {
+        private string _cachedDisplayString;
+
         internal WButtonResultEntry(
             WButtonResultKind kind,
             DateTime timestamp,
@@ -50,6 +52,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         internal UnityEngine.Object ObjectReference { get; }
 
         internal Exception Exception { get; }
+
+        internal string GetDisplayString()
+        {
+            if (_cachedDisplayString != null)
+            {
+                return _cachedDisplayString;
+            }
+
+            string prefix = Kind switch
+            {
+                WButtonResultKind.Success => "[OK]",
+                WButtonResultKind.Error => "[ERR]",
+                WButtonResultKind.Cancelled => "[CANCEL]",
+                _ => "[INFO]",
+            };
+
+            string timestamp = Timestamp.ToLocalTime().ToString("HH:mm:ss");
+            _cachedDisplayString = prefix + " " + timestamp + " " + Summary;
+            return _cachedDisplayString;
+        }
     }
 
     internal sealed class WButtonInvocationHandle

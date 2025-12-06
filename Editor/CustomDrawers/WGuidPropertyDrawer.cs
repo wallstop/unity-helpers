@@ -4,10 +4,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using System;
     using System.Buffers.Binary;
     using System.Collections.Generic;
+    using System.Text;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Utils;
 
     [CustomPropertyDrawer(typeof(WGuid))]
     public sealed class WGuidPropertyDrawer : PropertyDrawer
@@ -18,15 +20,46 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public string serializedText = string.Empty;
             public bool hasPendingInvalid;
             public string warningMessage = string.Empty;
+            public SerializedProperty cachedLowProperty;
+            public SerializedProperty cachedHighProperty;
+            public int lastCacheFrame = -1;
         }
 
         private const float ButtonWidth = 24f;
         private const string ClearUndoLabel = nameof(WGuid) + ".Clear";
         private const string SetUndoLabel = nameof(WGuid) + ".Set";
         private const string GenerateUndoLabel = nameof(WGuid) + ".Generate";
+        private const string VersionFourWarning = "WGuid expects a version 4 Guid.";
+        private const string InvalidGuidWarning = "Enter a valid Guid string.";
 
         private static readonly Dictionary<string, DrawerState> States = new();
         private static readonly GUIContent GenerateContent = CreateGenerateContent();
+
+        private static void GetCachedProperties(
+            SerializedProperty property,
+            DrawerState state,
+            out SerializedProperty lowProperty,
+            out SerializedProperty highProperty
+        )
+        {
+            int currentFrame = Time.frameCount;
+            if (
+                state.lastCacheFrame == currentFrame
+                && state.cachedLowProperty != null
+                && state.cachedHighProperty != null
+            )
+            {
+                lowProperty = state.cachedLowProperty;
+                highProperty = state.cachedHighProperty;
+                return;
+            }
+
+            lowProperty = property.FindPropertyRelative(WGuid.LowFieldName);
+            highProperty = property.FindPropertyRelative(WGuid.HighFieldName);
+            state.cachedLowProperty = lowProperty;
+            state.cachedHighProperty = highProperty;
+            state.lastCacheFrame = currentFrame;
+        }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
@@ -46,15 +79,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            SerializedProperty lowProperty = property.FindPropertyRelative(WGuid.LowFieldName);
-            SerializedProperty highProperty = property.FindPropertyRelative(WGuid.HighFieldName);
+            DrawerState state = GetState(property);
+            GetCachedProperties(
+                property,
+                state,
+                out SerializedProperty lowProperty,
+                out SerializedProperty highProperty
+            );
             if (lowProperty == null || highProperty == null)
             {
                 EditorGUI.PropertyField(position, property, label, true);
                 return;
             }
-
-            DrawerState state = GetState(property);
             string serializedText = ConvertToString(lowProperty.longValue, highProperty.longValue);
             if (!state.hasPendingInvalid || string.IsNullOrEmpty(state.displayText))
             {
@@ -81,7 +117,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             )
             {
                 state.hasPendingInvalid = true;
-                state.warningMessage = $"{nameof(WGuid)} expects a version 4 {nameof(Guid)}.";
+                state.warningMessage = VersionFourWarning;
             }
 
             EditorGUI.BeginProperty(position, label, property);
@@ -164,7 +200,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (!Guid.TryParse(trimmed, out _))
             {
                 state.hasPendingInvalid = true;
-                state.warningMessage = $"Enter a valid {nameof(Guid)} string.";
+                state.warningMessage = InvalidGuidWarning;
                 return;
             }
 
@@ -173,7 +209,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 if (!WGuid.TryParse(trimmed, out WGuid parsed))
                 {
                     state.hasPendingInvalid = true;
-                    state.warningMessage = $"{nameof(WGuid)} expects a version 4 {nameof(Guid)}.";
+                    state.warningMessage = VersionFourWarning;
                     return;
                 }
 

@@ -42,6 +42,31 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static float s_cachedOptionControlHeight = -1f;
         private static float s_cachedOptionRowHeight = -1f;
         private static readonly Dictionary<string, PopupState> PopupStates = new();
+        private static readonly Dictionary<int, string> IntToStringCache = new();
+        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
+        private static readonly GUIContent ReusablePaginationLabelContent = new();
+        private static readonly GUIContent ReusableDropdownButtonContent = new();
+
+        private static string GetCachedIntString(int value)
+        {
+            if (!IntToStringCache.TryGetValue(value, out string cached))
+            {
+                cached = value.ToString();
+                IntToStringCache[value] = cached;
+            }
+            return cached;
+        }
+
+        private static string GetPaginationLabel(int page, int totalPages)
+        {
+            (int, int) key = (page, totalPages);
+            if (!PaginationLabelCache.TryGetValue(key, out string cached))
+            {
+                cached = "Page " + GetCachedIntString(page) + "/" + GetCachedIntString(totalPages);
+                PaginationLabelCache[key] = cached;
+            }
+            return cached;
+        }
 
         private static PopupState GetOrCreateState(string key)
         {
@@ -241,8 +266,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 attribute,
                 out string tooltip
             );
-            GUIContent buttonContent = new(displayValue, tooltip);
-            if (EditorGUI.DropdownButton(fieldRect, buttonContent, FocusType.Keyboard))
+            ReusableDropdownButtonContent.text = displayValue;
+            ReusableDropdownButtonContent.tooltip = tooltip;
+            if (
+                EditorGUI.DropdownButton(
+                    fieldRect,
+                    ReusableDropdownButtonContent,
+                    FocusType.Keyboard
+                )
+            )
             {
                 string[] displayLabels = GetOptionDisplayArray(attribute, options);
                 string[] tooltips = BuildTooltipsArray(attribute, options);
@@ -373,6 +405,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly StringInListAttribute _attribute;
             private static readonly GUIContent PreviousPageContent = new("<", "Previous page");
             private static readonly GUIContent NextPageContent = new(">", "Next page");
+            private static readonly GUIContent ReusableOptionContent = new();
             private int _pageSize;
             private float _emptyStateMeasuredHeight = -1f;
 
@@ -613,7 +646,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
 
                     GUILayout.Label(
-                        $"Page {_state.page + 1}/{Mathf.Max(1, pageCount)}",
+                        GetPaginationLabel(_state.page + 1, Mathf.Max(1, pageCount)),
                         PopupStyles.PaginationLabel,
                         GUILayout.Width(PageLabelWidth),
                         GUILayout.Height(PopupStyles.PaginationButtonLeft.fixedHeight)
@@ -745,9 +778,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         ? _options[optionIndex] ?? string.Empty
                         : string.Empty;
                 string label = GetOptionLabel(_attribute, value, out string tooltip);
-                return string.IsNullOrEmpty(tooltip)
-                    ? new GUIContent(label)
-                    : new GUIContent(label, tooltip);
+                ReusableOptionContent.text = label;
+                ReusableOptionContent.tooltip = tooltip;
+                return ReusableOptionContent;
             }
         }
 
@@ -1438,7 +1471,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 int clampedPageCount = Math.Max(1, pageCount);
                 _pageIndex = Mathf.Clamp(_pageIndex, 0, clampedPageCount - 1);
-                _pageLabel.text = $"Page {_pageIndex + 1}/{clampedPageCount}";
+                _pageLabel.text = GetPaginationLabel(_pageIndex + 1, clampedPageCount);
                 _previousButton.SetEnabled(_pageIndex > 0);
                 _nextButton.SetEnabled(_pageIndex < clampedPageCount - 1);
             }

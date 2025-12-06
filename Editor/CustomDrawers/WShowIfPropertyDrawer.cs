@@ -21,6 +21,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Dictionary<string, Func<object, object>>
         > CachedAccessors = new();
         private static readonly object[] EmptyParameters = Array.Empty<object>();
+        private static readonly Dictionary<
+            (int instanceId, string propertyPath, string conditionField),
+            SerializedProperty
+        > ConditionPropertyCache = new();
+        private static int _lastConditionCacheFrame = -1;
         private WShowIfAttribute _overrideAttribute;
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
@@ -188,14 +193,31 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             out SerializedProperty conditionProperty
         )
         {
+            int currentFrame = Time.frameCount;
+            if (_lastConditionCacheFrame != currentFrame)
+            {
+                ConditionPropertyCache.Clear();
+                _lastConditionCacheFrame = currentFrame;
+            }
+
             SerializedObject serializedObject = property.serializedObject;
+            UnityEngine.Object target = serializedObject?.targetObject;
+            int instanceId = target != null ? target.GetInstanceID() : 0;
+            string propertyPath = property.propertyPath ?? string.Empty;
+            (int, string, string) cacheKey = (instanceId, propertyPath, conditionField);
+
+            if (ConditionPropertyCache.TryGetValue(cacheKey, out conditionProperty))
+            {
+                return conditionProperty != null;
+            }
+
             conditionProperty = serializedObject.FindProperty(conditionField);
             if (conditionProperty != null)
             {
+                ConditionPropertyCache[cacheKey] = conditionProperty;
                 return true;
             }
 
-            string propertyPath = property.propertyPath;
             if (!string.IsNullOrEmpty(propertyPath))
             {
                 int separatorIndex = propertyPath.LastIndexOf('.');
@@ -206,10 +228,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 conditionProperty = serializedObject.FindProperty(siblingPath);
                 if (conditionProperty != null)
                 {
+                    ConditionPropertyCache[cacheKey] = conditionProperty;
                     return true;
                 }
             }
 
+            ConditionPropertyCache[cacheKey] = null;
             conditionProperty = null;
             return false;
         }

@@ -63,6 +63,31 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const string NoResultsMessage = "No results match the current search.";
         private const string ClearButtonActiveClass = "w-dropdown-clear-button--active";
 
+        private static readonly Dictionary<int, string> IntToStringCache = new();
+        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
+
+        private static string GetCachedIntString(int value)
+        {
+            if (!IntToStringCache.TryGetValue(value, out string cached))
+            {
+                cached = value.ToString();
+                IntToStringCache[value] = cached;
+            }
+            return cached;
+        }
+
+        private static string GetPaginationLabel(int page, int totalPages)
+        {
+            (int, int) key = (page, totalPages);
+            if (!PaginationLabelCache.TryGetValue(key, out string cached))
+            {
+                cached =
+                    "Page " + GetCachedIntString(page) + " / " + GetCachedIntString(totalPages);
+                PaginationLabelCache[key] = cached;
+            }
+            return cached;
+        }
+
         private WDropdownPopupData _data;
         private VisualElement _root;
         private TextField _searchField;
@@ -769,7 +794,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 _previousButton.SetEnabled(_pageIndex > 0);
                 _nextButton.SetEnabled(_pageIndex < pageCount - 1);
-                _pageLabel.text = $"Page {_pageIndex + 1} / {pageCount}";
+                _pageLabel.text = GetPaginationLabel(_pageIndex + 1, pageCount);
             }
         }
 

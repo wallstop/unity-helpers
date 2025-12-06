@@ -124,6 +124,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                         break;
 
                     case WButtonExecutionKind.Enumerator:
+                        // Always create a CancellationTokenSource for IEnumerator methods
+                        // so they can be cancelled via the Cancel button, even if the method
+                        // doesn't have a CancellationToken parameter.
+                        cancellationSource ??= new CancellationTokenSource();
                         ExecuteEnumeratorInvocation(
                             metadata,
                             target,

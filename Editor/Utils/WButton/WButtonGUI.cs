@@ -23,6 +23,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         private static readonly Dictionary<int, string> GroupNames = new();
         private static readonly Dictionary<int, AnimBool> FoldoutAnimations = new();
         private static readonly Dictionary<int, GUIContent> GroupHeaderCache = new();
+        private static readonly Dictionary<(string, int), string> GroupHeaderTextCache = new();
         private static readonly GUIContent ClearHistoryContent = new("Clear History");
         private static readonly GUIContent RecentResultsHeaderContent = new("Recent Results");
         private static readonly GUIContent ReusableGroupHeaderContent = new();
@@ -36,10 +37,50 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         private static readonly Dictionary<string, GUIContent> ButtonDisplayNameCache = new(
             StringComparer.Ordinal
         );
+        private static readonly Dictionary<int, string> IntToStringCache = new();
+        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
+        private static readonly Dictionary<int, string> RunningLabelCache = new();
+        private const string RunningLabel = "Running...";
 
         private const float ClearHistoryButtonPadding = 12f;
         private const float ClearHistoryMinWidth = 96f;
         private const float ClearHistorySpacing = 6f;
+
+        private static string GetCachedIntString(int value)
+        {
+            if (!IntToStringCache.TryGetValue(value, out string cached))
+            {
+                cached = value.ToString();
+                IntToStringCache[value] = cached;
+            }
+            return cached;
+        }
+
+        private static string GetPaginationLabel(int page, int totalPages)
+        {
+            (int, int) key = (page, totalPages);
+            if (!PaginationLabelCache.TryGetValue(key, out string cached))
+            {
+                cached =
+                    "Page " + GetCachedIntString(page) + " / " + GetCachedIntString(totalPages);
+                PaginationLabelCache[key] = cached;
+            }
+            return cached;
+        }
+
+        private static string GetRunningLabel(int count)
+        {
+            if (count == 1)
+            {
+                return RunningLabel;
+            }
+            if (!RunningLabelCache.TryGetValue(count, out string cached))
+            {
+                cached = "Running (" + GetCachedIntString(count) + ")";
+                RunningLabelCache[count] = cached;
+            }
+            return cached;
+        }
 
         internal static bool DrawButtons(
             Editor editor,
@@ -414,7 +455,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
             if (endIndex > startIndex)
             {
-                EditorGUILayout.Space(2f);
+                EditorGUILayout.Space(4f);
             }
         }
 
@@ -440,7 +481,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             {
                 GUILayout.FlexibleSpace();
                 EditorGUILayout.LabelField(
-                    $"Page {state._pageIndex + 1} / {totalPages}",
+                    GetPaginationLabel(state._pageIndex + 1, totalPages),
                     GUILayout.Width(90f)
                 );
 
@@ -546,7 +587,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 return baseLabel;
             }
 
-            string textWithOrder = $"{baseLabel.text} ({drawOrder})";
+            (string, int) textCacheKey = (baseLabel.text, drawOrder);
+            if (!GroupHeaderTextCache.TryGetValue(textCacheKey, out string textWithOrder))
+            {
+                textWithOrder = baseLabel.text + " (" + GetCachedIntString(drawOrder) + ")";
+                GroupHeaderTextCache[textCacheKey] = textWithOrder;
+            }
+
             if (!GroupHeaderCache.TryGetValue(drawOrder, out GUIContent cachedWithOrder))
             {
                 cachedWithOrder = new GUIContent(textWithOrder, baseLabel.tooltip);
@@ -597,7 +644,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 EditorGUILayout.Space(3f);
             }
 
-            DrawInvocationStatus(context);
+            GetInvocationStatus(states, out int runningCount, out bool cancellable);
+            bool isRunning = runningCount > 0;
+
+            if (isRunning)
+            {
+                DrawRunningStatus(context, runningCount, cancellable);
+            }
+
+            DrawHistory(states[0]);
 
             UnityHelpersSettings.WButtonPaletteEntry palette =
                 UnityHelpersSettings.ResolveWButtonPalette(metadata.ColorKey);
@@ -624,16 +679,74 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 GUILayout.ExpandWidth(true)
             );
 
-            if (GUI.Button(buttonRect, metadata.DisplayName, buttonStyle))
+            using (new EditorGUI.DisabledScope(isRunning))
             {
-                context.MarkTriggered();
-                if (triggeredContexts != null)
+                if (GUI.Button(buttonRect, metadata.DisplayName, buttonStyle))
                 {
-                    triggeredContexts.Add(context);
+                    context.MarkTriggered();
+                    if (triggeredContexts != null)
+                    {
+                        triggeredContexts.Add(context);
+                    }
                 }
             }
 
+            GUILayout.Space(2f);
             GUILayout.EndVertical();
+        }
+
+        private static void GetInvocationStatus(
+            WButtonMethodState[] states,
+            out int runningCount,
+            out bool cancellable
+        )
+        {
+            runningCount = 0;
+            cancellable = false;
+
+            if (states == null || states.Length == 0)
+            {
+                return;
+            }
+
+            foreach (WButtonMethodState state in states)
+            {
+                WButtonInvocationHandle handle = state.ActiveInvocation;
+                if (handle == null)
+                {
+                    continue;
+                }
+
+                if (
+                    handle.Status == WButtonInvocationStatus.Running
+                    || handle.Status == WButtonInvocationStatus.CancelRequested
+                )
+                {
+                    runningCount++;
+                    cancellable |= handle.SupportsCancellation;
+                }
+            }
+        }
+
+        private static void DrawRunningStatus(
+            WButtonMethodContext context,
+            int runningCount,
+            bool cancellable
+        )
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField(GetRunningLabel(runningCount), EditorStyles.miniLabel);
+                GUILayout.FlexibleSpace();
+                if (cancellable)
+                {
+                    if (GUILayout.Button("Cancel", GUILayout.Width(70f)))
+                    {
+                        WButtonInvocationController.CancelActiveInvocations(context);
+                    }
+                }
+            }
+            EditorGUILayout.Space(2f);
         }
 
         private static void DrawInvocationStatus(WButtonMethodContext context)
@@ -668,8 +781,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             {
                 using (new EditorGUILayout.HorizontalScope())
                 {
-                    string label = runningCount == 1 ? "Running..." : $"Running ({runningCount})";
-                    EditorGUILayout.LabelField(label, EditorStyles.miniLabel);
+                    EditorGUILayout.LabelField(
+                        GetRunningLabel(runningCount),
+                        EditorStyles.miniLabel
+                    );
                     GUILayout.FlexibleSpace();
                     if (cancellable)
                     {
@@ -747,16 +862,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
         private static void DrawHistoryEntry(WButtonResultEntry entry)
         {
-            string prefix = entry.Kind switch
-            {
-                WButtonResultKind.Success => "[OK]",
-                WButtonResultKind.Error => "[ERR]",
-                WButtonResultKind.Cancelled => "[CANCEL]",
-                _ => "[INFO]",
-            };
-
-            string timestamp = entry.Timestamp.ToLocalTime().ToString("HH:mm:ss");
-            string summary = $"{prefix} {timestamp} {entry.Summary}";
+            string summary = entry.GetDisplayString();
             GUIStyle labelStyle =
                 entry.Kind == WButtonResultKind.Error
                     ? EditorStyles.miniBoldLabel
@@ -794,7 +900,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         {
             if (paginationStates == null)
             {
-                return new WButtonPaginationState();
+                return WButtonPaginationState.Fallback;
             }
 
             WButtonPaginationState state = paginationStates.GetOrAdd(drawOrder);
@@ -817,6 +923,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
     internal sealed class WButtonPaginationState
     {
+        internal static readonly WButtonPaginationState Fallback = new();
         internal int _pageIndex;
     }
 

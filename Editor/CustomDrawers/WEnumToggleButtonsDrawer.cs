@@ -66,6 +66,30 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Dictionary<Color, Texture2D> SolidTextureCache = new(
             new ColorComparer()
         );
+        private static readonly Dictionary<int, string> IntToStringCache = new();
+        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
+
+        private static string GetCachedIntString(int value)
+        {
+            if (!IntToStringCache.TryGetValue(value, out string cached))
+            {
+                cached = value.ToString();
+                IntToStringCache[value] = cached;
+            }
+            return cached;
+        }
+
+        private static string GetPaginationLabel(int page, int totalPages)
+        {
+            (int, int) key = (page, totalPages);
+            if (!PaginationLabelCache.TryGetValue(key, out string cached))
+            {
+                cached =
+                    "Page " + GetCachedIntString(page) + " / " + GetCachedIntString(totalPages);
+                PaginationLabelCache[key] = cached;
+            }
+            return cached;
+        }
 
         internal static void ClearCache()
         {
@@ -489,8 +513,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
             GUI.enabled = originalEnabled;
 
-            string pageLabel = $"Page {state.PageIndex + 1} / {state.TotalPages}";
-            GUI.Label(labelRect, pageLabel, EditorStyles.miniLabel);
+            GUI.Label(
+                labelRect,
+                GetPaginationLabel(state.PageIndex + 1, state.TotalPages),
+                EditorStyles.miniLabel
+            );
 
             GUI.enabled = originalEnabled && canNavigateForward;
             if (GUI.Button(nextRect, NextPageContent, EditorStyles.miniButtonMid))

@@ -19,6 +19,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             Array.Empty<WGroupDrawOperation>();
         private static readonly WGroupDefinition[] EmptyDefinitions =
             Array.Empty<WGroupDefinition>();
+        private static readonly HashSet<string> EmptyGroupedPaths = new(0);
+        private static readonly Dictionary<
+            string,
+            IReadOnlyList<WGroupDefinition>
+        > EmptyAnchorToGroups = new(0);
 
         private static readonly Dictionary<Type, WGroupLayout> LayoutCache = new();
         private static readonly Dictionary<Type, TypePropertyMetadata> PropertyMetadataCache =
@@ -28,7 +33,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         private static readonly WGroupLayout EmptyLayout = new(
             EmptyOperations,
             EmptyDefinitions,
-            new Dictionary<string, WGroupDefinition>(0)
+            new Dictionary<string, WGroupDefinition>(0),
+            EmptyGroupedPaths,
+            EmptyAnchorToGroups
         );
 
         internal static void ClearCache()
@@ -297,6 +304,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 StringComparer.OrdinalIgnoreCase
             );
 
+            HashSet<string> groupedPaths = new(StringComparer.Ordinal);
+            Dictionary<string, List<WGroupDefinition>> anchorToGroupsTemp = new(
+                StringComparer.Ordinal
+            );
+
             foreach (GroupContext context in contextsInDeclarationOrder)
             {
                 if (context.PropertyCount == 0)
@@ -312,10 +324,45 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                     definition.AnchorPropertyPath
                 );
                 anchored.Add(definition);
+
+                foreach (string path in definition.PropertyPaths)
+                {
+                    groupedPaths.Add(path);
+                }
+
+                if (
+                    !anchorToGroupsTemp.TryGetValue(
+                        definition.AnchorPropertyPath,
+                        out List<WGroupDefinition> anchorList
+                    )
+                )
+                {
+                    anchorList = new List<WGroupDefinition>();
+                    anchorToGroupsTemp[definition.AnchorPropertyPath] = anchorList;
+                }
+                anchorList.Add(definition);
+            }
+
+            Dictionary<string, IReadOnlyList<WGroupDefinition>> anchorToGroups = new(
+                anchorToGroupsTemp.Count,
+                StringComparer.Ordinal
+            );
+            foreach (KeyValuePair<string, List<WGroupDefinition>> kvp in anchorToGroupsTemp)
+            {
+                kvp.Value.Sort(
+                    (left, right) => left.DeclarationOrder.CompareTo(right.DeclarationOrder)
+                );
+                anchorToGroups[kvp.Key] = kvp.Value;
             }
 
             List<WGroupDrawOperation> operations = BuildDrawOperations(descriptors, groupsByAnchor);
-            return new WGroupLayout(operations, definitions, groupsByName);
+            return new WGroupLayout(
+                operations,
+                definitions,
+                groupsByName,
+                groupedPaths,
+                anchorToGroups
+            );
         }
 
         private static AutoIncludeConfiguration ConvertConfiguration(
@@ -844,12 +891,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         internal WGroupLayout(
             IReadOnlyList<WGroupDrawOperation> operations,
             IReadOnlyList<WGroupDefinition> groups,
-            IReadOnlyDictionary<string, WGroupDefinition> groupsByName
+            IReadOnlyDictionary<string, WGroupDefinition> groupsByName,
+            IReadOnlyCollection<string> groupedPaths,
+            IReadOnlyDictionary<string, IReadOnlyList<WGroupDefinition>> anchorToGroups
         )
         {
             Operations = operations;
             Groups = groups;
             GroupsByName = groupsByName;
+            GroupedPaths = groupedPaths;
+            AnchorToGroups = anchorToGroups;
         }
 
         internal IReadOnlyList<WGroupDrawOperation> Operations { get; }
@@ -857,6 +908,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         internal IReadOnlyList<WGroupDefinition> Groups { get; }
 
         internal IReadOnlyDictionary<string, WGroupDefinition> GroupsByName { get; }
+
+        /// <summary>
+        /// All property paths that belong to any group. Used for quick lookup during iteration.
+        /// </summary>
+        internal IReadOnlyCollection<string> GroupedPaths { get; }
+
+        /// <summary>
+        /// Maps anchor property paths to the groups that should be drawn at that anchor.
+        /// </summary>
+        internal IReadOnlyDictionary<
+            string,
+            IReadOnlyList<WGroupDefinition>
+        > AnchorToGroups { get; }
 
         internal bool TryGetGroup(string groupName, out WGroupDefinition definition)
         {

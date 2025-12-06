@@ -50,7 +50,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIContent NextPageContent = new(">", "Next Page");
         private static readonly GUIContent LastPageContent = new(">>", "Last Page");
         private static readonly GUIContent PaginationPageLabelContent = new();
+        private static readonly GUIContent RangeLabelGUIContent = new();
         private static readonly object NullComparable = new();
+        private static readonly Dictionary<int, string> IntToStringCache = new();
+        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
+        private static readonly Dictionary<(int, int, int), string> RangeLabelCache = new();
+        private const int IntToStringCacheMax = 1000;
 
         private static readonly GUIStyle AddButtonStyle = CreateSolidButtonStyle(
             new Color(0.22f, 0.62f, 0.29f)
@@ -98,6 +103,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float DuplicateShakeFrequency = 7f;
         private const float DuplicateOutlineThickness = 1f;
         private static readonly GUIContent NullEntryTooltipContent = new();
+        private static readonly GUIContent FoldoutLabelContent = new();
+        private static readonly GUIContent UnsupportedTypeContent = new();
+        private static readonly Dictionary<Type, string> UnsupportedTypeMessageCache = new();
         private static readonly Dictionary<string, Type> PropertyTypeResolutionCache = new(
             StringComparer.Ordinal
         );
@@ -116,12 +124,35 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private readonly Dictionary<RowFoldoutKey, bool> _rowFoldoutStates = new();
         private readonly Dictionary<string, HeightCacheEntry> _heightCache = new();
         private readonly Dictionary<RowRenderKey, RowRenderData> _rowRenderCache = new();
+        private readonly Dictionary<string, SortedSetCacheEntry> _sortedSetCache = new();
+        private readonly Dictionary<string, InspectorCacheEntry> _inspectorCache = new();
+        private readonly Dictionary<string, CachedItemsProperty> _cachedItemsProperties = new();
 
         private string _cachedPropertyPath;
         private string _cachedListKey;
         private int _lastDuplicateRefreshFrame = -1;
         private int _lastNullEntryRefreshFrame = -1;
         private int _lastRowRenderCacheFrame = -1;
+        private int _lastSortedSetCacheFrame = -1;
+        private int _lastInspectorCacheFrame = -1;
+        private int _lastItemsPropertyCacheFrame = -1;
+
+        private sealed class CachedItemsProperty
+        {
+            public SerializedProperty itemsProperty;
+        }
+
+        private sealed class SortedSetCacheEntry
+        {
+            public bool isSorted;
+            public int frameNumber;
+        }
+
+        private sealed class InspectorCacheEntry
+        {
+            public ISerializableSetInspector inspector;
+            public int frameNumber;
+        }
 
         private sealed class HeightCacheEntry
         {
@@ -534,21 +565,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 SerializedObject serializedObject = property.serializedObject;
 
                 string propertyPath = property.propertyPath;
-                bool hasInspector = TryGetSetInspector(
+                bool hasInspector = TryGetSetInspectorCached(
                     property,
                     propertyPath,
                     out ISerializableSetInspector inspector
                 );
                 Type elementType = inspector?.ElementType;
 
-                SerializedProperty itemsProperty = property.FindPropertyRelative(
-                    SerializableHashSetSerializedPropertyNames.Items
-                );
+                string listKey = GetListKey(property);
+                CachedItemsProperty cachedItems = GetOrCreateCachedItemsProperty(listKey, property);
+                SerializedProperty itemsProperty = cachedItems.itemsProperty;
 
                 bool hasItemsArray = itemsProperty is { isArray: true };
                 int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
 
-                string foldoutLabel = BuildFoldoutLabel(label);
+                GUIContent foldoutLabel = GetFoldoutLabelContent(label);
 
                 bool targetsSettings = TargetsUnityHelpersSettings(serializedObject);
 
@@ -583,11 +614,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 PaginationState pagination = GetOrCreatePaginationState(property);
                 EnsurePaginationBounds(pagination, totalCount);
 
-                bool isSortedSet = IsSortedSet(property);
+                bool isSortedSet = IsSortedSetCached(property);
 
-                itemsProperty = property.FindPropertyRelative(
-                    SerializableHashSetSerializedPropertyNames.Items
-                );
+                // Refresh the cached items property in case serialized object changed
+                cachedItems = GetOrCreateCachedItemsProperty(listKey, property);
+                itemsProperty = cachedItems.itemsProperty;
                 hasItemsArray = itemsProperty is { isArray: true };
                 totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
                 EnsurePaginationBounds(pagination, totalCount);
@@ -659,7 +690,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
                 else
                 {
-                    string listKey = GetListKey(property);
                     UpdateListContext(
                         listKey,
                         itemsProperty,
@@ -793,21 +823,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return baseHeight + InspectorHeightPadding;
             }
 
-            SerializedProperty itemsProperty = property.FindPropertyRelative(
-                SerializableHashSetSerializedPropertyNames.Items
-            );
+            string listKey = GetListKey(property);
+            CachedItemsProperty cachedItems = GetOrCreateCachedItemsProperty(listKey, property);
+            SerializedProperty itemsProperty = cachedItems.itemsProperty;
 
             bool hasItemsArray = itemsProperty is { isArray: true };
             int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
             string propertyPath = property.propertyPath;
-            bool hasInspector = TryGetSetInspector(
+            bool hasInspector = TryGetSetInspectorCached(
                 property,
                 propertyPath,
                 out ISerializableSetInspector inspector
             );
             Type elementType = inspector?.ElementType;
 
-            string cacheKey = GetPropertyCacheKey(property);
+            string cacheKey = listKey;
             int currentFrame = Time.frameCount;
 
             DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
@@ -848,7 +878,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 height += GetWarningBarHeight() + SectionSpacing;
             }
 
-            bool isSortedSet = IsSortedSet(property);
+            bool isSortedSet = IsSortedSetCached(property);
             bool shouldDrawPendingEntry = hasInspector && elementType != null;
             float pendingHeightWithSpacing = 0f;
             if (shouldDrawPendingEntry)
@@ -895,7 +925,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return emptyHeight;
             }
 
-            string listKey = GetListKey(property);
             propertyPath = property.propertyPath;
             UpdateListContext(listKey, itemsProperty, duplicateState, nullState, elementType);
             ReorderableList list = GetOrCreateList(
@@ -978,9 +1007,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return null;
             }
 
-            SerializedProperty itemsProperty = property.FindPropertyRelative(
-                SerializableHashSetSerializedPropertyNames.Items
-            );
+            string listKey = GetListKey(property);
+            CachedItemsProperty cachedItems = GetOrCreateCachedItemsProperty(listKey, property);
+            SerializedProperty itemsProperty = cachedItems.itemsProperty;
             PaginationState pagination = GetOrCreatePaginationState(property);
             EnsurePaginationBounds(
                 pagination,
@@ -989,13 +1018,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
             NullEntryState nullState = EvaluateNullEntryState(property, itemsProperty);
-            string listKey = GetListKey(property);
             string propertyPath = property.propertyPath;
-            bool isSortedSet = IsSortedSet(property);
+            bool isSortedSet = IsSortedSetCached(property);
             Type elementType = null;
             if (
                 !string.IsNullOrEmpty(propertyPath)
-                && TryGetSetInspector(
+                && TryGetSetInspectorCached(
                     property,
                     propertyPath,
                     out ISerializableSetInspector inspector
@@ -1095,6 +1123,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal string GetListKey(SerializedProperty property)
         {
             return GetPropertyCacheKey(property);
+        }
+
+        private CachedItemsProperty GetOrCreateCachedItemsProperty(
+            string listKey,
+            SerializedProperty setProperty
+        )
+        {
+            int currentFrame = Time.frameCount;
+            if (_lastItemsPropertyCacheFrame != currentFrame)
+            {
+                _cachedItemsProperties.Clear();
+                _lastItemsPropertyCacheFrame = currentFrame;
+            }
+
+            if (_cachedItemsProperties.TryGetValue(listKey, out CachedItemsProperty cached))
+            {
+                return cached;
+            }
+
+            CachedItemsProperty entry = new()
+            {
+                itemsProperty = setProperty.FindPropertyRelative(
+                    SerializableHashSetSerializedPropertyNames.Items
+                ),
+            };
+            _cachedItemsProperties[listKey] = entry;
+            return entry;
         }
 
         private static RowFoldoutKey BuildRowFoldoutKey(string cacheKey, int globalIndex)
@@ -1573,9 +1628,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int start =
                 totalCount == 0 ? 0 : Mathf.Clamp(pagination.page * pageSize, 0, totalCount) + 1;
             int end = Mathf.Min((pagination.page + 1) * pageSize, totalCount);
-            string rangeText = totalCount == 0 ? "Empty" : $"{start}-{end} of {totalCount}";
+            string rangeText = totalCount == 0 ? "Empty" : GetRangeLabel(start, end, totalCount);
             GUIStyle rangeStyle = EditorStyles.miniLabel;
-            float rangeWidth = rangeStyle.CalcSize(new GUIContent(rangeText)).x;
+            RangeLabelGUIContent.text = rangeText;
+            float rangeWidth = rangeStyle.CalcSize(RangeLabelGUIContent).x;
             float availableWidth = Mathf.Max(0f, rightCursor - leftCursor);
             if (rangeWidth <= availableWidth)
             {
@@ -1641,7 +1697,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 int currentPage =
                     totalCount > 0 ? Mathf.Clamp(pagination.page + 1, 1, pageCount) : 0;
                 PaginationPageLabelContent.text =
-                    totalCount == 0 ? "Page 0/0" : $"Page {currentPage}/{pageCount}";
+                    totalCount == 0 ? "Page 0/0" : GetPaginationLabel(currentPage, pageCount);
                 float labelY = controlsRect.y + labelCenterOffset + PaginationLabelVerticalOffset;
                 Rect labelRect = new(cursor, labelY, labelWidth, labelHeight);
                 EditorGUI.LabelField(labelRect, PaginationPageLabelContent, EditorStyles.miniLabel);
@@ -2061,9 +2117,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (!typeSupported)
             {
-                return elementType == null
-                    ? "Unsupported element type."
-                    : $"Unsupported type ({elementType.Name}).";
+                if (elementType == null)
+                {
+                    return "Unsupported element type.";
+                }
+
+                using PooledResource<StringBuilder> lease = Buffers.GetStringBuilder(
+                    32 + elementType.Name.Length,
+                    out StringBuilder builder
+                );
+                builder.Clear();
+                builder.Append("Unsupported type (");
+                builder.Append(elementType.Name);
+                builder.Append(").");
+                return builder.ToString();
             }
 
             if (!valueProvided)
@@ -2503,6 +2570,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
+        private static GUIContent GetUnsupportedTypeContent(Type type)
+        {
+            string typeName = type?.Name ?? "Unknown";
+            if (!UnsupportedTypeMessageCache.TryGetValue(type, out string message))
+            {
+                message = "Unsupported type (" + typeName + ")";
+                if (type != null)
+                {
+                    UnsupportedTypeMessageCache[type] = message;
+                }
+            }
+            UnsupportedTypeContent.text = message;
+            return UnsupportedTypeContent;
+        }
+
         internal static object DrawFieldForType(
             Rect rect,
             GUIContent content,
@@ -2518,11 +2600,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (!IsTypeSupported(type))
             {
-                EditorGUI.LabelField(
-                    rect,
-                    content,
-                    new GUIContent($"Unsupported type ({type?.Name ?? "Unknown"})")
-                );
+                EditorGUI.LabelField(rect, content, GetUnsupportedTypeContent(type));
                 return current;
             }
 
@@ -2643,7 +2721,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return EditorGUI.ObjectField(rect, content, obj, type, allowSceneObjects: false);
             }
 
-            EditorGUI.LabelField(rect, content, new GUIContent($"Unsupported type ({type.Name})"));
+            EditorGUI.LabelField(rect, content, GetUnsupportedTypeContent(type));
             return current;
         }
 
@@ -3217,6 +3295,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return builder.ToString();
         }
 
+        private static string BuildNullEntryTooltip(int index)
+        {
+            using PooledResource<StringBuilder> lease = Buffers.GetStringBuilder(
+                64,
+                out StringBuilder builder
+            );
+            builder.Clear();
+            builder.Append("Null entry detected at index ");
+            builder.Append(index);
+            builder.Append(". Value will be ignored at runtime.");
+            return builder.ToString();
+        }
+
         internal static void RemoveEntry(SerializedProperty itemsProperty, int index)
         {
             if (itemsProperty == null || !itemsProperty.isArray)
@@ -3300,8 +3391,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 if (ReferenceEquals(data.value, null))
                 {
                     state.nullIndices.Add(index);
-                    state.tooltips[index] =
-                        $"Null entry detected at index {index}. Value will be ignored at runtime.";
+                    state.tooltips[index] = BuildNullEntryTooltip(index);
                     state.scratch.Add(index);
                 }
             }
@@ -3670,6 +3760,34 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return null;
                 }
             };
+        }
+
+        private bool IsSortedSetCached(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return false;
+            }
+
+            string cacheKey = GetPropertyCacheKey(property);
+            int currentFrame = Time.frameCount;
+
+            if (_sortedSetCache.TryGetValue(cacheKey, out SortedSetCacheEntry entry))
+            {
+                if (entry.frameNumber == currentFrame)
+                {
+                    return entry.isSorted;
+                }
+            }
+            else
+            {
+                entry = new SortedSetCacheEntry();
+                _sortedSetCache[cacheKey] = entry;
+            }
+
+            entry.isSorted = IsSortedSet(property);
+            entry.frameNumber = currentFrame;
+            return entry.isSorted;
         }
 
         internal static bool IsSortedSet(SerializedProperty property)
@@ -5022,6 +5140,35 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return GetTargetObjectOfProperty(property.serializedObject.targetObject, propertyPath);
         }
 
+        private bool TryGetSetInspectorCached(
+            SerializedProperty property,
+            string propertyPath,
+            out ISerializableSetInspector inspector
+        )
+        {
+            string cacheKey = GetPropertyCacheKey(property);
+            int currentFrame = Time.frameCount;
+
+            if (_inspectorCache.TryGetValue(cacheKey, out InspectorCacheEntry entry))
+            {
+                if (entry.frameNumber == currentFrame)
+                {
+                    inspector = entry.inspector;
+                    return inspector != null;
+                }
+            }
+            else
+            {
+                entry = new InspectorCacheEntry();
+                _inspectorCache[cacheKey] = entry;
+            }
+
+            bool result = TryGetSetInspector(property, propertyPath, out inspector);
+            entry.inspector = inspector;
+            entry.frameNumber = currentFrame;
+            return result;
+        }
+
         private bool TryGetSetInspector(
             SerializedProperty property,
             string propertyPath,
@@ -5691,10 +5838,86 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static string BuildFoldoutLabel(GUIContent label)
+        private static GUIContent GetFoldoutLabelContent(GUIContent label)
         {
-            string baseLabel = label != null ? label.text : "Serialized HashSet";
-            return baseLabel;
+            string text = label != null ? label.text : "Serialized HashSet";
+            string tooltip = label != null ? label.tooltip : null;
+            FoldoutLabelContent.text = text;
+            FoldoutLabelContent.tooltip = tooltip;
+            FoldoutLabelContent.image = label?.image;
+            return FoldoutLabelContent;
+        }
+
+        private static string GetCachedIntString(int value)
+        {
+            if (value >= 0 && value < IntToStringCacheMax)
+            {
+                if (IntToStringCache.TryGetValue(value, out string cached))
+                {
+                    return cached;
+                }
+
+                string result = value.ToString();
+                IntToStringCache[value] = result;
+                return result;
+            }
+
+            return value.ToString();
+        }
+
+        private static string GetPaginationLabel(int currentPage, int pageCount)
+        {
+            (int, int) key = (currentPage, pageCount);
+            if (PaginationLabelCache.TryGetValue(key, out string cached))
+            {
+                return cached;
+            }
+
+            using PooledResource<StringBuilder> lease = Buffers.GetStringBuilder(
+                24,
+                out StringBuilder builder
+            );
+            builder.Clear();
+            builder.Append("Page ");
+            builder.Append(currentPage);
+            builder.Append('/');
+            builder.Append(pageCount);
+            string result = builder.ToString();
+
+            if (PaginationLabelCache.Count < 10000)
+            {
+                PaginationLabelCache[key] = result;
+            }
+
+            return result;
+        }
+
+        private static string GetRangeLabel(int start, int end, int total)
+        {
+            (int, int, int) key = (start, end, total);
+            if (RangeLabelCache.TryGetValue(key, out string cached))
+            {
+                return cached;
+            }
+
+            using PooledResource<StringBuilder> lease = Buffers.GetStringBuilder(
+                32,
+                out StringBuilder builder
+            );
+            builder.Clear();
+            builder.Append(start);
+            builder.Append('-');
+            builder.Append(end);
+            builder.Append(" of ");
+            builder.Append(total);
+            string result = builder.ToString();
+
+            if (RangeLabelCache.Count < 10000)
+            {
+                RangeLabelCache[key] = result;
+            }
+
+            return result;
         }
     }
 

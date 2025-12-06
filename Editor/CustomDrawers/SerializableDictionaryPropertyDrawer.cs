@@ -178,8 +178,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIContent PendingFoldoutContent = EditorGUIUtility.TrTextContent(
             "New Entry"
         );
+        private static readonly GUIContent FoldoutLabelContent = new();
         private static readonly GUIContent PaginationPageLabelContent = new();
         private static readonly GUIContent PaginationRangeContent = new();
+        private static readonly GUIContent UnsupportedTypeContent = new();
+        private static readonly Dictionary<Type, string> UnsupportedTypeMessageCache = new();
+        private static readonly Dictionary<int, string> IntToStringCache = new();
+        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
+        private static readonly Dictionary<(int, int, int), string> RangeLabelCache = new();
+        private const int IntToStringCacheMax = 1000;
         private static readonly GUIContent PaginationPrevContent = EditorGUIUtility.TrTextContent(
             "<",
             "Previous page"
@@ -201,6 +208,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static GUIStyle _rowChildLabelStyle;
         private static readonly GUIContent FoldoutSpacerLabel = new(" ");
         private static readonly GUIContent RowChildLabelContent = new();
+        private static readonly GUIContent ReusableFieldLabelContent = new();
         private static readonly object NullKeySentinel = new();
         private static readonly HashSet<Type> PendingWrapperNonEditableTypes = new();
         private static readonly ReorderableList.DrawNoneElementCallback EmptyDrawNoneCallback =
@@ -278,12 +286,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 SerializedObject serializedObject = property.serializedObject;
 
-                SerializedProperty keysProperty = property.FindPropertyRelative(
-                    SerializableDictionarySerializedPropertyNames.Keys
-                );
-                SerializedProperty valuesProperty = property.FindPropertyRelative(
-                    SerializableDictionarySerializedPropertyNames.Values
-                );
+                string cacheKey = GetListKey(property);
+                CachedPropertyPair propertyPair = GetOrCreateCachedPropertyPair(cacheKey, property);
+                SerializedProperty keysProperty = propertyPair.keysProperty;
+                SerializedProperty valuesProperty = propertyPair.valuesProperty;
                 EnsureParallelArraySizes(keysProperty, valuesProperty);
 
                 if (
@@ -299,7 +305,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return;
                 }
 
-                string cacheKey = GetListKey(property);
                 CacheValueType(cacheKey, valueType);
                 DuplicateKeyState duplicateState = RefreshDuplicateState(
                     cacheKey,
@@ -487,12 +492,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return baseHeight;
             }
 
-            SerializedProperty keysProperty = property.FindPropertyRelative(
-                SerializableDictionarySerializedPropertyNames.Keys
-            );
-            SerializedProperty valuesProperty = property.FindPropertyRelative(
-                SerializableDictionarySerializedPropertyNames.Values
-            );
+            string cacheKey = GetListKey(property);
+            CachedPropertyPair propertyPair = GetOrCreateCachedPropertyPair(cacheKey, property);
+            SerializedProperty keysProperty = propertyPair.keysProperty;
+            SerializedProperty valuesProperty = propertyPair.valuesProperty;
             EnsureParallelArraySizes(keysProperty, valuesProperty);
 
             if (
@@ -507,7 +510,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return baseHeight;
             }
 
-            string cacheKey = GetListKey(property);
             CacheValueType(cacheKey, valueType);
 
             int currentFrame = Time.frameCount;
@@ -1632,11 +1634,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             sorted.AddRange(indices);
             sorted.Sort();
 
-            if (sorted.Count == 1)
-            {
-                return $"Null key detected at index {sorted[0]}. Entry will be ignored at runtime.";
-            }
-
             const int maxDisplay = 5;
             int displayCount = Math.Min(sorted.Count, maxDisplay);
 
@@ -1645,6 +1642,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 out StringBuilder summaryBuilder
             );
             summaryBuilder.Clear();
+
+            if (sorted.Count == 1)
+            {
+                summaryBuilder.Append("Null key detected at index ");
+                summaryBuilder.Append(sorted[0]);
+                summaryBuilder.Append(". Entry will be ignored at runtime.");
+                return summaryBuilder.ToString();
+            }
+
             summaryBuilder.Append("Null keys detected at indices ");
 
             for (int i = 0; i < displayCount; i++)
@@ -1704,28 +1710,48 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static string BuildDuplicateTooltip(string formattedKey, List<int> indices)
         {
+            using PooledResource<StringBuilder> builderLease = Buffers.GetStringBuilder(
+                64 + (formattedKey?.Length ?? 0) + (indices?.Count ?? 0) * 4,
+                out StringBuilder builder
+            );
+            builder.Clear();
+
             if (indices == null || indices.Count == 0)
             {
-                return $"Duplicate key \"{formattedKey}\" detected.";
+                builder.Append("Duplicate key \"");
+                builder.Append(formattedKey);
+                builder.Append("\" detected.");
+                return builder.ToString();
             }
 
             int count = indices.Count;
-            int[] positions = new int[count];
+            using PooledResource<List<int>> positionsLease = Buffers<int>.GetList(
+                count,
+                out List<int> positions
+            );
+            positions.Clear();
             for (int index = 0; index < count; index++)
             {
-                positions[index] = indices[index] + 1;
+                positions.Add(indices[index] + 1);
             }
 
-            Array.Sort(positions);
+            positions.Sort();
 
-            string[] parts = new string[count];
+            builder.Append("Duplicate key \"");
+            builder.Append(formattedKey);
+            builder.Append("\" is assigned to entries ");
+
             for (int index = 0; index < count; index++)
             {
-                parts[index] = positions[index].ToString(CultureInfo.InvariantCulture);
+                if (index > 0)
+                {
+                    builder.Append(", ");
+                }
+                builder.Append(positions[index]);
             }
 
-            string joinedPositions = string.Join(", ", parts);
-            return $"Duplicate key \"{formattedKey}\" is assigned to entries {joinedPositions}. The last entry will be used at runtime.";
+            builder.Append(". The last entry will be used at runtime.");
+            return builder.ToString();
         }
 
         internal PendingEntry GetOrCreatePendingEntry(
@@ -2186,7 +2212,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     PaginationLabelWidth,
                     controlsRect.height
                 );
-                PaginationPageLabelContent.text = $"Page {pagination.pageIndex + 1}/{totalPages}";
+                PaginationPageLabelContent.text = GetPaginationLabel(
+                    pagination.pageIndex + 1,
+                    totalPages
+                );
                 EditorGUI.LabelField(
                     pageLabelRect,
                     PaginationPageLabelContent,
@@ -2380,7 +2409,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             GUIStyle footerLabelStyle = GetFooterLabelStyle();
             PaginationRangeContent.text =
-                itemCount == 0 ? "Empty" : $"{pageStart + 1}-{pageEnd} of {itemCount}";
+                itemCount == 0 ? "Empty" : GetRangeLabel(pageStart + 1, pageEnd, itemCount);
             Vector2 rangeSize = footerLabelStyle.CalcSize(PaginationRangeContent);
 
             ListPageCache cache = cacheProvider();
@@ -3420,12 +3449,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             if (!keySupported)
             {
-                return $"Unsupported key type ({keyType.Name})";
+                return BuildUnsupportedTypeMessage("Unsupported key type (", keyType);
             }
 
             if (!valueSupported)
             {
-                return $"Unsupported value type ({valueType.Name})";
+                return BuildUnsupportedTypeMessage("Unsupported value type (", valueType);
             }
 
             if (!keyValid)
@@ -3439,6 +3468,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return "Ready to add entry.";
+        }
+
+        private static string BuildUnsupportedTypeMessage(string prefix, Type type)
+        {
+            using PooledResource<StringBuilder> lease = Buffers.GetStringBuilder(
+                prefix.Length + (type?.Name?.Length ?? 0) + 8,
+                out StringBuilder builder
+            );
+            builder.Clear();
+            builder.Append(prefix);
+            builder.Append(type?.Name ?? "Unknown");
+            builder.Append(')');
+            return builder.ToString();
         }
 
         private static bool PendingEntryIsAtDefault(
@@ -5148,6 +5190,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return EditorGUI.GetPropertyHeight(context.Property, true);
         }
 
+        private static GUIContent GetUnsupportedTypeContent(Type type)
+        {
+            string typeName = type?.Name ?? "Unknown";
+            if (!UnsupportedTypeMessageCache.TryGetValue(type, out string message))
+            {
+                message = "Unsupported type (" + typeName + ")";
+                if (type != null)
+                {
+                    UnsupportedTypeMessageCache[type] = message;
+                }
+            }
+            UnsupportedTypeContent.text = message;
+            return UnsupportedTypeContent;
+        }
+
         internal static object DrawFieldForType(
             Rect rect,
             string label,
@@ -5157,7 +5214,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool isValueField
         )
         {
-            GUIContent content = new(label);
+            ReusableFieldLabelContent.text = label;
+            GUIContent content = ReusableFieldLabelContent;
 
             if (TryDrawPaletteValueField(rect, content, ref current, type))
             {
@@ -5171,11 +5229,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (!IsTypeSupported(type))
             {
-                EditorGUI.LabelField(
-                    rect,
-                    content,
-                    new GUIContent($"Unsupported type ({type.Name})")
-                );
+                EditorGUI.LabelField(rect, content, GetUnsupportedTypeContent(type));
                 return current;
             }
 
@@ -5300,7 +5354,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return EditorGUI.ObjectField(rect, content, obj, type, allowSceneObjects: false);
             }
 
-            EditorGUI.LabelField(rect, content, new GUIContent($"Unsupported type ({type.Name})"));
+            EditorGUI.LabelField(rect, content, GetUnsupportedTypeContent(type));
             return current;
         }
 
@@ -7283,14 +7337,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 foreach (int index in _scratch)
                 {
                     _nullIndices.Add(index);
-                    _nullLookup[index] = new NullKeyInfo
-                    {
-                        tooltip =
-                            $"Null key detected at index {index}. Entry will be ignored at runtime.",
-                    };
+                    _nullLookup[index] = new NullKeyInfo { tooltip = BuildNullKeyTooltip(index) };
                 }
 
                 return true;
+            }
+
+            private static string BuildNullKeyTooltip(int index)
+            {
+                using PooledResource<StringBuilder> lease = Buffers.GetStringBuilder(
+                    64,
+                    out StringBuilder builder
+                );
+                builder.Clear();
+                builder.Append("Null key detected at index ");
+                builder.Append(index);
+                builder.Append(". Entry will be ignored at runtime.");
+                return builder.ToString();
             }
 
             public bool TryGetInfo(int arrayIndex, out NullKeyInfo info)
@@ -7544,9 +7607,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 if (displayedGroups == 0)
                 {
-                    return duplicateGroupCount == 1
-                        ? "Duplicate key detected. Resolve conflicts to prevent silent overwrites. The last entry wins at runtime."
-                        : $"{duplicateGroupCount} duplicate keys detected. Resolve conflicts to prevent silent overwrites. The last entry wins at runtime.";
+                    if (duplicateGroupCount == 1)
+                    {
+                        return "Duplicate key detected. Resolve conflicts to prevent silent overwrites. The last entry wins at runtime.";
+                    }
+
+                    using PooledResource<StringBuilder> lease = Buffers.GetStringBuilder(
+                        128,
+                        out StringBuilder countBuilder
+                    );
+                    countBuilder.Clear();
+                    countBuilder.Append(duplicateGroupCount);
+                    countBuilder.Append(
+                        " duplicate keys detected. Resolve conflicts to prevent silent overwrites. The last entry wins at runtime."
+                    );
+                    return countBuilder.ToString();
                 }
 
                 if (duplicateGroupCount > displayedGroups)
@@ -7557,11 +7632,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
 
                     int remainingGroups = duplicateGroupCount - displayedGroups;
-                    _summaryBuilder.Append(
-                        remainingGroups == 1
-                            ? "1 additional duplicate group omitted for brevity."
-                            : $"{remainingGroups} additional duplicate groups omitted for brevity."
-                    );
+                    if (remainingGroups == 1)
+                    {
+                        _summaryBuilder.Append("1 additional duplicate group omitted for brevity.");
+                    }
+                    else
+                    {
+                        _summaryBuilder.Append(remainingGroups);
+                        _summaryBuilder.Append(" additional duplicate groups omitted for brevity.");
+                    }
                 }
 
                 if (_summaryBuilder.Length > 0)
@@ -7838,6 +7917,78 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return current;
+        }
+
+        private static string GetCachedIntString(int value)
+        {
+            if (value >= 0 && value < IntToStringCacheMax)
+            {
+                if (IntToStringCache.TryGetValue(value, out string cached))
+                {
+                    return cached;
+                }
+
+                string result = value.ToString();
+                IntToStringCache[value] = result;
+                return result;
+            }
+
+            return value.ToString();
+        }
+
+        private static string GetPaginationLabel(int currentPage, int totalPages)
+        {
+            (int, int) key = (currentPage, totalPages);
+            if (PaginationLabelCache.TryGetValue(key, out string cached))
+            {
+                return cached;
+            }
+
+            using PooledResource<StringBuilder> lease = Buffers.GetStringBuilder(
+                24,
+                out StringBuilder builder
+            );
+            builder.Clear();
+            builder.Append("Page ");
+            builder.Append(currentPage);
+            builder.Append('/');
+            builder.Append(totalPages);
+            string result = builder.ToString();
+
+            if (PaginationLabelCache.Count < 10000)
+            {
+                PaginationLabelCache[key] = result;
+            }
+
+            return result;
+        }
+
+        private static string GetRangeLabel(int start, int end, int total)
+        {
+            (int, int, int) key = (start, end, total);
+            if (RangeLabelCache.TryGetValue(key, out string cached))
+            {
+                return cached;
+            }
+
+            using PooledResource<StringBuilder> lease = Buffers.GetStringBuilder(
+                32,
+                out StringBuilder builder
+            );
+            builder.Clear();
+            builder.Append(start);
+            builder.Append('-');
+            builder.Append(end);
+            builder.Append(" of ");
+            builder.Append(total);
+            string result = builder.ToString();
+
+            if (RangeLabelCache.Count < 10000)
+            {
+                RangeLabelCache[key] = result;
+            }
+
+            return result;
         }
     }
 }

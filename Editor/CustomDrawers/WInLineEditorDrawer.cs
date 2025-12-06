@@ -48,7 +48,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             "Ping",
             "Ping object in the Project window"
         );
+        private static readonly GUIContent ReusableHeaderContent = new GUIContent();
+        private static readonly Dictionary<int, string> IntToStringCache =
+            new Dictionary<int, string>();
         private const string ScriptPropertyPath = "m_Script";
+        private const string FoldoutKeySeparator = "::";
+        private const string ScrollKeyPrefix = "scroll";
+
+        private static readonly Dictionary<
+            (int instanceId, string propertyPath),
+            string
+        > FoldoutKeyCache = new Dictionary<(int, string), string>();
+        private static readonly Dictionary<
+            (int instanceId, string propertyPath),
+            string
+        > ScrollKeyCache = new Dictionary<(int, string), string>();
+
+        // Cache for InspectorHeightInfo to avoid redundant calculations within the same frame
+        private static readonly Dictionary<
+            (int instanceId, float width),
+            InspectorHeightInfoCacheEntry
+        > InspectorHeightCache = new Dictionary<(int, float), InspectorHeightInfoCacheEntry>();
+        private static int _lastInspectorHeightCacheFrame = -1;
+
+        private sealed class InspectorHeightInfoCacheEntry
+        {
+            public InspectorHeightInfo heightInfo;
+        }
 
         // Recursion guard to prevent EditorGUI.GetPropertyHeight from triggering
         // our GetPropertyHeight recursively
@@ -684,6 +710,48 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return InspectorHeightInfo.Empty;
             }
 
+            // Check frame-based cache to avoid redundant calculations
+            int currentFrame = Time.frameCount;
+            if (_lastInspectorHeightCacheFrame != currentFrame)
+            {
+                InspectorHeightCache.Clear();
+                _lastInspectorHeightCacheFrame = currentFrame;
+            }
+
+            int instanceId = value.GetInstanceID();
+            // Round width to avoid cache misses from floating point variations
+            float roundedWidth = Mathf.Round(availableWidth);
+            (int, float) cacheKey = (instanceId, roundedWidth);
+
+            if (
+                InspectorHeightCache.TryGetValue(cacheKey, out InspectorHeightInfoCacheEntry cached)
+            )
+            {
+                return cached.heightInfo;
+            }
+
+            InspectorHeightInfo result = CalculateInspectorHeightInfoUncached(
+                value,
+                inlineAttribute,
+                availableWidth
+            );
+
+            if (!InspectorHeightCache.TryGetValue(cacheKey, out cached))
+            {
+                cached = new InspectorHeightInfoCacheEntry();
+                InspectorHeightCache[cacheKey] = cached;
+            }
+            cached.heightInfo = result;
+
+            return result;
+        }
+
+        private static InspectorHeightInfo CalculateInspectorHeightInfoUncached(
+            Object value,
+            WInLineEditorAttribute inlineAttribute,
+            float availableWidth
+        )
+        {
             Editor editor = GetOrCreateEditor(value);
             SerializedObject analysisObject = GetSerializedObjectForAnalysis(editor, value);
             bool hasSerializedData = analysisObject != null;
@@ -1171,12 +1239,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             GUIContent headerContent = EditorGUIUtility.ObjectContent(value, value.GetType());
             if (headerContent == null || string.IsNullOrEmpty(headerContent.text))
             {
-                headerContent = new GUIContent(value.name);
+                ReusableHeaderContent.text = value.name;
+                ReusableHeaderContent.image = headerContent?.image;
+                ReusableHeaderContent.tooltip = headerContent?.tooltip ?? string.Empty;
+                headerContent = ReusableHeaderContent;
             }
 
             if (!string.IsNullOrEmpty(label?.text))
             {
-                headerContent.text = $"{label.text} ({headerContent.text})";
+                ReusableHeaderContent.text = label.text + " (" + headerContent.text + ")";
+                ReusableHeaderContent.image = headerContent.image;
+                ReusableHeaderContent.tooltip = headerContent.tooltip ?? string.Empty;
+                headerContent = ReusableHeaderContent;
             }
 
             if (showFoldoutToggle)
@@ -1211,7 +1285,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Object target =
                 property.serializedObject != null ? property.serializedObject.targetObject : null;
             int id = target != null ? target.GetInstanceID() : 0;
-            return $"{id}::{property.propertyPath}";
+            string propertyPath = property.propertyPath;
+            (int, string) cacheKey = (id, propertyPath);
+            if (!FoldoutKeyCache.TryGetValue(cacheKey, out string key))
+            {
+                key = GetCachedIntString(id) + FoldoutKeySeparator + propertyPath;
+                FoldoutKeyCache[cacheKey] = key;
+            }
+            return key;
         }
 
         private static string BuildScrollKey(SerializedProperty property)
@@ -1219,7 +1300,29 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Object target =
                 property.serializedObject != null ? property.serializedObject.targetObject : null;
             int id = target != null ? target.GetInstanceID() : 0;
-            return $"scroll::{id}::{property.propertyPath}";
+            string propertyPath = property.propertyPath;
+            (int, string) cacheKey = (id, propertyPath);
+            if (!ScrollKeyCache.TryGetValue(cacheKey, out string key))
+            {
+                key =
+                    ScrollKeyPrefix
+                    + FoldoutKeySeparator
+                    + GetCachedIntString(id)
+                    + FoldoutKeySeparator
+                    + propertyPath;
+                ScrollKeyCache[cacheKey] = key;
+            }
+            return key;
+        }
+
+        private static string GetCachedIntString(int value)
+        {
+            if (!IntToStringCache.TryGetValue(value, out string cached))
+            {
+                cached = value.ToString();
+                IntToStringCache[value] = cached;
+            }
+            return cached;
         }
 
         internal static bool ShouldShowPingButton(Object value)
@@ -1306,6 +1409,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             FoldoutStates.Clear();
             ScrollPositions.Clear();
             PropertyWidths.Clear();
+            InspectorHeightCache.Clear();
+            _lastInspectorHeightCacheFrame = -1;
             foreach (Editor cachedEditor in EditorCache.Values)
             {
                 if (cachedEditor != null)

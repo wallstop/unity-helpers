@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 {
 #if UNITY_EDITOR
+    using System;
     using System.Collections.Generic;
     using UnityEditor;
     using WallstopStudios.UnityHelpers.Editor.Internal;
@@ -13,6 +14,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     [CanEditMultipleObjects]
     public sealed class WButtonInspector : Editor
     {
+        private const string ScriptPropertyPath = "m_Script";
+
+        private static readonly WallstopGenericPool<
+            Dictionary<string, SerializedProperty>
+        > PropertyLookupPool = new(
+            () => new Dictionary<string, SerializedProperty>(16, StringComparer.Ordinal),
+            onRelease: d => d.Clear()
+        );
+
         private readonly Dictionary<int, WButtonPaginationState> _paginationStates = new();
         private readonly Dictionary<int, bool> _foldoutStates = new();
         private readonly Dictionary<int, bool> _groupFoldoutStates = new();
@@ -27,8 +37,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
             serializedObject.UpdateIfRequiredOrScript();
 
-            SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
-            string scriptPath = scriptProperty != null ? scriptProperty.propertyPath : null;
+            using PooledResource<Dictionary<string, SerializedProperty>> propertyLookupLease =
+                PropertyLookupPool.Get(out Dictionary<string, SerializedProperty> propertyLookup);
+
+            SerializedProperty scriptProperty = BuildPropertyLookup(
+                serializedObject,
+                propertyLookup
+            );
+
             bool drawScriptField = scriptProperty != null && !InlineInspectorContext.IsActive;
             if (drawScriptField)
             {
@@ -61,7 +77,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 EditorGUILayout.Space();
             }
 
-            string scriptPathOrNull = scriptPath;
+            string scriptPathOrNull = scriptProperty != null ? scriptProperty.propertyPath : null;
             WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, scriptPathOrNull);
             IReadOnlyList<WGroupDrawOperation> operations = layout.Operations;
 
@@ -76,12 +92,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                         continue;
                     }
 
-                    WGroupGUI.DrawGroup(definition, serializedObject, _groupFoldoutStates);
+                    WGroupGUI.DrawGroup(
+                        definition,
+                        serializedObject,
+                        _groupFoldoutStates,
+                        propertyLookup
+                    );
                     continue;
                 }
 
-                SerializedProperty property = serializedObject.FindProperty(operation.PropertyPath);
-                if (property == null)
+                if (
+                    !propertyLookup.TryGetValue(
+                        operation.PropertyPath,
+                        out SerializedProperty property
+                    )
+                )
                 {
                     continue;
                 }
@@ -110,6 +135,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
             {
                 WButtonInvocationController.ProcessTriggeredMethods(triggeredContexts);
             }
+        }
+
+        private static SerializedProperty BuildPropertyLookup(
+            SerializedObject serializedObject,
+            Dictionary<string, SerializedProperty> propertyLookup
+        )
+        {
+            propertyLookup.Clear();
+            SerializedProperty scriptProperty = null;
+            SerializedProperty iterator = serializedObject.GetIterator();
+            bool enterChildren = true;
+
+            while (iterator.NextVisible(enterChildren))
+            {
+                enterChildren = false;
+                string path = iterator.propertyPath;
+
+                if (string.Equals(path, ScriptPropertyPath, StringComparison.Ordinal))
+                {
+                    scriptProperty = iterator.Copy();
+                    continue;
+                }
+
+                propertyLookup[path] = iterator.Copy();
+            }
+
+            return scriptProperty;
         }
     }
 #endif

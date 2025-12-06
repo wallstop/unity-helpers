@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 {
 #if UNITY_EDITOR
+    using System;
     using System.Collections.Generic;
     using UnityEditor;
     using UnityEngine;
@@ -15,11 +16,42 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             SerializedProperty property
         );
 
+        /// <summary>
+        /// Draws a group using a pre-built property lookup to avoid FindProperty allocations.
+        /// </summary>
+        internal static void DrawGroup(
+            WGroupDefinition definition,
+            SerializedObject serializedObject,
+            Dictionary<int, bool> foldoutStates,
+            IReadOnlyDictionary<string, SerializedProperty> propertyLookup,
+            PropertyOverride overrideDrawer = null
+        )
+        {
+            DrawGroupInternal(
+                definition,
+                serializedObject,
+                foldoutStates,
+                propertyLookup,
+                overrideDrawer
+            );
+        }
+
         internal static void DrawGroup(
             WGroupDefinition definition,
             SerializedObject serializedObject,
             Dictionary<int, bool> foldoutStates,
             PropertyOverride overrideDrawer = null
+        )
+        {
+            DrawGroupInternal(definition, serializedObject, foldoutStates, null, overrideDrawer);
+        }
+
+        private static void DrawGroupInternal(
+            WGroupDefinition definition,
+            SerializedObject serializedObject,
+            Dictionary<int, bool> foldoutStates,
+            IReadOnlyDictionary<string, SerializedProperty> propertyLookup,
+            PropertyOverride overrideDrawer
         )
         {
             if (definition == null || serializedObject == null)
@@ -84,8 +116,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                         for (int index = 0; index < propertyCount; index++)
                         {
                             string propertyPath = propertyPaths[index];
-                            SerializedProperty property = serializedObject.FindProperty(
-                                propertyPath
+                            SerializedProperty property = ResolveProperty(
+                                serializedObject,
+                                propertyPath,
+                                propertyLookup
                             );
                             if (property == null)
                             {
@@ -224,6 +258,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         {
             float spacing = Mathf.Max(1f, EditorGUIUtility.standardVerticalSpacing);
             GUILayout.Space(spacing);
+        }
+
+        private static SerializedProperty ResolveProperty(
+            SerializedObject serializedObject,
+            string propertyPath,
+            IReadOnlyDictionary<string, SerializedProperty> propertyLookup
+        )
+        {
+            if (
+                propertyLookup != null
+                && propertyLookup.TryGetValue(propertyPath, out SerializedProperty cached)
+            )
+            {
+                return cached;
+            }
+
+            return serializedObject.FindProperty(propertyPath);
         }
     }
 

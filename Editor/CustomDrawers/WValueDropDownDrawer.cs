@@ -25,6 +25,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public int page;
         }
 
+        private sealed class DisplayLabelsCache
+        {
+            public object[] sourceOptions;
+            public string[] labels;
+        }
+
         private const float ClearWidth = 50f;
         private const float ButtonWidth = 24f;
         private const float PageLabelWidth = 90f;
@@ -42,6 +48,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static float s_cachedOptionControlHeight = -1f;
         private static float s_cachedOptionRowHeight = -1f;
         private static readonly Dictionary<string, PopupState> PopupStates = new();
+        private static readonly Dictionary<int, string> IntToStringCache = new();
+        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
+        private static readonly Dictionary<string, DisplayLabelsCache> DisplayLabelsCaches = new(
+            StringComparer.Ordinal
+        );
+        private static readonly Dictionary<object, string> FormattedOptionCache = new();
+
+        private static string GetCachedIntString(int value)
+        {
+            if (!IntToStringCache.TryGetValue(value, out string cached))
+            {
+                cached = value.ToString();
+                IntToStringCache[value] = cached;
+            }
+            return cached;
+        }
+
+        private static string GetPaginationLabel(int page, int totalPages)
+        {
+            (int, int) key = (page, totalPages);
+            if (!PaginationLabelCache.TryGetValue(key, out string cached))
+            {
+                cached = "Page " + GetCachedIntString(page) + "/" + GetCachedIntString(totalPages);
+                PaginationLabelCache[key] = cached;
+            }
+            return cached;
+        }
 
         private static PopupState GetOrCreateState(string key)
         {
@@ -93,7 +126,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             EditorGUI.BeginProperty(position, label, property);
-            string[] displayOptions = BuildDisplayLabels(options);
+            string cacheKey = property.propertyPath;
+            string[] displayOptions = GetOrCreateDisplayLabels(cacheKey, options);
             int currentIndex = ResolveSelectedIndex(property, dropdownAttribute.ValueType, options);
             int newIndex = EditorGUI.Popup(position, label.text, currentIndex, displayOptions);
             if (newIndex >= 0 && newIndex < options.Length)
@@ -202,7 +236,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             GUIContent buttonContent = new(displayValue, tooltip);
             if (EditorGUI.DropdownButton(fieldRect, buttonContent, FocusType.Keyboard))
             {
-                string[] displayLabels = BuildDisplayLabels(options);
+                string cacheKey = property.propertyPath + "::popup";
+                string[] displayLabels = GetOrCreateDisplayLabels(cacheKey, options);
                 int currentIndex = ResolveSelectedIndex(property, attribute.ValueType, options);
 
                 SerializedObject serializedObject = property.serializedObject;
@@ -284,7 +319,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int selectedIndex = ResolveSelectedIndex(property, attribute.ValueType, options);
             if (selectedIndex >= 0 && selectedIndex < options.Length)
             {
-                return FormatOption(options[selectedIndex]);
+                return FormatOptionCached(options[selectedIndex]);
             }
 
             return string.Empty;
@@ -419,30 +454,84 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return false;
         }
 
-        private static string[] BuildDisplayLabels(object[] options)
+        private static string[] GetOrCreateDisplayLabels(string cacheKey, object[] options)
+        {
+            if (
+                DisplayLabelsCaches.TryGetValue(cacheKey, out DisplayLabelsCache cached)
+                && cached != null
+            )
+            {
+                if (ReferenceEquals(cached.sourceOptions, options))
+                {
+                    return cached.labels;
+                }
+
+                if (
+                    cached.sourceOptions != null
+                    && cached.sourceOptions.Length == options.Length
+                    && cached.labels != null
+                    && cached.labels.Length == options.Length
+                )
+                {
+                    bool match = true;
+                    for (int i = 0; i < options.Length && match; i++)
+                    {
+                        if (!Equals(cached.sourceOptions[i], options[i]))
+                        {
+                            match = false;
+                        }
+                    }
+                    if (match)
+                    {
+                        return cached.labels;
+                    }
+                }
+            }
+
+            string[] labels = BuildDisplayLabelsUncached(options);
+            DisplayLabelsCaches[cacheKey] = new DisplayLabelsCache
+            {
+                sourceOptions = options,
+                labels = labels,
+            };
+            return labels;
+        }
+
+        private static string[] BuildDisplayLabelsUncached(object[] options)
         {
             string[] labels = new string[options.Length];
             for (int index = 0; index < options.Length; index += 1)
             {
-                labels[index] = FormatOption(options[index]);
+                labels[index] = FormatOptionCached(options[index]);
             }
 
             return labels;
         }
 
-        private static string FormatOption(object option)
+        private static string FormatOptionCached(object option)
         {
             if (option == null)
             {
                 return "(null)";
             }
 
-            if (option is IFormattable formattable)
+            if (FormattedOptionCache.TryGetValue(option, out string cached))
             {
-                return formattable.ToString(null, CultureInfo.InvariantCulture);
+                return cached;
             }
 
-            return option.ToString();
+            string formatted;
+            if (option is IFormattable formattable)
+            {
+                formatted = formattable.ToString(null, CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                formatted = option.ToString();
+            }
+
+            FormattedOptionCache[option] = formatted;
+            return formatted;
         }
 
         internal static void ApplyOption(SerializedProperty property, object selectedOption)
@@ -565,6 +654,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly WValueDropDownAttribute _attribute;
             private static readonly GUIContent PreviousPageContent = new("<", "Previous page");
             private static readonly GUIContent NextPageContent = new(">", "Next page");
+            private static readonly GUIContent ReusableOptionContent = new();
             private int _pageSize;
             private float _emptyStateMeasuredHeight = -1f;
 
@@ -643,7 +733,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     {
                         for (int i = 0; i < _options.Length; i++)
                         {
-                            string optionLabel = FormatOption(_options[i]);
+                            string optionLabel = FormatOptionCached(_options[i]);
                             if (
                                 optionLabel.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase)
                                 >= 0
@@ -808,7 +898,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
 
                     GUILayout.Label(
-                        $"Page {_state.page + 1}/{Mathf.Max(1, pageCount)}",
+                        GetPaginationLabel(_state.page + 1, Mathf.Max(1, pageCount)),
                         PopupStyles.PaginationLabel,
                         GUILayout.Width(PageLabelWidth),
                         GUILayout.Height(PopupStyles.PaginationButtonLeft.fixedHeight)
@@ -887,7 +977,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 int count = 0;
                 for (int i = 0; i < _options.Length; i++)
                 {
-                    string optionLabel = FormatOption(_options[i]);
+                    string optionLabel = FormatOptionCached(_options[i]);
                     if (optionLabel.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         count++;
@@ -930,9 +1020,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 string label =
                     optionIndex >= 0 && optionIndex < _options.Length
-                        ? FormatOption(_options[optionIndex])
+                        ? FormatOptionCached(_options[optionIndex])
                         : string.Empty;
-                return new GUIContent(label);
+                ReusableOptionContent.text = label;
+                ReusableOptionContent.tooltip = string.Empty;
+                return ReusableOptionContent;
             }
         }
 
@@ -1417,7 +1509,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     for (int i = 0; i < _options.Length; i++)
                     {
-                        string optionLabel = FormatOption(_options[i]);
+                        string optionLabel = FormatOptionCached(_options[i]);
                         bool matchesValue = optionLabel.StartsWith(
                             effectiveSearch,
                             StringComparison.OrdinalIgnoreCase
@@ -1484,7 +1576,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 for (int i = startIndex; i < endIndex; i++)
                 {
                     int optionIndex = hasSearch ? _filteredIndices[i] : i;
-                    string optionLabel = FormatOption(_options[optionIndex]);
+                    string optionLabel = FormatOptionCached(_options[optionIndex]);
                     _pageOptionIndices.Add(optionIndex);
                     _pageChoices.Add(optionLabel);
                 }
@@ -1494,7 +1586,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 string dropdownValue = string.Empty;
                 if (selectedOptionIndex >= 0)
                 {
-                    dropdownValue = FormatOption(_options[selectedOptionIndex]);
+                    dropdownValue = FormatOptionCached(_options[selectedOptionIndex]);
                 }
 
                 if (string.IsNullOrEmpty(dropdownValue) && _pageChoices.Count > 0)
@@ -1586,7 +1678,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 int clampedPageCount = Math.Max(1, pageCount);
                 _pageIndex = Mathf.Clamp(_pageIndex, 0, clampedPageCount - 1);
-                _pageLabel.text = $"Page {_pageIndex + 1}/{clampedPageCount}";
+                _pageLabel.text = GetPaginationLabel(_pageIndex + 1, clampedPageCount);
                 _previousButton.SetEnabled(_pageIndex > 0);
                 _nextButton.SetEnabled(_pageIndex < clampedPageCount - 1);
             }
@@ -1611,7 +1703,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 bool searchVisible = hasSearch && !string.IsNullOrEmpty(_searchText);
                 int optionIndex = _filteredIndices[0];
-                string optionLabel = FormatOption(_options[optionIndex]);
+                string optionLabel = FormatOptionCached(_options[optionIndex]);
                 bool prefixMatch =
                     searchVisible
                     && optionLabel.StartsWith(_searchText, StringComparison.OrdinalIgnoreCase);
@@ -1777,7 +1869,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 for (int i = 0; i < _options.Length; i++)
                 {
-                    string label = FormatOption(_options[i]);
+                    string label = FormatOptionCached(_options[i]);
                     if (string.Equals(label, optionLabel, StringComparison.Ordinal))
                     {
                         return i;
@@ -1806,7 +1898,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 ApplyOption(property, _options[optionIndex]);
 
-                SetValueWithoutNotify(FormatOption(_options[optionIndex]));
+                SetValueWithoutNotify(FormatOptionCached(_options[optionIndex]));
                 serializedObject.ApplyModifiedProperties();
                 UpdateFromProperty();
             }
