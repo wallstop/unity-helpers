@@ -4,16 +4,14 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Threading;
-    using System.Threading.Tasks;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
 
     [TestFixture]
     public sealed class WButtonMetadataCacheTests : CommonTestBase
@@ -120,7 +118,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         public void ResolveCustomColorReturnsDefaultsAndOverrides()
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            using SerializedObject serialized = new SerializedObject(settings);
+            using SerializedObject serialized = new(settings);
             SerializedProperty palette = serialized.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
@@ -239,37 +237,6 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             }
 
             return -1;
-        }
-
-        private sealed class SampleTarget : ScriptableObject
-        {
-            [WButton(drawOrder: 2)]
-            public void NoParamsVoid() { }
-
-            [WButton(drawOrder: 5)]
-            public async Task<int> TaskMethodAsync(int value)
-            {
-                await Task.Delay(10);
-                return value;
-            }
-
-            [WButton(drawOrder: -2)]
-            public IEnumerator<object> EnumeratorMethod()
-            {
-                yield return null;
-            }
-
-            [WButton]
-            public void MethodWithCancellation(CancellationToken cancellationToken) { }
-
-            [WButton]
-            public void MethodWithDefaults(int count = 7, string label = "hello") { }
-
-            [WButton(priority: "Critical")]
-            public void PriorityMethod() { }
-
-            [WButton(drawOrder: -3, groupName: "Utilities")]
-            public void NamedGroupMethod() { }
         }
     }
 }

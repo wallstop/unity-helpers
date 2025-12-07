@@ -1,0 +1,38 @@
+namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
+{
+    using System;
+    using System.Collections.Generic;
+    using UnityEngine;
+
+    internal sealed class SerializedPropertyExtensionsTestContainer : ScriptableObject
+    {
+        public int publicInt = 5;
+
+        [SerializeField]
+        internal string privateString = "hello";
+
+        public int[] intArray = new[] { 10, 20, 30 };
+        public List<int> intList = new() { 1, 2, 3 };
+
+        public Nested nested = new();
+
+        public string GetPrivateString() => privateString;
+
+        [Serializable]
+        public class Inner
+        {
+            public int x = 7;
+        }
+
+        [Serializable]
+        public class Nested
+        {
+            public float f = 3.14f;
+
+            [SerializeField]
+            internal Inner inner = new();
+
+            public Inner GetInner() => inner;
+        }
+    }
+}

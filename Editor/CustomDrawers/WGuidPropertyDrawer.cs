@@ -4,12 +4,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using System;
     using System.Buffers.Binary;
     using System.Collections.Generic;
-    using System.Text;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
-    using WallstopStudios.UnityHelpers.Utils;
 
     [CustomPropertyDrawer(typeof(WGuid))]
     public sealed class WGuidPropertyDrawer : PropertyDrawer

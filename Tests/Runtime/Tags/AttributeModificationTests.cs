@@ -5,7 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Serialization;
     using WallstopStudios.UnityHelpers.Tags;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public abstract class AttributeTagsTestBase : CommonTestBase
     {

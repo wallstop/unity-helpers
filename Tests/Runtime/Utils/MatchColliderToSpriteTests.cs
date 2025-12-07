@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine;
     using UnityEngine.TestTools;
     using UnityEngine.UI;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class MatchColliderToSpriteTests : CommonTestBase
@@ -12,8 +13,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         private Sprite _testSprite;
 
         [SetUp]
-        public void SetUpSprite()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             Texture2D texture = Track(new Texture2D(64, 64));
             _testSprite = Track(
                 Sprite.Create(texture, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f), 100f)

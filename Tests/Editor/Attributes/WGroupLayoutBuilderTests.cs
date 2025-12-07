@@ -4,11 +4,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEditor;
-    using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
 
     [TestFixture]
     public sealed class WGroupLayoutBuilderTests : CommonTestBase
@@ -49,7 +48,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             FiniteGroupAsset asset = CreateScriptableObject<FiniteGroupAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -82,7 +81,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             InfiniteGroupAsset asset = CreateScriptableObject<InfiniteGroupAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -113,7 +112,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             NamedEndGroupAsset asset = CreateScriptableObject<NamedEndGroupAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -156,7 +155,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             MultipleSegmentAsset asset = CreateScriptableObject<MultipleSegmentAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -200,7 +199,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             CollapsibleAsset asset = CreateScriptableObject<CollapsibleAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -226,7 +225,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             CollapsibleDefaultAsset collapsedAsset =
                 CreateScriptableObject<CollapsibleDefaultAsset>();
-            using SerializedObject collapsedSerialized = new SerializedObject(collapsedAsset);
+            using SerializedObject collapsedSerialized = new(collapsedAsset);
             collapsedSerialized.Update();
 
             SerializedProperty collapsedScript = collapsedSerialized.FindProperty("m_Script");
@@ -253,7 +252,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             settings.WGroupFoldoutsStartCollapsed = false;
             CollapsibleDefaultAsset expandedAsset =
                 CreateScriptableObject<CollapsibleDefaultAsset>();
-            using SerializedObject expandedSerialized = new SerializedObject(expandedAsset);
+            using SerializedObject expandedSerialized = new(expandedAsset);
             expandedSerialized.Update();
 
             SerializedProperty expandedScript = expandedSerialized.FindProperty("m_Script");
@@ -282,7 +281,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             CollapsibleExplicitCollapsedAsset asset =
                 CreateScriptableObject<CollapsibleExplicitCollapsedAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -303,7 +302,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             CollapsibleExplicitExpandedAsset asset =
                 CreateScriptableObject<CollapsibleExplicitExpandedAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -324,7 +323,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             settings.WGroupFoldoutsStartCollapsed = true;
 
             CollapsibleDefaultAsset asset1 = CreateScriptableObject<CollapsibleDefaultAsset>();
-            using SerializedObject serialized1 = new SerializedObject(asset1);
+            using SerializedObject serialized1 = new(asset1);
             serialized1.Update();
 
             SerializedProperty script1 = serialized1.FindProperty("m_Script");
@@ -344,7 +343,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             settings.WGroupFoldoutsStartCollapsed = false;
 
             CollapsibleDefaultAsset asset2 = CreateScriptableObject<CollapsibleDefaultAsset>();
-            using SerializedObject serialized2 = new SerializedObject(asset2);
+            using SerializedObject serialized2 = new(asset2);
             serialized2.Update();
 
             SerializedProperty script2 = serialized2.FindProperty("m_Script");
@@ -371,7 +370,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
 
             ColorKeyAsset asset = CreateScriptableObject<ColorKeyAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
@@ -389,98 +388,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 UnityHelpersSettings.ResolveWGroupPalette(definition.ColorKey);
             Assert.That(entry.BackgroundColor.a, Is.GreaterThan(0f));
             Assert.IsTrue(UnityHelpersSettings.HasWGroupPaletteColorKey(definition.ColorKey));
-        }
-
-        private sealed class FiniteGroupAsset : ScriptableObject
-        {
-            [WGroup("Stats")]
-            public int primary;
-
-            public int secondary;
-
-            public int tertiary;
-
-            public int outside;
-        }
-
-        private sealed class InfiniteGroupAsset : ScriptableObject
-        {
-            [WGroup("Stream", autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
-            public string start;
-
-            public string mid;
-
-            [WGroupEnd]
-            public string terminator;
-
-            public string trailing;
-        }
-
-        private sealed class NamedEndGroupAsset : ScriptableObject
-        {
-            [WGroup("Alpha", autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
-            public int alphaStart;
-
-            public int alphaMid;
-
-            [WGroup("Beta", autoIncludeCount: 1)]
-            public int betaStart;
-
-            public int betaTail;
-
-            [WGroupEnd("Alpha")]
-            public int alphaStop;
-
-            public int alphaOutside;
-        }
-
-        private sealed class MultipleSegmentAsset : ScriptableObject
-        {
-            [WGroup("Segments", autoIncludeCount: 0)]
-            public int first;
-
-            public int outside;
-
-            [WGroup("Segments", autoIncludeCount: 1)]
-            public int second;
-
-            public int third;
-        }
-
-        private sealed class CollapsibleAsset : ScriptableObject
-        {
-            [WGroup("ToggleGroup", autoIncludeCount: 1, collapsible: true, startCollapsed: true)]
-            public int first;
-
-            public int second;
-        }
-
-        private sealed class CollapsibleDefaultAsset : ScriptableObject
-        {
-            [WGroup("DefaultGroup", collapsible: true)]
-            public int first;
-        }
-
-        private sealed class CollapsibleExplicitCollapsedAsset : ScriptableObject
-        {
-            [WGroup("ExplicitCollapsed", collapsible: true, startCollapsed: true)]
-            public int first;
-        }
-
-        private sealed class CollapsibleExplicitExpandedAsset : ScriptableObject
-        {
-            [WGroup(
-                "ExplicitExpanded",
-                collapsible: true,
-                CollapseBehavior = WGroupAttribute.WGroupCollapseBehavior.ForceExpanded
-            )]
-            public int first;
-        }
-
-        private sealed class ColorKeyAsset : ScriptableObject
-        {
-            [WGroup("PaletteGroup", colorKey: "TestPalette_WGroup", hideHeader: true)]
-            public float value;
         }
     }
 }

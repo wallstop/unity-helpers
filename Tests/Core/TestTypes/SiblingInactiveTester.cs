@@ -1,0 +1,14 @@
+namespace WallstopStudios.UnityHelpers.Tests.Core.TestTypes
+{
+    using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+
+    public sealed class SiblingInactiveTester : MonoBehaviour
+    {
+        [SiblingComponent(IncludeInactive = true)]
+        public BoxCollider includeInactive;
+
+        [SiblingComponent(IncludeInactive = false, Optional = true)]
+        public BoxCollider excludeInactive;
+    }
+}

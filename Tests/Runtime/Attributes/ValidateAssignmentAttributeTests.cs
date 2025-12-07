@@ -1,13 +1,12 @@
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
-    using System;
     using System.Collections;
-    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
     [TestFixture]
     public sealed class ValidateAssignmentAttributeTests : CommonTestBase
@@ -74,23 +73,5 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             component.ValidateAssignments();
             yield break;
         }
-    }
-
-    internal sealed class AssignmentComponent : MonoBehaviour
-    {
-        [ValidateAssignment]
-        public GameObject requiredObject;
-
-        [ValidateAssignment]
-        public string requiredString;
-
-        [ValidateAssignment]
-        public List<int> requiredList = new();
-
-        [ValidateAssignment]
-        public Queue<int> requiredCollection = new();
-
-        [ValidateAssignment]
-        public IEnumerable<int> requiredEnumerable = Array.Empty<int>();
     }
 }

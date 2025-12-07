@@ -5,10 +5,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using System.Linq;
     using System.Reflection;
     using NUnit.Framework;
-    using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
 
     [TestFixture]
     public sealed class AnimationEventHelpersTests : CommonTestBase
@@ -111,61 +110,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
     }
 
-    internal enum AnimationEventSignal
+    public enum AnimationEventSignal
     {
         Ready,
         Done,
-    }
-
-    internal sealed class AnimationEventPlainBehaviour : MonoBehaviour { }
-
-    internal class AnimationEventSource : MonoBehaviour
-    {
-        [AnimationEvent]
-        protected internal void SimpleEvent() { }
-
-        [AnimationEvent(ignoreDerived = false)]
-        protected internal void AllowDerived() { }
-
-        [AnimationEvent]
-        private int InvalidReturn() => 0;
-
-        [AnimationEvent]
-        private void InvalidParameter(Vector3 _) { }
-    }
-
-    internal sealed class AnimationEventDerivedIgnore : AnimationEventSource { }
-
-    internal sealed class AnimationEventDerivedAllowed : AnimationEventSource
-    {
-        [AnimationEvent(ignoreDerived = false)]
-        internal void DerivedOnly() { }
-    }
-
-    internal sealed class AnimationEventSignatureHost : MonoBehaviour
-    {
-        [AnimationEvent]
-        public void NoArgs() { }
-
-        [AnimationEvent]
-        public void WithInt(int value) { }
-
-        [AnimationEvent]
-        public void WithEnum(AnimationEventSignal signal) { }
-
-        [AnimationEvent]
-        public void WithFloat(float value) { }
-
-        [AnimationEvent]
-        public void WithString(string text) { }
-
-        [AnimationEvent]
-        public void WithUnityObject(UnityEngine.Object target) { }
-
-        [AnimationEvent]
-        public void TwoParameters(int value, string text) { }
-
-        [AnimationEvent]
-        public int NonVoidReturn() => 0;
     }
 }

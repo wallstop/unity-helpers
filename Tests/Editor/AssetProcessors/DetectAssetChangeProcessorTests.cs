@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 {
     using System;
+    using System.IO;
     using System.Text.RegularExpressions;
     using NUnit.Framework;
     using UnityEditor;
@@ -9,9 +10,10 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
 
-    public sealed class DetectAssetChangeProcessorTests
+    public sealed class DetectAssetChangeProcessorTests : CommonTestBase
     {
         private const string Root = "Assets/__DetectAssetChangedTests__";
         private const string HandlerAssetPath = Root + "/Handler.asset";
@@ -23,9 +25,18 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         private Func<double> _originalTimeProvider;
         private float _originalLoopWindowSeconds;
 
-        [SetUp]
-        public void SetUp()
+        [OneTimeSetUp]
+        public void OneTimeSetUp()
         {
+            // Clean up any leftover test folders from previous test runs
+            CleanupTestFolders();
+            AssetDatabase.Refresh();
+        }
+
+        [SetUp]
+        public override void BaseSetUp()
+        {
+            base.BaseSetUp();
             DetectAssetChangeProcessor.IncludeTestAssets = true;
             EnsureFolder();
             EnsureHandlerAsset<TestDetectAssetChangeHandler>(HandlerAssetPath);
@@ -40,7 +51,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
             DetectAssetChangeProcessor.IncludeTestAssets = false;
             DeleteAssetIfExists(PayloadAssetPath);
@@ -49,12 +60,9 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             DeleteAssetIfExists(DetailedHandlerAssetPath);
             DeleteAssetIfExists(AssignableHandlerAssetPath);
 
-            if (AssetDatabase.IsValidFolder(Root))
-            {
-                AssetDatabase.DeleteAsset(Root);
-            }
+            // Clean up test folder and any duplicates that may have been created
+            CleanupTestFolders();
 
-            AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             ClearTestState();
             DetectAssetChangeProcessor.TimeProvider = _originalTimeProvider;
@@ -69,6 +77,75 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             )
             {
                 settings.DetectAssetChangeLoopWindowSeconds = _originalLoopWindowSeconds;
+            }
+
+            base.TearDown();
+        }
+
+        /// <summary>
+        /// Cleans up all test folders including any duplicates created due to AssetDatabase issues.
+        /// This handles scenarios like "__DetectAssetChangedTests__ 1", "__DetectAssetChangedTests__ 2", etc.
+        /// </summary>
+        private static void CleanupTestFolders()
+        {
+            // Delete the main test folder
+            if (AssetDatabase.IsValidFolder(Root))
+            {
+                AssetDatabase.DeleteAsset(Root);
+            }
+
+            // Clean up any duplicate folders that may have been created
+            // These can be created when AssetDatabase.CreateFolder fails but Unity creates the folder anyway
+            string[] allFolders = AssetDatabase.GetSubFolders("Assets");
+            if (allFolders != null)
+            {
+                foreach (string folder in allFolders)
+                {
+                    string folderName = Path.GetFileName(folder);
+                    if (
+                        folderName != null
+                        && folderName.StartsWith(
+                            "__DetectAssetChangedTests__",
+                            StringComparison.Ordinal
+                        )
+                    )
+                    {
+                        AssetDatabase.DeleteAsset(folder);
+                    }
+                }
+            }
+
+            // Also clean up from disk to handle orphaned folders
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            if (!string.IsNullOrEmpty(projectRoot))
+            {
+                string assetsFolder = Path.Combine(projectRoot, "Assets");
+                if (Directory.Exists(assetsFolder))
+                {
+                    try
+                    {
+                        foreach (
+                            string dir in Directory.GetDirectories(
+                                assetsFolder,
+                                "__DetectAssetChangedTests__*"
+                            )
+                        )
+                        {
+                            try
+                            {
+                                Directory.Delete(dir, recursive: true);
+                            }
+                            catch
+                            {
+                                // Ignore - folder may be locked
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore enumeration errors
+                    }
+                }
             }
         }
 
@@ -273,7 +350,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             sb.AppendLine($"Asset path: {assetPath}");
 
             // Check if asset exists
-            UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(assetPath);
+            Object asset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
             sb.AppendLine($"Asset exists: {asset != null}");
             if (asset != null)
             {
@@ -834,9 +911,26 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 
         private static void EnsureFolder()
         {
+            // Ensure the folder exists on disk first to prevent AssetDatabase.CreateFolder from failing
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            if (!string.IsNullOrEmpty(projectRoot))
+            {
+                string absoluteDirectory = Path.Combine(projectRoot, Root);
+                if (!Directory.Exists(absoluteDirectory))
+                {
+                    Directory.CreateDirectory(absoluteDirectory);
+                }
+            }
+
             if (!AssetDatabase.IsValidFolder(Root))
             {
-                AssetDatabase.CreateFolder("Assets", "__DetectAssetChangedTests__");
+                string result = AssetDatabase.CreateFolder("Assets", "__DetectAssetChangedTests__");
+                if (string.IsNullOrEmpty(result))
+                {
+                    Debug.LogWarning(
+                        $"EnsureFolder: Failed to create folder '{Root}' in AssetDatabase"
+                    );
+                }
             }
         }
 

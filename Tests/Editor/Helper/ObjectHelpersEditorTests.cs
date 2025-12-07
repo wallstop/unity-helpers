@@ -5,7 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class ObjectHelpersEditorTests : CommonTestBase
     {
@@ -14,8 +14,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         private string _assetPath;
 
         [SetUp]
-        public void Setup()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             if (!AssetDatabase.IsValidFolder(TempFolder))
             {
                 AssetDatabase.CreateFolder("Assets", "TempObjectHelpersEditorTests");

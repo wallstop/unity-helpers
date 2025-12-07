@@ -9,7 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine.SceneManagement;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
     using WallstopStudios.UnityHelpers.Utils;
 #if UNITY_EDITOR
     using UnityEditor.SceneManagement;
@@ -233,8 +234,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             return relativePath;
         }
 
-        private sealed class MissingSceneComponent : MonoBehaviour { }
-
         private static class SceneHelperTestsUtilities
         {
             public static bool TryEnsureSceneLoaded(
@@ -271,7 +270,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 return scene.IsValid() && scene.isLoaded;
             }
 
-            public static System.Collections.IEnumerator UnloadSceneAsync(string scenePath)
+            public static IEnumerator UnloadSceneAsync(string scenePath)
             {
 #if UNITY_EDITOR
                 if (EditorSceneManager.CloseScene(SceneManager.GetSceneByPath(scenePath), true))

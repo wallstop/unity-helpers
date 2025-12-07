@@ -5,8 +5,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class ConcaveHullPerformanceTests : CommonTestBase
     {

@@ -1,80 +1,87 @@
-IntDropdownMethodThrowingExceptionLogsErrorAndReturnsEmpty (0.003s)
+NullPath (0.362s)
+Null path should return false without error
 ---
-Unhandled log message: '[Error] WValueDropDownAttribute: Invocation of 'WallstopStudios.UnityHelpers.Tests.Attributes.DropdownAttributeTests+IntProviders.ThrowingProvider' threw InvalidOperationException.'. Use UnityEngine.TestTools.LogAssert.Expect
+Unhandled log message: '[Error] 159.3835|[PrefabChecker]|Selected folder must be inside the Unity project's Assets folder. Selected path: '. Use UnityEngine.TestTools.LogAssert.Expect
 ---
-WallstopStudios.UnityHelpers.Core.Attributes.DropdownValueProvider/<>c__DisplayClass2_0:<FromMethod>b__0 () (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/DropdownValueProvider.cs:237)
-WallstopStudios.UnityHelpers.Core.Attributes.WValueDropDownAttribute/<>c__DisplayClass45_0:<WrapStaticFactory>b__0 (object) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/WValueDropDownAttribute.cs:472)
-WallstopStudios.UnityHelpers.Core.Attributes.WValueDropDownAttribute:GetOptions (object) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/WValueDropDownAttribute.cs:260)
-WallstopStudios.UnityHelpers.Core.Attributes.IntDropdownAttribute:GetOptions (object) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/IntDropdownAttribute.cs:111)
-WallstopStudios.UnityHelpers.Core.Attributes.IntDropdownAttribute:get_Options () (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/IntDropdownAttribute.cs:97)
-WallstopStudios.UnityHelpers.Tests.Attributes.DropdownAttributeTests:IntDropdownMethodThrowingExceptionLogsErrorAndReturnsEmpty () (at ./Packages/com.wallstop-studios.unity-helpers/Tests/Runtime/Attributes/DropdownAttributeTests.cs:134)
+WallstopStudios.UnityHelpers.Core.Helper.Logging.UnityLogTagFormatter:LogError (System.FormattableString,UnityEngine.Object,System.Exception,bool) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Helper/Logging/UnityLogTagFormatter.cs:321)
+WallstopStudios.UnityHelpers.Core.Extension.WallstopStudiosLogger:LogError (UnityEngine.Object,System.FormattableString,System.Exception,bool) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Extension/WallstopStudiosLogger.cs:258)
+WallstopStudios.UnityHelpers.Editor.PrefabChecker:TryAddFolderFromAbsolute (string) (at ./Packages/com.wallstop-studios.unity-helpers/Editor/PrefabChecker.cs:339)
+WallstopStudios.UnityHelpers.Tests.Windows.PrefabCheckerFolderAdditionTests:TryAddFolderFromAbsoluteHandlesEdgeCases (string,bool,bool) (at ./Packages/com.wallstop-studios.unity-helpers/Tests/Editor/Windows/PrefabCheckerFolderAdditionTests.cs:543)
 System.Reflection.MethodBase:Invoke (object,object[])
 NUnit.Framework.Internal.Reflect:InvokeMethod (System.Reflection.MethodInfo,object,object[])
 NUnit.Framework.Internal.MethodWrapper:Invoke (object,object[])
 NUnit.Framework.Internal.Commands.TestMethodCommand:RunNonAsyncTestMethod (NUnit.Framework.Internal.ITestExecutionContext)
 NUnit.Framework.Internal.Commands.TestMethodCommand:RunTestMethod (NUnit.Framework.Internal.ITestExecutionContext)
 NUnit.Framework.Internal.Commands.TestMethodCommand:Execute (NUnit.Framework.Internal.ITestExecutionContext)
-UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+UnityEditor.EditorApplication:Internal_CallUpdateFunctions ()
 ---
-WValueDropDownAttribute: Invocation of 'WallstopStudios.UnityHelpers.Tests.Attributes.DropdownAttributeTests+IntProviders.ThrowingProvider' threw InvalidOperationException.
+159.3835|[PrefabChecker]|Selected folder must be inside the Unity project's Assets folder. Selected path:
 
 
-IntDropdownMissingMethodLogsErrorAndReturnsEmpty (0.001s)
+EmptyPath (0.337s)
+Empty path should return false without error
 ---
-Unhandled log message: '[Error] WValueDropDownAttribute: Could not locate a parameterless static method named 'Missing' on WallstopStudios.UnityHelpers.Tests.Attributes.DropdownAttributeTests+IntProviders that returns enumerable values.'. Use UnityEngine.TestTools.LogAssert.Expect
+Unhandled log message: '[Error] 159.3835|[PrefabChecker]|Selected folder must be inside the Unity project's Assets folder. Selected path: '. Use UnityEngine.TestTools.LogAssert.Expect
 ---
-WallstopStudios.UnityHelpers.Core.Attributes.DropdownValueProvider:FromMethod (System.Type,string,System.Type,string) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/DropdownValueProvider.cs:219)
-WallstopStudios.UnityHelpers.Core.Attributes.WValueDropDownAttribute:.ctor (System.Type,string,System.Type) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/WValueDropDownAttribute.cs:197)
-WallstopStudios.UnityHelpers.Core.Attributes.IntDropdownAttribute:.ctor (System.Type,string) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/IntDropdownAttribute.cs:79)
-WallstopStudios.UnityHelpers.Tests.Attributes.DropdownAttributeTests:IntDropdownMissingMethodLogsErrorAndReturnsEmpty () (at ./Packages/com.wallstop-studios.unity-helpers/Tests/Runtime/Attributes/DropdownAttributeTests.cs:121)
+WallstopStudios.UnityHelpers.Core.Helper.Logging.UnityLogTagFormatter:LogError (System.FormattableString,UnityEngine.Object,System.Exception,bool) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Helper/Logging/UnityLogTagFormatter.cs:321)
+WallstopStudios.UnityHelpers.Core.Extension.WallstopStudiosLogger:LogError (UnityEngine.Object,System.FormattableString,System.Exception,bool) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Extension/WallstopStudiosLogger.cs:258)
+WallstopStudios.UnityHelpers.Editor.PrefabChecker:TryAddFolderFromAbsolute (string) (at ./Packages/com.wallstop-studios.unity-helpers/Editor/PrefabChecker.cs:339)
+WallstopStudios.UnityHelpers.Tests.Windows.PrefabCheckerFolderAdditionTests:TryAddFolderFromAbsoluteHandlesEdgeCases (string,bool,bool) (at ./Packages/com.wallstop-studios.unity-helpers/Tests/Editor/Windows/PrefabCheckerFolderAdditionTests.cs:543)
 System.Reflection.MethodBase:Invoke (object,object[])
 NUnit.Framework.Internal.Reflect:InvokeMethod (System.Reflection.MethodInfo,object,object[])
 NUnit.Framework.Internal.MethodWrapper:Invoke (object,object[])
 NUnit.Framework.Internal.Commands.TestMethodCommand:RunNonAsyncTestMethod (NUnit.Framework.Internal.ITestExecutionContext)
 NUnit.Framework.Internal.Commands.TestMethodCommand:RunTestMethod (NUnit.Framework.Internal.ITestExecutionContext)
 NUnit.Framework.Internal.Commands.TestMethodCommand:Execute (NUnit.Framework.Internal.ITestExecutionContext)
-UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+UnityEditor.EditorApplication:Internal_CallUpdateFunctions ()
 ---
-WValueDropDownAttribute: Could not locate a parameterless static method named 'Missing' on WallstopStudios.UnityHelpers.Tests.Attributes.DropdownAttributeTests+IntProviders that returns enumerable values.
+159.3835|[PrefabChecker]|Selected folder must be inside the Unity project's Assets folder. Selected path:
 
 
-
-StringInListMethodThrowingExceptionLogsErrorAndReturnsEmpty (0.001s)
+WhitespacePath (0.350s)
+Whitespace-only path should return false without error
 ---
-Unhandled log message: '[Error] WValueDropDownAttribute: Invocation of 'WallstopStudios.UnityHelpers.Tests.Attributes.DropdownAttributeTests+StringProviders.ThrowingProvider' threw InvalidOperationException.'. Use UnityEngine.TestTools.LogAssert.Expect
+Unhandled log message: '[Error] 159.3835|[PrefabChecker]|Selected folder must be inside the Unity project's Assets folder. Selected path:    '. Use UnityEngine.TestTools.LogAssert.Expect
 ---
-WallstopStudios.UnityHelpers.Core.Attributes.DropdownValueProvider/<>c__DisplayClass2_0:<FromMethod>b__0 () (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/DropdownValueProvider.cs:237)
-WallstopStudios.UnityHelpers.Core.Attributes.WValueDropDownAttribute/<>c__DisplayClass45_0:<WrapStaticFactory>b__0 (object) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/WValueDropDownAttribute.cs:472)
-WallstopStudios.UnityHelpers.Core.Attributes.WValueDropDownAttribute:GetOptions (object) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/WValueDropDownAttribute.cs:260)
-WallstopStudios.UnityHelpers.Core.Attributes.StringInListAttribute:GetOptions (object) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/StringInListAttribute.cs:110)
-WallstopStudios.UnityHelpers.Core.Attributes.StringInListAttribute:get_List () (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/StringInListAttribute.cs:96)
-WallstopStudios.UnityHelpers.Tests.Attributes.DropdownAttributeTests:StringInListMethodThrowingExceptionLogsErrorAndReturnsEmpty () (at ./Packages/com.wallstop-studios.unity-helpers/Tests/Runtime/Attributes/DropdownAttributeTests.cs:66)
+WallstopStudios.UnityHelpers.Core.Helper.Logging.UnityLogTagFormatter:LogError (System.FormattableString,UnityEngine.Object,System.Exception,bool) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Helper/Logging/UnityLogTagFormatter.cs:321)
+WallstopStudios.UnityHelpers.Core.Extension.WallstopStudiosLogger:LogError (UnityEngine.Object,System.FormattableString,System.Exception,bool) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Extension/WallstopStudiosLogger.cs:258)
+WallstopStudios.UnityHelpers.Editor.PrefabChecker:TryAddFolderFromAbsolute (string) (at ./Packages/com.wallstop-studios.unity-helpers/Editor/PrefabChecker.cs:339)
+WallstopStudios.UnityHelpers.Tests.Windows.PrefabCheckerFolderAdditionTests:TryAddFolderFromAbsoluteHandlesEdgeCases (string,bool,bool) (at ./Packages/com.wallstop-studios.unity-helpers/Tests/Editor/Windows/PrefabCheckerFolderAdditionTests.cs:543)
 System.Reflection.MethodBase:Invoke (object,object[])
 NUnit.Framework.Internal.Reflect:InvokeMethod (System.Reflection.MethodInfo,object,object[])
 NUnit.Framework.Internal.MethodWrapper:Invoke (object,object[])
 NUnit.Framework.Internal.Commands.TestMethodCommand:RunNonAsyncTestMethod (NUnit.Framework.Internal.ITestExecutionContext)
 NUnit.Framework.Internal.Commands.TestMethodCommand:RunTestMethod (NUnit.Framework.Internal.ITestExecutionContext)
 NUnit.Framework.Internal.Commands.TestMethodCommand:Execute (NUnit.Framework.Internal.ITestExecutionContext)
-UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+UnityEditor.EditorApplication:Internal_CallUpdateFunctions ()
 ---
-WValueDropDownAttribute: Invocation of 'WallstopStudios.UnityHelpers.Tests.Attributes.DropdownAttributeTests+StringProviders.ThrowingProvider' threw InvalidOperationException.
+159.3835|[PrefabChecker]|Selected folder must be inside the Unity project's Assets folder. Selected path:
 
 
-
-StringInListMissingMethodLogsErrorAndReturnsEmpty (0.001s)
+OnlySlashes (0.346s)
+Path with only slashes should return false
 ---
-Unhandled log message: '[Error] WValueDropDownAttribute: Could not locate a parameterless static method named 'Missing' on WallstopStudios.UnityHelpers.Tests.Attributes.DropdownAttributeTests+StringProviders that returns enumerable values.'. Use UnityEngine.TestTools.LogAssert.Expect
+Unhandled log message: '[Error] 159.3835|[PrefabChecker]|Selected folder must be inside the Unity project's Assets folder. Selected path: ///'. Use UnityEngine.TestTools.LogAssert.Expect
 ---
-WallstopStudios.UnityHelpers.Core.Attributes.DropdownValueProvider:FromMethod (System.Type,string,System.Type,string) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/DropdownValueProvider.cs:219)
-WallstopStudios.UnityHelpers.Core.Attributes.WValueDropDownAttribute:.ctor (System.Type,string,System.Type) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/WValueDropDownAttribute.cs:197)
-WallstopStudios.UnityHelpers.Core.Attributes.StringInListAttribute:.ctor (System.Type,string) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Attributes/StringInListAttribute.cs:79)
-WallstopStudios.UnityHelpers.Tests.Attributes.DropdownAttributeTests:StringInListMissingMethodLogsErrorAndReturnsEmpty () (at ./Packages/com.wallstop-studios.unity-helpers/Tests/Runtime/Attributes/DropdownAttributeTests.cs:53)
+WallstopStudios.UnityHelpers.Core.Helper.Logging.UnityLogTagFormatter:LogError (System.FormattableString,UnityEngine.Object,System.Exception,bool) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Helper/Logging/UnityLogTagFormatter.cs:321)
+WallstopStudios.UnityHelpers.Core.Extension.WallstopStudiosLogger:LogError (UnityEngine.Object,System.FormattableString,System.Exception,bool) (at ./Packages/com.wallstop-studios.unity-helpers/Runtime/Core/Extension/WallstopStudiosLogger.cs:258)
+WallstopStudios.UnityHelpers.Editor.PrefabChecker:TryAddFolderFromAbsolute (string) (at ./Packages/com.wallstop-studios.unity-helpers/Editor/PrefabChecker.cs:339)
+WallstopStudios.UnityHelpers.Tests.Windows.PrefabCheckerFolderAdditionTests:TryAddFolderFromAbsoluteHandlesEdgeCases (string,bool,bool) (at ./Packages/com.wallstop-studios.unity-helpers/Tests/Editor/Windows/PrefabCheckerFolderAdditionTests.cs:543)
 System.Reflection.MethodBase:Invoke (object,object[])
 NUnit.Framework.Internal.Reflect:InvokeMethod (System.Reflection.MethodInfo,object,object[])
 NUnit.Framework.Internal.MethodWrapper:Invoke (object,object[])
 NUnit.Framework.Internal.Commands.TestMethodCommand:RunNonAsyncTestMethod (NUnit.Framework.Internal.ITestExecutionContext)
 NUnit.Framework.Internal.Commands.TestMethodCommand:RunTestMethod (NUnit.Framework.Internal.ITestExecutionContext)
 NUnit.Framework.Internal.Commands.TestMethodCommand:Execute (NUnit.Framework.Internal.ITestExecutionContext)
-UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+UnityEditor.EditorApplication:Internal_CallUpdateFunctions ()
 ---
-WValueDropDownAttribute: Could not locate a parameterless static method named 'Missing' on WallstopStudios.UnityHelpers.Tests.Attributes.DropdownAttributeTests+StringProviders that returns enumerable values.
+159.3835|[PrefabChecker]|Selected folder must be inside the Unity project's Assets folder. Selected path: ///
+
+TryAddFolderFromAbsoluteHandlesPathWithTrailingSlash (0.370s)
+---
+Assets should be in _assetPaths list
+  Expected: collection containing "Assets"
+  But was:  < "Assets/" >
+---
+at NUnit.Framework.CollectionAssert.Contains (System.Collections.IEnumerable collection, System.Object actual, System.String message, System.Object[] args) [0x00008] in <10b6135e63434fdba4fc6c109928ab3b>:0
+at WallstopStudios.UnityHelpers.Tests.Windows.PrefabCheckerFolderAdditionTests.TryAddFolderFromAbsoluteHandlesPathWithTrailingSlash () [0x0003f] in .\Packages\com.wallstop-studios.unity-helpers\Tests\Editor\Windows\PrefabCheckerFolderAdditionTests.cs:629

@@ -45,6 +45,28 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 );
             }
 
+            // First, ensure the folder exists on disk. This prevents Unity's internal
+            // "Moving file failed" modal dialog when CreateAsset tries to move a temp file
+            // to a destination folder that doesn't exist.
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            if (!string.IsNullOrEmpty(projectRoot))
+            {
+                string absoluteDirectory = Path.Combine(projectRoot, relativeDirectoryPath);
+                try
+                {
+                    if (!Directory.Exists(absoluteDirectory))
+                    {
+                        Directory.CreateDirectory(absoluteDirectory);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning(
+                        $"DirectoryHelper: Failed to create directory on disk '{absoluteDirectory}': {ex.Message}"
+                    );
+                }
+            }
+
             if (AssetDatabase.IsValidFolder(relativeDirectoryPath))
             {
                 return;

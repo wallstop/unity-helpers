@@ -7,14 +7,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Tags;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class SingletonAutoLoaderTests : CommonTestBase
     {
         [SetUp]
-        public void Reset()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             AutoRuntimeSingleton.ClearForTests();
             AutoScriptableSingleton.ClearForTests();
             RuntimeMismatchSingleton.ClearForTests();
@@ -39,61 +41,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                     DestroyImmediate(_instance.gameObject);
                 }
                 _instance = null;
-            }
-        }
-
-        private sealed class AutoScriptableSingleton
-            : ScriptableObjectSingleton<AutoScriptableSingleton>
-        {
-            public static int CreatedCount;
-
-            private AutoScriptableSingleton()
-            {
-                CreatedCount++;
-            }
-
-            public static void ClearForTests()
-            {
-                CreatedCount = 0;
-                _lazyInstance = CreateLazy();
-            }
-        }
-
-        private sealed class RuntimeMismatchSingleton : RuntimeSingleton<RuntimeMismatchSingleton>
-        {
-            public static int AwakeCount;
-
-            protected override void Awake()
-            {
-                base.Awake();
-                AwakeCount++;
-            }
-
-            public static void ClearForTests()
-            {
-                AwakeCount = 0;
-                if (HasInstance)
-                {
-                    DestroyImmediate(_instance.gameObject);
-                }
-                _instance = null;
-            }
-        }
-
-        private sealed class ScriptableMismatchSingleton
-            : ScriptableObjectSingleton<ScriptableMismatchSingleton>
-        {
-            public static int CreatedCount;
-
-            private ScriptableMismatchSingleton()
-            {
-                CreatedCount++;
-            }
-
-            public static void ClearForTests()
-            {
-                CreatedCount = 0;
-                _lazyInstance = CreateLazy();
             }
         }
 

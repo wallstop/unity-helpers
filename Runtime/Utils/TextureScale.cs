@@ -52,6 +52,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// <param name="tex">The texture to scale. Must be readable.</param>
         /// <param name="newWidth">The target width. Must be positive.</param>
         /// <param name="newHeight">The target height. Must be positive.</param>
+        /// <param name="apply">Whether to apply the changes to the texture immediately, or leave them staged.</param>
         /// <exception cref="ArgumentNullException">Thrown when tex is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when newWidth or newHeight is not positive.</exception>
         /// <exception cref="UnityException">Thrown when texture is not readable.</exception>

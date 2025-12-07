@@ -3,9 +3,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using System;
     using System.Reflection;
     using NUnit.Framework;
-    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
     [TestFixture]
     public sealed class RelationalComponentInitializerTests
@@ -80,17 +80,5 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 "Per-type warmed count too low."
             );
         }
-    }
-
-    public sealed class PrewarmTesterComponent : MonoBehaviour
-    {
-        [ParentComponent(OnlyAncestors = true)]
-        public Rigidbody parentBody;
-
-        [SiblingComponent]
-        public BoxCollider siblingCollider;
-
-        [ChildComponent(OnlyDescendants = true, MaxDepth = 1)]
-        public Collider[] childColliders;
     }
 }

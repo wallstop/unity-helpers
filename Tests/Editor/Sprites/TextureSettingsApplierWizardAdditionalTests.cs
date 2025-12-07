@@ -6,7 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
 
     public sealed class TextureSettingsApplierWizardAdditionalTests : CommonTestBase
@@ -14,8 +14,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         private const string Root = "Assets/Temp/TextureSettingsApplierWizardAdditionalTests";
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             EnsureFolder(Root);
         }
 
@@ -236,6 +237,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
 
         private static void EnsureFolder(string relPath)
         {
+            if (string.IsNullOrWhiteSpace(relPath))
+            {
+                return;
+            }
+
+            relPath = relPath.Replace('\\', '/');
+
+            // Ensure the folder exists on disk first to prevent AssetDatabase.CreateFolder from failing
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            if (!string.IsNullOrEmpty(projectRoot))
+            {
+                string absoluteDirectory = Path.Combine(projectRoot, relPath);
+                if (!Directory.Exists(absoluteDirectory))
+                {
+                    Directory.CreateDirectory(absoluteDirectory);
+                }
+            }
+
+            // Then ensure it's registered in AssetDatabase
+            if (AssetDatabase.IsValidFolder(relPath))
+            {
+                return;
+            }
+
             string[] parts = relPath.Split('/');
             string cur = parts[0];
             for (int i = 1; i < parts.Length; i++)
@@ -243,7 +268,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                 string next = cur + "/" + parts[i];
                 if (!AssetDatabase.IsValidFolder(next))
                 {
-                    AssetDatabase.CreateFolder(cur, parts[i]);
+                    string result = AssetDatabase.CreateFolder(cur, parts[i]);
+                    if (string.IsNullOrEmpty(result))
+                    {
+                        Debug.LogWarning(
+                            $"EnsureFolder: Failed to create folder '{next}' in AssetDatabase (parent: '{cur}')"
+                        );
+                    }
                 }
                 cur = next;
             }

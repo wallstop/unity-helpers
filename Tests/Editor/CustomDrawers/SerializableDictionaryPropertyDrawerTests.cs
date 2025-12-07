@@ -10,22 +10,24 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEditor;
     using UnityEditorInternal;
     using UnityEngine;
+    using UnityEngine.Serialization;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class SerializableDictionaryPropertyDrawerTests : CommonTestBase
     {
         [SetUp]
-        public void SetUpDictionaryDrawerTests()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             GroupGUIWidthUtility.ResetForTests();
         }
 
@@ -36,6 +38,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         private sealed class StringDictionaryHost : ScriptableObject
         {
+            // ReSharper disable once NotAccessedField.Local
             public StringStringDictionary dictionary = new();
         }
 
@@ -159,22 +162,24 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Serializable]
         private sealed class PrivateComplexValue
         {
+            [FormerlySerializedAs("primary")]
             [SerializeField]
-            private Color primary = Color.white;
+            private Color _primary = Color.white;
 
+            [FormerlySerializedAs("secondary")]
             [SerializeField]
-            private Color secondary = Color.black;
+            private Color _secondary = Color.black;
 
             public Color Primary
             {
-                get => primary;
-                set => primary = value;
+                get => _primary;
+                set => _primary = value;
             }
 
             public Color Secondary
             {
-                get => secondary;
-                set => secondary = value;
+                get => _secondary;
+                set => _secondary = value;
             }
         }
 
@@ -192,30 +197,37 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Serializable]
         private sealed class PrivateCtorKey
         {
+            [FormerlySerializedAs("token")]
             [SerializeField]
-            private string token;
+            private string _token;
 
-            public string Token => token;
+            // ReSharper disable once UnusedMember.Local
+            public string Token => _token;
 
             private PrivateCtorKey()
             {
-                token = Guid.NewGuid().ToString();
+                _token = Guid.NewGuid().ToString();
             }
         }
 
         [Serializable]
         private sealed class PrivateCtorValue
         {
+            [FormerlySerializedAs("accent")]
             [SerializeField]
-            private Color accent = Color.magenta;
+            private Color _accent = Color.magenta;
 
+            [FormerlySerializedAs("intensity")]
             [SerializeField]
-            private float intensity = 1f;
+            private float _intensity = 1f;
 
             private PrivateCtorValue() { }
 
-            public Color Accent => accent;
-            public float Intensity => intensity;
+            // ReSharper disable once UnusedMember.Local
+            public Color Accent => _accent;
+
+            // ReSharper disable once UnusedMember.Local
+            public float Intensity => _intensity;
         }
 
         [Serializable]
@@ -229,8 +241,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         private struct ColorData
         {
             public Color color1;
+
+            // ReSharper disable once NotAccessedField.Local
             public Color color2;
+
+            // ReSharper disable once NotAccessedField.Local
             public Color color3;
+
+            // ReSharper disable once NotAccessedField.Local
             public Color color4;
             public Color[] otherColors;
         }
@@ -244,8 +262,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Serializable]
         private struct LabelStressValue
         {
+            // ReSharper disable once NotAccessedField.Local
             public float shortName;
-            public float RidiculouslyVerboseFieldNameRequiringSpace;
+
+            [FormerlySerializedAs("RidiculouslyVerboseFieldNameRequiringSpace")]
+            // ReSharper disable once NotAccessedField.Local
+            public float ridiculouslyVerboseFieldNameRequiringSpace;
         }
 
         [Test]
@@ -532,6 +554,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
                 string listKey = drawer.GetListKey(dictionaryProperty);
 
+                // ReSharper disable once RedundantAssignment
                 SerializableDictionaryPropertyDrawer.ListPageCache cache = drawer.EnsurePageCache(
                     listKey,
                     keysProperty,
@@ -1770,12 +1793,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
                 nameof(PrivateComplexDictionaryHost.dictionary)
             );
+            Assert.IsNotNull(
+                dictionaryProperty,
+                $"Expected to find dictionary property at '{nameof(PrivateComplexDictionaryHost.dictionary)}'"
+            );
+
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
                 SerializableDictionarySerializedPropertyNames.Keys
             );
             SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
                 SerializableDictionarySerializedPropertyNames.Values
             );
+            Assert.IsNotNull(keysProperty, "Expected to find keys property.");
+            Assert.IsNotNull(valuesProperty, "Expected to find values property.");
 
             SerializableDictionaryPropertyDrawer drawer = new();
             PrivateComplexValue valueInstance = new()
@@ -1801,16 +1831,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty valueElement = valuesProperty.GetArrayElementAtIndex(0);
             Assert.IsNotNull(valueElement, "Expected value element to exist after commit.");
 
-            SerializedProperty primaryProperty = valueElement.FindPropertyRelative("primary");
-            SerializedProperty secondaryProperty = valueElement.FindPropertyRelative("secondary");
+            SerializedProperty primaryProperty = valueElement.FindPropertyRelative("_primary");
+            SerializedProperty secondaryProperty = valueElement.FindPropertyRelative("_secondary");
 
             Assert.IsNotNull(
                 primaryProperty,
-                "Expected primary color property to exist on committed value."
+                $"Expected '_primary' color property to exist on committed value. ValueElement type: {valueElement.type}"
             );
             Assert.IsNotNull(
                 secondaryProperty,
-                "Expected secondary color property to exist on committed value."
+                $"Expected '_secondary' color property to exist on committed value. ValueElement type: {valueElement.type}"
             );
 
             Assert.That(primaryProperty.colorValue, Is.EqualTo(Color.yellow));
@@ -1819,6 +1849,65 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             host.dictionary.EditorAfterDeserialize();
             Assert.That(host.dictionary.Count, Is.EqualTo(1));
             Assert.That(host.dictionary.ContainsKey("Accent"), Is.True);
+        }
+
+        [Test]
+        public void CommitEntryAddsPrivateComplexValueWithDefaultColors()
+        {
+            PrivateComplexDictionaryHost host =
+                CreateScriptableObject<PrivateComplexDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(PrivateComplexDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            PrivateComplexValue valueInstance = new();
+
+            SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(PrivateComplexValue),
+                "Default",
+                valueInstance,
+                dictionaryProperty
+            );
+            Assert.IsTrue(result.added, "Expected CommitEntry to add the default complex value.");
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializedProperty valueElement = valuesProperty.GetArrayElementAtIndex(0);
+            Assert.IsNotNull(valueElement, "Expected value element to exist after commit.");
+
+            SerializedProperty primaryProperty = valueElement.FindPropertyRelative("_primary");
+            SerializedProperty secondaryProperty = valueElement.FindPropertyRelative("_secondary");
+
+            Assert.IsNotNull(primaryProperty, "Expected '_primary' property for default value.");
+            Assert.IsNotNull(
+                secondaryProperty,
+                "Expected '_secondary' property for default value."
+            );
+
+            Assert.That(
+                primaryProperty.colorValue,
+                Is.EqualTo(Color.white),
+                "Default primary color should be white"
+            );
+            Assert.That(
+                secondaryProperty.colorValue,
+                Is.EqualTo(Color.black),
+                "Default secondary color should be black"
+            );
         }
 
         [Test]
@@ -2131,58 +2220,48 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableDictionarySerializedPropertyNames.Values
             );
 
-            UnityEngine.Object scriptable =
-                ScriptableObject.CreateInstance<SampleScriptableObject>();
+            Object scriptable = Track(ScriptableObject.CreateInstance<SampleScriptableObject>());
             scriptable.hideFlags = HideFlags.HideAndDontSave;
 
-            try
-            {
-                SerializableDictionaryPropertyDrawer drawer = new();
-                AssignDictionaryFieldInfo(
-                    drawer,
-                    typeof(ScriptableObjectDictionaryHost),
-                    nameof(ScriptableObjectDictionaryHost.dictionary)
-                );
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(ScriptableObjectDictionaryHost),
+                nameof(ScriptableObjectDictionaryHost.dictionary)
+            );
 
-                SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
-                    keysProperty,
-                    valuesProperty,
-                    typeof(string),
-                    typeof(SampleScriptableObject),
-                    "Asset",
-                    scriptable,
-                    dictionaryProperty
-                );
+            SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(SampleScriptableObject),
+                "Asset",
+                scriptable,
+                dictionaryProperty
+            );
 
-                Assert.IsTrue(
-                    result.added,
-                    "Expected CommitEntry to add the scriptable object reference."
-                );
+            Assert.IsTrue(
+                result.added,
+                "Expected CommitEntry to add the scriptable object reference."
+            );
 
-                serializedObject.ApplyModifiedPropertiesWithoutUndo();
-                serializedObject.Update();
-                host.dictionary.EditorAfterDeserialize();
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+            host.dictionary.EditorAfterDeserialize();
 
-                Assert.IsTrue(host.dictionary.ContainsKey("Asset"));
-                Assert.AreSame(
-                    scriptable,
-                    host.dictionary["Asset"],
-                    "Dictionary should retain the committed scriptable object reference."
-                );
+            Assert.IsTrue(host.dictionary.ContainsKey("Asset"));
+            Assert.AreSame(
+                scriptable,
+                host.dictionary["Asset"],
+                "Dictionary should retain the committed scriptable object reference."
+            );
 
-                SerializedProperty committedValue = valuesProperty.GetArrayElementAtIndex(
-                    result.index
-                );
-                Assert.AreSame(
-                    scriptable,
-                    committedValue.objectReferenceValue,
-                    "Serialized array should reference the committed scriptable object."
-                );
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(scriptable);
-            }
+            SerializedProperty committedValue = valuesProperty.GetArrayElementAtIndex(result.index);
+            Assert.AreSame(
+                scriptable,
+                committedValue.objectReferenceValue,
+                "Serialized array should reference the committed scriptable object."
+            );
         }
 
         [UnityTest]
@@ -2390,16 +2469,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 nameof(MixedFieldsDictionaryHost.dictionary)
             );
 
-            SerializableDictionaryPropertyDrawer drawer =
-                new SerializableDictionaryPropertyDrawer();
+            SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
                 drawer,
                 typeof(MixedFieldsDictionaryHost),
                 nameof(MixedFieldsDictionaryHost.dictionary)
             );
 
-            Rect controlRect = new Rect(0f, 0f, 360f, 320f);
-            GUIContent label = new GUIContent("Dictionary");
+            Rect controlRect = new(0f, 0f, 360f, 320f);
+            GUIContent label = new("Dictionary");
 
             SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
             drawer.GetPropertyHeight(dictionaryProperty, label);
@@ -2437,16 +2515,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 nameof(MixedFieldsDictionaryHost.dictionary)
             );
 
-            SerializableDictionaryPropertyDrawer drawer =
-                new SerializableDictionaryPropertyDrawer();
+            SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
                 drawer,
                 typeof(MixedFieldsDictionaryHost),
                 nameof(MixedFieldsDictionaryHost.dictionary)
             );
 
-            Rect controlRect = new Rect(0f, 0f, 360f, 320f);
-            GUIContent label = new GUIContent("Dictionary");
+            Rect controlRect = new(0f, 0f, 360f, 320f);
+            GUIContent label = new("Dictionary");
 
             drawer.GetPropertyHeight(dictionaryProperty, label);
 
@@ -2487,16 +2564,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 nameof(DictionaryScalarAfterHost.trailingScalar)
             );
 
-            SerializableDictionaryPropertyDrawer drawer =
-                new SerializableDictionaryPropertyDrawer();
+            SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
                 drawer,
                 typeof(DictionaryScalarAfterHost),
                 nameof(DictionaryScalarAfterHost.dictionary)
             );
 
-            Rect controlRect = new Rect(0f, 0f, 360f, 320f);
-            GUIContent label = new GUIContent("Dictionary");
+            Rect controlRect = new(0f, 0f, 360f, 320f);
+            GUIContent label = new("Dictionary");
 
             drawer.GetPropertyHeight(dictionaryProperty, label);
 
@@ -3824,7 +3900,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 new LabelStressValue
                 {
                     shortName = 1f,
-                    RidiculouslyVerboseFieldNameRequiringSpace = 2f,
+                    ridiculouslyVerboseFieldNameRequiringSpace = 2f,
                 },
                 dictionaryProperty
             );
@@ -4244,9 +4320,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
 
             List<int> indices = new(cache.entries.Count);
-            for (int i = 0; i < cache.entries.Count; i++)
+            foreach (SerializableDictionaryPropertyDrawer.PageEntry cacheEntry in cache.entries)
             {
-                indices.Add(cache.entries[i]?.arrayIndex ?? -1);
+                indices.Add(cacheEntry?.arrayIndex ?? -1);
             }
 
             return $"[{string.Join(", ", indices)}]";

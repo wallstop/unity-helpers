@@ -1,7 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
     using System;
-    using System.Collections.Generic;
     using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
@@ -9,14 +8,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
 
     [TestFixture]
     public sealed class WEnumToggleButtonsDrawerTests : CommonTestBase
     {
         [SetUp]
-        public void SetUpDrawerTests()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             WEnumToggleButtonsPagination.Reset();
         }
 
@@ -24,7 +25,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void FlagEnumOptionsIncludeDiscreteValues()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -69,7 +70,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void FlagEnumToggleMutatesMask()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -97,7 +98,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void FlagEnumSelectAllAndNoneOperate()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -136,7 +137,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void StandardEnumHonorsSingleSelection()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -172,7 +173,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void IntDropdownOptionsRespectSelection()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -198,7 +199,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void StringInListOptionsRespectSelection()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -224,7 +225,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void WValueDropDownOptionsPopulateAndSelect()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -250,7 +251,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void FloatWValueDropDownOptionsRespectSelection()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -276,7 +277,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void PaginationStateClampsIndicesAndUpdatesVisibleCount()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -334,7 +335,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void DisablePaginationAttributePreventsPagination()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -365,7 +366,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
             asset.paginatedInt = 8;
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -411,7 +412,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
             asset.paginatedInt = 2;
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -431,7 +432,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
             asset.paginatedInt = 8;
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -548,69 +549,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             internal bool HasSummary { get; }
 
             internal GUIContent Content { get; }
-        }
-
-        [Serializable]
-        private sealed class ToggleTestAsset : ScriptableObject
-        {
-            [WEnumToggleButtons]
-            public ExampleFlags flags = ExampleFlags.None;
-
-            [WEnumToggleButtons]
-            public ExampleEnum mode = ExampleEnum.First;
-
-            [WEnumToggleButtons]
-            [IntDropdown(30, 60, 90)]
-            public int intSelection = 30;
-
-            [WEnumToggleButtons]
-            [StringInList("Idle", "Run", "Jump")]
-            public string stateName = "Idle";
-
-            [WEnumToggleButtons]
-            [WValueDropDown(typeof(DropdownProvider), nameof(DropdownProvider.GetPriorityEntries))]
-            public int priority = 1;
-
-            [WEnumToggleButtons]
-            [WValueDropDown(typeof(DropdownProvider), nameof(DropdownProvider.GetFloatEntries))]
-            public float floatPriority = 0.5f;
-
-            [WEnumToggleButtons(PageSize = 6)]
-            [IntDropdown(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)]
-            public int paginatedInt;
-
-            [WEnumToggleButtons(EnablePagination = false)]
-            [StringInList("Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta")]
-            public string noPaginationState = "Alpha";
-
-            [Flags]
-            public enum ExampleFlags
-            {
-                None = 0,
-                Move = 1 << 0,
-                Jump = 1 << 1,
-                Dash = 1 << 2,
-            }
-
-            public enum ExampleEnum
-            {
-                First,
-                Second,
-                Third,
-            }
-
-            private static class DropdownProvider
-            {
-                internal static IEnumerable<int> GetPriorityEntries()
-                {
-                    return new[] { 1, 2, 3 };
-                }
-
-                internal static IEnumerable<float> GetFloatEntries()
-                {
-                    return new[] { 0.5f, 1.5f, 3f };
-                }
-            }
         }
     }
 }

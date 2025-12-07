@@ -13,108 +13,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class SerializableSetPropertyDrawerTests : CommonTestBase
     {
-        private sealed class HashSetHost : ScriptableObject
-        {
-            public SerializableHashSet<int> set = new();
-        }
-
-        private sealed class StringSetHost : ScriptableObject
-        {
-            public SerializableHashSet<string> set = new();
-        }
-
-        private sealed class SortedSetHost : ScriptableObject
-        {
-            public SerializableSortedSet<int> set = new();
-        }
-
-        private sealed class SortedStringSetHost : ScriptableObject
-        {
-            public SerializableSortedSet<string> set = new();
-        }
-
-        [Serializable]
-        internal sealed class CustomSortedSet : SerializableSortedSet<int> { }
-
-        private sealed class DerivedSortedSetHost : ScriptableObject
-        {
-            public CustomSortedSet set = new();
-        }
-
-        private sealed class ObjectSetHost : ScriptableObject
-        {
-            public SerializableHashSet<TestData> set = new();
-        }
-
-        private sealed class DualStringSetHost : ScriptableObject
-        {
-            public SerializableHashSet<string> firstSet = new();
-            public SerializableHashSet<string> secondSet = new();
-        }
-
-        private sealed class MixedFieldsSetHost : ScriptableObject
-        {
-            public int scalarValue;
-            public SerializableHashSet<int> set = new();
-        }
-
-        private sealed class SetScalarAfterHost : ScriptableObject
-        {
-            public SerializableHashSet<int> set = new();
-            public int trailingScalar;
-        }
-
-        private sealed class ComplexSetHost : ScriptableObject
-        {
-            public SerializableHashSet<ComplexSetElement> set = new();
-        }
-
-        [Serializable]
-        private sealed class ComplexSetElement
-        {
-            public Color primary = Color.cyan;
-            public NestedComplexElement nested = new();
-        }
-
-        [Serializable]
-        private sealed class NestedComplexElement
-        {
-            public float intensity = 1.25f;
-            public Vector2 offset = new(0.5f, -0.5f);
-        }
-
-        private sealed class PrivateCtorSetHost : ScriptableObject
-        {
-            public SerializableHashSet<PrivateCtorElement> set = new();
-        }
-
-        private sealed class TestData : ScriptableObject { }
-
         [Serializable]
         private sealed class CloneableSample
         {
             public int number = 5;
             public string label = "alpha";
-        }
-
-        [Serializable]
-        private sealed class PrivateCtorElement
-        {
-            [SerializeField]
-            private int magnitude;
-
-            private PrivateCtorElement()
-            {
-                magnitude = 5;
-            }
-
-            public int Magnitude => magnitude;
         }
 
         [Test]
@@ -283,7 +193,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             pending.value = "ManualEntry";
 
-            ISerializableSetInspector inspector = host.set as ISerializableSetInspector;
+            ISerializableSetInspector inspector = host.set;
             Assert.IsNotNull(
                 inspector,
                 "Expected inspector implementation on SerializableHashSet."
@@ -830,7 +740,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             HashSetHost host = CreateScriptableObject<HashSetHost>();
             ISerializableSetInspector inspector = host.set;
-            Array values = Array.CreateInstance(typeof(int), 4);
+            Array values = new int[4];
             values.SetValue(1, 0);
             values.SetValue(2, 1);
             values.SetValue(4, 2);
@@ -960,7 +870,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             int newIndex
         )
         {
-            if (list?.list is not IList backing || backing.Count == 0)
+            if (list?.list is not { } backing || backing.Count == 0)
             {
                 return;
             }
@@ -2004,7 +1914,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             ComplexSetHost host = CreateScriptableObject<ComplexSetHost>();
             ISerializableSetInspector inspector = host.set;
-            Array snapshot = Array.CreateInstance(typeof(ComplexSetElement), 1);
+            Array snapshot = new ComplexSetElement[1];
             snapshot.SetValue(
                 new ComplexSetElement
                 {
@@ -2115,9 +2025,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 nameof(MixedFieldsSetHost.set)
             );
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
-            Rect controlRect = new Rect(0f, 0f, 320f, 280f);
-            GUIContent label = new GUIContent("Set");
+            SerializableSetPropertyDrawer drawer = new();
+            Rect controlRect = new(0f, 0f, 320f, 280f);
+            GUIContent label = new("Set");
 
             drawer.GetPropertyHeight(setProperty, label);
 
@@ -2152,9 +2062,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 nameof(MixedFieldsSetHost.set)
             );
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
-            Rect controlRect = new Rect(0f, 0f, 320f, 280f);
-            GUIContent label = new GUIContent("Set");
+            SerializableSetPropertyDrawer drawer = new();
+            Rect controlRect = new(0f, 0f, 320f, 280f);
+            GUIContent label = new("Set");
 
             drawer.GetPropertyHeight(setProperty, label);
 
@@ -2193,9 +2103,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 nameof(SetScalarAfterHost.trailingScalar)
             );
 
-            SerializableSetPropertyDrawer drawer = new SerializableSetPropertyDrawer();
-            Rect controlRect = new Rect(0f, 0f, 320f, 280f);
-            GUIContent label = new GUIContent("Set");
+            SerializableSetPropertyDrawer drawer = new();
+            Rect controlRect = new(0f, 0f, 320f, 280f);
+            GUIContent label = new("Set");
 
             drawer.GetPropertyHeight(setProperty, label);
 
@@ -2236,9 +2146,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
 
             List<int> indices = new(cache.entries.Count);
-            for (int i = 0; i < cache.entries.Count; i++)
+            foreach (SerializableSetPropertyDrawer.PageEntry cacheEntry in cache.entries)
             {
-                indices.Add(cache.entries[i]?.arrayIndex ?? -1);
+                indices.Add(cacheEntry?.arrayIndex ?? -1);
             }
 
             return $"[{string.Join(", ", indices)}]";

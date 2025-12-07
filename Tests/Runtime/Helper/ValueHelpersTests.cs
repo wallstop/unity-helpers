@@ -5,7 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class ValueHelpersTests : CommonTestBase
     {

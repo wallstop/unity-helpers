@@ -9,15 +9,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class FileHelperTests : CommonTestBase
     {
         private string _testDirectory;
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             _testDirectory = Path.Combine(Application.temporaryCachePath, "FileHelperTests");
             if (!Directory.Exists(_testDirectory))
             {

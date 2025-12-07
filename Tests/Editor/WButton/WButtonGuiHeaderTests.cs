@@ -9,7 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     public sealed class WButtonGuiHeaderTests
     {
         [Test]
-        public void BuildGroupHeader_NoGroupingSuffixWhenSingleGroup()
+        public void BuildGroupHeaderNoGroupingSuffixWhenSingleGroup()
         {
             Dictionary<int, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             groupCounts.Clear();
@@ -21,7 +21,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         }
 
         [Test]
-        public void BuildGroupHeader_AppendsDrawOrderWhenMultipleGroups()
+        public void BuildGroupHeaderAppendsDrawOrderWhenMultipleGroups()
         {
             Dictionary<int, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             groupCounts.Clear();
@@ -41,7 +41,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         }
 
         [Test]
-        public void BuildGroupHeader_UsesCustomGroupNameWhenProvided()
+        public void BuildGroupHeaderUsesCustomGroupNameWhenProvided()
         {
             Dictionary<int, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             groupCounts.Clear();

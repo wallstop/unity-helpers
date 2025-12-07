@@ -9,7 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEditorInternal;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class HelpersTests : CommonTestBase
@@ -64,9 +64,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             }
 
             string assetPath = Path.Combine(folder, "Dummy.asset").SanitizePath();
-            DummyScriptableObject asset = Track(
-                ScriptableObject.CreateInstance<DummyScriptableObject>()
-            );
+            // Don't use Track() - asset becomes persistent via CreateAsset and is cleaned up in finally block
+            DummyScriptableObject asset = ScriptableObject.CreateInstance<DummyScriptableObject>();
             try
             {
                 AssetDatabase.CreateAsset(asset, assetPath);

@@ -37,7 +37,7 @@ namespace WallstopStudios.UnityHelpers.Settings
         [FormerlySerializedAs("waitInstructionQuantizationStepSeconds")]
         [SerializeField]
         [Min(0f)]
-        private float _waitInstructionQuantizationStepSeconds = 0f;
+        private float _waitInstructionQuantizationStepSeconds;
 
         [FormerlySerializedAs("waitInstructionMaxDistinctEntries")]
         [SerializeField]

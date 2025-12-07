@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine;
     using UnityEngine.TestTools;
     using UnityEngine.UI;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class MatchColliderToSpriteAdditionalTests : CommonTestBase
@@ -12,8 +13,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         private Sprite _spriteWithNoShapes;
 
         [SetUp]
-        public void SetUpSprite()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             Texture2D tex = Track(new Texture2D(8, 8));
             _spriteWithNoShapes = Track(
                 Sprite.Create(tex, new Rect(0, 0, 8, 8), new Vector2(0.5f, 0.5f), 100f)

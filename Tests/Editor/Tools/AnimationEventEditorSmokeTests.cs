@@ -4,7 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
     public sealed class AnimationEventEditorSmokeTests : CommonTestBase

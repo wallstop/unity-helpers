@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -21,10 +22,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         private static readonly System.Collections.Generic.List<ScriptableObject> InMemoryInstances =
             new();
         private const string ResourcesRoot = "Assets/Resources";
+        private bool _previousEditorUiSuppress;
+
+        [OneTimeSetUp]
+        public void OneTimeSetUp()
+        {
+            // Clean up any leftover test folders from previous test runs
+            CleanupAllKnownTestFolders();
+        }
 
         [UnitySetUp]
         public IEnumerator SetUp()
         {
+            _previousEditorUiSuppress = EditorUi.Suppress;
+            EditorUi.Suppress = true;
             TestSingleton.ClearInstance();
             yield return null;
             EmptyPathSingleton.ClearInstance();
@@ -44,6 +55,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             LifecycleScriptableSingleton.ClearInstance();
             yield return null;
             MissingResourceSingleton.ClearInstance();
+            yield return null;
+            SingleLevelPathSingleton.ClearInstance();
             yield return null;
             // Clean up any leftover assets from previous runs to avoid broken nested-class assets
             EnsureFolder(ResourcesRoot);
@@ -76,7 +89,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
             DeleteAssetIfExists(ScriptableObjectSingletonMetadata.AssetPath);
             yield return null;
+            DeleteAssetIfExists(ToFullResourcePath("SingleLevel/EmptyPathSingleton.asset"));
+            yield return null;
+            DeleteAssetIfExists(ToFullResourcePath("SingleLevel/SingleLevelPathSingleton.asset"));
+            yield return null;
             DeleteFolderIfEmpty("Assets/Resources/CustomPath");
+            yield return null;
+            DeleteFolderIfEmpty("Assets/Resources/SingleLevel");
             yield return null;
 
             // For nested test types, Unity cannot create valid .asset files (no script file).
@@ -91,6 +110,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
         private static void EnsureFolder(string folderPath)
         {
+            // First, ensure the folder exists on disk to prevent Unity's internal
+            // "Moving file failed" modal dialog
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            if (!string.IsNullOrEmpty(projectRoot))
+            {
+                string absoluteDirectory = Path.Combine(projectRoot, folderPath);
+                if (!Directory.Exists(absoluteDirectory))
+                {
+                    Directory.CreateDirectory(absoluteDirectory);
+                }
+            }
+
             if (AssetDatabase.IsValidFolder(folderPath))
             {
                 return;
@@ -146,7 +177,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 return;
             }
 
-            string[] assetGuids = AssetDatabase.FindAssets(string.Empty, new[] { folderPath });
+            // Re-check folder validity immediately before FindAssets to minimize race window
+            // FindAssets emits a warning if the folder doesn't exist
+            if (!AssetDatabase.IsValidFolder(folderPath))
+            {
+                return;
+            }
+
+            string[] assetGuids;
+            try
+            {
+                assetGuids = AssetDatabase.FindAssets(string.Empty, new[] { folderPath });
+            }
+            catch
+            {
+                // Folder may have been deleted between check and FindAssets
+                return;
+            }
+
+            // Final validity check - folder may have been deleted during FindAssets
+            if (!AssetDatabase.IsValidFolder(folderPath))
+            {
+                return;
+            }
+
             foreach (string guid in assetGuids)
             {
                 string assetPath = AssetDatabase.GUIDToAssetPath(guid);
@@ -316,6 +370,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 LifecycleScriptableSingleton.ClearInstance();
             }
 
+            if (SingleLevelPathSingleton.HasInstance)
+            {
+                SingleLevelPathSingleton.Instance.Destroy();
+                SingleLevelPathSingleton.ClearInstance();
+            }
+
             yield return null;
 
             TestSingleton[] allTestSingletons = Resources.FindObjectsOfTypeAll<TestSingleton>();
@@ -396,7 +456,52 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 singleton.Destroy();
                 yield return null;
             }
+            SingleLevelPathSingleton[] singleLevel =
+                Resources.FindObjectsOfTypeAll<SingleLevelPathSingleton>();
+            foreach (SingleLevelPathSingleton singleton in singleLevel)
+            {
+                singleton.Destroy();
+                yield return null;
+            }
             yield return null;
+            yield return CleanupTestFolders();
+            EditorUi.Suppress = _previousEditorUiSuppress;
+        }
+
+        private IEnumerator CleanupTestFolders()
+        {
+            string[] testFolders = new[]
+            {
+                ResourcesRoot + "/Deep/Nested/Singletons",
+                ResourcesRoot + "/Deep/Nested",
+                ResourcesRoot + "/Deep",
+                ResourcesRoot + "/Missing/Subfolder",
+                ResourcesRoot + "/Missing",
+                ResourcesRoot + "/Loose",
+                ResourcesRoot + "/Multi",
+                ResourcesRoot + "/Lifecycle",
+                ResourcesRoot + "/MultiNatural",
+                ResourcesRoot + "/SingleLevel",
+            };
+
+            foreach (string folder in testFolders)
+            {
+                DeleteFolderIfEmpty(folder);
+                yield return null;
+            }
+
+            // Also clean up duplicates that may have been created
+            CleanupAllKnownTestFolders();
+
+            DeleteFolderIfEmpty(ResourcesRoot);
+            yield return null;
+        }
+
+        public override void OneTimeTearDown()
+        {
+            base.OneTimeTearDown();
+            // Final cleanup of all test folders
+            CleanupAllKnownTestFolders();
         }
 
         [UnityTest]
@@ -749,6 +854,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             scenario.CreateAsset();
             yield return null;
 
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            yield return null;
+
             using (
                 SingletonCreatorTestScope scope = SingletonCreatorTestScope.RestrictTo(
                     scenario.SingletonType
@@ -759,22 +868,42 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
             yield return null;
 
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            yield return null;
+
             ScriptableObjectSingletonMetadata metadata =
                 AssetDatabase.LoadAssetAtPath<ScriptableObjectSingletonMetadata>(
                     ScriptableObjectSingletonMetadata.AssetPath
                 );
-            Assert.IsNotNull(metadata, $"Metadata asset missing for {scenario.Description}");
 
-            ScriptableObjectSingletonMetadata.Entry entry;
+            bool metadataFileExists = File.Exists(ScriptableObjectSingletonMetadata.AssetPath);
+            string diagnosticInfo =
+                $"Scenario: {scenario.Description}, "
+                + $"Type: {scenario.SingletonType.FullName}, "
+                + $"ExpectedPath: {scenario.ExpectedLoadPath}, "
+                + $"MetadataPath: {ScriptableObjectSingletonMetadata.AssetPath}, "
+                + $"FileExists: {metadataFileExists}";
+
+            Assert.IsNotNull(
+                metadata,
+                $"Metadata asset missing for {scenario.Description}. Diagnostics: {diagnosticInfo}"
+            );
+
             Assert.IsTrue(
-                metadata.TryGetEntry(scenario.SingletonType, out entry),
-                $"Metadata entry missing for {scenario.SingletonType.Name} ({scenario.Description})"
+                metadata.TryGetEntry(
+                    scenario.SingletonType,
+                    out ScriptableObjectSingletonMetadata.Entry entry
+                ),
+                $"Metadata entry missing for {scenario.SingletonType.Name} ({scenario.Description}). Diagnostics: {diagnosticInfo}"
             );
 
             StringAssert.AreEqualIgnoringCase(
                 scenario.ExpectedLoadPath,
                 entry.resourcesLoadPath,
-                $"resourcesLoadPath mismatch for {scenario.Description}"
+                $"resourcesLoadPath mismatch for {scenario.Description}. {diagnosticInfo}. "
+                    + $"Actual resourcesLoadPath: '{entry.resourcesLoadPath}', "
+                    + $"Actual resourcesPath: '{entry.resourcesPath}'"
             );
 
             string expectedFolder = scenario.ExpectedFolder?.Replace("\\", "/") ?? string.Empty;
@@ -968,11 +1097,49 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 "Deep/Nested/Singletons/DeepPathResourceSingleton",
                 "Deep/Nested/Singletons"
             );
+
+            yield return new MetadataScenario(
+                "singleton at root resources folder",
+                () =>
+                    CreateResourceAsset<ResourceBackedSingleton>(
+                        "ResourceBackedSingleton.asset",
+                        asset => asset.payload = "root-level"
+                    ),
+                typeof(ResourceBackedSingleton),
+                "ResourceBackedSingleton",
+                string.Empty
+            );
+
+            yield return new MetadataScenario(
+                "singleton with single subfolder",
+                () =>
+                    CreateResourceAsset<SingleLevelPathSingleton>(
+                        "SingleLevel/SingleLevelPathSingleton.asset",
+                        asset => asset.flag = true
+                    ),
+                typeof(SingleLevelPathSingleton),
+                "SingleLevel/SingleLevelPathSingleton",
+                "SingleLevel"
+            );
+
+            yield return new MetadataScenario(
+                "singleton with custom path attribute",
+                () =>
+                    CreateResourceAsset<CustomPathSingleton>(
+                        "CustomPath/CustomPathSingleton.asset",
+                        asset => asset.customData = "metadata-test"
+                    ),
+                typeof(CustomPathSingleton),
+                "CustomPath/CustomPathSingleton",
+                "CustomPath"
+            );
         }
 
         private sealed class SingletonCreatorTestScope : IDisposable
         {
             private readonly bool _previousIncludeTests;
+            private readonly bool _previousIgnoreExclusion;
+            private readonly bool _previousAllowAssetCreation;
             private readonly Func<Type, bool> _previousFilter;
 
             private SingletonCreatorTestScope(Type[] allowedTypes)
@@ -985,11 +1152,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     );
                 }
 
-                System.Collections.Generic.HashSet<Type> allowed =
-                    new System.Collections.Generic.HashSet<Type>(allowedTypes);
+                // Ensure the metadata folder exists to prevent modal dialogs
+                EnsureFolder("Assets/Resources/Wallstop Studios/Unity Helpers");
+
+                System.Collections.Generic.HashSet<Type> allowed = new(allowedTypes);
                 _previousIncludeTests = ScriptableObjectSingletonCreator.IncludeTestAssemblies;
+                _previousIgnoreExclusion =
+                    ScriptableObjectSingletonCreator.IgnoreExclusionAttribute;
+                _previousAllowAssetCreation =
+                    ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression;
                 _previousFilter = ScriptableObjectSingletonCreator.TypeFilter;
                 ScriptableObjectSingletonCreator.IncludeTestAssemblies = true;
+                ScriptableObjectSingletonCreator.IgnoreExclusionAttribute = true;
+                ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = true;
                 ScriptableObjectSingletonCreator.TypeFilter = type =>
                 {
                     if (!allowed.Contains(type))
@@ -1010,6 +1185,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 ScriptableObjectSingletonCreator.TypeFilter = _previousFilter;
                 ScriptableObjectSingletonCreator.IncludeTestAssemblies = _previousIncludeTests;
+                ScriptableObjectSingletonCreator.IgnoreExclusionAttribute =
+                    _previousIgnoreExclusion;
+                ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression =
+                    _previousAllowAssetCreation;
             }
         }
 

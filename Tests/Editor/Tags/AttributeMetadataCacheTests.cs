@@ -4,7 +4,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Tags;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
 
     [TestFixture]
     public sealed class AttributeMetadataCacheTests : CommonTestBase
@@ -146,9 +147,5 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
         private sealed class AlphaAttributesComponent : AttributesComponent { }
 
         private sealed class BravoAttributesComponent : AttributesComponent { }
-
-        private sealed class AlphaRelationalComponent : MonoBehaviour { }
-
-        private sealed class BravoRelationalComponent : MonoBehaviour { }
     }
 }

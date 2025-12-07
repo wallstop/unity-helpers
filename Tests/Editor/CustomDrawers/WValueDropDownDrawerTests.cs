@@ -10,7 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using PropertyAttribute = UnityEngine.PropertyAttribute;
 
     [TestFixture]
@@ -20,7 +20,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void ApplyOptionUpdatesFloatSerializedProperty()
         {
             WValueDropDownFloatAsset asset = CreateScriptableObject<WValueDropDownFloatAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -38,7 +38,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void ApplyOptionUpdatesDoubleSerializedProperty()
         {
             WValueDropDownFloatAsset asset = CreateScriptableObject<WValueDropDownFloatAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -57,7 +57,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             WValueDropDownNoOptionsAsset asset =
                 CreateScriptableObject<WValueDropDownNoOptionsAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -83,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             WValueDropDownIntOptionsAsset asset =
                 CreateScriptableObject<WValueDropDownIntOptionsAsset>();
             asset.selection = 10;
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -112,7 +112,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             WValueDropDownStringOptionsAsset asset =
                 CreateScriptableObject<WValueDropDownStringOptionsAsset>();
             asset.selection = "Alpha";
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -141,7 +141,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             WValueDropDownInstanceMethodAsset asset =
                 CreateScriptableObject<WValueDropDownInstanceMethodAsset>();
             asset.dynamicValues.AddRange(new[] { 100, 200, 300 });
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -175,7 +175,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void StaticMethodProviderReturnsValues()
         {
             WValueDropDownFloatAsset asset = CreateScriptableObject<WValueDropDownFloatAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -362,7 +362,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             10,
             TestName = "CalculateRowsOnPage_LastPageExactFit_ReturnsPageSize"
         )]
-        public void CalculateRowsOnPage_DataDrivenScenarios(
+        public void CalculateRowsOnPageDataDrivenScenarios(
             int filteredCount,
             int pageSize,
             int currentPage,

@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using PropertyAttribute = UnityEngine.PropertyAttribute;
 
     [TestFixture]
@@ -23,7 +23,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             IntDropdownTestAsset asset = CreateScriptableObject<IntDropdownTestAsset>();
             asset.missingValue = 999;
 
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -51,7 +51,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             IntDropdownTestAsset asset = CreateScriptableObject<IntDropdownTestAsset>();
             asset.validValue = 10;
 
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(

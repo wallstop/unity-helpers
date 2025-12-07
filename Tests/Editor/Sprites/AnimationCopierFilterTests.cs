@@ -6,8 +6,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class AnimationCopierFilterTests
+    public sealed class AnimationCopierFilterTests : CommonTestBase
     {
         private static AnimationCopierWindow.AnimationFileInfo NewFileInfo(string name)
         {
@@ -17,7 +18,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         [Test]
         public void SortsAscendingAndDescending()
         {
-            AnimationCopierWindow wnd = ScriptableObject.CreateInstance<AnimationCopierWindow>();
+            AnimationCopierWindow wnd = Track(
+                ScriptableObject.CreateInstance<AnimationCopierWindow>()
+            );
             AnimationCopierWindow.AnimationFileInfo a = NewFileInfo("zeta.anim");
             AnimationCopierWindow.AnimationFileInfo b = NewFileInfo("alpha.anim");
             AnimationCopierWindow.AnimationFileInfo c = NewFileInfo("beta.anim");
@@ -41,7 +44,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         [Test]
         public void FiltersBySubstringAndRegex()
         {
-            AnimationCopierWindow wnd = ScriptableObject.CreateInstance<AnimationCopierWindow>();
+            AnimationCopierWindow wnd = Track(
+                ScriptableObject.CreateInstance<AnimationCopierWindow>()
+            );
             AnimationCopierWindow.AnimationFileInfo a = NewFileInfo("walk.anim");
             AnimationCopierWindow.AnimationFileInfo b = NewFileInfo("attack.anim");
             AnimationCopierWindow.AnimationFileInfo c = NewFileInfo("idle.anim");

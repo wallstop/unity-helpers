@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
 
     public sealed class ScriptableObjectSingletonCreatorEditorTests : CommonTestBase
@@ -27,15 +28,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         private const string WrongFolderCaseVariant = ResourcesRoot + "/TestS/WrongPath";
         private const string WrongAssetPathCaseVariant =
             WrongFolderCaseVariant + "/CreatorPathSingleton.asset";
+        private bool _previousEditorUiSuppress;
 
         [UnitySetUp]
         public IEnumerator UnitySetUp()
         {
+            _previousEditorUiSuppress = EditorUi.Suppress;
+            EditorUi.Suppress = true;
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = true;
+            // Allow explicit calls to EnsureSingletonAssets during tests
+            ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = true;
             ScriptableObjectSingletonCreator.TypeFilter = static type =>
                 type == typeof(CreatorPathSingleton) || type == typeof(NestedDiskSingleton);
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
             ScriptableObjectSingletonCreator.ResetRetryStateForTests();
+            // Ensure the metadata folder exists to prevent modal dialogs
+            EnsureFolder("Assets/Resources/Wallstop Studios/Unity Helpers");
             DeleteAssetIfExists(TargetAssetPath);
             yield return null;
             DeleteAssetIfExists(WrongAssetPath);
@@ -47,13 +55,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             DeleteFolderHierarchy(TargetFolder);
             yield return null;
             DeleteFolderHierarchy(WrongFolder);
+            ;
             yield return null;
             DeleteFolderHierarchy(WrongFolderCaseVariant);
             yield return null;
             DeleteFolderHierarchy(NestedTargetFolder);
             yield return null;
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            ImportFolderIfExists(ResourcesRoot);
             yield return null;
         }
 
@@ -78,13 +87,37 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
             DeleteFolderHierarchy(NestedTargetFolder);
             yield return null;
+            TryDeleteEmptyFolderCaseInsensitive(ResourcesRoot + "/Tests");
+            yield return null;
+            TryDeleteEmptyFolderCaseInsensitive(ResourcesRoot + "/TestS");
+            yield return null;
+            TryDeleteEmptyFolder(ResourcesRoot);
+            yield return null;
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = false;
             ScriptableObjectSingletonCreator.TypeFilter = null;
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
+            ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = false;
             ScriptableObjectSingletonCreator.ResetRetryStateForTests();
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            ImportFolderIfExists(ResourcesRoot);
+            EditorUi.Suppress = _previousEditorUiSuppress;
             yield return null;
+        }
+
+        private static void ImportFolderIfExists(string folderPath)
+        {
+            if (string.IsNullOrEmpty(folderPath))
+            {
+                return;
+            }
+
+            if (AssetDatabase.IsValidFolder(folderPath))
+            {
+                AssetDatabase.ImportAsset(
+                    folderPath,
+                    ImportAssetOptions.ForceUpdate | ImportAssetOptions.ImportRecursive
+                );
+            }
         }
 
         [UnityTest]
@@ -138,6 +171,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 return;
             }
 
+            // First, ensure the folder exists on disk to prevent Unity's internal
+            // "Moving file failed" modal dialog
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            if (!string.IsNullOrEmpty(projectRoot))
+            {
+                string absoluteDirectory = Path.Combine(projectRoot, folderPath);
+                if (!Directory.Exists(absoluteDirectory))
+                {
+                    Directory.CreateDirectory(absoluteDirectory);
+                }
+            }
+
             string[] parts = folderPath.Split('/');
             if (parts.Length == 0)
             {
@@ -161,13 +206,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                             string sub = subs[s];
                             int last = sub.LastIndexOf('/', sub.Length - 1);
                             string name = last >= 0 ? sub.Substring(last + 1) : sub;
-                            if (
-                                string.Equals(
-                                    name,
-                                    desired,
-                                    System.StringComparison.OrdinalIgnoreCase
-                                )
-                            )
+                            if (string.Equals(name, desired, StringComparison.OrdinalIgnoreCase))
                             {
                                 match = sub;
                                 break;
@@ -210,7 +249,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             while (
                 !string.IsNullOrEmpty(path)
-                && !string.Equals(path, ResourcesRoot, System.StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(path, ResourcesRoot, StringComparison.OrdinalIgnoreCase)
             )
             {
                 if (!AssetDatabase.IsValidFolder(path))
@@ -225,6 +264,42 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
 
                 path = Path.GetDirectoryName(path)?.Replace('\\', '/');
+            }
+        }
+
+        private static void TryDeleteEmptyFolder(string folderPath)
+        {
+            if (string.IsNullOrWhiteSpace(folderPath))
+            {
+                return;
+            }
+
+            if (!AssetDatabase.IsValidFolder(folderPath))
+            {
+                return;
+            }
+
+            string[] subFolders = AssetDatabase.GetSubFolders(folderPath);
+            if (subFolders != null && subFolders.Length > 0)
+            {
+                return;
+            }
+
+            string[] assets = AssetDatabase.FindAssets(string.Empty, new[] { folderPath });
+            if (assets != null && assets.Length > 0)
+            {
+                return;
+            }
+
+            AssetDatabase.DeleteAsset(folderPath);
+        }
+
+        private static void TryDeleteEmptyFolderCaseInsensitive(string folderPath)
+        {
+            string resolved = ResolveExistingFolderPath(folderPath);
+            if (!string.IsNullOrEmpty(resolved))
+            {
+                TryDeleteEmptyFolder(resolved);
             }
         }
 
@@ -243,7 +318,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
 
             string current = parts[0];
-            if (!string.Equals(current, "Assets", System.StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(current, "Assets", StringComparison.OrdinalIgnoreCase))
             {
                 return intended;
             }
@@ -270,7 +345,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     string sub = subs[s];
                     int last = sub.LastIndexOf('/', sub.Length - 1);
                     string name = last >= 0 ? sub.Substring(last + 1) : sub;
-                    if (string.Equals(name, desired, System.StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(name, desired, StringComparison.OrdinalIgnoreCase))
                     {
                         match = sub;
                         break;
@@ -522,6 +597,64 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(TargetAssetPath) != null);
+        }
+
+        [UnityTest]
+        public IEnumerator EnsureSingletonAssetsCreatesFolderHierarchyWhenMissing()
+        {
+            string metadataFolder = "Assets/Resources/Wallstop Studios/Unity Helpers";
+
+            DeleteFolderHierarchy(metadataFolder);
+            yield return null;
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            yield return null;
+
+            Assert.IsFalse(
+                AssetDatabase.IsValidFolder(metadataFolder),
+                "Setup: Metadata folder should not exist before test"
+            );
+
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            yield return null;
+
+            Assert.IsTrue(
+                AssetDatabase.IsValidFolder("Assets/Resources/Wallstop Studios"),
+                "Wallstop Studios folder should be created"
+            );
+            Assert.IsTrue(
+                AssetDatabase.IsValidFolder(metadataFolder),
+                "Metadata folder hierarchy should be created"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator EnsureSingletonAssetsDoesNotThrowWhenFoldersAlreadyExist()
+        {
+            string metadataFolder = "Assets/Resources/Wallstop Studios/Unity Helpers";
+
+            EnsureFolder(metadataFolder);
+            yield return null;
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            yield return null;
+
+            Assert.IsTrue(
+                AssetDatabase.IsValidFolder(metadataFolder),
+                "Setup: Metadata folder should exist before test"
+            );
+
+            Assert.DoesNotThrow(
+                () => ScriptableObjectSingletonCreator.EnsureSingletonAssets(),
+                "EnsureSingletonAssets should not throw when folders already exist"
+            );
+            yield return null;
         }
 
         private static string GetAbsolutePath(string assetsRelativePath)

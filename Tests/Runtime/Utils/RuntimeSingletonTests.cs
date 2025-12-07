@@ -7,14 +7,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine;
     using UnityEngine.SceneManagement;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class RuntimeSingletonTests : CommonTestBase
     {
         [SetUp]
-        public void ResetSingletons()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             DestroyAll<TestRuntimeSingleton>();
             DestroyAll<PreservableSingleton>();
             DestroyAll<NonPreservableSingleton>();

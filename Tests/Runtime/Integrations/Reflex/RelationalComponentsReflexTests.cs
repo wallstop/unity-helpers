@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex.Runtime.Integra
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.Reflex;
     using WallstopStudios.UnityHelpers.Tags;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class RelationalComponentsReflexTests : CommonTestBase
     {

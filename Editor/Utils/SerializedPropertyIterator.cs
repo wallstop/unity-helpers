@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
     using System;
     using System.Collections.Generic;
     using UnityEditor;
-    using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
     /// Provides allocation-optimized iteration over SerializedObject properties.

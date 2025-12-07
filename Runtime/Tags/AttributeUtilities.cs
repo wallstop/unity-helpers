@@ -97,9 +97,8 @@ namespace WallstopStudios.UnityHelpers.Tags
                 FieldInfo[] fields = type.GetFields(
                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
                 );
-                for (int index = 0; index < fields.Length; index++)
+                foreach (FieldInfo fieldInfo in fields)
                 {
-                    FieldInfo fieldInfo = fields[index];
                     if (fieldInfo.FieldType == typeof(Attribute))
                     {
                         uniqueNames.Add(fieldInfo.Name);
@@ -446,7 +445,13 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return null;
             }
 
-            EffectHandler effectHandler = target.GetGameObject().GetOrAddComponent<EffectHandler>();
+            GameObject go = target.GetGameObject();
+            if (go == null)
+            {
+                return null;
+            }
+
+            EffectHandler effectHandler = go.GetOrAddComponent<EffectHandler>();
             return effectHandler.ApplyEffect(attributeEffect);
         }
 
@@ -475,7 +480,14 @@ namespace WallstopStudios.UnityHelpers.Tags
             {
                 return;
             }
-            EffectHandler effectHandler = target.GetGameObject().GetOrAddComponent<EffectHandler>();
+
+            GameObject go = target.GetGameObject();
+            if (go == null)
+            {
+                return;
+            }
+
+            EffectHandler effectHandler = go.GetOrAddComponent<EffectHandler>();
             foreach (AttributeEffect attributeEffect in attributeEffects)
             {
                 _ = effectHandler.ApplyEffect(attributeEffect);
@@ -498,7 +510,13 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return;
             }
 
-            EffectHandler effectHandler = target.GetGameObject().GetOrAddComponent<EffectHandler>();
+            GameObject go = target.GetGameObject();
+            if (go == null)
+            {
+                return;
+            }
+
+            EffectHandler effectHandler = go.GetOrAddComponent<EffectHandler>();
             foreach (AttributeEffect attributeEffect in attributeEffects)
             {
                 _ = effectHandler.ApplyEffect(attributeEffect);
@@ -529,7 +547,13 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return;
             }
 
-            EffectHandler effectHandler = target.GetGameObject().GetOrAddComponent<EffectHandler>();
+            GameObject go = target.GetGameObject();
+            if (go == null)
+            {
+                return;
+            }
+
+            EffectHandler effectHandler = go.GetOrAddComponent<EffectHandler>();
             foreach (AttributeEffect attributeEffect in attributeEffects)
             {
                 EffectHandle? handle = effectHandler.ApplyEffect(attributeEffect);
@@ -782,7 +806,13 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return null;
             }
 
-            EffectHandler effectHandler = target.GetGameObject().GetOrAddComponent<EffectHandler>();
+            GameObject go = target.GetGameObject();
+            if (go == null)
+            {
+                return null;
+            }
+
+            EffectHandler effectHandler = go.GetOrAddComponent<EffectHandler>();
             return effectHandler.EnsureHandle(attributeEffect, refreshDuration);
         }
 
@@ -818,6 +848,21 @@ namespace WallstopStudios.UnityHelpers.Tags
                 && effectHandler.RefreshEffect(effectHandle, ignoreReapplicationPolicy);
         }
 
+        /// <summary>
+        /// Retrieves a dictionary of attribute fields for the specified component type, keyed by field name.
+        /// Uses cached metadata when available and falls back to reflection otherwise.
+        /// </summary>
+        /// <param name="type">Component type that declares <see cref="Attribute"/> fields.</param>
+        /// <returns>A dictionary mapping attribute field names to their <see cref="FieldInfo"/>.</returns>
+        /// <example>
+        /// <code>
+        /// Dictionary&lt;string, FieldInfo&gt; fields = AttributeUtilities.GetAttributeFields(typeof(CharacterStats));
+        /// if (fields.TryGetValue("Health", out FieldInfo healthField))
+        /// {
+        ///     Debug.Log($"Health base value: {healthField.GetValue(stats)}");
+        /// }
+        /// </code>
+        /// </example>
         public static Dictionary<string, FieldInfo> GetAttributeFields(Type type)
         {
             return AttributeFields.GetOrAdd(
@@ -858,6 +903,19 @@ namespace WallstopStudios.UnityHelpers.Tags
             );
         }
 
+        /// <summary>
+        /// Retrieves attribute fields for the specified component type with compiled getters for fast access.
+        /// Prefers cached metadata and generates delegates on demand when the cache is unavailable.
+        /// </summary>
+        /// <param name="type">Component type that declares <see cref="Attribute"/> fields.</param>
+        /// <returns>A dictionary mapping attribute field names to compiled getter delegates.</returns>
+        /// <example>
+        /// <code>
+        /// Dictionary&lt;string, Func&lt;object, Attribute&gt;&gt; getters = AttributeUtilities.GetOptimizedAttributeFields(typeof(CharacterStats));
+        /// Attribute health = getters["Health"](stats);
+        /// Debug.Log($"Current health: {health.CurrentValue}");
+        /// </code>
+        /// </example>
         public static Dictionary<string, Func<object, Attribute>> GetOptimizedAttributeFields(
             Type type
         )

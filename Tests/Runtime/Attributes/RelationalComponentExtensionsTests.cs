@@ -5,7 +5,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
     [TestFixture]
     public sealed class RelationalComponentExtensionsTests : CommonTestBase
@@ -40,17 +41,5 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             yield break;
         }
-    }
-
-    internal sealed class RelationalComponentTester : MonoBehaviour
-    {
-        [ParentComponent(OnlyAncestors = true)]
-        public Rigidbody parentBody;
-
-        [SiblingComponent]
-        public BoxCollider siblingCollider;
-
-        [ChildComponent(OnlyDescendants = true)]
-        public CapsuleCollider childCollider;
     }
 }

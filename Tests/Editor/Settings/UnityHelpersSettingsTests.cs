@@ -29,7 +29,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
 
             try
             {
-                using SerializedObject serializedSettings = new SerializedObject(settings);
+                using SerializedObject serializedSettings = new(settings);
                 SerializedProperty patternsProperty = serializedSettings.FindProperty(
                     UnityHelpersSettings.SerializedPropertyNames.SerializableTypeIgnorePatterns
                 );
@@ -60,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             }
             finally
             {
-                using SerializedObject restore = new SerializedObject(settings);
+                using SerializedObject restore = new(settings);
                 SerializedProperty patternsProperty = restore.FindProperty(
                     UnityHelpersSettings.SerializedPropertyNames.SerializableTypeIgnorePatterns
                 );
@@ -187,7 +187,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         public void SerializableTypeIgnorePatternsCanBeAppendedAndReset()
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            using SerializedObject serialized = new SerializedObject(settings);
+            using SerializedObject serialized = new(settings);
             serialized.Update();
 
             SerializedProperty patterns = serialized.FindProperty(
@@ -329,7 +329,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         public void LegacyPaletteMigratesIntoCustomColors()
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            using SerializedObject serialized = new SerializedObject(settings);
+            using SerializedObject serialized = new(settings);
             serialized.Update();
 
             SerializedProperty legacyPalette = serialized.FindProperty(
@@ -393,10 +393,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             }
 
             Color legacyButton = new(0.1f, 0.6f, 0.9f, 1f);
-            Color expectedText =
-                WallstopStudios.UnityHelpers.Editor.Utils.WButton.WButtonColorUtility.GetReadableTextColor(
-                    legacyButton
-                );
+            Color expectedText = WButtonColorUtility.GetReadableTextColor(legacyButton);
 
             try
             {
@@ -548,7 +545,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         public void FoldoutTweenDefaultsRepairWhenUninitialized()
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            using SerializedObject serialized = new SerializedObject(settings);
+            using SerializedObject serialized = new(settings);
             serialized.Update();
 
             SerializedProperty wbuttonTweenProperty = serialized.FindProperty(
@@ -603,7 +600,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableSetFoldouts());
                 Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableSortedSetFoldouts());
 
-                using SerializedObject verification = new SerializedObject(settings);
+                using SerializedObject verification = new(settings);
                 verification.Update();
                 Assert.IsTrue(
                     verification
@@ -617,7 +614,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             }
             finally
             {
-                using SerializedObject restore = new SerializedObject(settings);
+                using SerializedObject restore = new(settings);
                 restore
                     .FindProperty(
                         UnityHelpersSettings.SerializedPropertyNames.WButtonFoldoutTweenEnabled
@@ -665,7 +662,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         public void FoldoutTweenTogglesAffectBehavior()
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            using SerializedObject serialized = new SerializedObject(settings);
+            using SerializedObject serialized = new(settings);
             SerializedProperty wbuttonTweenProperty = serialized.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonFoldoutTweenEnabled
             );
@@ -713,7 +710,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             }
             finally
             {
-                using SerializedObject restore = new SerializedObject(settings);
+                using SerializedObject restore = new(settings);
                 restore
                     .FindProperty(
                         UnityHelpersSettings.SerializedPropertyNames.WButtonFoldoutTweenEnabled
@@ -816,7 +813,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         public void InlineEditorFoldoutBehaviorFollowsSettingsValue()
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            using SerializedObject serialized = new SerializedObject(settings);
+            using SerializedObject serialized = new(settings);
             serialized.Update();
 
             SerializedProperty property = serialized.FindProperty(
@@ -843,11 +840,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         }
 
         [Test]
-        public void EnsureWButtonCustomColorDefaults_ManualEditSkipsAutoSuggestion()
+        public void EnsureWButtonCustomColorDefaultsManualEditSkipsAutoSuggestion()
         {
             const string PaletteKey = "EditorManualWButton";
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            using SerializedObject serialized = new SerializedObject(settings);
+            using SerializedObject serialized = new(settings);
             serialized.Update();
 
             SerializedProperty paletteProperty = serialized.FindProperty(
@@ -911,11 +908,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         }
 
         [Test]
-        public void EnsureWButtonCustomColorDefaults_SuggestsColorsWithoutManualEdit()
+        public void EnsureWButtonCustomColorDefaultsSuggestsColorsWithoutManualEdit()
         {
             const string PaletteKey = "EditorAutoWButton";
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            using SerializedObject serialized = new SerializedObject(settings);
+            using SerializedObject serialized = new(settings);
             serialized.Update();
 
             SerializedProperty paletteProperty = serialized.FindProperty(
@@ -976,11 +973,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         }
 
         [Test]
-        public void EnsureWGroupCustomColorDefaults_ManualEditSkipsAutoSuggestion()
+        public void EnsureWGroupCustomColorDefaultsManualEditSkipsAutoSuggestion()
         {
             const string PaletteKey = "EditorManualWGroup";
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            using SerializedObject serialized = new SerializedObject(settings);
+            using SerializedObject serialized = new(settings);
             serialized.Update();
 
             SerializedProperty paletteProperty = serialized.FindProperty(
@@ -1039,11 +1036,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         }
 
         [Test]
-        public void SerializableDictionaryDrawerCommit_RegistersManualEditForPalette()
+        public void SerializableDictionaryDrawerCommitRegistersManualEditForPalette()
         {
             const string PaletteKey = "EditorDrawerPaletteKey";
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            using SerializedObject serialized = new SerializedObject(settings);
+            using SerializedObject serialized = new(settings);
             serialized.Update();
 
             SerializedProperty paletteProperty = serialized.FindProperty(
@@ -1111,7 +1108,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         {
             const string PaletteKey = "EditorDrawerGroupPaletteKey";
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            using SerializedObject serialized = new SerializedObject(settings);
+            using SerializedObject serialized = new(settings);
             serialized.Update();
 
             SerializedProperty paletteProperty = serialized.FindProperty(
@@ -1178,7 +1175,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         public void PaletteSortButtonOrdersProjectSettingsKeysLexically()
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            using SerializedObject serialized = new SerializedObject(settings);
+            using SerializedObject serialized = new(settings);
             serialized.Update();
 
             SerializedProperty paletteProperty = serialized.FindProperty(
@@ -1194,21 +1191,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             {
                 PaletteDictionaryEntrySnapshot[] testEntries =
                 {
-                    new PaletteDictionaryEntrySnapshot(
-                        "SortZeta",
-                        new Color(0.9f, 0.2f, 0.2f, 1f),
-                        Color.white
-                    ),
-                    new PaletteDictionaryEntrySnapshot(
-                        "SortAlpha",
-                        new Color(0.2f, 0.6f, 0.3f, 1f),
-                        Color.black
-                    ),
-                    new PaletteDictionaryEntrySnapshot(
-                        "SortMid",
-                        new Color(0.2f, 0.3f, 0.8f, 1f),
-                        Color.white
-                    ),
+                    new("SortZeta", new Color(0.9f, 0.2f, 0.2f, 1f), Color.white),
+                    new("SortAlpha", new Color(0.2f, 0.6f, 0.3f, 1f), Color.black),
+                    new("SortMid", new Color(0.2f, 0.3f, 0.8f, 1f), Color.white),
                 };
 
                 OverwritePaletteDictionary(

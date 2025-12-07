@@ -6,7 +6,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
     public sealed class SerializableHashSetTests : CommonTestBase
@@ -405,8 +406,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 return Identifier.GetHashCode(StringComparison.Ordinal);
             }
         }
-
-        private sealed class DummyAsset : ScriptableObject { }
 
         [Test]
         public void EnumeratorIsValueTypeAndSupportsForEach()

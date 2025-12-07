@@ -8,15 +8,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class PrefabCheckerTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/PrefabCheckerTests";
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             EnsureFolder(Root);
         }
 
@@ -24,8 +25,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         public override void TearDown()
         {
             base.TearDown();
-            AssetDatabase.DeleteAsset("Assets/Temp");
-            AssetDatabase.Refresh();
+            // Clean up only tracked folders/assets that this test created
+            CleanupTrackedFoldersAndAssets();
         }
 
         [Test]
@@ -46,6 +47,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
 
             GameObject go = Track(new GameObject("DummyPrefab"));
             PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
+            TrackAssetPath(prefabPath);
             AssetDatabase.Refresh();
 
             PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
@@ -54,27 +56,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             checker._assetPaths = list;
 
             Assert.DoesNotThrow(() => checker.RunChecksImproved());
-        }
-
-        private static void EnsureFolder(string relPath)
-        {
-            relPath = relPath.Replace('\\', '/');
-            if (string.IsNullOrWhiteSpace(relPath))
-            {
-                return;
-            }
-
-            string[] parts = relPath.Split('/');
-            string cur = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string next = cur + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    AssetDatabase.CreateFolder(cur, parts[i]);
-                }
-                cur = next;
-            }
         }
     }
 #endif

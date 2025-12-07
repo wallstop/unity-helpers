@@ -11,8 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class UnityMainThreadDispatcherTests : CommonTestBase
     {
@@ -20,8 +20,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public override void BaseSetUp()
         {
             base.BaseSetUp();
-            UnityMainThreadDispatcher dispatcher;
-            if (!UnityMainThreadDispatcher.TryGetInstance(out dispatcher))
+            if (!UnityMainThreadDispatcher.TryGetInstance(out UnityMainThreadDispatcher dispatcher))
             {
                 dispatcher = UnityMainThreadDispatcher.Instance;
             }

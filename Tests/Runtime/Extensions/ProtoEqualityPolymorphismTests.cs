@@ -4,7 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using NUnit.Framework;
     using ProtoBuf;
     using WallstopStudios.UnityHelpers.Core.Extension;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
     public sealed class ProtoEqualityPolymorphismTests : CommonTestBase

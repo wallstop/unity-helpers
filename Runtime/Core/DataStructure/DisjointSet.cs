@@ -261,8 +261,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             foreach (List<int> scratch in setMap.Values)
             {
-                List<int> destination;
-                if (!reuseStack.TryPop(out destination))
+                if (!reuseStack.TryPop(out List<int> destination))
                 {
                     destination = new List<int>(scratch.Count);
                 }

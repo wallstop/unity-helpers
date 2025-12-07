@@ -345,6 +345,13 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         private static void WarnMetadataMissing(Type type)
         {
+#if UNITY_EDITOR
+            // Suppress warning during early initialization before singleton creator has run
+            if (!ScriptableObjectSingletonInitState.InitialEnsureCompleted)
+            {
+                return;
+            }
+#endif
             string message =
                 $"ScriptableObjectSingleton metadata entry not found for {type.FullName}. Falling back to heuristic Resources search.";
             LogMetadataWarning(message, ref _metadataMissingWarningLogged);
@@ -352,6 +359,13 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         private static void WarnMetadataLoadFailure(Type type, string path)
         {
+#if UNITY_EDITOR
+            // Suppress warning during early initialization - asset may not be created yet
+            if (!ScriptableObjectSingletonInitState.InitialEnsureCompleted)
+            {
+                return;
+            }
+#endif
             string message =
                 $"ScriptableObjectSingleton metadata entry for {type.FullName} points to '{path}', but the asset could not be loaded.";
             LogMetadataWarning(message, ref _metadataLoadFailureWarningLogged);
@@ -364,6 +378,14 @@ namespace WallstopStudios.UnityHelpers.Utils
             {
                 return;
             }
+
+#if UNITY_EDITOR
+            // Suppress warning during early initialization - asset may not be created yet
+            if (!ScriptableObjectSingletonInitState.InitialEnsureCompleted)
+            {
+                return;
+            }
+#endif
 
             string key = $"{type.FullName}|{folder}";
             lock (_metadataFolderWarnings)
@@ -386,6 +408,14 @@ namespace WallstopStudios.UnityHelpers.Utils
         private static void WarnNoInstancesFound(Type type)
         {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+#if UNITY_EDITOR
+            // Suppress warning during early initialization - asset may not be created yet
+            if (!ScriptableObjectSingletonInitState.InitialEnsureCompleted)
+            {
+                return;
+            }
+#endif
+
             string key = type.FullName ?? type.Name;
             lock (_missingInstanceWarnings)
             {
@@ -516,7 +546,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                 ? loadPath
                 : canonicalAssetPath;
             Debug.LogWarning(
-                $"ScriptableObjectSingleton detected duplicate assets for {type.FullName} under '{assetFolder}'. Using '{canonicalLabel}'. Remove extra copies:{Environment.NewLine} - {string.Join(Environment.NewLine + " - ", duplicates)}"
+                $"ScriptableObjectSingleton detected duplicate assets for {type.FullName} under '{assetFolder}'. Using '{canonicalLabel}'. Remove extra copies or add [AllowDuplicateCleanup] attribute for automatic cleanup:{Environment.NewLine} - {string.Join(Environment.NewLine + " - ", duplicates)}"
             );
         }
 

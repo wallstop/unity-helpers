@@ -5,7 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
     public sealed class SpriteHelpersTests : CommonTestBase
@@ -16,8 +16,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         private static readonly int[] TextureSizeCases = { 1, 2, 4, 16, 64, 256, 512 };
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             if (Application.isPlaying)
             {
                 return;

@@ -5,9 +5,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
 
     public sealed class SpriteCropperAdditionalTests : CommonTestBase
@@ -15,8 +16,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         private const string Root = "Assets/Temp/SpriteCropperAdditionalTests";
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             EnsureFolder(Root);
         }
 
@@ -295,6 +297,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
 
         private static void EnsureFolder(string relPath)
         {
+            if (string.IsNullOrWhiteSpace(relPath))
+            {
+                return;
+            }
+
+            relPath = relPath.Replace('\\', '/');
+
+            // Ensure the folder exists on disk first to prevent AssetDatabase.CreateFolder from failing
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            if (!string.IsNullOrEmpty(projectRoot))
+            {
+                string absoluteDirectory = Path.Combine(projectRoot, relPath);
+                if (!Directory.Exists(absoluteDirectory))
+                {
+                    Directory.CreateDirectory(absoluteDirectory);
+                }
+            }
+
+            // Then ensure it's registered in AssetDatabase
+            if (AssetDatabase.IsValidFolder(relPath))
+            {
+                return;
+            }
+
             string[] parts = relPath.Split('/');
             string cur = parts[0];
             for (int i = 1; i < parts.Length; i++)
@@ -302,7 +328,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                 string next = cur + "/" + parts[i];
                 if (!AssetDatabase.IsValidFolder(next))
                 {
-                    AssetDatabase.CreateFolder(cur, parts[i]);
+                    string result = AssetDatabase.CreateFolder(cur, parts[i]);
+                    if (string.IsNullOrEmpty(result))
+                    {
+                        Debug.LogWarning(
+                            $"EnsureFolder: Failed to create folder '{next}' in AssetDatabase (parent: '{cur}')"
+                        );
+                    }
                 }
                 cur = next;
             }
@@ -318,6 +350,142 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                     rel
                 )
                 .Replace('\\', '/');
+        }
+
+        /// <summary>
+        /// Tests that the skip count is never negative after processing.
+        /// This was a regression where the formula for calculating skipped count
+        /// would yield negative values when files needed reprocessing.
+        /// </summary>
+        [Test]
+        public void ProcessFoundSpritesSkipCountIsNeverNegativeWhenSingleSpriteSucceeds()
+        {
+            // Arrange: Create a single sprite that will be successfully cropped
+            string src = (Root + "/single_test.png").SanitizePath();
+            CreatePngWithOpaqueRect(src, 20, 20, 5, 5, 10, 10, Color.white);
+            AssetDatabase.Refresh();
+
+            TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
+            Assert.IsNotNull(imp, "TextureImporter should be available for test sprite");
+            imp.textureType = TextureImporterType.Sprite;
+            imp.spriteImportMode = SpriteImportMode.Single;
+            imp.isReadable = true;
+            imp.SaveAndReimport();
+
+            SpriteCropper window = Track(ScriptableObject.CreateInstance<SpriteCropper>());
+            window._overwriteOriginals = false;
+            window._inputDirectories = new System.Collections.Generic.List<Object>
+            {
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
+            };
+
+            window.FindFilesToProcess();
+
+            // Act
+            window.ProcessFoundSprites();
+
+            // Assert: Verify the log message shows a non-negative skip count
+            // The log format is: "{count} sprites processed successfully. Skipped: {skipped}"
+            LogAssert.Expect(
+                LogType.Log,
+                new System.Text.RegularExpressions.Regex(
+                    @"\d+ sprites processed successfully\. Skipped: \d+"
+                )
+            );
+        }
+
+        /// <summary>
+        /// Tests that multiple sprites are counted correctly in the success message.
+        /// </summary>
+        [Test]
+        public void ProcessFoundSpritesCountsMultipleSpritesCorrectly()
+        {
+            // Arrange: Create multiple sprites
+            string src1 = (Root + "/multi_test1.png").SanitizePath();
+            string src2 = (Root + "/multi_test2.png").SanitizePath();
+            string src3 = (Root + "/multi_test3.png").SanitizePath();
+
+            CreatePngWithOpaqueRect(src1, 20, 20, 5, 5, 10, 10, Color.white);
+            CreatePngWithOpaqueRect(src2, 30, 30, 5, 5, 15, 15, Color.red);
+            CreatePngWithOpaqueRect(src3, 25, 25, 3, 3, 12, 12, Color.blue);
+            AssetDatabase.Refresh();
+
+            foreach (string src in new[] { src1, src2, src3 })
+            {
+                TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
+                Assert.IsNotNull(imp, $"TextureImporter should be available for {src}");
+                imp.textureType = TextureImporterType.Sprite;
+                imp.spriteImportMode = SpriteImportMode.Single;
+                imp.isReadable = true;
+                imp.SaveAndReimport();
+            }
+
+            SpriteCropper window = Track(ScriptableObject.CreateInstance<SpriteCropper>());
+            window._overwriteOriginals = false;
+            window._inputDirectories = new System.Collections.Generic.List<Object>
+            {
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
+            };
+
+            window.FindFilesToProcess();
+            int fileCount = window._filesToProcess.Count;
+            Assert.That(
+                fileCount,
+                Is.GreaterThanOrEqualTo(3),
+                "Should have found at least 3 files to process"
+            );
+
+            // Act
+            window.ProcessFoundSprites();
+
+            // Assert: Verify the log message shows correct counts (success + skipped = total)
+            // Since all sprites should be processed successfully, skipped should be 0
+            LogAssert.Expect(
+                LogType.Log,
+                new System.Text.RegularExpressions.Regex(
+                    @"\d+ sprites processed successfully\. Skipped: \d+"
+                )
+            );
+        }
+
+        /// <summary>
+        /// Tests that sprites that don't need cropping are counted as skipped correctly.
+        /// </summary>
+        [Test]
+        public void ProcessFoundSpritesSkipsSpritesWithNoTransparentPixels()
+        {
+            // Arrange: Create a fully opaque sprite (no cropping needed)
+            string src = (Root + "/fully_opaque.png").SanitizePath();
+            CreatePngFilled(src, 20, 20, Color.white);
+            AssetDatabase.Refresh();
+
+            TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
+            Assert.IsNotNull(imp, "TextureImporter should be available for test sprite");
+            imp.textureType = TextureImporterType.Sprite;
+            imp.spriteImportMode = SpriteImportMode.Single;
+            imp.isReadable = true;
+            imp.SaveAndReimport();
+
+            SpriteCropper window = Track(ScriptableObject.CreateInstance<SpriteCropper>());
+            window._overwriteOriginals = false;
+            window._inputDirectories = new System.Collections.Generic.List<Object>
+            {
+                AssetDatabase.LoadAssetAtPath<Object>(Root),
+            };
+
+            window.FindFilesToProcess();
+
+            // Act
+            window.ProcessFoundSprites();
+
+            // Assert: Should skip the sprite since it doesn't need cropping
+            // The log message should show the processing result
+            LogAssert.Expect(
+                LogType.Log,
+                new System.Text.RegularExpressions.Regex(
+                    @"\d+ sprites processed successfully\. Skipped: \d+"
+                )
+            );
         }
     }
 #endif

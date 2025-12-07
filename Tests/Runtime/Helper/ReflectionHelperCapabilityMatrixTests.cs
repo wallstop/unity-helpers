@@ -6,7 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using System.Reflection;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
     public sealed class ReflectionHelperCapabilityMatrixTests : CommonTestBase
@@ -28,8 +28,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         };
 
         [SetUp]
-        public void ResetCaches()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             ReflectionHelpers.ClearFieldGetterCache();
             ReflectionHelpers.ClearFieldSetterCache();
             ReflectionHelpers.ClearPropertyCache();

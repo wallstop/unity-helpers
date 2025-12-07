@@ -8,15 +8,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using UnityEngine.U2D;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class ScriptableSpriteAtlasEditorTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/ScriptableSpriteAtlasEditorTests";
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             EnsureFolder(Root);
         }
 
@@ -24,8 +25,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         public override void TearDown()
         {
             base.TearDown();
-            AssetDatabase.DeleteAsset("Assets/Temp");
-            AssetDatabase.Refresh();
+            // Clean up only tracked folders/assets that this test created
+            CleanupTrackedFoldersAndAssets();
         }
 
         [Test]
@@ -44,6 +45,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             config.outputSpriteAtlasName = "TestAtlas";
             string configPath = Path.Combine(Root, "TestAtlasConfig.asset").SanitizePath();
             AssetDatabase.CreateAsset(config, configPath);
+            TrackAssetPath(configPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
@@ -57,40 +59,34 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             AssetDatabase.Refresh();
 
             string atlasPath = Path.Combine(Root, "TestAtlas.spriteatlas").SanitizePath();
+            TrackAssetPath(atlasPath);
             SpriteAtlas atlas = AssetDatabase.LoadAssetAtPath<SpriteAtlas>(atlasPath);
             Assert.IsTrue(atlas != null, ".spriteatlas should be generated");
         }
 
-        private static void EnsureFolder(string relPath)
-        {
-            string[] parts = relPath.Split('/');
-            string cur = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string next = cur + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    AssetDatabase.CreateFolder(cur, parts[i]);
-                }
-                cur = next;
-            }
-        }
-
-        private static void CreatePng(string relPath, int w, int h, Color c)
+        private void CreatePng(string relPath, int w, int h, Color c)
         {
             string dir = Path.GetDirectoryName(relPath)?.SanitizePath();
             EnsureFolder(dir);
             Texture2D t = new(w, h, TextureFormat.RGBA32, false);
-            Color[] pix = new Color[w * h];
-            for (int i = 0; i < pix.Length; i++)
+            try
             {
-                pix[i] = c;
-            }
+                Color[] pix = new Color[w * h];
+                for (int i = 0; i < pix.Length; i++)
+                {
+                    pix[i] = c;
+                }
 
-            t.SetPixels(pix);
-            t.Apply();
-            byte[] data = t.EncodeToPNG();
-            File.WriteAllBytes(RelToFull(relPath), data);
+                t.SetPixels(pix);
+                t.Apply();
+                byte[] data = t.EncodeToPNG();
+                File.WriteAllBytes(RelToFull(relPath), data);
+                TrackAssetPath(relPath);
+            }
+            finally
+            {
+                Object.DestroyImmediate(t);
+            }
         }
 
         private static string RelToFull(string rel)

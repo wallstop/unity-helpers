@@ -1,13 +1,13 @@
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System.Collections;
-    using System.Collections.Generic;
     using System.Text.RegularExpressions;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
     [TestFixture]
     public sealed class RelationalComponentTagAndNameFilterEdgeTests : CommonTestBase
@@ -182,53 +182,5 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             Assert.AreSame(preassigned, tester.alreadyAssigned);
             yield break;
         }
-    }
-
-    internal sealed class IncludeInactiveTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true, IncludeInactive = false, TagFilter = "Player")]
-        public List<SpriteRenderer> onlyActivePlayers;
-    }
-
-    internal sealed class CombinedFilterTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true, TagFilter = "Player", NameFilter = "Player")]
-        public List<SpriteRenderer> matched;
-    }
-
-    internal sealed class UntaggedFilterTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true, TagFilter = "Untagged")]
-        public List<SpriteRenderer> untagged;
-    }
-
-    internal sealed class SelfInclusionTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = false)]
-        public SpriteRenderer selfRenderer;
-    }
-
-    internal sealed class InterfacesDisabledTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true, AllowInterfaces = false)]
-        public ITestInterface iface;
-    }
-
-    internal sealed class OptionalTester : MonoBehaviour
-    {
-        [SiblingComponent(Optional = true)]
-        public Rigidbody missingOptional;
-    }
-
-    internal sealed class SkipIfAssignedTesterEdgeCase : MonoBehaviour
-    {
-        [SiblingComponent(SkipIfAssigned = true)]
-        public SpriteRenderer alreadyAssigned;
-    }
-
-    internal sealed class SiblingNoMatchTagTester : MonoBehaviour
-    {
-        [SiblingComponent(TagFilter = "Player")]
-        public BoxCollider siblingCollider;
     }
 }

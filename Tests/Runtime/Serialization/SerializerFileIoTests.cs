@@ -6,15 +6,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Serialization;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class SerializerFileIoTests : CommonTestBase
     {
         private string _dir;
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             _dir = Path.Combine(Application.persistentDataPath, "SerializerFileIoTests");
             if (Directory.Exists(_dir))
             {

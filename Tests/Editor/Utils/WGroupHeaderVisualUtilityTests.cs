@@ -10,9 +10,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     public sealed class WGroupHeaderVisualUtilityTests
     {
         [Test]
-        public void GetContentRect_ShiftsWhenFoldoutSpaceRequested()
+        public void GetContentRectShiftsWhenFoldoutSpaceRequested()
         {
-            Rect headerRect = new Rect(0f, 0f, 200f, 24f);
+            Rect headerRect = new(0f, 0f, 200f, 24f);
 
             Rect withoutFoldout = WGroupHeaderVisualUtility.GetContentRect(headerRect, 0f, 0f);
 
@@ -23,9 +23,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void GetHeaderHeight_UsesTallestStyleLineHeight()
+        public void GetHeaderHeightUsesTallestStyleLineHeight()
         {
-            Color textColor = new Color(0.25f, 0.5f, 0.75f, 1f);
+            Color textColor = new(0.25f, 0.5f, 0.75f, 1f);
 
             GUIStyle foldoutStyle = WGroupStyles.GetFoldoutStyle(textColor);
             GUIStyle headerStyle = WGroupStyles.GetHeaderLabelStyle(textColor);
@@ -48,9 +48,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void GetHeaderHeight_GrowsWhenFoldoutStyleExpands()
+        public void GetHeaderHeightGrowsWhenFoldoutStyleExpands()
         {
-            Color textColor = new Color(0.6f, 0.2f, 0.8f, 1f);
+            Color textColor = new(0.6f, 0.2f, 0.8f, 1f);
             GUIStyle foldoutStyle = WGroupStyles.GetFoldoutStyle(textColor);
             GUIStyle headerStyle = WGroupStyles.GetHeaderLabelStyle(textColor);
 

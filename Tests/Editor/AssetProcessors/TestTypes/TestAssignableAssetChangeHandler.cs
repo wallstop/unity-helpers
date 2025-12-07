@@ -10,8 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
     /// </summary>
     internal sealed class TestAssignableAssetChangeHandler : ScriptableObject
     {
-        private static readonly List<ITestDetectableContract> recordedCreated =
-            new List<ITestDetectableContract>();
+        private static readonly List<ITestDetectableContract> recordedCreated = new();
         private static readonly List<string> recordedDeletedPaths = new();
 
         public static IReadOnlyList<ITestDetectableContract> RecordedCreated => recordedCreated;

@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
     public sealed class SerializableDictionaryTests
@@ -614,8 +615,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
         [Serializable]
         private sealed class IntCache : SerializableDictionary.Cache<int> { }
-
-        private sealed class DummyAsset : ScriptableObject { }
 
         private sealed class CaseInsensitiveDictionaryKey : IEquatable<CaseInsensitiveDictionaryKey>
         {

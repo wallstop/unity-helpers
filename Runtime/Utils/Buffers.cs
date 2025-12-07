@@ -1,3 +1,4 @@
+// ReSharper disable ConvertClosureToMethodGroup
 namespace WallstopStudios.UnityHelpers.Utils
 {
     using System;
@@ -171,7 +172,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             WaitForSeconds pooled = RentWaitInstruction(
                 WaitForSeconds,
                 WaitForSecondsOrder,
-                CreateWaitForSeconds,
+                wait => CreateWaitForSeconds(wait),
                 seconds,
                 ref waitForSecondsLimitHits,
                 ref waitForSecondsEvictions,
@@ -190,7 +191,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             return RentWaitInstruction(
                 WaitForSeconds,
                 WaitForSecondsOrder,
-                CreateWaitForSeconds,
+                wait => CreateWaitForSeconds(wait),
                 seconds,
                 ref waitForSecondsLimitHits,
                 ref waitForSecondsEvictions,
@@ -215,7 +216,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             WaitForSecondsRealtime pooled = RentWaitInstruction(
                 WaitForSecondsRealtime,
                 WaitForSecondsRealtimeOrder,
-                CreateWaitForSecondsRealtime,
+                wait => CreateWaitForSecondsRealtime(wait),
                 seconds,
                 ref waitForSecondsRealtimeLimitHits,
                 ref waitForSecondsRealtimeEvictions,
@@ -234,7 +235,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             return RentWaitInstruction(
                 WaitForSecondsRealtime,
                 WaitForSecondsRealtimeOrder,
-                CreateWaitForSecondsRealtime,
+                wait => CreateWaitForSecondsRealtime(wait),
                 seconds,
                 ref waitForSecondsRealtimeLimitHits,
                 ref waitForSecondsRealtimeEvictions,
@@ -266,8 +267,10 @@ namespace WallstopStudios.UnityHelpers.Utils
             where TInstruction : class
         {
             float quantized = QuantizeSeconds(requestedSeconds);
+#if !SINGLE_THREADED
             lock (WaitInstructionCacheLock)
             {
+#endif
                 if (cache.TryGetValue(quantized, out WaitInstructionCacheEntry<TInstruction> entry))
                 {
                     if (entry.node.List != null)
@@ -304,7 +307,9 @@ namespace WallstopStudios.UnityHelpers.Utils
                 TInstruction created = factory(quantized);
                 cache[quantized] = new WaitInstructionCacheEntry<TInstruction>(created, node);
                 return created;
+#if !SINGLE_THREADED
             }
+#endif
         }
 
         private static float QuantizeSeconds(float seconds)
@@ -347,18 +352,26 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         private static int GetWaitForSecondsEntryCount()
         {
+#if !SINGLE_THREADED
             lock (WaitInstructionCacheLock)
             {
+#endif
                 return WaitForSeconds.Count;
+#if !SINGLE_THREADED
             }
+#endif
         }
 
         private static int GetWaitForSecondsRealtimeEntryCount()
         {
+#if !SINGLE_THREADED
             lock (WaitInstructionCacheLock)
             {
+#endif
                 return WaitForSecondsRealtime.Count;
+#if !SINGLE_THREADED
             }
+#endif
         }
 
         private static WaitInstructionCacheDiagnostics BuildDiagnostics(
@@ -381,13 +394,17 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         internal static void ResetWaitInstructionCachesForTesting()
         {
+#if !SINGLE_THREADED
             lock (WaitInstructionCacheLock)
             {
+#endif
                 WaitForSeconds.Clear();
                 WaitForSecondsRealtime.Clear();
                 WaitForSecondsOrder.Clear();
                 WaitForSecondsRealtimeOrder.Clear();
+#if !SINGLE_THREADED
             }
+#endif
             WaitInstructionQuantizationStepSeconds = 0f;
             WaitInstructionMaxDistinctEntries = WaitInstructionDefaultMaxDistinctEntries;
             WaitInstructionUseLruEviction = false;
@@ -473,8 +490,10 @@ namespace WallstopStudios.UnityHelpers.Utils
             )
                 where TInstruction : class
             {
+#if !SINGLE_THREADED
                 lock (WaitInstructionCacheLock)
                 {
+#endif
                     Dictionary<float, TInstruction> entries = new(cache.Count);
                     foreach (
                         KeyValuePair<float, WaitInstructionCacheEntry<TInstruction>> pair in cache
@@ -485,7 +504,9 @@ namespace WallstopStudios.UnityHelpers.Utils
 
                     List<float> ordering = new(order);
                     return new WaitInstructionCacheSnapshot<TInstruction>(entries, ordering);
+#if !SINGLE_THREADED
                 }
+#endif
             }
 
             private static void RestoreCache<TInstruction>(
@@ -495,8 +516,10 @@ namespace WallstopStudios.UnityHelpers.Utils
             )
                 where TInstruction : class
             {
+#if !SINGLE_THREADED
                 lock (WaitInstructionCacheLock)
                 {
+#endif
                     cache.Clear();
                     order.Clear();
 
@@ -525,7 +548,9 @@ namespace WallstopStudios.UnityHelpers.Utils
                             node
                         );
                     }
+#if !SINGLE_THREADED
                 }
+#endif
             }
 
             private readonly struct WaitInstructionCacheSnapshot<TInstruction>

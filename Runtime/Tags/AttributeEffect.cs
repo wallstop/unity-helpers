@@ -409,13 +409,13 @@ namespace WallstopStudios.UnityHelpers.Tags
                         continue;
                     }
 
-                    string name = effect.name ?? string.Empty;
-                    if (name.Length == 0)
+                    string effectName = effect.name;
+                    if (effectName.Length == 0)
                     {
                         continue;
                     }
 
-                    names.Add(name);
+                    names.Add(effectName);
                 }
 
                 if (names.Count == 0)

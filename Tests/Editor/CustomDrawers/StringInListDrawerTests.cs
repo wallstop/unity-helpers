@@ -10,7 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using PropertyAttribute = UnityEngine.PropertyAttribute;
 
     [TestFixture]
@@ -20,7 +20,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void CreatePropertyGUIWithoutOptionsReturnsHelpBox()
         {
             StringInListNoOptionsAsset asset = CreateScriptableObject<StringInListNoOptionsAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -40,7 +40,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             StringInListStringOptionsAsset asset =
                 CreateScriptableObject<StringInListStringOptionsAsset>();
             asset.state = "Run";
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -69,7 +69,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             StringInListIntegerOptionsAsset asset =
                 CreateScriptableObject<StringInListIntegerOptionsAsset>();
             asset.selection = 0;
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -261,7 +261,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             10,
             TestName = "CalculateRowsOnPage_LastPageExactFit_ReturnsPageSize"
         )]
-        public void CalculateRowsOnPage_DataDrivenScenarios(
+        public void CalculateRowsOnPageDataDrivenScenarios(
             int filteredCount,
             int pageSize,
             int currentPage,
@@ -320,7 +320,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             StringInListInstanceMethodAsset asset =
                 CreateScriptableObject<StringInListInstanceMethodAsset>();
             asset.dynamicValues.AddRange(new[] { "Dynamic1", "Dynamic2" });
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(

@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class PolygonCollider2DOptimizerTests : CommonTestBase

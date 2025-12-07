@@ -4,7 +4,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class UnityExtensionsMathTests : CommonTestBase
     {

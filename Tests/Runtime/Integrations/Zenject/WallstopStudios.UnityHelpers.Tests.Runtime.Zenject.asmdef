@@ -9,7 +9,7 @@
     "WallstopStudios.UnityHelpers.Tests.Runtime",
     "Zenject",
     "WallstopStudios.UnityHelpers.Tests.Editor",
-    "WallstopStudios.UnityHelpers.Tests.Common"
+    "WallstopStudios.UnityHelpers.Tests.Core"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

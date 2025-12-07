@@ -52,10 +52,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIContent PaginationPageLabelContent = new();
         private static readonly GUIContent RangeLabelGUIContent = new();
         private static readonly object NullComparable = new();
-        private static readonly Dictionary<int, string> IntToStringCache = new();
         private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
         private static readonly Dictionary<(int, int, int), string> RangeLabelCache = new();
-        private const int IntToStringCacheMax = 1000;
 
         private static readonly GUIStyle AddButtonStyle = CreateSolidButtonStyle(
             new Color(0.22f, 0.62f, 0.29f)
@@ -1155,22 +1153,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return new RowFoldoutKey(cacheKey, globalIndex);
         }
 
-        private bool EnsureRowFoldoutState(
-            RowFoldoutKey foldoutKey,
-            SerializedProperty element,
-            out bool stateChanged
-        )
+        private bool EnsureRowFoldoutState(RowFoldoutKey foldoutKey, SerializedProperty element)
         {
-            stateChanged = false;
             if (element == null || !foldoutKey.IsValid)
             {
                 return false;
             }
 
-            bool previous = element.isExpanded;
             bool state = _rowFoldoutStates.GetOrAdd(foldoutKey, _ => true);
             element.isExpanded = state;
-            stateChanged = previous != state;
             return state;
         }
 
@@ -2571,7 +2562,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static GUIContent GetUnsupportedTypeContent(Type type)
         {
             string typeName = type?.Name ?? "Unknown";
-            if (!UnsupportedTypeMessageCache.TryGetValue(type, out string message))
+            if (type == null || !UnsupportedTypeMessageCache.TryGetValue(type, out string message))
             {
                 message = "Unsupported type (" + typeName + ")";
                 if (type != null)
@@ -2790,32 +2781,37 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static bool TypeSupportsComplexEditing(Type type)
         {
-            if (type == null)
+            while (true)
             {
-                return false;
-            }
+                if (type == null)
+                {
+                    return false;
+                }
 
-            if (typeof(Object).IsAssignableFrom(type))
-            {
-                return true;
-            }
+                if (typeof(Object).IsAssignableFrom(type))
+                {
+                    return true;
+                }
 
-            if (IsSimplePendingFieldType(type))
-            {
-                return false;
-            }
+                if (IsSimplePendingFieldType(type))
+                {
+                    return false;
+                }
 
-            if (type.IsArray)
-            {
-                return TypeSupportsComplexEditing(type.GetElementType());
-            }
+                if (type.IsArray)
+                {
+                    type = type.GetElementType();
+                    continue;
+                }
 
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>))
-            {
-                return TypeSupportsComplexEditing(type.GetGenericArguments()[0]);
-            }
+                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>))
+                {
+                    type = type.GetGenericArguments()[0];
+                    continue;
+                }
 
-            return type.IsSerializable;
+                return type.IsSerializable;
+            }
         }
 
         private static bool IsSimplePendingFieldType(Type type)
@@ -2920,12 +2916,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool allowSort
         )
         {
-            if (
-                cache == null
-                || cache.entries == null
-                || cache.entries.Count <= 1
-                || !CanSortElements(itemsProperty, allowSort)
-            )
+            if (cache?.entries is not { Count: > 1 } || !CanSortElements(itemsProperty, allowSort))
             {
                 return false;
             }
@@ -2933,9 +2924,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             SetElementData previous = default;
             bool hasPrevious = false;
 
-            for (int i = 0; i < cache.entries.Count; i++)
+            foreach (PageEntry entry in cache.entries)
             {
-                PageEntry entry = cache.entries[i];
                 if (entry == null)
                 {
                     continue;
@@ -3399,7 +3389,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 state.hasNullEntries = true;
                 state.summary = BuildNullEntrySummary(state.scratch);
             }
-            else if (_nullEntryStates.ContainsKey(key))
+            else
             {
                 _nullEntryStates.Remove(key);
             }
@@ -4017,14 +4007,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             Type[] types = ReflectionHelpers.GetTypesFromAssembly(assembly) ?? Array.Empty<Type>();
 
-            if (types == null)
+            foreach (Type candidate in types)
             {
-                return null;
-            }
-
-            for (int index = 0; index < types.Length; index++)
-            {
-                Type candidate = types[index];
                 if (
                     candidate != null
                     && (
@@ -4061,7 +4045,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
-            if (itemsProperty == null || !itemsProperty.isArray || itemsProperty.arraySize <= 1)
+            if (itemsProperty is not { isArray: true } || itemsProperty.arraySize <= 1)
             {
                 return false;
             }
@@ -4165,70 +4149,67 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 Math.Max(estimatedCount, 4),
                 out List<object> existingValues
             );
+
+            existingValues.Clear();
+            if (hasSerializedArray)
             {
-                existingValues.Clear();
-                if (hasSerializedArray)
+                for (int index = 0; index < itemsProperty.arraySize; index++)
                 {
-                    for (int index = 0; index < itemsProperty.arraySize; index++)
-                    {
-                        SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
-                        existingValues.Add(ReadElementData(element).value);
-                    }
+                    SerializedProperty element = itemsProperty.GetArrayElementAtIndex(index);
+                    existingValues.Add(ReadElementData(element).value);
                 }
-                else if (snapshot is { Length: > 0 })
+            }
+            else if (snapshot is { Length: > 0 })
+            {
+                foreach (object value in snapshot)
                 {
-                    foreach (object value in snapshot)
-                    {
-                        existingValues.Add(value);
-                    }
+                    existingValues.Add(value);
                 }
+            }
 
-                foreach (
-                    object candidate in GenerateCandidateValues(elementType, inspector.UniqueCount)
-                )
+            foreach (
+                object candidate in GenerateCandidateValues(elementType, inspector.UniqueCount)
+            )
+            {
+                if (inspector.ContainsElement(candidate))
                 {
-                    if (inspector.ContainsElement(candidate))
-                    {
-                        continue;
-                    }
-
-                    if (!inspector.TryAddElement(candidate, out object normalizedValue))
-                    {
-                        continue;
-                    }
-
-                    SerializedObject serializedObject = property.serializedObject;
-                    existingValues.Add(normalizedValue);
-
-                    Array updated = Array.CreateInstance(elementType, existingValues.Count);
-                    for (int index = 0; index < existingValues.Count; index++)
-                    {
-                        object coerced = ConvertSnapshotValue(elementType, existingValues[index]);
-                        updated.SetValue(coerced, index);
-                    }
-
-                    inspector.SetSerializedItemsSnapshot(updated, preserveSerializedEntries: true);
-                    inspector.SynchronizeSerializedState();
-
-                    serializedObject.Update();
-                    property = serializedObject.FindProperty(propertyPath);
-                    itemsProperty = property?.FindPropertyRelative(
-                        SerializableHashSetSerializedPropertyNames.Items
-                    );
-                    int totalCount = itemsProperty is { isArray: true }
-                        ? itemsProperty.arraySize
-                        : 0;
-                    EnsurePaginationBounds(pagination, totalCount);
-                    EvaluateDuplicateState(property, itemsProperty, force: true);
-                    EvaluateNullEntryState(property, itemsProperty);
-                    SyncRuntimeSet(property);
-                    if (totalCount > 0)
-                    {
-                        pagination.selectedIndex = totalCount - 1;
-                    }
-                    MarkListCacheDirty(GetPropertyCacheKey(property));
-                    return true;
+                    continue;
                 }
+
+                if (!inspector.TryAddElement(candidate, out object normalizedValue))
+                {
+                    continue;
+                }
+
+                SerializedObject serializedObject = property.serializedObject;
+                existingValues.Add(normalizedValue);
+
+                Array updated = Array.CreateInstance(elementType, existingValues.Count);
+                for (int index = 0; index < existingValues.Count; index++)
+                {
+                    object coerced = ConvertSnapshotValue(elementType, existingValues[index]);
+                    updated.SetValue(coerced, index);
+                }
+
+                inspector.SetSerializedItemsSnapshot(updated, preserveSerializedEntries: true);
+                inspector.SynchronizeSerializedState();
+
+                serializedObject.Update();
+                property = serializedObject.FindProperty(propertyPath);
+                itemsProperty = property?.FindPropertyRelative(
+                    SerializableHashSetSerializedPropertyNames.Items
+                );
+                int totalCount = itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0;
+                EnsurePaginationBounds(pagination, totalCount);
+                EvaluateDuplicateState(property, itemsProperty, force: true);
+                EvaluateNullEntryState(property, itemsProperty);
+                SyncRuntimeSet(property);
+                if (totalCount > 0)
+                {
+                    pagination.selectedIndex = totalCount - 1;
+                }
+                MarkListCacheDirty(GetPropertyCacheKey(property));
+                return true;
             }
 
             if (ElementTypeSupportsNull(elementType))
@@ -4543,7 +4524,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (valueSupportsFoldout)
             {
                 RowFoldoutKey foldoutKey = BuildRowFoldoutKey(listKey, arrayIndex);
-                EnsureRowFoldoutState(foldoutKey, rowData.itemProperty, out _);
+                EnsureRowFoldoutState(foldoutKey, rowData.itemProperty);
             }
 
             return rowData.rowHeight;
@@ -4596,7 +4577,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 hasFoldoutKey = foldoutKey.IsValid;
                 if (hasFoldoutKey)
                 {
-                    EnsureRowFoldoutState(foldoutKey, element, out _);
+                    EnsureRowFoldoutState(foldoutKey, element);
                 }
             }
             bool isDuplicate =
@@ -4606,8 +4587,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 context.duplicateState != null
                 && context.duplicateState.primaryFlags.GetValueOrDefault(arrayIndex, false);
             bool hasNullValue =
-                context.nullState != null
-                && context.nullState.hasNullEntries
+                context.nullState is { hasNullEntries: true }
                 && context.nullState.nullIndices.Contains(arrayIndex);
 
             Rect backgroundRect = new(rect.x, rect.y + 1f, rect.width, rect.height - 2f);
@@ -4691,8 +4671,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
             if (valueSupportsFoldout)
             {
-                float renderedHeight;
-                DrawSetRowFoldoutValue(contentRect, element, out renderedHeight);
+                DrawSetRowFoldoutValue(contentRect, element, out float renderedHeight);
                 contentRect.height = renderedHeight;
             }
             else
@@ -4734,12 +4713,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     : TypeSupportsComplexEditing(elementType)
                         && !typeof(Object).IsAssignableFrom(elementType);
 
-            if (!typeSupports)
-            {
-                return false;
-            }
-
-            return SerializedPropertySupportsFoldout(property);
+            return typeSupports && SerializedPropertySupportsFoldout(property);
         }
 
         private static bool DrawSetRowFoldoutValue(
@@ -5062,47 +5036,39 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int count = itemsProperty.arraySize;
             using PooledResource<List<SetElementData>> elementsLease =
                 Buffers<SetElementData>.GetList(count, out List<SetElementData> elements);
+
+            for (int index = 0; index < count; index++)
             {
-                elements.Clear();
+                SerializedProperty elementProperty = itemsProperty.GetArrayElementAtIndex(index);
+                elements.Add(ReadElementData(elementProperty));
+            }
 
-                for (int index = 0; index < count; index++)
+            elements.Sort(
+                (left, right) =>
                 {
-                    SerializedProperty elementProperty = itemsProperty.GetArrayElementAtIndex(
-                        index
-                    );
-                    elements.Add(ReadElementData(elementProperty));
-                }
-
-                elements.Sort(
-                    (left, right) =>
+                    int comparison = CompareComparableValues(left.comparable, right.comparable);
+                    if (comparison != 0)
                     {
-                        int comparison = CompareComparableValues(left.comparable, right.comparable);
-                        if (comparison != 0)
-                        {
-                            return comparison;
-                        }
-
-                        string leftFallback =
-                            left.value != null ? left.value.ToString() : string.Empty;
-                        string rightFallback =
-                            right.value != null ? right.value.ToString() : string.Empty;
-                        return string.CompareOrdinal(leftFallback, rightFallback);
+                        return comparison;
                     }
-                );
 
-                for (int index = 0; index < count; index++)
-                {
-                    SerializedProperty elementProperty = itemsProperty.GetArrayElementAtIndex(
-                        index
-                    );
-                    WriteElementValue(elementProperty, elements[index]);
+                    string leftFallback = left.value != null ? left.value.ToString() : string.Empty;
+                    string rightFallback =
+                        right.value != null ? right.value.ToString() : string.Empty;
+                    return string.CompareOrdinal(leftFallback, rightFallback);
                 }
+            );
 
-                inspector.ClearElements();
-                foreach (SetElementData element in elements)
-                {
-                    inspector.TryAddElement(element.value, out object _);
-                }
+            for (int index = 0; index < count; index++)
+            {
+                SerializedProperty elementProperty = itemsProperty.GetArrayElementAtIndex(index);
+                WriteElementValue(elementProperty, elements[index]);
+            }
+
+            inspector.ClearElements();
+            foreach (SetElementData element in elements)
+            {
+                inspector.TryAddElement(element.value, out object _);
             }
 
             inspector.SynchronizeSerializedState();
@@ -5844,23 +5810,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             FoldoutLabelContent.tooltip = tooltip;
             FoldoutLabelContent.image = label?.image;
             return FoldoutLabelContent;
-        }
-
-        private static string GetCachedIntString(int value)
-        {
-            if (value >= 0 && value < IntToStringCacheMax)
-            {
-                if (IntToStringCache.TryGetValue(value, out string cached))
-                {
-                    return cached;
-                }
-
-                string result = value.ToString();
-                IntToStringCache[value] = result;
-                return result;
-            }
-
-            return value.ToString();
         }
 
         private static string GetPaginationLabel(int currentPage, int pageCount)

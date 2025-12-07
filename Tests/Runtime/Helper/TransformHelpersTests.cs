@@ -5,7 +5,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
     public sealed class TransformHelpersTests : CommonTestBase
     {
@@ -108,11 +109,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             leaf.transform.SetParent(middle.transform);
 
             return (root, middle, leaf);
-        }
-
-        private sealed class TransformProbe : MonoBehaviour
-        {
-            public string Id;
         }
     }
 }

@@ -7,7 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
 
     [TestFixture]
@@ -126,7 +126,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
             AnimationEventEditorViewModel viewModel = new();
             viewModel.LoadClip(CreateClipWithNamedEvents(24f, "One", "Two"));
 
-            AnimationEventItem custom = new AnimationEventItem(
+            AnimationEventItem custom = new(
                 new AnimationEvent { time = 0.4f, functionName = "Inserted" }
             );
 
@@ -147,7 +147,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
             AnimationEventEditorViewModel viewModel = new();
             viewModel.LoadClip(clip);
 
-            AnimationEventItem external = new AnimationEventItem(new AnimationEvent { time = 1f });
+            AnimationEventItem external = new(new AnimationEvent { time = 1f });
             Assert.IsFalse(viewModel.RemoveEvent(external));
 
             Assert.AreEqual(1, viewModel.Count);

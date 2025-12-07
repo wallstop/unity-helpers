@@ -9,7 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
     public sealed class ParentComponentTests : CommonTestBase
     {
@@ -465,101 +466,5 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             yield break;
         }
-    }
-
-    internal sealed class ParentAssignmentTester : MonoBehaviour
-    {
-        [ParentComponent(OnlyAncestors = true, IncludeInactive = false)]
-        public SpriteRenderer ancestorsActiveOnly;
-
-        [ParentComponent(OnlyAncestors = true, IncludeInactive = true)]
-        public SpriteRenderer ancestorsIncludeInactive;
-
-        [ParentComponent(IncludeInactive = true)]
-        public List<SpriteRenderer> allParents;
-    }
-
-    internal sealed class ParentMissingTester : MonoBehaviour
-    {
-        [ParentComponent(OnlyAncestors = true)]
-        public SpriteRenderer requiredRenderer;
-    }
-
-    internal sealed class ParentSkipIfAssignedTester : MonoBehaviour
-    {
-        [ParentComponent(SkipIfAssigned = true)]
-        public SpriteRenderer preAssignedParent;
-
-        [ParentComponent(SkipIfAssigned = true)]
-        public SpriteRenderer[] preAssignedParentArray;
-
-        [ParentComponent(SkipIfAssigned = true)]
-        public List<SpriteRenderer> preAssignedParentList;
-
-        [ParentComponent(OnlyAncestors = true)]
-        public SpriteRenderer normalParent;
-    }
-
-    internal sealed class ParentOptionalTester : MonoBehaviour
-    {
-        [ParentComponent(Optional = true)]
-        public SpriteRenderer optionalRenderer;
-    }
-
-    internal sealed class ParentOnlyAncestorsTester : MonoBehaviour
-    {
-        [ParentComponent(OnlyAncestors = true)]
-        public SpriteRenderer ancestorOnly;
-
-        [ParentComponent(OnlyAncestors = true)]
-        public SpriteRenderer[] ancestorOnlyArray;
-
-        [ParentComponent(OnlyAncestors = false)]
-        public SpriteRenderer includeSelf;
-
-        [ParentComponent(OnlyAncestors = false)]
-        public SpriteRenderer[] includeSelfArray;
-    }
-
-    internal sealed class ParentMultipleTester : MonoBehaviour
-    {
-        [ParentComponent(IncludeInactive = true)]
-        public SpriteRenderer[] allParents;
-
-        [ParentComponent(IncludeInactive = true)]
-        public List<SpriteRenderer> allParentsList;
-    }
-
-    internal sealed class ParentInactiveTester : MonoBehaviour
-    {
-        [ParentComponent(IncludeInactive = false)]
-        public SpriteRenderer activeOnly;
-
-        [ParentComponent(IncludeInactive = true)]
-        public SpriteRenderer inactiveOnly;
-
-        [ParentComponent(IncludeInactive = false)]
-        public SpriteRenderer[] activeOnlyArray;
-
-        [ParentComponent(IncludeInactive = true)]
-        public SpriteRenderer[] inactiveOnlyArray;
-    }
-
-    internal sealed class ParentDisabledBehaviourTester : MonoBehaviour
-    {
-        [ParentComponent(IncludeInactive = false)]
-        public BoxCollider parentCollider;
-    }
-
-    internal sealed class ParentCacheIsolationTesterA : MonoBehaviour
-    {
-        [ParentComponent]
-        public SpriteRenderer parentRenderer;
-    }
-
-    internal sealed class ParentCacheIsolationTesterB : MonoBehaviour
-    {
-        [ParentComponent]
-        public SpriteRenderer parentRenderer;
     }
 }

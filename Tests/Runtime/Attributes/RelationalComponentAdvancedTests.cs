@@ -1,12 +1,12 @@
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System.Collections;
-    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
     /// <summary>
     /// Tests for advanced features of relational component attributes:
@@ -444,171 +444,5 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             yield break;
         }
-    }
-
-    // MaxCount test components
-    internal sealed class ParentMaxCountTester : MonoBehaviour
-    {
-        [ParentComponent(MaxCount = 2)]
-        public SpriteRenderer[] limitedParents;
-
-        [ParentComponent]
-        public SpriteRenderer[] allParents;
-    }
-
-    internal sealed class ChildMaxCountTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true, MaxCount = 3)]
-        public List<SpriteRenderer> limitedChildren;
-
-        [ChildComponent(OnlyDescendants = true)]
-        public List<SpriteRenderer> allChildren;
-    }
-
-    internal sealed class SiblingMaxCountTester : MonoBehaviour
-    {
-        [SiblingComponent(MaxCount = 2)]
-        public BoxCollider[] limitedSiblings;
-
-        [SiblingComponent]
-        public BoxCollider[] allSiblings;
-    }
-
-    // MaxDepth test components
-    internal sealed class ParentMaxDepthTester : MonoBehaviour
-    {
-        [ParentComponent(OnlyAncestors = true, MaxDepth = 1)]
-        public SpriteRenderer depth1Only;
-
-        [ParentComponent(OnlyAncestors = true, MaxDepth = 2)]
-        public SpriteRenderer[] depth2Array;
-
-        [ParentComponent(OnlyAncestors = true)]
-        public List<SpriteRenderer> allDepthList;
-    }
-
-    internal sealed class ChildMaxDepthTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true, MaxDepth = 1)]
-        public SpriteRenderer depth1Only;
-
-        [ChildComponent(OnlyDescendants = true, MaxDepth = 2)]
-        public SpriteRenderer[] depth2Array;
-
-        [ChildComponent(OnlyDescendants = true)]
-        public List<SpriteRenderer> allDepthList;
-    }
-
-    // Tag filter test components
-    internal sealed class ParentTagFilterTester : MonoBehaviour
-    {
-        [ParentComponent(TagFilter = "Player")]
-        public SpriteRenderer playerTaggedParent;
-
-        [ParentComponent]
-        public SpriteRenderer[] allParents;
-    }
-
-    internal sealed class ChildTagFilterTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true, TagFilter = "Player")]
-        public List<SpriteRenderer> playerTaggedChildren;
-
-        [ChildComponent(OnlyDescendants = true)]
-        public List<SpriteRenderer> allChildren;
-    }
-
-    internal sealed class SiblingTagFilterTester : MonoBehaviour
-    {
-        [SiblingComponent(TagFilter = "Player")]
-        public BoxCollider playerTaggedCollider;
-
-        [SiblingComponent(TagFilter = "Player")]
-        public SpriteRenderer[] playerTaggedRenderers;
-    }
-
-    // Name filter test components
-    internal sealed class ParentNameFilterTester : MonoBehaviour
-    {
-        [ParentComponent(NameFilter = "Player")]
-        public SpriteRenderer playerNamedParent;
-
-        [ParentComponent]
-        public SpriteRenderer[] allParents;
-    }
-
-    internal sealed class ChildNameFilterTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true, NameFilter = "Player")]
-        public List<SpriteRenderer> playerNamedChildren;
-
-        [ChildComponent(OnlyDescendants = true)]
-        public List<SpriteRenderer> allChildren;
-    }
-
-    // Interface test components
-    public interface ITestInterface
-    {
-        string GetTestValue();
-    }
-
-    internal sealed class TestInterfaceComponent : MonoBehaviour, ITestInterface
-    {
-        public string GetTestValue() => "Test";
-    }
-
-    internal sealed class AnotherInterfaceComponent : MonoBehaviour, ITestInterface
-    {
-        public string GetTestValue() => "Another";
-    }
-
-    internal sealed class ParentInterfaceTester : MonoBehaviour
-    {
-        [ParentComponent]
-        public ITestInterface interfaceParent;
-
-        [ParentComponent]
-        public ITestInterface[] interfaceParentArray;
-    }
-
-    internal sealed class ChildInterfaceTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true)]
-        public ITestInterface interfaceChild;
-
-        [ChildComponent(OnlyDescendants = true)]
-        public List<ITestInterface> interfaceChildList;
-    }
-
-    internal sealed class SiblingInterfaceTester : MonoBehaviour
-    {
-        [SiblingComponent]
-        public ITestInterface interfaceSibling;
-    }
-
-    internal sealed class ChildMultiInterfaceTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true)]
-        public ITestInterface[] allInterfaces;
-    }
-
-    // Combined features test components
-    internal sealed class ChildCombinedTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true, TagFilter = "Player", MaxCount = 2)]
-        public List<SpriteRenderer> limitedPlayerChildren;
-    }
-
-    internal sealed class ChildDepthAndNameTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true, MaxDepth = 1, NameFilter = "Player")]
-        public SpriteRenderer[] depth1PlayerChildren;
-    }
-
-    // Error message test component
-    internal sealed class ErrorMessageTester : MonoBehaviour
-    {
-        [ParentComponent(OnlyAncestors = true)]
-        public SpriteRenderer missingParentRenderer;
     }
 }

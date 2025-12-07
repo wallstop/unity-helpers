@@ -9,9 +9,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class SerializableCollectionDrawerVisualRegressionTests : CommonTestBase
     {

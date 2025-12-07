@@ -3,9 +3,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
 
     [TestFixture]
     public sealed class SerializableNullablePropertyDrawerTests : CommonTestBase
@@ -14,7 +14,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void HeightCollapsesWhenEmpty()
         {
             NullableContainer container = CreateScriptableObject<NullableContainer>();
-            using SerializedObject serializedObject = new SerializedObject(container);
+            using SerializedObject serializedObject = new(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -34,7 +34,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             NullableContainer container = CreateScriptableObject<NullableContainer>();
             container.integerValue.SetValue(10);
 
-            using SerializedObject serializedObject = new SerializedObject(container);
+            using SerializedObject serializedObject = new(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -46,11 +46,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             float height = drawer.GetPropertyHeight(property, new GUIContent("integerValue"));
 
             Assert.AreEqual(EditorGUIUtility.singleLineHeight, height);
-        }
-
-        private sealed class NullableContainer : ScriptableObject
-        {
-            public SerializableNullable<int> integerValue;
         }
     }
 }

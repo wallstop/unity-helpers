@@ -237,6 +237,7 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
         }
 
+        // ReSharper disable once MemberCanBePrivate.Global
         protected bool TryGetAttribute(string attributeName, out Attribute attribute)
         {
             EnsureAttributeFieldGettersInitialized();
@@ -255,6 +256,7 @@ namespace WallstopStudios.UnityHelpers.Tags
             return true;
         }
 
+        // ReSharper disable once MemberCanBePrivate.Global
         protected void EnsureAttributeFieldGettersInitialized()
         {
             if (_attributeFieldGetters != null)

@@ -1,12 +1,12 @@
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System.Collections;
-    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
     /// <summary>
     /// Tests for HashSet support in relational component attributes
@@ -163,64 +163,5 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             yield break;
         }
-    }
-
-    // Test components
-    internal sealed class ParentHashSetTester : MonoBehaviour
-    {
-        [ParentComponent]
-        public HashSet<SpriteRenderer> parentRenderers;
-    }
-
-    internal sealed class ChildHashSetTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true)]
-        public HashSet<SpriteRenderer> childRenderers;
-    }
-
-    internal sealed class SiblingHashSetTester : MonoBehaviour
-    {
-        [SiblingComponent]
-        public HashSet<BoxCollider> siblingColliders;
-    }
-
-    internal sealed class ChildHashSetDeduplicationTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true)]
-        public HashSet<SpriteRenderer> uniqueChildren;
-    }
-
-    internal sealed class ChildHashSetMaxCountTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true, MaxCount = 2)]
-        public HashSet<SpriteRenderer> limitedChildren;
-    }
-
-    internal sealed class ChildHashSetInterfaceTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true)]
-        public HashSet<ITestInterface> interfaceChildren;
-    }
-
-    internal sealed class ChildHashSetFilterTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true, TagFilter = "Player")]
-        public HashSet<SpriteRenderer> playerChildren;
-    }
-
-    // Reuse test interfaces from RelationalComponentAdvancedTests
-    public interface ITestInterface2
-    {
-        string GetTestValue();
-    }
-
-    internal sealed class TestInterfaceComponent2 : MonoBehaviour, ITestInterface
-    {
-        public string GetTestValue() => "Test";
-    }
-
-    internal sealed class AnotherInterfaceComponent2 : MonoBehaviour, ITestInterface
-    {
-        public string GetTestValue() => "Another";
     }
 }

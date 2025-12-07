@@ -102,7 +102,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         [SerializeField]
         internal bool _copyDefaultPlatformSettings = true;
 
-        private List<string> _filesToProcess;
+        internal List<string> _filesToProcess;
         private SerializedObject _serializedObject;
         private SerializedProperty _inputDirectoriesProperty;
         private SerializedProperty _onlyNecessaryProperty;
@@ -542,6 +542,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         AssetDatabase.Refresh();
                     }
 
+                    int totalSuccessfullyProcessed = 0;
+
                     if (!canceled)
                     {
                         AssetDatabase.StartAssetEditing();
@@ -575,6 +577,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                 switch (outcome)
                                 {
                                     case ProcessOutcome.Success:
+                                        ++totalSuccessfullyProcessed;
                                         if (newImporter != null)
                                         {
                                             newImporters.Add(newImporter);
@@ -619,6 +622,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                 );
                                 if (outcome == ProcessOutcome.Success && newImporter != null)
                                 {
+                                    ++totalSuccessfullyProcessed;
                                     newImporters.Add(newImporter);
                                 }
                             }
@@ -682,8 +686,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     }
                     else
                     {
+                        int skipped = _filesToProcess.Count - totalSuccessfullyProcessed;
                         this.Log(
-                            $"{newImporters.Count} sprites processed successfully. Skipped: {_filesToProcess.Count - needReprocessing.Count - newImporters.Count}"
+                            $"{totalSuccessfullyProcessed} sprites processed successfully. Skipped: {skipped}"
                         );
                     }
                 }

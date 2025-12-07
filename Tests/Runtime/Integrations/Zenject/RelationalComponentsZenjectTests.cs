@@ -11,16 +11,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject.Runtime
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.Zenject;
     using WallstopStudios.UnityHelpers.Tags;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class RelationalComponentsZenjectTests : CommonTestBase
     {
         private DiContainer Container;
 
         [SetUp]
-        public void Setup()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             ReflexTestSupport.EnsureReflexSettings();
             Container = new DiContainer();
         }

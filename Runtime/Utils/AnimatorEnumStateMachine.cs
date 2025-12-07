@@ -43,7 +43,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         [JsonInclude]
         public T Value
         {
-            get { return _value; }
+            get => _value;
             set
             {
                 foreach (T possibleValue in Values)
@@ -73,7 +73,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// <param name="animator">Animator whose boolean parameters correspond to the enum entries.</param>
         /// <param name="defaultValue">Initial enum value to apply to the animator.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="animator"/> is null.</exception>
-        public AnimatorEnumStateMachine(Animator animator, T defaultValue = default(T))
+        public AnimatorEnumStateMachine(Animator animator, T defaultValue = default)
         {
             if (animator == null)
             {

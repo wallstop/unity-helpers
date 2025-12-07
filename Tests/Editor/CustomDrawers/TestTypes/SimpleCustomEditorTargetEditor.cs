@@ -8,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     /// Custom editor for SimpleCustomEditorTarget used to test inline editor behavior with custom editors.
     /// </summary>
     [CustomEditor(typeof(SimpleCustomEditorTarget))]
-    internal sealed class SimpleCustomEditorTargetEditor : UnityEditor.Editor
+    internal sealed class SimpleCustomEditorTargetEditor : Editor
     {
         public override void OnInspectorGUI()
         {

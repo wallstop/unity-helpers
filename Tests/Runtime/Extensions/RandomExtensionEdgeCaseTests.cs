@@ -29,9 +29,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void NextVector3OnSphereHandlesNaNSamples()
         {
-            EdgeCaseRandom random = new(
-                floatSequence: System.Linq.Enumerable.Repeat(float.NaN, 512).ToArray()
-            );
+            EdgeCaseRandom random = new(floatSequence: Enumerable.Repeat(float.NaN, 512).ToArray());
             Vector3 center = new(1f, 2f, 3f);
             Vector3 result = random.NextVector3OnSphere(5f, center);
             Assert.That(result, Is.EqualTo(center + new Vector3(5f, 0f, 0f)));

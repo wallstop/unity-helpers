@@ -9,7 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Serialization;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
     public sealed class UnityEngineObjectJsonTests : CommonTestBase

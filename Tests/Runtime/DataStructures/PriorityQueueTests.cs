@@ -119,8 +119,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             queue.Enqueue(10);
             queue.Enqueue(5);
             queue.Enqueue(15);
-            int removedValue;
-            queue.TryDequeue(out removedValue);
+            queue.TryDequeue(out int removedValue);
             Assert.AreEqual(5, removedValue);
 
             Assert.IsTrue(queue.Contains(10));

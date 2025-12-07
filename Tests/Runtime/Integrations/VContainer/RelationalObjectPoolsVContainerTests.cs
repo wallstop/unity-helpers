@@ -7,14 +7,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer.Runtime
     using UnityEngine.Pool;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class RelationalObjectPoolsVContainerTests : CommonTestBase
     {
         [SetUp]
-        public void CommonSetup()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             ReflexTestSupport.EnsureReflexSettings();
         }
 

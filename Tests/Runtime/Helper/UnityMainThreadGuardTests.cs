@@ -7,7 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using NUnit.Framework;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class UnityMainThreadGuardTests : CommonTestBase
     {

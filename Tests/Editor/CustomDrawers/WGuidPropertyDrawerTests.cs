@@ -7,13 +7,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
 
     public sealed class WGuidPropertyDrawerTests : CommonTestBase
     {
         [SetUp]
-        public void SetUpDrawerTests()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             WGuidPropertyDrawer.ClearCachedStates();
         }
 
@@ -27,7 +29,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void HandleTextChangeClearsGuidWhenInputEmpty()
         {
             GuidContainer container = CreateScriptableObject<GuidContainer>();
-            using SerializedObject serializedObject = new SerializedObject(container);
+            using SerializedObject serializedObject = new(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
@@ -58,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void HandleTextChangeAppliesValidGuid()
         {
             GuidContainer container = CreateScriptableObject<GuidContainer>();
-            using SerializedObject serializedObject = new SerializedObject(container);
+            using SerializedObject serializedObject = new(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
@@ -86,7 +88,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void HandleTextChangeRejectsInvalidGuid()
         {
             GuidContainer container = CreateScriptableObject<GuidContainer>();
-            using SerializedObject serializedObject = new SerializedObject(container);
+            using SerializedObject serializedObject = new(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
@@ -118,7 +120,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void HandleTextChangeRejectsNonVersionFourGuid()
         {
             GuidContainer container = CreateScriptableObject<GuidContainer>();
-            using SerializedObject serializedObject = new SerializedObject(container);
+            using SerializedObject serializedObject = new(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
@@ -147,7 +149,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void GenerateNewGuidProducesVersionFourValue()
         {
             GuidContainer container = CreateScriptableObject<GuidContainer>();
-            using SerializedObject serializedObject = new SerializedObject(container);
+            using SerializedObject serializedObject = new(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
@@ -169,7 +171,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void GetPropertyHeightIncludesWarningSpaceWhenInvalid()
         {
             GuidContainer container = CreateScriptableObject<GuidContainer>();
-            using SerializedObject serializedObject = new SerializedObject(container);
+            using SerializedObject serializedObject = new(container);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
@@ -206,11 +208,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             Guid guid = new(buffer);
             return new WGuid(guid);
-        }
-
-        private sealed class GuidContainer : ScriptableObject
-        {
-            public WGuid guid;
         }
     }
 }

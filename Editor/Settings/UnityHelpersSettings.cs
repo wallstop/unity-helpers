@@ -4684,7 +4684,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             UnityHelpersBufferSettingsAsset created =
-                ScriptableObject.CreateInstance<UnityHelpersBufferSettingsAsset>();
+                CreateInstance<UnityHelpersBufferSettingsAsset>();
             created.SyncFromRuntime();
             AssetDatabase.CreateAsset(created, UnityHelpersBufferSettingsAsset.AssetPath);
             AssetDatabase.SaveAssets();

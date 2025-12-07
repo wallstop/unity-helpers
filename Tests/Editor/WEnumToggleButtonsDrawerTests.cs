@@ -11,8 +11,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
     public sealed class WEnumToggleButtonsDrawerTests : CommonTestBase
@@ -113,7 +114,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         public IEnumerator GetPropertyHeightUsesCachedLayoutWhenAvailable()
         {
             ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -165,7 +166,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         public void CreateToggleSetHandlesMissingFieldInfo()
         {
             ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -187,7 +188,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         public IEnumerator GetPropertyHeightIgnoresExternalIndentation()
         {
             ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -241,7 +242,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         public void GetPropertyHeightRespectsGroupPaddingContext()
         {
             ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
-            using SerializedObject serializedObject = new SerializedObject(asset);
+            using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
@@ -314,21 +315,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
 
             attributeField?.SetValue(drawer, toggleAttribute);
             fieldInfoField?.SetValue(drawer, fieldInfo);
-        }
-
-        private sealed class ToggleDropdownAsset : ScriptableObject
-        {
-            [WEnumToggleButtons]
-            [WValueDropDown(typeof(DropdownProvider), nameof(DropdownProvider.GetModes))]
-            public string mode;
-        }
-
-        private static class DropdownProvider
-        {
-            internal static string[] GetModes()
-            {
-                return new[] { "Alpha", "Beta", "Gamma" };
-            }
         }
     }
 #endif

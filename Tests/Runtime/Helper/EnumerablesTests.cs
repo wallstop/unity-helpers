@@ -5,7 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using System.Linq;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class EnumerablesTests : CommonTestBase
     {

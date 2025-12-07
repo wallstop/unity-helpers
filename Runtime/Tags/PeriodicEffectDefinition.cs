@@ -10,12 +10,16 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The owning <see cref="EffectHandler"/> evaluates each periodic definition after <see cref="initialDelay"/>, applies the configured
-    /// <see cref="modifications"/>, and repeats every <see cref="interval"/> seconds until <see cref="maxTicks"/> is reached or the effect ends.
+    /// The owning <see cref="EffectHandler"/> evaluates each periodic definition after
+    /// <see cref="PeriodicEffectDefinition.initialDelay"/>, applies the configured
+    /// <see cref="PeriodicEffectDefinition.modifications"/>, and repeats every
+    /// <see cref="PeriodicEffectDefinition.interval"/> seconds until
+    /// <see cref="PeriodicEffectDefinition.maxTicks"/> is reached or the effect ends.
     /// </para>
     /// <para>
-    /// Definitions are processed in list order and maintain independent runtime state per <see cref="EffectHandle"/>, enabling designers to mix
-    /// damage-over-time, heal-over-time, or custom triggers alongside bespoke <see cref="EffectBehavior"/> implementations.
+    /// Definitions are processed in list order and maintain independent runtime state per
+    /// <see cref="EffectHandle"/>, enabling designers to mix damage-over-time, heal-over-time,
+    /// or custom triggers alongside bespoke <see cref="EffectBehavior"/> implementations.
     /// </para>
     /// </remarks>
     /// <example>
@@ -40,7 +44,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     ///             initialDelay = 0.5f,
     ///             interval = 1.0f,
     ///             maxTicks = 5,
-    ///             modifications = new List<AttributeModification>
+    ///             modifications = new List&lt;AttributeModification&gt;
     ///             {
     ///                 new AttributeModification("Health", ModificationAction.Addition, -5f),
     ///             },
@@ -50,7 +54,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     ///
     ///         if (effectHandler == null)
     ///         {
-    ///             effectHandler = target.GetComponent<EffectHandler>();
+    ///             effectHandler = target.GetComponent&lt;EffectHandler&gt;();
     ///         }
     ///
     ///         EffectHandle? handle = effectHandler.ApplyEffect(burnEffect);
@@ -58,8 +62,9 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// }
     /// </code>
     /// <para>
-    /// In the example above the handler waits for <c>initialDelay</c>, applies the <see cref="modifications"/> every <c>interval</c> seconds,
-    /// and stops after <see cref="maxTicks"/> executions or as soon as the effect is removed.
+    /// In the example above the handler waits for <c>initialDelay</c>, applies the
+    /// <see cref="modifications"/> every <c>interval</c> seconds, and stops after
+    /// <see cref="maxTicks"/> executions or as soon as the effect is removed.
     /// </para>
     /// </example>
     [Serializable]

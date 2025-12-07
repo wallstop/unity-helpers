@@ -8,21 +8,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class WInLineEditorDrawerTests
+    public sealed class WInLineEditorDrawerTests : CommonTestBase
     {
         private const float InlinePaddingContribution = 4f;
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             WInLineEditorDrawer.ClearCachedStateForTesting();
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
             WInLineEditorDrawer.ClearCachedStateForTesting();
+            base.TearDown();
         }
 
         [Test]
@@ -76,22 +79,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             bool expectExpanded
         )
         {
-            using InlineEditorFoldoutBehaviorScope scope = new InlineEditorFoldoutBehaviorScope(
-                behavior
-            );
+            using InlineEditorFoldoutBehaviorScope scope = new(behavior);
 
             // Measure height with explicit state matching expected behavior
-            var (expectedHeight, expectedDetails, _) =
-                MeasurePropertyHeightWithDetailedDiagnostics<DefaultSettingsInlineEditorHost>(
-                    propertyExpanded: false,
-                    setInlineExpanded: expectExpanded
-                );
+            (
+                float expectedHeight,
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) expectedDetails,
+                _
+            ) = MeasurePropertyHeightWithDetailedDiagnostics<DefaultSettingsInlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: expectExpanded
+            );
 
             // Measure height without explicit state (should use settings)
-            var (defaultHeight, defaultDetails, diagnostics) =
-                MeasurePropertyHeightWithDetailedDiagnostics<DefaultSettingsInlineEditorHost>(
-                    propertyExpanded: false
-                );
+            (
+                float defaultHeight,
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) defaultDetails,
+                string diagnostics
+            ) = MeasurePropertyHeightWithDetailedDiagnostics<DefaultSettingsInlineEditorHost>(
+                propertyExpanded: false
+            );
 
             Assert.That(
                 defaultHeight,
@@ -106,7 +125,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void DefaultModeUsesSettingsWhenCollapsed()
         {
-            using InlineEditorFoldoutBehaviorScope scope = new InlineEditorFoldoutBehaviorScope(
+            using InlineEditorFoldoutBehaviorScope scope = new(
                 UnityHelpersSettings.InlineEditorFoldoutBehavior.StartCollapsed
             );
             float expectedCollapsed = MeasurePropertyHeight<DefaultSettingsInlineEditorHost>(
@@ -122,7 +141,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void DefaultModeUsesSettingsWhenExpanded()
         {
-            using InlineEditorFoldoutBehaviorScope scope = new InlineEditorFoldoutBehaviorScope(
+            using InlineEditorFoldoutBehaviorScope scope = new(
                 UnityHelpersSettings.InlineEditorFoldoutBehavior.StartExpanded
             );
 
@@ -135,15 +154,33 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 "Setting should be StartExpanded but was " + currentBehavior
             );
 
-            var (expectedExpanded, detailsExplicit, diagnosticsExplicit) =
-                MeasurePropertyHeightWithDetailedDiagnostics<DefaultSettingsInlineEditorHost>(
-                    propertyExpanded: false,
-                    setInlineExpanded: true
-                );
-            var (defaultHeight, detailsDefault, diagnosticsDefault) =
-                MeasurePropertyHeightWithDetailedDiagnostics<DefaultSettingsInlineEditorHost>(
-                    propertyExpanded: false
-                );
+            (
+                float expectedExpanded,
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) detailsExplicit,
+                string diagnosticsExplicit
+            ) = MeasurePropertyHeightWithDetailedDiagnostics<DefaultSettingsInlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: true
+            );
+            (
+                float defaultHeight,
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) detailsDefault,
+                string diagnosticsDefault
+            ) = MeasurePropertyHeightWithDetailedDiagnostics<DefaultSettingsInlineEditorHost>(
+                propertyExpanded: false
+            );
             Assert.That(
                 defaultHeight,
                 Is.EqualTo(expectedExpanded).Within(0.001f),
@@ -164,15 +201,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             // We verify this by checking the inline height difference between hosts with and without standalone header.
             // Note: We compare inline heights, not total heights, because the base height differs
             // (EditorGUI.GetPropertyHeight returns different values for object fields vs labels).
-            var (_, detailsWithObject) = MeasurePropertyHeightWithDetails<InlineEditorHost>(
+            (
+                _,
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) detailsWithObject
+            ) = MeasurePropertyHeightWithDetails<InlineEditorHost>(
                 propertyExpanded: false,
                 setInlineExpanded: true
             );
-            var (_, detailsWithHeader) =
-                MeasurePropertyHeightWithDetails<HeaderOnlyInlineEditorHost>(
-                    propertyExpanded: false,
-                    setInlineExpanded: true
-                );
+            (
+                _,
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) detailsWithHeader
+            ) = MeasurePropertyHeightWithDetails<HeaderOnlyInlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: true
+            );
 
             // Verify that the standalone header IS shown when drawObjectField=false
             Assert.That(
@@ -209,49 +263,41 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 
             // First, calculate the expected content height by measuring all visible properties
             // except m_Script on InlineEditorTarget
-            InlineEditorTarget target = ScriptableObject.CreateInstance<InlineEditorTarget>();
-            target.hideFlags = HideFlags.HideAndDontSave;
+            InlineEditorTarget target = CreateHiddenInstance<InlineEditorTarget>();
             float expectedContentHeight = 0f;
             System.Text.StringBuilder propertyDebug = new();
-            try
+            using SerializedObject so = new(target);
+            so.Update();
+            SerializedProperty iterator = so.GetIterator();
+            bool enterChildren = true;
+            bool first = true;
+            while (iterator.NextVisible(enterChildren))
             {
-                using SerializedObject so = new SerializedObject(target);
-                so.Update();
-                SerializedProperty iterator = so.GetIterator();
-                bool enterChildren = true;
-                bool first = true;
-                while (iterator.NextVisible(enterChildren))
+                float propHeight = EditorGUI.GetPropertyHeight(iterator, true);
+                if (iterator.propertyPath == "m_Script")
                 {
-                    float propHeight = EditorGUI.GetPropertyHeight(iterator, true);
-                    if (iterator.propertyPath == "m_Script")
-                    {
-                        propertyDebug.AppendLine(
-                            $"  {iterator.propertyPath}: {propHeight}px [SKIPPED]"
-                        );
-                        enterChildren = false;
-                        continue;
-                    }
-                    if (!first)
-                    {
-                        expectedContentHeight += EditorGUIUtility.standardVerticalSpacing;
-                    }
-                    expectedContentHeight += propHeight;
-                    propertyDebug.AppendLine($"  {iterator.propertyPath}: {propHeight}px");
+                    propertyDebug.AppendLine(
+                        $"  {iterator.propertyPath}: {propHeight}px [SKIPPED]"
+                    );
                     enterChildren = false;
-                    first = false;
+                    continue;
                 }
-            }
-            finally
-            {
-                ScriptableObject.DestroyImmediate(target);
+                if (!first)
+                {
+                    expectedContentHeight += EditorGUIUtility.standardVerticalSpacing;
+                }
+                expectedContentHeight += propHeight;
+                propertyDebug.AppendLine($"  {iterator.propertyPath}: {propHeight}px");
+                enterChildren = false;
+                first = false;
             }
 
-            var (collapsedHeight, _, collapsedDiagnostics) =
+            (float collapsedHeight, _, string collapsedDiagnostics) =
                 MeasurePropertyHeightWithDetailedDiagnostics<NoScrollInlineEditorHost>(
                     propertyExpanded: false,
                     setInlineExpanded: false
                 );
-            var (expandedHeight, _, expandedDiagnostics) =
+            (float expandedHeight, _, string expandedDiagnostics) =
                 MeasurePropertyHeightWithDetailedDiagnostics<NoScrollInlineEditorHost>(
                     propertyExpanded: false,
                     setInlineExpanded: true
@@ -293,7 +339,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             finally
             {
                 ProjectBrowserVisibilityUtility.SetProjectBrowserVisibilityForTesting(null);
-                ScriptableObject.DestroyImmediate(target);
             }
         }
 
@@ -309,7 +354,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             finally
             {
                 ProjectBrowserVisibilityUtility.SetProjectBrowserVisibilityForTesting(null);
-                ScriptableObject.DestroyImmediate(target);
             }
         }
 
@@ -318,22 +362,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             // Test the simple property detection directly without full editor integration
             SimpleInlineEditorTarget target = CreateHiddenInstance<SimpleInlineEditorTarget>();
-            try
-            {
-                using SerializedObject serializedObject = new SerializedObject(target);
-                bool hasOnlySimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(
-                    serializedObject
-                );
-                Assert.That(
-                    hasOnlySimple,
-                    Is.True,
-                    "SimpleInlineEditorTarget with int and string fields should be detected as simple"
-                );
-            }
-            finally
-            {
-                ScriptableObject.DestroyImmediate(target);
-            }
+            using SerializedObject serializedObject = new(target);
+            bool hasOnlySimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(
+                serializedObject
+            );
+            Assert.That(
+                hasOnlySimple,
+                Is.True,
+                "SimpleInlineEditorTarget with int and string fields should be detected as simple"
+            );
         }
 
         [Test]
@@ -341,22 +378,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             // Test that arrays are correctly detected as complex
             ArrayInlineEditorTarget target = CreateHiddenInstance<ArrayInlineEditorTarget>();
-            try
-            {
-                using SerializedObject serializedObject = new SerializedObject(target);
-                bool hasOnlySimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(
-                    serializedObject
-                );
-                Assert.That(
-                    hasOnlySimple,
-                    Is.False,
-                    "ArrayInlineEditorTarget with array field should be detected as complex"
-                );
-            }
-            finally
-            {
-                ScriptableObject.DestroyImmediate(target);
-            }
+            using SerializedObject serializedObject = new(target);
+            bool hasOnlySimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(
+                serializedObject
+            );
+            Assert.That(
+                hasOnlySimple,
+                Is.False,
+                "ArrayInlineEditorTarget with array field should be detected as complex"
+            );
         }
 
         // Data-driven tests for simple property detection across different field types
@@ -396,30 +426,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             false,
             TestName = "SimpleDetection.NestedClass.Complex"
         )]
-        public void SimplePropertyDetection_DataDriven(Type targetType, bool expectedSimple)
+        public void SimplePropertyDetectionDataDriven(Type targetType, bool expectedSimple)
         {
-            ScriptableObject target =
-                ScriptableObject.CreateInstance(targetType) as ScriptableObject;
+            ScriptableObject target = Track(
+                ScriptableObject.CreateInstance(targetType) as ScriptableObject
+            );
             Assert.That(target, Is.Not.Null, $"Failed to create instance of {targetType.Name}");
             target.hideFlags = HideFlags.HideAndDontSave;
 
-            try
-            {
-                using SerializedObject serializedObject = new SerializedObject(target);
-                bool hasOnlySimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(
-                    serializedObject
-                );
-                Assert.That(
-                    hasOnlySimple,
-                    Is.EqualTo(expectedSimple),
-                    $"{targetType.Name} should be detected as {(expectedSimple ? "simple" : "complex")} "
-                        + $"but was detected as {(hasOnlySimple ? "simple" : "complex")}"
-                );
-            }
-            finally
-            {
-                ScriptableObject.DestroyImmediate(target);
-            }
+            using SerializedObject serializedObject = new(target);
+            bool hasOnlySimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(
+                serializedObject
+            );
+            Assert.That(
+                hasOnlySimple,
+                Is.EqualTo(expectedSimple),
+                $"{targetType.Name} should be detected as {(expectedSimple ? "simple" : "complex")} "
+                    + $"but was detected as {(hasOnlySimple ? "simple" : "complex")}"
+            );
         }
 
         // Data-driven tests for horizontal scrollbar decision logic
@@ -516,55 +540,45 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             // Integration test - verifies the full path with a simple target
             SimpleInlineEditorTarget target = CreateHiddenInstance<SimpleInlineEditorTarget>();
-            try
-            {
-                // First verify our target is detected as simple
-                using SerializedObject serializedObject = new SerializedObject(target);
-                bool isSimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(
-                    serializedObject
-                );
+            // First verify our target is detected as simple
+            using SerializedObject serializedObject = new(target);
+            bool isSimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(serializedObject);
 
-                // If simple detection works, verify the full integration
-                if (isSimple)
-                {
-                    WInLineEditorAttribute inlineAttribute = new WInLineEditorAttribute();
-                    bool usesScrollbar = WInLineEditorDrawer.UsesHorizontalScrollbarForTesting(
-                        target,
-                        inlineAttribute,
-                        availableWidth: 360f
-                    );
-                    Assert.That(
-                        usesScrollbar,
-                        Is.False,
-                        "Simple targets should not trigger horizontal scrollbars"
-                    );
-                }
-                else
-                {
-                    // If simple detection failed (due to editor integration issues),
-                    // verify the logic would work with correct inputs
-                    bool wouldNeedScroll =
-                        WInLineEditorDrawer.RequiresHorizontalScrollbarForTesting(
-                            enableScrolling: true,
-                            minInspectorWidth: 520f, // default
-                            hasExplicitMinInspectorWidth: false,
-                            hasSimpleLayout: true, // what we expect
-                            availableWidth: 360f
-                        );
-                    Assert.That(
-                        wouldNeedScroll,
-                        Is.False,
-                        "Simple layout logic should not require horizontal scrollbar"
-                    );
-                    Debug.LogWarning(
-                        "Simple property detection returned false unexpectedly - "
-                            + "verified logic directly instead"
-                    );
-                }
-            }
-            finally
+            // If simple detection works, verify the full integration
+            if (isSimple)
             {
-                ScriptableObject.DestroyImmediate(target);
+                WInLineEditorAttribute inlineAttribute = new();
+                bool usesScrollbar = WInLineEditorDrawer.UsesHorizontalScrollbarForTesting(
+                    target,
+                    inlineAttribute,
+                    availableWidth: 360f
+                );
+                Assert.That(
+                    usesScrollbar,
+                    Is.False,
+                    "Simple targets should not trigger horizontal scrollbars"
+                );
+            }
+            else
+            {
+                // If simple detection failed (due to editor integration issues),
+                // verify the logic would work with correct inputs
+                bool wouldNeedScroll = WInLineEditorDrawer.RequiresHorizontalScrollbarForTesting(
+                    enableScrolling: true,
+                    minInspectorWidth: 520f, // default
+                    hasExplicitMinInspectorWidth: false,
+                    hasSimpleLayout: true, // what we expect
+                    availableWidth: 360f
+                );
+                Assert.That(
+                    wouldNeedScroll,
+                    Is.False,
+                    "Simple layout logic should not require horizontal scrollbar"
+                );
+                Debug.LogWarning(
+                    "Simple property detection returned false unexpectedly - "
+                        + "verified logic directly instead"
+                );
             }
         }
 
@@ -573,33 +587,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             // Integration test - verifies the full path with a complex target
             ArrayInlineEditorTarget target = CreateHiddenInstance<ArrayInlineEditorTarget>();
-            try
-            {
-                // First verify our target is detected as complex
-                using SerializedObject serializedObject = new SerializedObject(target);
-                bool isSimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(
-                    serializedObject
-                );
+            // First verify our target is detected as complex
+            using SerializedObject serializedObject = new(target);
+            bool isSimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(serializedObject);
 
-                // Verify array target is detected as complex
-                Assert.That(isSimple, Is.False, "Array target should be detected as complex");
+            // Verify array target is detected as complex
+            Assert.That(isSimple, Is.False, "Array target should be detected as complex");
 
-                WInLineEditorAttribute inlineAttribute = new WInLineEditorAttribute();
-                bool usesScrollbar = WInLineEditorDrawer.UsesHorizontalScrollbarForTesting(
-                    target,
-                    inlineAttribute,
-                    availableWidth: 360f
-                );
-                Assert.That(
-                    usesScrollbar,
-                    Is.True,
-                    "Complex targets should trigger horizontal scrollbars when width is insufficient"
-                );
-            }
-            finally
-            {
-                ScriptableObject.DestroyImmediate(target);
-            }
+            WInLineEditorAttribute inlineAttribute = new();
+            bool usesScrollbar = WInLineEditorDrawer.UsesHorizontalScrollbarForTesting(
+                target,
+                inlineAttribute,
+                availableWidth: 360f
+            );
+            Assert.That(
+                usesScrollbar,
+                Is.True,
+                "Complex targets should trigger horizontal scrollbars when width is insufficient"
+            );
         }
 
         [Test]
@@ -639,7 +644,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void InlineInspectorContentRectAppliesPadding()
         {
-            Rect outer = new Rect(10f, 20f, 200f, 100f);
+            Rect outer = new(10f, 20f, 200f, 100f);
             Rect content = WInLineEditorDrawer.GetInlineContentRectForTesting(outer);
             Assert.That(content.x, Is.EqualTo(outer.x + 2f));
             Assert.That(content.y, Is.EqualTo(outer.y + 2f));
@@ -650,7 +655,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void InlineInspectorContentRectClampsHeightToZero()
         {
-            Rect outer = new Rect(0f, 0f, 4f, 3f);
+            Rect outer = new(0f, 0f, 4f, 3f);
             Rect content = WInLineEditorDrawer.GetInlineContentRectForTesting(outer);
             Assert.That(content.height, Is.EqualTo(0f));
         }
@@ -693,7 +698,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             float expectedHeight
         )
         {
-            Rect outer = new Rect(outerX, outerY, outerWidth, outerHeight);
+            Rect outer = new(outerX, outerY, outerWidth, outerHeight);
             Rect content = WInLineEditorDrawer.GetInlineContentRectForTesting(outer);
             Assert.That(content.x, Is.EqualTo(expectedX).Within(0.01f), "Content X mismatch");
             Assert.That(content.y, Is.EqualTo(expectedY).Within(0.01f), "Content Y mismatch");
@@ -714,58 +719,46 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             // Test that when the target object is null, only the base height is returned
             WInLineEditorDrawer.ClearCachedStateForTesting();
-            InlineEditorHost host = ScriptableObject.CreateInstance<InlineEditorHost>();
-            host.hideFlags = HideFlags.HideAndDontSave;
+            InlineEditorHost host = CreateHiddenInstance<InlineEditorHost>();
 
-            try
-            {
-                using SerializedObject serializedHost = new SerializedObject(host);
-                serializedHost.Update();
-                SerializedProperty property = serializedHost.FindProperty("collapsedTarget");
-                Assert.That(property, Is.Not.Null);
+            using SerializedObject serializedHost = new(host);
+            serializedHost.Update();
+            SerializedProperty property = serializedHost.FindProperty("collapsedTarget");
+            Assert.That(property, Is.Not.Null);
 
-                // Don't assign a target - leave it null
-                Assert.That(
-                    property.objectReferenceValue,
-                    Is.Null,
-                    "Target should be null for this test"
-                );
+            // Don't assign a target - leave it null
+            Assert.That(
+                property.objectReferenceValue,
+                Is.Null,
+                "Target should be null for this test"
+            );
 
-                // Get the attribute via reflection
-                System.Reflection.FieldInfo targetField = typeof(InlineEditorHost).GetField(
-                    "collapsedTarget",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
-                );
-                WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
-                    System.Attribute.GetCustomAttribute(
-                        targetField,
-                        typeof(WInLineEditorAttribute)
-                    );
+            // Get the attribute via reflection
+            System.Reflection.FieldInfo targetField = typeof(InlineEditorHost).GetField(
+                "collapsedTarget",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+            );
+            WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
+                Attribute.GetCustomAttribute(targetField, typeof(WInLineEditorAttribute));
 
-                // Setup drawer
-                GUIContent label = new GUIContent("Target");
-                WInLineEditorDrawer drawer = new WInLineEditorDrawer();
-                System.Reflection.FieldInfo attributeFieldInfo = typeof(PropertyDrawer).GetField(
-                    "m_Attribute",
-                    System.Reflection.BindingFlags.Instance
-                        | System.Reflection.BindingFlags.NonPublic
-                );
-                attributeFieldInfo.SetValue(drawer, inlineAttribute);
+            // Setup drawer
+            GUIContent label = new("Target");
+            WInLineEditorDrawer drawer = new();
+            System.Reflection.FieldInfo attributeFieldInfo = typeof(PropertyDrawer).GetField(
+                "m_Attribute",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+            );
+            attributeFieldInfo.SetValue(drawer, inlineAttribute);
 
-                float height = drawer.GetPropertyHeight(property, label);
+            float height = drawer.GetPropertyHeight(property, label);
 
-                // With null target, should return just base property height (typically singleLineHeight)
-                float expectedMaxHeight = EditorGUIUtility.singleLineHeight + 2f; // Small tolerance
-                Assert.That(
-                    height,
-                    Is.LessThanOrEqualTo(expectedMaxHeight),
-                    $"Height with null target should be base height. Got {height}, expected <= {expectedMaxHeight}"
-                );
-            }
-            finally
-            {
-                ScriptableObject.DestroyImmediate(host);
-            }
+            // With null target, should return just base property height (typically singleLineHeight)
+            float expectedMaxHeight = EditorGUIUtility.singleLineHeight + 2f; // Small tolerance
+            Assert.That(
+                height,
+                Is.LessThanOrEqualTo(expectedMaxHeight),
+                $"Height with null target should be base height. Got {height}, expected <= {expectedMaxHeight}"
+            );
         }
 
         [Test]
@@ -834,62 +827,54 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             WInLineEditorDrawer.ClearCachedStateForTesting();
 
             // Create a host with the specified mode
-            ExplicitModeTestHost host = ScriptableObject.CreateInstance<ExplicitModeTestHost>();
-            host.hideFlags = HideFlags.HideAndDontSave;
+            ExplicitModeTestHost host = CreateHiddenInstance<ExplicitModeTestHost>();
+            InlineEditorTarget target = CreateHiddenInstance<InlineEditorTarget>();
 
-            InlineEditorTarget target = ScriptableObject.CreateInstance<InlineEditorTarget>();
-            target.hideFlags = HideFlags.HideAndDontSave;
+            using SerializedObject serializedHost = new(host);
+            serializedHost.Update();
 
-            try
+            // Find the property with the correct mode
+            string propertyName = mode switch
             {
-                using SerializedObject serializedHost = new SerializedObject(host);
-                serializedHost.Update();
+                WInLineEditorMode.FoldoutCollapsed => "foldoutCollapsedTarget",
+                WInLineEditorMode.FoldoutExpanded => "foldoutExpandedTarget",
+                WInLineEditorMode.AlwaysExpanded => "alwaysExpandedTarget",
+                _ => throw new ArgumentException($"Unsupported mode: {mode}"),
+            };
 
-                // Find the property with the correct mode
-                string propertyName = mode switch
-                {
-                    WInLineEditorMode.FoldoutCollapsed => "foldoutCollapsedTarget",
-                    WInLineEditorMode.FoldoutExpanded => "foldoutExpandedTarget",
-                    WInLineEditorMode.AlwaysExpanded => "alwaysExpandedTarget",
-                    _ => throw new ArgumentException($"Unsupported mode: {mode}"),
-                };
+            SerializedProperty property = serializedHost.FindProperty(propertyName);
+            Assert.That(property, Is.Not.Null, $"Property {propertyName} not found");
 
-                SerializedProperty property = serializedHost.FindProperty(propertyName);
-                Assert.That(property, Is.Not.Null, $"Property {propertyName} not found");
+            property.objectReferenceValue = target;
+            serializedHost.ApplyModifiedPropertiesWithoutUndo();
+            serializedHost.Update();
+            property = serializedHost.FindProperty(propertyName);
 
-                property.objectReferenceValue = target;
-                serializedHost.ApplyModifiedPropertiesWithoutUndo();
-                serializedHost.Update();
-                property = serializedHost.FindProperty(propertyName);
+            System.Reflection.FieldInfo targetField = typeof(ExplicitModeTestHost).GetField(
+                propertyName,
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+            );
+            WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
+                Attribute.GetCustomAttribute(targetField, typeof(WInLineEditorAttribute));
 
-                System.Reflection.FieldInfo targetField = typeof(ExplicitModeTestHost).GetField(
-                    propertyName,
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
-                );
-                WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
-                    System.Attribute.GetCustomAttribute(
-                        targetField,
-                        typeof(WInLineEditorAttribute)
-                    );
+            (
+                float baseHeight,
+                float inlineHeight,
+                bool showHeader,
+                bool showBody,
+                float displayHeight
+            ) details = WInLineEditorDrawer.GetHeightCalculationDetailsForTesting(
+                property,
+                inlineAttribute,
+                target,
+                500f
+            );
 
-                var details = WInLineEditorDrawer.GetHeightCalculationDetailsForTesting(
-                    property,
-                    inlineAttribute,
-                    target,
-                    500f
-                );
-
-                Assert.That(
-                    details.showBody,
-                    Is.EqualTo(expectExpanded),
-                    $"With mode {mode}, expected showBody={expectExpanded} but got {details.showBody}"
-                );
-            }
-            finally
-            {
-                ScriptableObject.DestroyImmediate(host);
-                ScriptableObject.DestroyImmediate(target);
-            }
+            Assert.That(
+                details.showBody,
+                Is.EqualTo(expectExpanded),
+                $"With mode {mode}, expected showBody={expectExpanded} but got {details.showBody}"
+            );
         }
 
         // ==================== Width and Layout Tests ====================
@@ -928,7 +913,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [TestCase(500f, 200f, TestName = "LabelWidth.500px.Returns200")]
         [TestCase(300f, 120f, TestName = "LabelWidth.300px.Returns120")]
         [TestCase(100f, 40f, TestName = "LabelWidth.100px.Returns40")]
-        public void LabelWidthCalculation_DataDriven(float availableWidth, float expectedLabelWidth)
+        public void LabelWidthCalculationDataDriven(float availableWidth, float expectedLabelWidth)
         {
             float calculatedLabelWidth = WInLineEditorDrawer.CalculateLabelWidthForTesting(
                 availableWidth
@@ -954,7 +939,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [TestCase(203f, true, TestName = "NarrowWidth.203px.TriggersScroll")] // effectiveWidth=199 < 200
         [TestCase(204f, false, TestName = "NarrowWidth.204px.NoScroll")] // effectiveWidth=200, not < 200
         [TestCase(250f, false, TestName = "NarrowWidth.250px.NoScroll")]
-        public void NarrowWidthTriggersHorizontalScroll_DataDriven(
+        public void NarrowWidthTriggersHorizontalScrollDataDriven(
             float availableWidth,
             bool expectedNeedsScroll
         )
@@ -989,37 +974,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             // Integration test: verify that very narrow widths trigger scroll even for simple targets
             SimpleInlineEditorTarget target = CreateHiddenInstance<SimpleInlineEditorTarget>();
-            try
-            {
-                // Verify target is detected as simple
-                using SerializedObject serializedObject = new SerializedObject(target);
-                bool isSimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(
-                    serializedObject
-                );
-                Assert.That(
-                    isSimple,
-                    Is.True,
-                    "SimpleInlineEditorTarget should be detected as simple"
-                );
+            // Verify target is detected as simple
+            using SerializedObject serializedObject = new(target);
+            bool isSimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(serializedObject);
+            Assert.That(isSimple, Is.True, "SimpleInlineEditorTarget should be detected as simple");
 
-                // At very narrow width (< 200px), even simple targets should get scrollbar
-                WInLineEditorAttribute inlineAttribute = new WInLineEditorAttribute();
-                bool usesScrollbar = WInLineEditorDrawer.UsesHorizontalScrollbarForTesting(
-                    target,
-                    inlineAttribute,
-                    availableWidth: 150f // Very narrow
-                );
+            // At very narrow width (< 200px), even simple targets should get scrollbar
+            WInLineEditorAttribute inlineAttribute = new();
+            bool usesScrollbar = WInLineEditorDrawer.UsesHorizontalScrollbarForTesting(
+                target,
+                inlineAttribute,
+                availableWidth: 150f // Very narrow
+            );
 
-                Assert.That(
-                    usesScrollbar,
-                    Is.True,
-                    "Simple targets should trigger horizontal scroll at very narrow widths (< 200px)"
-                );
-            }
-            finally
-            {
-                ScriptableObject.DestroyImmediate(target);
-            }
+            Assert.That(
+                usesScrollbar,
+                Is.True,
+                "Simple targets should trigger horizontal scroll at very narrow widths (< 200px)"
+            );
         }
 
         [Test]
@@ -1027,35 +999,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             // Verify simple layouts don't trigger scroll at normal widths
             SimpleInlineEditorTarget target = CreateHiddenInstance<SimpleInlineEditorTarget>();
-            try
-            {
-                using SerializedObject serializedObject = new SerializedObject(target);
-                bool isSimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(
-                    serializedObject
-                );
-                Assert.That(
-                    isSimple,
-                    Is.True,
-                    "SimpleInlineEditorTarget should be detected as simple"
-                );
+            using SerializedObject serializedObject = new(target);
+            bool isSimple = WInLineEditorDrawer.HasOnlySimplePropertiesForTesting(serializedObject);
+            Assert.That(isSimple, Is.True, "SimpleInlineEditorTarget should be detected as simple");
 
-                WInLineEditorAttribute inlineAttribute = new WInLineEditorAttribute();
-                bool usesScrollbar = WInLineEditorDrawer.UsesHorizontalScrollbarForTesting(
-                    target,
-                    inlineAttribute,
-                    availableWidth: 360f // Normal width
-                );
+            WInLineEditorAttribute inlineAttribute = new();
+            bool usesScrollbar = WInLineEditorDrawer.UsesHorizontalScrollbarForTesting(
+                target,
+                inlineAttribute,
+                availableWidth: 360f // Normal width
+            );
 
-                Assert.That(
-                    usesScrollbar,
-                    Is.False,
-                    "Simple targets should not trigger horizontal scroll at normal widths"
-                );
-            }
-            finally
-            {
-                ScriptableObject.DestroyImmediate(target);
-            }
+            Assert.That(
+                usesScrollbar,
+                Is.False,
+                "Simple targets should not trigger horizontal scroll at normal widths"
+            );
         }
 
         // Additional boundary tests for the MinimumUsableWidth threshold
@@ -1154,69 +1113,54 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             // Verify that the base property height (singleLineHeight) is used consistently
             WInLineEditorDrawer.ClearCachedStateForTesting();
 
-            InlineEditorHost host = ScriptableObject.CreateInstance<InlineEditorHost>();
-            host.hideFlags = HideFlags.HideAndDontSave;
+            InlineEditorHost host = CreateHiddenInstance<InlineEditorHost>();
+            InlineEditorTarget target = CreateHiddenInstance<InlineEditorTarget>();
 
-            InlineEditorTarget target = ScriptableObject.CreateInstance<InlineEditorTarget>();
-            target.hideFlags = HideFlags.HideAndDontSave;
+            using SerializedObject serializedHost = new(host);
+            serializedHost.Update();
+            SerializedProperty property = serializedHost.FindProperty("collapsedTarget");
+            property.objectReferenceValue = target;
+            serializedHost.ApplyModifiedPropertiesWithoutUndo();
+            serializedHost.Update();
+            property = serializedHost.FindProperty("collapsedTarget");
 
-            try
-            {
-                using SerializedObject serializedHost = new SerializedObject(host);
-                serializedHost.Update();
-                SerializedProperty property = serializedHost.FindProperty("collapsedTarget");
-                property.objectReferenceValue = target;
-                serializedHost.ApplyModifiedPropertiesWithoutUndo();
-                serializedHost.Update();
-                property = serializedHost.FindProperty("collapsedTarget");
+            System.Reflection.FieldInfo targetField = typeof(InlineEditorHost).GetField(
+                "collapsedTarget",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+            );
+            WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
+                Attribute.GetCustomAttribute(targetField, typeof(WInLineEditorAttribute));
 
-                System.Reflection.FieldInfo targetField = typeof(InlineEditorHost).GetField(
-                    "collapsedTarget",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
-                );
-                WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
-                    System.Attribute.GetCustomAttribute(
-                        targetField,
-                        typeof(WInLineEditorAttribute)
-                    );
+            // Set foldout to collapsed so we only get base height
+            WInLineEditorDrawer.SetInlineFoldoutStateForTesting(property, false);
 
-                // Set foldout to collapsed so we only get base height
-                WInLineEditorDrawer.SetInlineFoldoutStateForTesting(property, false);
+            GUIContent label = new("Target");
+            WInLineEditorDrawer drawer = new();
+            System.Reflection.FieldInfo attributeFieldInfo = typeof(PropertyDrawer).GetField(
+                "m_Attribute",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+            );
+            attributeFieldInfo.SetValue(drawer, inlineAttribute);
 
-                GUIContent label = new GUIContent("Target");
-                WInLineEditorDrawer drawer = new WInLineEditorDrawer();
-                System.Reflection.FieldInfo attributeFieldInfo = typeof(PropertyDrawer).GetField(
-                    "m_Attribute",
-                    System.Reflection.BindingFlags.Instance
-                        | System.Reflection.BindingFlags.NonPublic
-                );
-                attributeFieldInfo.SetValue(drawer, inlineAttribute);
+            float height = drawer.GetPropertyHeight(property, label);
 
-                float height = drawer.GetPropertyHeight(property, label);
-
-                // With collapsed state and non-null target, height should be exactly singleLineHeight
-                Assert.That(
-                    height,
-                    Is.EqualTo(EditorGUIUtility.singleLineHeight).Within(0.001f),
-                    $"Collapsed height should be singleLineHeight ({EditorGUIUtility.singleLineHeight}), "
-                        + $"but got {height}"
-                );
-            }
-            finally
-            {
-                ScriptableObject.DestroyImmediate(host);
-                ScriptableObject.DestroyImmediate(target);
-            }
+            // With collapsed state and non-null target, height should be exactly singleLineHeight
+            Assert.That(
+                height,
+                Is.EqualTo(EditorGUIUtility.singleLineHeight).Within(0.001f),
+                $"Collapsed height should be singleLineHeight ({EditorGUIUtility.singleLineHeight}), "
+                    + $"but got {height}"
+            );
         }
 
-        private static float MeasurePropertyHeight<THost>(
+        private float MeasurePropertyHeight<THost>(
             bool propertyExpanded,
             bool? setInlineExpanded = null
         )
             where THost : ScriptableObject
         {
             WInLineEditorDrawer.ClearCachedStateForTesting();
-            THost host = ScriptableObject.CreateInstance<THost>();
+            THost host = Track(ScriptableObject.CreateInstance<THost>());
             host.hideFlags = HideFlags.HideAndDontSave;
 
             // Find the first field with WInLineEditorAttribute to determine field name and target type
@@ -1228,7 +1172,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             foreach (System.Reflection.FieldInfo field in fields)
             {
                 WInLineEditorAttribute attr = (WInLineEditorAttribute)
-                    System.Attribute.GetCustomAttribute(field, typeof(WInLineEditorAttribute));
+                    Attribute.GetCustomAttribute(field, typeof(WInLineEditorAttribute));
                 if (attr != null)
                 {
                     targetField = field;
@@ -1249,73 +1193,62 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             );
 
             string propertyName = targetField.Name;
-            System.Type fieldType = targetField.FieldType;
+            Type fieldType = targetField.FieldType;
 
             // Create a target of the appropriate type
-            ScriptableObject target =
-                ScriptableObject.CreateInstance(fieldType) as ScriptableObject;
+            ScriptableObject target = Track(
+                ScriptableObject.CreateInstance(fieldType) as ScriptableObject
+            );
             Assert.That(target, Is.Not.Null, $"Failed to create instance of {fieldType.Name}.");
             target.hideFlags = HideFlags.HideAndDontSave;
 
-            try
+            using SerializedObject serializedHost = new(host);
+            serializedHost.Update();
+            SerializedProperty property = serializedHost.FindProperty(propertyName);
+            Assert.That(
+                property,
+                Is.Not.Null,
+                $"Failed to find property '{propertyName}' on {typeof(THost).Name}."
+            );
+            property.objectReferenceValue = target;
+            serializedHost.ApplyModifiedPropertiesWithoutUndo();
+            serializedHost.Update();
+            property = serializedHost.FindProperty(propertyName);
+            Assert.That(
+                property,
+                Is.Not.Null,
+                $"Failed to re-find property '{propertyName}' after assignment."
+            );
+            property.isExpanded = propertyExpanded;
+            if (setInlineExpanded.HasValue)
             {
-                using SerializedObject serializedHost = new SerializedObject(host);
-                serializedHost.Update();
-                SerializedProperty property = serializedHost.FindProperty(propertyName);
-                Assert.That(
+                WInLineEditorDrawer.SetInlineFoldoutStateForTesting(
                     property,
-                    Is.Not.Null,
-                    $"Failed to find property '{propertyName}' on {typeof(THost).Name}."
+                    setInlineExpanded.Value
                 );
-                property.objectReferenceValue = target;
-                serializedHost.ApplyModifiedPropertiesWithoutUndo();
-                serializedHost.Update();
-                property = serializedHost.FindProperty(propertyName);
-                Assert.That(
-                    property,
-                    Is.Not.Null,
-                    $"Failed to re-find property '{propertyName}' after assignment."
-                );
-                property.isExpanded = propertyExpanded;
-                if (setInlineExpanded.HasValue)
-                {
-                    WInLineEditorDrawer.SetInlineFoldoutStateForTesting(
-                        property,
-                        setInlineExpanded.Value
-                    );
-                }
-
-                // Assign the attribute to the drawer using reflection
-                GUIContent label = new GUIContent("Target");
-                WInLineEditorDrawer drawer = new WInLineEditorDrawer();
-                System.Reflection.FieldInfo attributeFieldInfo = typeof(PropertyDrawer).GetField(
-                    "m_Attribute",
-                    System.Reflection.BindingFlags.Instance
-                        | System.Reflection.BindingFlags.NonPublic
-                );
-                Assert.That(
-                    attributeFieldInfo,
-                    Is.Not.Null,
-                    "Failed to find PropertyDrawer.m_Attribute field."
-                );
-                attributeFieldInfo.SetValue(drawer, inlineAttribute);
-
-                return drawer.GetPropertyHeight(property, label);
             }
-            finally
-            {
-                ScriptableObject.DestroyImmediate(host);
-                if (target != null)
-                {
-                    ScriptableObject.DestroyImmediate(target);
-                }
-            }
+
+            // Assign the attribute to the drawer using reflection
+            GUIContent label = new("Target");
+            WInLineEditorDrawer drawer = new();
+            System.Reflection.FieldInfo attributeFieldInfo = typeof(PropertyDrawer).GetField(
+                "m_Attribute",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+            );
+            Assert.That(
+                attributeFieldInfo,
+                Is.Not.Null,
+                "Failed to find PropertyDrawer.m_Attribute field."
+            );
+            attributeFieldInfo.SetValue(drawer, inlineAttribute);
+
+            return drawer.GetPropertyHeight(property, label);
         }
 
         /// <summary>
         /// Measures property height and returns detailed calculation info for diagnostics.
         /// </summary>
-        private static (
+        private (
             float height,
             (
                 float baseHeight,
@@ -1330,7 +1263,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         )
             where THost : ScriptableObject
         {
-            var (height, details, _) = MeasurePropertyHeightWithDetailedDiagnostics<THost>(
+            (
+                float height,
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) details,
+                _
+            ) = MeasurePropertyHeightWithDetailedDiagnostics<THost>(
                 propertyExpanded,
                 setInlineExpanded
             );
@@ -1340,7 +1283,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         /// <summary>
         /// Measures property height and returns detailed calculation info plus extensive diagnostics.
         /// </summary>
-        private static (
+        private (
             float height,
             (
                 float baseHeight,
@@ -1357,7 +1300,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             where THost : ScriptableObject
         {
             WInLineEditorDrawer.ClearCachedStateForTesting();
-            THost host = ScriptableObject.CreateInstance<THost>();
+            THost host = Track(ScriptableObject.CreateInstance<THost>());
             host.hideFlags = HideFlags.HideAndDontSave;
 
             // Find the first field with WInLineEditorAttribute to determine field name and target type
@@ -1369,7 +1312,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             foreach (System.Reflection.FieldInfo field in fields)
             {
                 WInLineEditorAttribute attr = (WInLineEditorAttribute)
-                    System.Attribute.GetCustomAttribute(field, typeof(WInLineEditorAttribute));
+                    Attribute.GetCustomAttribute(field, typeof(WInLineEditorAttribute));
                 if (attr != null)
                 {
                     targetField = field;
@@ -1390,91 +1333,86 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             );
 
             string propertyName = targetField.Name;
-            System.Type fieldType = targetField.FieldType;
+            Type fieldType = targetField.FieldType;
 
             // Create a target of the appropriate type
-            ScriptableObject target =
-                ScriptableObject.CreateInstance(fieldType) as ScriptableObject;
+            ScriptableObject target = Track(
+                ScriptableObject.CreateInstance(fieldType) as ScriptableObject
+            );
             Assert.That(target, Is.Not.Null, $"Failed to create instance of {fieldType.Name}.");
             target.hideFlags = HideFlags.HideAndDontSave;
 
-            try
+            using SerializedObject serializedHost = new(host);
+            serializedHost.Update();
+            SerializedProperty property = serializedHost.FindProperty(propertyName);
+            Assert.That(
+                property,
+                Is.Not.Null,
+                $"Failed to find property '{propertyName}' on {typeof(THost).Name}."
+            );
+            property.objectReferenceValue = target;
+            serializedHost.ApplyModifiedPropertiesWithoutUndo();
+            serializedHost.Update();
+            property = serializedHost.FindProperty(propertyName);
+            Assert.That(
+                property,
+                Is.Not.Null,
+                $"Failed to re-find property '{propertyName}' after assignment."
+            );
+            property.isExpanded = propertyExpanded;
+            if (setInlineExpanded.HasValue)
             {
-                using SerializedObject serializedHost = new SerializedObject(host);
-                serializedHost.Update();
-                SerializedProperty property = serializedHost.FindProperty(propertyName);
-                Assert.That(
+                WInLineEditorDrawer.SetInlineFoldoutStateForTesting(
                     property,
-                    Is.Not.Null,
-                    $"Failed to find property '{propertyName}' on {typeof(THost).Name}."
+                    setInlineExpanded.Value
                 );
-                property.objectReferenceValue = target;
-                serializedHost.ApplyModifiedPropertiesWithoutUndo();
-                serializedHost.Update();
-                property = serializedHost.FindProperty(propertyName);
-                Assert.That(
-                    property,
-                    Is.Not.Null,
-                    $"Failed to re-find property '{propertyName}' after assignment."
-                );
-                property.isExpanded = propertyExpanded;
-                if (setInlineExpanded.HasValue)
-                {
-                    WInLineEditorDrawer.SetInlineFoldoutStateForTesting(
-                        property,
-                        setInlineExpanded.Value
-                    );
-                }
-
-                // Assign the attribute to the drawer using reflection
-                GUIContent label = new GUIContent("Target");
-                WInLineEditorDrawer drawer = new WInLineEditorDrawer();
-                System.Reflection.FieldInfo attributeFieldInfo = typeof(PropertyDrawer).GetField(
-                    "m_Attribute",
-                    System.Reflection.BindingFlags.Instance
-                        | System.Reflection.BindingFlags.NonPublic
-                );
-                Assert.That(
-                    attributeFieldInfo,
-                    Is.Not.Null,
-                    "Failed to find PropertyDrawer.m_Attribute field."
-                );
-                attributeFieldInfo.SetValue(drawer, inlineAttribute);
-
-                float height = drawer.GetPropertyHeight(property, label);
-
-                // Get detailed calculation info for diagnostics
-                var details = WInLineEditorDrawer.GetHeightCalculationDetailsForTesting(
-                    property,
-                    inlineAttribute,
-                    target,
-                    500f // Arbitrary available width for testing
-                );
-
-                // Get extensive diagnostics
-                string diagnostics = WInLineEditorDrawer.GetExtensiveDiagnosticsForTesting(
-                    property,
-                    inlineAttribute,
-                    target,
-                    500f
-                );
-
-                return (height, details, diagnostics);
             }
-            finally
-            {
-                ScriptableObject.DestroyImmediate(host);
-                if (target != null)
-                {
-                    ScriptableObject.DestroyImmediate(target);
-                }
-            }
+
+            // Assign the attribute to the drawer using reflection
+            GUIContent label = new("Target");
+            WInLineEditorDrawer drawer = new();
+            System.Reflection.FieldInfo attributeFieldInfo = typeof(PropertyDrawer).GetField(
+                "m_Attribute",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+            );
+            Assert.That(
+                attributeFieldInfo,
+                Is.Not.Null,
+                "Failed to find PropertyDrawer.m_Attribute field."
+            );
+            attributeFieldInfo.SetValue(drawer, inlineAttribute);
+
+            float height = drawer.GetPropertyHeight(property, label);
+
+            // Get detailed calculation info for diagnostics
+            (
+                float baseHeight,
+                float inlineHeight,
+                bool showHeader,
+                bool showBody,
+                float displayHeight
+            ) details = WInLineEditorDrawer.GetHeightCalculationDetailsForTesting(
+                property,
+                inlineAttribute,
+                target,
+                500f // Arbitrary available width for testing
+            );
+
+            // Get extensive diagnostics
+            string diagnostics = WInLineEditorDrawer.GetExtensiveDiagnosticsForTesting(
+                property,
+                inlineAttribute,
+                target,
+                500f
+            );
+
+            return (height, details, diagnostics);
         }
 
-        private static T CreateHiddenInstance<T>()
+        private T CreateHiddenInstance<T>()
             where T : ScriptableObject
         {
-            T instance = ScriptableObject.CreateInstance<T>();
+            T instance = Track(ScriptableObject.CreateInstance<T>());
             instance.hideFlags = HideFlags.HideAndDontSave;
             return instance;
         }

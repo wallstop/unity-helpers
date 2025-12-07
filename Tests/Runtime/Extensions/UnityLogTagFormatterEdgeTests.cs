@@ -9,7 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper.Logging;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     [SuppressMessage("ReSharper", "AccessToModifiedClosure")]
     public sealed class UnityLogTagFormatterEdgeTests : CommonTestBase

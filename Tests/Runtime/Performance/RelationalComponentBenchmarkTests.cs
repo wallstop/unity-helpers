@@ -7,7 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class RelationalComponentBenchmarkTests : CommonTestBase
     {

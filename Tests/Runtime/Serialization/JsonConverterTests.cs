@@ -7,7 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using UnityEngine.Rendering;
     using UnityEngine.SceneManagement;
     using WallstopStudios.UnityHelpers.Core.Serialization;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
     public sealed class JsonConverterTests : CommonTestBase

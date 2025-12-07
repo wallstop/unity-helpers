@@ -1,7 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     /// <summary>
     /// Shared helpers for grid-based extension tests.

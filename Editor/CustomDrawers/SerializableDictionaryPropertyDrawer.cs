@@ -1,3 +1,4 @@
+// ReSharper disable ArrangeRedundantParentheses
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
     using System;
@@ -975,13 +976,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     valueRect.x += foldoutOffset;
                     valueRect.width = Mathf.Max(0f, valueRect.width - foldoutOffset);
                     LastRowValueFoldoutOffset = foldoutOffset;
-                    float renderedValueHeight;
                     valueChanged = DrawRowFoldoutValue(
                         valueRect,
                         valueProperty,
                         valueLabel,
                         valueRect.width,
-                        out renderedValueHeight
+                        out float renderedValueHeight
                     );
                     valueRect.height = renderedValueHeight;
                 }
@@ -1729,7 +1729,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 count,
                 out List<int> positions
             );
-            positions.Clear();
             for (int index = 0; index < count; index++)
             {
                 positions.Add(indices[index] + 1);
@@ -1837,14 +1836,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private ListPageCache GetOrCreatePageCache(string cacheKey)
         {
-            if (_pageCaches.TryGetValue(cacheKey, out ListPageCache cache))
-            {
-                return cache;
-            }
-
-            ListPageCache newCache = new();
-            _pageCaches[cacheKey] = newCache;
-            return newCache;
+            return _pageCaches.GetOrAdd(cacheKey);
         }
 
         private static void RefreshPageCache(
@@ -1906,33 +1898,35 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             cache.pageSize = -1;
             cache.itemCount = -1;
 
-            if (_rowValueFoldoutStates.Count > 0)
+            if (_rowValueFoldoutStates.Count <= 0)
             {
-                PooledResource<List<RowFoldoutKey>> keysToRemoveLease = default;
-                List<RowFoldoutKey> keysToRemove = null;
-                foreach (KeyValuePair<RowFoldoutKey, bool> entry in _rowValueFoldoutStates)
-                {
-                    if (entry.Key.IsValid && entry.Key.CacheKey == cacheKey)
-                    {
-                        if (keysToRemove == null)
-                        {
-                            keysToRemoveLease = Buffers<RowFoldoutKey>.List.Get(out keysToRemove);
-                        }
-
-                        keysToRemove.Add(entry.Key);
-                    }
-                }
-
-                if (keysToRemove != null)
-                {
-                    for (int index = 0; index < keysToRemove.Count; index++)
-                    {
-                        _rowValueFoldoutStates.Remove(keysToRemove[index]);
-                    }
-                }
-
-                keysToRemoveLease.Dispose();
+                return;
             }
+
+            PooledResource<List<RowFoldoutKey>> keysToRemoveLease = default;
+            List<RowFoldoutKey> keysToRemove = null;
+            foreach (KeyValuePair<RowFoldoutKey, bool> entry in _rowValueFoldoutStates)
+            {
+                if (entry.Key.IsValid && entry.Key.CacheKey == cacheKey)
+                {
+                    if (keysToRemove == null)
+                    {
+                        keysToRemoveLease = Buffers<RowFoldoutKey>.List.Get(out keysToRemove);
+                    }
+
+                    keysToRemove.Add(entry.Key);
+                }
+            }
+
+            if (keysToRemove != null)
+            {
+                foreach (RowFoldoutKey keyToRemove in keysToRemove)
+                {
+                    _rowValueFoldoutStates.Remove(keyToRemove);
+                }
+            }
+
+            keysToRemoveLease.Dispose();
         }
 
         private bool EnsureRowFoldoutState(
@@ -1976,8 +1970,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             if (
                 string.IsNullOrEmpty(cacheKey)
-                || cache == null
-                || cache.entries == null
+                || cache?.entries == null
                 || cache.entries.Count == 0
                 || valuesProperty == null
             )
@@ -1992,17 +1985,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 _lastPrimedFoldoutFrame = currentFrame;
             }
 
-            if (_primedFoldoutCaches.Contains(cacheKey))
+            if (!_primedFoldoutCaches.Add(cacheKey))
             {
                 return;
             }
 
-            _primedFoldoutCaches.Add(cacheKey);
-
             bool typeSupportsFoldout = ValueTypeSupportsFoldout(valueType);
-            for (int i = 0; i < cache.entries.Count; i++)
+            foreach (PageEntry cacheEntry in cache.entries)
             {
-                int globalIndex = cache.entries[i].arrayIndex;
+                int globalIndex = cacheEntry.arrayIndex;
                 if (globalIndex < 0 || globalIndex >= valuesProperty.arraySize)
                 {
                     continue;
@@ -3195,8 +3186,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 LastPendingValueFoldoutOffset = pendingValueFoldoutOffset;
                 if (
                     pendingValueSupportsFoldout
-                    && pending.valueWrapperProperty != null
-                    && !pending.valueWrapperProperty.isExpanded
+                    && pending.valueWrapperProperty is { isExpanded: false }
                 )
                 {
                     pending.valueWrapperProperty.isExpanded = true;
@@ -3427,9 +3417,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
-            for (int index = 0; index < targets.Length; index++)
+            foreach (Object target in targets)
             {
-                if (targets[index] is UnityHelpersSettings)
+                if (target is UnityHelpersSettings)
                 {
                     return true;
                 }
@@ -3710,17 +3700,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         return true;
                     }
 
-                    if (genericDefinition == typeof(SerializableDictionary<,>))
-                    {
-                        Type[] args = type.GetGenericArguments();
-                        keyType = args[0];
-                        valueType = args[1];
-                        isSortedDictionary = false;
-                        return true;
-                    }
-
                     if (
-                        genericDefinition == typeof(SerializableDictionary<,,>)
+                        genericDefinition == typeof(SerializableDictionary<,>)
+                        || genericDefinition == typeof(SerializableDictionary<,,>)
                         || genericDefinition == typeof(SerializableDictionaryBase<,,>)
                     )
                     {
@@ -4275,7 +4257,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
                 List<string> paletteKeysBefore = null;
                 List<string> paletteKeysAfterSort = null;
-                List<string> paletteKeysSerializedAfter = null;
                 if (logPaletteSort)
                 {
                     paletteKeysBeforeLease = Buffers<string>.GetList(
@@ -4342,7 +4323,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     {
                         paletteKeysSerializedAfterLease = Buffers<string>.GetList(
                             keysProperty?.arraySize ?? 0,
-                            out paletteKeysSerializedAfter
+                            out List<string> paletteKeysSerializedAfter
                         );
                         CaptureStringKeyOrder(keysProperty, paletteKeysSerializedAfter);
                         PaletteSerializationDiagnostics.ReportDictionarySort(

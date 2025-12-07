@@ -8,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.Zenject;
     using WallstopStudios.UnityHelpers.Tags;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class ZenjectRelationalInitializerTests : CommonTestBase
     {

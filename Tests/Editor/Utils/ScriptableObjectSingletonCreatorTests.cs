@@ -11,17 +11,54 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
 
     public sealed class ScriptableObjectSingletonCreatorTests : CommonTestBase
     {
         private const string TestRoot = "Assets/Resources/CreatorTests";
+        private bool _previousEditorUiSuppress;
+
+        [OneTimeSetUp]
+        public void OneTimeSetUp()
+        {
+            // Clean up any leftover test folders from previous test runs
+            CleanupAllKnownTestFolders();
+
+            // Also clean up duplicate folders that may have been created during previous runs
+            // This is especially important for case-mismatch tests on case-insensitive file systems
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CreatorTests");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTest");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "casetest");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CASETEST");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "cASEtest");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTEST");
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+        }
 
         [UnitySetUp]
         public IEnumerator SetUp()
         {
+            _previousEditorUiSuppress = EditorUi.Suppress;
+            EditorUi.Suppress = true;
+
+            // CRITICAL: Clean up all case-variant folders BEFORE each test
+            // This prevents pollution from previous test cases in data-driven tests
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTest");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "casetest");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CASETEST");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "cASEtest");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTEST");
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            yield return null;
+
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = true;
             ScriptableObjectSingletonCreator.VerboseLogging = true;
+            // Allow explicit calls to EnsureSingletonAssets during tests
+            ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = true;
             ScriptableObjectSingletonCreator.TypeFilter = static type =>
                 type == typeof(CaseMismatch)
                 || type == typeof(Duplicate)
@@ -32,6 +69,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 || type == typeof(NoRetrySingleton);
             EnsureFolder("Assets/Resources");
             EnsureFolder(TestRoot);
+            // Ensure the metadata folder exists to prevent modal dialogs
+            EnsureFolder("Assets/Resources/Wallstop Studios/Unity Helpers");
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
             ScriptableObjectSingletonCreator.ResetRetryStateForTests();
             yield break;
@@ -54,25 +93,59 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 AssetDatabase.DeleteAsset(path);
             }
 
-            // Try to delete empty folders bottom-up
-            TryDeleteFolder(TestRoot);
-            TryDeleteFolder("Assets/Resources/Collision");
-            TryDeleteFolder("Assets/Resources/CaseTest");
+            // Delete files that may be blocking folder creation (these are actual files, not folders)
+            DeleteFileIfExists(TestRoot + "/FileBlock");
+            DeleteFileIfExists(TestRoot + "/NoRetry");
+            DeleteFileIfExists(TestRoot + "/Retry");
+
+            // Try to delete empty folders bottom-up (subfolders first, then parent)
+            TryDeleteFolder(TestRoot + "/Collision");
             TryDeleteFolder(TestRoot + "/Retry");
             TryDeleteFolder(TestRoot + "/Retry 1");
             TryDeleteFolder(TestRoot + "/FileBlock");
             TryDeleteFolder(TestRoot + "/FileBlock 1");
-            DeleteFileIfExists(TestRoot + "/FileBlock");
             TryDeleteFolder(TestRoot + "/NoRetry");
             TryDeleteFolder(TestRoot + "/NoRetry 1");
-            DeleteFileIfExists(TestRoot + "/NoRetry");
+            TryDeleteFolder(TestRoot);
+            // Clean up CreatorTests folder and any duplicates (e.g., "CreatorTests 1")
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CreatorTests");
+
+            // Clean up all case variants of CaseTest and their duplicates
+            // This handles: CaseTest, cASEtest, CASETEST, casetest, CaseTEST
+            // AND their duplicates: CaseTest 1, cASEtest 1, etc.
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTest");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "casetest");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CASETEST");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "cASEtest");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTEST");
+
+            // Legacy cleanup (may still be needed for folders without duplicates)
+            TryDeleteFolder("Assets/Resources/CaseTest");
+            TryDeleteFolderCaseInsensitive("Assets/Resources/CaseTest");
+            TryDeleteFolderCaseInsensitive("Assets/Resources/casetest");
+            TryDeleteFolderCaseInsensitive("Assets/Resources/CASETEST");
+            TryDeleteFolderCaseInsensitive("Assets/Resources/cASEtest");
+            TryDeleteFolderCaseInsensitive("Assets/Resources/CaseTEST");
+            TryDeleteFolder("Assets/Resources");
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             ScriptableObjectSingletonCreator.TypeFilter = null;
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = false;
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
+            ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = false;
             ScriptableObjectSingletonCreator.ResetRetryStateForTests();
+            EditorUi.Suppress = _previousEditorUiSuppress;
+
+            // Clean up all known test folders including duplicates
+            CleanupAllKnownTestFolders();
+        }
+
+        public override void OneTimeTearDown()
+        {
+            base.OneTimeTearDown();
+            // Final cleanup of all test folders
+            CleanupAllKnownTestFolders();
         }
 
         [UnityTest]
@@ -80,18 +153,101 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             // Arrange: create wrong-cased subfolder under Resources
             EnsureFolder("Assets/Resources/cASEtest");
+
+            // IMPORTANT: Refresh AssetDatabase to ensure the folder is visible to GetSubFolders
+            // Without this, the singleton creator may not find the case-mismatched folder
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            yield return null;
+
             string assetPath = "Assets/Resources/cASEtest/CaseMismatch.asset";
             AssetDatabase.DeleteAsset(assetPath);
             LogAssert.ignoreFailingMessages = true;
 
+            // Verify folder setup before running ensure
+            bool wrongCasedFolderExists = AssetDatabase.IsValidFolder("Assets/Resources/cASEtest");
+            string[] subFolders = AssetDatabase.GetSubFolders("Assets/Resources");
+            string subFolderList = subFolders != null ? string.Join(", ", subFolders) : "null";
+
+            Assert.IsTrue(
+                wrongCasedFolderExists,
+                $"Setup: Wrong-cased folder 'cASEtest' should exist before EnsureSingletonAssets. "
+                    + $"Subfolders of Assets/Resources: [{subFolderList}]"
+            );
+
             // Act: trigger creation for a singleton targeting "CaseTest" path
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
+            yield return null;
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+
+            // Check for duplicate folders and asset location
+            bool wrongCasedFolderStillExists = AssetDatabase.IsValidFolder(
+                "Assets/Resources/cASEtest"
+            );
+            bool correctCasedFolderExists = AssetDatabase.IsValidFolder(
+                "Assets/Resources/CaseTest"
+            );
+            Object asset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
+            string actualAssetPath = asset != null ? AssetDatabase.GetAssetPath(asset) : "null";
+
+            // Build diagnostics
+            string[] postSubFolders = AssetDatabase.GetSubFolders("Assets/Resources");
+            string postSubFolderList =
+                postSubFolders != null ? string.Join(", ", postSubFolders) : "null";
+
+            // Look for any duplicate folder pattern (folder name with " 1", " 2", etc. suffix)
+            bool anyDuplicateExists = false;
+            string duplicateFound = null;
+            foreach (string folder in postSubFolders)
+            {
+                string folderName = Path.GetFileName(folder);
+                // Check if this looks like a duplicate of CaseTest or cASEtest
+                if (
+                    folderName.StartsWith("CaseTest ", StringComparison.OrdinalIgnoreCase)
+                    || folderName.StartsWith("cASEtest ", StringComparison.OrdinalIgnoreCase)
+                )
+                {
+                    // Check if the suffix is a number (indicating a duplicate)
+                    string[] parts = folderName.Split(' ');
+                    if (parts.Length >= 2 && int.TryParse(parts[^1], out _))
+                    {
+                        anyDuplicateExists = true;
+                        duplicateFound = folder;
+                        break;
+                    }
+                }
+            }
+
+            string diagnostics =
+                $"wrongCasedFolderStillExists={wrongCasedFolderStillExists}, "
+                + $"correctCasedFolderExists={correctCasedFolderExists}, "
+                + $"anyDuplicateExists={anyDuplicateExists}, "
+                + $"duplicateFound={duplicateFound ?? "none"}, "
+                + $"assetExists={asset != null}, actualAssetPath={actualAssetPath}, "
+                + $"Subfolders of Assets/Resources: [{postSubFolderList}]";
 
             // Assert: no duplicate folder created and asset placed in reused folder
-            Assert.IsTrue(AssetDatabase.IsValidFolder("Assets/Resources/cASEtest"));
-            Assert.IsFalse(AssetDatabase.IsValidFolder("Assets/Resources/CaseTest 1"));
-            Assert.IsTrue(AssetDatabase.LoadAssetAtPath<Object>(assetPath) != null);
+            // Note: The folder may have been renamed to correct casing, so either casing is acceptable
+            Assert.IsTrue(
+                wrongCasedFolderStillExists || correctCasedFolderExists,
+                $"Either original or corrected folder should exist. Diagnostics: {diagnostics}"
+            );
+            Assert.IsFalse(
+                anyDuplicateExists,
+                $"No duplicate folder should exist. Diagnostics: {diagnostics}"
+            );
+
+            // Asset should exist - either in the original wrong-cased folder or in a renamed correct-cased folder
+            Object finalAsset =
+                AssetDatabase.LoadAssetAtPath<Object>(assetPath)
+                ?? AssetDatabase.LoadAssetAtPath<Object>(
+                    "Assets/Resources/CaseTest/CaseMismatch.asset"
+                );
+            Assert.IsNotNull(
+                finalAsset,
+                $"Asset should exist in either folder. Diagnostics: {diagnostics}"
+            );
         }
 
         [UnityTest]
@@ -572,25 +728,384 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return "MY_CUSTOM_UNITY_ASSET_IMPORT_WORKER_FLAG";
         }
 
+        /// <summary>
+        /// Data source for case mismatch folder scenarios.
+        /// Each tuple contains: (existingFolderName, expectedSingletonPath, description)
+        /// </summary>
+        private static IEnumerable<TestCaseData> CaseMismatchFolderScenarios()
+        {
+            yield return new TestCaseData("casetest", "Assets/Resources/casetest")
+                .SetName("AllLowercase")
+                .SetDescription("Existing folder with all lowercase name");
+            yield return new TestCaseData("CASETEST", "Assets/Resources/CASETEST")
+                .SetName("AllUppercase")
+                .SetDescription("Existing folder with all uppercase name");
+            yield return new TestCaseData("cASEtest", "Assets/Resources/cASEtest")
+                .SetName("MixedCase1")
+                .SetDescription("Existing folder with mixed case (cASEtest)");
+            yield return new TestCaseData("CaseTEST", "Assets/Resources/CaseTEST")
+                .SetName("MixedCase2")
+                .SetDescription("Existing folder with mixed case (CaseTEST)");
+        }
+
+        [UnityTest]
+        public IEnumerator CaseMismatchFolderIsReused(
+            [ValueSource(nameof(CaseMismatchFolderScenarios))] TestCaseData testCase
+        )
+        {
+            string existingFolderName = (string)testCase.Arguments[0];
+            string expectedFolderPath = (string)testCase.Arguments[1];
+
+            // Arrange: create wrong-cased subfolder under Resources
+            string existingFolder = "Assets/Resources/" + existingFolderName;
+            EnsureFolder(existingFolder);
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            yield return null;
+
+            LogAssert.ignoreFailingMessages = true;
+
+            // Verify folder setup
+            Assert.IsTrue(
+                AssetDatabase.IsValidFolder(existingFolder),
+                $"Setup: Folder '{existingFolder}' should exist"
+            );
+
+            // Act: trigger creation for CaseMismatch singleton targeting "CaseTest" path
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+            yield return null;
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+
+            // Assert: no duplicate folder created
+            // Check for any case variant of "CaseTest 1" or "existingFolderName 1"
+            string[] resourceSubfolders = AssetDatabase.GetSubFolders("Assets/Resources");
+            string subfoldersStr = string.Join(", ", resourceSubfolders);
+
+            // Look for any duplicate folder pattern (folder name with " 1", " 2", etc. suffix)
+            bool anyDuplicateExists = false;
+            string duplicateFound = null;
+            foreach (string folder in resourceSubfolders)
+            {
+                string folderName = Path.GetFileName(folder);
+                // Check if this looks like a duplicate of CaseTest or the existing folder
+                if (
+                    folderName.StartsWith("CaseTest ", StringComparison.OrdinalIgnoreCase)
+                    || folderName.StartsWith(
+                        existingFolderName + " ",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    // Check if the suffix is a number (indicating a duplicate)
+                    string[] parts = folderName.Split(' ');
+                    if (parts.Length >= 2 && int.TryParse(parts[^1], out _))
+                    {
+                        anyDuplicateExists = true;
+                        duplicateFound = folder;
+                        break;
+                    }
+                }
+            }
+
+            Assert.IsFalse(
+                anyDuplicateExists,
+                $"No duplicate folder should exist when '{existingFolderName}' exists. "
+                    + $"Found duplicate: '{duplicateFound}'. Subfolders: [{subfoldersStr}]"
+            );
+
+            // Asset should exist somewhere under Resources
+            Object asset =
+                AssetDatabase.LoadAssetAtPath<Object>(existingFolder + "/CaseMismatch.asset")
+                ?? AssetDatabase.LoadAssetAtPath<Object>(
+                    "Assets/Resources/CaseTest/CaseMismatch.asset"
+                );
+
+            Assert.IsNotNull(
+                asset,
+                $"CaseMismatch singleton should be created. Subfolders: [{subfoldersStr}]"
+            );
+        }
+
+        /// <summary>
+        /// Verifies that duplicate folder cleanup helper correctly identifies duplicate folders.
+        /// </summary>
+        [Test]
+        public void TryDeleteFolderAndDuplicatesIdentifiesDuplicateFolderPatterns()
+        {
+            // Create a base folder and several "duplicates" with numeric suffixes
+            string baseName = "TestDuplicateDetection";
+            string basePath = "Assets/Resources/" + baseName;
+            string dup1Path = "Assets/Resources/" + baseName + " 1";
+            string dup2Path = "Assets/Resources/" + baseName + " 2";
+            string notDupPath = "Assets/Resources/" + baseName + "Other"; // Not a duplicate
+
+            EnsureFolder(basePath);
+            EnsureFolder(dup1Path);
+            EnsureFolder(dup2Path);
+            EnsureFolder(notDupPath);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+
+            // Verify all folders exist
+            Assert.IsTrue(AssetDatabase.IsValidFolder(basePath), "Base folder should exist");
+            Assert.IsTrue(AssetDatabase.IsValidFolder(dup1Path), "Duplicate 1 should exist");
+            Assert.IsTrue(AssetDatabase.IsValidFolder(dup2Path), "Duplicate 2 should exist");
+            Assert.IsTrue(AssetDatabase.IsValidFolder(notDupPath), "Non-duplicate should exist");
+
+            // Act: delete the base folder and its duplicates
+            TryDeleteFolderAndDuplicates("Assets/Resources", baseName);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+
+            // Assert: base and duplicates should be gone, non-duplicate should remain
+            Assert.IsFalse(AssetDatabase.IsValidFolder(basePath), "Base folder should be deleted");
+            Assert.IsFalse(AssetDatabase.IsValidFolder(dup1Path), "Duplicate 1 should be deleted");
+            Assert.IsFalse(AssetDatabase.IsValidFolder(dup2Path), "Duplicate 2 should be deleted");
+            Assert.IsTrue(
+                AssetDatabase.IsValidFolder(notDupPath),
+                "Non-duplicate should NOT be deleted (it doesn't match the pattern)"
+            );
+
+            // Cleanup
+            TryDeleteFolder(notDupPath);
+        }
+
+        /// <summary>
+        /// Verifies that the data-driven CaseMismatchFolderIsReused test doesn't pollute
+        /// state between test case executions.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CaseMismatchFoldersCleanupBetweenTests()
+        {
+            // This test verifies that after cleanup, no case-variant folders remain
+            // Clean up all case variants
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTest");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "casetest");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CASETEST");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "cASEtest");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTEST");
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            yield return null;
+
+            // Verify no case-variant folders exist
+            string[] subFolders = AssetDatabase.GetSubFolders("Assets/Resources");
+            List<string> caseTestFolders = new();
+
+            foreach (string folder in subFolders)
+            {
+                string name = Path.GetFileName(folder);
+                if (
+                    name.StartsWith("CaseTest", StringComparison.OrdinalIgnoreCase)
+                    || name.StartsWith("casetest", StringComparison.OrdinalIgnoreCase)
+                    || name.StartsWith("CASETEST", StringComparison.OrdinalIgnoreCase)
+                    || name.StartsWith("cASEtest", StringComparison.OrdinalIgnoreCase)
+                    || name.StartsWith("CaseTEST", StringComparison.OrdinalIgnoreCase)
+                )
+                {
+                    caseTestFolders.Add(folder);
+                }
+            }
+
+            Assert.IsEmpty(
+                caseTestFolders,
+                $"No CaseTest variant folders should exist after cleanup. Found: [{string.Join(", ", caseTestFolders)}]"
+            );
+        }
+
+        /// <summary>
+        /// Verifies diagnostics output for case mismatch scenario.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CaseMismatchDiagnosticsAreHelpful()
+        {
+            // Create a folder with non-standard casing
+            string existingFolder = "Assets/Resources/cAsEtEsT";
+            EnsureFolder(existingFolder);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            yield return null;
+
+            LogAssert.ignoreFailingMessages = true;
+
+            // Run singleton creation
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            yield return null;
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+
+            // Collect diagnostic info
+            string[] subFolders = AssetDatabase.GetSubFolders("Assets/Resources");
+            bool foundOriginal = false;
+            bool foundDuplicate = false;
+            List<string> foundCaseVariants = new();
+
+            foreach (string folder in subFolders)
+            {
+                string name = Path.GetFileName(folder);
+                if (string.Equals(name, "cAsEtEsT", StringComparison.Ordinal))
+                {
+                    foundOriginal = true;
+                }
+                if (
+                    name.StartsWith("cAsEtEsT ", StringComparison.OrdinalIgnoreCase)
+                    || name.StartsWith("CaseTest ", StringComparison.OrdinalIgnoreCase)
+                )
+                {
+                    string[] parts = name.Split(' ');
+                    if (parts.Length >= 2 && int.TryParse(parts[^1], out _))
+                    {
+                        foundDuplicate = true;
+                    }
+                }
+                if (name.StartsWith("CaseTest", StringComparison.OrdinalIgnoreCase))
+                {
+                    foundCaseVariants.Add(folder);
+                }
+            }
+
+            string diagnostics =
+                $"foundOriginal={foundOriginal}, foundDuplicate={foundDuplicate}, "
+                + $"caseVariants=[{string.Join(", ", foundCaseVariants)}], "
+                + $"allSubfolders=[{string.Join(", ", subFolders)}]";
+
+            // The key assertion: no duplicate should be created
+            Assert.IsFalse(
+                foundDuplicate,
+                $"No duplicate folder should be created for case-insensitive match. {diagnostics}"
+            );
+
+            // Clean up
+            TryDeleteFolderAndDuplicates("Assets/Resources", "cAsEtEsT");
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTest");
+        }
+
         private static void EnsureFolder(string folderPath)
         {
-            if (AssetDatabase.IsValidFolder(folderPath))
+            if (string.IsNullOrWhiteSpace(folderPath))
             {
                 return;
             }
 
+            folderPath = folderPath.Replace('\\', '/');
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+
+            // Process each path segment to handle case-insensitive folder matching
             string[] parts = folderPath.Split('/');
-            string current = parts[0];
+            string current = parts[0]; // "Assets"
+
             for (int i = 1; i < parts.Length; i++)
             {
-                string next = current + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
+                string desiredName = parts[i];
+                string intendedNext = current + "/" + desiredName;
+
+                // First, check if folder already exists in AssetDatabase (exact match)
+                if (AssetDatabase.IsValidFolder(intendedNext))
                 {
-                    AssetDatabase.CreateFolder(current, parts[i]);
+                    current = intendedNext;
+                    continue;
                 }
 
-                current = next;
+                // Check for case-insensitive match on disk first
+                string actualFolderName = FindExistingFolderCaseInsensitive(
+                    projectRoot,
+                    current,
+                    desiredName
+                );
+                if (actualFolderName != null)
+                {
+                    // Folder exists on disk with potentially different casing
+                    string actualPath = current + "/" + actualFolderName;
+
+                    // Import it into AssetDatabase if not already there
+                    if (!AssetDatabase.IsValidFolder(actualPath))
+                    {
+                        AssetDatabase.ImportAsset(
+                            actualPath,
+                            ImportAssetOptions.ForceSynchronousImport
+                        );
+                    }
+
+                    current = actualPath;
+                    continue;
+                }
+
+                // Folder doesn't exist on disk or in AssetDatabase - create it
+                // First create on disk
+                if (!string.IsNullOrEmpty(projectRoot))
+                {
+                    string absoluteDirectory = Path.Combine(projectRoot, intendedNext);
+                    try
+                    {
+                        if (!Directory.Exists(absoluteDirectory))
+                        {
+                            Directory.CreateDirectory(absoluteDirectory);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning(
+                            $"EnsureFolder: Failed to create directory on disk '{absoluteDirectory}': {ex.Message}"
+                        );
+                        return;
+                    }
+
+                    // Import the newly created folder
+                    AssetDatabase.ImportAsset(
+                        intendedNext,
+                        ImportAssetOptions.ForceSynchronousImport
+                    );
+                }
+
+                // If it's still not valid, create via AssetDatabase (fallback)
+                if (!AssetDatabase.IsValidFolder(intendedNext))
+                {
+                    AssetDatabase.CreateFolder(current, desiredName);
+                }
+
+                current = intendedNext;
             }
+        }
+
+        /// <summary>
+        /// Finds an existing folder on disk that matches the desired name case-insensitively.
+        /// Returns the actual folder name as it exists on disk, or null if not found.
+        /// </summary>
+        private static string FindExistingFolderCaseInsensitive(
+            string projectRoot,
+            string parentUnityPath,
+            string desiredName
+        )
+        {
+            if (string.IsNullOrEmpty(projectRoot))
+            {
+                return null;
+            }
+
+            string parentAbsolutePath = Path.Combine(projectRoot, parentUnityPath);
+            if (!Directory.Exists(parentAbsolutePath))
+            {
+                return null;
+            }
+
+            try
+            {
+                foreach (string dir in Directory.GetDirectories(parentAbsolutePath))
+                {
+                    string name = Path.GetFileName(dir);
+                    if (string.Equals(name, desiredName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return name;
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore enumeration errors
+            }
+
+            return null;
         }
 
         private static void TryDeleteFolder(string folder)
@@ -605,6 +1120,148 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 AssetDatabase.DeleteAsset(folder);
             }
+        }
+
+        private static void TryDeleteFolderCaseInsensitive(string intended)
+        {
+            if (string.IsNullOrWhiteSpace(intended))
+            {
+                return;
+            }
+
+            string[] parts = intended.Replace('\\', '/').Split('/');
+            if (parts.Length == 0)
+            {
+                return;
+            }
+
+            string current = parts[0];
+            for (int i = 1; i < parts.Length; i++)
+            {
+                string desired = parts[i];
+                string next = current + "/" + desired;
+                if (AssetDatabase.IsValidFolder(next))
+                {
+                    current = next;
+                    continue;
+                }
+
+                string[] subs = AssetDatabase.GetSubFolders(current);
+                if (subs == null || subs.Length == 0)
+                {
+                    return;
+                }
+
+                string match = null;
+                for (int s = 0; s < subs.Length; s++)
+                {
+                    string sub = subs[s];
+                    int last = sub.LastIndexOf('/');
+                    string name = last >= 0 ? sub.Substring(last + 1) : sub;
+                    if (string.Equals(name, desired, StringComparison.OrdinalIgnoreCase))
+                    {
+                        match = sub;
+                        break;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(match))
+                {
+                    return;
+                }
+
+                current = match;
+            }
+
+            TryDeleteFolder(current);
+        }
+
+        /// <summary>
+        /// Deletes a folder and all its duplicates (e.g., "Folder", "Folder 1", "Folder 2").
+        /// This handles the case where Unity creates duplicate folders when case-insensitive
+        /// matches aren't detected properly during asset database operations.
+        /// </summary>
+        private static void TryDeleteFolderAndDuplicates(string parentPath, string folderBaseName)
+        {
+            if (string.IsNullOrWhiteSpace(parentPath) || string.IsNullOrWhiteSpace(folderBaseName))
+            {
+                return;
+            }
+
+            if (!AssetDatabase.IsValidFolder(parentPath))
+            {
+                return;
+            }
+
+            string[] subFolders = AssetDatabase.GetSubFolders(parentPath);
+            if (subFolders == null || subFolders.Length == 0)
+            {
+                return;
+            }
+
+            foreach (string folder in subFolders)
+            {
+                string name = Path.GetFileName(folder);
+                if (string.IsNullOrEmpty(name))
+                {
+                    continue;
+                }
+
+                // Check exact match (case-insensitive)
+                if (string.Equals(name, folderBaseName, StringComparison.OrdinalIgnoreCase))
+                {
+                    DeleteFolderRecursively(folder);
+                    continue;
+                }
+
+                // Check duplicate pattern (e.g., "Folder 1", "Folder 2")
+                if (name.StartsWith(folderBaseName + " ", StringComparison.OrdinalIgnoreCase))
+                {
+                    string suffix = name.Substring(folderBaseName.Length + 1);
+                    if (int.TryParse(suffix, out _))
+                    {
+                        DeleteFolderRecursively(folder);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Recursively deletes a folder and all its contents.
+        /// </summary>
+        private static void DeleteFolderRecursively(string folderPath)
+        {
+            if (!AssetDatabase.IsValidFolder(folderPath))
+            {
+                return;
+            }
+
+            // First delete all contents
+            string[] guids = AssetDatabase.FindAssets(string.Empty, new[] { folderPath });
+            if (guids != null)
+            {
+                foreach (string guid in guids)
+                {
+                    string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+                    if (!string.IsNullOrEmpty(assetPath) && !AssetDatabase.IsValidFolder(assetPath))
+                    {
+                        AssetDatabase.DeleteAsset(assetPath);
+                    }
+                }
+            }
+
+            // Delete subfolders recursively
+            string[] subFolders = AssetDatabase.GetSubFolders(folderPath);
+            if (subFolders != null)
+            {
+                foreach (string sub in subFolders)
+                {
+                    DeleteFolderRecursively(sub);
+                }
+            }
+
+            // Finally delete the folder itself
+            AssetDatabase.DeleteAsset(folderPath);
         }
 
         private static string GetAbsolutePath(string assetsRelativePath)

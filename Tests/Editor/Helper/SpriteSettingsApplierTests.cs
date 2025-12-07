@@ -6,7 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
     public sealed class SpriteSettingsApplierTests : CommonTestBase
@@ -15,8 +15,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         private string _assetPath;
 
         [SetUp]
-        public void Setup()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             if (Application.isPlaying)
             {
                 return;

@@ -182,9 +182,9 @@ namespace WallstopStudios.UnityHelpers.Tags
                         using PooledResource<List<EffectHandle>> handleBufferResource =
                             Buffers<EffectHandle>.List.Get(out List<EffectHandle> handleBuffer);
                         handleBuffer.AddRange(existingHandles);
-                        for (int i = 0; i < handleBuffer.Count; ++i)
+                        foreach (EffectHandle handle in handleBuffer)
                         {
-                            RemoveEffect(handleBuffer[i]);
+                            RemoveEffect(handle);
                         }
                     }
 
@@ -283,11 +283,11 @@ namespace WallstopStudios.UnityHelpers.Tags
                 using PooledResource<List<EffectStackKey>> stackKeysResource =
                     Buffers<EffectStackKey>.List.Get(out List<EffectStackKey> stackKeys);
                 stackKeys.AddRange(_handlesByStackKey.Keys);
-                for (int i = 0; i < stackKeys.Count; ++i)
+                foreach (EffectStackKey stackKey in stackKeys)
                 {
                     if (
                         _handlesByStackKey.TryGetValue(
-                            stackKeys[i],
+                            stackKey,
                             out PooledResource<List<EffectHandle>> lease
                         )
                     )
@@ -363,13 +363,12 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             if (
-                _periodicEffectStates.TryGetValue(
+                _periodicEffectStates.Remove(
                     handleId,
                     out PooledResource<List<PeriodicEffectRuntimeState>> periodicLease
                 )
             )
             {
-                _periodicEffectStates.Remove(handleId);
                 RecyclePeriodicStateList(periodicLease);
             }
 
@@ -382,9 +381,8 @@ namespace WallstopStudios.UnityHelpers.Tags
             {
                 List<EffectBehavior> behaviorInstances = behaviorLease.resource;
                 EffectBehaviorContext context = new(this, handle, 0f);
-                for (int i = 0; i < behaviorInstances.Count; ++i)
+                foreach (EffectBehavior behavior in behaviorInstances)
                 {
-                    EffectBehavior behavior = behaviorInstances[i];
                     if (behavior == null)
                     {
                         continue;
@@ -409,9 +407,8 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return false;
             }
 
-            for (int i = 0; i < _appliedEffects.Count; ++i)
+            foreach (EffectHandle handle in _appliedEffects)
             {
-                EffectHandle handle = _appliedEffects[i];
                 if (handle.effect == effect)
                 {
                     return true;
@@ -434,9 +431,8 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             int count = 0;
-            for (int i = 0; i < _appliedEffects.Count; ++i)
+            foreach (EffectHandle handle in _appliedEffects)
             {
-                EffectHandle handle = _appliedEffects[i];
                 if (handle.effect == effect)
                 {
                     ++count;
@@ -511,9 +507,8 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return null;
             }
 
-            for (int i = 0; i < _appliedEffects.Count; ++i)
+            foreach (EffectHandle handle in _appliedEffects)
             {
-                EffectHandle handle = _appliedEffects[i];
                 if (handle.effect == effect)
                 {
                     if (refreshDuration)
@@ -758,9 +753,8 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             EffectBehaviorContext context = new(this, handle, 0f);
-            for (int i = 0; i < instances.Count; ++i)
+            foreach (EffectBehavior instance in instances)
             {
-                EffectBehavior instance = instances[i];
                 if (instance == null)
                 {
                     continue;
@@ -808,9 +802,8 @@ namespace WallstopStudios.UnityHelpers.Tags
                     currentTime
                 );
 
-                for (int i = 0; i < behaviors.Count; ++i)
+                foreach (EffectBehavior behavior in behaviors)
                 {
-                    EffectBehavior behavior = behaviors[i];
                     if (behavior == null)
                     {
                         continue;
@@ -1084,9 +1077,8 @@ namespace WallstopStudios.UnityHelpers.Tags
                 }
             }
 
-            for (int i = 0; i < _expiredEffectIds.Count; ++i)
+            foreach (long expiredHandleId in _expiredEffectIds)
             {
-                long expiredHandleId = _expiredEffectIds[i];
                 if (_effectHandlesById.TryGetValue(expiredHandleId, out EffectHandle expiredHandle))
                 {
                     RemoveEffect(expiredHandle);
@@ -1109,9 +1101,8 @@ namespace WallstopStudios.UnityHelpers.Tags
             behaviorHandleIdsBuffer.AddRange(_behaviorsByHandleId.Keys);
             float deltaTime = Time.deltaTime;
 
-            for (int i = 0; i < behaviorHandleIdsBuffer.Count; ++i)
+            foreach (long handleId in behaviorHandleIdsBuffer)
             {
-                long handleId = behaviorHandleIdsBuffer[i];
                 if (!_effectHandlesById.TryGetValue(handleId, out EffectHandle handle))
                 {
                     continue;
@@ -1129,9 +1120,8 @@ namespace WallstopStudios.UnityHelpers.Tags
 
                 List<EffectBehavior> behaviors = behaviorLease.resource;
                 EffectBehaviorContext context = new(this, handle, deltaTime);
-                for (int j = 0; j < behaviors.Count; ++j)
+                foreach (EffectBehavior behavior in behaviors)
                 {
-                    EffectBehavior behavior = behaviors[j];
                     if (behavior == null)
                     {
                         continue;
@@ -1159,9 +1149,8 @@ namespace WallstopStudios.UnityHelpers.Tags
             );
             periodicHandleIdsBuffer.AddRange(_periodicEffectStates.Keys);
 
-            for (int handleIndex = 0; handleIndex < periodicHandleIdsBuffer.Count; ++handleIndex)
+            foreach (long handleId in periodicHandleIdsBuffer)
             {
-                long handleId = periodicHandleIdsBuffer[handleIndex];
                 if (!_effectHandlesById.TryGetValue(handleId, out EffectHandle handle))
                 {
                     periodicRemovalBuffer.Add(handleId);
@@ -1181,9 +1170,8 @@ namespace WallstopStudios.UnityHelpers.Tags
                 List<PeriodicEffectRuntimeState> runtimes = runtimesLease.resource;
                 bool hasActive = false;
 
-                for (int i = 0; i < runtimes.Count; ++i)
+                foreach (PeriodicEffectRuntimeState runtimeState in runtimes)
                 {
-                    PeriodicEffectRuntimeState runtimeState = runtimes[i];
                     if (runtimeState == null)
                     {
                         continue;
@@ -1206,17 +1194,15 @@ namespace WallstopStudios.UnityHelpers.Tags
                 }
             }
 
-            for (int i = 0; i < periodicRemovalBuffer.Count; ++i)
+            foreach (long periodicHandleId in periodicRemovalBuffer)
             {
-                long periodicHandleId = periodicRemovalBuffer[i];
                 if (
-                    _periodicEffectStates.TryGetValue(
+                    _periodicEffectStates.Remove(
                         periodicHandleId,
                         out PooledResource<List<PeriodicEffectRuntimeState>> lease
                     )
                 )
                 {
-                    _periodicEffectStates.Remove(periodicHandleId);
                     RecyclePeriodicStateList(lease);
                 }
             }

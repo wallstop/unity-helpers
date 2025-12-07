@@ -8,7 +8,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Tags;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
     using Object = UnityEngine.Object;
 
     [TestFixture]
@@ -18,7 +19,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void BoolConditionHidesFieldWhenFalse()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -56,7 +57,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void NotEqualComparisonWithoutExpectedInvertsBoolean()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
 
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
@@ -100,7 +101,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void EnumConditionMatchesExpectedValue()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -135,7 +136,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void EnumConditionHonorsInverseFlag()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -171,7 +172,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void FloatConditionMatchesExpectedValue()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -206,7 +207,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void DoubleConditionMatchesEquivalentIntExpectedValue()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -241,7 +242,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void IntConditionMatchesExpectedValue()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -276,7 +277,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void StringConditionMatchesExpectedValues()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -311,7 +312,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void StringGreaterThanComparisonUsesOrdinal()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -346,7 +347,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void NotEqualComparisonExcludesExpectedValue()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -384,7 +385,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void GreaterThanComparisonUsesExpectedThreshold()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -427,7 +428,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void GreaterThanOrEqualComparisonMatchesBoundary()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -465,7 +466,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void LessThanOrEqualComparisonMatchesBoundary()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -501,7 +502,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void LessThanComparisonUsesExpectedThreshold()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -539,7 +540,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void IsNullComparisonHandlesUnityObjectReferences()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -577,7 +578,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void IsNullOrEmptyComparisonHandlesStringsAndCollections()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty stringDependent = RefreshProperty(
                 serializedObject,
                 container,
@@ -639,7 +640,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void IsNullOrEmptyComparisonTreatsDestroyedUnityObjectsAsNull()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             container.objectCondition = Track(new GameObject("ShowIfObjectCondition"));
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
@@ -671,7 +672,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void IsNotNullOrEmptyComparisonEvaluatesStrings()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -706,7 +707,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void PropertyConditionEvaluatesThroughReflection()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -739,7 +740,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void MethodConditionEvaluatesThroughReflection()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -773,7 +774,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void NestedPathConditionIsResolved()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -811,7 +812,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         public void UnknownComparisonFallsBackToEquality()
         {
             TestContainer container = CreateScriptableObject<TestContainer>();
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -851,7 +852,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             TestContainer container = CreateScriptableObject<TestContainer>();
             container.genericComparableHolder.value = new TestContainer.GenericComparable(2);
 
-            using SerializedObjectTracker serializedObject = new SerializedObjectTracker();
+            using SerializedObjectTracker serializedObject = new();
             SerializedProperty dependentProperty = RefreshProperty(
                 serializedObject,
                 container,
@@ -893,7 +894,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             container.boolCondition = false;
 
-            using SerializedObject serializedObject1 = new SerializedObject(container);
+            using SerializedObject serializedObject1 = new(container);
             serializedObject1.Update();
             SerializedProperty property1 = serializedObject1.FindProperty(
                 nameof(TestContainer.boolDependent)
@@ -907,7 +908,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             container.boolCondition = true;
 
-            using SerializedObject serializedObject2 = new SerializedObject(container);
+            using SerializedObject serializedObject2 = new(container);
             serializedObject2.Update();
             SerializedProperty property2 = serializedObject2.FindProperty(
                 nameof(TestContainer.boolDependent)
@@ -933,7 +934,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 bool expectedShow = iteration % 2 == 1;
                 container.boolCondition = expectedShow;
 
-                using SerializedObject serializedObject = new SerializedObject(container);
+                using SerializedObject serializedObject = new(container);
                 serializedObject.Update();
                 SerializedProperty property = serializedObject.FindProperty(
                     nameof(TestContainer.boolDependent)
@@ -1007,133 +1008,5 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 _current = null;
             }
         }
-
-        private sealed class TestContainer : ScriptableObject
-        {
-            public bool boolCondition;
-
-            [WShowIf(nameof(boolCondition))]
-            public int boolDependent;
-
-            public ModifierDurationType durationType = ModifierDurationType.Instant;
-
-            public int durationAmount;
-
-            [WShowIf(
-                nameof(durationType),
-                expectedValues: new object[] { ModifierDurationType.Duration }
-            )]
-            public int durationDependent;
-
-            [WShowIf(
-                nameof(durationType),
-                inverse: true,
-                expectedValues: new object[] { ModifierDurationType.Instant }
-            )]
-            public int inverseDependent;
-
-            public float floatCondition;
-
-            [WShowIf(nameof(floatCondition), expectedValues: new object[] { 3.5f })]
-            public int floatDependent;
-
-            public double doubleCondition;
-
-            [WShowIf(nameof(doubleCondition), expectedValues: new object[] { 7 })]
-            public int doubleDependent;
-
-            public int intCondition;
-
-            [WShowIf(nameof(intCondition), expectedValues: new object[] { 42 })]
-            public int intDependent;
-
-            public string stringCondition;
-
-            [WShowIf(nameof(stringCondition), expectedValues: new object[] { "alpha", "beta" })]
-            public int stringDependent;
-
-            public int stringGreaterThanDependent;
-
-            [WShowIf(nameof(stringCondition), WShowIfComparison.IsNullOrEmpty)]
-            public int stringNullOrEmptyDependent;
-
-            public List<int> listCondition = new();
-
-            [WShowIf(nameof(listCondition), WShowIfComparison.IsNullOrEmpty)]
-            public int listDependent;
-
-            public GameObject objectCondition;
-
-            [WShowIf(nameof(objectCondition), WShowIfComparison.IsNullOrEmpty)]
-            public int objectNullOrEmptyDependent;
-
-            public ScriptableObject referenceCondition;
-
-            [WShowIf(nameof(referenceCondition), WShowIfComparison.IsNull)]
-            public int referenceDependent;
-
-            public NestedData nested = new();
-
-            [WShowIf(
-                nameof(nested) + "." + nameof(NestedData.child) + "." + nameof(NestedChild.value),
-                WShowIfComparison.GreaterThanOrEqual,
-                5
-            )]
-            public int nestedDependent;
-
-            public GenericComparableHolder genericComparableHolder = new();
-
-            public int genericComparableDependent;
-
-            public bool ComputedProperty => boolCondition && intCondition > 0;
-
-            public bool HasPositiveDuration()
-            {
-                return durationType == ModifierDurationType.Duration && durationAmount > 0;
-            }
-
-            [Serializable]
-            public sealed class NestedData
-            {
-                public NestedChild child = new();
-            }
-
-            [Serializable]
-            public sealed class NestedChild
-            {
-                public int value;
-            }
-
-            [Serializable]
-            public sealed class GenericComparableHolder
-            {
-                public GenericComparable value = new();
-            }
-
-            [Serializable]
-            public sealed class GenericComparable : IComparable<GenericComparable>
-            {
-                public int magnitude;
-
-                public GenericComparable() { }
-
-                public GenericComparable(int magnitude)
-                {
-                    this.magnitude = magnitude;
-                }
-
-                public int CompareTo(GenericComparable other)
-                {
-                    if (other == null)
-                    {
-                        return 1;
-                    }
-
-                    return magnitude.CompareTo(other.magnitude);
-                }
-            }
-        }
-
-        private sealed class DummyScriptable : ScriptableObject { }
     }
 }

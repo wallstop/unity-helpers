@@ -9,7 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
     using CategoryAttribute = System.ComponentModel.CategoryAttribute;
     using DescriptionAttribute = System.ComponentModel.DescriptionAttribute;
 
@@ -364,8 +365,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 V = v;
             }
         }
-
-        public sealed class EnabledProbe : MonoBehaviour { }
 
         [Test]
         public void GetFieldGetterClassMemberField()

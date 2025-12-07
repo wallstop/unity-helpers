@@ -5,7 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using System.Linq;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Extension;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class StringExtensionTests : CommonTestBase
     {

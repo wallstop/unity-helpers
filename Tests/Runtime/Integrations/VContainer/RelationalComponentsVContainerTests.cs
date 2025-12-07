@@ -11,14 +11,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer.Runtime
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
     using WallstopStudios.UnityHelpers.Tags;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class RelationalComponentsVContainerTests : CommonTestBase
     {
         [SetUp]
-        public void CommonSetup()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             ReflexTestSupport.EnsureReflexSettings();
         }
 

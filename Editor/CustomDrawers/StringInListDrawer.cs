@@ -590,9 +590,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     _emptyStateMeasuredHeight = measuredHelpHeight;
                 }
                 EditorGUILayout.Space(EditorGUIUtility.standardVerticalSpacing);
-                float targetHeight = StringInListDrawer.CalculateEmptySearchHeight(
-                    _emptyStateMeasuredHeight
-                );
+                float targetHeight = CalculateEmptySearchHeight(_emptyStateMeasuredHeight);
                 EnsureWindowHeight(targetHeight);
             }
 

@@ -1575,9 +1575,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
             where TAttribute : Attribute
         {
-            TAttribute attribute;
             if (
-                ReflectionHelpers.TryGetAttributeSafe(fieldInfo, out attribute, inherit: true)
+                ReflectionHelpers.TryGetAttributeSafe(
+                    fieldInfo,
+                    out TAttribute attribute,
+                    inherit: true
+                )
                 || property == null
             )
             {

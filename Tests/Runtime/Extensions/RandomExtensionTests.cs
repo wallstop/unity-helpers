@@ -7,8 +7,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Runtime.Random;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
 
     public sealed class RandomExtensionTests : CommonTestBase
     {

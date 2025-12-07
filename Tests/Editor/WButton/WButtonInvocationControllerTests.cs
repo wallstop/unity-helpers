@@ -5,14 +5,13 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Threading.Tasks;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
-    using WallstopStudios.UnityHelpers.Tests.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
 
     public sealed class WButtonInvocationControllerTests : CommonTestBase
     {
@@ -114,23 +113,6 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 {
                     Assert.Fail("Timed out while waiting for condition.");
                 }
-                yield return null;
-            }
-        }
-
-        private sealed class InvocationTarget : ScriptableObject
-        {
-            [WButton]
-            public async Task<string> AsyncTaskButton()
-            {
-                await Task.Delay(50);
-                return "Task Complete";
-            }
-
-            [WButton]
-            public IEnumerator EnumeratorButton()
-            {
-                yield return null;
                 yield return null;
             }
         }

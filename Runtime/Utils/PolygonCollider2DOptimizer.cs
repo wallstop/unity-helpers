@@ -66,7 +66,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                     if (points.Count > 0)
                     {
                         Vector2 first = points[0];
-                        Vector2 last = points[points.Count - 1];
+                        Vector2 last = points[^1];
                         if (first != last)
                         {
                             points.Add(first);
@@ -82,7 +82,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             {
                 for (int i = 0; i < _originalPaths.Count; ++i)
                 {
-                    _collider.SetPath(i, _originalPaths[i].points.ToArray());
+                    _collider.SetPath(i, _originalPaths[i].points);
                 }
                 return;
             }
@@ -91,7 +91,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             {
                 List<Vector2> path = _originalPaths[i].points;
                 List<Vector2> updatedPath = LineHelper.SimplifyPrecise(path, tolerance);
-                _collider.SetPath(i, updatedPath.ToArray());
+                _collider.SetPath(i, updatedPath);
             }
 #if UNITY_EDITOR
             if (!Application.isPlaying)
