@@ -133,10 +133,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
     [Serializable]
     internal sealed class IntDropdownTestAsset : ScriptableObject
     {
-        [IntDropdown(5, 10, 15)]
+        [IntDropDown(5, 10, 15)]
         public int missingValue = 5;
 
-        [IntDropdown(5, 10, 15)]
+        [IntDropDown(5, 10, 15)]
         public int validValue = 10;
     }
 
@@ -145,7 +145,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
     {
         public List<int> dynamicValues = new();
 
-        [IntDropdown(nameof(GetDynamicValues))]
+        [IntDropDown(nameof(GetDynamicValues))]
         public int selection;
 
         internal IEnumerable<int> GetDynamicValues()
@@ -157,7 +157,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
     [Serializable]
     internal sealed class IntDropdownNoOptionsAsset : ScriptableObject
     {
-        [IntDropdown(
+        [IntDropDown(
             typeof(IntDropdownEmptySource),
             nameof(IntDropdownEmptySource.GetEmptyOptions)
         )]
@@ -178,6 +178,73 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
         {
             return Array.Empty<int>();
         }
+    }
+
+    internal static class IntDropdownLargeSource
+    {
+        internal static int[] GetLargeOptions()
+        {
+            // Returns more than the default page size (25) to trigger popup path
+            int[] options = new int[50];
+            for (int i = 0; i < 50; i++)
+            {
+                options[i] = (i + 1) * 10;
+            }
+            return options;
+        }
+    }
+
+    [Serializable]
+    internal sealed class IntDropdownLargeOptionsAsset : ScriptableObject
+    {
+        [IntDropDown(
+            typeof(IntDropdownLargeSource),
+            nameof(IntDropdownLargeSource.GetLargeOptions)
+        )]
+        public int selection = 100;
+    }
+
+    // ============================================
+    // Type Mismatch Test Assets
+    // ============================================
+
+    [Serializable]
+    internal sealed class IntDropdownTypeMismatchAsset : ScriptableObject
+    {
+        [IntDropDown(1, 2, 3)]
+        public string stringFieldWithIntDropdown = string.Empty;
+
+        [IntDropDown(1, 2, 3)]
+        public float floatFieldWithIntDropdown = 0f;
+
+        [IntDropDown(1, 2, 3)]
+        public bool boolFieldWithIntDropdown = false;
+    }
+
+    [Serializable]
+    internal sealed class StringInListTypeMismatchAsset : ScriptableObject
+    {
+        [StringInList("A", "B", "C")]
+        public float floatFieldWithStringInList = 0f;
+
+        [StringInList("A", "B", "C")]
+        public bool boolFieldWithStringInList = false;
+
+        [StringInList("A", "B", "C")]
+        public Vector3 vector3FieldWithStringInList = Vector3.zero;
+    }
+
+    [Serializable]
+    internal sealed class WValueDropDownTypeMismatchAsset : ScriptableObject
+    {
+        [WValueDropDown(1, 2, 3)]
+        public Vector2 vector2FieldWithDropdown = Vector2.zero;
+
+        [WValueDropDown("A", "B", "C")]
+        public bool boolFieldWithDropdown = false;
+
+        [WValueDropDown(1.5f, 2.5f, 3.5f)]
+        public Color colorFieldWithDropdown = Color.white;
     }
 #endif
 }

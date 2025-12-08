@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
@@ -981,93 +982,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTest");
         }
 
-        private static void EnsureFolder(string folderPath)
-        {
-            if (string.IsNullOrWhiteSpace(folderPath))
-            {
-                return;
-            }
-
-            folderPath = folderPath.Replace('\\', '/');
-            string projectRoot = Path.GetDirectoryName(Application.dataPath);
-
-            // Process each path segment to handle case-insensitive folder matching
-            string[] parts = folderPath.Split('/');
-            string current = parts[0]; // "Assets"
-
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string desiredName = parts[i];
-                string intendedNext = current + "/" + desiredName;
-
-                // First, check if folder already exists in AssetDatabase (exact match)
-                if (AssetDatabase.IsValidFolder(intendedNext))
-                {
-                    current = intendedNext;
-                    continue;
-                }
-
-                // Check for case-insensitive match on disk first
-                string actualFolderName = FindExistingFolderCaseInsensitive(
-                    projectRoot,
-                    current,
-                    desiredName
-                );
-                if (actualFolderName != null)
-                {
-                    // Folder exists on disk with potentially different casing
-                    string actualPath = current + "/" + actualFolderName;
-
-                    // Import it into AssetDatabase if not already there
-                    if (!AssetDatabase.IsValidFolder(actualPath))
-                    {
-                        AssetDatabase.ImportAsset(
-                            actualPath,
-                            ImportAssetOptions.ForceSynchronousImport
-                        );
-                    }
-
-                    current = actualPath;
-                    continue;
-                }
-
-                // Folder doesn't exist on disk or in AssetDatabase - create it
-                // First create on disk
-                if (!string.IsNullOrEmpty(projectRoot))
-                {
-                    string absoluteDirectory = Path.Combine(projectRoot, intendedNext);
-                    try
-                    {
-                        if (!Directory.Exists(absoluteDirectory))
-                        {
-                            Directory.CreateDirectory(absoluteDirectory);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogWarning(
-                            $"EnsureFolder: Failed to create directory on disk '{absoluteDirectory}': {ex.Message}"
-                        );
-                        return;
-                    }
-
-                    // Import the newly created folder
-                    AssetDatabase.ImportAsset(
-                        intendedNext,
-                        ImportAssetOptions.ForceSynchronousImport
-                    );
-                }
-
-                // If it's still not valid, create via AssetDatabase (fallback)
-                if (!AssetDatabase.IsValidFolder(intendedNext))
-                {
-                    AssetDatabase.CreateFolder(current, desiredName);
-                }
-
-                current = intendedNext;
-            }
-        }
-
         /// <summary>
         /// Finds an existing folder on disk that matches the desired name case-insensitively.
         /// Returns the actual folder name as it exists on disk, or null if not found.
@@ -1129,7 +1043,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 return;
             }
 
-            string[] parts = intended.Replace('\\', '/').Split('/');
+            string[] parts = intended.SanitizePath().Split('/');
             if (parts.Length == 0)
             {
                 return;

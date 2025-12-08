@@ -386,7 +386,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             string directory = System.IO.Path.GetDirectoryName(assetPath);
             if (!string.IsNullOrEmpty(directory))
             {
-                directory = directory.Replace('\\', '/');
+                directory = directory.SanitizePath();
 
                 // First, ensure the folder exists on disk. This prevents Unity's internal
                 // "Moving file failed" modal dialog when CreateAsset tries to move a temp file

@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
@@ -31,9 +32,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         [Test]
         public void AppliesSettingsToExplicitTexturesOnly()
         {
-            string dir = Root.Replace('\\', '/');
-            string included = (dir + "/inc.png").Replace('\\', '/');
-            string other = (dir + "/other.png").Replace('\\', '/');
+            string dir = Root.SanitizePath();
+            string included = (dir + "/inc.png").SanitizePath();
+            string other = (dir + "/other.png").SanitizePath();
             CreatePng(included, 16, 16, Color.white);
             CreatePng(other, 16, 16, Color.white);
             AssetDatabase.Refresh();
@@ -95,12 +96,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         [Test]
         public void DirectoryRecursionHonorsExtensionFilter()
         {
-            string dirA = (Root + "/A").Replace('\\', '/');
-            string dirB = (dirA + "/B").Replace('\\', '/');
+            string dirA = (Root + "/A").SanitizePath();
+            string dirB = (dirA + "/B").SanitizePath();
             EnsureFolder(dirA);
             EnsureFolder(dirB);
-            string png = (dirB + "/tex.png").Replace('\\', '/');
-            string jpg = (dirB + "/tex.jpg").Replace('\\', '/');
+            string png = (dirB + "/tex.png").SanitizePath();
+            string jpg = (dirB + "/tex.jpg").SanitizePath();
             CreatePng(png, 8, 8, Color.white);
             CreateJpg(jpg, 8, 8, Color.white);
             AssetDatabase.Refresh();
@@ -161,8 +162,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         [Test]
         public void WizardAppliesNamedPlatformOverride()
         {
-            string dir = Root.Replace('\\', '/');
-            string path = (dir + "/plat.png").Replace('\\', '/');
+            string dir = Root.SanitizePath();
+            string path = (dir + "/plat.png").SanitizePath();
             CreatePng(path, 16, 16, Color.white);
             AssetDatabase.Refresh();
 
@@ -197,8 +198,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         [Test]
         public void RequireChangesBeforeApplySkipsWhenNoChanges()
         {
-            string dir = Root.Replace('\\', '/');
-            string path = (dir + "/dryrun.png").Replace('\\', '/');
+            string dir = Root.SanitizePath();
+            string path = (dir + "/dryrun.png").SanitizePath();
             CreatePng(path, 16, 16, Color.white);
             AssetDatabase.Refresh();
 
@@ -235,54 +236,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             Assert.AreEqual(before, imp.filterMode);
         }
 
-        private static void EnsureFolder(string relPath)
+        private void CreatePng(string relPath, int w, int h, Color c)
         {
-            if (string.IsNullOrWhiteSpace(relPath))
-            {
-                return;
-            }
-
-            relPath = relPath.Replace('\\', '/');
-
-            // Ensure the folder exists on disk first to prevent AssetDatabase.CreateFolder from failing
-            string projectRoot = Path.GetDirectoryName(Application.dataPath);
-            if (!string.IsNullOrEmpty(projectRoot))
-            {
-                string absoluteDirectory = Path.Combine(projectRoot, relPath);
-                if (!Directory.Exists(absoluteDirectory))
-                {
-                    Directory.CreateDirectory(absoluteDirectory);
-                }
-            }
-
-            // Then ensure it's registered in AssetDatabase
-            if (AssetDatabase.IsValidFolder(relPath))
-            {
-                return;
-            }
-
-            string[] parts = relPath.Split('/');
-            string cur = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string next = cur + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    string result = AssetDatabase.CreateFolder(cur, parts[i]);
-                    if (string.IsNullOrEmpty(result))
-                    {
-                        Debug.LogWarning(
-                            $"EnsureFolder: Failed to create folder '{next}' in AssetDatabase (parent: '{cur}')"
-                        );
-                    }
-                }
-                cur = next;
-            }
-        }
-
-        private static void CreatePng(string relPath, int w, int h, Color c)
-        {
-            EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
+            EnsureFolder(Path.GetDirectoryName(relPath).SanitizePath());
             Texture2D t = new(w, h, TextureFormat.RGBA32, false);
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
@@ -297,7 +253,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
 
         private static void CreateJpg(string relPath, int w, int h, Color c)
         {
-            EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
+            EnsureFolderStatic(Path.GetDirectoryName(relPath).SanitizePath());
             Texture2D t = new(w, h, TextureFormat.RGB24, false);
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
@@ -319,7 +275,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                     ),
                     rel
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
         }
     }
 #endif

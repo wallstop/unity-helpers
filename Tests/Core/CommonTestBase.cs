@@ -394,7 +394,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                     ),
                     sourcePath
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
 
             string absoluteDest = System
                 .IO.Path.Combine(
@@ -404,7 +404,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                     ),
                     destinationPath
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
 
             if (!System.IO.File.Exists(absoluteSource))
             {
@@ -454,7 +454,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                 return createdFolders;
             }
 
-            folderPath = folderPath.Replace('\\', '/');
+            folderPath = folderPath.SanitizePath();
             string projectRoot = System.IO.Path.GetDirectoryName(Application.dataPath);
 
             // Process each path segment to handle case-insensitive folder matching
@@ -590,7 +590,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                 return;
             }
 
-            folderPath = folderPath.Replace('\\', '/');
+            folderPath = folderPath.SanitizePath();
             string projectRoot = System.IO.Path.GetDirectoryName(Application.dataPath);
 
             // Process each path segment to handle case-insensitive folder matching
@@ -682,7 +682,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                 return;
             }
 
-            string normalized = folderPath.Replace('\\', '/');
+            string normalized = folderPath.SanitizePath();
             if (!_trackedFolders.Contains(normalized))
             {
                 _trackedFolders.Add(normalized);
@@ -701,7 +701,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                 return;
             }
 
-            string normalized = assetPath.Replace('\\', '/');
+            string normalized = assetPath.SanitizePath();
             if (!_trackedAssetPaths.Contains(normalized))
             {
                 _trackedAssetPaths.Add(normalized);
@@ -803,8 +803,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
             // Also clean up duplicate Wallstop Studios folders
             string[] wallstopDuplicatePatterns = new[] { "Wallstop Studios" };
 
+            // Clean up duplicate "Unity Helpers" folders inside Wallstop Studios
+            string[] unityHelpersDuplicatePatterns = new[] { "Unity Helpers" };
+
             string resourcesRoot = "Assets/Resources";
             string assetsRoot = "Assets";
+            string wallstopStudiosRoot = "Assets/Resources/Wallstop Studios";
 
             // First, refresh to ensure we have current state
             UnityEditor.AssetDatabase.Refresh();
@@ -827,6 +831,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                 CleanupDuplicateFoldersOnly(resourcesRoot, pattern);
             }
 
+            // Clean up Unity Helpers duplicates inside Wallstop Studios folder (not the main folder)
+            foreach (string pattern in unityHelpersDuplicatePatterns)
+            {
+                CleanupDuplicateFoldersOnly(wallstopStudiosRoot, pattern);
+            }
+
             // Also clean up from disk to handle orphaned folders
             string projectRoot = System.IO.Path.GetDirectoryName(Application.dataPath);
             if (!string.IsNullOrEmpty(projectRoot))
@@ -842,6 +852,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                     foreach (string pattern in wallstopDuplicatePatterns)
                     {
                         CleanupDuplicateFoldersOnlyOnDisk(resourcesOnDisk, pattern);
+                    }
+
+                    // Clean up Unity Helpers duplicates inside Wallstop Studios folder on disk
+                    string wallstopOnDisk = System.IO.Path.Combine(
+                        resourcesOnDisk,
+                        "Wallstop Studios"
+                    );
+                    if (System.IO.Directory.Exists(wallstopOnDisk))
+                    {
+                        foreach (string pattern in unityHelpersDuplicatePatterns)
+                        {
+                            CleanupDuplicateFoldersOnlyOnDisk(wallstopOnDisk, pattern);
+                        }
                     }
                 }
 
@@ -954,7 +977,52 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
         };
 
         /// <summary>
+        /// Known folder base names whose numbered duplicates (e.g., "Unity Helpers 1") should be
+        /// considered pollution and NOT protected. The main folders remain protected.
+        /// </summary>
+        private static readonly (
+            string parentPath,
+            string baseName
+        )[] KnownDuplicateFolderPatterns = new[]
+        {
+            ("Assets/Resources/Wallstop Studios", "Unity Helpers"),
+            ("Assets/Resources", "Wallstop Studios"),
+        };
+
+        /// <summary>
+        /// Checks if a path represents a numbered duplicate folder that is pollution, not production.
+        /// For example, "Assets/Resources/Wallstop Studios/Unity Helpers 1" is pollution.
+        /// </summary>
+        private static bool IsKnownDuplicatePollution(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                return false;
+            }
+
+            string normalizedPath = path.SanitizePath();
+            foreach ((string parentPath, string baseName) in KnownDuplicateFolderPatterns)
+            {
+                string prefix = parentPath + "/" + baseName + " ";
+                if (normalizedPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    string remainder = normalizedPath.Substring(prefix.Length);
+                    int slashIndex = remainder.IndexOf('/');
+                    string folderSuffix =
+                        slashIndex >= 0 ? remainder.Substring(0, slashIndex) : remainder;
+                    if (int.TryParse(folderSuffix, out _))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Checks if a path is or is under a protected production folder.
+        /// Returns false for known duplicate pollution folders (e.g., "Unity Helpers 1").
         /// </summary>
         private static bool IsProtectedPath(string path)
         {
@@ -963,7 +1031,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                 return false;
             }
 
-            string normalizedPath = path.Replace('\\', '/');
+            string normalizedPath = path.SanitizePath();
+
+            if (IsKnownDuplicatePollution(normalizedPath))
+            {
+                return false;
+            }
+
             foreach (string protectedFolder in ProtectedFolders)
             {
                 if (
@@ -983,6 +1057,36 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Internal test hooks for verifying protection path logic.
+        /// </summary>
+        protected internal static class ProtectionTestHooks
+        {
+            /// <summary>
+            /// Exposes IsProtectedPath for testing.
+            /// </summary>
+            public static bool TestIsProtectedPath(string path) => IsProtectedPath(path);
+
+            /// <summary>
+            /// Exposes IsKnownDuplicatePollution for testing.
+            /// </summary>
+            public static bool TestIsKnownDuplicatePollution(string path) =>
+                IsKnownDuplicatePollution(path);
+
+            /// <summary>
+            /// Gets the list of protected folders for verification.
+            /// </summary>
+            public static string[] GetProtectedFolders() => ProtectedFolders;
+
+            /// <summary>
+            /// Gets the list of known duplicate folder patterns for verification.
+            /// </summary>
+            public static (
+                string parentPath,
+                string baseName
+            )[] GetKnownDuplicateFolderPatterns() => KnownDuplicateFolderPatterns;
         }
 
         /// <summary>
@@ -1068,8 +1172,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                 return string.Empty;
             }
 
-            string normalizedDiskPath = diskPath.Replace('\\', '/');
-            string normalizedProjectRoot = projectRoot.Replace('\\', '/');
+            string normalizedDiskPath = diskPath.SanitizePath();
+            string normalizedProjectRoot = projectRoot.SanitizePath();
 
             if (
                 normalizedDiskPath.StartsWith(

@@ -42,8 +42,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void RunChecksAcceptsAssetsRoot()
         {
-            string prefabPath = Path.Combine(Root, "Dummy.prefab").Replace('\\', '/');
-            EnsureFolder(Path.GetDirectoryName(prefabPath).Replace('\\', '/'));
+            string prefabPath = Path.Combine(Root, "Dummy.prefab").SanitizePath();
+            EnsureFolder(Path.GetDirectoryName(prefabPath).SanitizePath());
 
             GameObject go = Track(new GameObject("DummyPrefab"));
             PrefabUtility.SaveAsPrefabAsset(go, prefabPath);

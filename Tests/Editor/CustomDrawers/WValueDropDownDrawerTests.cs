@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
+    using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base;
     using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using PropertyAttribute = UnityEngine.PropertyAttribute;
@@ -467,11 +468,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         private static void InvokeApplySelection(BaseField<string> selector, int optionIndex)
         {
-            MethodInfo method = selector
-                .GetType()
-                .GetMethod("ApplySelection", BindingFlags.Instance | BindingFlags.NonPublic);
-            Assert.IsNotNull(method, "Unable to locate ApplySelection on selector.");
-            method.Invoke(selector, new object[] { optionIndex });
+            WDropdownSelectorBase<string> dropdownSelector =
+                selector as WDropdownSelectorBase<string>;
+            Assert.IsNotNull(
+                dropdownSelector,
+                $"Expected selector to derive from WDropdownSelectorBase<string>, but was {selector?.GetType().FullName ?? "null"}."
+            );
+            dropdownSelector.ApplySelection(optionIndex);
         }
     }
 

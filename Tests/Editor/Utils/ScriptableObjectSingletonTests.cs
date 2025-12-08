@@ -108,40 +108,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
         }
 
-        private static void EnsureFolder(string folderPath)
-        {
-            // First, ensure the folder exists on disk to prevent Unity's internal
-            // "Moving file failed" modal dialog
-            string projectRoot = Path.GetDirectoryName(Application.dataPath);
-            if (!string.IsNullOrEmpty(projectRoot))
-            {
-                string absoluteDirectory = Path.Combine(projectRoot, folderPath);
-                if (!Directory.Exists(absoluteDirectory))
-                {
-                    Directory.CreateDirectory(absoluteDirectory);
-                }
-            }
-
-            if (AssetDatabase.IsValidFolder(folderPath))
-            {
-                return;
-            }
-
-            string[] parts = folderPath.Split('/');
-            string current = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string next = current + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    AssetDatabase.CreateFolder(current, parts[i]);
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
-                }
-                current = next;
-            }
-        }
-
         private static void DeleteAssetIfExists(string assetPath)
         {
             if (string.IsNullOrWhiteSpace(assetPath))
@@ -245,13 +211,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             if (!string.IsNullOrWhiteSpace(directory))
             {
                 directory = directory.Replace("\\", "/");
-                EnsureFolder(directory);
+                EnsureFolderStatic(directory);
             }
 
             DeleteAssetIfExists(fullPath);
             if (!string.IsNullOrWhiteSpace(directory))
             {
-                EnsureFolder(directory);
+                EnsureFolderStatic(directory);
             }
 
             TType instance = ScriptableObject.CreateInstance<TType>();
@@ -1153,7 +1119,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
 
                 // Ensure the metadata folder exists to prevent modal dialogs
-                EnsureFolder("Assets/Resources/Wallstop Studios/Unity Helpers");
+                EnsureMetadataFolder();
 
                 System.Collections.Generic.HashSet<Type> allowed = new(allowedTypes);
                 _previousIncludeTests = ScriptableObjectSingletonCreator.IncludeTestAssemblies;
@@ -1189,6 +1155,37 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     _previousIgnoreExclusion;
                 ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression =
                     _previousAllowAssetCreation;
+            }
+
+            private static void EnsureMetadataFolder()
+            {
+                const string folderPath = "Assets/Resources/Wallstop Studios/Unity Helpers";
+                string projectRoot = Path.GetDirectoryName(Application.dataPath);
+                if (!string.IsNullOrEmpty(projectRoot))
+                {
+                    string absoluteDirectory = Path.Combine(projectRoot, folderPath);
+                    if (!Directory.Exists(absoluteDirectory))
+                    {
+                        Directory.CreateDirectory(absoluteDirectory);
+                    }
+                }
+
+                if (AssetDatabase.IsValidFolder(folderPath))
+                {
+                    return;
+                }
+
+                string[] parts = folderPath.Split('/');
+                string current = parts[0];
+                for (int i = 1; i < parts.Length; i++)
+                {
+                    string next = current + "/" + parts[i];
+                    if (!AssetDatabase.IsValidFolder(next))
+                    {
+                        AssetDatabase.CreateFolder(current, parts[i]);
+                    }
+                    current = next;
+                }
             }
         }
 

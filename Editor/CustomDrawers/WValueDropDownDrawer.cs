@@ -9,8 +9,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEngine;
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base;
     using WallstopStudios.UnityHelpers.Editor.Settings;
-    using WallstopStudios.UnityHelpers.Editor.Styles;
     using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
@@ -31,13 +31,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public string[] labels;
         }
 
-        private const float ClearWidth = 50f;
         private const float ButtonWidth = 24f;
         private const float PageLabelWidth = 90f;
         private const float PaginationButtonHeight = 20f;
-        private const float DropdownBottomPadding = 6f;
-        private const float NoResultsVerticalPadding = 6f;
-        private const float NoResultsHorizontalPadding = 6f;
         private const float PopupWidth = 360f;
         private const float OptionBottomPadding = 6f;
         private const float OptionRowExtraHeight = 1.5f;
@@ -115,7 +111,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (!IsSupportedProperty(property))
             {
-                EditorGUI.PropertyField(position, property, label, true);
+                string typeMismatchMessage = GetTypeMismatchMessage(property, dropdownAttribute);
+                EditorGUI.HelpBox(position, typeMismatchMessage, MessageType.Error);
                 return;
             }
 
@@ -160,8 +157,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (!IsSupportedProperty(property))
             {
-                PropertyField fallback = new(property) { label = property.displayName };
-                return fallback;
+                return new HelpBox(
+                    GetTypeMismatchMessage(property, dropdownAttribute),
+                    HelpBoxMessageType.Error
+                );
             }
 
             if (options.Length > pageSize)
@@ -719,92 +718,84 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 DrawSearchControls();
 
-                using (
-                    PooledResource<List<int>> filteredLease = Buffers<int>.List.Get(
-                        out List<int> filtered
-                    )
-                )
+                using PooledResource<List<int>> filteredLease = Buffers<int>.List.Get(
+                    out List<int> filtered
+                );
+
+                bool hasSearch = !string.IsNullOrWhiteSpace(_state.search);
+                string searchTerm = _state.search ?? string.Empty;
+                if (hasSearch)
                 {
-                    filtered.Clear();
-
-                    bool hasSearch = !string.IsNullOrWhiteSpace(_state.search);
-                    string searchTerm = _state.search ?? string.Empty;
-                    if (hasSearch)
+                    for (int i = 0; i < _options.Length; i++)
                     {
-                        for (int i = 0; i < _options.Length; i++)
+                        string optionLabel = FormatOptionCached(_options[i]);
+                        if (
+                            optionLabel.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0
+                        )
                         {
-                            string optionLabel = FormatOptionCached(_options[i]);
-                            if (
-                                optionLabel.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase)
-                                >= 0
-                            )
-                            {
-                                filtered.Add(i);
-                            }
+                            filtered.Add(i);
                         }
                     }
-
-                    int filteredCount = hasSearch ? filtered.Count : _options.Length;
-                    int pageSize = ResolvePageSize();
-                    int pageCount = CalculatePageCount(pageSize, filteredCount);
-                    _state.page = Mathf.Clamp(_state.page, 0, pageCount - 1);
-                    if (filteredCount == 0)
-                    {
-                        DrawEmptyResultsMessage();
-                        _state.page = 0;
-                        return;
-                    }
-
-                    if (pageCount > 1)
-                    {
-                        DrawPaginationControls(pageCount);
-                    }
-                    else
-                    {
-                        EditorGUILayout.Space(EditorGUIUtility.standardVerticalSpacing);
-                    }
-
-                    int startIndex = _state.page * pageSize;
-                    int endIndex = Math.Min(filteredCount, startIndex + pageSize);
-                    int rowsOnPage = Mathf.Max(1, endIndex - startIndex);
-                    int currentSelectionIndex = ResolveSelectedIndex(
-                        property,
-                        _attribute.ValueType,
-                        _options
-                    );
-
-                    using (new EditorGUILayout.VerticalScope())
-                    {
-                        for (int i = startIndex; i < endIndex; i++)
-                        {
-                            int optionIndex = hasSearch ? filtered[i] : i;
-                            GUIContent optionContent = GetOptionContent(optionIndex);
-                            bool isSelected = optionIndex == currentSelectionIndex;
-                            GUIStyle style = isSelected
-                                ? PopupStyles.SelectedOptionButton
-                                : PopupStyles.OptionButton;
-                            if (
-                                GUILayout.Button(
-                                    optionContent,
-                                    style,
-                                    GUILayout.ExpandWidth(true),
-                                    GUILayout.Height(GetOptionControlHeight())
-                                )
-                            )
-                            {
-                                ApplySelection(property, optionIndex);
-                            }
-                        }
-
-                        GUILayout.Space(
-                            EditorGUIUtility.standardVerticalSpacing + OptionBottomPadding
-                        );
-                    }
-
-                    bool includePagination = pageCount > 1;
-                    EnsureWindowFitsPageSize(rowsOnPage, includePagination);
-                    _emptyStateMeasuredHeight = -1f;
                 }
+
+                int filteredCount = hasSearch ? filtered.Count : _options.Length;
+                int pageSize = ResolvePageSize();
+                int pageCount = CalculatePageCount(pageSize, filteredCount);
+                _state.page = Mathf.Clamp(_state.page, 0, pageCount - 1);
+                if (filteredCount == 0)
+                {
+                    DrawEmptyResultsMessage();
+                    _state.page = 0;
+                    return;
+                }
+
+                if (pageCount > 1)
+                {
+                    DrawPaginationControls(pageCount);
+                }
+                else
+                {
+                    EditorGUILayout.Space(EditorGUIUtility.standardVerticalSpacing);
+                }
+
+                int startIndex = _state.page * pageSize;
+                int endIndex = Math.Min(filteredCount, startIndex + pageSize);
+                int rowsOnPage = Mathf.Max(1, endIndex - startIndex);
+                int currentSelectionIndex = ResolveSelectedIndex(
+                    property,
+                    _attribute.ValueType,
+                    _options
+                );
+
+                using (new EditorGUILayout.VerticalScope())
+                {
+                    for (int i = startIndex; i < endIndex; i++)
+                    {
+                        int optionIndex = hasSearch ? filtered[i] : i;
+                        GUIContent optionContent = GetOptionContent(optionIndex);
+                        bool isSelected = optionIndex == currentSelectionIndex;
+                        GUIStyle style = isSelected
+                            ? PopupStyles.SelectedOptionButton
+                            : PopupStyles.OptionButton;
+                        if (
+                            GUILayout.Button(
+                                optionContent,
+                                style,
+                                GUILayout.ExpandWidth(true),
+                                GUILayout.Height(GetOptionControlHeight())
+                            )
+                        )
+                        {
+                            ApplySelection(property, optionIndex);
+                        }
+                    }
+
+                    GUILayout.Space(EditorGUIUtility.standardVerticalSpacing + OptionBottomPadding);
+                }
+
+                bool includePagination = pageCount > 1;
+                EnsureWindowFitsPageSize(rowsOnPage, includePagination);
+                _emptyStateMeasuredHeight = -1f;
             }
 
             private void DrawSearchControls()
@@ -1028,880 +1019,120 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private sealed class WValueDropDownPopupSelectorElement : BaseField<string>
+        private sealed class WValueDropDownPopupSelectorElement : WDropdownPopupSelectorBase<string>
         {
             private readonly object[] _options;
             private readonly WValueDropDownAttribute _attribute;
-            private SerializedObject _serializedObject;
-            private string _propertyPath = string.Empty;
-            private GUIContent _labelContent = GUIContent.none;
-            private int _pageSize;
-
-            private static VisualElement CreateInputElement(out IMGUIContainer container)
-            {
-                container = new IMGUIContainer();
-                return container;
-            }
 
             public WValueDropDownPopupSelectorElement(
                 object[] options,
                 WValueDropDownAttribute attribute
             )
-                : base(string.Empty, CreateInputElement(out IMGUIContainer container))
             {
-                AddToClassList("unity-base-field");
-                AddToClassList("unity-base-field__aligned");
-                labelElement.AddToClassList("unity-base-field__label");
-                labelElement.AddToClassList("unity-label");
-
-                _attribute = attribute;
                 _options = options ?? Array.Empty<object>();
-                _pageSize = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
-
-                container.style.flexGrow = 1f;
-                container.style.marginLeft = 0f;
-                container.style.paddingLeft = 0f;
-                container.onGUIHandler = OnGUIHandler;
+                _attribute = attribute;
             }
 
-            public void BindProperty(SerializedProperty property, string label)
+            protected override int OptionCount => _options.Length;
+
+            protected override string GetDisplayValue(SerializedProperty property)
             {
-                _serializedObject = property?.serializedObject;
-                _propertyPath = property?.propertyPath ?? string.Empty;
-                string labelText = label ?? property?.displayName ?? property?.name ?? string.Empty;
-                this.label = labelText;
-                _labelContent = new GUIContent(labelText);
+                return ResolveDisplayValue(property, _options, _attribute, out _);
             }
 
-            public void UnbindProperty()
+            protected override string GetFieldValue(SerializedProperty property)
             {
-                _serializedObject = null;
-                _propertyPath = string.Empty;
+                return GetDisplayValue(property);
             }
 
-            private void OnGUIHandler()
+            protected override void ShowPopup(
+                Rect controlRect,
+                SerializedProperty property,
+                int pageSize
+            )
             {
-                if (_serializedObject == null || string.IsNullOrEmpty(_propertyPath))
-                {
-                    return;
-                }
+                string cacheKey = property.propertyPath + "::popup";
+                string[] displayLabels = GetOrCreateDisplayLabels(cacheKey, _options);
+                int currentIndex = ResolveSelectedIndex(property, _attribute.ValueType, _options);
 
-                _serializedObject.UpdateIfRequiredOrScript();
-                SerializedProperty property = _serializedObject.FindProperty(_propertyPath);
-                if (property == null)
-                {
-                    return;
-                }
+                SerializedObject serializedObject = property.serializedObject;
+                string propertyPath = property.propertyPath;
+                object[] options = _options;
 
-                string displayValue = ResolveDisplayValue(property, _options, _attribute, out _);
-                SetValueWithoutNotify(displayValue);
-
-                Rect controlRect = EditorGUILayout.GetControlRect();
-                int resolvedPageSize = Mathf.Max(
-                    1,
-                    UnityHelpersSettings.GetStringInListPageLimit()
-                );
-                if (resolvedPageSize != _pageSize)
+                WDropdownPopupData data = new()
                 {
-                    _pageSize = resolvedPageSize;
-                }
-                DrawPopupDropdown(
-                    controlRect,
-                    property,
-                    _labelContent,
-                    _options,
-                    _pageSize,
-                    _attribute
-                );
-                _serializedObject.ApplyModifiedProperties();
+                    DisplayLabels = displayLabels,
+                    Tooltips = null,
+                    SelectedIndex = currentIndex,
+                    PageSize = pageSize,
+                    OnSelectionChanged = (selectedIndex) =>
+                    {
+                        if (selectedIndex < 0 || selectedIndex >= options.Length)
+                        {
+                            return;
+                        }
+
+                        serializedObject.Update();
+                        SerializedProperty prop = serializedObject.FindProperty(propertyPath);
+                        if (prop == null)
+                        {
+                            return;
+                        }
+
+                        Undo.RecordObjects(
+                            serializedObject.targetObjects,
+                            "Change ValueDropDown Selection"
+                        );
+                        ApplyOption(prop, options[selectedIndex]);
+                        serializedObject.ApplyModifiedProperties();
+                    },
+                };
+
+                Rect screenRect = GUIUtility.GUIToScreenRect(controlRect);
+                WDropdownPopupWindow.Show(screenRect, data);
             }
         }
 
-        private sealed class WValueDropDownSelector : BaseField<string>
+        private sealed class WValueDropDownSelector : WDropdownSelectorBase<string>
         {
             private readonly object[] _options;
             private readonly WValueDropDownAttribute _attribute;
-            private readonly VisualElement _searchRow;
-            private readonly TextField _searchField;
-            private readonly Button _clearButton;
-            private readonly VisualElement _paginationContainer;
-            private readonly Button _previousButton;
-            private readonly Label _pageLabel;
-            private readonly Button _nextButton;
-            private readonly DropdownField _dropdown;
-            private readonly Label _noResultsLabel;
-            private readonly Label _suggestionHintLabel;
-            private List<int> _filteredIndices;
-            private PooledResource<List<int>> _filteredIndicesLease;
-            private List<int> _pageOptionIndices;
-            private PooledResource<List<int>> _pageOptionIndicesLease;
-            private List<string> _pageChoices;
-            private PooledResource<List<string>> _pageChoicesLease;
-
-            private SerializedObject _boundObject;
-            private string _propertyPath = string.Empty;
-            private string _searchText = string.Empty;
-            private string _suggestion = string.Empty;
-            private int _pageIndex;
-            private int _lastResolvedPageSize;
-            private bool _searchVisible;
-            private int _suggestionOptionIndex;
-            private int _currentFilteredCount;
-
-            private bool _buffersInitialized;
-
-            private static VisualElement CreateInputElement(out VisualElement element)
-            {
-                element = new VisualElement();
-                return element;
-            }
 
             public WValueDropDownSelector(object[] options, WValueDropDownAttribute attribute)
-                : base(string.Empty, CreateInputElement(out VisualElement baseInput))
             {
-                EnsureBuffers();
-                RegisterCallback<AttachToPanelEvent>(OnAttachedToPanel);
-                RegisterCallback<DetachFromPanelEvent>(OnDetachedFromPanel);
-
                 _options = options ?? Array.Empty<object>();
                 _attribute = attribute;
-                _lastResolvedPageSize = Mathf.Max(
-                    1,
-                    UnityHelpersSettings.GetStringInListPageLimit()
-                );
-                _suggestionOptionIndex = -1;
-
-                // Apply dropdown styles
-                WDropdownStyleLoader.ApplyStyles(this);
-
-                AddToClassList("unity-base-field");
-                AddToClassList("unity-base-field__aligned");
-                labelElement.AddToClassList("unity-base-field__label");
-                labelElement.AddToClassList("unity-label");
-
-                baseInput.AddToClassList("unity-base-field__input");
-                baseInput.style.flexGrow = 1f;
-                baseInput.style.marginLeft = 0f;
-                baseInput.style.paddingLeft = 0f;
-                baseInput.style.flexDirection = FlexDirection.Column;
-
-                _searchRow = new VisualElement
-                {
-                    style =
-                    {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.Center,
-                        marginBottom = 4f,
-                        marginLeft = 0f,
-                        paddingLeft = 0f,
-                    },
-                };
-                _searchRow.AddToClassList(WDropdownStyleLoader.ClassNames.SearchContainer);
-
-                VisualElement searchWrapper = new()
-                {
-                    style = { flexGrow = 1f, position = Position.Relative },
-                };
-                searchWrapper.AddToClassList(WDropdownStyleLoader.ClassNames.SearchWrapper);
-
-                _searchField = new TextField
-                {
-                    name = "WValueDropDownSearch",
-                    style = { flexGrow = 1f },
-                };
-                _searchField.AddToClassList(WDropdownStyleLoader.ClassNames.Search);
-                _searchField.RegisterValueChangedCallback(OnSearchChanged);
-                _searchField.RegisterCallback<KeyDownEvent>(OnSearchKeyDown);
-                searchWrapper.Add(_searchField);
-
-                _clearButton = new Button(OnClearClicked)
-                {
-                    text = "Clear",
-                    style = { marginLeft = 4f },
-                };
-                _clearButton.AddToClassList(WDropdownStyleLoader.ClassNames.ClearButton);
-                _clearButton.SetEnabled(false);
-
-                _paginationContainer = new VisualElement
-                {
-                    style =
-                    {
-                        flexDirection = FlexDirection.Row,
-                        alignItems = Align.Center,
-                        marginLeft = 4f,
-                        display = DisplayStyle.None,
-                    },
-                };
-                _paginationContainer.AddToClassList(WDropdownStyleLoader.ClassNames.Pagination);
-
-                _previousButton = new Button(OnPreviousPage)
-                {
-                    text = "<",
-                    style =
-                    {
-                        marginRight = 0f,
-                        minWidth = ButtonWidth,
-                        height = PaginationButtonHeight,
-                        paddingLeft = 6f,
-                        paddingRight = 6f,
-                    },
-                };
-                _previousButton.AddToClassList("unity-toolbar-button");
-                _previousButton.AddToClassList(WDropdownStyleLoader.ClassNames.PaginationButton);
-
-                _pageLabel = new Label
-                {
-                    style =
-                    {
-                        minWidth = 80f,
-                        unityTextAlign = TextAnchor.MiddleCenter,
-                        marginRight = 0f,
-                        paddingLeft = 6f,
-                        paddingRight = 6f,
-                        minHeight = PaginationButtonHeight,
-                        alignSelf = Align.Center,
-                    },
-                };
-                _pageLabel.AddToClassList(WDropdownStyleLoader.ClassNames.PaginationLabel);
-
-                _nextButton = new Button(OnNextPage)
-                {
-                    text = ">",
-                    style =
-                    {
-                        minWidth = ButtonWidth,
-                        height = PaginationButtonHeight,
-                        paddingLeft = 6f,
-                        paddingRight = 6f,
-                    },
-                };
-                _nextButton.AddToClassList("unity-toolbar-button");
-                _nextButton.AddToClassList(WDropdownStyleLoader.ClassNames.PaginationButton);
-
-                _paginationContainer.Add(_previousButton);
-                _paginationContainer.Add(_pageLabel);
-                _paginationContainer.Add(_nextButton);
-
-                _searchRow.Add(searchWrapper);
-                _searchRow.Add(_clearButton);
-                _searchRow.Add(_paginationContainer);
-                baseInput.Add(_searchRow);
-
-                _suggestionHintLabel = new Label
-                {
-                    style =
-                    {
-                        display = DisplayStyle.None,
-                        marginLeft = 4f,
-                        marginBottom = 2f,
-                        color = new Color(0.7f, 0.85f, 1f, 0.75f),
-                        unityFontStyleAndWeight = FontStyle.Italic,
-                        fontSize = 11f,
-                    },
-                    pickingMode = PickingMode.Ignore,
-                };
-                _suggestionHintLabel.AddToClassList(WDropdownStyleLoader.ClassNames.Suggestion);
-                baseInput.Add(_suggestionHintLabel);
-
-                _dropdown = new DropdownField
-                {
-                    choices = _pageChoices,
-                    style =
-                    {
-                        flexGrow = 1f,
-                        marginLeft = 0f,
-                        paddingLeft = 0f,
-                        marginBottom = DropdownBottomPadding,
-                    },
-                    label = string.Empty,
-                };
-                _dropdown.labelElement.style.display = DisplayStyle.None;
-                _dropdown.RegisterValueChangedCallback(OnDropdownValueChanged);
-                baseInput.Add(_dropdown);
-
-                _noResultsLabel = new Label("No results match the current search.")
-                {
-                    style =
-                    {
-                        display = DisplayStyle.None,
-                        marginLeft = 0f,
-                        marginTop = 4f,
-                        paddingTop = NoResultsVerticalPadding,
-                        paddingBottom = NoResultsVerticalPadding,
-                        paddingLeft = NoResultsHorizontalPadding,
-                        paddingRight = NoResultsHorizontalPadding,
-                        unityTextAlign = TextAnchor.MiddleCenter,
-                    },
-                };
-                _noResultsLabel.AddToClassList("unity-help-box");
-                _noResultsLabel.AddToClassList(WDropdownStyleLoader.ClassNames.NoResults);
-                baseInput.Add(_noResultsLabel);
-
-                ApplySearchVisibility(ShouldShowSearch(_lastResolvedPageSize));
-
-                RegisterCallback<AttachToPanelEvent>(_ => Undo.undoRedoPerformed += OnUndoRedo);
-                RegisterCallback<DetachFromPanelEvent>(_ => Undo.undoRedoPerformed -= OnUndoRedo);
+                InitializeSearchVisibility();
             }
 
-            public void BindProperty(SerializedProperty property, string labelText)
+            protected override int OptionCount => _options.Length;
+
+            protected override string GetDisplayLabel(int optionIndex)
             {
-                _boundObject = property.serializedObject;
-                _propertyPath = property.propertyPath;
-                UpdateLabel(labelText, property.tooltip);
-                _pageIndex = 0;
-                _searchText = string.Empty;
-                _suggestion = string.Empty;
-
-                _searchField.SetValueWithoutNotify(string.Empty);
-                UpdateClearButton(_searchVisible);
-                UpdateSuggestionDisplay(string.Empty, -1, -1);
-
-                UpdateFromProperty();
+                return FormatOptionCached(_options[optionIndex]);
             }
 
-            public void UnbindProperty()
+            protected override int GetCurrentSelectionIndex(SerializedProperty property)
             {
-                _boundObject = null;
-                _propertyPath = string.Empty;
-                UpdateLabel(string.Empty, string.Empty);
+                return ResolveSelectedIndex(property, _attribute.ValueType, _options);
             }
 
-            private void UpdateLabel(string labelText, string labelTooltip)
-            {
-                bool hasLabel = !string.IsNullOrWhiteSpace(labelText);
-                label = hasLabel ? labelText : string.Empty;
-                labelElement.style.display = hasLabel ? DisplayStyle.Flex : DisplayStyle.None;
-                labelElement.tooltip = labelTooltip;
-                _dropdown.tooltip = labelTooltip;
-            }
-
-            private void OnUndoRedo()
-            {
-                UpdateFromProperty();
-            }
-
-            private void OnSearchChanged(ChangeEvent<string> evt)
-            {
-                if (!_searchVisible)
-                {
-                    return;
-                }
-
-                _searchText = evt.newValue ?? string.Empty;
-                _pageIndex = 0;
-                UpdateClearButton(_searchVisible);
-                UpdateFromProperty();
-            }
-
-            private void OnSearchKeyDown(KeyDownEvent evt)
-            {
-                if (!_searchVisible)
-                {
-                    return;
-                }
-
-                if (
-                    (
-                        evt.keyCode == KeyCode.Tab
-                        || evt.keyCode == KeyCode.Return
-                        || evt.keyCode == KeyCode.KeypadEnter
-                    ) && !string.IsNullOrEmpty(_suggestion)
-                )
-                {
-                    evt.PreventDefault();
-                    evt.StopPropagation();
-                    evt.StopImmediatePropagation();
-                    bool commitSelection = evt.keyCode == KeyCode.Tab && !evt.shiftKey;
-                    AcceptSuggestion(commitSelection);
-                }
-            }
-
-            private void OnClearClicked()
-            {
-                if (!_searchVisible || string.IsNullOrEmpty(_searchText))
-                {
-                    return;
-                }
-
-                _searchText = string.Empty;
-                _searchField.SetValueWithoutNotify(string.Empty);
-
-                _pageIndex = 0;
-                UpdateClearButton(_searchVisible);
-                UpdateSuggestionDisplay(string.Empty, -1, -1);
-                UpdateFromProperty();
-            }
-
-            private void OnPreviousPage()
-            {
-                if (_pageIndex <= 0)
-                {
-                    return;
-                }
-
-                _pageIndex--;
-                UpdateFromProperty();
-            }
-
-            private void OnNextPage()
-            {
-                int pageSize = ResolvePageSize();
-                int pageCount = CalculatePageCount(pageSize, _currentFilteredCount);
-                if (_pageIndex >= pageCount - 1)
-                {
-                    return;
-                }
-
-                _pageIndex++;
-                UpdateFromProperty();
-            }
-
-            private void OnDropdownValueChanged(ChangeEvent<string> evt)
-            {
-                string newValue = evt.newValue;
-                if (string.IsNullOrEmpty(newValue))
-                {
-                    return;
-                }
-
-                int optionIndex = ResolveOptionIndex(newValue);
-                if (optionIndex < 0)
-                {
-                    return;
-                }
-
-                ApplySelection(optionIndex);
-            }
-
-            private void UpdateFromProperty()
-            {
-                EnsureBuffers();
-
-                if (_boundObject == null || string.IsNullOrEmpty(_propertyPath))
-                {
-                    return;
-                }
-
-                _boundObject.Update();
-
-                SerializedProperty property = _boundObject.FindProperty(_propertyPath);
-                if (property == null)
-                {
-                    return;
-                }
-
-                int pageSize = ResolvePageSize();
-                bool searchActive = ShouldShowSearch(pageSize);
-                ApplySearchVisibility(searchActive);
-
-                int selectedOptionIndex = ResolveSelectedIndex(
-                    property,
-                    _attribute.ValueType,
-                    _options
-                );
-
-                _filteredIndices.Clear();
-                string effectiveSearch = searchActive
-                    ? (_searchText ?? string.Empty)
-                    : string.Empty;
-                bool hasSearch = searchActive && !string.IsNullOrWhiteSpace(effectiveSearch);
-                if (hasSearch)
-                {
-                    for (int i = 0; i < _options.Length; i++)
-                    {
-                        string optionLabel = FormatOptionCached(_options[i]);
-                        bool matchesValue = optionLabel.StartsWith(
-                            effectiveSearch,
-                            StringComparison.OrdinalIgnoreCase
-                        );
-                        if (matchesValue)
-                        {
-                            _filteredIndices.Add(i);
-                        }
-                    }
-                }
-
-                int filteredCount = hasSearch ? _filteredIndices.Count : _options.Length;
-                if (filteredCount == 0)
-                {
-                    ToggleDropdownVisibility(false);
-                    _pageChoices.Clear();
-                    _dropdown.choices = _pageChoices;
-                    _dropdown.SetValueWithoutNotify(string.Empty);
-                    SetValueWithoutNotify(string.Empty);
-                    _dropdown.SetEnabled(false);
-                    _dropdown.tooltip = string.Empty;
-                    _noResultsLabel.style.display = DisplayStyle.Flex;
-                    UpdatePagination(searchActive, 0, pageSize, 0);
-                    UpdateSuggestionDisplay(string.Empty, -1, -1);
-                    _currentFilteredCount = 0;
-                    return;
-                }
-
-                _noResultsLabel.style.display = DisplayStyle.None;
-                ToggleDropdownVisibility(true);
-
-                int pageCount = CalculatePageCount(pageSize, filteredCount);
-                if (selectedOptionIndex >= 0)
-                {
-                    int filteredIndex = hasSearch
-                        ? _filteredIndices.IndexOf(selectedOptionIndex)
-                        : selectedOptionIndex;
-                    if (filteredIndex >= 0)
-                    {
-                        _pageIndex = filteredIndex / pageSize;
-                    }
-                    else if (_pageIndex >= pageCount)
-                    {
-                        _pageIndex = 0;
-                    }
-                }
-                else if (_pageIndex >= pageCount)
-                {
-                    _pageIndex = 0;
-                }
-
-                UpdatePagination(searchActive, pageCount, pageSize, filteredCount);
-
-                bool paginate = searchActive && filteredCount > pageSize;
-
-                _pageOptionIndices.Clear();
-                _pageChoices.Clear();
-
-                int startIndex = paginate ? _pageIndex * pageSize : 0;
-                int endIndex = paginate
-                    ? Math.Min(filteredCount, startIndex + pageSize)
-                    : filteredCount;
-
-                for (int i = startIndex; i < endIndex; i++)
-                {
-                    int optionIndex = hasSearch ? _filteredIndices[i] : i;
-                    string optionLabel = FormatOptionCached(_options[optionIndex]);
-                    _pageOptionIndices.Add(optionIndex);
-                    _pageChoices.Add(optionLabel);
-                }
-
-                _dropdown.choices = _pageChoices;
-
-                string dropdownValue = string.Empty;
-                if (selectedOptionIndex >= 0)
-                {
-                    dropdownValue = FormatOptionCached(_options[selectedOptionIndex]);
-                }
-
-                if (string.IsNullOrEmpty(dropdownValue) && _pageChoices.Count > 0)
-                {
-                    dropdownValue = _pageChoices[0];
-                }
-
-                _dropdown.SetValueWithoutNotify(dropdownValue);
-                SetValueWithoutNotify(dropdownValue);
-                _dropdown.SetEnabled(_pageChoices.Count > 0);
-
-                _currentFilteredCount = filteredCount;
-
-                UpdateSuggestion(hasSearch);
-            }
-
-            private void EnsureBuffers()
-            {
-                if (_buffersInitialized)
-                {
-                    return;
-                }
-
-                _filteredIndicesLease = Buffers<int>.List.Get(out _filteredIndices);
-                _pageOptionIndicesLease = Buffers<int>.List.Get(out _pageOptionIndices);
-                _pageChoicesLease = Buffers<string>.List.Get(out _pageChoices);
-                _buffersInitialized = true;
-            }
-
-            private void OnAttachedToPanel(AttachToPanelEvent _)
-            {
-                if (!_buffersInitialized)
-                {
-                    EnsureBuffers();
-                }
-            }
-
-            private void OnDetachedFromPanel(DetachFromPanelEvent _)
-            {
-                ReleaseBuffers();
-            }
-
-            private void ReleaseBuffers()
-            {
-                if (!_buffersInitialized)
-                {
-                    return;
-                }
-
-                _filteredIndicesLease.Dispose();
-                _pageOptionIndicesLease.Dispose();
-                _pageChoicesLease.Dispose();
-
-                _filteredIndices = null;
-                _pageOptionIndices = null;
-                _pageChoices = null;
-                _buffersInitialized = false;
-            }
-
-            private void UpdatePagination(
-                bool searchActive,
-                int pageCount,
-                int pageSize,
-                int filteredCount
+            protected override void ApplySelectionToProperty(
+                SerializedProperty property,
+                int optionIndex
             )
             {
-                if (
-                    _paginationContainer == null
-                    || _previousButton == null
-                    || _nextButton == null
-                    || _pageLabel == null
-                )
-                {
-                    return;
-                }
-
-                bool showPagination = searchActive && filteredCount > pageSize;
-                _paginationContainer.style.display = showPagination
-                    ? DisplayStyle.Flex
-                    : DisplayStyle.None;
-
-                if (!showPagination)
-                {
-                    _pageLabel.text = string.Empty;
-                    _previousButton.SetEnabled(false);
-                    _nextButton.SetEnabled(false);
-                    return;
-                }
-
-                int clampedPageCount = Math.Max(1, pageCount);
-                _pageIndex = Mathf.Clamp(_pageIndex, 0, clampedPageCount - 1);
-                _pageLabel.text = GetPaginationLabel(_pageIndex + 1, clampedPageCount);
-                _previousButton.SetEnabled(_pageIndex > 0);
-                _nextButton.SetEnabled(_pageIndex < clampedPageCount - 1);
-            }
-
-            private void UpdateClearButton(bool searchActive)
-            {
-                if (_clearButton == null)
-                {
-                    return;
-                }
-
-                _clearButton.SetEnabled(searchActive && !string.IsNullOrEmpty(_searchText));
-            }
-
-            private void UpdateSuggestion(bool hasSearch)
-            {
-                if (!hasSearch || _filteredIndices.Count == 0)
-                {
-                    UpdateSuggestionDisplay(string.Empty, -1, -1);
-                    return;
-                }
-
-                bool searchVisible = hasSearch && !string.IsNullOrEmpty(_searchText);
-                int optionIndex = _filteredIndices[0];
-                string optionLabel = FormatOptionCached(_options[optionIndex]);
-                bool prefixMatch =
-                    searchVisible
-                    && optionLabel.StartsWith(_searchText, StringComparison.OrdinalIgnoreCase);
-
-                UpdateSuggestionDisplay(optionLabel, optionIndex, prefixMatch ? 0 : -1);
-            }
-
-            private void UpdateSuggestionDisplay(
-                string suggestionValue,
-                int optionIndex,
-                int matchPosition
-            )
-            {
-                _suggestion = suggestionValue;
-                _suggestionOptionIndex = optionIndex;
-                bool suggestionsVisible =
-                    _searchVisible
-                    && !string.IsNullOrEmpty(suggestionValue)
-                    && optionIndex >= 0
-                    && matchPosition == 0;
-
-                if (_suggestionHintLabel != null)
-                {
-                    _suggestionHintLabel.text = suggestionsVisible
-                        ? $"↹ Tab selects: {suggestionValue}"
-                        : string.Empty;
-                    _suggestionHintLabel.style.display = suggestionsVisible
-                        ? DisplayStyle.Flex
-                        : DisplayStyle.None;
-                }
-
-                if (!suggestionsVisible)
-                {
-                    _suggestionOptionIndex = -1;
-                }
-            }
-
-            private void ToggleDropdownVisibility(bool hasResults)
-            {
-                if (_dropdown == null)
-                {
-                    return;
-                }
-
-                _dropdown.style.display = hasResults ? DisplayStyle.Flex : DisplayStyle.None;
-            }
-
-            private void AcceptSuggestion(bool commitSelection)
-            {
-                if (
-                    !_searchVisible
-                    || string.IsNullOrEmpty(_suggestion)
-                    || _searchField == null
-                    || _suggestionOptionIndex < 0
-                )
-                {
-                    return;
-                }
-
-                string previous = _searchText ?? string.Empty;
-                int originalLength = previous.Length;
-                int optionIndexToApply = commitSelection ? _suggestionOptionIndex : -1;
-
-                _searchText = _suggestion;
-                _searchField.SetValueWithoutNotify(_suggestion);
-                int selectionStart = Mathf.Clamp(originalLength, 0, _suggestion.Length);
-                _searchField.schedule.Execute(() =>
-                {
-                    _searchField.Focus();
-                    _searchField.SelectRange(selectionStart, _suggestion.Length);
-                });
-                UpdateClearButton(_searchVisible);
-                UpdateSuggestionDisplay(string.Empty, -1, -1);
-                UpdateFromProperty();
-
-                if (commitSelection && optionIndexToApply >= 0)
-                {
-                    ApplySelection(optionIndexToApply);
-                }
-            }
-
-            private int ResolvePageSize()
-            {
-                int resolved = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
-                if (resolved != _lastResolvedPageSize)
-                {
-                    _lastResolvedPageSize = resolved;
-                    _pageIndex = 0;
-                }
-
-                return resolved;
-            }
-
-            private bool ShouldShowSearch(int pageSize)
-            {
-                return _options.Length > pageSize;
-            }
-
-            private void ApplySearchVisibility(bool searchVisible)
-            {
-                if (_searchRow == null)
-                {
-                    return;
-                }
-
-                _searchVisible = searchVisible;
-                _searchRow.style.display = searchVisible ? DisplayStyle.Flex : DisplayStyle.None;
-
-                if (_dropdown != null)
-                {
-                    _dropdown.style.marginTop = searchVisible ? 2f : 0f;
-                }
-
-                if (!searchVisible)
-                {
-                    if (!string.IsNullOrEmpty(_searchText))
-                    {
-                        _searchText = string.Empty;
-                        _searchField.SetValueWithoutNotify(string.Empty);
-                    }
-
-                    UpdateSuggestionDisplay(string.Empty, -1, -1);
-                    _suggestionOptionIndex = -1;
-
-                    if (_paginationContainer != null)
-                    {
-                        _paginationContainer.style.display = DisplayStyle.None;
-                    }
-
-                    if (_previousButton != null)
-                    {
-                        _previousButton.SetEnabled(false);
-                    }
-
-                    if (_nextButton != null)
-                    {
-                        _nextButton.SetEnabled(false);
-                    }
-                }
-
-                UpdateClearButton(searchVisible);
-                if (!searchVisible && _suggestionHintLabel != null)
-                {
-                    _suggestionHintLabel.text = string.Empty;
-                    _suggestionHintLabel.style.display = DisplayStyle.None;
-                }
-            }
-
-            private int ResolveOptionIndex(string optionLabel)
-            {
-                if (string.IsNullOrEmpty(optionLabel))
-                {
-                    return -1;
-                }
-
-                for (int i = 0; i < _pageChoices.Count && i < _pageOptionIndices.Count; i++)
-                {
-                    if (string.Equals(_pageChoices[i], optionLabel, StringComparison.Ordinal))
-                    {
-                        return _pageOptionIndices[i];
-                    }
-                }
-
-                for (int i = 0; i < _options.Length; i++)
-                {
-                    string label = FormatOptionCached(_options[i]);
-                    if (string.Equals(label, optionLabel, StringComparison.Ordinal))
-                    {
-                        return i;
-                    }
-                }
-
-                return -1;
-            }
-
-            private void ApplySelection(int optionIndex)
-            {
-                if (_boundObject == null || string.IsNullOrEmpty(_propertyPath))
-                {
-                    return;
-                }
-
-                SerializedObject serializedObject = _boundObject;
-                Undo.RecordObjects(serializedObject.targetObjects, "Change Value Dropdown");
-                serializedObject.Update();
-
-                SerializedProperty property = serializedObject.FindProperty(_propertyPath);
-                if (property == null)
-                {
-                    return;
-                }
-
                 ApplyOption(property, _options[optionIndex]);
-
-                SetValueWithoutNotify(FormatOptionCached(_options[optionIndex]));
-                serializedObject.ApplyModifiedProperties();
-                UpdateFromProperty();
             }
+
+            protected override string GetValueForOption(int optionIndex)
+            {
+                return FormatOptionCached(_options[optionIndex]);
+            }
+
+            protected override string GetDefaultValue() => string.Empty;
+
+            protected override string UndoActionName => "Change Value Dropdown";
         }
 
         private static float CalculatePopupTargetHeight(int rowsOnPage, bool includePagination)
@@ -2092,6 +1323,95 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     padding = new RectOffset(0, 0, 0, 0),
                 };
             }
+        }
+
+        private static string GetTypeMismatchMessage(
+            SerializedProperty property,
+            WValueDropDownAttribute dropdownAttribute
+        )
+        {
+            string fieldName = property.displayName;
+            string actualType = GetPropertyTypeName(property);
+            string expectedType = GetExpectedTypeName(dropdownAttribute);
+            return $"[WValueDropDown] Type mismatch: '{fieldName}' is {actualType}, but the dropdown provides {expectedType} values. Supported field types: int, float, string, enum.";
+        }
+
+        private static string GetExpectedTypeName(WValueDropDownAttribute dropdownAttribute)
+        {
+            if (dropdownAttribute?.ValueType == null)
+            {
+                return "unknown";
+            }
+
+            Type valueType = dropdownAttribute.ValueType;
+            if (valueType == typeof(int))
+            {
+                return "int";
+            }
+            if (valueType == typeof(float))
+            {
+                return "float";
+            }
+            if (valueType == typeof(double))
+            {
+                return "double";
+            }
+            if (valueType == typeof(string))
+            {
+                return "string";
+            }
+            if (valueType == typeof(long))
+            {
+                return "long";
+            }
+            if (valueType == typeof(short))
+            {
+                return "short";
+            }
+            if (valueType == typeof(byte))
+            {
+                return "byte";
+            }
+            if (valueType.IsEnum)
+            {
+                return $"enum ({valueType.Name})";
+            }
+
+            return valueType.Name;
+        }
+
+        private static string GetPropertyTypeName(SerializedProperty property)
+        {
+            return property.propertyType switch
+            {
+                SerializedPropertyType.Integer => "an int",
+                SerializedPropertyType.Float => "a float",
+                SerializedPropertyType.String => "a string",
+                SerializedPropertyType.Enum => "an enum",
+                SerializedPropertyType.Boolean => "a bool",
+                SerializedPropertyType.ObjectReference => "an object reference",
+                SerializedPropertyType.Vector2 => "a Vector2",
+                SerializedPropertyType.Vector3 => "a Vector3",
+                SerializedPropertyType.Vector4 => "a Vector4",
+                SerializedPropertyType.Color => "a Color",
+                SerializedPropertyType.Rect => "a Rect",
+                SerializedPropertyType.ArraySize => "an array size",
+                SerializedPropertyType.Character => "a char",
+                SerializedPropertyType.AnimationCurve => "an AnimationCurve",
+                SerializedPropertyType.Bounds => "a Bounds",
+                SerializedPropertyType.Quaternion => "a Quaternion",
+                SerializedPropertyType.ExposedReference => "an exposed reference",
+                SerializedPropertyType.FixedBufferSize => "a fixed buffer size",
+                SerializedPropertyType.Vector2Int => "a Vector2Int",
+                SerializedPropertyType.Vector3Int => "a Vector3Int",
+                SerializedPropertyType.RectInt => "a RectInt",
+                SerializedPropertyType.BoundsInt => "a BoundsInt",
+                SerializedPropertyType.ManagedReference => "a managed reference",
+                SerializedPropertyType.Hash128 => "a Hash128",
+                SerializedPropertyType.Generic when property.isArray =>
+                    $"an array of {property.arrayElementType}",
+                _ => $"type '{property.propertyType}'",
+            };
         }
     }
 #endif

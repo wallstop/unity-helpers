@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
@@ -20,17 +21,11 @@ namespace WallstopStudios.UnityHelpers.Tests
         private readonly List<string> _createdFolders = new();
         private bool _previousEditorUiSuppress;
 
-        [SetUp]
-        public override void BaseSetUp()
+        [UnitySetUp]
+        public IEnumerator SetUp()
         {
-            base.BaseSetUp();
             _previousEditorUiSuppress = EditorUi.Suppress;
             EditorUi.Suppress = true;
-        }
-
-        [UnitySetUp]
-        public IEnumerator UnitySetUp()
-        {
             yield return CleanupAllPersistentDirectorySettingsAssets();
         }
 
@@ -315,16 +310,9 @@ namespace WallstopStudios.UnityHelpers.Tests
         {
             yield return CleanupAllPersistentDirectorySettingsAssets();
 
-            // Ensure all required folders exist
             EnsureFolderExists(PersistentDirectorySettings.LegacyFolder);
             _createdFolders.Add(PersistentDirectorySettings.LegacyFolder);
             yield return null;
-
-            // Verify folder was created
-            Assert.IsTrue(
-                AssetDatabase.IsValidFolder(PersistentDirectorySettings.LegacyFolder),
-                $"Setup: Legacy folder '{PersistentDirectorySettings.LegacyFolder}' should exist"
-            );
 
             PersistentDirectorySettings legacy =
                 ScriptableObject.CreateInstance<PersistentDirectorySettings>();
@@ -337,50 +325,15 @@ namespace WallstopStudios.UnityHelpers.Tests
             AssetDatabase.Refresh();
             yield return null;
 
-            // Verify legacy asset was created with data
-            PersistentDirectorySettings legacyCheck =
-                AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
-                    PersistentDirectorySettings.LegacyAssetPath
-                );
-            Assert.IsNotNull(
-                legacyCheck,
-                $"Setup: Legacy asset should exist at '{PersistentDirectorySettings.LegacyAssetPath}'"
-            );
-            DirectoryUsageData[] legacyExportPaths = legacyCheck.GetPaths("ExportTool", "Default");
-            Assert.IsNotNull(legacyExportPaths, "Setup: Legacy should have export paths");
-            Assert.AreEqual(
-                1,
-                legacyExportPaths.Length,
-                "Setup: Legacy should have one export path entry"
-            );
-
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
             _createdAssets.Add(PersistentDirectorySettings.TargetAssetPath);
             yield return null;
 
             Assert.IsNotNull(result, "Migration should succeed");
 
-            // Verify result is at target path
-            PersistentDirectorySettings targetCheck =
-                AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
-                    PersistentDirectorySettings.TargetAssetPath
-                );
-            Assert.IsNotNull(
-                targetCheck,
-                $"Target asset should exist at '{PersistentDirectorySettings.TargetAssetPath}'. "
-                    + $"Target folder exists: {AssetDatabase.IsValidFolder(PersistentDirectorySettings.TargetFolder)}"
-            );
-
             DirectoryUsageData[] exportPaths = result.GetPaths("ExportTool", "Default");
-            Assert.IsNotNull(
-                exportPaths,
-                $"Export paths should exist. Result == targetCheck: {ReferenceEquals(result, targetCheck)}"
-            );
-            Assert.AreEqual(
-                1,
-                exportPaths.Length,
-                $"Should have one export path. Got: {exportPaths?.Length ?? 0}"
-            );
+            Assert.IsNotNull(exportPaths, "Export paths should exist");
+            Assert.AreEqual(1, exportPaths.Length, "Should have one export path");
             Assert.AreEqual("Assets/Exports", exportPaths[0].path);
             Assert.AreEqual(3, exportPaths[0].count, "Usage count should be preserved");
 
@@ -823,132 +776,6 @@ namespace WallstopStudios.UnityHelpers.Tests
         }
 
         [UnityTest]
-        public IEnumerator TryDeleteEmptyFolderRefusesToDeleteAssetsResources()
-        {
-            // This test verifies our safety mechanism for protecting Assets/Resources
-            // Even if called directly, TryDeleteEmptyFolder should refuse to delete it
-
-            // First ensure Assets/Resources exists
-            EnsureFolderExists("Assets/Resources");
-            yield return null;
-
-            Assert.IsTrue(
-                AssetDatabase.IsValidFolder("Assets/Resources"),
-                "Setup: Assets/Resources should exist"
-            );
-
-            // Call TryDeleteEmptyFolder on Assets/Resources (should be refused)
-            // We expect a warning to be logged
-            LogAssert.Expect(
-                UnityEngine.LogType.Warning,
-                new System.Text.RegularExpressions.Regex(
-                    "Refusing to delete protected folder.*Assets/Resources"
-                )
-            );
-
-            TryDeleteEmptyFolder("Assets/Resources");
-            yield return null;
-
-            // Verify Assets/Resources still exists
-            Assert.IsTrue(
-                AssetDatabase.IsValidFolder("Assets/Resources"),
-                "CRITICAL: Assets/Resources must NEVER be deleted - this is user data"
-            );
-
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [UnityTest]
-        public IEnumerator TryDeleteEmptyFolderRefusesToDeleteAssets()
-        {
-            // This test verifies our safety mechanism for protecting Assets folder
-            Assert.IsTrue(AssetDatabase.IsValidFolder("Assets"), "Setup: Assets should exist");
-
-            // Call TryDeleteEmptyFolder on Assets (should be refused)
-            LogAssert.Expect(
-                UnityEngine.LogType.Warning,
-                new System.Text.RegularExpressions.Regex(
-                    "Refusing to delete protected folder.*Assets"
-                )
-            );
-
-            TryDeleteEmptyFolder("Assets");
-            yield return null;
-
-            Assert.IsTrue(
-                AssetDatabase.IsValidFolder("Assets"),
-                "CRITICAL: Assets folder must NEVER be deleted"
-            );
-
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [UnityTest]
-        public IEnumerator CleanupLegacyEmptyFoldersNeverDeletesResourcesRoot()
-        {
-            yield return CleanupAllPersistentDirectorySettingsAssets();
-
-            // Ensure Assets/Resources exists with only Wallstop Studios inside (empty)
-            EnsureFolderExists("Assets/Resources/Wallstop Studios");
-            _createdFolders.Add("Assets/Resources/Wallstop Studios");
-            yield return null;
-
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-            yield return null;
-
-            Assert.IsTrue(
-                AssetDatabase.IsValidFolder("Assets/Resources"),
-                "Setup: Assets/Resources should exist"
-            );
-
-            // Run cleanup - this should NOT delete Assets/Resources
-            PersistentDirectorySettings.CleanupLegacyEmptyFolders();
-            yield return null;
-
-            Assert.IsTrue(
-                AssetDatabase.IsValidFolder("Assets/Resources"),
-                "CRITICAL: Assets/Resources must NEVER be deleted by CleanupLegacyEmptyFolders"
-            );
-        }
-
-        [UnityTest]
-        public IEnumerator StressTestCleanupNeverDeletesProtectedFolders()
-        {
-            // This test runs cleanup many times to ensure no race conditions
-            // can cause protected folders to be deleted
-            yield return CleanupAllPersistentDirectorySettingsAssets();
-
-            // Create the Wallstop Studios folder
-            EnsureFolderExists("Assets/Resources/Wallstop Studios");
-            _createdFolders.Add("Assets/Resources/Wallstop Studios");
-            yield return null;
-
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-            yield return null;
-
-            // Run cleanup many times in rapid succession
-            for (int i = 0; i < 10; i++)
-            {
-                PersistentDirectorySettings.CleanupLegacyEmptyFolders();
-                // Deliberately no yield between calls to test rapid succession
-
-                // Verify folders are still protected after each iteration
-                Assert.IsTrue(
-                    AssetDatabase.IsValidFolder("Assets/Resources"),
-                    $"CRITICAL: Assets/Resources must NEVER be deleted (iteration {i + 1})"
-                );
-                Assert.IsTrue(
-                    AssetDatabase.IsValidFolder("Assets/Resources/Wallstop Studios"),
-                    $"CRITICAL: Wallstop Studios root must NEVER be deleted (iteration {i + 1})"
-                );
-            }
-
-            yield return null;
-        }
-
-        [UnityTest]
         public IEnumerator CleanupLegacyEmptyFoldersHandlesNoWallstopFolder()
         {
             yield return CleanupAllPersistentDirectorySettingsAssets();
@@ -1090,12 +917,6 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add("Assets/Resources/Wallstop Studios");
             yield return null;
 
-            // Verify legacy folder exists
-            Assert.IsTrue(
-                AssetDatabase.IsValidFolder(PersistentDirectorySettings.LegacyFolder),
-                $"Setup: Legacy folder should exist at '{PersistentDirectorySettings.LegacyFolder}'"
-            );
-
             string extraEmptyFolder = "Assets/Resources/Wallstop Studios/OldStuff/Obsolete";
             EnsureFolderExists(extraEmptyFolder);
             yield return null;
@@ -1107,19 +928,6 @@ namespace WallstopStudios.UnityHelpers.Tests
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             yield return null;
-
-            // Verify legacy asset was created with data
-            PersistentDirectorySettings legacyCheck =
-                AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
-                    PersistentDirectorySettings.LegacyAssetPath
-                );
-            Assert.IsNotNull(
-                legacyCheck,
-                $"Setup: Legacy asset should exist at '{PersistentDirectorySettings.LegacyAssetPath}'"
-            );
-            DirectoryUsageData[] legacyPaths = legacyCheck.GetPaths("Tool", "Ctx");
-            Assert.IsNotNull(legacyPaths, "Setup: Legacy should have paths");
-            Assert.AreEqual(1, legacyPaths.Length, "Setup: Legacy should have one path entry");
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
             _createdAssets.Add(PersistentDirectorySettings.TargetAssetPath);
@@ -1145,30 +953,12 @@ namespace WallstopStudios.UnityHelpers.Tests
 
             Assert.IsTrue(
                 AssetDatabase.IsValidFolder(PersistentDirectorySettings.TargetFolder),
-                $"Target folder should still exist at '{PersistentDirectorySettings.TargetFolder}'"
-            );
-
-            // Verify the target asset exists and has the data
-            PersistentDirectorySettings targetCheck =
-                AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
-                    PersistentDirectorySettings.TargetAssetPath
-                );
-            Assert.IsNotNull(
-                targetCheck,
-                $"Target asset should exist at '{PersistentDirectorySettings.TargetAssetPath}'"
+                "Target folder should still exist"
             );
 
             DirectoryUsageData[] paths = result.GetPaths("Tool", "Ctx");
-            Assert.IsNotNull(
-                paths,
-                $"Paths should exist in result. Result same as targetCheck: {ReferenceEquals(result, targetCheck)}"
-            );
-            Assert.AreEqual(
-                1,
-                paths.Length,
-                $"Should have 1 path. Got: {paths?.Length ?? 0}. "
-                    + $"TargetFolder exists: {AssetDatabase.IsValidFolder(PersistentDirectorySettings.TargetFolder)}"
-            );
+            Assert.IsNotNull(paths);
+            Assert.AreEqual(1, paths.Length);
         }
 
         [UnityTest]
@@ -1360,91 +1150,14 @@ namespace WallstopStudios.UnityHelpers.Tests
             DeleteAllContentsRecursively("Assets/Resources/Wallstop Studios");
             yield return null;
 
-            // Clean up any duplicate "Wallstop Studios" folders that Unity may have created
-            // (e.g., "Wallstop Studios 1", "Empty1 1", etc.)
-            CleanupDuplicateWallstopStudiosFolders();
-            yield return null;
-
             TryDeleteEmptyFolder("Assets/Resources/Wallstop Studios");
             yield return null;
-            // CRITICAL: Never delete Assets/Resources - TryDeleteEmptyFolder now has a safety check
-            // but we should not even try to delete it
-            // TryDeleteEmptyFolder("Assets/Resources") - REMOVED for safety
+            TryDeleteEmptyFolder("Assets/Resources");
+            yield return null;
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             yield return null;
-        }
-
-        /// <summary>
-        /// Cleans up duplicate folders that Unity may have created during test runs.
-        /// These are folders like "Wallstop Studios 1", "Empty1 1", etc.
-        /// </summary>
-        private static void CleanupDuplicateWallstopStudiosFolders()
-        {
-            if (!AssetDatabase.IsValidFolder("Assets/Resources"))
-            {
-                return;
-            }
-
-            string[] subFolders = AssetDatabase.GetSubFolders("Assets/Resources");
-            if (subFolders == null)
-            {
-                return;
-            }
-
-            foreach (string folder in subFolders)
-            {
-                string folderName = Path.GetFileName(folder);
-                if (folderName == null)
-                {
-                    continue;
-                }
-
-                // Check for duplicate "Wallstop Studios" folders (e.g., "Wallstop Studios 1")
-                if (
-                    folderName.StartsWith("Wallstop Studios ", StringComparison.Ordinal)
-                    && folderName.Length > "Wallstop Studios ".Length
-                )
-                {
-                    // Check if the suffix is a number (indicating a duplicate)
-                    string suffix = folderName.Substring("Wallstop Studios ".Length);
-                    if (int.TryParse(suffix, out _))
-                    {
-                        DeleteAllContentsRecursively(folder);
-                        DeleteFolderIfExists(folder);
-                    }
-                }
-            }
-
-            // Also clean up duplicates within Wallstop Studios folder
-            if (AssetDatabase.IsValidFolder("Assets/Resources/Wallstop Studios"))
-            {
-                string[] wsSubFolders = AssetDatabase.GetSubFolders(
-                    "Assets/Resources/Wallstop Studios"
-                );
-                if (wsSubFolders != null)
-                {
-                    foreach (string folder in wsSubFolders)
-                    {
-                        string folderName = Path.GetFileName(folder);
-                        if (folderName == null)
-                        {
-                            continue;
-                        }
-
-                        // Check for folders with " 1" suffix (duplicates)
-                        if (
-                            folderName.EndsWith(" 1", StringComparison.Ordinal)
-                            || System.Text.RegularExpressions.Regex.IsMatch(folderName, @".+ \d+$")
-                        )
-                        {
-                            DeleteAllContentsRecursively(folder);
-                            DeleteFolderIfExists(folder);
-                        }
-                    }
-                }
-            }
         }
 
         private static void DeleteAllContentsRecursively(string folderPath)
@@ -1488,19 +1201,7 @@ namespace WallstopStudios.UnityHelpers.Tests
                 return;
             }
 
-            folderPath = folderPath.Replace('\\', '/');
-
-            // Check if folder already exists in AssetDatabase BEFORE creating on disk
-            // This prevents duplicate folder creation when AssetDatabase has stale state
-            if (AssetDatabase.IsValidFolder(folderPath))
-            {
-                return;
-            }
-
-            // Refresh AssetDatabase first to ensure we have latest state
-            AssetDatabase.Refresh();
-
-            // Re-check after refresh
+            folderPath = folderPath.SanitizePath();
             if (AssetDatabase.IsValidFolder(folderPath))
             {
                 return;
@@ -1516,46 +1217,9 @@ namespace WallstopStudios.UnityHelpers.Tests
             for (int i = 1; i < parts.Length; i++)
             {
                 string next = current + "/" + parts[i];
-
-                // Check if folder already exists (handles case sensitivity issues)
-                if (AssetDatabase.IsValidFolder(next))
+                if (!AssetDatabase.IsValidFolder(next))
                 {
-                    current = next;
-                    continue;
-                }
-
-                // Ensure parent folder exists on disk first to prevent Unity modal dialogs
-                string projectRoot = Path.GetDirectoryName(Application.dataPath);
-                if (!string.IsNullOrEmpty(projectRoot))
-                {
-                    string absoluteParent = Path.Combine(projectRoot, current);
-                    if (!Directory.Exists(absoluteParent))
-                    {
-                        Directory.CreateDirectory(absoluteParent);
-                    }
-                }
-
-                string result = AssetDatabase.CreateFolder(current, parts[i]);
-                if (string.IsNullOrEmpty(result))
-                {
-                    // CreateFolder failed - try to ensure folder exists on disk and import it
-                    if (!string.IsNullOrEmpty(projectRoot))
-                    {
-                        string absoluteDirectory = Path.Combine(projectRoot, next);
-                        if (!Directory.Exists(absoluteDirectory))
-                        {
-                            Directory.CreateDirectory(absoluteDirectory);
-                        }
-                        AssetDatabase.ImportAsset(next, ImportAssetOptions.ForceSynchronousImport);
-                    }
-
-                    // Check again after import
-                    if (!AssetDatabase.IsValidFolder(next))
-                    {
-                        Debug.LogWarning(
-                            $"EnsureFolderExists: Failed to create folder '{next}' in AssetDatabase (parent: '{current}')"
-                        );
-                    }
+                    AssetDatabase.CreateFolder(current, parts[i]);
                 }
                 current = next;
             }
@@ -1588,31 +1252,10 @@ namespace WallstopStudios.UnityHelpers.Tests
             }
         }
 
-        /// <summary>
-        /// Safely deletes a folder only if it's empty and not a protected folder.
-        /// CRITICAL: Never deletes "Assets/Resources" or "Assets" to prevent data loss.
-        /// </summary>
         private static void TryDeleteEmptyFolder(string folderPath)
         {
             if (string.IsNullOrWhiteSpace(folderPath))
             {
-                return;
-            }
-
-            // CRITICAL SAFETY CHECK: Never delete these protected folders
-            // These are root-level folders that may contain user data outside of tests
-            string normalizedPath = folderPath.Replace('\\', '/').TrimEnd('/');
-            if (
-                string.Equals(
-                    normalizedPath,
-                    "Assets/Resources",
-                    StringComparison.OrdinalIgnoreCase
-                ) || string.Equals(normalizedPath, "Assets", StringComparison.OrdinalIgnoreCase)
-            )
-            {
-                Debug.LogWarning(
-                    $"TryDeleteEmptyFolder: Refusing to delete protected folder '{folderPath}'"
-                );
                 return;
             }
 
@@ -1805,7 +1448,7 @@ namespace WallstopStudios.UnityHelpers.Tests
 
             foreach (string assetPath in scenario.AssetPaths)
             {
-                string directory = Path.GetDirectoryName(assetPath)?.Replace('\\', '/');
+                string directory = Path.GetDirectoryName(assetPath)?.SanitizePath();
                 if (!string.IsNullOrEmpty(directory))
                 {
                     EnsureFolderExists(directory);

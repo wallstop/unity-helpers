@@ -14,7 +14,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
         public ExampleEnum mode = ExampleEnum.First;
 
         [WEnumToggleButtons]
-        [IntDropdown(30, 60, 90)]
+        [IntDropDown(30, 60, 90)]
         public int intSelection = 30;
 
         [WEnumToggleButtons]
@@ -30,7 +30,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
         public float floatPriority = 0.5f;
 
         [WEnumToggleButtons(PageSize = 6)]
-        [IntDropdown(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)]
+        [IntDropDown(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)]
         public int paginatedInt;
 
         [WEnumToggleButtons(EnablePagination = false)]

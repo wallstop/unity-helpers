@@ -573,9 +573,12 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         private void InternalRemoveEffect(EffectHandle handle)
         {
-            foreach (AttributesComponent attributesComponent in _attributes)
+            if (_attributes != null)
             {
-                attributesComponent.ForceRemoveAttributeModifications(handle);
+                foreach (AttributesComponent attributesComponent in _attributes)
+                {
+                    attributesComponent.ForceRemoveAttributeModifications(handle);
+                }
             }
 
             if (!_initialized && _tagHandler == null)

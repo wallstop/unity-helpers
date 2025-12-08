@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
@@ -93,7 +94,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     ),
                     sourcePath
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
 
             System.IO.File.WriteAllText(absoluteSource, "test content");
             AssetDatabase.ImportAsset(sourcePath, ImportAssetOptions.ForceSynchronousImport);
@@ -112,7 +113,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     ),
                     destPath
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
 
             Assert.IsTrue(System.IO.File.Exists(absoluteDest), "Destination file should exist.");
             Assert.AreEqual("test content", System.IO.File.ReadAllText(absoluteDest));
@@ -137,51 +138,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.IsFalse(TryCopyAssetSilent("source", null));
             Assert.IsFalse(TryCopyAssetSilent(string.Empty, "dest"));
             Assert.IsFalse(TryCopyAssetSilent("source", string.Empty));
-        }
-
-        private static void EnsureFolder(string relPath)
-        {
-            if (string.IsNullOrWhiteSpace(relPath))
-            {
-                return;
-            }
-
-            relPath = relPath.Replace('\\', '/');
-
-            // Ensure the folder exists on disk first to prevent AssetDatabase.CreateFolder from failing
-            string projectRoot = System.IO.Path.GetDirectoryName(Application.dataPath);
-            if (!string.IsNullOrEmpty(projectRoot))
-            {
-                string absoluteDirectory = System.IO.Path.Combine(projectRoot, relPath);
-                if (!System.IO.Directory.Exists(absoluteDirectory))
-                {
-                    System.IO.Directory.CreateDirectory(absoluteDirectory);
-                }
-            }
-
-            // Then ensure it's registered in AssetDatabase
-            if (AssetDatabase.IsValidFolder(relPath))
-            {
-                return;
-            }
-
-            string[] parts = relPath.Split('/');
-            string cur = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string next = cur + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    string result = AssetDatabase.CreateFolder(cur, parts[i]);
-                    if (string.IsNullOrEmpty(result))
-                    {
-                        Debug.LogWarning(
-                            $"EnsureFolder: Failed to create folder '{next}' in AssetDatabase (parent: '{cur}')"
-                        );
-                    }
-                }
-                cur = next;
-            }
         }
     }
 #endif

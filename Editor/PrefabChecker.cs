@@ -396,7 +396,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
 
             // Normalize slashes and casing for consistency
-            rel = rel.Replace('\\', '/');
+            rel = rel.SanitizePath();
 
             // Strip trailing slash(es) for consistent path handling (both forward and back slashes)
             rel = rel.TrimEnd('/', '\\');

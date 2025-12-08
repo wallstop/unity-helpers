@@ -181,11 +181,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                     ),
                     rel
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
 
         private void CreateEmptyClip(string relPath)
         {
-            string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
+            string dir = Path.GetDirectoryName(relPath).SanitizePath();
             EnsureFolder(dir);
             AnimationClip clip = new();
             AssetDatabase.CreateAsset(clip, relPath);

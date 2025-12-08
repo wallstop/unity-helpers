@@ -271,6 +271,66 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Show(screenRect, data);
         }
 
+        /// <summary>
+        /// Shows the dropdown popup for an IntDropdown property.
+        /// </summary>
+        /// <param name="buttonRect">The GUI rect of the button that triggered the popup (in GUI space).</param>
+        /// <param name="property">The serialized property being edited.</param>
+        /// <param name="options">Available integer options.</param>
+        /// <param name="displayLabels">Display labels for options.</param>
+        /// <param name="pageSize">Maximum items per page.</param>
+        public static void ShowForIntDropdown(
+            Rect buttonRect,
+            SerializedProperty property,
+            int[] options,
+            string[] displayLabels,
+            int pageSize
+        )
+        {
+            if (property == null || options == null || options.Length == 0)
+            {
+                return;
+            }
+
+            int currentValue = property.intValue;
+            int currentIndex = Array.IndexOf(options, currentValue);
+            SerializedObject serializedObject = property.serializedObject;
+            string propertyPath = property.propertyPath;
+
+            WDropdownPopupData data = new()
+            {
+                DisplayLabels = displayLabels,
+                Tooltips = null,
+                SelectedIndex = currentIndex,
+                PageSize = pageSize,
+                OnSelectionChanged = (selectedIndex) =>
+                {
+                    if (selectedIndex < 0 || selectedIndex >= options.Length)
+                    {
+                        return;
+                    }
+
+                    serializedObject.Update();
+                    SerializedProperty prop = serializedObject.FindProperty(propertyPath);
+                    if (prop == null)
+                    {
+                        return;
+                    }
+
+                    Undo.RecordObjects(
+                        serializedObject.targetObjects,
+                        "Change IntDropdown Selection"
+                    );
+
+                    prop.intValue = options[selectedIndex];
+                    serializedObject.ApplyModifiedProperties();
+                },
+            };
+
+            Rect screenRect = GUIUtility.GUIToScreenRect(buttonRect);
+            Show(screenRect, data);
+        }
+
         private static int ResolveCurrentIndex(SerializedProperty property, string[] options)
         {
             if (property.propertyType == SerializedPropertyType.String)

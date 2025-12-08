@@ -1511,7 +1511,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             string projectRoot = Path.GetDirectoryName(Application.dataPath);
             if (!string.IsNullOrEmpty(projectRoot))
             {
-                string absoluteParent = Path.Combine(projectRoot, parent).Replace('\\', '/');
+                string absoluteParent = Path.Combine(projectRoot, parent).SanitizePath();
                 if (Directory.Exists(absoluteParent))
                 {
                     try
@@ -1602,7 +1602,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 // Check disk FIRST to get actual casing (critical for case-insensitive file systems)
                 if (!string.IsNullOrEmpty(projectRoot))
                 {
-                    string absoluteCurrent = Path.Combine(projectRoot, current).Replace('\\', '/');
+                    string absoluteCurrent = Path.Combine(projectRoot, current).SanitizePath();
                     if (Directory.Exists(absoluteCurrent))
                     {
                         try

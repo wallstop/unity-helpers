@@ -1701,17 +1701,37 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             bool baselineSetExpandedBeforeDraw = setProperty.isExpanded;
             bool baselinePendingExpandedBeforeDraw = pending.isExpanded;
 
+            int baselineIndentBefore = 0;
+            int baselineIndentAfter = 0;
+            Rect baselineResolvedPosition = default;
+
             yield return TestIMGUIExecutor.Run(() =>
             {
                 setProperty.serializedObject.UpdateIfRequiredOrScript();
                 pending.isExpanded = true;
-                drawer.OnGUI(controlRect, setProperty, label);
+                baselineIndentBefore = EditorGUI.indentLevel;
+                int previousIndent = EditorGUI.indentLevel;
+                EditorGUI.indentLevel = 0;
+                try
+                {
+                    drawer.OnGUI(controlRect, setProperty, label);
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndent;
+                }
+                baselineIndentAfter = EditorGUI.indentLevel;
+                baselineResolvedPosition = drawer.LastResolvedPosition;
             });
 
             serializedObject.Update();
             bool baselineSetExpandedAfterDraw = setProperty.isExpanded;
             TestContext.WriteLine(
                 $"ManualEntryHeader baseline foldout states -> set: {baselineSetExpandedBeforeDraw}->{baselineSetExpandedAfterDraw}, pending: {baselinePendingExpandedBeforeDraw}->{pending.isExpanded}"
+            );
+            TestContext.WriteLine(
+                $"ManualEntryHeader baseline context -> indentLevel: {baselineIndentBefore}->{baselineIndentAfter}, "
+                    + $"resolvedPosition: ({baselineResolvedPosition.x:F2}, {baselineResolvedPosition.y:F2}, {baselineResolvedPosition.width:F2}, {baselineResolvedPosition.height:F2})"
             );
 
             Assert.IsTrue(
@@ -1725,8 +1745,17 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             const float RightPadding = 12f;
             float horizontalPadding = LeftPadding + RightPadding;
 
+            // Reset padding state after baseline draw, before grouped draw (consistent with dictionary tests)
+            GroupGUIWidthUtility.ResetForTests();
+
             bool groupedSetExpandedBeforeDraw = setProperty.isExpanded;
             bool groupedPendingExpandedBeforeDraw = pending.isExpanded;
+
+            int groupedIndentBefore = 0;
+            int groupedIndentAfter = 0;
+            Rect groupedResolvedPosition = default;
+            float groupedCurrentLeftPadding = 0f;
+            float groupedCurrentRightPadding = 0f;
 
             yield return TestIMGUIExecutor.Run(() =>
             {
@@ -1739,9 +1768,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     )
                 )
                 {
+                    groupedCurrentLeftPadding = GroupGUIWidthUtility.CurrentLeftPadding;
+                    groupedCurrentRightPadding = GroupGUIWidthUtility.CurrentRightPadding;
                     SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
                     pending.isExpanded = true;
-                    drawer.OnGUI(controlRect, setProperty, label);
+                    groupedIndentBefore = EditorGUI.indentLevel;
+                    int previousIndent = EditorGUI.indentLevel;
+                    EditorGUI.indentLevel = 0;
+                    try
+                    {
+                        drawer.OnGUI(controlRect, setProperty, label);
+                    }
+                    finally
+                    {
+                        EditorGUI.indentLevel = previousIndent;
+                    }
+                    groupedIndentAfter = EditorGUI.indentLevel;
+                    groupedResolvedPosition = drawer.LastResolvedPosition;
                 }
             });
 
@@ -1750,6 +1793,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             TestContext.WriteLine(
                 $"ManualEntryHeader grouped foldout states -> set: {groupedSetExpandedBeforeDraw}->{groupedSetExpandedAfterDraw}, pending: {groupedPendingExpandedBeforeDraw}->{pending.isExpanded}"
             );
+            TestContext.WriteLine(
+                $"ManualEntryHeader grouped context -> indentLevel: {groupedIndentBefore}->{groupedIndentAfter}, "
+                    + $"resolvedPosition: ({groupedResolvedPosition.x:F2}, {groupedResolvedPosition.y:F2}, {groupedResolvedPosition.width:F2}, {groupedResolvedPosition.height:F2}), "
+                    + $"currentPadding: left={groupedCurrentLeftPadding:F2}, right={groupedCurrentRightPadding:F2}"
+            );
 
             Assert.IsTrue(
                 SerializableSetPropertyDrawer.HasLastManualEntryHeaderRect,
@@ -1757,6 +1805,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             Rect groupedHeader = SerializableSetPropertyDrawer.LastManualEntryHeaderRect;
+
+            TestContext.WriteLine(
+                $"ManualEntryHeader diagnostics -> baseline.xMin={baselineHeader.xMin:F2}, baseline.width={baselineHeader.width:F2}, "
+                    + $"grouped.xMin={groupedHeader.xMin:F2}, grouped.width={groupedHeader.width:F2}, "
+                    + $"LeftPadding={LeftPadding:F2}, RightPadding={RightPadding:F2}, "
+                    + $"expected.xMin={baselineHeader.xMin + LeftPadding:F2}, "
+                    + $"expected.width={Mathf.Max(0f, baselineHeader.width - horizontalPadding):F2}"
+            );
 
             Assert.That(
                 groupedHeader.xMin,
@@ -1802,7 +1858,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             {
                 setProperty.serializedObject.UpdateIfRequiredOrScript();
                 pending.isExpanded = true;
-                drawer.OnGUI(controlRect, setProperty, label);
+                int previousIndent = EditorGUI.indentLevel;
+                EditorGUI.indentLevel = 0;
+                try
+                {
+                    drawer.OnGUI(controlRect, setProperty, label);
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndent;
+                }
             });
 
             serializedObject.Update();
@@ -1822,6 +1887,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             const float RightPadding = 14f;
             float horizontalPadding = LeftPadding + RightPadding;
 
+            // Reset padding state before grouped draw (consistent with dictionary tests)
+            GroupGUIWidthUtility.ResetForTests();
+
             bool groupedSetExpandedBeforeDraw = setProperty.isExpanded;
             bool groupedPendingExpandedBeforeDraw = pending.isExpanded;
 
@@ -1838,7 +1906,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 {
                     SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
                     pending.isExpanded = true;
-                    drawer.OnGUI(controlRect, setProperty, label);
+                    int previousIndent = EditorGUI.indentLevel;
+                    EditorGUI.indentLevel = 0;
+                    try
+                    {
+                        drawer.OnGUI(controlRect, setProperty, label);
+                    }
+                    finally
+                    {
+                        EditorGUI.indentLevel = previousIndent;
+                    }
                 }
             });
 
@@ -1948,7 +2025,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             yield return TestIMGUIExecutor.Run(() =>
             {
                 setProperty.serializedObject.UpdateIfRequiredOrScript();
-                drawer.OnGUI(controlRect, setProperty, label);
+                int previousIndent = EditorGUI.indentLevel;
+                EditorGUI.indentLevel = 0;
+                try
+                {
+                    drawer.OnGUI(controlRect, setProperty, label);
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndent;
+                }
             });
 
             serializedObject.Update();
@@ -1968,6 +2054,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             const float RightPadding = 10f;
             float horizontalPadding = LeftPadding + RightPadding;
 
+            // Reset padding state before grouped draw (consistent with dictionary tests)
+            GroupGUIWidthUtility.ResetForTests();
+
             bool groupedSetExpandedBeforeDraw = setProperty.isExpanded;
 
             yield return TestIMGUIExecutor.Run(() =>
@@ -1982,7 +2071,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 )
                 {
                     SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
-                    drawer.OnGUI(controlRect, setProperty, label);
+                    int previousIndent = EditorGUI.indentLevel;
+                    EditorGUI.indentLevel = 0;
+                    try
+                    {
+                        drawer.OnGUI(controlRect, setProperty, label);
+                    }
+                    finally
+                    {
+                        EditorGUI.indentLevel = previousIndent;
+                    }
                 }
             });
 

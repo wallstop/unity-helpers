@@ -87,7 +87,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         [Test]
         public void SkipsWhenTextureNotReadable()
         {
-            string src = (Root + "/nonreadable.png").Replace('\\', '/');
+            string src = (Root + "/nonreadable.png").SanitizePath();
             CreateOpaqueLShape(src, 10, 10);
             AssetDatabase.Refresh();
 
@@ -121,7 +121,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         [Test]
         public void SkipsMultipleSpriteTextures()
         {
-            string src = (Root + "/multi.png").Replace('\\', '/');
+            string src = (Root + "/multi.png").SanitizePath();
             CreateOpaqueLShape(src, 12, 12);
             AssetDatabase.Refresh();
 
@@ -152,9 +152,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             Assert.That(after, Is.EqualTo(before));
         }
 
-        private static void CreateDualAlphaPattern(string relPath, int w, int h)
+        private void CreateDualAlphaPattern(string relPath, int w, int h)
         {
-            EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
+            EnsureFolder(Path.GetDirectoryName(relPath).SanitizePath());
             Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             for (int y = 0; y < h; ++y)
@@ -182,9 +182,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             File.WriteAllBytes(RelToFull(relPath), t.EncodeToPNG());
         }
 
-        private static void CreateOpaqueLShape(string relPath, int w, int h)
+        private void CreateOpaqueLShape(string relPath, int w, int h)
         {
-            EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
+            EnsureFolder(Path.GetDirectoryName(relPath).SanitizePath());
             Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             for (int y = 0; y < h; ++y)
@@ -198,51 +198,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             File.WriteAllBytes(RelToFull(relPath), t.EncodeToPNG());
         }
 
-        private static void EnsureFolder(string relPath)
-        {
-            if (string.IsNullOrWhiteSpace(relPath))
-            {
-                return;
-            }
-
-            relPath = relPath.Replace('\\', '/');
-
-            // Ensure the folder exists on disk first to prevent AssetDatabase.CreateFolder from failing
-            string projectRoot = Path.GetDirectoryName(Application.dataPath);
-            if (!string.IsNullOrEmpty(projectRoot))
-            {
-                string absoluteDirectory = Path.Combine(projectRoot, relPath);
-                if (!Directory.Exists(absoluteDirectory))
-                {
-                    Directory.CreateDirectory(absoluteDirectory);
-                }
-            }
-
-            // Then ensure it's registered in AssetDatabase
-            if (AssetDatabase.IsValidFolder(relPath))
-            {
-                return;
-            }
-
-            string[] parts = relPath.Split('/');
-            string cur = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string next = cur + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    string result = AssetDatabase.CreateFolder(cur, parts[i]);
-                    if (string.IsNullOrEmpty(result))
-                    {
-                        Debug.LogWarning(
-                            $"EnsureFolder: Failed to create folder '{next}' in AssetDatabase (parent: '{cur}')"
-                        );
-                    }
-                }
-                cur = next;
-            }
-        }
-
         private static string RelToFull(string rel)
         {
             return Path.Combine(
@@ -252,7 +207,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                     ),
                     rel
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
         }
     }
 #endif

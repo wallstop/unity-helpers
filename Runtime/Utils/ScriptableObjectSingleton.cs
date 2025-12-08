@@ -31,6 +31,19 @@ namespace WallstopStudios.UnityHelpers.Utils
     /// <c>Sirenix.OdinInspector.SerializedScriptableObject</c>; otherwise it derives from <see cref="ScriptableObject"/>.
     /// </remarks>
     /// <typeparam name="T">Concrete singleton ScriptableObject type that derives from this base.</typeparam>
+    /// <threadsafety>
+    /// Thread-safety notes:
+    /// <list type="bullet">
+    ///   <item><description>
+    ///     The <see cref="Instance"/> property must only be accessed from the main thread (enforced by <see cref="UnityMainThreadGuard"/>).
+    ///   </description></item>
+    ///   <item><description>
+    ///     Warning deduplication uses two independent locks: <c>_metadataFolderWarnings</c> and <c>_missingInstanceWarnings</c>.
+    ///     These locks are never nested and are only held briefly to check/add to their respective HashSets.
+    ///     No deadlock risk exists because each lock guards an independent data structure with no cross-dependencies.
+    ///   </description></item>
+    /// </list>
+    /// </threadsafety>
     public abstract class ScriptableObjectSingleton<T> :
 #if ODIN_INSPECTOR
         SerializedScriptableObject

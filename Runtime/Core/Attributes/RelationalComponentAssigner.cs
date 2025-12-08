@@ -11,9 +11,19 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// Default implementation of <see cref="IRelationalComponentAssigner"/> that delegates to the
     /// existing relational component extensions.
     /// </summary>
+    /// <remarks>
+    /// Thread-safety note: The <c>_metadataCache</c> reference is assigned once during construction and never changed.
+    /// The <see cref="AttributeMetadataCache"/> instance itself is thread-safe for concurrent reads, as its internal
+    /// dictionaries are only populated during static initialization before any instance is exposed.
+    /// The <c>_hasAssignmentsCache</c> dictionary is protected by <c>_cacheLock</c> for concurrent access.
+    /// </remarks>
     public sealed class RelationalComponentAssigner : IRelationalComponentAssigner
     {
+        // Immutable after construction - assigned in constructor and never modified.
+        // The AttributeMetadataCache instance is thread-safe for reads after initialization.
         private readonly AttributeMetadataCache _metadataCache;
+
+        // Guarded by _cacheLock for all access.
         private readonly Dictionary<Type, bool> _hasAssignmentsCache;
         private readonly object _cacheLock = new();
 

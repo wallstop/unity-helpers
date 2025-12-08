@@ -41,7 +41,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// private IEnumerable&lt;int&gt; GetAvailableIds() =&gt; cachedIds;
     /// </code>
     /// </example>
-    public sealed class IntDropdownAttribute : PropertyAttribute
+    public sealed class IntDropDownAttribute : PropertyAttribute
     {
         private static readonly int[] Empty = Array.Empty<int>();
 
@@ -60,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// Initializes the attribute with an inline list of integer values that should be exposed in the inspector.
         /// </summary>
         /// <param name="options">One or more selectable integer values. The order defined here becomes the dropdown order.</param>
-        public IntDropdownAttribute(params int[] options)
+        public IntDropDownAttribute(params int[] options)
         {
             _backingAttribute = new WValueDropDownAttribute(options ?? Array.Empty<int>());
         }
@@ -74,7 +74,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// </remarks>
         /// <param name="providerType">Type containing the static provider method (for example, <c>typeof(SettingsCache)</c>).</param>
         /// <param name="methodName">Name of the parameterless static method returning the options (for example, <c>nameof(SettingsCache.GetDifficultyIds)</c>).</param>
-        public IntDropdownAttribute(Type providerType, string methodName)
+        public IntDropDownAttribute(Type providerType, string methodName)
         {
             _backingAttribute = new WValueDropDownAttribute(providerType, methodName, typeof(int));
         }
@@ -84,7 +84,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// The method can be instance or static, must be parameterless, and return either int[] or IEnumerable&lt;int&gt;.
         /// </summary>
         /// <param name="methodName">Method name declared on the target object's type.</param>
-        public IntDropdownAttribute(string methodName)
+        public IntDropDownAttribute(string methodName)
         {
             _backingAttribute = new WValueDropDownAttribute(methodName, typeof(int));
         }

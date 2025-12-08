@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
     using System.IO;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -173,7 +174,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     return;
                 }
 
-                folder = folder.Replace('\\', '/');
+                folder = folder.SanitizePath();
                 while (
                     !string.IsNullOrWhiteSpace(folder)
                     && !string.Equals(folder, "Assets", StringComparison.OrdinalIgnoreCase)
@@ -189,7 +190,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         folder = Path.GetDirectoryName(folder);
                         if (folder != null)
                         {
-                            folder = folder.Replace('\\', '/');
+                            folder = folder.SanitizePath();
                         }
                         continue;
                     }
@@ -202,7 +203,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                             string parent = Path.GetDirectoryName(folder);
                             if (parent != null)
                             {
-                                folder = parent.Replace('\\', '/');
+                                folder = parent.SanitizePath();
                             }
                             else
                             {
@@ -311,9 +312,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                 // Check if the asset actually exists
                 string assetPath = $"Assets/Resources/{entry.resourcesLoadPath}.asset";
-                UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(
-                    assetPath
-                );
+                Object asset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
                 if (asset == null)
                 {
                     // Also verify by GUID if available
@@ -322,7 +321,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         string guidPath = AssetDatabase.GUIDToAssetPath(entry.assetGuid);
                         if (!string.IsNullOrEmpty(guidPath))
                         {
-                            asset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(guidPath);
+                            asset = AssetDatabase.LoadAssetAtPath<Object>(guidPath);
                         }
                     }
 
@@ -356,7 +355,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 return false;
             }
 
-            directory = directory.Replace('\\', '/');
+            directory = directory.SanitizePath();
 
             // First, ensure the folder exists on disk. This prevents Unity's internal
             // "Moving file failed" modal dialog when CreateAsset tries to move a temp file

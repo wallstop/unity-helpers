@@ -62,7 +62,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
 
             AssetDatabase.Refresh();
 
-            string dst = (Root + "/Cropped_pad_src.png").Replace('\\', '/');
+            string dst = (Root + "/Cropped_pad_src.png").SanitizePath();
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dst);
             Assert.IsTrue(tex != null);
             // Expected size: (10 + 2 + 1) x (10 + 3 + 0) = 13x13
@@ -80,7 +80,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         [Test]
         public void SkipsWhenOnlyNecessaryAndNoTrimNeeded()
         {
-            string src = (Root + "/full_opaque.png").Replace('\\', '/');
+            string src = (Root + "/full_opaque.png").SanitizePath();
             // Entirely opaque 8x8
             CreatePngFilled(src, 8, 8, Color.white);
             AssetDatabase.Refresh();
@@ -104,7 +104,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
 
             AssetDatabase.Refresh();
 
-            string dst = (Root + "/Cropped_full_opaque.png").Replace('\\', '/');
+            string dst = (Root + "/Cropped_full_opaque.png").SanitizePath();
             Assert.That(
                 File.Exists(RelToFull(dst)),
                 Is.False,
@@ -115,7 +115,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         [Test]
         public void RestoresOriginalReadabilityWhenWritingToOutput()
         {
-            string src = (Root + "/readable_toggle.png").Replace('\\', '/');
+            string src = (Root + "/readable_toggle.png").SanitizePath();
             CreatePngWithOpaqueRect(src, 10, 10, 2, 2, 6, 6, Color.white);
             AssetDatabase.Refresh();
 
@@ -143,7 +143,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             Assert.IsTrue(imp != null);
             Assert.That(imp.isReadable, Is.False);
 
-            string dst = (Root + "/Cropped_readable_toggle.png").Replace('\\', '/');
+            string dst = (Root + "/Cropped_readable_toggle.png").SanitizePath();
             TextureImporter newImp = AssetImporter.GetAtPath(dst) as TextureImporter;
             Assert.IsTrue(newImp != null);
             Assert.That(
@@ -166,7 +166,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             window.ProcessFoundSprites();
             AssetDatabase.Refresh();
 
-            string dst2 = (Root + "/Cropped_readable_toggle.png").Replace('\\', '/');
+            string dst2 = (Root + "/Cropped_readable_toggle.png").SanitizePath();
             newImp = AssetImporter.GetAtPath(dst2) as TextureImporter;
             Assert.IsTrue(newImp != null);
             Assert.That(newImp.isReadable, Is.True);
@@ -175,7 +175,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         [Test]
         public void ProducesOneByOneForFullyTransparentImage()
         {
-            string src = (Root + "/all_transparent.png").Replace('\\', '/');
+            string src = (Root + "/all_transparent.png").SanitizePath();
             CreateTransparentPng(src, 12, 9);
             AssetDatabase.Refresh();
 
@@ -195,7 +195,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             window.ProcessFoundSprites();
 
             AssetDatabase.Refresh();
-            string dst = (Root + "/Cropped_all_transparent.png").Replace('\\', '/');
+            string dst = (Root + "/Cropped_all_transparent.png").SanitizePath();
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dst);
             Assert.IsTrue(tex != null);
             Assert.That(tex.width, Is.EqualTo(1));
@@ -211,7 +211,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         [Test]
         public void SkipsMultipleSpriteTextures()
         {
-            string src = (Root + "/multi.png").Replace('\\', '/');
+            string src = (Root + "/multi.png").SanitizePath();
             CreatePngWithOpaqueRect(src, 16, 16, 4, 4, 8, 8, Color.white);
             AssetDatabase.Refresh();
 
@@ -232,7 +232,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             AssetDatabase.Refresh();
 
             // Should not create Cropped_* and should not overwrite
-            string dst = (Root + "/Cropped_multi.png").Replace('\\', '/');
+            string dst = (Root + "/Cropped_multi.png").SanitizePath();
             Assert.That(File.Exists(RelToFull(dst)), Is.False);
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(src);
             Assert.IsTrue(tex != null);
@@ -240,7 +240,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             Assert.That(tex.height, Is.EqualTo(16));
         }
 
-        private static void CreatePngWithOpaqueRect(
+        private void CreatePngWithOpaqueRect(
             string relPath,
             int w,
             int h,
@@ -251,7 +251,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             Color color
         )
         {
-            EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
+            EnsureFolder(Path.GetDirectoryName(relPath).SanitizePath());
             Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             for (int y = 0; y < h; ++y)
@@ -265,9 +265,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             File.WriteAllBytes(RelToFull(relPath), t.EncodeToPNG());
         }
 
-        private static void CreatePngFilled(string relPath, int w, int h, Color c)
+        private void CreatePngFilled(string relPath, int w, int h, Color c)
         {
-            EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
+            EnsureFolder(Path.GetDirectoryName(relPath).SanitizePath());
             Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
@@ -280,9 +280,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             File.WriteAllBytes(RelToFull(relPath), t.EncodeToPNG());
         }
 
-        private static void CreateTransparentPng(string relPath, int w, int h)
+        private void CreateTransparentPng(string relPath, int w, int h)
         {
-            EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
+            EnsureFolder(Path.GetDirectoryName(relPath).SanitizePath());
             Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
@@ -295,51 +295,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             File.WriteAllBytes(RelToFull(relPath), t.EncodeToPNG());
         }
 
-        private static void EnsureFolder(string relPath)
-        {
-            if (string.IsNullOrWhiteSpace(relPath))
-            {
-                return;
-            }
-
-            relPath = relPath.Replace('\\', '/');
-
-            // Ensure the folder exists on disk first to prevent AssetDatabase.CreateFolder from failing
-            string projectRoot = Path.GetDirectoryName(Application.dataPath);
-            if (!string.IsNullOrEmpty(projectRoot))
-            {
-                string absoluteDirectory = Path.Combine(projectRoot, relPath);
-                if (!Directory.Exists(absoluteDirectory))
-                {
-                    Directory.CreateDirectory(absoluteDirectory);
-                }
-            }
-
-            // Then ensure it's registered in AssetDatabase
-            if (AssetDatabase.IsValidFolder(relPath))
-            {
-                return;
-            }
-
-            string[] parts = relPath.Split('/');
-            string cur = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string next = cur + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    string result = AssetDatabase.CreateFolder(cur, parts[i]);
-                    if (string.IsNullOrEmpty(result))
-                    {
-                        Debug.LogWarning(
-                            $"EnsureFolder: Failed to create folder '{next}' in AssetDatabase (parent: '{cur}')"
-                        );
-                    }
-                }
-                cur = next;
-            }
-        }
-
         private static string RelToFull(string rel)
         {
             return Path.Combine(
@@ -349,7 +304,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                     ),
                     rel
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
         }
 
         /// <summary>

@@ -98,17 +98,139 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
+        public void StringInListTypeAndMethodConstructorWithInstanceMethodUsesContext()
+        {
+            InstanceStringProvider provider = new() { Prefix = "TypeArg" };
+            StringInListAttribute attribute = new(
+                typeof(InstanceStringProvider),
+                nameof(InstanceStringProvider.BuildStates)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "TypeArg_A", "TypeArg_B" },
+                attribute.GetOptions(provider)
+            );
+        }
+
+        [Test]
+        public void StringInListTypeAndMethodConstructorPrefersStaticMethod()
+        {
+            InstanceStringProvider provider = new();
+            StringInListAttribute attribute = new(
+                typeof(InstanceStringProvider),
+                nameof(InstanceStringProvider.StaticStates)
+            );
+            // Static method should work without context
+            CollectionAssert.AreEqual(new[] { "Static_X", "Static_Y" }, attribute.List);
+        }
+
+        [Test]
+        public void IntDropdownTypeAndMethodConstructorWithInstanceMethodUsesContext()
+        {
+            InstanceIntProvider provider = new() { Multiplier = 2 };
+            IntDropDownAttribute attribute = new(
+                typeof(InstanceIntProvider),
+                nameof(InstanceIntProvider.GetDynamicValues)
+            );
+            CollectionAssert.AreEqual(new[] { 20, 40, 60 }, attribute.GetOptions(provider));
+        }
+
+        [Test]
+        public void IntDropdownTypeAndMethodConstructorWithEnumerableInstanceMethod()
+        {
+            InstanceIntProvider provider = new() { Multiplier = 3 };
+            IntDropDownAttribute attribute = new(
+                typeof(InstanceIntProvider),
+                nameof(InstanceIntProvider.GetEnumerableValues)
+            );
+            CollectionAssert.AreEqual(new[] { 15, 45 }, attribute.GetOptions(provider));
+        }
+
+        [Test]
+        public void IntDropdownTypeAndMethodConstructorPrefersStaticMethod()
+        {
+            InstanceIntProvider provider = new() { Multiplier = 5 };
+            IntDropDownAttribute attribute = new(
+                typeof(InstanceIntProvider),
+                nameof(InstanceIntProvider.GetStaticValues)
+            );
+            // Static method should work without context - multiplier is ignored
+            CollectionAssert.AreEqual(new[] { 100, 200, 300 }, attribute.Options);
+        }
+
+        [Test]
+        public void WValueDropDownTypeAndMethodConstructorWithInstanceMethodUsesContext()
+        {
+            InstanceValueProvider provider = new() { Suffix = "_Test" };
+            WValueDropDownAttribute attribute = new(
+                typeof(InstanceValueProvider),
+                nameof(InstanceValueProvider.GetItems)
+            );
+            object[] options = attribute.GetOptions(provider);
+            Assert.AreEqual(2, options.Length);
+            Assert.IsInstanceOf<DropdownItem>(options[0]);
+            Assert.AreEqual("Item1_Test", ((DropdownItem)options[0]).Name);
+            Assert.IsInstanceOf<DropdownItem>(options[1]);
+            Assert.AreEqual("Item2_Test", ((DropdownItem)options[1]).Name);
+        }
+
+        [Test]
+        public void WValueDropDownTypeMethodAndValueTypeConstructorWithInstanceMethod()
+        {
+            InstanceValueProvider provider = new();
+            WValueDropDownAttribute attribute = new(
+                typeof(InstanceValueProvider),
+                nameof(InstanceValueProvider.GetFloatValues),
+                typeof(float)
+            );
+            object[] options = attribute.GetOptions(provider);
+            Assert.AreEqual(3, options.Length);
+            Assert.AreEqual(1.5f, options[0]);
+            Assert.AreEqual(2.5f, options[1]);
+            Assert.AreEqual(3.5f, options[2]);
+        }
+
+        [Test]
+        public void IntDropdownInstanceMethodWithNullContextReturnsEmpty()
+        {
+            IntDropDownAttribute attribute = new(
+                typeof(InstanceIntProvider),
+                nameof(InstanceIntProvider.GetDynamicValues)
+            );
+            // Without context, instance method should return empty
+            int[] result = attribute.Options;
+            CollectionAssert.IsEmpty(
+                result,
+                "Expected empty options when instance method is used without context"
+            );
+        }
+
+        [Test]
+        public void StringInListInstanceMethodWithNullContextReturnsEmpty()
+        {
+            StringInListAttribute attribute = new(
+                typeof(InstanceStringProvider),
+                nameof(InstanceStringProvider.BuildStates)
+            );
+            // Without context, instance method should return empty
+            string[] result = attribute.List;
+            CollectionAssert.IsEmpty(
+                result,
+                "Expected empty list when instance method is used without context"
+            );
+        }
+
+        [Test]
         public void IntDropdownInlineOptionsReturnSameReferences()
         {
             int[] values = { 2, 4, 6 };
-            IntDropdownAttribute attribute = new(values);
+            IntDropDownAttribute attribute = new(values);
             CollectionAssert.AreEqual(values, attribute.Options);
         }
 
         [Test]
         public void IntDropdownMethodProviderReturnsValues()
         {
-            IntDropdownAttribute attribute = new(
+            IntDropDownAttribute attribute = new(
                 typeof(IntProviders),
                 nameof(IntProviders.GetValues)
             );
@@ -118,7 +240,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [Test]
         public void IntDropdownEnumerableProviderSupported()
         {
-            IntDropdownAttribute attribute = new(
+            IntDropDownAttribute attribute = new(
                 typeof(IntProviders),
                 nameof(IntProviders.GetEnumerableValues)
             );
@@ -130,7 +252,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         {
             Regex pattern = new("WValueDropDownAttribute.*Could not locate.*Missing");
             LogAssert.Expect(LogType.Error, pattern);
-            IntDropdownAttribute attribute = new(typeof(IntProviders), "Missing");
+            IntDropDownAttribute attribute = new(typeof(IntProviders), "Missing");
             int[] result = attribute.Options;
             CollectionAssert.IsEmpty(
                 result,
@@ -146,7 +268,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 "WValueDropDownAttribute.*ThrowingProvider.*InvalidOperationException"
             );
             LogAssert.Expect(LogType.Error, pattern);
-            IntDropdownAttribute attribute = new(
+            IntDropDownAttribute attribute = new(
                 typeof(IntProviders),
                 nameof(IntProviders.ThrowingProvider)
             );
@@ -193,13 +315,76 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 $"WValueDropDownAttribute.*Could not locate.*{expectedMethodInError}"
             );
             LogAssert.Expect(LogType.Error, pattern);
-            IntDropdownAttribute attribute = new(providerType, methodName);
+            IntDropDownAttribute attribute = new(providerType, methodName);
             CollectionAssert.IsEmpty(
                 attribute.Options,
                 "Expected empty options for missing method '{0}' on type '{1}'",
                 methodName,
                 providerType.Name
             );
+        }
+
+        [TestCase(1, new[] { 10, 20, 30 }, Description = "Multiplier 1 returns base values")]
+        [TestCase(2, new[] { 20, 40, 60 }, Description = "Multiplier 2 doubles values")]
+        [TestCase(5, new[] { 50, 100, 150 }, Description = "Multiplier 5 quintuples values")]
+        [TestCase(0, new[] { 0, 0, 0 }, Description = "Multiplier 0 returns zeros")]
+        public void IntDropdownInstanceMethodWithTypeConstructorDataDriven(
+            int multiplier,
+            int[] expectedValues
+        )
+        {
+            InstanceIntProvider provider = new() { Multiplier = multiplier };
+            IntDropDownAttribute attribute = new(
+                typeof(InstanceIntProvider),
+                nameof(InstanceIntProvider.GetDynamicValues)
+            );
+            CollectionAssert.AreEqual(
+                expectedValues,
+                attribute.GetOptions(provider),
+                "Instance method should return dynamically computed values based on context state"
+            );
+        }
+
+        [TestCase("A", new[] { "A_A", "A_B" }, Description = "Prefix A")]
+        [TestCase("Test", new[] { "Test_A", "Test_B" }, Description = "Prefix Test")]
+        [TestCase("", new[] { "_A", "_B" }, Description = "Empty prefix")]
+        public void StringInListInstanceMethodWithTypeConstructorDataDriven(
+            string prefix,
+            string[] expectedValues
+        )
+        {
+            InstanceStringProvider provider = new() { Prefix = prefix };
+            StringInListAttribute attribute = new(
+                typeof(InstanceStringProvider),
+                nameof(InstanceStringProvider.BuildStates)
+            );
+            CollectionAssert.AreEqual(
+                expectedValues,
+                attribute.GetOptions(provider),
+                "Instance method should return dynamically computed values based on context state"
+            );
+        }
+
+        [TestCase("_Suffix1", "Item1_Suffix1", "Item2_Suffix1")]
+        [TestCase("", "Item1", "Item2")]
+        [TestCase("_X", "Item1_X", "Item2_X")]
+        public void WValueDropDownInstanceMethodWithTypeConstructorDataDriven(
+            string suffix,
+            string expectedItem1,
+            string expectedItem2
+        )
+        {
+            InstanceValueProvider provider = new() { Suffix = suffix };
+            WValueDropDownAttribute attribute = new(
+                typeof(InstanceValueProvider),
+                nameof(InstanceValueProvider.GetItems)
+            );
+            object[] options = attribute.GetOptions(provider);
+            Assert.AreEqual(2, options.Length);
+            Assert.IsInstanceOf<DropdownItem>(options[0]);
+            Assert.AreEqual(expectedItem1, ((DropdownItem)options[0]).Name);
+            Assert.IsInstanceOf<DropdownItem>(options[1]);
+            Assert.AreEqual(expectedItem2, ((DropdownItem)options[1]).Name);
         }
 
         [Test]
@@ -219,7 +404,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         {
             Regex pattern = new("WValueDropDownAttribute.*Provider type cannot be null");
             LogAssert.Expect(LogType.Error, pattern);
-            IntDropdownAttribute attribute = new(null, "SomeMethod");
+            IntDropDownAttribute attribute = new(null, "SomeMethod");
             CollectionAssert.IsEmpty(
                 attribute.Options,
                 "Expected empty options when provider type is null"
@@ -250,7 +435,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         {
             Regex pattern = new("WValueDropDownAttribute.*Method name cannot be null or empty");
             LogAssert.Expect(LogType.Error, pattern);
-            IntDropdownAttribute attribute = new(typeof(IntProviders), methodName);
+            IntDropDownAttribute attribute = new(typeof(IntProviders), methodName);
             CollectionAssert.IsEmpty(
                 attribute.Options,
                 "Expected empty options when static method name is '{0}'",
@@ -284,7 +469,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         {
             Regex pattern = new("WValueDropDownAttribute.*Method name cannot be null or empty");
             LogAssert.Expect(LogType.Error, pattern);
-            IntDropdownAttribute attribute = new(methodName);
+            IntDropDownAttribute attribute = new(methodName);
             CollectionAssert.IsEmpty(
                 attribute.Options,
                 "Expected empty options when instance method name is '{0}'",
@@ -308,7 +493,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [Test]
         public void IntDropdownProviderReturningEmptyArrayReturnsEmpty()
         {
-            IntDropdownAttribute attribute = new(
+            IntDropDownAttribute attribute = new(
                 typeof(EmptyProviders),
                 nameof(EmptyProviders.GetEmptyInts)
             );
@@ -334,7 +519,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [Test]
         public void IntDropdownProviderReturningNullReturnsEmpty()
         {
-            IntDropdownAttribute attribute = new(
+            IntDropDownAttribute attribute = new(
                 typeof(NullProviders),
                 nameof(NullProviders.GetNullInts)
             );
@@ -673,6 +858,89 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             CollectionAssert.IsEmpty(attribute.Options);
         }
 
+        [TestCase(
+            typeof(InvalidReturnTypeProviders),
+            nameof(InvalidReturnTypeProviders.ReturnVoid)
+        )]
+        [TestCase(typeof(InvalidReturnTypeProviders), nameof(InvalidReturnTypeProviders.ReturnInt))]
+        [TestCase(
+            typeof(InvalidReturnTypeProviders),
+            nameof(InvalidReturnTypeProviders.ReturnString)
+        )]
+        [TestCase(
+            typeof(InvalidReturnTypeProviders),
+            nameof(InvalidReturnTypeProviders.ReturnBool)
+        )]
+        public void WValueDropDownProviderWithNonEnumerableReturnLogsError(
+            Type providerType,
+            string methodName
+        )
+        {
+            Regex pattern = new("WValueDropDownAttribute.*(must return|Could not locate)");
+            LogAssert.Expect(LogType.Error, pattern);
+            WValueDropDownAttribute attribute = new(providerType, methodName);
+            CollectionAssert.IsEmpty(
+                attribute.Options,
+                "Expected empty options for provider method '{0}' with invalid return type on '{1}'",
+                methodName,
+                providerType.Name
+            );
+        }
+
+        [TestCase(typeof(ValueProviders), "CompletelyMissing")]
+        [TestCase(typeof(ValueProviders), "NonExistentMethod")]
+        [TestCase(typeof(ValueProviders), "GetDropdownItems_Typo")]
+        public void WValueDropDownMissingMethodLogsErrorWithMethodName(
+            Type providerType,
+            string methodName
+        )
+        {
+            Regex pattern = new($"WValueDropDownAttribute.*Could not locate.*{methodName}");
+            LogAssert.Expect(LogType.Error, pattern);
+            WValueDropDownAttribute attribute = new(providerType, methodName);
+            CollectionAssert.IsEmpty(
+                attribute.Options,
+                "Expected empty options for missing method '{0}' on type '{1}'",
+                methodName,
+                providerType.Name
+            );
+        }
+
+        [TestCase(typeof(ValueProviders), "CompletelyMissing", typeof(int))]
+        [TestCase(typeof(StringProviders), "MissingMethod", typeof(string))]
+        public void WValueDropDownThreeArgConstructorMissingMethodLogsError(
+            Type providerType,
+            string methodName,
+            Type valueType
+        )
+        {
+            Regex pattern = new($"WValueDropDownAttribute.*Could not locate.*{methodName}");
+            LogAssert.Expect(LogType.Error, pattern);
+            WValueDropDownAttribute attribute = new(providerType, methodName, valueType);
+            CollectionAssert.IsEmpty(
+                attribute.Options,
+                "Expected empty options for missing method '{0}' with valueType '{1}' on type '{2}'",
+                methodName,
+                valueType.Name,
+                providerType.Name
+            );
+        }
+
+        [Test]
+        public void MethodWithParametersNotMatchedAsProvider()
+        {
+            Regex pattern = new("WValueDropDownAttribute.*Could not locate.*GetValuesWithParam");
+            LogAssert.Expect(LogType.Error, pattern);
+            IntDropDownAttribute attribute = new(
+                typeof(MethodWithParametersProvider),
+                nameof(MethodWithParametersProvider.GetValuesWithParam)
+            );
+            CollectionAssert.IsEmpty(
+                attribute.Options,
+                "Expected empty options when provider method requires parameters"
+            );
+        }
+
         private static void AssertOptions<T>(
             WValueDropDownAttribute attribute,
             Type expectedType,
@@ -825,6 +1093,41 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             }
         }
 
+        private sealed class InstanceIntProvider
+        {
+            public int Multiplier { get; set; } = 1;
+
+            public int[] GetDynamicValues()
+            {
+                return new[] { 10 * Multiplier, 20 * Multiplier, 30 * Multiplier };
+            }
+
+            public IEnumerable<int> GetEnumerableValues()
+            {
+                return new List<int> { 5 * Multiplier, 15 * Multiplier };
+            }
+
+            public static int[] GetStaticValues()
+            {
+                return new[] { 100, 200, 300 };
+            }
+        }
+
+        private sealed class InstanceValueProvider
+        {
+            public string Suffix { get; set; } = string.Empty;
+
+            public IEnumerable<DropdownItem> GetItems()
+            {
+                return new List<DropdownItem> { new($"Item1{Suffix}"), new($"Item2{Suffix}") };
+            }
+
+            public float[] GetFloatValues()
+            {
+                return new[] { 1.5f, 2.5f, 3.5f };
+            }
+        }
+
         private static class EmptyProviders
         {
             public static string[] GetEmptyStrings()
@@ -861,6 +1164,39 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             public static string[] NullReferenceThrowingProvider()
             {
                 throw new NullReferenceException("Null reference error");
+            }
+        }
+
+        private static class InvalidReturnTypeProviders
+        {
+            public static void ReturnVoid() { }
+
+            public static int ReturnInt()
+            {
+                return 42;
+            }
+
+            public static string ReturnString()
+            {
+                return "Hello";
+            }
+
+            public static bool ReturnBool()
+            {
+                return true;
+            }
+        }
+
+        private static class MethodWithParametersProvider
+        {
+            public static int[] GetValuesWithParam(int count)
+            {
+                return new int[count];
+            }
+
+            public static int[] GetValuesNoParams()
+            {
+                return new[] { 1, 2, 3 };
             }
         }
     }

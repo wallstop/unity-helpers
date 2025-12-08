@@ -164,73 +164,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             );
         }
 
-        private static void EnsureFolder(string folderPath)
-        {
-            if (string.IsNullOrWhiteSpace(folderPath))
-            {
-                return;
-            }
-
-            // First, ensure the folder exists on disk to prevent Unity's internal
-            // "Moving file failed" modal dialog
-            string projectRoot = Path.GetDirectoryName(Application.dataPath);
-            if (!string.IsNullOrEmpty(projectRoot))
-            {
-                string absoluteDirectory = Path.Combine(projectRoot, folderPath);
-                if (!Directory.Exists(absoluteDirectory))
-                {
-                    Directory.CreateDirectory(absoluteDirectory);
-                }
-            }
-
-            string[] parts = folderPath.Split('/');
-            if (parts.Length == 0)
-            {
-                return;
-            }
-
-            string current = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string desired = parts[i];
-                string target = current + "/" + desired;
-
-                if (!AssetDatabase.IsValidFolder(target))
-                {
-                    string[] subs = AssetDatabase.GetSubFolders(current);
-                    string match = null;
-                    if (subs != null)
-                    {
-                        for (int s = 0; s < subs.Length; s++)
-                        {
-                            string sub = subs[s];
-                            int last = sub.LastIndexOf('/', sub.Length - 1);
-                            string name = last >= 0 ? sub.Substring(last + 1) : sub;
-                            if (string.Equals(name, desired, StringComparison.OrdinalIgnoreCase))
-                            {
-                                match = sub;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (string.IsNullOrEmpty(match))
-                    {
-                        AssetDatabase.CreateFolder(current, desired);
-                        current = target;
-                    }
-                    else
-                    {
-                        current = match;
-                    }
-                }
-                else
-                {
-                    current = target;
-                }
-            }
-        }
-
         private static void DeleteAssetIfExists(string assetPath)
         {
             if (AssetDatabase.LoadAssetAtPath<Object>(assetPath) != null)
@@ -254,7 +187,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 if (!AssetDatabase.IsValidFolder(path))
                 {
-                    path = Path.GetDirectoryName(path)?.Replace('\\', '/');
+                    path = Path.GetDirectoryName(path)?.SanitizePath();
                     continue;
                 }
 
@@ -263,7 +196,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     break;
                 }
 
-                path = Path.GetDirectoryName(path)?.Replace('\\', '/');
+                path = Path.GetDirectoryName(path)?.SanitizePath();
             }
         }
 

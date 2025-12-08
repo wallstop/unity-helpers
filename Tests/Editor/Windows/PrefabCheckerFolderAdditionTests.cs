@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
@@ -253,7 +254,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void AddAssetFolderAddsValidFolder()
         {
-            string sub = Path.Combine(Root, "Sub").Replace('\\', '/');
+            string sub = Path.Combine(Root, "Sub").SanitizePath();
             EnsureFolder(sub);
             // Ensure the folder is visible to AssetDatabase after creation
             UnityEditor.AssetDatabase.Refresh(
@@ -277,7 +278,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void AddAssetFolderDedupesExisting()
         {
-            string sub = Path.Combine(Root, "Dup").Replace('\\', '/');
+            string sub = Path.Combine(Root, "Dup").SanitizePath();
             EnsureFolder(sub);
             // Ensure the folder is visible to AssetDatabase after creation
             UnityEditor.AssetDatabase.Refresh(
@@ -303,7 +304,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void AddAssetFolderRejectsInvalidFolder()
         {
-            string invalid = Path.Combine(Root, "DoesNotExist").Replace('\\', '/');
+            string invalid = Path.Combine(Root, "DoesNotExist").SanitizePath();
             PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
             bool added = checker.AddAssetFolder(invalid);
             Assert.IsFalse(added, "Invalid folder should not be added.");
@@ -347,9 +348,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         public void AddAssetFolderHandlesNestedFolders()
         {
             // Create a deep nested folder structure
-            string level1 = Path.Combine(Root, "Level1").Replace('\\', '/');
-            string level2 = Path.Combine(level1, "Level2").Replace('\\', '/');
-            string level3 = Path.Combine(level2, "Level3").Replace('\\', '/');
+            string level1 = Path.Combine(Root, "Level1").SanitizePath();
+            string level2 = Path.Combine(level1, "Level2").SanitizePath();
+            string level3 = Path.Combine(level2, "Level3").SanitizePath();
 
             EnsureFolder(level3);
             UnityEditor.AssetDatabase.Refresh(
@@ -576,7 +577,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         public void TryAddFolderFromAbsoluteAcceptsSubfolderOfAssets()
         {
             // Create a subfolder inside Assets
-            string sub = Path.Combine(Root, "AbsolutePathTest").Replace('\\', '/');
+            string sub = Path.Combine(Root, "AbsolutePathTest").SanitizePath();
             EnsureFolder(sub);
             UnityEditor.AssetDatabase.Refresh(
                 UnityEditor.ImportAssetOptions.ForceSynchronousImport
@@ -663,9 +664,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         public void AddMultipleFoldersInSequence()
         {
             // Create multiple folders
-            string folder1 = Path.Combine(Root, "Folder1").Replace('\\', '/');
-            string folder2 = Path.Combine(Root, "Folder2").Replace('\\', '/');
-            string folder3 = Path.Combine(Root, "Folder3").Replace('\\', '/');
+            string folder1 = Path.Combine(Root, "Folder1").SanitizePath();
+            string folder2 = Path.Combine(Root, "Folder2").SanitizePath();
+            string folder3 = Path.Combine(Root, "Folder3").SanitizePath();
 
             EnsureFolder(folder1);
             EnsureFolder(folder2);
@@ -881,7 +882,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         public void TryAddFolderFromAbsoluteHandlesSubfolderWithTrailingSlash()
         {
             // Create a subfolder inside Assets
-            string sub = Path.Combine(Root, "TrailingSlashSubTest").Replace('\\', '/');
+            string sub = Path.Combine(Root, "TrailingSlashSubTest").SanitizePath();
             EnsureFolder(sub);
             UnityEditor.AssetDatabase.Refresh(
                 UnityEditor.ImportAssetOptions.ForceSynchronousImport

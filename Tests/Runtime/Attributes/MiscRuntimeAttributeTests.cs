@@ -17,7 +17,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         [Test]
         public void IntDropdownAttributeExposesOptions()
         {
-            IntDropdownAttribute attribute = new(1, 2, 3);
+            IntDropDownAttribute attribute = new(1, 2, 3);
             CollectionAssert.AreEqual(new[] { 1, 2, 3 }, attribute.Options);
         }
 

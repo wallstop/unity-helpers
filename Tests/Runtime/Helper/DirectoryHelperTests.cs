@@ -165,7 +165,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             bool expectAssets
         )
         {
-            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.Replace('\\', '/');
+            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.SanitizePath();
             if (string.IsNullOrEmpty(projectRoot))
             {
                 Assert.Inconclusive("Project root could not be determined.");
@@ -208,7 +208,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void AbsoluteToUnityRelativePathConvertsBackslashesToForwardSlashes()
         {
-            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.Replace('\\', '/');
+            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.SanitizePath();
             if (string.IsNullOrEmpty(projectRoot))
             {
                 Assert.Inconclusive("Could not determine project root");
@@ -223,7 +223,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void AbsoluteToUnityRelativePathWithAssetsPathReturnsRelative()
         {
-            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.Replace('\\', '/');
+            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.SanitizePath();
             if (string.IsNullOrEmpty(projectRoot))
             {
                 Assert.Inconclusive("Could not determine project root");
@@ -238,7 +238,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void AbsoluteToUnityRelativePathWithProjectRootReturnsEmpty()
         {
-            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.Replace('\\', '/');
+            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.SanitizePath();
             if (string.IsNullOrEmpty(projectRoot))
             {
                 Assert.Inconclusive("Could not determine project root");
@@ -268,7 +268,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void AbsoluteToUnityRelativePathRemovesLeadingSlash()
         {
-            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.Replace('\\', '/');
+            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.SanitizePath();
             if (string.IsNullOrEmpty(projectRoot))
             {
                 Assert.Inconclusive("Could not determine project root");
@@ -286,7 +286,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void AbsoluteToUnityRelativePathWithTrailingSlashHandledCorrectly()
         {
-            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.Replace('\\', '/');
+            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.SanitizePath();
             if (string.IsNullOrEmpty(projectRoot))
             {
                 Assert.Inconclusive("Could not determine project root");
@@ -301,7 +301,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void AbsoluteToUnityRelativePathWithMixedCaseMatches()
         {
-            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.Replace('\\', '/');
+            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.SanitizePath();
             if (string.IsNullOrEmpty(projectRoot))
             {
                 Assert.Inconclusive("Could not determine project root");
@@ -316,7 +316,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void AbsoluteToUnityRelativePathWithNestedAssetsFolderHandlesCorrectly()
         {
-            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.Replace('\\', '/');
+            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.SanitizePath();
             if (string.IsNullOrEmpty(projectRoot))
             {
                 Assert.Inconclusive("Could not determine project root");
@@ -334,7 +334,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void AbsoluteToUnityRelativePathWithVeryLongPathHandlesCorrectly()
         {
-            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.Replace('\\', '/');
+            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.SanitizePath();
             if (string.IsNullOrEmpty(projectRoot))
             {
                 Assert.Inconclusive("Could not determine project root");
@@ -359,7 +359,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void AbsoluteToUnityRelativePathWithSpecialCharactersInPath()
         {
-            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.Replace('\\', '/');
+            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.SanitizePath();
             if (string.IsNullOrEmpty(projectRoot))
             {
                 Assert.Inconclusive("Could not determine project root");
@@ -374,7 +374,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void AbsoluteToUnityRelativePathWithUnicodeCharacters()
         {
-            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.Replace('\\', '/');
+            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.SanitizePath();
             if (string.IsNullOrEmpty(projectRoot))
             {
                 Assert.Inconclusive("Could not determine project root");

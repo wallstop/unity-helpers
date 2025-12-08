@@ -982,7 +982,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             /// <summary>
             /// Initializes an empty storage set that uses the provided comparer.
             /// </summary>
-            /// <param name="comparer">Comparer passed to <see cref="HashSet{T}.HashSet(IEqualityComparer{T})"/>.</param>
+            /// <param name="comparer">Comparer passed to <see cref="HashSet{T}"/>.</param>
             public StorageSet(IEqualityComparer<T> comparer)
                 : base(comparer) { }
 

@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
@@ -30,9 +31,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         [Test]
         public void AppliesImporterSettingsToTexturesAndDirectories()
         {
-            string a = Path.Combine(Root, "a.png").Replace('\\', '/');
-            string bdir = Path.Combine(Root, "Dir").Replace('\\', '/');
-            string b = Path.Combine(bdir, "b.png").Replace('\\', '/');
+            string a = Path.Combine(Root, "a.png").SanitizePath();
+            string bdir = Path.Combine(Root, "Dir").SanitizePath();
+            string b = Path.Combine(bdir, "b.png").SanitizePath();
             EnsureFolder(bdir);
             CreatePng(a, 16, 16, Color.white);
             CreatePng(b, 32, 32, Color.white);
@@ -87,54 +88,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             Assert.That(impB.maxTextureSize, Is.EqualTo(128));
         }
 
-        private static void EnsureFolder(string relPath)
+        private void CreatePng(string relPath, int w, int h, Color c)
         {
-            if (string.IsNullOrWhiteSpace(relPath))
-            {
-                return;
-            }
-
-            relPath = relPath.Replace('\\', '/');
-
-            // Ensure the folder exists on disk first to prevent AssetDatabase.CreateFolder from failing
-            string projectRoot = Path.GetDirectoryName(Application.dataPath);
-            if (!string.IsNullOrEmpty(projectRoot))
-            {
-                string absoluteDirectory = Path.Combine(projectRoot, relPath);
-                if (!Directory.Exists(absoluteDirectory))
-                {
-                    Directory.CreateDirectory(absoluteDirectory);
-                }
-            }
-
-            // Then ensure it's registered in AssetDatabase
-            if (AssetDatabase.IsValidFolder(relPath))
-            {
-                return;
-            }
-
-            string[] parts = relPath.Split('/');
-            string cur = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string next = cur + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    string result = AssetDatabase.CreateFolder(cur, parts[i]);
-                    if (string.IsNullOrEmpty(result))
-                    {
-                        Debug.LogWarning(
-                            $"EnsureFolder: Failed to create folder '{next}' in AssetDatabase (parent: '{cur}')"
-                        );
-                    }
-                }
-                cur = next;
-            }
-        }
-
-        private static void CreatePng(string relPath, int w, int h, Color c)
-        {
-            string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
+            string dir = Path.GetDirectoryName(relPath).SanitizePath();
             EnsureFolder(dir);
             Texture2D t = new(w, h, TextureFormat.RGBA32, false);
             Color[] pix = new Color[w * h];
@@ -158,7 +114,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                     ),
                     rel
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
         }
     }
 #endif

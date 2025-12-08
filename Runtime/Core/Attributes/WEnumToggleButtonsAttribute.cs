@@ -17,7 +17,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// <see cref="WEnumToggleButtonsAttribute"/> but no additional setup is required—simply annotate the flagged enum field.
     /// </para>
     /// <para>
-    /// The attribute can also be combined with <see cref="IntDropdownAttribute"/>, <see cref="StringInListAttribute"/>, or
+    /// The attribute can also be combined with <see cref="IntDropDownAttribute"/>, <see cref="StringInListAttribute"/>, or
     /// <see cref="WValueDropDownAttribute"/> to render those curated lists as toggle buttons instead of a popup.
     /// In this mode only a single option is active at a time, but the visual presentation becomes much clearer for small choice sets.
     /// </para>

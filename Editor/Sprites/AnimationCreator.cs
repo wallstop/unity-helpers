@@ -1461,7 +1461,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 return string.Empty;
             }
-            string sanitized = directoryPath.Replace('\\', '/');
+            string sanitized = directoryPath.SanitizePath();
             if (includeFullFolderPathInAnimName)
             {
                 if (sanitized.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))

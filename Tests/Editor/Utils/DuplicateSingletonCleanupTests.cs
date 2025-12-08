@@ -1028,35 +1028,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             // depends on implementation details of the recursive cleanup algorithm
         }
 
-        private static void EnsureFolder(string folderPath)
-        {
-            // First, ensure the folder exists on disk to prevent Unity's internal
-            // "Moving file failed" modal dialog
-            string projectRoot = Path.GetDirectoryName(Application.dataPath);
-            if (!string.IsNullOrEmpty(projectRoot))
-            {
-                string absoluteDirectory = Path.Combine(projectRoot, folderPath);
-                if (!Directory.Exists(absoluteDirectory))
-                {
-                    Directory.CreateDirectory(absoluteDirectory);
-                }
-            }
-
-            if (AssetDatabase.IsValidFolder(folderPath))
-            {
-                return;
-            }
-
-            string parent = Path.GetDirectoryName(folderPath)?.Replace("\\", "/");
-            if (!string.IsNullOrEmpty(parent) && !AssetDatabase.IsValidFolder(parent))
-            {
-                EnsureFolder(parent);
-            }
-
-            string folderName = Path.GetFileName(folderPath);
-            AssetDatabase.CreateFolder(parent, folderName);
-        }
-
         private static void TryDeleteFolder(string folderPath)
         {
             if (AssetDatabase.IsValidFolder(folderPath))

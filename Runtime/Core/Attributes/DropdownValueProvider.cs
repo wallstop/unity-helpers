@@ -192,34 +192,39 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             Type providerType,
             string methodName,
             Type valueType,
-            string attributeName
+            string attributeName,
+            bool logErrorIfNotFound = true
         )
         {
             if (valueType == null)
             {
                 Debug.LogError($"{attributeName}: Value type cannot be null.");
-                return EmptyFactory;
+                return logErrorIfNotFound ? EmptyFactory : null;
             }
 
             if (providerType == null)
             {
                 Debug.LogError($"{attributeName}: Provider type cannot be null.");
-                return EmptyFactory;
+                return logErrorIfNotFound ? EmptyFactory : null;
             }
 
             if (string.IsNullOrEmpty(methodName))
             {
                 Debug.LogError($"{attributeName}: Method name cannot be null or empty.");
-                return EmptyFactory;
+                return logErrorIfNotFound ? EmptyFactory : null;
             }
 
             MethodInfo resolved = ResolveProviderMethod(providerType, methodName);
             if (resolved == null)
             {
-                Debug.LogError(
-                    $"{attributeName}: Could not locate a parameterless static method named '{methodName}' on {providerType.FullName} that returns enumerable values."
-                );
-                return EmptyFactory;
+                if (logErrorIfNotFound)
+                {
+                    Debug.LogError(
+                        $"{attributeName}: Could not locate a parameterless static method named '{methodName}' on {providerType.FullName} that returns enumerable values."
+                    );
+                    return EmptyFactory;
+                }
+                return null;
             }
 
             object cachedSourceResult = null;
@@ -261,7 +266,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             Type providerType,
             string methodName,
             string attributeName,
-            out Type resolvedValueType
+            out Type resolvedValueType,
+            bool logErrorIfNotFound = true
         )
         {
             resolvedValueType = typeof(object);
@@ -269,13 +275,13 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             if (providerType == null)
             {
                 Debug.LogError($"{attributeName}: Provider type cannot be null.");
-                return EmptyFactory;
+                return logErrorIfNotFound ? EmptyFactory : null;
             }
 
             if (string.IsNullOrEmpty(methodName))
             {
                 Debug.LogError($"{attributeName}: Method name cannot be null or empty.");
-                return EmptyFactory;
+                return logErrorIfNotFound ? EmptyFactory : null;
             }
 
             MethodInfo resolved = ResolveProviderMethod(
@@ -285,19 +291,27 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             );
             if (resolved == null)
             {
-                Debug.LogError(
-                    $"{attributeName}: Could not locate a parameterless static method named '{methodName}' on {providerType.FullName} that returns enumerable values."
-                );
-                return EmptyFactory;
+                if (logErrorIfNotFound)
+                {
+                    Debug.LogError(
+                        $"{attributeName}: Could not locate a parameterless static method named '{methodName}' on {providerType.FullName} that returns enumerable values."
+                    );
+                    return EmptyFactory;
+                }
+                return null;
             }
 
             if (!TryGetElementType(resolved.ReturnType, out Type elementType))
             {
-                Debug.LogError(
-                    $"{attributeName}: Method '{providerType.FullName}.{methodName}' must return an array or IEnumerable<T>."
-                );
+                if (logErrorIfNotFound)
+                {
+                    Debug.LogError(
+                        $"{attributeName}: Method '{providerType.FullName}.{methodName}' must return an array or IEnumerable<T>."
+                    );
+                    return EmptyFactory;
+                }
                 resolvedValueType = typeof(object);
-                return EmptyFactory;
+                return null;
             }
 
             resolvedValueType = elementType ?? typeof(object);

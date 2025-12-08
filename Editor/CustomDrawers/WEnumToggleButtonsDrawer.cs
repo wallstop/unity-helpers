@@ -1221,13 +1221,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return BuildGenericOptions(values);
             }
 
-            IntDropdownAttribute intDropdownAttribute = GetAttribute<IntDropdownAttribute>(
+            IntDropDownAttribute intDropDownAttribute = GetAttribute<IntDropDownAttribute>(
                 fieldInfo,
                 property
             );
-            if (intDropdownAttribute != null)
+            if (intDropDownAttribute != null)
             {
-                int[] values = intDropdownAttribute.Options ?? Array.Empty<int>();
+                int[] values = intDropDownAttribute.Options ?? Array.Empty<int>();
                 ToggleOption[] options = new ToggleOption[values.Length];
                 for (int index = 0; index < values.Length; index += 1)
                 {

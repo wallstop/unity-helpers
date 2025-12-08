@@ -152,6 +152,212 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             );
         }
 
+        private static IEnumerable<ProtectedPathTestCase> ProtectedPathTestCases()
+        {
+            yield return new ProtectedPathTestCase(
+                "Assets/Resources/Wallstop Studios",
+                true,
+                false,
+                "Main Wallstop Studios folder should be protected"
+            );
+            yield return new ProtectedPathTestCase(
+                "Assets/Resources/Wallstop Studios/Unity Helpers",
+                true,
+                false,
+                "Main Unity Helpers folder should be protected"
+            );
+            yield return new ProtectedPathTestCase(
+                "Assets/Resources/Wallstop Studios/Unity Helpers/SomeAsset.asset",
+                true,
+                false,
+                "Assets inside Unity Helpers should be protected"
+            );
+            yield return new ProtectedPathTestCase(
+                "Assets/Resources/Wallstop Studios 1",
+                false,
+                true,
+                "Wallstop Studios 1 is a duplicate and should NOT be protected"
+            );
+            yield return new ProtectedPathTestCase(
+                "Assets/Resources/Wallstop Studios 2",
+                false,
+                true,
+                "Wallstop Studios 2 is a duplicate and should NOT be protected"
+            );
+            yield return new ProtectedPathTestCase(
+                "Assets/Resources/Wallstop Studios/Unity Helpers 1",
+                false,
+                true,
+                "Unity Helpers 1 is a duplicate and should NOT be protected"
+            );
+            yield return new ProtectedPathTestCase(
+                "Assets/Resources/Wallstop Studios/Unity Helpers 15",
+                false,
+                true,
+                "Unity Helpers 15 is a duplicate and should NOT be protected"
+            );
+            yield return new ProtectedPathTestCase(
+                "Assets/Resources/Wallstop Studios/Unity Helpers 1/SomeAsset.asset",
+                false,
+                true,
+                "Assets inside duplicate Unity Helpers should NOT be protected"
+            );
+            yield return new ProtectedPathTestCase(
+                "Assets/Resources/Wallstop Studios/Unity Helpers 99/Nested/File.asset",
+                false,
+                true,
+                "Nested assets inside duplicate Unity Helpers should NOT be protected"
+            );
+            yield return new ProtectedPathTestCase(
+                "Assets/Plugins",
+                true,
+                false,
+                "Plugins folder should be protected"
+            );
+            yield return new ProtectedPathTestCase(
+                "Assets/Plugins/SomePlugin/Code.cs",
+                true,
+                false,
+                "Assets inside Plugins should be protected"
+            );
+            yield return new ProtectedPathTestCase(
+                "Assets/TempTestFolder",
+                false,
+                false,
+                "Temp test folders should NOT be protected"
+            );
+            yield return new ProtectedPathTestCase(
+                "Assets/Resources/Tests",
+                false,
+                false,
+                "Test folders in Resources should NOT be protected"
+            );
+            yield return new ProtectedPathTestCase(
+                "",
+                false,
+                false,
+                "Empty path should NOT be protected"
+            );
+            yield return new ProtectedPathTestCase(
+                null,
+                false,
+                false,
+                "Null path should NOT be protected"
+            );
+        }
+
+        public sealed class ProtectedPathTestCase
+        {
+            public string Path { get; }
+            public bool ExpectedIsProtected { get; }
+            public bool ExpectedIsDuplicatePollution { get; }
+            public string Description { get; }
+
+            public ProtectedPathTestCase(
+                string path,
+                bool expectedIsProtected,
+                bool expectedIsDuplicatePollution,
+                string description
+            )
+            {
+                Path = path;
+                ExpectedIsProtected = expectedIsProtected;
+                ExpectedIsDuplicatePollution = expectedIsDuplicatePollution;
+                Description = description;
+            }
+
+            public override string ToString() => $"{(Path ?? "(null)")} - {Description}";
+        }
+
+        [Test]
+        public void IsProtectedPathReturnsExpectedValue(
+            [ValueSource(nameof(ProtectedPathTestCases))] ProtectedPathTestCase testCase
+        )
+        {
+            bool actual = CommonTestBase.ProtectionTestHooks.TestIsProtectedPath(testCase.Path);
+            Assert.That(
+                actual,
+                Is.EqualTo(testCase.ExpectedIsProtected),
+                $"IsProtectedPath(\"{testCase.Path ?? "(null)"}\") returned {actual}, expected {testCase.ExpectedIsProtected}. "
+                    + $"Description: {testCase.Description}"
+            );
+        }
+
+        [Test]
+        public void IsKnownDuplicatePollutionReturnsExpectedValue(
+            [ValueSource(nameof(ProtectedPathTestCases))] ProtectedPathTestCase testCase
+        )
+        {
+            bool actual = CommonTestBase.ProtectionTestHooks.TestIsKnownDuplicatePollution(
+                testCase.Path
+            );
+            Assert.That(
+                actual,
+                Is.EqualTo(testCase.ExpectedIsDuplicatePollution),
+                $"IsKnownDuplicatePollution(\"{testCase.Path ?? "(null)"}\") returned {actual}, expected {testCase.ExpectedIsDuplicatePollution}. "
+                    + $"Description: {testCase.Description}"
+            );
+        }
+
+        [Test]
+        public void DuplicatePollutionFoldersAreNotProtected()
+        {
+            string[] duplicatePaths = new[]
+            {
+                "Assets/Resources/Wallstop Studios/Unity Helpers 1",
+                "Assets/Resources/Wallstop Studios/Unity Helpers 2",
+                "Assets/Resources/Wallstop Studios/Unity Helpers 10",
+                "Assets/Resources/Wallstop Studios/Unity Helpers 99",
+                "Assets/Resources/Wallstop Studios 1",
+                "Assets/Resources/Wallstop Studios 2",
+            };
+
+            List<string> incorrectlyProtected = new();
+            foreach (string path in duplicatePaths)
+            {
+                if (CommonTestBase.ProtectionTestHooks.TestIsProtectedPath(path))
+                {
+                    incorrectlyProtected.Add(path);
+                }
+            }
+
+            Assert.IsEmpty(
+                incorrectlyProtected,
+                $"The following duplicate pollution folders are incorrectly marked as protected:\n"
+                    + $"{string.Join("\n", incorrectlyProtected)}\n"
+                    + "These should be deletable during test cleanup."
+            );
+        }
+
+        [Test]
+        public void MainProductionFoldersAreProtected()
+        {
+            string[] mainFolders = new[]
+            {
+                "Assets/Resources/Wallstop Studios",
+                "Assets/Resources/Wallstop Studios/Unity Helpers",
+                "Assets/Plugins",
+                "Assets/Editor Default Resources",
+                "Assets/StreamingAssets",
+            };
+
+            List<string> unprotected = new();
+            foreach (string path in mainFolders)
+            {
+                if (!CommonTestBase.ProtectionTestHooks.TestIsProtectedPath(path))
+                {
+                    unprotected.Add(path);
+                }
+            }
+
+            Assert.IsEmpty(
+                unprotected,
+                $"The following main production folders are NOT protected:\n"
+                    + $"{string.Join("\n", unprotected)}\n"
+                    + "These should be protected from test cleanup."
+            );
+        }
+
         [UnityTest]
         public IEnumerator EnsureSingletonAssetsDoesNotCreateAssetsForExcludedTypes()
         {
@@ -421,6 +627,127 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.IsEmpty(
                 notDetected,
                 $"The following test singleton types are not detected by TestAssemblyHelper.IsTestType:\n{string.Join("\n", notDetected)}"
+            );
+        }
+
+        /// <summary>
+        /// Data source for duplicate folder detection tests.
+        /// Each entry contains: parentPath, folderBaseName
+        /// </summary>
+        private static IEnumerable<DuplicateFolderTestCase> DuplicateFolderTestCases()
+        {
+            // Wallstop Studios duplicates in Assets/Resources
+            yield return new DuplicateFolderTestCase(
+                "Assets/Resources",
+                "Wallstop Studios",
+                "Duplicate Wallstop Studios folders may be created during test runs"
+            );
+
+            // Unity Helpers duplicates inside Wallstop Studios
+            yield return new DuplicateFolderTestCase(
+                "Assets/Resources/Wallstop Studios",
+                "Unity Helpers",
+                "Duplicate Unity Helpers folders may be created during concurrent test execution"
+            );
+        }
+
+        public sealed class DuplicateFolderTestCase
+        {
+            public string ParentPath { get; }
+            public string FolderBaseName { get; }
+            public string Description { get; }
+
+            public DuplicateFolderTestCase(
+                string parentPath,
+                string folderBaseName,
+                string description
+            )
+            {
+                ParentPath = parentPath;
+                FolderBaseName = folderBaseName;
+                Description = description;
+            }
+
+            public override string ToString() => $"{FolderBaseName} in {ParentPath}";
+        }
+
+        [Test]
+        public void NoDuplicateFoldersExist(
+            [ValueSource(nameof(DuplicateFolderTestCases))] DuplicateFolderTestCase testCase
+        )
+        {
+            // Check for duplicate folders matching the pattern "FolderName N" where N is a number
+            if (!AssetDatabase.IsValidFolder(testCase.ParentPath))
+            {
+                Assert.Pass(
+                    $"Parent folder '{testCase.ParentPath}' doesn't exist - no duplicates possible."
+                );
+                return;
+            }
+
+            string[] subFolders = AssetDatabase.GetSubFolders(testCase.ParentPath);
+            List<string> duplicates = new();
+            string prefix = testCase.FolderBaseName + " ";
+
+            foreach (string folder in subFolders)
+            {
+                string name = Path.GetFileName(folder);
+                if (
+                    name != null
+                    && name.StartsWith(prefix, StringComparison.Ordinal)
+                    && int.TryParse(name.Substring(prefix.Length), out _)
+                )
+                {
+                    duplicates.Add(folder);
+                }
+            }
+
+            if (duplicates.Count > 0)
+            {
+                Debug.LogWarning(
+                    $"[SingletonAssetPollutionPreventionTests] Found {duplicates.Count} duplicate folder(s) in {testCase.ParentPath}. "
+                        + $"Attempting cleanup before asserting."
+                );
+
+                foreach (string duplicate in duplicates)
+                {
+                    bool isDuplicatePollution =
+                        CommonTestBase.ProtectionTestHooks.TestIsKnownDuplicatePollution(duplicate);
+                    bool isProtected = CommonTestBase.ProtectionTestHooks.TestIsProtectedPath(
+                        duplicate
+                    );
+                    Debug.Log(
+                        $"[SingletonAssetPollutionPreventionTests] Duplicate folder: {duplicate}, "
+                            + $"IsDuplicatePollution={isDuplicatePollution}, IsProtected={isProtected}"
+                    );
+                }
+
+                CleanupAllKnownTestFolders();
+                AssetDatabase.Refresh();
+
+                subFolders = AssetDatabase.GetSubFolders(testCase.ParentPath);
+                duplicates.Clear();
+                foreach (string folder in subFolders)
+                {
+                    string name = Path.GetFileName(folder);
+                    if (
+                        name != null
+                        && name.StartsWith(prefix, StringComparison.Ordinal)
+                        && int.TryParse(name.Substring(prefix.Length), out _)
+                    )
+                    {
+                        duplicates.Add(folder);
+                    }
+                }
+            }
+
+            Assert.IsEmpty(
+                duplicates,
+                $"Found duplicate '{testCase.FolderBaseName}' folders in {testCase.ParentPath} that could not be cleaned up:\n"
+                    + $"{string.Join("\n", duplicates)}\n\n"
+                    + $"Description: {testCase.Description}\n"
+                    + "This indicates a race condition or improper folder creation. "
+                    + "Duplicates should have been cleaned by CleanupAllKnownTestFolders()."
             );
         }
 

@@ -85,10 +85,29 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             }
         }
 
+        private readonly struct MethodValidationResult
+        {
+            internal readonly bool MethodFound;
+            internal readonly bool HasValidReturnType;
+            internal readonly Type ElementType;
+
+            internal MethodValidationResult(
+                bool methodFound,
+                bool hasValidReturnType,
+                Type elementType
+            )
+            {
+                MethodFound = methodFound;
+                HasValidReturnType = hasValidReturnType;
+                ElementType = elementType;
+            }
+        }
+
         private readonly Func<object, object[]> _getOptions;
         private readonly bool _requiresInstanceContext;
         private readonly string _instanceMethodName;
         private readonly Dictionary<Type, InstanceProviderEntry> _instanceMethodCache;
+        private readonly Type _explicitProviderType;
 
         internal Type ProviderType { get; }
 
@@ -147,25 +166,81 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             : this(typeof(double), WrapStatic(DropdownValueProvider<double>.FromList(options))) { }
 
         /// <summary>
-        /// Initializes the attribute using a static provider method and infers the option type from its return value.
+        /// Initializes the attribute using a provider method and infers the option type from its return value.
         /// </summary>
         /// <remarks>
-        /// The provider must be parameterless, static, and return an array or <see cref="System.Collections.Generic.IEnumerable{T}"/>.
+        /// The provider must be parameterless and return an array or <see cref="System.Collections.Generic.IEnumerable{T}"/>.
+        /// Static methods are preferred; if no static method is found, the system falls back to instance method resolution.
         /// The inspector queries the provider each time it renders the field, keeping the dropdown synchronised with external data.
         /// </remarks>
-        /// <param name="providerType">Type that defines the static provider.</param>
-        /// <param name="methodName">Name of the parameterless static method that supplies the dropdown values.</param>
+        /// <param name="providerType">Type that defines the provider method (static or instance).</param>
+        /// <param name="methodName">Name of the parameterless method that supplies the dropdown values.</param>
         public WValueDropDownAttribute(Type providerType, string methodName)
         {
-            Func<object[]> optionFactory = ResolveProviderFactory(
-                providerType,
-                methodName,
-                out Type resolvedValueType
-            );
-            ValueType = resolvedValueType ?? typeof(object);
-            _getOptions = WrapStaticFactory(optionFactory);
             ProviderType = providerType;
             ProviderMethodName = methodName;
+
+            if (providerType == null)
+            {
+                Debug.LogError($"{AttributeName}: Provider type cannot be null.");
+                ValueType = typeof(object);
+                _getOptions = EmptyFactory;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(methodName))
+            {
+                Debug.LogError($"{AttributeName}: Method name cannot be null or empty.");
+                ValueType = typeof(object);
+                _getOptions = EmptyFactory;
+                return;
+            }
+
+            // First, try to find a static method
+            Func<object[]> staticFactory = DropdownValueProvider.FromMethod(
+                providerType,
+                methodName,
+                AttributeName,
+                out Type resolvedValueType,
+                logErrorIfNotFound: false
+            );
+
+            if (staticFactory != null)
+            {
+                ValueType = resolvedValueType ?? typeof(object);
+                _getOptions = WrapStaticFactory(staticFactory);
+                return;
+            }
+
+            // No static method found - set up for instance method resolution
+            // Try to infer the value type from the instance method and validate it exists
+            MethodValidationResult validation = ValidateInstanceMethod(providerType, methodName);
+            if (!validation.MethodFound)
+            {
+                Debug.LogError(
+                    $"{AttributeName}: Could not locate a parameterless method named '{methodName}' on {providerType.FullName} that returns enumerable values."
+                );
+                ValueType = typeof(object);
+                _getOptions = EmptyFactory;
+                return;
+            }
+
+            if (!validation.HasValidReturnType)
+            {
+                Debug.LogError(
+                    $"{AttributeName}: Method '{providerType.FullName}.{methodName}' must return an array or IEnumerable."
+                );
+                ValueType = typeof(object);
+                _getOptions = EmptyFactory;
+                return;
+            }
+
+            ValueType = validation.ElementType ?? typeof(object);
+            _requiresInstanceContext = true;
+            _instanceMethodName = methodName;
+            _instanceMethodCache = new Dictionary<Type, InstanceProviderEntry>();
+            _explicitProviderType = providerType;
+            _getOptions = ResolveInstanceMethodValues;
         }
 
         /// <summary>
@@ -187,18 +262,72 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// </summary>
         /// <remarks>
         /// This overload is useful when the provider returns a type that needs to be converted before appearing in the dropdown (for example, numeric IDs mapped to enums).
+        /// The method can be either static (resolved at attribute construction) or an instance method on the provider type (resolved at runtime when the context object is available).
+        /// Static methods are preferred; if no static method is found, the system falls back to instance method resolution.
         /// </remarks>
-        /// <param name="providerType">Type containing the static provider method.</param>
-        /// <param name="methodName">Parameterless static method returning an array or enumerable of values.</param>
+        /// <param name="providerType">Type containing the provider method (static or instance).</param>
+        /// <param name="methodName">Parameterless method returning an array or enumerable of values.</param>
         /// <param name="valueType">Target value type for the decorated property.</param>
         public WValueDropDownAttribute(Type providerType, string methodName, Type valueType)
         {
             ValueType = valueType ?? typeof(object);
-            _getOptions = WrapStaticFactory(
-                DropdownValueProvider.FromMethod(providerType, methodName, valueType, AttributeName)
-            );
             ProviderType = providerType;
             ProviderMethodName = methodName;
+
+            if (providerType == null)
+            {
+                Debug.LogError($"{AttributeName}: Provider type cannot be null.");
+                _getOptions = EmptyFactory;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(methodName))
+            {
+                Debug.LogError($"{AttributeName}: Method name cannot be null or empty.");
+                _getOptions = EmptyFactory;
+                return;
+            }
+
+            // First, try to find a static method
+            Func<object[]> staticFactory = DropdownValueProvider.FromMethod(
+                providerType,
+                methodName,
+                valueType,
+                AttributeName,
+                logErrorIfNotFound: false
+            );
+
+            if (staticFactory != null)
+            {
+                _getOptions = WrapStaticFactory(staticFactory);
+                return;
+            }
+
+            // No static method found - set up for instance method resolution and validate it exists
+            MethodValidationResult validation = ValidateInstanceMethod(providerType, methodName);
+            if (!validation.MethodFound)
+            {
+                Debug.LogError(
+                    $"{AttributeName}: Could not locate a parameterless method named '{methodName}' on {providerType.FullName} that returns enumerable values."
+                );
+                _getOptions = EmptyFactory;
+                return;
+            }
+
+            if (!validation.HasValidReturnType)
+            {
+                Debug.LogError(
+                    $"{AttributeName}: Method '{providerType.FullName}.{methodName}' must return an array or IEnumerable."
+                );
+                _getOptions = EmptyFactory;
+                return;
+            }
+
+            _requiresInstanceContext = true;
+            _instanceMethodName = methodName;
+            _instanceMethodCache = new Dictionary<Type, InstanceProviderEntry>();
+            _explicitProviderType = providerType;
+            _getOptions = ResolveInstanceMethodValues;
         }
 
         /// <summary>
@@ -272,8 +401,25 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 return Empty;
             }
 
-            Type providerType = context.GetType();
-            InstanceProviderEntry provider = GetOrResolveInstanceProvider(providerType);
+            Type contextType = context.GetType();
+
+            // When an explicit provider type is set, use it for method resolution.
+            // The context must be an instance of the provider type (or derived) for instance methods.
+            Type lookupType = _explicitProviderType ?? contextType;
+
+            // Verify context is compatible with the explicit provider type for instance methods
+            if (
+                _explicitProviderType != null
+                && !_explicitProviderType.IsAssignableFrom(contextType)
+            )
+            {
+                Debug.LogError(
+                    $"{AttributeName}: Context object of type '{contextType.FullName}' is not assignable to explicit provider type '{_explicitProviderType.FullName}'."
+                );
+                return Empty;
+            }
+
+            InstanceProviderEntry provider = GetOrResolveInstanceProvider(lookupType);
             if (provider == null)
             {
                 return Empty;
@@ -287,14 +433,14 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             catch (Exception exception)
             {
                 Debug.LogError(
-                    $"{AttributeName}: Invocation of '{providerType.FullName}.{provider.Method.Name}' threw {exception.GetType().Name}."
+                    $"{AttributeName}: Invocation of '{lookupType.FullName}.{provider.Method.Name}' threw {exception.GetType().Name}."
                 );
                 return Empty;
             }
 
             return ConvertResult(
                 result,
-                provider.Method.DeclaringType ?? providerType,
+                provider.Method.DeclaringType ?? lookupType,
                 provider.Method.Name
             );
         }
@@ -380,6 +526,154 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             }
 
             _instanceMethodCache[providerType] = entry;
+        }
+
+        private static Type InferInstanceMethodValueType(Type providerType, string methodName)
+        {
+            if (providerType == null || string.IsNullOrEmpty(methodName))
+            {
+                return null;
+            }
+
+            BindingFlags flags =
+                BindingFlags.Instance
+                | BindingFlags.Static
+                | BindingFlags.Public
+                | BindingFlags.NonPublic;
+
+            MethodInfo method = providerType.GetMethod(
+                methodName,
+                flags,
+                null,
+                Type.EmptyTypes,
+                null
+            );
+
+            if (method == null)
+            {
+                return null;
+            }
+
+            Type returnType = method.ReturnType;
+            if (returnType == null || returnType == typeof(void))
+            {
+                return null;
+            }
+
+            // Array type
+            if (returnType.IsArray)
+            {
+                return returnType.GetElementType();
+            }
+
+            // Generic IEnumerable<T>
+            if (returnType.IsGenericType)
+            {
+                Type[] genericArgs = returnType.GetGenericArguments();
+                if (genericArgs.Length == 1)
+                {
+                    return genericArgs[0];
+                }
+            }
+
+            // Check for IEnumerable<T> interface
+            Type[] interfaces = returnType.GetInterfaces();
+            for (int i = 0; i < interfaces.Length; i++)
+            {
+                Type iface = interfaces[i];
+                if (
+                    iface.IsGenericType
+                    && iface.GetGenericTypeDefinition() == typeof(IEnumerable<>)
+                )
+                {
+                    return iface.GetGenericArguments()[0];
+                }
+            }
+
+            return typeof(object);
+        }
+
+        private static MethodValidationResult ValidateInstanceMethod(
+            Type providerType,
+            string methodName
+        )
+        {
+            if (providerType == null || string.IsNullOrEmpty(methodName))
+            {
+                return new MethodValidationResult(false, false, null);
+            }
+
+            BindingFlags flags =
+                BindingFlags.Instance
+                | BindingFlags.Static
+                | BindingFlags.Public
+                | BindingFlags.NonPublic;
+
+            MethodInfo method = providerType.GetMethod(
+                methodName,
+                flags,
+                null,
+                Type.EmptyTypes,
+                null
+            );
+
+            if (method == null)
+            {
+                return new MethodValidationResult(false, false, null);
+            }
+
+            Type returnType = method.ReturnType;
+            if (returnType == null || returnType == typeof(void))
+            {
+                return new MethodValidationResult(true, false, null);
+            }
+
+            // Check if return type is valid (array or IEnumerable)
+            bool isEnumerable =
+                returnType.IsArray
+                || (
+                    returnType != typeof(string) && typeof(IEnumerable).IsAssignableFrom(returnType)
+                );
+
+            if (!isEnumerable)
+            {
+                return new MethodValidationResult(true, false, null);
+            }
+
+            // Infer element type
+            Type elementType = null;
+
+            if (returnType.IsArray)
+            {
+                elementType = returnType.GetElementType();
+            }
+            else if (returnType.IsGenericType)
+            {
+                Type[] genericArgs = returnType.GetGenericArguments();
+                if (genericArgs.Length == 1)
+                {
+                    elementType = genericArgs[0];
+                }
+            }
+
+            if (elementType == null)
+            {
+                Type[] interfaces = returnType.GetInterfaces();
+                for (int i = 0; i < interfaces.Length; i++)
+                {
+                    Type iface = interfaces[i];
+                    if (
+                        iface.IsGenericType
+                        && iface.GetGenericTypeDefinition() == typeof(IEnumerable<>)
+                    )
+                    {
+                        elementType = iface.GetGenericArguments()[0];
+                        break;
+                    }
+                }
+            }
+
+            return new MethodValidationResult(true, true, elementType ?? typeof(object));
         }
 
         private object[] ConvertResult(object result, Type providerType, string methodName)
@@ -470,20 +764,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             }
 
             return _ => provider();
-        }
-
-        private static Func<object[]> ResolveProviderFactory(
-            Type providerType,
-            string methodName,
-            out Type resolvedValueType
-        )
-        {
-            return DropdownValueProvider.FromMethod(
-                providerType,
-                methodName,
-                AttributeName,
-                out resolvedValueType
-            );
         }
     }
 }
