@@ -14,7 +14,7 @@ The script executes the benchmark test in batch mode, captures the markdown tabl
 
 <!-- RELATIONAL_COMPONENTS_WINDOWS_START -->
 
-_Last updated 2025-12-01 04:04 UTC on Windows 11 (10.0.26200) 64bit_
+_Last updated 2025-12-08 06:27 UTC on Windows 11 (10.0.26200) 64bit_
 
 Numbers capture repeated `Assign*Components` calls for one second per scenario.
 Higher operations per second are better.
@@ -23,18 +23,18 @@ Higher operations per second are better.
 
 | Scenario          | Relational Ops/s | Manual Ops/s | Rel/Manual | Iterations |
 | ----------------- | ---------------: | -----------: | ---------: | ---------: |
-| Parent - Single   |          998,472 |    5,593,486 |      0.18x |  1,000,000 |
-| Parent - Array    |          710,259 |    3,303,583 |      0.21x |    720,000 |
-| Parent - List     |          812,837 |    4,270,898 |      0.19x |    820,000 |
-| Parent - HashSet  |          789,078 |    2,980,434 |      0.26x |    790,000 |
-| Child - Single    |        1,150,685 |    3,627,636 |      0.32x |  1,160,000 |
-| Child - Array     |          269,269 |    2,318,881 |      0.12x |    270,000 |
-| Child - List      |          253,670 |    2,598,777 |      0.10x |    260,000 |
-| Child - HashSet   |          255,140 |    1,745,226 |      0.15x |    260,000 |
-| Sibling - Single  |        3,798,195 |   14,330,652 |      0.27x |  3,800,000 |
-| Sibling - Array   |          947,969 |    2,589,505 |      0.37x |    950,000 |
-| Sibling - List    |        1,238,554 |    3,382,219 |      0.37x |  1,240,000 |
-| Sibling - HashSet |        1,211,560 |    1,852,609 |      0.65x |  1,220,000 |
+| Parent - Single   |        1,026,493 |    5,447,240 |      0.19x |  1,030,000 |
+| Parent - Array    |          720,133 |    3,307,603 |      0.22x |    730,000 |
+| Parent - List     |          799,709 |    4,174,800 |      0.19x |    800,000 |
+| Parent - HashSet  |          793,143 |    2,913,347 |      0.27x |    800,000 |
+| Child - Single    |        1,157,816 |    3,510,479 |      0.33x |  1,160,000 |
+| Child - Array     |          268,178 |    2,261,733 |      0.12x |    270,000 |
+| Child - List      |          253,755 |    2,610,476 |      0.10x |    260,000 |
+| Child - HashSet   |          252,462 |    1,676,820 |      0.15x |    260,000 |
+| Sibling - Single  |        3,765,117 |   14,294,375 |      0.26x |  3,770,000 |
+| Sibling - Array   |          973,518 |    2,472,567 |      0.39x |    980,000 |
+| Sibling - List    |        1,234,033 |    3,302,100 |      0.37x |  1,240,000 |
+| Sibling - HashSet |        1,198,421 |    1,830,203 |      0.65x |  1,200,000 |
 
 <!-- RELATIONAL_COMPONENTS_WINDOWS_END -->
 

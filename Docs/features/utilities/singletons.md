@@ -423,6 +423,144 @@ Use this chart to pick an approach based on constraints:
 
 ![Data Distribution Strategy](../../images/utilities/singletons/data-distribution-decision.svg)
 
+<a id="testing-patterns"></a>
+
+## Testing Patterns
+
+### Testing with `RuntimeSingleton<T>`
+
+Runtime singletons require special handling in tests to avoid leaked GameObjects and unpredictable state across test runs. The recommended pattern uses `CommonTestBase` which handles cleanup automatically.
+
+#### Pattern 1: Extend CommonTestBase
+
+```csharp
+using WallstopStudios.UnityHelpers.Tests.Core;
+
+public sealed class MyServiceTests : CommonTestBase
+{
+    [Test]
+    public void MyServiceInitializesCorrectly()
+    {
+        // CommonTestBase automatically manages dispatcher lifecycle
+        // and cleans up any spawned GameObjects after each test
+        var service = MyService.Instance;
+        Assert.That(service != null);
+    }
+}
+```
+
+#### Pattern 2: Manual Scope Management
+
+For tests that need finer control over singleton lifecycle:
+
+```csharp
+using UnityMainThreadDispatcher = WallstopStudios.UnityHelpers.Core.Helper.UnityMainThreadDispatcher;
+
+public sealed class CustomSingletonTests
+{
+    private UnityMainThreadDispatcher.AutoCreationScope _scope;
+
+    [SetUp]
+    public void SetUp()
+    {
+        // Disable auto-creation, destroy any existing instance, then re-enable
+        _scope = UnityMainThreadDispatcher.CreateTestScope(destroyImmediate: true);
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        // Restores previous auto-creation state and destroys test-created instances
+        _scope?.Dispose();
+        _scope = null;
+    }
+
+    [Test]
+    public void DispatcherIsAvailableInTest()
+    {
+        var dispatcher = UnityMainThreadDispatcher.Instance;
+        Assert.That(dispatcher != null);
+    }
+}
+```
+
+#### Pattern 3: Temporarily Disable Auto-Creation
+
+For specific tests that need to verify behavior when the singleton doesn't exist:
+
+```csharp
+[Test]
+public void CodeHandlesMissingDispatcherGracefully()
+{
+    using (UnityMainThreadDispatcher.AutoCreationScope.Disabled(
+        destroyExistingInstanceOnEnter: true,
+        destroyInstancesOnDispose: true,
+        destroyImmediate: true))
+    {
+        // Inside this scope, accessing Instance won't auto-create
+        bool hasInstance = UnityMainThreadDispatcher.HasInstance;
+        Assert.That(hasInstance, Is.False);
+    }
+    // Auto-creation restored after scope exits
+}
+```
+
+### Testing with `ScriptableObjectSingleton<T>`
+
+ScriptableObject singletons load from `Resources/` and are typically tested in Editor tests where asset manipulation is possible.
+
+#### Pattern 1: Use Editor Test Fixtures
+
+```csharp
+using WallstopStudios.UnityHelpers.Tests.Core;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
+public sealed class AudioSettingsTests : CommonTestBase
+{
+    [Test]
+    public void AudioSettingsLoadsFromResources()
+    {
+        // ScriptableObjectSingleton loads lazily from Resources
+        var settings = AudioSettings.Instance;
+        Assert.That(settings != null);
+        Assert.That(settings.masterVolume, Is.InRange(0f, 1f));
+    }
+}
+```
+
+#### Pattern 2: Create Test-Specific Assets
+
+For tests that need controlled data:
+
+```csharp
+#if UNITY_EDITOR
+[Test]
+public void SettingsWithCustomValuesWork()
+{
+    // Create a test instance (tracked by CommonTestBase for cleanup)
+    var testSettings = CreateScriptableObject<AudioSettings>();
+    testSettings.masterVolume = 0.5f;
+
+    // Test logic using the instance directly (not via Instance property)
+    Assert.That(testSettings.masterVolume, Is.EqualTo(0.5f));
+}
+#endif
+```
+
+### Key Testing Guidelines
+
+1. **Inherit from `CommonTestBase`**: This handles most singleton cleanup automatically, including dispatcher scope management.
+
+2. **Use `CreateTestScope` for dispatcher**: The `UnityMainThreadDispatcher.CreateTestScope()` method packages the common test setup pattern: disable auto-creation → destroy existing → re-enable auto-creation.
+
+3. **Prefer `destroyImmediate: true` in EditMode**: EditMode tests should use `DestroyImmediate` to ensure synchronous cleanup without Unity's delayed destruction.
+
+4. **Track created objects**: Use `Track<T>()` or `TrackDisposable<T>()` to ensure objects are cleaned up after tests.
+
+5. **Clear singleton state between tests**: Domain reloads clear singleton instances, but within a test run you may need explicit cleanup.
+
 <a id="troubleshooting"></a>
 
 ## Troubleshooting
@@ -438,8 +576,10 @@ Use this chart to pick an approach based on constraints:
 - Multiple ScriptableObject assets found: a warning is logged and the first by name is used. Resolve by keeping only one asset in Resources or by letting the auto‑creator relocate the correct one.
 - `Instance` returns null for ScriptableObject: Ensure the asset exists under `Resources/` and the type name or custom path matches.
 - Domain reloads: Both singletons clear cached instances before scene load.
+- Leaked GameObjects in tests: Use `CommonTestBase` or wrap test code with `AutoCreationScope.Disabled()` to ensure cleanup.
 
 ## Related Docs
 
 - Editor tool: [ScriptableObject Singleton Creator](../editor-tools/editor-tools-guide.md#scriptableobject-singleton-creator).
 - Tests: `Tests/Runtime/Utils/RuntimeSingletonTests.cs` and `Tests/Editor/Utils/ScriptableObjectSingletonTests.cs`.
+- Dispatcher testing: [Unity Main Thread Dispatcher Guide](../logging/unity-main-thread-dispatcher.md#testing-patterns).

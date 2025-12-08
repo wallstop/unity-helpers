@@ -344,14 +344,14 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [3D Spatial Trees](../features/spatial/spatial-trees-3d-guide.md) | [3D Performance](../performance/spatial-tree-3d-performance.md)
 
 **RuntimeSingleton<T>** - Component singleton pattern
-→ [Singletons Guide](../features/utilities/singletons.md) | [README](../../README.md#singleton-utilities-odin-compatible)
+→ [Singletons Guide](../features/utilities/singletons.md) | [Testing Patterns](../features/utilities/singletons.md#testing-patterns) | [README](../../README.md#singleton-utilities-odin-compatible)
 
 ---
 
 ## S
 
 **ScriptableObject Singleton** - Settings/data singleton pattern
-→ [Singletons Guide](../features/utilities/singletons.md) | [README](../../README.md#singleton-utilities-odin-compatible)
+→ [Singletons Guide](../features/utilities/singletons.md) | [Testing Patterns](../features/utilities/singletons.md#testing-patterns) | [README](../../README.md#singleton-utilities-odin-compatible)
 
 **ScriptableObject Singleton Creator** - Auto-create singleton assets
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#scriptableobject-singleton-creator)

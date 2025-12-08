@@ -274,7 +274,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             [ValueSource(nameof(ProtectedPathTestCases))] ProtectedPathTestCase testCase
         )
         {
-            bool actual = CommonTestBase.ProtectionTestHooks.TestIsProtectedPath(testCase.Path);
+            bool actual = ProtectionTestHooks.TestIsProtectedPath(testCase.Path);
             Assert.That(
                 actual,
                 Is.EqualTo(testCase.ExpectedIsProtected),
@@ -288,9 +288,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             [ValueSource(nameof(ProtectedPathTestCases))] ProtectedPathTestCase testCase
         )
         {
-            bool actual = CommonTestBase.ProtectionTestHooks.TestIsKnownDuplicatePollution(
-                testCase.Path
-            );
+            bool actual = ProtectionTestHooks.TestIsKnownDuplicatePollution(testCase.Path);
             Assert.That(
                 actual,
                 Is.EqualTo(testCase.ExpectedIsDuplicatePollution),
@@ -315,7 +313,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             List<string> incorrectlyProtected = new();
             foreach (string path in duplicatePaths)
             {
-                if (CommonTestBase.ProtectionTestHooks.TestIsProtectedPath(path))
+                if (ProtectionTestHooks.TestIsProtectedPath(path))
                 {
                     incorrectlyProtected.Add(path);
                 }
@@ -344,7 +342,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             List<string> unprotected = new();
             foreach (string path in mainFolders)
             {
-                if (!CommonTestBase.ProtectionTestHooks.TestIsProtectedPath(path))
+                if (!ProtectionTestHooks.TestIsProtectedPath(path))
                 {
                     unprotected.Add(path);
                 }
@@ -711,11 +709,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
                 foreach (string duplicate in duplicates)
                 {
-                    bool isDuplicatePollution =
-                        CommonTestBase.ProtectionTestHooks.TestIsKnownDuplicatePollution(duplicate);
-                    bool isProtected = CommonTestBase.ProtectionTestHooks.TestIsProtectedPath(
+                    bool isDuplicatePollution = ProtectionTestHooks.TestIsKnownDuplicatePollution(
                         duplicate
                     );
+                    bool isProtected = ProtectionTestHooks.TestIsProtectedPath(duplicate);
                     Debug.Log(
                         $"[SingletonAssetPollutionPreventionTests] Duplicate folder: {duplicate}, "
                             + $"IsDuplicatePollution={isDuplicatePollution}, IsProtected={isProtected}"

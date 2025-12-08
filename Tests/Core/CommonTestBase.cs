@@ -509,7 +509,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                             System.IO.Directory.CreateDirectory(absoluteDirectory);
                         }
                     }
-                    catch (System.Exception ex)
+                    catch (Exception ex)
                     {
                         Debug.LogWarning(
                             $"CommonTestBase.EnsureFolder: Failed to create directory on disk '{absoluteDirectory}': {ex.Message}"
@@ -565,7 +565,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                 foreach (string dir in System.IO.Directory.GetDirectories(parentAbsolutePath))
                 {
                     string name = System.IO.Path.GetFileName(dir);
-                    if (string.Equals(name, desiredName, System.StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(name, desiredName, StringComparison.OrdinalIgnoreCase))
                     {
                         return name;
                     }
@@ -645,7 +645,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                             System.IO.Directory.CreateDirectory(absoluteDirectory);
                         }
                     }
-                    catch (System.Exception ex)
+                    catch (Exception ex)
                     {
                         Debug.LogWarning(
                             $"CommonTestBase.EnsureFolderStatic: Failed to create directory on disk '{absoluteDirectory}': {ex.Message}"

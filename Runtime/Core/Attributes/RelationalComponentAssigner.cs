@@ -2,7 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
+    using Helper;
     using Tags;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
@@ -89,6 +89,13 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             return result;
         }
 
+        private static readonly Type[] RelationalAttributeTypes =
+        {
+            typeof(ParentComponentAttribute),
+            typeof(ChildComponentAttribute),
+            typeof(SiblingComponentAttribute),
+        };
+
         private void StoreCacheResult(Type componentType, bool result)
         {
             lock (_cacheLock)
@@ -102,21 +109,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             Type current = componentType;
             while (current != null && typeof(Component).IsAssignableFrom(current))
             {
-                // Prefer ReflectionHelpers so Editor TypeCache can accelerate lookups
-                bool has =
-                    Helper
-                        .ReflectionHelpers.GetFieldsWithAttribute<ParentComponentAttribute>(current)
-                        .Any()
-                    || Helper
-                        .ReflectionHelpers.GetFieldsWithAttribute<ChildComponentAttribute>(current)
-                        .Any()
-                    || Helper
-                        .ReflectionHelpers.GetFieldsWithAttribute<SiblingComponentAttribute>(
-                            current
-                        )
-                        .Any();
-
-                if (has)
+                // IsDefined checks for exact attribute types, not derived types.
+                // Must check each concrete relational attribute type separately.
+                if (current.HasAnyFieldWithAttributes(RelationalAttributeTypes))
                 {
                     return true;
                 }

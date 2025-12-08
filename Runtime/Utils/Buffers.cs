@@ -76,12 +76,39 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// <summary>
         /// Enables or disables LRU eviction when the cache reaches the max distinct entry count. When enabled, the oldest entries are removed and reused instead of refusing new durations.
         /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <strong>Performance Characteristics:</strong>
+        /// All LRU operations (lookup, insertion, eviction, access-order update) run in O(1) time.
+        /// This is achieved by storing a <see cref="LinkedListNode{T}"/> reference directly in each
+        /// cache entry, enabling O(1) removal and re-insertion for access-order updates.
+        /// </para>
+        /// <para>
+        /// <strong>Thread Safety:</strong>
+        /// When <c>SINGLE_THREADED</c> is not defined (default), all cache operations are protected
+        /// by a lock. When <c>SINGLE_THREADED</c> is defined, lock overhead is eliminated for
+        /// WebGL and other single-threaded runtimes.
+        /// </para>
+        /// </remarks>
         public static bool WaitInstructionUseLruEviction
         {
             get => Volatile.Read(ref waitInstructionUseLruEvictionFlag) != 0;
             set => Volatile.Write(ref waitInstructionUseLruEvictionFlag, value ? 1 : 0);
         }
 
+        /// <summary>
+        /// Stores a cached wait instruction alongside its position in the LRU ordering.
+        /// </summary>
+        /// <typeparam name="TInstruction">The type of wait instruction (WaitForSeconds or WaitForSecondsRealtime).</typeparam>
+        /// <remarks>
+        /// By storing the <see cref="LinkedListNode{T}"/> directly, we achieve O(1) complexity for:
+        /// <list type="bullet">
+        ///   <item><description>Removing the entry from its current position: <see cref="LinkedList{T}.Remove(LinkedListNode{T})"/> is O(1)</description></item>
+        ///   <item><description>Moving the entry to the end (most recently used): <see cref="LinkedList{T}.AddLast(LinkedListNode{T})"/> is O(1)</description></item>
+        ///   <item><description>Evicting the oldest entry: <see cref="LinkedList{T}.First"/> and <see cref="LinkedList{T}.RemoveFirst"/> are O(1)</description></item>
+        /// </list>
+        /// This avoids the O(n) traversal that would be required if we only stored keys and had to search for them.
+        /// </remarks>
         private readonly struct WaitInstructionCacheEntry<TInstruction>
         {
             internal readonly TInstruction value;
@@ -254,6 +281,28 @@ namespace WallstopStudios.UnityHelpers.Utils
             return new WaitForSecondsRealtime(seconds);
         }
 
+        /// <summary>
+        /// Core LRU cache implementation for wait instructions. Provides O(1) operations for all cache operations.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <strong>Algorithm:</strong>
+        /// Uses a Dictionary for O(1) key lookup combined with a LinkedList for O(1) LRU ordering.
+        /// Each cache entry stores a reference to its LinkedListNode, enabling O(1) removal and reinsertion.
+        /// </para>
+        /// <para>
+        /// <strong>Operations:</strong>
+        /// <list type="bullet">
+        ///   <item><description>Cache hit: O(1) lookup + O(1) move to end of LRU list</description></item>
+        ///   <item><description>Cache miss with capacity: O(1) add to dictionary + O(1) add to end of LRU list</description></item>
+        ///   <item><description>Cache miss with eviction: O(1) remove oldest + O(1) add new entry</description></item>
+        /// </list>
+        /// </para>
+        /// <para>
+        /// <strong>Thread Safety:</strong>
+        /// Protected by <see cref="WaitInstructionCacheLock"/> unless <c>SINGLE_THREADED</c> is defined.
+        /// </para>
+        /// </remarks>
         private static TInstruction RentWaitInstruction<TInstruction>(
             Dictionary<float, WaitInstructionCacheEntry<TInstruction>> cache,
             LinkedList<float> order,

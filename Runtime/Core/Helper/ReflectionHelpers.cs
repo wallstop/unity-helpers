@@ -318,6 +318,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             (Type type, string sig, BindingFlags flags),
             MethodInfo
         > MethodLookup = new();
+        private static readonly Dictionary<
+            (Type type, BindingFlags flags),
+            FieldInfo[]
+        > FieldArrayCache = new();
 #else
         private static readonly ConcurrentDictionary<
             (Type type, string name, BindingFlags flags),
@@ -331,7 +335,61 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             (Type type, string sig, BindingFlags flags),
             MethodInfo
         > MethodLookup = new();
+        private static readonly ConcurrentDictionary<
+            (Type type, BindingFlags flags),
+            FieldInfo[]
+        > FieldArrayCache = new();
 #endif
+
+        private const BindingFlags AllInstanceFieldsFlags =
+            BindingFlags.Public
+            | BindingFlags.NonPublic
+            | BindingFlags.Instance
+            | BindingFlags.Static;
+
+        /// <summary>
+        /// Gets all fields for a type with caching to avoid repeated allocations.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static FieldInfo[] GetFieldsCached(Type type, BindingFlags flags)
+        {
+            if (type == null)
+            {
+                return Array.Empty<FieldInfo>();
+            }
+
+            (Type, BindingFlags) key = (type, flags);
+#if SINGLE_THREADED
+            if (!FieldArrayCache.TryGetValue(key, out FieldInfo[] fields))
+            {
+                try
+                {
+                    fields = type.GetFields(flags);
+                }
+                catch
+                {
+                    fields = Array.Empty<FieldInfo>();
+                }
+                FieldArrayCache[key] = fields;
+            }
+            return fields;
+#else
+            return FieldArrayCache.GetOrAdd(
+                key,
+                static k =>
+                {
+                    try
+                    {
+                        return k.type.GetFields(k.flags);
+                    }
+                    catch
+                    {
+                        return Array.Empty<FieldInfo>();
+                    }
+                }
+            );
+#endif
+        }
 
         /// <summary>
         /// Tries to get an attribute of type <typeparamref name="T"/> and indicates whether it is present.
@@ -3887,6 +3945,78 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 return Array.Empty<FieldInfo>();
             }
+        }
+
+        /// <summary>
+        /// Checks if a type has any field decorated with the specified attribute type.
+        /// Short-circuits on first match for efficiency.
+        /// </summary>
+        /// <typeparam name="TAttribute">The attribute type to search for.</typeparam>
+        /// <param name="type">The type to inspect.</param>
+        /// <param name="inherit">Whether to search the attribute's inheritance chain.</param>
+        /// <returns>True if any field has the attribute; otherwise false.</returns>
+        public static bool HasAnyFieldWithAttribute<TAttribute>(this Type type, bool inherit = true)
+            where TAttribute : Attribute
+        {
+            if (type == null)
+            {
+                return false;
+            }
+
+            FieldInfo[] fields = GetFieldsCached(type, AllInstanceFieldsFlags);
+
+            for (int i = 0; i < fields.Length; i++)
+            {
+                if (HasAttributeSafe<TAttribute>(fields[i], inherit))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if a type has any field decorated with any of the specified attribute types.
+        /// Short-circuits on first match for efficiency. Useful when checking for multiple
+        /// related attributes without allocating enumerators.
+        /// </summary>
+        /// <param name="type">The type to inspect.</param>
+        /// <param name="attributeTypes">The attribute types to search for.</param>
+        /// <param name="inherit">Whether to search the attribute's inheritance chain.</param>
+        /// <returns>True if any field has any of the attributes; otherwise false.</returns>
+        public static bool HasAnyFieldWithAttributes(
+            this Type type,
+            Type[] attributeTypes,
+            bool inherit = true
+        )
+        {
+            if (type == null || attributeTypes == null || attributeTypes.Length == 0)
+            {
+                return false;
+            }
+
+            FieldInfo[] fields = GetFieldsCached(type, AllInstanceFieldsFlags);
+
+            for (int i = 0; i < fields.Length; i++)
+            {
+                FieldInfo field = fields[i];
+                if (field == null)
+                {
+                    continue;
+                }
+
+                for (int j = 0; j < attributeTypes.Length; j++)
+                {
+                    Type attributeType = attributeTypes[j];
+                    if (attributeType != null && HasAttributeSafe(field, attributeType, inherit))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private static bool CheckDynamicIlSupport()

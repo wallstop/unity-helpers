@@ -78,6 +78,8 @@ internal static class UnityMainThreadDispatcherEditorTestBootstrap
 - Executes once per editor domain reload (before EditMode tests run).
 - Ensures the hidden dispatcher object is removed from the hierarchy so Unity's test runner does not flag leaked objects between assemblies.
 
+<a id="testing-patterns"></a>
+
 ### Re-enabling per Test
 
 The runtime and editor `CommonTestBase` fixtures demonstrate the intended per-test lifecycle via `UnityMainThreadDispatcher.AutoCreationScope`:
