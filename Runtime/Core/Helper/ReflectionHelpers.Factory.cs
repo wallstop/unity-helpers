@@ -13,8 +13,17 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System.Collections.Concurrent;
 #endif
 
+    // ReflectionHelpers.Factory.cs - Delegate creation and strategy management
+    // See ReflectionHelpers.cs for full architecture documentation
     public static partial class ReflectionHelpers
     {
+        /// <summary>
+        /// Specifies which implementation strategy to use for creating reflection delegates.
+        /// </summary>
+        /// <remarks>
+        /// The <see cref="DelegateFactory"/> tries strategies in order: Expressions → DynamicIl → Reflection.
+        /// Failed strategies are tracked in a blocklist to avoid repeated attempts.
+        /// </remarks>
         internal enum ReflectionDelegateStrategy
         {
             [Obsolete("Use a concrete strategy value.", false)]
@@ -24,6 +33,25 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             Reflection = 3,
         }
 
+        /// <summary>
+        /// Internal factory responsible for creating, caching, and managing reflection delegates.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// For each member type (FieldInfo, PropertyInfo, MethodInfo, ConstructorInfo), this factory:
+        /// </para>
+        /// <list type="number">
+        ///   <item>Checks if a delegate is already cached for the requested strategy</item>
+        ///   <item>Checks if the strategy has previously failed (blocklist)</item>
+        ///   <item>Attempts to create a new delegate using the strategy</item>
+        ///   <item>On failure, marks the strategy as unavailable and tries the next</item>
+        ///   <item>Caches successful delegates for future use</item>
+        /// </list>
+        /// <para>
+        /// The factory uses <see cref="CapabilityKey{T}"/> to uniquely identify cache entries
+        /// by both member and strategy, allowing different strategies to coexist in the cache.
+        /// </para>
+        /// </remarks>
         private static class DelegateFactory
         {
             private const byte StrategyUnavailableSentinel = 0;

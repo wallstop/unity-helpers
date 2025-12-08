@@ -8,8 +8,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using UnityEngine;
     using Utils;
 
+    // GridConcaveHullEdgeSplit.cs - Edge-splitting algorithm implementation
+    // See GeometryConcaveHull.cs for full concave hull architecture documentation
     /// <summary>
     /// Edge-splitting concave hull builders plus supporting structures.
+    /// Starts with convex hull and recursively splits longest edges with interior points.
     /// </summary>
     public static partial class UnityExtensions
     {

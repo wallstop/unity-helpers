@@ -16,9 +16,71 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     /// Vector types, UI components, and advanced geometric algorithms such as convex/concave hull generation.
     /// </summary>
     /// <remarks>
-    /// Thread Safety: Most methods require execution on the Unity main thread due to Unity API calls.
-    /// Performance: Methods use object pooling where possible to minimize allocations.
-    /// This class contains geometric algorithms adapted from various sources (see method-level comments).
+    /// <para><b>Thread Safety:</b> Most methods require execution on the Unity main thread due to Unity API calls.</para>
+    /// <para><b>Performance:</b> Methods use object pooling where possible to minimize allocations.</para>
+    /// <para>This class contains geometric algorithms adapted from various sources (see method-level comments).</para>
+    ///
+    /// <para><b>Concave Hull Architecture</b></para>
+    /// <para>
+    /// The concave hull system is organized as a partial class across multiple files, each handling a specific aspect:
+    /// </para>
+    /// <list type="table">
+    ///   <listheader>
+    ///     <term>File</term>
+    ///     <description>Responsibility</description>
+    ///   </listheader>
+    ///   <item>
+    ///     <term><c>GeometryConcaveHull.cs</c></term>
+    ///     <description>Core types: <see cref="ConcaveHullStrategy"/> enum, <see cref="ConcaveHullOptions"/> struct.
+    ///       This is the architecture documentation entry point.</description>
+    ///   </item>
+    ///   <item>
+    ///     <term><c>GridConcaveHull.cs</c></term>
+    ///     <description>Main entry point for <c>Vector2</c> inputs. Strategy dispatcher that routes to the
+    ///       appropriate algorithm based on <see cref="ConcaveHullOptions.Strategy"/>. Also contains the
+    ///       post-processing repair logic that fixes axis-aligned hull artifacts.</description>
+    ///   </item>
+    ///   <item>
+    ///     <term><c>GeometryConcaveHullGrid.cs</c></term>
+    ///     <description>Grid-aware entry points for <c>FastVector3Int</c> inputs with Unity <c>Grid</c> context.
+    ///       Converts grid positions to world coordinates for hull computation.</description>
+    ///   </item>
+    ///   <item>
+    ///     <term><c>GridConcaveHullKnn.cs</c></term>
+    ///     <description>K-Nearest Neighbors (KNN) algorithm implementation (<see cref="ConcaveHullStrategy.Knn"/>).
+    ///       Iteratively builds the hull by selecting the next point from k nearest neighbors that produces
+    ///       the maximum right turn without intersecting existing edges. Good for general point clouds.</description>
+    ///   </item>
+    ///   <item>
+    ///     <term><c>GridConcaveHullEdgeSplit.cs</c></term>
+    ///     <description>Edge-splitting algorithm implementation (<see cref="ConcaveHullStrategy.EdgeSplit"/>).
+    ///       Starts with convex hull, then recursively splits the longest edges by inserting interior points.
+    ///       Better for grid-aligned data with uniform density. Contains <c>HullEdge</c> struct and comparer.</description>
+    ///   </item>
+    ///   <item>
+    ///     <term><c>GridConcaveHullDiagnostics.cs</c></term>
+    ///     <description>Diagnostics and repair utilities. Contains <c>ConcaveHullRepairStats</c> for tracking
+    ///       repair operations (enabled via <c>ENABLE_CONCAVE_HULL_STATS</c>), axis-corner repair methods,
+    ///       and shared geometry helpers (intersection tests, angle calculations).</description>
+    ///   </item>
+    ///   <item>
+    ///     <term><c>GridConcaveHullLineDivision.cs</c></term>
+    ///     <description>Legacy line-division algorithm (retired/obsolete). Throws <c>NotSupportedException</c>;
+    ///       kept only for API compatibility guidance.</description>
+    ///   </item>
+    /// </list>
+    ///
+    /// <para><b>Algorithm Selection Guidelines</b></para>
+    /// <list type="bullet">
+    ///   <item><b>KNN (default):</b> Best for irregular point distributions. More robust but slower for large datasets.</item>
+    ///   <item><b>EdgeSplit:</b> Best for grid-aligned/lattice data. Faster but may produce artifacts on irregular data.</item>
+    /// </list>
+    ///
+    /// <para><b>Post-Processing</b></para>
+    /// <para>
+    /// Both algorithms apply optional axis-corner repair to fix common artifacts in grid-aligned data.
+    /// The repair pass inserts missing axis-aligned corners and removes redundant colinear points.
+    /// </para>
     /// </remarks>
     public static partial class UnityExtensions
     {

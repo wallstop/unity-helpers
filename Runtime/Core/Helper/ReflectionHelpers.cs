@@ -32,9 +32,84 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     /// dynamic collection creation, and type/attribute scanning with caching and optional IL emission.
     /// </summary>
     /// <remarks>
-    /// - Uses expression compilation or dynamic IL where supported; falls back to reflection otherwise.
-    /// - Caches generated delegates to avoid per-call reflection overhead.
-    /// - Designed for hot paths (serialization, UI binding, ECS-style systems).
+    /// <para><b>Architecture Overview</b></para>
+    /// <para>
+    /// This class provides a unified API for reflection-based operations while automatically selecting
+    /// the highest-performance implementation strategy available on the current platform. The implementation
+    /// uses a three-tier fallback system:
+    /// </para>
+    /// <list type="number">
+    ///   <item>
+    ///     <term><b>Expression Trees</b> (preferred)</term>
+    ///     <description>
+    ///       Uses <c>System.Linq.Expressions</c> to build and compile lambda expressions at runtime.
+    ///       This produces near-native performance delegates. Available on Mono and .NET runtimes that
+    ///       support JIT compilation. Disabled on IL2CPP and WebGL builds where AOT compilation is required.
+    ///     </description>
+    ///   </item>
+    ///   <item>
+    ///     <term><b>Dynamic IL Emission</b> (fallback #1)</term>
+    ///     <description>
+    ///       Uses <c>System.Reflection.Emit.DynamicMethod</c> to generate IL bytecode directly.
+    ///       Provides similar performance to expression trees but with more control over the generated code.
+    ///       Also disabled on IL2CPP and WebGL. Some edge cases that fail expression compilation may
+    ///       succeed with IL emission.
+    ///     </description>
+    ///   </item>
+    ///   <item>
+    ///     <term><b>Direct Reflection</b> (fallback #2)</term>
+    ///     <description>
+    ///       Falls back to standard <c>FieldInfo.GetValue</c>/<c>SetValue</c>, <c>PropertyInfo</c>,
+    ///       <c>MethodInfo.Invoke</c>, and <c>ConstructorInfo.Invoke</c> calls. This is the slowest
+    ///       option but works on all platforms including IL2CPP and WebGL.
+    ///     </description>
+    ///   </item>
+    /// </list>
+    /// <para><b>Platform Support</b></para>
+    /// <list type="table">
+    ///   <listheader>
+    ///     <term>Platform</term>
+    ///     <description>Strategy Used</description>
+    ///   </listheader>
+    ///   <item>
+    ///     <term>Unity Editor</term>
+    ///     <description>Expression Trees → Dynamic IL → Reflection</description>
+    ///   </item>
+    ///   <item>
+    ///     <term>Standalone (Mono)</term>
+    ///     <description>Expression Trees → Dynamic IL → Reflection</description>
+    ///   </item>
+    ///   <item>
+    ///     <term>IL2CPP Builds</term>
+    ///     <description>Reflection only (JIT unavailable)</description>
+    ///   </item>
+    ///   <item>
+    ///     <term>WebGL</term>
+    ///     <description>Reflection only (JIT unavailable)</description>
+    ///   </item>
+    /// </list>
+    /// <para><b>Caching Strategy</b></para>
+    /// <para>
+    /// All generated delegates are cached using thread-safe concurrent dictionaries (or regular dictionaries
+    /// when <c>SINGLE_THREADED</c> is defined). The cache key includes both the member info and the strategy
+    /// used, allowing the system to track which strategies have been attempted and failed for each member.
+    /// A blocklist tracks strategies that failed for specific members, avoiding repeated failed attempts.
+    /// </para>
+    /// <para><b>Testing Support</b></para>
+    /// <para>
+    /// The internal <c>OverrideReflectionCapabilities</c> method allows tests to force specific strategies,
+    /// enabling verification that all fallback paths work correctly. Use the returned <c>IDisposable</c>
+    /// to restore original capabilities after the test.
+    /// </para>
+    /// <para><b>File Organization</b></para>
+    /// <para>
+    /// This is a partial class split across multiple files:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item><c>ReflectionHelpers.cs</c> - Public API, caching infrastructure, IL emission methods</item>
+    ///   <item><c>ReflectionHelpers.Factory.cs</c> - Internal <c>DelegateFactory</c> class managing
+    ///     delegate creation, strategy selection, and caching for each member type</item>
+    /// </list>
     /// </remarks>
     /// <example>
     /// <code><![CDATA[
@@ -48,6 +123,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     /// UnityEngine.Debug.Log(getter(p)); // 42
     /// ]]></code>
     /// </example>
+    /// <threadsafety>
+    /// All public methods are thread-safe. Internal caching uses <c>ConcurrentDictionary</c> by default,
+    /// or standard dictionaries with external synchronization when <c>SINGLE_THREADED</c> is defined.
+    /// </threadsafety>
     public static partial class ReflectionHelpers
     {
         // Cache for type resolution by name

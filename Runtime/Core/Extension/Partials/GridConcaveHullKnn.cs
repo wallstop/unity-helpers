@@ -7,8 +7,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using UnityEngine;
     using Utils;
 
+    // GridConcaveHullKnn.cs - K-Nearest Neighbors algorithm implementation
+    // See GeometryConcaveHull.cs for full concave hull architecture documentation
     /// <summary>
     /// KNN-based concave hull builders for Vector2 and FastVector3Int grids.
+    /// Iteratively selects next hull point from k nearest neighbors using maximum right turn.
     /// </summary>
     public static partial class UnityExtensions
     {

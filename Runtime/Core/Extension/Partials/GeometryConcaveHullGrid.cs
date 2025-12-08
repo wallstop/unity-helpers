@@ -8,8 +8,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
 
+    // GeometryConcaveHullGrid.cs - Grid-aware entry points for FastVector3Int inputs
+    // See GeometryConcaveHull.cs for full concave hull architecture documentation
     /// <summary>
     /// Grid-aware concave hull entry points (FastVector3Int + Grid contexts).
+    /// Provides hull generation for Unity Grid-based tile systems.
     /// </summary>
     public static partial class UnityExtensions
     {

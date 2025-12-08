@@ -78,7 +78,16 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// Maximum depth to search down the hierarchy. 0 means unlimited. Default: 0.
         /// Depth 1 = immediate children only, depth 2 = children and grandchildren, etc.
         /// </summary>
-        public int MaxDepth { get; set; } = 0;
+        /// <remarks>
+        /// Negative values are treated as 0 (unlimited). The search is breadth-first, so closer
+        /// descendants are found before distant ones regardless of depth limit.
+        /// </remarks>
+        public int MaxDepth
+        {
+            get => _maxDepth;
+            set => _maxDepth = value < 0 ? 0 : value;
+        }
+        private int _maxDepth;
     }
 
     public static class ChildComponentExtensions
