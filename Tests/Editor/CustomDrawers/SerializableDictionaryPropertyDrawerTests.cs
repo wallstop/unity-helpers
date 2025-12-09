@@ -5116,5 +5116,237 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 fieldInfo.SetValue(settings, originalValue);
             }
         }
+
+        /// <summary>
+        /// Regression test: Verifies that CommitEntry correctly adds entries to
+        /// UnityHelpersSettings palette dictionaries (ScriptableSingleton targets).
+        /// Previously, the entry would be committed but the runtime dictionary would
+        /// remain stale due to EditorAfterDeserialize reading from unupdated managed fields.
+        /// </summary>
+        [Test]
+        public void CommitEntryAddsToSettingsPalette()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            SerializedObject serializedSettings = TrackDisposable(new SerializedObject(settings));
+            serializedSettings.Update();
+
+            SerializedProperty paletteProperty = serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            Assert.IsNotNull(paletteProperty, "Should find WButtonCustomColors property.");
+
+            SerializedProperty keysProperty = paletteProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = paletteProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+            Assert.IsNotNull(keysProperty, "Should find keys property.");
+            Assert.IsNotNull(valuesProperty, "Should find values property.");
+
+            // Generate a unique test key to avoid conflicts with existing settings
+            string testKey = $"TestKey_{Guid.NewGuid():N}";
+            int initialCount = keysProperty.arraySize;
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(UnityHelpersSettings.WButtonCustomColor),
+                testKey,
+                new UnityHelpersSettings.WButtonCustomColor
+                {
+                    buttonColor = Color.cyan,
+                    textColor = Color.yellow,
+                },
+                paletteProperty
+            );
+
+            Assert.IsTrue(result.added, "Expected CommitEntry to add a new element.");
+            Assert.That(
+                result.index,
+                Is.GreaterThanOrEqualTo(0),
+                "Returned index should be valid."
+            );
+
+            // Verify SerializedProperty state
+            serializedSettings.Update();
+            keysProperty = serializedSettings
+                .FindProperty(UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors)
+                .FindPropertyRelative(SerializableDictionarySerializedPropertyNames.Keys);
+
+            int finalCount = keysProperty.arraySize;
+            Assert.That(
+                finalCount,
+                Is.EqualTo(initialCount + 1),
+                "Keys array size should have increased by 1."
+            );
+
+            // Clean up: Remove the test entry
+            bool foundTestKey = false;
+            for (int i = 0; i < keysProperty.arraySize; i++)
+            {
+                if (keysProperty.GetArrayElementAtIndex(i).stringValue == testKey)
+                {
+                    keysProperty.DeleteArrayElementAtIndex(i);
+                    valuesProperty = serializedSettings
+                        .FindProperty(
+                            UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+                        )
+                        .FindPropertyRelative(SerializableDictionarySerializedPropertyNames.Values);
+                    valuesProperty.DeleteArrayElementAtIndex(i);
+                    serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+                    foundTestKey = true;
+                    break;
+                }
+            }
+
+            Assert.IsTrue(foundTestKey, "Test key should have been found in the keys array.");
+        }
+
+        /// <summary>
+        /// Regression test: Verifies that multiple consecutive CommitEntry calls work
+        /// correctly for UnityHelpersSettings targets without requiring a domain reload.
+        /// </summary>
+        [Test]
+        public void MultipleConsecutiveCommitsToSettingsPaletteWork()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            SerializedObject serializedSettings = TrackDisposable(new SerializedObject(settings));
+            serializedSettings.Update();
+
+            SerializedProperty paletteProperty = serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            SerializedProperty keysProperty = paletteProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = paletteProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            int initialCount = keysProperty.arraySize;
+            List<string> testKeys = new();
+            SerializableDictionaryPropertyDrawer drawer = new();
+
+            // Add multiple entries consecutively
+            for (int i = 0; i < 3; i++)
+            {
+                string testKey = $"MultiCommitTest_{i}_{Guid.NewGuid():N}";
+                testKeys.Add(testKey);
+
+                SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
+                    keysProperty,
+                    valuesProperty,
+                    typeof(string),
+                    typeof(UnityHelpersSettings.WButtonCustomColor),
+                    testKey,
+                    new UnityHelpersSettings.WButtonCustomColor
+                    {
+                        buttonColor = new Color(i * 0.3f, 0.5f, 0.8f),
+                        textColor = Color.white,
+                    },
+                    paletteProperty
+                );
+
+                Assert.IsTrue(result.added, $"CommitEntry #{i + 1} should succeed.");
+
+                // Re-fetch properties after each commit to verify state
+                serializedSettings.Update();
+                paletteProperty = serializedSettings.FindProperty(
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+                );
+                keysProperty = paletteProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Keys
+                );
+                valuesProperty = paletteProperty.FindPropertyRelative(
+                    SerializableDictionarySerializedPropertyNames.Values
+                );
+
+                Assert.That(
+                    keysProperty.arraySize,
+                    Is.EqualTo(initialCount + i + 1),
+                    $"After commit #{i + 1}, keys count should be {initialCount + i + 1}."
+                );
+            }
+
+            // Clean up: Remove all test entries
+            serializedSettings.Update();
+            paletteProperty = serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            keysProperty = paletteProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            valuesProperty = paletteProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            for (int i = keysProperty.arraySize - 1; i >= 0; i--)
+            {
+                string key = keysProperty.GetArrayElementAtIndex(i).stringValue;
+                if (testKeys.Contains(key))
+                {
+                    keysProperty.DeleteArrayElementAtIndex(i);
+                    valuesProperty.DeleteArrayElementAtIndex(i);
+                }
+            }
+
+            serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Verifies that ForwardSyncFromSerializedProperties correctly reads complex values
+        /// from SerializedProperties and updates the managed arrays.
+        /// </summary>
+        [Test]
+        public void ForwardSyncPreservesComplexValueFields()
+        {
+            // Use a regular ScriptableObject host to test the sync mechanism
+            ComplexValueDictionaryHost host = CreateScriptableObject<ComplexValueDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ComplexValueDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            Color expectedButtonColor = new(0.1f, 0.2f, 0.3f, 1f);
+            Color expectedTextColor = new(0.9f, 0.8f, 0.7f, 1f);
+            string testKey = "SyncTestKey";
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(ComplexValue),
+                testKey,
+                new ComplexValue { button = expectedButtonColor, text = expectedTextColor },
+                dictionaryProperty
+            );
+
+            Assert.IsTrue(result.added, "Expected CommitEntry to add a new element.");
+
+            // Verify the runtime dictionary contains the correct values
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+            host.dictionary.EditorAfterDeserialize();
+
+            Assert.That(host.dictionary.Count, Is.EqualTo(1), "Dictionary should have 1 entry.");
+            Assert.IsTrue(
+                host.dictionary.TryGetValue(testKey, out ComplexValue retrievedValue),
+                "Should be able to retrieve the added entry."
+            );
+            Assert.That(retrievedValue.button, Is.EqualTo(expectedButtonColor));
+            Assert.That(retrievedValue.text, Is.EqualTo(expectedTextColor));
+        }
     }
 }

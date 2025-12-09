@@ -322,6 +322,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             (Type type, BindingFlags flags),
             FieldInfo[]
         > FieldArrayCache = new();
+        private static readonly Dictionary<
+            (Type type, Type returnType, string indexParamsSig),
+            PropertyInfo
+        > IndexerLookup = new();
 #else
         private static readonly ConcurrentDictionary<
             (Type type, string name, BindingFlags flags),
@@ -339,6 +343,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             (Type type, BindingFlags flags),
             FieldInfo[]
         > FieldArrayCache = new();
+        private static readonly ConcurrentDictionary<
+            (Type type, Type returnType, string indexParamsSig),
+            PropertyInfo
+        > IndexerLookup = new();
 #endif
 
         private const BindingFlags AllInstanceFieldsFlags =
@@ -900,7 +908,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 $"Get{field.DeclaringType.Name}_{field.Name}",
                 typeof(object),
                 Type.EmptyTypes,
-                field.DeclaringType,
+                field.DeclaringType.Module,
                 true
             );
             ILGenerator il = dynamicMethod.GetILGenerator();
@@ -3309,6 +3317,111 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return property != null;
         }
 
+        /// <summary>
+        /// Tries to get an indexer property (named "Item") with specific return type and index parameter types.
+        /// This is useful when a type implements multiple interfaces with indexers (e.g., both
+        /// <c>IDictionary&lt;TKey, TValue&gt;</c> and <c>IDictionary</c>), which would cause
+        /// <see cref="AmbiguousMatchException"/> with <see cref="Type.GetProperty(string, BindingFlags)"/>.
+        /// </summary>
+        /// <param name="type">The type to search for the indexer.</param>
+        /// <param name="returnType">The return type of the indexer.</param>
+        /// <param name="indexParameterTypes">The types of the index parameters.</param>
+        /// <param name="property">The found property, or null if not found.</param>
+        /// <returns>True if the indexer was found, false otherwise.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// // Get the generic indexer from SerializableDictionary<string, int>
+        /// Type dictType = typeof(SerializableDictionary<string, int>);
+        /// if (ReflectionHelpers.TryGetIndexerProperty(dictType, typeof(int), new[] { typeof(string) }, out var indexer))
+        /// {
+        ///     var setter = ReflectionHelpers.GetIndexerSetter(indexer);
+        ///     setter(myDict, 42, new object[] { "key" });
+        /// }
+        /// ]]></code>
+        /// </example>
+        public static bool TryGetIndexerProperty(
+            Type type,
+            Type returnType,
+            Type[] indexParameterTypes,
+            out PropertyInfo property
+        )
+        {
+            property = null;
+            if (type == null || returnType == null || indexParameterTypes == null)
+            {
+                return false;
+            }
+
+            string paramsSig = BuildIndexerSignatureKey(indexParameterTypes);
+            (Type type, Type returnType, string indexParamsSig) key = (type, returnType, paramsSig);
+#if SINGLE_THREADED
+            if (!IndexerLookup.TryGetValue(key, out property))
+            {
+                PropertyInfo found = type.GetProperty("Item", returnType, indexParameterTypes);
+                // Unity's Mono may not strictly validate return type in GetProperty,
+                // so we explicitly check that the found property matches our criteria
+                property = ValidateIndexerProperty(found, returnType, indexParameterTypes);
+                IndexerLookup[key] = property;
+            }
+#else
+            property = IndexerLookup.GetOrAdd(
+                key,
+                static (k, state) =>
+                {
+                    PropertyInfo found = k.type.GetProperty("Item", k.returnType, state);
+                    // Unity's Mono may not strictly validate return type in GetProperty,
+                    // so we explicitly check that the found property matches our criteria
+                    return ValidateIndexerProperty(found, k.returnType, state);
+                },
+                indexParameterTypes
+            );
+#endif
+            return property != null;
+        }
+
+        private static PropertyInfo ValidateIndexerProperty(
+            PropertyInfo found,
+            Type expectedReturnType,
+            Type[] expectedIndexParameterTypes
+        )
+        {
+            if (found == null)
+            {
+                return null;
+            }
+
+            if (found.PropertyType != expectedReturnType)
+            {
+                return null;
+            }
+
+            ParameterInfo[] indexParams = found.GetIndexParameters();
+            if (indexParams.Length != expectedIndexParameterTypes.Length)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < indexParams.Length; i++)
+            {
+                if (indexParams[i].ParameterType != expectedIndexParameterTypes[i])
+                {
+                    return null;
+                }
+            }
+
+            return found;
+        }
+
+        private static string BuildIndexerSignatureKey(Type[] paramTypes)
+        {
+            if (paramTypes == null || paramTypes.Length == 0)
+            {
+                return "[]";
+            }
+
+            return "[" + string.Join(",", paramTypes.Select(t => t?.FullName ?? "null")) + "]";
+        }
+
         public static bool TryGetMethod(
             Type type,
             string name,
@@ -5411,7 +5524,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 $"GetStaticTyped{field.DeclaringType.Name}_{field.Name}",
                 typeof(TValue),
                 Type.EmptyTypes,
-                field.DeclaringType,
+                field.DeclaringType.Module,
                 true
             );
             ILGenerator il = dynamicMethod.GetILGenerator();
@@ -5586,7 +5699,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             if (!ExpressionsEnabled)
             {
-                return () => field.GetValue(null);
+                return null;
             }
 
             try
@@ -5601,7 +5714,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
             catch
             {
-                return () => field.GetValue(null);
+                return null;
             }
         }
 
@@ -5647,7 +5760,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             if (!ExpressionsEnabled)
             {
-                return value => field.SetValue(null, value);
+                return null;
             }
 
             try
@@ -5667,7 +5780,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
             catch
             {
-                return value => field.SetValue(null, value);
+                return null;
             }
         }
 

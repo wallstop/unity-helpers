@@ -81,7 +81,7 @@ private void SpawnEnemy() { }
 
 // With displayName - shows "🔫 Spawn Enemy"
 [WButton("🔫 Spawn Enemy")]
-private void SpawnEnemy() { }
+private void SpawnEnemy1() { }
 
 // More descriptive labels
 [WButton("Reset Player to Checkpoint")]
@@ -91,7 +91,7 @@ private void ResetPlayer() { }
 private void ClearSaveData() { }
 ```
 
-![Image placeholder: inspector-button-display-names.png - Side-by-side comparison showing method names vs custom display names]
+![Side-by-side comparison showing method names vs custom display names](../../images/inspector/buttons/inspector-button-display-names.png)
 
 ---
 
@@ -105,7 +105,7 @@ private void ClearSaveData() { }
 - **Grouping:** Buttons with the same `drawOrder` are grouped together
 
 ```csharp
-public class PlayerController : MonoBehaviour
+public class PlayerController1 : MonoBehaviour
 {
     public int health = 100;
     public float speed = 5f;
@@ -125,18 +125,7 @@ public class PlayerController : MonoBehaviour
 
 **Visual layout:**
 
-```text
-┌─────────────────────────┐
-│ Initialize  │ Validate  │ ← drawOrder: -1 (above)
-├─────────────────────────┤
-│ Health: 100             │ ← Inspector properties
-│ Speed: 5.0              │
-├─────────────────────────┤
-│ Debug Info              │ ← drawOrder: 1 (below)
-└─────────────────────────┘
-```
-
-![Image placeholder: inspector-button-draw-order.png - Inspector showing buttons above and below properties]
+![Inspector showing buttons above and below properties](../../images/inspector/buttons/inspector-button-draw-order.png)
 
 ---
 
@@ -171,7 +160,7 @@ private async Task<string> PingServerAsync(CancellationToken ct)
 }
 ```
 
-![Image placeholder: inspector-button-history-capacity.png - History panels showing different capacity settings]
+![History panels showing different capacity settings](../../images/inspector/buttons/inspector-button-history-capacity.gif)
 
 **Performance tip:** Use lower values (`1-3`) for methods called frequently to reduce memory usage.
 

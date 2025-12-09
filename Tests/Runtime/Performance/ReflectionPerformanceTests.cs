@@ -709,6 +709,52 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
             Action<int> staticFieldSetter = ReflectionHelpers.GetStaticFieldSetter<int>(
                 staticField
             );
+
+            // Diagnostic: log strategy info for typed field delegates
+            UnityEngine.Debug.Log(
+                $"[ReflectionPerf][Diag] instanceFieldGetter type: {instanceFieldGetter.GetType().FullName}, Method: {instanceFieldGetter.Method?.Name ?? "null"}, Target: {instanceFieldGetter.Target?.GetType().FullName ?? "null"}"
+            );
+            UnityEngine.Debug.Log(
+                $"[ReflectionPerf][Diag] staticFieldGetter type: {staticFieldGetter.GetType().FullName}, Method: {staticFieldGetter.Method?.Name ?? "null"}, Target: {staticFieldGetter.Target?.GetType().FullName ?? "null"}"
+            );
+            if (
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    instanceFieldGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy instanceFieldStrategy
+                )
+            )
+            {
+                UnityEngine.Debug.Log(
+                    $"[ReflectionPerf][Diag] instanceFieldGetter strategy: {instanceFieldStrategy}"
+                );
+            }
+            else
+            {
+                UnityEngine.Debug.Log(
+                    "[ReflectionPerf][Diag] instanceFieldGetter strategy: NOT TRACKED"
+                );
+            }
+            if (
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    staticFieldGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy staticFieldStrategy
+                )
+            )
+            {
+                UnityEngine.Debug.Log(
+                    $"[ReflectionPerf][Diag] staticFieldGetter strategy: {staticFieldStrategy}"
+                );
+            }
+            else
+            {
+                UnityEngine.Debug.Log(
+                    "[ReflectionPerf][Diag] staticFieldGetter strategy: NOT TRACKED"
+                );
+            }
+            UnityEngine.Debug.Log(
+                $"[ReflectionPerf][Diag] ExpressionsEnabled: {ReflectionHelpers.ExpressionsEnabled}, DynamicIlEnabled: {ReflectionHelpers.DynamicIlEnabled}"
+            );
+
             Func<ReflectionPerfTarget, int> instancePropertyGetter =
                 ReflectionHelpers.GetPropertyGetter<ReflectionPerfTarget, int>(instanceProperty);
             Action<ReflectionPerfTarget, int> instancePropertySetter =

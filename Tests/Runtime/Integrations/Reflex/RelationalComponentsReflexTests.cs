@@ -1,5 +1,5 @@
 #if REFLEX_PRESENT
-namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex.Runtime.Integrations.Reflex
+namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex.Runtime
 {
     using System;
     using System.Collections.Generic;

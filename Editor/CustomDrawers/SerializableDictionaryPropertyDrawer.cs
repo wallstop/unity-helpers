@@ -3610,6 +3610,34 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             SerializedObject serializedObject = dictionaryProperty.serializedObject;
             Object[] targets = serializedObject.targetObjects;
+            bool isScriptableSingletonTarget =
+                targets.Length > 0 && IsScriptableSingletonType(targets[0]);
+
+            int keysArraySizeBefore = keysProperty.arraySize;
+            PaletteSerializationDiagnostics.ReportCommitEntryStart(
+                serializedObject,
+                dictionaryProperty.propertyPath,
+                keysArraySizeBefore,
+                pending.key,
+                pending.value,
+                existingIndex
+            );
+
+            // For ScriptableSingleton targets, ApplyModifiedProperties doesn't work correctly.
+            // We need to directly modify the dictionary via reflection and then save.
+            if (isScriptableSingletonTarget)
+            {
+                return CommitEntryForScriptableSingleton(
+                    targets,
+                    dictionaryProperty,
+                    keyType,
+                    valueType,
+                    pending,
+                    existingIndex,
+                    serializedObject
+                );
+            }
+
             if (targets.Length > 0)
             {
                 string undoLabel =
@@ -3635,6 +3663,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 keysProperty.InsertArrayElementAtIndex(insertIndex);
                 valuesProperty.InsertArrayElementAtIndex(insertIndex);
 
+                PaletteSerializationDiagnostics.ReportCommitEntryArrayInsert(
+                    serializedObject,
+                    dictionaryProperty.propertyPath,
+                    insertIndex,
+                    keysProperty.arraySize,
+                    valuesProperty.arraySize
+                );
+
                 SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(insertIndex);
                 SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(
                     insertIndex
@@ -3650,11 +3686,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 affectedIndex = insertIndex;
             }
 
-            ApplyModifiedPropertiesWithUndoFallback(
+            bool hadModifiedBefore = serializedObject.hasModifiedProperties;
+            bool applyResult = ApplyModifiedPropertiesWithUndoFallback(
                 serializedObject,
                 dictionaryProperty,
                 "CommitEntry"
             );
+            bool hasModifiedAfter = serializedObject.hasModifiedProperties;
+
+            PaletteSerializationDiagnostics.ReportCommitEntryApplyResult(
+                serializedObject,
+                dictionaryProperty.propertyPath,
+                applyResult,
+                hadModifiedBefore,
+                hasModifiedAfter
+            );
+
             serializedObject.Update();
             SyncRuntimeDictionary(dictionaryProperty);
 
@@ -3673,6 +3720,266 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             MarkListCacheDirty(listKey);
             InvalidateKeyCache(listKey);
             GUI.changed = true;
+
+            // Re-fetch keys property to get updated array size after Update()
+            SerializedProperty updatedKeysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            int finalKeysSize = updatedKeysProperty?.arraySize ?? -1;
+
+            PaletteSerializationDiagnostics.ReportCommitEntryComplete(
+                serializedObject,
+                dictionaryProperty.propertyPath,
+                addedNewEntry,
+                affectedIndex,
+                finalKeysSize
+            );
+
+            return new CommitResult { added = addedNewEntry, index = affectedIndex };
+        }
+
+        /// <summary>
+        /// Checks if the target is a ScriptableSingleton type.
+        /// ScriptableSingletons have issues with ApplyModifiedProperties not persisting changes.
+        /// </summary>
+        internal static bool IsScriptableSingletonType(Object target)
+        {
+            if (target == null)
+            {
+                return false;
+            }
+
+            // Check if the type inherits from ScriptableSingleton<T>
+            Type scriptableSingletonGenericType = typeof(ScriptableSingleton<>);
+            Type type = target.GetType();
+            while (type != null)
+            {
+                if (
+                    type.IsGenericType
+                    && type.GetGenericTypeDefinition() == scriptableSingletonGenericType
+                )
+                {
+                    return true;
+                }
+                type = type.BaseType;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Saves a ScriptableSingleton by calling its Save(true) method via reflection.
+        /// Uses cached reflection for better performance.
+        /// </summary>
+        internal static void SaveScriptableSingleton(Object target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            // Find the Save method on ScriptableSingleton<T> using cached reflection
+            Type type = target.GetType();
+            MethodInfo saveMethod = null;
+            while (type != null && saveMethod == null)
+            {
+                ReflectionHelpers.TryGetMethod(
+                    type,
+                    "Save",
+                    out saveMethod,
+                    new[] { typeof(bool) },
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                );
+                type = type.BaseType;
+            }
+
+            if (saveMethod != null)
+            {
+                saveMethod.Invoke(target, new object[] { true });
+            }
+        }
+
+        /// <summary>
+        /// Handles CommitEntry for ScriptableSingleton targets where ApplyModifiedProperties doesn't work.
+        /// We directly modify the dictionary via its runtime interface, then save and refresh.
+        /// </summary>
+        private CommitResult CommitEntryForScriptableSingleton(
+            Object[] targets,
+            SerializedProperty dictionaryProperty,
+            Type keyType,
+            Type valueType,
+            PendingEntry pending,
+            int existingIndex,
+            SerializedObject serializedObject
+        )
+        {
+            bool addedNewEntry = false;
+            int affectedIndex = existingIndex >= 0 ? existingIndex : -1;
+            string propertyPath = dictionaryProperty.propertyPath;
+
+            foreach (Object target in targets)
+            {
+                if (target == null)
+                {
+                    continue;
+                }
+
+                // Get the dictionary instance directly
+                object dictionaryInstance = GetTargetObjectOfProperty(target, propertyPath);
+                if (dictionaryInstance == null)
+                {
+                    continue;
+                }
+
+                // Use cached reflection to add/update the dictionary entry
+                Type dictionaryType = dictionaryInstance.GetType();
+
+                // Check if key already exists in the dictionary, even if existingIndex wasn't provided
+                bool keyExists = existingIndex >= 0;
+                if (!keyExists)
+                {
+                    if (
+                        ReflectionHelpers.TryGetMethod(
+                            dictionaryType,
+                            "ContainsKey",
+                            out MethodInfo containsKeyMethod,
+                            new[] { keyType },
+                            BindingFlags.Instance | BindingFlags.Public
+                        )
+                    )
+                    {
+                        keyExists = (bool)
+                            containsKeyMethod.Invoke(dictionaryInstance, new[] { pending.key });
+                    }
+                }
+
+                if (keyExists)
+                {
+                    // Update existing entry - use the indexer
+                    // Use TryGetIndexerProperty with exact types to avoid AmbiguousMatchException
+                    // when the type implements both IDictionary<TKey,TValue> and IDictionary
+                    if (
+                        ReflectionHelpers.TryGetIndexerProperty(
+                            dictionaryType,
+                            valueType,
+                            new[] { keyType },
+                            out PropertyInfo indexer
+                        ) && indexer.CanWrite
+                    )
+                    {
+                        Action<object, object, object[]> indexerSetter =
+                            ReflectionHelpers.GetIndexerSetter(indexer);
+                        indexerSetter(dictionaryInstance, pending.value, new[] { pending.key });
+                    }
+                }
+                else
+                {
+                    // Add new entry - use Add method or indexer
+                    if (
+                        ReflectionHelpers.TryGetMethod(
+                            dictionaryType,
+                            "Add",
+                            out MethodInfo addMethod,
+                            new[] { keyType, valueType },
+                            BindingFlags.Instance | BindingFlags.Public
+                        )
+                    )
+                    {
+                        addMethod.Invoke(dictionaryInstance, new[] { pending.key, pending.value });
+                        addedNewEntry = true;
+
+                        // Get the new index (count - 1 since we just added)
+                        if (
+                            ReflectionHelpers.TryGetProperty(
+                                dictionaryType,
+                                "Count",
+                                out PropertyInfo countProp,
+                                BindingFlags.Instance | BindingFlags.Public
+                            )
+                        )
+                        {
+                            Func<object, object> countGetter = ReflectionHelpers.GetPropertyGetter(
+                                countProp
+                            );
+                            int count = (int)countGetter(dictionaryInstance);
+                            affectedIndex = count - 1;
+                        }
+                    }
+                    else
+                    {
+                        // Try indexer as fallback
+                        // Use TryGetIndexerProperty with exact types to avoid AmbiguousMatchException
+                        // when the type implements both IDictionary<TKey,TValue> and IDictionary
+                        if (
+                            ReflectionHelpers.TryGetIndexerProperty(
+                                dictionaryType,
+                                valueType,
+                                new[] { keyType },
+                                out PropertyInfo indexer
+                            ) && indexer.CanWrite
+                        )
+                        {
+                            Action<object, object, object[]> indexerSetter =
+                                ReflectionHelpers.GetIndexerSetter(indexer);
+                            indexerSetter(dictionaryInstance, pending.value, new[] { pending.key });
+                            addedNewEntry = true;
+                        }
+                    }
+                }
+
+                // Sync the runtime dictionary to its serialized arrays
+                if (dictionaryInstance is SerializableDictionaryBase baseDictionary)
+                {
+                    baseDictionary.EditorSyncSerializedArrays();
+                }
+
+                RegisterPaletteManualEditForKey(dictionaryProperty, pending.key, keyType);
+                EditorUtility.SetDirty(target);
+
+                // Save the ScriptableSingleton - call Save(true) via reflection
+                // UnityHelpersSettings has its own SaveSettings method that does additional work
+                if (target is UnityHelpersSettings unitySettings)
+                {
+                    unitySettings.SaveSettings();
+                }
+                else
+                {
+                    SaveScriptableSingleton(target);
+                }
+            }
+
+            // Refresh the serialized object to show the changes
+            serializedObject.Update();
+
+            string listKey = GetListKey(dictionaryProperty);
+            MarkListCacheDirty(listKey);
+            InvalidateKeyCache(listKey);
+            GUI.changed = true;
+
+            // Re-fetch keys property to get updated array size after Update()
+            SerializedProperty updatedKeysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            int finalKeysSize = updatedKeysProperty?.arraySize ?? -1;
+
+            // If we updated an existing key but didn't have the existingIndex, find it now
+            if (affectedIndex < 0 && !addedNewEntry && updatedKeysProperty != null)
+            {
+                affectedIndex = FindExistingKeyIndex(
+                    dictionaryProperty,
+                    updatedKeysProperty,
+                    keyType,
+                    pending.key
+                );
+            }
+
+            PaletteSerializationDiagnostics.ReportCommitEntryComplete(
+                serializedObject,
+                dictionaryProperty.propertyPath,
+                addedNewEntry,
+                affectedIndex,
+                finalKeysSize
+            );
+
             return new CommitResult { added = addedNewEntry, index = affectedIndex };
         }
 
@@ -3816,12 +4123,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return CreateDefaultComparer(keyType);
             }
 
-            PropertyInfo comparerProperty = instance
-                .GetType()
-                .GetProperty("Comparer", BindingFlags.Public | BindingFlags.Instance);
-            if (comparerProperty != null)
+            if (
+                ReflectionHelpers.TryGetProperty(
+                    instance.GetType(),
+                    "Comparer",
+                    out PropertyInfo comparerProperty,
+                    BindingFlags.Public | BindingFlags.Instance
+                )
+            )
             {
-                object comparerValue = comparerProperty.GetValue(instance);
+                Func<object, object> getter = ReflectionHelpers.GetPropertyGetter(comparerProperty);
+                object comparerValue = getter(instance);
                 if (comparerValue != null)
                 {
                     return comparerValue;
@@ -3839,11 +4151,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             Type comparerType = typeof(Comparer<>).MakeGenericType(keyType);
-            PropertyInfo defaultProperty = comparerType.GetProperty(
-                "Default",
-                BindingFlags.Public | BindingFlags.Static
-            );
-            return defaultProperty != null ? defaultProperty.GetValue(null) : null;
+            if (
+                ReflectionHelpers.TryGetProperty(
+                    comparerType,
+                    "Default",
+                    out PropertyInfo defaultProperty,
+                    BindingFlags.Public | BindingFlags.Static
+                )
+            )
+            {
+                Func<object, object> getter = ReflectionHelpers.GetPropertyGetter(defaultProperty);
+                return getter(null);
+            }
+            return null;
         }
 
         private static Func<object, object, int> CreateComparisonDelegate(
@@ -3857,10 +4177,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return null;
             }
 
-            MethodInfo compareMethod = comparerInstance
-                .GetType()
-                .GetMethod("Compare", new[] { keyType, keyType });
-            if (compareMethod == null)
+            if (
+                !ReflectionHelpers.TryGetMethod(
+                    comparerInstance.GetType(),
+                    "Compare",
+                    out MethodInfo compareMethod,
+                    new[] { keyType, keyType },
+                    BindingFlags.Instance | BindingFlags.Public
+                )
+            )
             {
                 return null;
             }
@@ -7793,38 +8118,299 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static void SyncRuntimeDictionary(SerializedProperty dictionaryProperty)
+        internal static void SyncRuntimeDictionary(SerializedProperty dictionaryProperty)
         {
             SerializedObject serializedObject = dictionaryProperty.serializedObject;
             Object[] targets = serializedObject.targetObjects;
+            string propertyPath = dictionaryProperty.propertyPath;
 
             foreach (Object target in targets)
             {
-                object dictionaryInstance = GetTargetObjectOfProperty(
-                    target,
-                    dictionaryProperty.propertyPath
-                );
-                if (dictionaryInstance is SerializableDictionaryBase baseDictionary)
+                object dictionaryInstance = GetTargetObjectOfProperty(target, propertyPath);
+                bool isSerializableDictionaryBase =
+                    dictionaryInstance is SerializableDictionaryBase;
+                bool calledSave = false;
+                bool isScriptableSingletonTarget = IsScriptableSingletonType(target);
+
+                // For ScriptableSingleton targets, we must NOT call EditorAfterDeserialize()
+                // immediately after ApplyModifiedProperties because the managed serialized fields
+                // (_keys, _values) are not yet updated by Unity's serialization system.
+                // Calling EditorAfterDeserialize would read stale data and overwrite our changes.
+                // Instead, we use ForwardSyncFromSerializedProperties to read the current values
+                // directly from the SerializedProperties and update the runtime dictionary.
+                if (
+                    isScriptableSingletonTarget
+                    && dictionaryInstance is SerializableDictionaryBase baseDictionary
+                )
                 {
-                    baseDictionary.EditorAfterDeserialize();
+                    ForwardSyncFromSerializedProperties(dictionaryProperty, baseDictionary);
                     EditorUtility.SetDirty(target);
                     if (target is UnityHelpersSettings unitySettings)
                     {
                         unitySettings.SaveSettings();
                     }
+                    else
+                    {
+                        SaveScriptableSingleton(target);
+                    }
+                    calledSave = true;
+                }
+                else if (dictionaryInstance is SerializableDictionaryBase nonSingletonDictionary)
+                {
+                    nonSingletonDictionary.EditorAfterDeserialize();
+                    EditorUtility.SetDirty(target);
                 }
                 else if (dictionaryInstance is ISerializationCallbackReceiver receiver)
                 {
                     receiver.OnAfterDeserialize();
                     EditorUtility.SetDirty(target);
-                    if (target is UnityHelpersSettings unitySettings)
-                    {
-                        unitySettings.SaveSettings();
-                    }
                 }
+
+                PaletteSerializationDiagnostics.ReportSyncRuntimeDictionary(
+                    serializedObject,
+                    propertyPath,
+                    dictionaryInstance,
+                    isSerializableDictionaryBase,
+                    calledSave
+                );
             }
 
             serializedObject.UpdateIfRequiredOrScript();
+        }
+
+        /// <summary>
+        /// Performs a forward sync from SerializedProperties to the runtime dictionary.
+        /// This is used for ScriptableSingleton targets where the managed fields are stale
+        /// after ApplyModifiedProperties. Instead of reading from the managed fields (which
+        /// would give us stale data), we read directly from the SerializedProperties which
+        /// have the current values.
+        /// </summary>
+        private static void ForwardSyncFromSerializedProperties(
+            SerializedProperty dictionaryProperty,
+            SerializableDictionaryBase baseDictionary
+        )
+        {
+            // First, call OnBeforeSerialize to ensure the managed arrays are in sync with runtime
+            // (This writes runtime state to managed arrays, which is the opposite of what we want,
+            // but it's necessary to prepare for the next step)
+            // Actually, we need to update the managed arrays FROM the SerializedProperties first
+
+            // The managed arrays (_keys and _values) need to be updated from the SerializedProperties.
+            // We'll read all key-value pairs from the SerializedProperties and rebuild the runtime dictionary.
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            if (
+                keysProperty == null
+                || valuesProperty == null
+                || !keysProperty.isArray
+                || !valuesProperty.isArray
+            )
+            {
+                return;
+            }
+
+            int count = Mathf.Min(keysProperty.arraySize, valuesProperty.arraySize);
+
+            // We need to update the managed arrays so that EditorAfterDeserialize reads current data.
+            // The cleanest way is to directly set the managed field values using reflection.
+            Type dictionaryType = baseDictionary.GetType();
+            Type baseType = dictionaryType;
+            while (baseType != null && !baseType.IsGenericType)
+            {
+                baseType = baseType.BaseType;
+            }
+
+            if (baseType == null)
+            {
+                // Fallback: just call EditorAfterDeserialize and hope the timing works out
+                baseDictionary.EditorAfterDeserialize();
+                return;
+            }
+
+            // Get the key and value types from the generic type arguments
+            Type[] genericArgs = baseType.GetGenericArguments();
+            if (genericArgs.Length < 2)
+            {
+                baseDictionary.EditorAfterDeserialize();
+                return;
+            }
+
+            Type keyType = genericArgs[0];
+            Type valueType = genericArgs.Length >= 2 ? genericArgs[1] : null;
+
+            // Get the _keys and _values fields
+            FieldInfo keysField = FindFieldInHierarchy(dictionaryType, "_keys");
+            FieldInfo valuesField = FindFieldInHierarchy(dictionaryType, "_values");
+
+            if (keysField == null || valuesField == null)
+            {
+                baseDictionary.EditorAfterDeserialize();
+                return;
+            }
+
+            // Create new arrays with the correct size
+            Array keysArray = Array.CreateInstance(keyType, count);
+            Array valuesArray = Array.CreateInstance(valueType, count);
+
+            // Copy values from SerializedProperties to the arrays
+            for (int i = 0; i < count; i++)
+            {
+                SerializedProperty keyProp = keysProperty.GetArrayElementAtIndex(i);
+                SerializedProperty valueProp = valuesProperty.GetArrayElementAtIndex(i);
+
+                object keyValue = GetPropertyValueBoxed(keyProp, keyType);
+                object valueValue = GetPropertyValueBoxed(valueProp, valueType);
+
+                if (keyValue != null || !keyType.IsValueType)
+                {
+                    keysArray.SetValue(keyValue, i);
+                }
+                if (valueValue != null || !valueType.IsValueType)
+                {
+                    valuesArray.SetValue(valueValue, i);
+                }
+            }
+
+            // Set the managed fields directly
+            keysField.SetValue(baseDictionary, keysArray);
+            valuesField.SetValue(baseDictionary, valuesArray);
+
+            // Now call EditorAfterDeserialize which will read from the updated managed fields
+            baseDictionary.EditorAfterDeserialize();
+        }
+
+        private static FieldInfo FindFieldInHierarchy(Type type, string fieldName)
+        {
+            while (type != null)
+            {
+                FieldInfo field = type.GetField(
+                    fieldName,
+                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
+                );
+                if (field != null)
+                {
+                    return field;
+                }
+                type = type.BaseType;
+            }
+            return null;
+        }
+
+        private static object GetPropertyValueBoxed(SerializedProperty property, Type targetType)
+        {
+            if (property == null)
+            {
+                return targetType.IsValueType ? Activator.CreateInstance(targetType) : null;
+            }
+
+            return property.propertyType switch
+            {
+                SerializedPropertyType.Integer => property.intValue,
+                SerializedPropertyType.Boolean => property.boolValue,
+                SerializedPropertyType.Float => property.floatValue,
+                SerializedPropertyType.String => property.stringValue,
+                SerializedPropertyType.Color => property.colorValue,
+                SerializedPropertyType.ObjectReference => property.objectReferenceValue,
+                SerializedPropertyType.Enum => property.enumValueIndex,
+                SerializedPropertyType.Vector2 => property.vector2Value,
+                SerializedPropertyType.Vector3 => property.vector3Value,
+                SerializedPropertyType.Vector4 => property.vector4Value,
+                SerializedPropertyType.Rect => property.rectValue,
+                SerializedPropertyType.ArraySize => property.intValue,
+                SerializedPropertyType.Character => (char)property.intValue,
+                SerializedPropertyType.AnimationCurve => property.animationCurveValue,
+                SerializedPropertyType.Bounds => property.boundsValue,
+                SerializedPropertyType.Quaternion => property.quaternionValue,
+                SerializedPropertyType.Vector2Int => property.vector2IntValue,
+                SerializedPropertyType.Vector3Int => property.vector3IntValue,
+                SerializedPropertyType.RectInt => property.rectIntValue,
+                SerializedPropertyType.BoundsInt => property.boundsIntValue,
+                SerializedPropertyType.ManagedReference => property.managedReferenceValue,
+                _ => GetComplexPropertyValue(property, targetType),
+            };
+        }
+
+        private static object GetComplexPropertyValue(SerializedProperty property, Type targetType)
+        {
+            // For complex types (structs, classes), we need to create an instance and populate its fields
+            if (targetType == null || property == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                object instance = CreateInstanceSafe(targetType);
+                if (instance == null)
+                {
+                    return null;
+                }
+
+                // Iterate through the property's children and set field values
+                SerializedProperty iterator = property.Copy();
+                SerializedProperty endProperty = property.GetEndProperty();
+                bool enterChildren = true;
+                int depth = property.depth;
+
+                while (
+                    iterator.NextVisible(enterChildren)
+                    && !SerializedProperty.EqualContents(iterator, endProperty)
+                )
+                {
+                    enterChildren = false;
+                    if (iterator.depth <= depth)
+                    {
+                        break;
+                    }
+
+                    string fieldName = iterator.name;
+                    FieldInfo field = FindFieldInHierarchy(targetType, fieldName);
+                    if (field != null)
+                    {
+                        object fieldValue = GetPropertyValueBoxed(iterator, field.FieldType);
+                        field.SetValue(instance, fieldValue);
+                    }
+                }
+
+                return instance;
+            }
+            catch
+            {
+                return targetType.IsValueType ? Activator.CreateInstance(targetType) : null;
+            }
+        }
+
+        private static object CreateInstanceSafe(Type type)
+        {
+            if (type == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                // Try default constructor first
+                return Activator.CreateInstance(type);
+            }
+            catch
+            {
+                // For types without default constructor, try FormatterServices
+                try
+                {
+                    return System.Runtime.Serialization.FormatterServices.GetUninitializedObject(
+                        type
+                    );
+                }
+                catch
+                {
+                    return null;
+                }
+            }
         }
 
         private static object GetTargetObjectOfProperty(object target, string propertyPath)
@@ -7872,30 +8458,38 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 if (!string.IsNullOrEmpty(element))
                 {
-                    FieldInfo field = currentType.GetField(
-                        element,
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                    );
-
-                    if (field != null)
+                    // Use cached reflection lookups for better performance
+                    if (
+                        ReflectionHelpers.TryGetField(
+                            currentType,
+                            element,
+                            out FieldInfo field,
+                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                        )
+                    )
                     {
-                        current = field.GetValue(current);
+                        Func<object, object> getter = ReflectionHelpers.GetFieldGetter(field);
+                        current = getter(current);
+                        currentType = current?.GetType();
+                    }
+                    else if (
+                        ReflectionHelpers.TryGetProperty(
+                            currentType,
+                            element,
+                            out PropertyInfo propertyInfo,
+                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                        )
+                    )
+                    {
+                        Func<object, object> getter = ReflectionHelpers.GetPropertyGetter(
+                            propertyInfo
+                        );
+                        current = getter(current);
                         currentType = current?.GetType();
                     }
                     else
                     {
-                        PropertyInfo propertyInfo = currentType.GetProperty(
-                            element,
-                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                        );
-
-                        if (propertyInfo == null)
-                        {
-                            return null;
-                        }
-
-                        current = propertyInfo.GetValue(current);
-                        currentType = current?.GetType();
+                        return null;
                     }
                 }
 

@@ -1247,6 +1247,7 @@ Unity Helpers is built with performance as a top priority:
 - License — [License](docs/project/license.md)
 - Third‑Party Notices — [Third‑Party Notices](docs/project/third-party-notices.md)
 - Contributing — [Contributing](docs/project/contributing.md)
+- llms.txt — [LLM-Friendly Documentation](docs/project/llms-txt.md) | [llms.txt](llms.txt)
 
 ---
 

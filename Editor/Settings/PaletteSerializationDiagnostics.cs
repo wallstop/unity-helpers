@@ -1,3 +1,4 @@
+#pragma warning disable CS0162 // Unreachable code detected
 namespace WallstopStudios.UnityHelpers.Editor.Settings
 {
     using System;
@@ -13,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
     internal static class PaletteSerializationDiagnostics
     {
         private const string LogPrefix = "[UnityHelpers][PaletteSerialization]";
+        private const string CommitLogPrefix = "[UnityHelpers][CommitEntry]";
 
 #if UNITY_HELPERS_PALETTE_DIAGNOSTICS
         // Define UNITY_HELPERS_PALETTE_DIAGNOSTICS to re-enable verbose palette logging during investigations.
@@ -20,6 +22,227 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 #else
         private const bool DiagnosticsEnabled = false;
 #endif
+
+#if UNITY_HELPERS_COMMIT_DIAGNOSTICS
+        // Define UNITY_HELPERS_COMMIT_DIAGNOSTICS to enable verbose logging for dictionary/set add operations.
+        private const bool CommitDiagnosticsEnabled = true;
+#else
+        private const bool CommitDiagnosticsEnabled = false;
+#endif
+
+        /// <summary>
+        /// Reports the start of a dictionary CommitEntry operation.
+        /// </summary>
+        internal static void ReportCommitEntryStart(
+            SerializedObject serializedObject,
+            string propertyPath,
+            int keysArraySizeBefore,
+            object keyValue,
+            object valueValue,
+            int existingIndex
+        )
+        {
+            if (!CommitDiagnosticsEnabled)
+            {
+                return;
+            }
+
+            bool isSettings = IsUnityHelpersSettings(serializedObject);
+            string message =
+                $"{CommitLogPrefix} START property={propertyPath} isSettings={isSettings} keysBefore={keysArraySizeBefore} existingIndex={existingIndex} key={keyValue ?? "<null>"} value={valueValue ?? "<null>"}";
+            Debug.Log(message, serializedObject?.targetObject);
+        }
+
+        /// <summary>
+        /// Reports array insertion during CommitEntry.
+        /// </summary>
+        internal static void ReportCommitEntryArrayInsert(
+            SerializedObject serializedObject,
+            string propertyPath,
+            int insertIndex,
+            int keysArraySizeAfter,
+            int valuesArraySizeAfter
+        )
+        {
+            if (!CommitDiagnosticsEnabled)
+            {
+                return;
+            }
+
+            string message =
+                $"{CommitLogPrefix} ARRAY_INSERT property={propertyPath} insertIndex={insertIndex} keysAfter={keysArraySizeAfter} valuesAfter={valuesArraySizeAfter}";
+            Debug.Log(message, serializedObject?.targetObject);
+        }
+
+        /// <summary>
+        /// Reports the ApplyModifiedProperties result during CommitEntry.
+        /// </summary>
+        internal static void ReportCommitEntryApplyResult(
+            SerializedObject serializedObject,
+            string propertyPath,
+            bool applyResult,
+            bool hadModifiedPropertiesBefore,
+            bool hasModifiedPropertiesAfter
+        )
+        {
+            if (!CommitDiagnosticsEnabled)
+            {
+                return;
+            }
+
+            string message =
+                $"{CommitLogPrefix} APPLY property={propertyPath} result={applyResult} dirtyBefore={hadModifiedPropertiesBefore} dirtyAfter={hasModifiedPropertiesAfter}";
+            Debug.Log(message, serializedObject?.targetObject);
+        }
+
+        /// <summary>
+        /// Reports the SyncRuntimeDictionary operation.
+        /// </summary>
+        internal static void ReportSyncRuntimeDictionary(
+            SerializedObject serializedObject,
+            string propertyPath,
+            object dictionaryInstance,
+            bool isSerializableDictionaryBase,
+            bool calledSaveSettings
+        )
+        {
+            if (!CommitDiagnosticsEnabled)
+            {
+                return;
+            }
+
+            string instanceType = dictionaryInstance?.GetType().Name ?? "<null>";
+            string message =
+                $"{CommitLogPrefix} SYNC_RUNTIME property={propertyPath} instanceType={instanceType} isSerializableDictionaryBase={isSerializableDictionaryBase} calledSaveSettings={calledSaveSettings}";
+            Debug.Log(message, serializedObject?.targetObject);
+        }
+
+        /// <summary>
+        /// Reports the completion of CommitEntry.
+        /// </summary>
+        internal static void ReportCommitEntryComplete(
+            SerializedObject serializedObject,
+            string propertyPath,
+            bool added,
+            int affectedIndex,
+            int finalKeysArraySize
+        )
+        {
+            if (!CommitDiagnosticsEnabled)
+            {
+                return;
+            }
+
+            string message =
+                $"{CommitLogPrefix} COMPLETE property={propertyPath} added={added} index={affectedIndex} finalKeysSize={finalKeysArraySize}";
+            Debug.Log(message, serializedObject?.targetObject);
+        }
+
+        /// <summary>
+        /// Reports the start of a set TryCommitPendingEntry operation.
+        /// </summary>
+        internal static void ReportSetCommitStart(
+            SerializedObject serializedObject,
+            string propertyPath,
+            int itemsArraySizeBefore,
+            object value
+        )
+        {
+            if (!CommitDiagnosticsEnabled)
+            {
+                return;
+            }
+
+            bool isSettings = IsUnityHelpersSettings(serializedObject);
+            string message =
+                $"{CommitLogPrefix} SET_START property={propertyPath} isSettings={isSettings} itemsBefore={itemsArraySizeBefore} value={value ?? "<null>"}";
+            Debug.Log(message, serializedObject?.targetObject);
+        }
+
+        /// <summary>
+        /// Reports set add operation result.
+        /// </summary>
+        internal static void ReportSetAddResult(
+            SerializedObject serializedObject,
+            string propertyPath,
+            bool success,
+            string errorMessage
+        )
+        {
+            if (!CommitDiagnosticsEnabled)
+            {
+                return;
+            }
+
+            string message =
+                $"{CommitLogPrefix} SET_ADD property={propertyPath} success={success} error={errorMessage ?? "<none>"}";
+            Debug.Log(message, serializedObject?.targetObject);
+        }
+
+        /// <summary>
+        /// Reports the SyncRuntimeSet operation.
+        /// </summary>
+        internal static void ReportSyncRuntimeSet(
+            SerializedObject serializedObject,
+            string propertyPath,
+            object setInstance,
+            bool isSerializableSetInspector,
+            bool calledSaveSettings
+        )
+        {
+            if (!CommitDiagnosticsEnabled)
+            {
+                return;
+            }
+
+            string instanceType = setInstance?.GetType().Name ?? "<null>";
+            string message =
+                $"{CommitLogPrefix} SET_SYNC property={propertyPath} instanceType={instanceType} isInspector={isSerializableSetInspector} calledSaveSettings={calledSaveSettings}";
+            Debug.Log(message, serializedObject?.targetObject);
+        }
+
+        /// <summary>
+        /// Reports set commit completion.
+        /// </summary>
+        internal static void ReportSetCommitComplete(
+            SerializedObject serializedObject,
+            string propertyPath,
+            int finalItemsArraySize
+        )
+        {
+            if (!CommitDiagnosticsEnabled)
+            {
+                return;
+            }
+
+            string message =
+                $"{CommitLogPrefix} SET_COMPLETE property={propertyPath} finalItemsSize={finalItemsArraySize}";
+            Debug.Log(message, serializedObject?.targetObject);
+        }
+
+        private static bool IsUnityHelpersSettings(SerializedObject serializedObject)
+        {
+            if (serializedObject?.targetObject is UnityHelpersSettings)
+            {
+                return true;
+            }
+
+            Object[] targets = serializedObject?.targetObjects;
+            if (targets == null)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < targets.Length; index++)
+            {
+                if (targets[index] is UnityHelpersSettings)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         private static readonly string[] PalettePropertyRoots =
         {

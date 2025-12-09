@@ -13,6 +13,9 @@ See [the roadmap](docs/overview/roadmap.md) for details
 
 ### Added
 
+- **llms.txt**: Added `llms.txt` file following the [llmstxt.org](https://llmstxt.org/) specification for LLM-friendly documentation
+  - Provides structured overview of package features, APIs, and documentation links for AI assistants
+  - Enables third-party LLMs to quickly understand and work with the Unity Helpers codebase
 - **Auto-Load Singleton System**: New singleton pattern with configurable lifetimes and thread-safe execution
   - `UnityMainThreadGuard` for ensuring operations run on the main thread
   - `UnityMainThreadDispatcher` with configurable lifecycle management

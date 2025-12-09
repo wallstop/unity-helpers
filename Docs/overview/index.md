@@ -216,6 +216,9 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **LineHelper** - Douglas-Peucker simplification
 → [Math & Extensions](../features/utilities/math-and-extensions.md#geometry) | [README](../../README.md#core-math--extensions)
 
+**llms.txt** - LLM-friendly documentation for AI assistants
+→ [llms.txt](../../llms.txt): Structured documentation following the llmstxt.org specification for AI/LLM consumption
+
 **LZMA Compression** - Compression utilities
 → [README - Serialization](../../README.md#serialization)
 

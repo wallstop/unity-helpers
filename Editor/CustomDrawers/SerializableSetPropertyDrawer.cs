@@ -2397,8 +2397,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ISerializableSetInspector inspector
         )
         {
+            SerializedObject serializedObject = property.serializedObject;
+            int itemsSizeBefore = itemsProperty is { isArray: true } ? itemsProperty.arraySize : 0;
+
+            PaletteSerializationDiagnostics.ReportSetCommitStart(
+                serializedObject,
+                propertyPath,
+                itemsSizeBefore,
+                pending?.value
+            );
+
             if (pending == null)
             {
+                PaletteSerializationDiagnostics.ReportSetAddResult(
+                    serializedObject,
+                    propertyPath,
+                    false,
+                    "pending is null"
+                );
                 return false;
             }
 
@@ -2406,24 +2422,48 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (elementType == null)
             {
                 pending.errorMessage = "Unknown element type.";
+                PaletteSerializationDiagnostics.ReportSetAddResult(
+                    serializedObject,
+                    propertyPath,
+                    false,
+                    pending.errorMessage
+                );
                 return false;
             }
 
             if (inspector == null)
             {
                 pending.errorMessage = "Set inspector unavailable.";
+                PaletteSerializationDiagnostics.ReportSetAddResult(
+                    serializedObject,
+                    propertyPath,
+                    false,
+                    pending.errorMessage
+                );
                 return false;
             }
 
             if (!IsTypeSupported(elementType))
             {
                 pending.errorMessage = $"Unsupported type ({elementType.Name}).";
+                PaletteSerializationDiagnostics.ReportSetAddResult(
+                    serializedObject,
+                    propertyPath,
+                    false,
+                    pending.errorMessage
+                );
                 return false;
             }
 
             if (pending.value == null && !ElementTypeSupportsNull(elementType))
             {
                 pending.errorMessage = "Value cannot be null.";
+                PaletteSerializationDiagnostics.ReportSetAddResult(
+                    serializedObject,
+                    propertyPath,
+                    false,
+                    pending.errorMessage
+                );
                 return false;
             }
 
@@ -2431,12 +2471,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (inspector.ContainsElement(normalizedCandidate))
             {
                 pending.errorMessage = "Value already exists in this set.";
+                PaletteSerializationDiagnostics.ReportSetAddResult(
+                    serializedObject,
+                    propertyPath,
+                    false,
+                    pending.errorMessage
+                );
                 return false;
             }
 
             if (!inspector.TryAddElement(normalizedCandidate, out object normalizedValue))
             {
                 pending.errorMessage = "Unable to add value to set.";
+                PaletteSerializationDiagnostics.ReportSetAddResult(
+                    serializedObject,
+                    propertyPath,
+                    false,
+                    pending.errorMessage
+                );
                 return false;
             }
 
@@ -2452,7 +2504,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             inspector.SetSerializedItemsSnapshot(updated, preserveSerializedEntries: true);
             inspector.SynchronizeSerializedState();
 
-            SerializedObject serializedObject = property.serializedObject;
             serializedObject.Update();
             property = serializedObject.FindProperty(propertyPath);
             itemsProperty = property?.FindPropertyRelative(
@@ -2475,6 +2526,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ResetPendingEntry(pending);
             pending.isExpanded = wasExpanded;
             RequestRepaint();
+
+            PaletteSerializationDiagnostics.ReportSetAddResult(
+                serializedObject,
+                propertyPath,
+                true,
+                null
+            );
+            PaletteSerializationDiagnostics.ReportSetCommitComplete(
+                serializedObject,
+                propertyPath,
+                totalCount
+            );
+
             return true;
         }
 
@@ -4426,6 +4490,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             foreach (Object target in targets)
             {
+                bool isScriptableSingletonTarget = IsScriptableSingletonType(target);
+                bool calledSave = false;
+
                 using SerializedObject targetSerializedObject = new(target);
                 targetSerializedObject.UpdateIfRequiredOrScript();
                 SerializedProperty targetSetProperty = targetSerializedObject.FindProperty(
@@ -4441,11 +4508,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
 
                 object setInstance = GetTargetObjectOfProperty(target, propertyPath);
+                bool isInspector = setInstance is ISerializableSetInspector;
+
                 if (setInstance is not ISerializableSetInspector inspector)
                 {
+                    PaletteSerializationDiagnostics.ReportSyncRuntimeSet(
+                        sharedSerializedObject,
+                        propertyPath,
+                        setInstance,
+                        isInspector,
+                        calledSave
+                    );
                     continue;
                 }
 
+                // For ScriptableSingleton targets, we must be careful
+                // about how we sync because the managed serialized fields (_items) might not be
+                // updated by Unity's serialization system yet.
+                // We read from SerializedProperties (which have current data) and use the
+                // inspector interface to update the runtime state.
                 Array snapshot = BuildSnapshotArray(targetItemsProperty, inspector.ElementType);
                 inspector.SetSerializedItemsSnapshot(snapshot, preserveSerializedEntries: true);
 
@@ -4456,13 +4537,89 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 inspector.SynchronizeSerializedState();
                 EditorUtility.SetDirty(target);
-                if (target is UnityHelpersSettings unitySettings)
+
+                if (isScriptableSingletonTarget)
                 {
-                    unitySettings.SaveSettings();
+                    if (target is UnityHelpersSettings unitySettings)
+                    {
+                        unitySettings.SaveSettings();
+                    }
+                    else
+                    {
+                        SaveScriptableSingleton(target);
+                    }
+                    calledSave = true;
                 }
+
+                PaletteSerializationDiagnostics.ReportSyncRuntimeSet(
+                    sharedSerializedObject,
+                    propertyPath,
+                    setInstance,
+                    isInspector,
+                    calledSave
+                );
             }
 
             sharedSerializedObject.UpdateIfRequiredOrScript();
+        }
+
+        /// <summary>
+        /// Checks if the target is a ScriptableSingleton type.
+        /// ScriptableSingletons have issues with ApplyModifiedProperties not persisting changes.
+        /// </summary>
+        internal static bool IsScriptableSingletonType(Object target)
+        {
+            if (target == null)
+            {
+                return false;
+            }
+
+            // Check if the type inherits from ScriptableSingleton<T>
+            Type scriptableSingletonGenericType = typeof(ScriptableSingleton<>);
+            Type type = target.GetType();
+            while (type != null)
+            {
+                if (
+                    type.IsGenericType
+                    && type.GetGenericTypeDefinition() == scriptableSingletonGenericType
+                )
+                {
+                    return true;
+                }
+                type = type.BaseType;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Saves a ScriptableSingleton by calling its Save(true) method via reflection.
+        /// </summary>
+        internal static void SaveScriptableSingleton(Object target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            // Find the Save method on ScriptableSingleton<T>
+            Type type = target.GetType();
+            MethodInfo saveMethod = null;
+            while (type != null && saveMethod == null)
+            {
+                saveMethod = type.GetMethod(
+                    "Save",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                    null,
+                    new[] { typeof(bool) },
+                    null
+                );
+                type = type.BaseType;
+            }
+
+            if (saveMethod != null)
+            {
+                saveMethod.Invoke(target, new object[] { true });
+            }
         }
 
         private RowRenderData GetOrCreateRowRenderData(

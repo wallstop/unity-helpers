@@ -274,6 +274,7 @@ paket-files/
 
 # JetBrains Rider
 .idea/
+!.idea/idea.properties
 *.sln
 *.sln.meta
 *.sln.iml

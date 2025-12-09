@@ -127,6 +127,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         }
 
         internal abstract void EditorAfterDeserialize();
+
+        /// <summary>
+        /// Syncs the runtime dictionary state to the serialized arrays (_keys and _values).
+        /// This is the inverse of EditorAfterDeserialize - it writes runtime state to serialized state.
+        /// Used by editor code when directly modifying the dictionary and needing to persist changes.
+        /// </summary>
+        internal abstract void EditorSyncSerializedArrays();
     }
 
     /// <summary>
@@ -252,6 +259,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         internal override void EditorAfterDeserialize()
         {
             OnAfterDeserializeInternal(suppressWarnings: true);
+        }
+
+        internal override void EditorSyncSerializedArrays()
+        {
+            // Force sync from runtime dictionary to serialized arrays
+            _preserveSerializedEntries = false;
+            OnBeforeSerialize();
         }
 
         private void OnAfterDeserializeInternal(bool suppressWarnings)

@@ -507,10 +507,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(field));
                 }
 
+                // Prefer Dynamic IL over Expressions because Expression.Compile()
+                // creates closure-based delegates that are slower than direct IL emission.
                 if (
                     TryGetOrCreateFieldGetter(
                         field,
-                        ReflectionDelegateStrategy.Expressions,
+                        ReflectionDelegateStrategy.DynamicIl,
                         out Func<object, object> getter
                     )
                 )
@@ -521,7 +523,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 if (
                     TryGetOrCreateFieldGetter(
                         field,
-                        ReflectionDelegateStrategy.DynamicIl,
+                        ReflectionDelegateStrategy.Expressions,
                         out getter
                     )
                 )
@@ -568,10 +570,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentException("Field must be static", nameof(field));
                 }
 
+                // Static field access: prefer Dynamic IL over Expressions because
+                // Expression.Compile() has inherent closure overhead for static field access
+                // that makes it slower than direct IL emission or even raw reflection.
                 if (
                     TryGetOrCreateStaticFieldGetter(
                         field,
-                        ReflectionDelegateStrategy.Expressions,
+                        ReflectionDelegateStrategy.DynamicIl,
                         out Func<object> getter
                     )
                 )
@@ -582,7 +587,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 if (
                     TryGetOrCreateStaticFieldGetter(
                         field,
-                        ReflectionDelegateStrategy.DynamicIl,
+                        ReflectionDelegateStrategy.Expressions,
                         out getter
                     )
                 )
@@ -625,10 +630,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(field));
                 }
 
+                // Prefer Dynamic IL over Expressions because Expression.Compile()
+                // creates closure-based delegates that are slower than direct IL emission.
                 if (
                     TryGetOrCreateFieldSetter(
                         field,
-                        ReflectionDelegateStrategy.Expressions,
+                        ReflectionDelegateStrategy.DynamicIl,
                         out Action<object, object> setter
                     )
                 )
@@ -639,7 +646,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 if (
                     TryGetOrCreateFieldSetter(
                         field,
-                        ReflectionDelegateStrategy.DynamicIl,
+                        ReflectionDelegateStrategy.Expressions,
                         out setter
                     )
                 )
@@ -686,10 +693,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentException("Field must be static", nameof(field));
                 }
 
+                // Static field access: prefer Dynamic IL over Expressions because
+                // Expression.Compile() has inherent closure overhead for static field access.
                 if (
                     TryGetOrCreateStaticFieldSetter(
                         field,
-                        ReflectionDelegateStrategy.Expressions,
+                        ReflectionDelegateStrategy.DynamicIl,
                         out Action<object> setter
                     )
                 )
@@ -700,7 +709,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 if (
                     TryGetOrCreateStaticFieldSetter(
                         field,
-                        ReflectionDelegateStrategy.DynamicIl,
+                        ReflectionDelegateStrategy.Expressions,
                         out setter
                     )
                 )
@@ -1051,10 +1060,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(field));
                 }
 
+                // Prefer Dynamic IL over Expressions because Expression.Compile()
+                // creates closure-based delegates that are slower than direct IL emission.
                 if (
                     TryGetOrCreateTypedFieldGetter<TInstance, TValue>(
                         field,
-                        ReflectionDelegateStrategy.Expressions,
+                        ReflectionDelegateStrategy.DynamicIl,
                         out Func<TInstance, TValue> getter
                     )
                 )
@@ -1065,7 +1076,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 if (
                     TryGetOrCreateTypedFieldGetter<TInstance, TValue>(
                         field,
-                        ReflectionDelegateStrategy.DynamicIl,
+                        ReflectionDelegateStrategy.Expressions,
                         out getter
                     )
                 )
@@ -1085,10 +1096,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentNullException(nameof(field));
                 }
 
+                // Prefer Dynamic IL over Expressions because Expression.Compile()
+                // creates closure-based delegates that are slower than direct IL emission.
                 if (
                     TryGetOrCreateTypedFieldSetter<TInstance, TValue>(
                         field,
-                        ReflectionDelegateStrategy.Expressions,
+                        ReflectionDelegateStrategy.DynamicIl,
                         out FieldSetter<TInstance, TValue> setter
                     )
                 )
@@ -1099,7 +1112,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 if (
                     TryGetOrCreateTypedFieldSetter<TInstance, TValue>(
                         field,
-                        ReflectionDelegateStrategy.DynamicIl,
+                        ReflectionDelegateStrategy.Expressions,
                         out setter
                     )
                 )
@@ -1121,10 +1134,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentException("Field must be static", nameof(field));
                 }
 
+                // Static field access: prefer Dynamic IL over Expressions because
+                // Expression.Compile() has inherent closure overhead for static field access.
                 if (
                     TryGetOrCreateTypedStaticFieldGetter<TValue>(
                         field,
-                        ReflectionDelegateStrategy.Expressions,
+                        ReflectionDelegateStrategy.DynamicIl,
                         out Func<TValue> getter
                     )
                 )
@@ -1135,7 +1150,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 if (
                     TryGetOrCreateTypedStaticFieldGetter<TValue>(
                         field,
-                        ReflectionDelegateStrategy.DynamicIl,
+                        ReflectionDelegateStrategy.Expressions,
                         out getter
                     )
                 )
@@ -1157,10 +1172,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     throw new ArgumentException("Field must be static", nameof(field));
                 }
 
+                // Static field access: prefer Dynamic IL over Expressions because
+                // Expression.Compile() has inherent closure overhead for static field access.
                 if (
                     TryGetOrCreateTypedStaticFieldSetter<TValue>(
                         field,
-                        ReflectionDelegateStrategy.Expressions,
+                        ReflectionDelegateStrategy.DynamicIl,
                         out Action<TValue> setter
                     )
                 )
@@ -1171,7 +1188,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 if (
                     TryGetOrCreateTypedStaticFieldSetter<TValue>(
                         field,
-                        ReflectionDelegateStrategy.DynamicIl,
+                        ReflectionDelegateStrategy.Expressions,
                         out setter
                     )
                 )
