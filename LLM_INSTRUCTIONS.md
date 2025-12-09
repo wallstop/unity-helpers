@@ -196,6 +196,15 @@ If reflection is unavoidable (e.g., Unity serialization callbacks), document the
 - ✅ `AsyncTaskInvocationCompletesAndRecordsHistory`
 - ❌ `AsyncTask_Invocation_Completes_And_Records_History`
 
+### Data-Driven Test Naming
+
+When using `[TestCase]`, `[Values]`, or other data-driven attributes with string names, use `.` (dot) or no delimiter—**never underscores**:
+
+- ✅ `[TestCase("Input.Valid")]` or `[TestCase("InputValid")]`
+- ✅ `[Values("Option.First", "Option.Second")]`
+- ❌ `[TestCase("Input_Valid")]`
+- ❌ `[Values("Option_First", "Option_Second")]`
+
 ### Rules
 
 1. **NO underscores in test method names**: Use PascalCase throughout (see Critical Rules above)

@@ -595,6 +595,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 return;
             }
 
+            // Guard against calling GUI methods outside of a valid GUI context (e.g., in tests)
+            if (Event.current == null)
+            {
+                return;
+            }
+
             GUIContent header = BuildGroupHeader(groupKey);
             bool alwaysOpen =
                 foldoutBehavior == UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen;

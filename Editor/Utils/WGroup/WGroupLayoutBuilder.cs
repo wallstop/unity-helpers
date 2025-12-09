@@ -623,7 +623,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 int propertyIndex
             )
             {
-                if (!string.IsNullOrWhiteSpace(attribute.DisplayName))
+                // Only update DisplayName if the attribute has an explicitly set display name
+                // (not just the fallback to GroupName)
+                if (
+                    !string.IsNullOrWhiteSpace(attribute.DisplayName)
+                    && !string.Equals(
+                        attribute.DisplayName,
+                        attribute.GroupName,
+                        StringComparison.Ordinal
+                    )
+                )
                 {
                     DisplayName = attribute.DisplayName;
                 }
