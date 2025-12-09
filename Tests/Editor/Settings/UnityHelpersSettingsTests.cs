@@ -1603,6 +1603,272 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 && Mathf.Abs(a.b - b.b) <= tolerance
                 && Mathf.Abs(a.a - b.a) <= tolerance;
         }
+
+        [Test]
+        public void CustomColorDrawerLayoutMinColorFieldWidthIsReasonable()
+        {
+            float minColorFieldWidth = UnityHelpersSettings
+                .CustomColorDrawerLayout
+                .MinColorFieldWidth;
+            Assert.That(
+                minColorFieldWidth,
+                Is.GreaterThan(20f),
+                "Min color field width should be large enough to be usable."
+            );
+            Assert.That(
+                minColorFieldWidth,
+                Is.LessThan(100f),
+                "Min color field width should not be excessively large."
+            );
+        }
+
+        [Test]
+        public void CustomColorDrawerLayoutLabelWidthRatioIsReasonable()
+        {
+            float labelWidthRatio = UnityHelpersSettings.CustomColorDrawerLayout.LabelWidthRatio;
+            Assert.That(
+                labelWidthRatio,
+                Is.GreaterThan(0.2f),
+                "Label width ratio should be large enough for labels to be readable."
+            );
+            Assert.That(
+                labelWidthRatio,
+                Is.LessThan(0.6f),
+                "Label width ratio should leave enough space for color fields."
+            );
+        }
+
+        [Test]
+        public void CustomColorDrawerLayoutMinLabelWidthIsReasonable()
+        {
+            float minLabelWidth = UnityHelpersSettings.CustomColorDrawerLayout.MinLabelWidth;
+            Assert.That(
+                minLabelWidth,
+                Is.GreaterThan(10f),
+                "Min label width should be large enough for short labels."
+            );
+            Assert.That(
+                minLabelWidth,
+                Is.LessThan(50f),
+                "Min label width should not consume too much space."
+            );
+        }
+
+        [Test]
+        public void CustomColorDrawerLayoutMaxLabelWidthIsReasonable()
+        {
+            float maxLabelWidth = UnityHelpersSettings.CustomColorDrawerLayout.MaxLabelWidth;
+            float minLabelWidth = UnityHelpersSettings.CustomColorDrawerLayout.MinLabelWidth;
+            Assert.That(
+                maxLabelWidth,
+                Is.GreaterThan(minLabelWidth),
+                "Max label width should be greater than min."
+            );
+            Assert.That(
+                maxLabelWidth,
+                Is.LessThan(200f),
+                "Max label width should not consume too much horizontal space."
+            );
+        }
+
+        [TestCase(100f, TestName = "CalculateLabelWidth.100px.WithinBounds")]
+        [TestCase(150f, TestName = "CalculateLabelWidth.150px.WithinBounds")]
+        [TestCase(200f, TestName = "CalculateLabelWidth.200px.WithinBounds")]
+        [TestCase(300f, TestName = "CalculateLabelWidth.300px.WithinBounds")]
+        [TestCase(50f, TestName = "CalculateLabelWidth.50px.AtMinBound")]
+        public void CustomColorDrawerLayoutCalculateLabelWidthIsWithinBounds(float columnWidth)
+        {
+            float labelWidth = UnityHelpersSettings.CustomColorDrawerLayout.CalculateLabelWidth(
+                columnWidth
+            );
+            float minLabelWidth = UnityHelpersSettings.CustomColorDrawerLayout.MinLabelWidth;
+            float maxLabelWidth = UnityHelpersSettings.CustomColorDrawerLayout.MaxLabelWidth;
+            Assert.That(
+                labelWidth,
+                Is.GreaterThanOrEqualTo(minLabelWidth),
+                $"Label width should be at least {minLabelWidth}px."
+            );
+            Assert.That(
+                labelWidth,
+                Is.LessThanOrEqualTo(maxLabelWidth),
+                $"Label width should not exceed {maxLabelWidth}px."
+            );
+        }
+
+        [TestCase(200f, true, TestName = "ShouldShowLabels.200px.ShowsLabels")]
+        [TestCase(150f, true, TestName = "ShouldShowLabels.150px.ShowsLabels")]
+        [TestCase(120f, true, TestName = "ShouldShowLabels.120px.ShowsLabels")]
+        [TestCase(100f, true, TestName = "ShouldShowLabels.100px.ShowsLabels")]
+        public void CustomColorDrawerLayoutShouldShowLabelsForNormalWidths(
+            float columnWidth,
+            bool expectedShowLabels
+        )
+        {
+            bool shouldShowLabels = UnityHelpersSettings.CustomColorDrawerLayout.ShouldShowLabels(
+                columnWidth
+            );
+            Assert.That(
+                shouldShowLabels,
+                Is.EqualTo(expectedShowLabels),
+                $"For column width {columnWidth}px, labels should {(expectedShowLabels ? "" : "not ")}be shown."
+            );
+        }
+
+        [TestCase(50f, false, TestName = "ShouldShowLabels.50px.HidesLabels")]
+        [TestCase(30f, false, TestName = "ShouldShowLabels.30px.HidesLabels")]
+        [TestCase(20f, false, TestName = "ShouldShowLabels.20px.HidesLabels")]
+        public void CustomColorDrawerLayoutShouldHideLabelsForNarrowWidths(
+            float columnWidth,
+            bool expectedShowLabels
+        )
+        {
+            bool shouldShowLabels = UnityHelpersSettings.CustomColorDrawerLayout.ShouldShowLabels(
+                columnWidth
+            );
+            Assert.That(
+                shouldShowLabels,
+                Is.EqualTo(expectedShowLabels),
+                $"For narrow column width {columnWidth}px, labels should be hidden."
+            );
+        }
+
+        [Test]
+        public void CustomColorDrawerLayoutLabelsHiddenWhenWidthBelowThreshold()
+        {
+            float minColorFieldWidth = UnityHelpersSettings
+                .CustomColorDrawerLayout
+                .MinColorFieldWidth;
+            float minLabelWidth = UnityHelpersSettings.CustomColorDrawerLayout.MinLabelWidth;
+            float threshold = minColorFieldWidth + minLabelWidth;
+            bool justAboveThreshold = UnityHelpersSettings.CustomColorDrawerLayout.ShouldShowLabels(
+                threshold + 1f
+            );
+            bool justBelowThreshold = UnityHelpersSettings.CustomColorDrawerLayout.ShouldShowLabels(
+                threshold - 1f
+            );
+            Assert.IsTrue(
+                justAboveThreshold,
+                $"Labels should be shown when column width ({threshold + 1f}px) is above threshold ({threshold}px)."
+            );
+            Assert.IsFalse(
+                justBelowThreshold,
+                $"Labels should be hidden when column width ({threshold - 1f}px) is below threshold ({threshold}px)."
+            );
+        }
+
+        [Test]
+        public void CustomColorDrawerLayoutCalculateLabelWidthMatchesRatioForMidRange()
+        {
+            float labelWidthRatio = UnityHelpersSettings.CustomColorDrawerLayout.LabelWidthRatio;
+            float maxLabelWidth = UnityHelpersSettings.CustomColorDrawerLayout.MaxLabelWidth;
+            float columnWidth = maxLabelWidth / labelWidthRatio * 0.8f;
+            float expectedLabelWidth = columnWidth * labelWidthRatio;
+            float actualLabelWidth =
+                UnityHelpersSettings.CustomColorDrawerLayout.CalculateLabelWidth(columnWidth);
+            Assert.That(
+                actualLabelWidth,
+                Is.EqualTo(expectedLabelWidth).Within(0.1f),
+                $"For column width {columnWidth}px in the mid-range, label width should match ratio calculation."
+            );
+        }
+
+        [Test]
+        public void CustomColorDrawerLayoutLabelWidthClampsAtMinimum()
+        {
+            float minLabelWidth = UnityHelpersSettings.CustomColorDrawerLayout.MinLabelWidth;
+            float actualLabelWidth =
+                UnityHelpersSettings.CustomColorDrawerLayout.CalculateLabelWidth(10f);
+            Assert.That(
+                actualLabelWidth,
+                Is.EqualTo(minLabelWidth),
+                "Label width should be clamped to minimum for very narrow columns."
+            );
+        }
+
+        [Test]
+        public void CustomColorDrawerLayoutLabelWidthClampsAtMaximum()
+        {
+            float maxLabelWidth = UnityHelpersSettings.CustomColorDrawerLayout.MaxLabelWidth;
+            float actualLabelWidth =
+                UnityHelpersSettings.CustomColorDrawerLayout.CalculateLabelWidth(500f);
+            Assert.That(
+                actualLabelWidth,
+                Is.EqualTo(maxLabelWidth),
+                "Label width should be clamped to maximum for very wide columns."
+            );
+        }
+
+        [Test]
+        public void CustomColorDrawerLayoutMinFieldWidthAllowsUsableColorPicker()
+        {
+            float minColorFieldWidth = UnityHelpersSettings
+                .CustomColorDrawerLayout
+                .MinColorFieldWidth;
+            float minLabelWidth = UnityHelpersSettings.CustomColorDrawerLayout.MinLabelWidth;
+            float combinedMinWidth = minColorFieldWidth + minLabelWidth;
+            Assert.That(
+                combinedMinWidth,
+                Is.GreaterThanOrEqualTo(50f),
+                "Combined minimum width should allow for a usable color picker with a label."
+            );
+            Assert.That(
+                combinedMinWidth,
+                Is.LessThan(150f),
+                "Combined minimum width should not be excessively large."
+            );
+        }
+
+        [Test]
+        public void CustomColorDrawerLayoutTwoColumnLayoutFitsInNarrowSettings()
+        {
+            const float narrowSettingsPanelWidth = 300f;
+            float spacing = EditorGUIUtility.standardVerticalSpacing;
+            float availableWidth = narrowSettingsPanelWidth - spacing;
+            float halfWidth = availableWidth * 0.5f;
+            bool labelsVisible = UnityHelpersSettings.CustomColorDrawerLayout.ShouldShowLabels(
+                halfWidth
+            );
+            float labelWidth = UnityHelpersSettings.CustomColorDrawerLayout.CalculateLabelWidth(
+                halfWidth
+            );
+            float minColorFieldWidth = UnityHelpersSettings
+                .CustomColorDrawerLayout
+                .MinColorFieldWidth;
+            float remainingWidthForColorField = halfWidth - labelWidth;
+            Assert.That(
+                labelsVisible,
+                Is.True,
+                $"Labels should be visible for a {narrowSettingsPanelWidth}px panel width."
+            );
+            Assert.That(
+                remainingWidthForColorField,
+                Is.GreaterThanOrEqualTo(minColorFieldWidth),
+                $"At {narrowSettingsPanelWidth}px panel width, color fields should have adequate space."
+            );
+        }
+
+        [Test]
+        public void CustomColorDrawerLayoutTwoColumnLayoutGracefullyDegradesBelowMinimum()
+        {
+            const float veryNarrowPanelWidth = 120f;
+            float spacing = EditorGUIUtility.standardVerticalSpacing;
+            float availableWidth = veryNarrowPanelWidth - spacing;
+            float halfWidth = availableWidth * 0.5f;
+            bool labelsVisible = UnityHelpersSettings.CustomColorDrawerLayout.ShouldShowLabels(
+                halfWidth
+            );
+            float minColorFieldWidth = UnityHelpersSettings
+                .CustomColorDrawerLayout
+                .MinColorFieldWidth;
+            float minLabelWidth = UnityHelpersSettings.CustomColorDrawerLayout.MinLabelWidth;
+            float threshold = minColorFieldWidth + minLabelWidth;
+            bool expectedLabelsHidden = halfWidth < threshold;
+            Assert.That(
+                labelsVisible,
+                Is.EqualTo(!expectedLabelsHidden),
+                $"For very narrow panel ({veryNarrowPanelWidth}px), labels should be hidden when halfWidth ({halfWidth}px) < threshold ({threshold}px)."
+            );
+        }
     }
 }
 #endif

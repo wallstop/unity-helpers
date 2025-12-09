@@ -200,7 +200,9 @@ private void WarningAction() { }
 4. Set background/text colors
 5. Use the key in your `[WButton]` attribute
 
-![Image placeholder: inspector-button-settings-colors.png - Project settings showing color palette configuration]
+![Button color configuration via Unity Helper Settings](../../images/inspector/buttons/add-color-themes.gif)
+
+![Project settings showing color palette configuration](../../images/inspector/buttons/inspector-button-settings-colors.png)
 
 ---
 
@@ -223,6 +225,8 @@ public class GameManager : MonoBehaviour
     private void ClearConsole() { }
 
     // Inspector properties here
+    public int currentLevel = 1;
+    public bool debugMode = false;
 
     // "Save System" group below properties
     [WButton("Save Game", drawOrder: 1, groupName: "Save System")]
@@ -236,23 +240,7 @@ public class GameManager : MonoBehaviour
 }
 ```
 
-**Visual layout:**
-
-```text
-┌─────────────────────────────┐
-│ ▼ Debug Tools               │ ← Group header
-│   Log State  Clear Console  │
-├─────────────────────────────┤
-│ (Inspector properties)      │
-├─────────────────────────────┤
-│ ▼ Save System               │ ← Group header
-│   Save Game                 │
-│   Load Game                 │
-│   Delete Save               │
-└─────────────────────────────┘
-```
-
-![Image placeholder: inspector-button-groups.png - Inspector showing grouped buttons with headers]
+![Inspector showing grouped buttons with headers](../../images/inspector/buttons/inspector-button-groups.png)
 
 **Notes:**
 

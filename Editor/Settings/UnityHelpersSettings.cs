@@ -97,6 +97,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private static readonly Dictionary<int, bool> SettingsGroupFoldoutStates = new();
         private const float SettingsLabelWidth = 260f;
         private const float SettingsMinFieldWidth = 110f;
+        private const float CustomColorDrawerMinColorFieldWidth = 42f;
+        private const float CustomColorDrawerLabelWidthRatio = 0.38f;
+        private const float CustomColorDrawerMinLabelWidth = 28f;
+        private const float CustomColorDrawerMaxLabelWidth = 90f;
         private const string WaitInstructionBufferFoldoutKey = "Buffers";
         private static UnityHelpersBufferSettingsAsset waitInstructionBufferSettingsAsset;
         private static readonly GUIContent StringInListPageSizeContent =
@@ -827,6 +831,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [CustomPropertyDrawer(typeof(WButtonCustomColor))]
         private sealed class WButtonCustomColorDrawer : PropertyDrawer
         {
+            private static readonly GUIContent ButtonLabelContent = EditorGUIUtility.TrTextContent(
+                "Button"
+            );
+            private static readonly GUIContent TextLabelContent = EditorGUIUtility.TrTextContent(
+                "Text"
+            );
+
             public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
             {
                 return EditorGUIUtility.singleLineHeight;
@@ -838,31 +849,61 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 SerializedProperty textColor = property.FindPropertyRelative("textColor");
 
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
-                float halfWidth = (position.width - spacing) * 0.5f;
-                Rect buttonRect = new(position.x, position.y, halfWidth, position.height);
-                Rect textRect = new(
-                    position.x + halfWidth + spacing,
-                    position.y,
-                    halfWidth,
-                    position.height
+                float availableWidth = Mathf.Max(0f, position.width - spacing);
+                float halfWidth = availableWidth * 0.5f;
+
+                float labelWidth = Mathf.Clamp(
+                    halfWidth * CustomColorDrawerLabelWidthRatio,
+                    CustomColorDrawerMinLabelWidth,
+                    CustomColorDrawerMaxLabelWidth
                 );
 
-                EditorGUI.PropertyField(
-                    buttonRect,
-                    buttonColor,
-                    EditorGUIUtility.TrTextContent("Button")
-                );
-                EditorGUI.PropertyField(
-                    textRect,
-                    textColor,
-                    EditorGUIUtility.TrTextContent("Text")
-                );
+                float previousLabelWidth = EditorGUIUtility.labelWidth;
+                EditorGUIUtility.labelWidth = labelWidth;
+
+                try
+                {
+                    Rect buttonRect = new(position.x, position.y, halfWidth, position.height);
+                    Rect textRect = new(
+                        position.x + halfWidth + spacing,
+                        position.y,
+                        halfWidth,
+                        position.height
+                    );
+
+                    float minFieldWidth = CustomColorDrawerMinColorFieldWidth + labelWidth;
+                    bool useLabels = halfWidth >= minFieldWidth;
+
+                    EditorGUI.PropertyField(
+                        buttonRect,
+                        buttonColor,
+                        useLabels ? ButtonLabelContent : GUIContent.none
+                    );
+                    EditorGUI.PropertyField(
+                        textRect,
+                        textColor,
+                        useLabels ? TextLabelContent : GUIContent.none
+                    );
+                }
+                finally
+                {
+                    EditorGUIUtility.labelWidth = previousLabelWidth;
+                }
             }
         }
 
         [CustomPropertyDrawer(typeof(WEnumToggleButtonsCustomColor))]
         private sealed class WEnumToggleButtonsCustomColorDrawer : PropertyDrawer
         {
+            private static readonly GUIContent SelectedBackgroundLabelContent =
+                EditorGUIUtility.TrTextContent("Selected BG");
+            private static readonly GUIContent SelectedTextLabelContent =
+                EditorGUIUtility.TrTextContent("Selected Text");
+            private static readonly GUIContent InactiveBackgroundLabelContent =
+                EditorGUIUtility.TrTextContent("Inactive BG");
+            private static readonly GUIContent InactiveTextLabelContent =
+                EditorGUIUtility.TrTextContent("Inactive Text");
+
             public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
             {
                 float lineHeight = EditorGUIUtility.singleLineHeight;
@@ -886,49 +927,74 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 );
 
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
-                float halfWidth = (position.width - spacing) * 0.5f;
+                float availableWidth = Mathf.Max(0f, position.width - spacing);
+                float halfWidth = availableWidth * 0.5f;
                 float lineHeight = EditorGUIUtility.singleLineHeight;
 
-                Rect selectedBackgroundRect = new(position.x, position.y, halfWidth, lineHeight);
-                Rect selectedTextRect = new(
-                    position.x + halfWidth + spacing,
-                    position.y,
-                    halfWidth,
-                    lineHeight
-                );
-                Rect inactiveBackgroundRect = new(
-                    position.x,
-                    position.y + lineHeight + spacing,
-                    halfWidth,
-                    lineHeight
-                );
-                Rect inactiveTextRect = new(
-                    position.x + halfWidth + spacing,
-                    position.y + lineHeight + spacing,
-                    halfWidth,
-                    lineHeight
+                float labelWidth = Mathf.Clamp(
+                    halfWidth * CustomColorDrawerLabelWidthRatio,
+                    CustomColorDrawerMinLabelWidth,
+                    CustomColorDrawerMaxLabelWidth
                 );
 
-                EditorGUI.PropertyField(
-                    selectedBackgroundRect,
-                    selectedBackground,
-                    EditorGUIUtility.TrTextContent("Selected Background")
-                );
-                EditorGUI.PropertyField(
-                    selectedTextRect,
-                    selectedText,
-                    EditorGUIUtility.TrTextContent("Selected Text")
-                );
-                EditorGUI.PropertyField(
-                    inactiveBackgroundRect,
-                    inactiveBackground,
-                    EditorGUIUtility.TrTextContent("Inactive Background")
-                );
-                EditorGUI.PropertyField(
-                    inactiveTextRect,
-                    inactiveText,
-                    EditorGUIUtility.TrTextContent("Inactive Text")
-                );
+                float previousLabelWidth = EditorGUIUtility.labelWidth;
+                EditorGUIUtility.labelWidth = labelWidth;
+
+                try
+                {
+                    Rect selectedBackgroundRect = new(
+                        position.x,
+                        position.y,
+                        halfWidth,
+                        lineHeight
+                    );
+                    Rect selectedTextRect = new(
+                        position.x + halfWidth + spacing,
+                        position.y,
+                        halfWidth,
+                        lineHeight
+                    );
+                    Rect inactiveBackgroundRect = new(
+                        position.x,
+                        position.y + lineHeight + spacing,
+                        halfWidth,
+                        lineHeight
+                    );
+                    Rect inactiveTextRect = new(
+                        position.x + halfWidth + spacing,
+                        position.y + lineHeight + spacing,
+                        halfWidth,
+                        lineHeight
+                    );
+
+                    float minFieldWidth = CustomColorDrawerMinColorFieldWidth + labelWidth;
+                    bool useLabels = halfWidth >= minFieldWidth;
+
+                    EditorGUI.PropertyField(
+                        selectedBackgroundRect,
+                        selectedBackground,
+                        useLabels ? SelectedBackgroundLabelContent : GUIContent.none
+                    );
+                    EditorGUI.PropertyField(
+                        selectedTextRect,
+                        selectedText,
+                        useLabels ? SelectedTextLabelContent : GUIContent.none
+                    );
+                    EditorGUI.PropertyField(
+                        inactiveBackgroundRect,
+                        inactiveBackground,
+                        useLabels ? InactiveBackgroundLabelContent : GUIContent.none
+                    );
+                    EditorGUI.PropertyField(
+                        inactiveTextRect,
+                        inactiveText,
+                        useLabels ? InactiveTextLabelContent : GUIContent.none
+                    );
+                }
+                finally
+                {
+                    EditorGUIUtility.labelWidth = previousLabelWidth;
+                }
             }
         }
 #endif
@@ -1032,6 +1098,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [CustomPropertyDrawer(typeof(WGroupCustomColor))]
         private sealed class WGroupCustomColorDrawer : PropertyDrawer
         {
+            private static readonly GUIContent BackgroundLabelContent =
+                EditorGUIUtility.TrTextContent("Background");
+            private static readonly GUIContent TextLabelContent = EditorGUIUtility.TrTextContent(
+                "Text"
+            );
+
             public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
             {
                 return EditorGUIUtility.singleLineHeight;
@@ -1043,21 +1115,46 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 SerializedProperty text = property.FindPropertyRelative("textColor");
 
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
-                float halfWidth = (position.width - spacing) * 0.5f;
-                Rect backgroundRect = new(position.x, position.y, halfWidth, position.height);
-                Rect textRect = new(
-                    position.x + halfWidth + spacing,
-                    position.y,
-                    halfWidth,
-                    position.height
+                float availableWidth = Mathf.Max(0f, position.width - spacing);
+                float halfWidth = availableWidth * 0.5f;
+
+                float labelWidth = Mathf.Clamp(
+                    halfWidth * CustomColorDrawerLabelWidthRatio,
+                    CustomColorDrawerMinLabelWidth,
+                    CustomColorDrawerMaxLabelWidth
                 );
 
-                EditorGUI.PropertyField(
-                    backgroundRect,
-                    background,
-                    EditorGUIUtility.TrTextContent("Background")
-                );
-                EditorGUI.PropertyField(textRect, text, EditorGUIUtility.TrTextContent("Text"));
+                float previousLabelWidth = EditorGUIUtility.labelWidth;
+                EditorGUIUtility.labelWidth = labelWidth;
+
+                try
+                {
+                    Rect backgroundRect = new(position.x, position.y, halfWidth, position.height);
+                    Rect textRect = new(
+                        position.x + halfWidth + spacing,
+                        position.y,
+                        halfWidth,
+                        position.height
+                    );
+
+                    float minFieldWidth = CustomColorDrawerMinColorFieldWidth + labelWidth;
+                    bool useLabels = halfWidth >= minFieldWidth;
+
+                    EditorGUI.PropertyField(
+                        backgroundRect,
+                        background,
+                        useLabels ? BackgroundLabelContent : GUIContent.none
+                    );
+                    EditorGUI.PropertyField(
+                        textRect,
+                        text,
+                        useLabels ? TextLabelContent : GUIContent.none
+                    );
+                }
+                finally
+                {
+                    EditorGUIUtility.labelWidth = previousLabelWidth;
+                }
             }
         }
 #endif
@@ -1752,6 +1849,50 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 WGroupCustomColor.backgroundColor
             );
             internal const string WGroupCustomColorText = nameof(WGroupCustomColor.textColor);
+        }
+
+        /// <summary>
+        /// Constants for custom color drawer layout calculations, exposed for testing.
+        /// </summary>
+        internal static class CustomColorDrawerLayout
+        {
+            /// <summary>
+            /// Minimum width for a color field (the picker itself, excluding label).
+            /// </summary>
+            internal const float MinColorFieldWidth = CustomColorDrawerMinColorFieldWidth;
+
+            /// <summary>
+            /// Ratio of column width to label width (e.g., 0.38 means label is 38% of the column).
+            /// </summary>
+            internal const float LabelWidthRatio = CustomColorDrawerLabelWidthRatio;
+
+            /// <summary>
+            /// Minimum label width in pixels.
+            /// </summary>
+            internal const float MinLabelWidth = CustomColorDrawerMinLabelWidth;
+
+            /// <summary>
+            /// Maximum label width in pixels.
+            /// </summary>
+            internal const float MaxLabelWidth = CustomColorDrawerMaxLabelWidth;
+
+            /// <summary>
+            /// Calculates the label width for a given column width using the same logic as the drawers.
+            /// </summary>
+            internal static float CalculateLabelWidth(float columnWidth)
+            {
+                return Mathf.Clamp(columnWidth * LabelWidthRatio, MinLabelWidth, MaxLabelWidth);
+            }
+
+            /// <summary>
+            /// Determines whether labels should be displayed for a given column width.
+            /// </summary>
+            internal static bool ShouldShowLabels(float columnWidth)
+            {
+                float labelWidth = CalculateLabelWidth(columnWidth);
+                float minFieldWidth = MinColorFieldWidth + labelWidth;
+                return columnWidth >= minFieldWidth;
+            }
         }
 
         /// <summary>
