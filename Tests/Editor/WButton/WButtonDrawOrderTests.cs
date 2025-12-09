@@ -248,19 +248,28 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             // Should have First, Second, Third, Fifth (Fourth is in Other Group)
             Assert.That(orderTestGroup, Has.Count.EqualTo(4));
 
-            // Verify the methods are from Order Test group
-            HashSet<string> expectedMethods = new()
-            {
-                nameof(WButtonDeclarationOrderTarget.First),
-                nameof(WButtonDeclarationOrderTarget.Second),
-                nameof(WButtonDeclarationOrderTarget.Third),
-                nameof(WButtonDeclarationOrderTarget.Fifth),
-            };
-
-            foreach (WButtonMethodMetadata m in orderTestGroup)
-            {
-                Assert.That(expectedMethods, Contains.Item(m.Method.Name));
-            }
+            // Verify the exact order is preserved (First, Second, Third, Fifth)
+            // Fifth comes after Third in declaration order, even though Fourth is between them
+            Assert.That(
+                orderTestGroup[0].DisplayName,
+                Is.EqualTo("First"),
+                "First method in Order Test group should be 'First'"
+            );
+            Assert.That(
+                orderTestGroup[1].DisplayName,
+                Is.EqualTo("Second"),
+                "Second method in Order Test group should be 'Second'"
+            );
+            Assert.That(
+                orderTestGroup[2].DisplayName,
+                Is.EqualTo("Third"),
+                "Third method in Order Test group should be 'Third'"
+            );
+            Assert.That(
+                orderTestGroup[3].DisplayName,
+                Is.EqualTo("Fifth"),
+                "Fourth method in Order Test group should be 'Fifth'"
+            );
         }
 
         [Test]

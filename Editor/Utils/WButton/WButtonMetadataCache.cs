@@ -294,21 +294,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 return left.DrawOrder.CompareTo(right.DrawOrder);
             }
 
-            int nameCompare = string.Compare(
-                left.DisplayName,
-                right.DisplayName,
-                StringComparison.OrdinalIgnoreCase
-            );
-            if (nameCompare != 0)
-            {
-                return nameCompare;
-            }
-
-            return string.Compare(
-                left.Method.Name,
-                right.Method.Name,
-                StringComparison.OrdinalIgnoreCase
-            );
+            // Within the same draw order, preserve declaration order (source code order)
+            return left.DeclarationOrder.CompareTo(right.DeclarationOrder);
         }
 
         private static WButtonParameterMetadata[] BuildParameterMetadata(
