@@ -2255,116 +2255,151 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void GetPropertyHeightIncreasesWhenPendingEntryIsExpanded()
         {
-            StringSetHost host = CreateScriptableObject<StringSetHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(StringSetHost.set)
-            );
-            setProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            using (new SetTweenDisabledScope())
+            {
+                bool tweenEnabled = SerializableSetPropertyDrawer.IsTweeningEnabledForTests(
+                    isSortedSet: false
+                );
+                Assert.IsFalse(
+                    tweenEnabled,
+                    "Tween should be disabled by SetTweenDisabledScope for accurate height tests."
+                );
 
-            SerializableSetPropertyDrawer drawer = new();
-            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
-                setProperty,
-                setProperty.propertyPath,
-                typeof(string),
-                isSortedSet: false
-            );
+                StringSetHost host = CreateScriptableObject<StringSetHost>();
+                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+                serializedObject.Update();
+                SerializedProperty setProperty = serializedObject.FindProperty(
+                    nameof(StringSetHost.set)
+                );
+                setProperty.isExpanded = true;
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
 
-            pending.isExpanded = false;
-            float collapsedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                SerializableSetPropertyDrawer drawer = new();
+                SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                    setProperty,
+                    setProperty.propertyPath,
+                    typeof(string),
+                    isSortedSet: false
+                );
 
-            pending.isExpanded = true;
-            float expandedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                pending.isExpanded = false;
+                float collapsedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
 
-            string diagnostics =
-                $"collapsedHeight={collapsedHeight}, expandedHeight={expandedHeight}, "
-                + $"pendingIsExpanded={pending.isExpanded}, foldoutAnimExists={pending.foldoutAnim != null}";
-            Assert.Greater(
-                expandedHeight,
-                collapsedHeight,
-                $"Property height should increase when the pending New Entry section is expanded. Diagnostics: {diagnostics}"
-            );
+                pending.isExpanded = true;
+                float expandedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+
+                string diagnostics =
+                    $"collapsedHeight={collapsedHeight}, expandedHeight={expandedHeight}, "
+                    + $"pendingIsExpanded={pending.isExpanded}, foldoutAnimExists={pending.foldoutAnim != null}, "
+                    + $"tweenEnabled={tweenEnabled}";
+                Assert.Greater(
+                    expandedHeight,
+                    collapsedHeight,
+                    $"Property height should increase when the pending New Entry section is expanded. Diagnostics: {diagnostics}"
+                );
+            }
         }
 
         [Test]
         public void GetPropertyHeightDecreasesWhenPendingEntryIsCollapsed()
         {
-            StringSetHost host = CreateScriptableObject<StringSetHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(StringSetHost.set)
-            );
-            setProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            using (new SetTweenDisabledScope())
+            {
+                bool tweenEnabled = SerializableSetPropertyDrawer.IsTweeningEnabledForTests(
+                    isSortedSet: false
+                );
+                Assert.IsFalse(
+                    tweenEnabled,
+                    "Tween should be disabled by SetTweenDisabledScope for accurate height tests."
+                );
 
-            SerializableSetPropertyDrawer drawer = new();
-            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
-                setProperty,
-                setProperty.propertyPath,
-                typeof(string),
-                isSortedSet: false
-            );
+                StringSetHost host = CreateScriptableObject<StringSetHost>();
+                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+                serializedObject.Update();
+                SerializedProperty setProperty = serializedObject.FindProperty(
+                    nameof(StringSetHost.set)
+                );
+                setProperty.isExpanded = true;
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
 
-            pending.isExpanded = true;
-            float expandedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                SerializableSetPropertyDrawer drawer = new();
+                SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                    setProperty,
+                    setProperty.propertyPath,
+                    typeof(string),
+                    isSortedSet: false
+                );
 
-            pending.isExpanded = false;
-            float collapsedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                pending.isExpanded = true;
+                float expandedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
 
-            string diagnostics =
-                $"expandedHeight={expandedHeight}, collapsedHeight={collapsedHeight}, "
-                + $"pendingIsExpanded={pending.isExpanded}, foldoutAnimExists={pending.foldoutAnim != null}";
-            Assert.Less(
-                collapsedHeight,
-                expandedHeight,
-                $"Property height should decrease when the pending New Entry section is collapsed. Diagnostics: {diagnostics}"
-            );
+                pending.isExpanded = false;
+                float collapsedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+
+                string diagnostics =
+                    $"expandedHeight={expandedHeight}, collapsedHeight={collapsedHeight}, "
+                    + $"pendingIsExpanded={pending.isExpanded}, foldoutAnimExists={pending.foldoutAnim != null}, "
+                    + $"tweenEnabled={tweenEnabled}";
+                Assert.Less(
+                    collapsedHeight,
+                    expandedHeight,
+                    $"Property height should decrease when the pending New Entry section is collapsed. Diagnostics: {diagnostics}"
+                );
+            }
         }
 
         [Test]
         public void GetPropertyHeightCacheInvalidatesWhenPendingExpandStateChanges()
         {
-            StringSetHost host = CreateScriptableObject<StringSetHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(StringSetHost.set)
-            );
-            setProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            using (new SetTweenDisabledScope())
+            {
+                bool tweenEnabled = SerializableSetPropertyDrawer.IsTweeningEnabledForTests(
+                    isSortedSet: false
+                );
+                Assert.IsFalse(
+                    tweenEnabled,
+                    "Tween should be disabled by SetTweenDisabledScope for accurate height tests."
+                );
 
-            SerializableSetPropertyDrawer drawer = new();
-            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
-                setProperty,
-                setProperty.propertyPath,
-                typeof(string),
-                isSortedSet: false
-            );
+                StringSetHost host = CreateScriptableObject<StringSetHost>();
+                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+                serializedObject.Update();
+                SerializedProperty setProperty = serializedObject.FindProperty(
+                    nameof(StringSetHost.set)
+                );
+                setProperty.isExpanded = true;
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
 
-            pending.isExpanded = false;
-            float heightBeforeToggle = drawer.GetPropertyHeight(setProperty, GUIContent.none);
-            float heightCachedSame = drawer.GetPropertyHeight(setProperty, GUIContent.none);
-            Assert.AreEqual(
-                heightBeforeToggle,
-                heightCachedSame,
-                0.001f,
-                "Height should be cached and return the same value when nothing changes."
-            );
+                SerializableSetPropertyDrawer drawer = new();
+                SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                    setProperty,
+                    setProperty.propertyPath,
+                    typeof(string),
+                    isSortedSet: false
+                );
 
-            pending.isExpanded = true;
-            float heightAfterExpand = drawer.GetPropertyHeight(setProperty, GUIContent.none);
-            string diagnostics =
-                $"heightBeforeToggle={heightBeforeToggle}, heightCachedSame={heightCachedSame}, "
-                + $"heightAfterExpand={heightAfterExpand}, pendingIsExpanded={pending.isExpanded}, "
-                + $"foldoutAnimExists={pending.foldoutAnim != null}";
-            Assert.AreNotEqual(
-                heightBeforeToggle,
-                heightAfterExpand,
-                $"Height cache should invalidate when pending isExpanded state changes. Diagnostics: {diagnostics}"
-            );
+                pending.isExpanded = false;
+                float heightBeforeToggle = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                float heightCachedSame = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                Assert.AreEqual(
+                    heightBeforeToggle,
+                    heightCachedSame,
+                    0.001f,
+                    "Height should be cached and return the same value when nothing changes."
+                );
+
+                pending.isExpanded = true;
+                float heightAfterExpand = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                string diagnostics =
+                    $"heightBeforeToggle={heightBeforeToggle}, heightCachedSame={heightCachedSame}, "
+                    + $"heightAfterExpand={heightAfterExpand}, pendingIsExpanded={pending.isExpanded}, "
+                    + $"foldoutAnimExists={pending.foldoutAnim != null}, tweenEnabled={tweenEnabled}";
+                Assert.AreNotEqual(
+                    heightBeforeToggle,
+                    heightAfterExpand,
+                    $"Height cache should invalidate when pending isExpanded state changes. Diagnostics: {diagnostics}"
+                );
+            }
         }
 
         [Test]
@@ -2409,207 +2444,266 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void GetPropertyHeightDiffersBetweenExpandedAndCollapsedPendingForEmptySet()
         {
-            StringSetHost host = CreateScriptableObject<StringSetHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(StringSetHost.set)
-            );
-            setProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            using (new SetTweenDisabledScope())
+            {
+                bool tweenEnabled = SerializableSetPropertyDrawer.IsTweeningEnabledForTests(
+                    isSortedSet: false
+                );
+                Assert.IsFalse(
+                    tweenEnabled,
+                    "Tween should be disabled by SetTweenDisabledScope for accurate height tests."
+                );
 
-            SerializableSetPropertyDrawer drawer = new();
-            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
-                setProperty,
-                setProperty.propertyPath,
-                typeof(string),
-                isSortedSet: false
-            );
+                StringSetHost host = CreateScriptableObject<StringSetHost>();
+                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+                serializedObject.Update();
+                SerializedProperty setProperty = serializedObject.FindProperty(
+                    nameof(StringSetHost.set)
+                );
+                setProperty.isExpanded = true;
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
 
-            pending.isExpanded = false;
-            float collapsedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                SerializableSetPropertyDrawer drawer = new();
+                SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                    setProperty,
+                    setProperty.propertyPath,
+                    typeof(string),
+                    isSortedSet: false
+                );
 
-            pending.isExpanded = true;
-            float expandedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                pending.isExpanded = false;
+                float collapsedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
 
-            float heightDifference = expandedHeight - collapsedHeight;
-            float minimumExpectedDifference = EditorGUIUtility.singleLineHeight;
-            string diagnostics =
-                $"collapsedHeight={collapsedHeight}, expandedHeight={expandedHeight}, "
-                + $"heightDifference={heightDifference}, pendingIsExpanded={pending.isExpanded}, "
-                + $"foldoutAnimExists={pending.foldoutAnim != null}";
-            Assert.Greater(
-                heightDifference,
-                minimumExpectedDifference,
-                $"Expanded pending entry height should be at least {minimumExpectedDifference}px larger than collapsed. Actual difference: {heightDifference}px. Diagnostics: {diagnostics}"
-            );
+                pending.isExpanded = true;
+                float expandedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+
+                float heightDifference = expandedHeight - collapsedHeight;
+                float minimumExpectedDifference = EditorGUIUtility.singleLineHeight;
+                string diagnostics =
+                    $"collapsedHeight={collapsedHeight}, expandedHeight={expandedHeight}, "
+                    + $"heightDifference={heightDifference}, pendingIsExpanded={pending.isExpanded}, "
+                    + $"foldoutAnimExists={pending.foldoutAnim != null}, tweenEnabled={tweenEnabled}";
+                Assert.Greater(
+                    heightDifference,
+                    minimumExpectedDifference,
+                    $"Expanded pending entry height should be at least {minimumExpectedDifference}px larger than collapsed. Actual difference: {heightDifference}px. Diagnostics: {diagnostics}"
+                );
+            }
         }
 
         [Test]
         public void GetPropertyHeightPendingExpandAffectsHeightEvenWithSetEntries()
         {
-            StringSetHost host = CreateScriptableObject<StringSetHost>();
-            host.set.Add("one");
-            host.set.Add("two");
-            host.set.Add("three");
+            using (new SetTweenDisabledScope())
+            {
+                bool tweenEnabled = SerializableSetPropertyDrawer.IsTweeningEnabledForTests(
+                    isSortedSet: false
+                );
+                Assert.IsFalse(
+                    tweenEnabled,
+                    "Tween should be disabled by SetTweenDisabledScope for accurate height tests."
+                );
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(StringSetHost.set)
-            );
-            setProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                StringSetHost host = CreateScriptableObject<StringSetHost>();
+                host.set.Add("one");
+                host.set.Add("two");
+                host.set.Add("three");
 
-            SerializableSetPropertyDrawer drawer = new();
-            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
-                setProperty,
-                setProperty.propertyPath,
-                typeof(string),
-                isSortedSet: false
-            );
+                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+                serializedObject.Update();
+                SerializedProperty setProperty = serializedObject.FindProperty(
+                    nameof(StringSetHost.set)
+                );
+                setProperty.isExpanded = true;
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
 
-            pending.isExpanded = false;
-            float collapsedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                SerializableSetPropertyDrawer drawer = new();
+                SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                    setProperty,
+                    setProperty.propertyPath,
+                    typeof(string),
+                    isSortedSet: false
+                );
 
-            pending.isExpanded = true;
-            float expandedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                pending.isExpanded = false;
+                float collapsedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
 
-            string diagnostics =
-                $"collapsedHeight={collapsedHeight}, expandedHeight={expandedHeight}, "
-                + $"pendingIsExpanded={pending.isExpanded}, foldoutAnimExists={pending.foldoutAnim != null}";
-            Assert.Greater(
-                expandedHeight,
-                collapsedHeight,
-                $"Expanding the pending entry should increase height even when the set has existing entries. Diagnostics: {diagnostics}"
-            );
+                pending.isExpanded = true;
+                float expandedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+
+                string diagnostics =
+                    $"collapsedHeight={collapsedHeight}, expandedHeight={expandedHeight}, "
+                    + $"pendingIsExpanded={pending.isExpanded}, foldoutAnimExists={pending.foldoutAnim != null}, "
+                    + $"tweenEnabled={tweenEnabled}";
+                Assert.Greater(
+                    expandedHeight,
+                    collapsedHeight,
+                    $"Expanding the pending entry should increase height even when the set has existing entries. Diagnostics: {diagnostics}"
+                );
+            }
         }
 
         [Test]
         public void GetPropertyHeightTogglingPendingMultipleTimesUpdatesHeightCorrectly()
         {
-            StringSetHost host = CreateScriptableObject<StringSetHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(StringSetHost.set)
-            );
-            setProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            using (new SetTweenDisabledScope())
+            {
+                bool tweenEnabled = SerializableSetPropertyDrawer.IsTweeningEnabledForTests(
+                    isSortedSet: false
+                );
+                Assert.IsFalse(
+                    tweenEnabled,
+                    "Tween should be disabled by SetTweenDisabledScope for accurate height tests."
+                );
 
-            SerializableSetPropertyDrawer drawer = new();
-            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
-                setProperty,
-                setProperty.propertyPath,
-                typeof(string),
-                isSortedSet: false
-            );
+                StringSetHost host = CreateScriptableObject<StringSetHost>();
+                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+                serializedObject.Update();
+                SerializedProperty setProperty = serializedObject.FindProperty(
+                    nameof(StringSetHost.set)
+                );
+                setProperty.isExpanded = true;
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
 
-            pending.isExpanded = false;
-            float collapsed1 = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                SerializableSetPropertyDrawer drawer = new();
+                SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                    setProperty,
+                    setProperty.propertyPath,
+                    typeof(string),
+                    isSortedSet: false
+                );
 
-            pending.isExpanded = true;
-            float expanded1 = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                pending.isExpanded = false;
+                float collapsed1 = drawer.GetPropertyHeight(setProperty, GUIContent.none);
 
-            pending.isExpanded = false;
-            float collapsed2 = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                pending.isExpanded = true;
+                float expanded1 = drawer.GetPropertyHeight(setProperty, GUIContent.none);
 
-            pending.isExpanded = true;
-            float expanded2 = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                pending.isExpanded = false;
+                float collapsed2 = drawer.GetPropertyHeight(setProperty, GUIContent.none);
 
-            string diagnostics =
-                $"collapsed1={collapsed1}, expanded1={expanded1}, "
-                + $"collapsed2={collapsed2}, expanded2={expanded2}, "
-                + $"pendingIsExpanded={pending.isExpanded}, foldoutAnimExists={pending.foldoutAnim != null}";
-            Assert.AreEqual(
-                collapsed1,
-                collapsed2,
-                0.001f,
-                $"Collapsed heights should be consistent across multiple toggles. Diagnostics: {diagnostics}"
-            );
-            Assert.AreEqual(
-                expanded1,
-                expanded2,
-                0.001f,
-                $"Expanded heights should be consistent across multiple toggles. Diagnostics: {diagnostics}"
-            );
-            Assert.Greater(
-                expanded1,
-                collapsed1,
-                $"Expanded height should always be greater than collapsed height. Diagnostics: {diagnostics}"
-            );
+                pending.isExpanded = true;
+                float expanded2 = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+
+                string diagnostics =
+                    $"collapsed1={collapsed1}, expanded1={expanded1}, "
+                    + $"collapsed2={collapsed2}, expanded2={expanded2}, "
+                    + $"pendingIsExpanded={pending.isExpanded}, foldoutAnimExists={pending.foldoutAnim != null}, "
+                    + $"tweenEnabled={tweenEnabled}";
+                Assert.AreEqual(
+                    collapsed1,
+                    collapsed2,
+                    0.001f,
+                    $"Collapsed heights should be consistent across multiple toggles. Diagnostics: {diagnostics}"
+                );
+                Assert.AreEqual(
+                    expanded1,
+                    expanded2,
+                    0.001f,
+                    $"Expanded heights should be consistent across multiple toggles. Diagnostics: {diagnostics}"
+                );
+                Assert.Greater(
+                    expanded1,
+                    collapsed1,
+                    $"Expanded height should always be greater than collapsed height. Diagnostics: {diagnostics}"
+                );
+            }
         }
 
         [Test]
         public void GetPropertyHeightSortedSetPendingExpandBehavesCorrectly()
         {
-            SortedStringSetHost host = CreateScriptableObject<SortedStringSetHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(SortedStringSetHost.set)
-            );
-            setProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            using (new SortedSetTweenDisabledScope())
+            {
+                bool tweenEnabled = SerializableSetPropertyDrawer.IsTweeningEnabledForTests(
+                    isSortedSet: true
+                );
+                Assert.IsFalse(
+                    tweenEnabled,
+                    "Tween should be disabled by SortedSetTweenDisabledScope for accurate height tests."
+                );
 
-            SerializableSetPropertyDrawer drawer = new();
-            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
-                setProperty,
-                setProperty.propertyPath,
-                typeof(string),
-                isSortedSet: true
-            );
+                SortedStringSetHost host = CreateScriptableObject<SortedStringSetHost>();
+                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+                serializedObject.Update();
+                SerializedProperty setProperty = serializedObject.FindProperty(
+                    nameof(SortedStringSetHost.set)
+                );
+                setProperty.isExpanded = true;
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
 
-            pending.isExpanded = false;
-            float collapsedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                SerializableSetPropertyDrawer drawer = new();
+                SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                    setProperty,
+                    setProperty.propertyPath,
+                    typeof(string),
+                    isSortedSet: true
+                );
 
-            pending.isExpanded = true;
-            float expandedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                pending.isExpanded = false;
+                float collapsedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
 
-            string diagnostics =
-                $"collapsedHeight={collapsedHeight}, expandedHeight={expandedHeight}, "
-                + $"pendingIsExpanded={pending.isExpanded}, foldoutAnimExists={pending.foldoutAnim != null}";
-            Assert.Greater(
-                expandedHeight,
-                collapsedHeight,
-                $"Sorted set should also update height when pending entry is expanded. Diagnostics: {diagnostics}"
-            );
+                pending.isExpanded = true;
+                float expandedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+
+                string diagnostics =
+                    $"collapsedHeight={collapsedHeight}, expandedHeight={expandedHeight}, "
+                    + $"pendingIsExpanded={pending.isExpanded}, foldoutAnimExists={pending.foldoutAnim != null}, "
+                    + $"tweenEnabled={tweenEnabled}";
+                Assert.Greater(
+                    expandedHeight,
+                    collapsedHeight,
+                    $"Sorted set should also update height when pending entry is expanded. Diagnostics: {diagnostics}"
+                );
+            }
         }
 
         [Test]
         public void GetPropertyHeightComplexSetPendingExpandUpdatesHeight()
         {
-            ComplexSetHost host = CreateScriptableObject<ComplexSetHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(ComplexSetHost.set)
-            );
-            setProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            using (new SetTweenDisabledScope())
+            {
+                bool tweenEnabled = SerializableSetPropertyDrawer.IsTweeningEnabledForTests(
+                    isSortedSet: false
+                );
+                Assert.IsFalse(
+                    tweenEnabled,
+                    "Tween should be disabled by SetTweenDisabledScope for accurate height tests."
+                );
 
-            SerializableSetPropertyDrawer drawer = new();
-            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
-                setProperty,
-                setProperty.propertyPath,
-                typeof(ComplexSetElement),
-                isSortedSet: false
-            );
+                ComplexSetHost host = CreateScriptableObject<ComplexSetHost>();
+                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+                serializedObject.Update();
+                SerializedProperty setProperty = serializedObject.FindProperty(
+                    nameof(ComplexSetHost.set)
+                );
+                setProperty.isExpanded = true;
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
 
-            pending.isExpanded = false;
-            float collapsedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                SerializableSetPropertyDrawer drawer = new();
+                SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                    setProperty,
+                    setProperty.propertyPath,
+                    typeof(ComplexSetElement),
+                    isSortedSet: false
+                );
 
-            pending.isExpanded = true;
-            float expandedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+                pending.isExpanded = false;
+                float collapsedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
 
-            string complexDiagnostics =
-                $"collapsedHeight={collapsedHeight}, expandedHeight={expandedHeight}, "
-                + $"pendingIsExpanded={pending.isExpanded}, foldoutAnimExists={pending.foldoutAnim != null}";
-            Assert.Greater(
-                expandedHeight,
-                collapsedHeight,
-                $"Complex set should update height when pending entry is expanded. Diagnostics: {complexDiagnostics}"
-            );
+                pending.isExpanded = true;
+                float expandedHeight = drawer.GetPropertyHeight(setProperty, GUIContent.none);
+
+                string complexDiagnostics =
+                    $"collapsedHeight={collapsedHeight}, expandedHeight={expandedHeight}, "
+                    + $"pendingIsExpanded={pending.isExpanded}, foldoutAnimExists={pending.foldoutAnim != null}, "
+                    + $"tweenEnabled={tweenEnabled}";
+                Assert.Greater(
+                    expandedHeight,
+                    collapsedHeight,
+                    $"Complex set should update height when pending entry is expanded. Diagnostics: {complexDiagnostics}"
+                );
+            }
         }
 
         [Test]
@@ -2644,6 +2738,84 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 0.001f,
                 "When the main set foldout is collapsed, pending entry state should not affect height."
             );
+        }
+
+        private sealed class SetTweenDisabledScope : IDisposable
+        {
+            private readonly bool originalValue;
+            private readonly System.Reflection.FieldInfo fieldInfo;
+            private readonly UnityHelpersSettings settings;
+            private bool disposed;
+
+            public SetTweenDisabledScope()
+            {
+                settings = UnityHelpersSettings.instance;
+
+                fieldInfo = typeof(UnityHelpersSettings).GetField(
+                    "serializableSetFoldoutTweenEnabled",
+                    System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.NonPublic
+                );
+                if (fieldInfo == null)
+                {
+                    throw new InvalidOperationException(
+                        "Could not locate serializableSetFoldoutTweenEnabled field via reflection."
+                    );
+                }
+
+                originalValue = (bool)fieldInfo.GetValue(settings);
+                fieldInfo.SetValue(settings, false);
+            }
+
+            public void Dispose()
+            {
+                if (disposed)
+                {
+                    return;
+                }
+
+                disposed = true;
+                fieldInfo.SetValue(settings, originalValue);
+            }
+        }
+
+        private sealed class SortedSetTweenDisabledScope : IDisposable
+        {
+            private readonly bool originalValue;
+            private readonly System.Reflection.FieldInfo fieldInfo;
+            private readonly UnityHelpersSettings settings;
+            private bool disposed;
+
+            public SortedSetTweenDisabledScope()
+            {
+                settings = UnityHelpersSettings.instance;
+
+                fieldInfo = typeof(UnityHelpersSettings).GetField(
+                    "serializableSortedSetFoldoutTweenEnabled",
+                    System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.NonPublic
+                );
+                if (fieldInfo == null)
+                {
+                    throw new InvalidOperationException(
+                        "Could not locate serializableSortedSetFoldoutTweenEnabled field via reflection."
+                    );
+                }
+
+                originalValue = (bool)fieldInfo.GetValue(settings);
+                fieldInfo.SetValue(settings, false);
+            }
+
+            public void Dispose()
+            {
+                if (disposed)
+                {
+                    return;
+                }
+
+                disposed = true;
+                fieldInfo.SetValue(settings, originalValue);
+            }
         }
     }
 }

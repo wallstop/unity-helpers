@@ -5020,6 +5020,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
+        internal static bool IsTweeningEnabledForTests(bool isSortedDictionary)
+        {
+            return ShouldTweenPendingFoldout(isSortedDictionary);
+        }
+
         private static bool ShouldTweenPendingFoldout(bool isSortedDictionary)
         {
             return isSortedDictionary
@@ -5096,6 +5101,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (pending == null)
             {
                 return 0f;
+            }
+
+            bool shouldTween = ShouldTweenPendingFoldout(pending.isSorted);
+            if (!shouldTween)
+            {
+                return pending.isExpanded ? 1f : 0f;
             }
 
             AnimBool anim = EnsurePendingFoldoutAnim(pending);

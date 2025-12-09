@@ -2478,6 +2478,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return true;
         }
 
+        internal static bool IsTweeningEnabledForTests(bool isSortedSet)
+        {
+            return ShouldTweenManualEntryFoldout(isSortedSet);
+        }
+
         private static bool ShouldTweenManualEntryFoldout(bool isSortedSet)
         {
             return isSortedSet
@@ -2538,6 +2543,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (pending == null)
             {
                 return 0f;
+            }
+
+            bool shouldTween = ShouldTweenManualEntryFoldout(pending.isSorted);
+            if (!shouldTween)
+            {
+                return pending.isExpanded ? 1f : 0f;
             }
 
             AnimBool anim = EnsureManualEntryFoldoutAnim(pending);
