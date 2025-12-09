@@ -53,14 +53,14 @@ jobs:
 
       - name: Checkout PR branch (same-repo)
         if: ${{ steps.meta.outputs.same_repo == 'true' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.1
         with:
           ref: ${{ steps.meta.outputs.head_ref }}
           fetch-depth: 0
 
       - name: Checkout PR fork head
         if: ${{ steps.meta.outputs.same_repo != 'true' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.1
         with:
           repository: ${{ steps.meta.outputs.head_repo }}
           ref: ${{ steps.meta.outputs.head_ref }}
@@ -68,12 +68,12 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.1.0
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v5.0.1
         with:
           dotnet-version: '8.0.x'
 
@@ -82,13 +82,13 @@ jobs:
 
       - name: Apply Prettier fixes
         run: |
-          npx --yes prettier@3.3.3 --write "**/*.{md,markdown}"
-          npx --yes prettier@3.3.3 --write "**/*.{json,asmdef,asmref}"
-          npx --yes prettier@3.3.3 --write "**/*.{yml,yaml}"
+          npx --yes prettier@3.7.4 --write "**/*.{md,markdown}"
+          npx --yes prettier@3.7.4 --write "**/*.{json,asmdef,asmref}"
+          npx --yes prettier@3.7.4 --write "**/*.{yml,yaml}"
 
       - name: Apply markdownlint fixes
         run: |
-          npx --yes markdownlint-cli@0.40.0 "**/*.md" "**/*.markdown" --config .markdownlint.json --ignore-path .markdownlintignore --fix
+          npx --yes markdownlint-cli@0.46.0 "**/*.md" "**/*.markdown" --config .markdownlint.json --ignore-path .markdownlintignore --fix
 
       - name: Apply CSharpier formatting
         run: dotnet tool run csharpier format
@@ -105,7 +105,7 @@ jobs:
 
       - name: Commit changes to PR branch (same-repo)
         if: ${{ steps.meta.outputs.same_repo == 'true' && steps.changes.outputs.has_changes == 'true' }}
-        uses: stefanzweifel/git-auto-commit-action@v7
+        uses: stefanzweifel/git-auto-commit-action@v7.0.0
         with:
           commit_message: "chore(format): apply requested formatting"
           branch: ${{ steps.meta.outputs.head_ref }}
@@ -199,14 +199,14 @@ jobs:
 
       - name: Checkout PR branch (same-repo)
         if: ${{ steps.meta.outputs.same_repo == 'true' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.1
         with:
           ref: ${{ steps.meta.outputs.head_ref }}
           fetch-depth: 0
 
       - name: Checkout PR fork head
         if: ${{ steps.meta.outputs.same_repo != 'true' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.1
         with:
           repository: ${{ steps.meta.outputs.head_repo }}
           ref: ${{ steps.meta.outputs.head_ref }}
@@ -214,12 +214,12 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.1.0
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v5.0.1
         with:
           dotnet-version: '8.0.x'
 
@@ -228,13 +228,13 @@ jobs:
 
       - name: Apply Prettier fixes
         run: |
-          npx --yes prettier@3.3.3 --write "**/*.{md,markdown}"
-          npx --yes prettier@3.3.3 --write "**/*.{json,asmdef,asmref}"
-          npx --yes prettier@3.3.3 --write "**/*.{yml,yaml}"
+          npx --yes prettier@3.7.4 --write "**/*.{md,markdown}"
+          npx --yes prettier@3.7.4 --write "**/*.{json,asmdef,asmref}"
+          npx --yes prettier@3.7.4 --write "**/*.{yml,yaml}"
 
       - name: Apply markdownlint fixes
         run: |
-          npx --yes markdownlint-cli@0.40.0 "**/*.md" "**/*.markdown" --config .markdownlint.json --ignore-path .markdownlintignore --fix
+          npx --yes markdownlint-cli@0.46.0 "**/*.md" "**/*.markdown" --config .markdownlint.json --ignore-path .markdownlintignore --fix
 
       - name: Apply CSharpier formatting
         run: dotnet tool run csharpier format
@@ -251,7 +251,7 @@ jobs:
 
       - name: Commit changes to PR branch (same-repo)
         if: ${{ steps.meta.outputs.same_repo == 'true' && steps.changes.outputs.has_changes == 'true' }}
-        uses: stefanzweifel/git-auto-commit-action@v7
+        uses: stefanzweifel/git-auto-commit-action@v7.0.0
         with:
           commit_message: "chore(format): apply requested formatting"
           branch: ${{ steps.meta.outputs.head_ref }}
@@ -302,4 +302,5 @@ jobs:
             if (existing.data.length === 0) {
               await github.rest.pulls.create({ owner, repo, head: headBranch, base: baseRef, title, body });
             }
+
 

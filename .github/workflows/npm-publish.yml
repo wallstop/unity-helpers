@@ -14,14 +14,14 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.1
         with:
           fetch-depth: 0  # Ensure full commit history for version comparison
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.1.0
         with:
-          node-version: 18
+          node-version: 22
           registry-url: 'https://registry.npmjs.org/'
 
       - name: Check if version changed
@@ -73,3 +73,4 @@ jobs:
         run: npm publish --access public --tag ${{ env.NPM_TAG }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
