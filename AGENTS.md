@@ -28,11 +28,12 @@ npm run lint:docs                  # Lint documentation links
 
 ### Critical Coding Rules
 
-1. **NO underscores in function names** — Use PascalCase throughout
-2. **Avoid `var`** — Use explicit types
-3. **No regions** — Never use `#region`
-4. **No nullable reference types** — Don't use `?` annotations
-5. **No `async Task` tests** — Use `IEnumerator` with `[UnityTest]`
+1. **NO underscores in ANY method names** — Use PascalCase throughout (production AND test code)
+2. **NEVER use `#region`** — No regions anywhere (production OR test code)
+3. **One file per MonoBehaviour/ScriptableObject** — Each must have its own dedicated `.cs` file
+4. **Avoid `var`** — Use explicit types
+5. **No nullable reference types** — Don't use `?` annotations
+6. **No `async Task` tests** — Use `IEnumerator` with `[UnityTest]`
 
 ### Agent Rules
 

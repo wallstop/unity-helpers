@@ -40,6 +40,15 @@ repos:
         pass_filenames: false
         require_serial: true
         description: Prevent #region directives from being checked in.
+      - id: unity-file-naming
+        name: Lint Unity Object file naming
+        entry: pwsh -NoProfile -File scripts/lint-unity-file-naming.ps1 -StagedOnly
+        language: system
+        types:
+          - c#
+        pass_filenames: false
+        require_serial: true
+        description: Ensure MonoBehaviour/ScriptableObject classes are in correctly named files.
 
   - repo: local
     hooks:

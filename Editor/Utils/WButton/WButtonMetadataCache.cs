@@ -121,7 +121,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             Type asyncResultType,
             bool returnsVoid,
             int cancellationTokenIndex,
-            string colorKey
+            string colorKey,
+            int declarationOrder
         )
         {
             DeclaringType = declaringType;
@@ -140,6 +141,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             HistoryCapacity = attribute.HistoryCapacity;
             ColorKey = string.IsNullOrEmpty(colorKey) ? null : colorKey;
             GroupName = string.IsNullOrWhiteSpace(attribute.GroupName) ? null : attribute.GroupName;
+            DeclarationOrder = declarationOrder;
         }
 
         internal Type DeclaringType { get; }
@@ -157,6 +159,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         internal string ColorKey { get; }
 
         internal string GroupName { get; }
+
+        /// <summary>
+        /// The order in which this method was discovered during reflection.
+        /// This preserves the source code declaration order for grouping purposes.
+        /// </summary>
+        internal int DeclarationOrder { get; }
 
         [Obsolete("Use ColorKey instead.")]
         internal string Priority => ColorKey;
@@ -199,6 +207,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         {
             List<WButtonMethodMetadata> entries = new();
             HashSet<MethodInfo> processedBases = new();
+            int declarationOrder = 0;
 
             Type currentType = inspectedType;
             while (currentType != null && currentType != typeof(object))
@@ -263,10 +272,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                         classification._asyncResultType,
                         classification._returnsVoid,
                         cancellationTokenIndex,
-                        attribute.ColorKey
+                        attribute.ColorKey,
+                        declarationOrder
                     );
                     entries.Add(metadata);
                     processedBases.Add(baseDefinition);
+                    declarationOrder++;
                 }
 
                 currentType = currentType.BaseType;

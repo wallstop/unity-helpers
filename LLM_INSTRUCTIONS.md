@@ -131,15 +131,27 @@ Unity -batchmode -projectPath <Project> -runTests -testPlatform PlayMode -testRe
 
 ### Critical Rules
 
-1. **NO underscores in function names**, especially test methods:
+1. **NO underscores in ANY method names** — This applies to ALL code (production AND test):
    - ✅ `GetInvocationStatusNoActiveInvocationReturnsZeroRunningCount`
    - ❌ `GetInvocationStatus_NoActiveInvocation_ReturnsZeroRunningCount`
+   - ✅ `ValidateInputReturnsErrorWhenEmpty`
+   - ❌ `ValidateInput_Returns_Error_When_Empty`
 
 2. **Avoid `var`**: Use expressive types everywhere
 
-3. **No regions**: Never use `#region`/`#endregion`
+3. **NEVER use `#region`** — No regions anywhere in the codebase (production OR test code):
+   - ❌ `#region Helper Methods`
+   - ❌ `#endregion`
+   - Organize code through class structure and file organization instead
 
 4. **No nullable reference types**: Don't use `string?`, `object?`, etc.
+
+5. **One file per MonoBehaviour/ScriptableObject** — Each `MonoBehaviour` or `ScriptableObject` class MUST have its own dedicated `.cs` file (production AND test code):
+   - ✅ `MyTestComponent.cs` containing only `class MyTestComponent : MonoBehaviour`
+   - ✅ `TestScriptableObject.cs` containing only `class TestScriptableObject : ScriptableObject`
+   - ❌ Multiple MonoBehaviours in the same file
+   - ❌ Test helper MonoBehaviours defined inside test class files
+   - This is a Unity requirement for proper serialization and asset creation
 
 ---
 
@@ -186,14 +198,16 @@ If reflection is unavoidable (e.g., Unity serialization callbacks), document the
 
 ### Rules
 
-1. **No `async Task` test methods**: Unity Test Runner doesn't support them. Use `IEnumerator` with `[UnityTest]`
-2. **No `Assert.ThrowsAsync`**: It doesn't exist in Unity's NUnit version
-3. **Unity Object null checks**: Use `thing != null` / `thing == null` directly (Unity's Object equality)
-4. **No regions**: Never use `#region` in tests
-5. **Minimal comments**: Rely on expressive naming and assertions
-6. **No `[Description]` annotations**: Don't use Description attributes on tests
-7. **Prefer EditMode**: Use fast EditMode tests where possible
-8. **Deterministic tests**: Avoid flaky tests; use timeouts for long-running tests (see `Tests/Runtime/RuntimeTestTimeouts.cs`)
+1. **NO underscores in test method names**: Use PascalCase throughout (see Critical Rules above)
+2. **NEVER use `#region`**: No regions in test code (or any code)
+3. **One file per MonoBehaviour/ScriptableObject**: Test helper components must be in their own dedicated files (see Critical Rules above)
+4. **No `async Task` test methods**: Unity Test Runner doesn't support them. Use `IEnumerator` with `[UnityTest]`
+5. **No `Assert.ThrowsAsync`**: It doesn't exist in Unity's NUnit version
+6. **Unity Object null checks**: Use `thing != null` / `thing == null` directly (Unity's Object equality)
+7. **Minimal comments**: Rely on expressive naming and assertions
+8. **No `[Description]` annotations**: Don't use Description attributes on tests
+9. **Prefer EditMode**: Use fast EditMode tests where possible
+10. **Deterministic tests**: Avoid flaky tests; use timeouts for long-running tests (see `Tests/Runtime/RuntimeTestTimeouts.cs`)
 
 ---
 

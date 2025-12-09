@@ -71,7 +71,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         public string DisplayName { get; }
 
         /// <summary>
-        /// Controls grouping and sorting; values of -1 or higher render above the default inspector.
+        /// Controls grouping and sorting. Values of -1 or higher render above the default inspector,
+        /// values below -1 (i.e., -2, -3, etc.) render below. Lower values render first within their placement section.
+        /// Buttons with the same draw order but different group names render as separate groups.
         /// </summary>
         public int DrawOrder { get; }
 
@@ -86,8 +88,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         public string ColorKey { get; }
 
         /// <summary>
-        /// Optional override for the inspector group header associated with this draw order.
-        /// The first non-empty name encountered for a draw order wins.
+        /// Optional group name for organizing buttons. Buttons with the same draw order but different
+        /// group names will render in separate groups. Groups render in the order they are first encountered.
         /// </summary>
         public string GroupName { get; }
 

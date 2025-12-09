@@ -1,3 +1,4 @@
+// lint-disable unity-file-naming - NameCollision classes intentionally test name collision detection
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
 #if UNITY_EDITOR
@@ -1306,7 +1307,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 #endif
 }
 
-// Name collision types in different namespaces
+// Name collision types in different namespaces - must be at file level for namespace separation
+// These are intentionally in the same file to test collision detection
 namespace A
 {
     using WallstopStudios.UnityHelpers.Core.Attributes;
@@ -1315,11 +1317,9 @@ namespace A
 #if UNITY_EDITOR
     [ScriptableSingletonPath("CreatorTests/Collision")]
     internal sealed class NameCollision : ScriptableObjectSingleton<NameCollision> { }
-
 #endif
 }
 
-// Name collision types in different namespaces
 namespace B
 {
     using WallstopStudios.UnityHelpers.Core.Attributes;
@@ -1328,24 +1328,5 @@ namespace B
 #if UNITY_EDITOR
     [ScriptableSingletonPath("CreatorTests/Collision")]
     internal sealed class NameCollision : ScriptableObjectSingleton<NameCollision> { }
-
-#endif
-}
-
-namespace WallstopStudios.UnityHelpers.Tests.Utils
-{
-    using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Utils;
-
-#if UNITY_EDITOR
-    [ScriptableSingletonPath("CreatorTests/Retry")]
-    internal sealed class RetrySingleton : ScriptableObjectSingleton<RetrySingleton> { }
-
-    [ScriptableSingletonPath("CreatorTests/FileBlock")]
-    internal sealed class FileBlockSingleton : ScriptableObjectSingleton<FileBlockSingleton> { }
-
-    [ScriptableSingletonPath("CreatorTests/NoRetry")]
-    internal sealed class NoRetrySingleton : ScriptableObjectSingleton<NoRetrySingleton> { }
-
 #endif
 }

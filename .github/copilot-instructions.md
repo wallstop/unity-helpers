@@ -15,8 +15,9 @@ This repository uses consolidated LLM instructions. All guidelines for Copilot (
 ### Code Style
 
 - Use **explicit types** instead of `var`
-- Use **PascalCase** for all method names (no underscores)
-- Never use `#region`
+- **NO underscores in ANY method names** — PascalCase throughout (production AND test code)
+- **NEVER use `#region`** — No regions anywhere in the codebase (production OR test code)
+- **One file per MonoBehaviour/ScriptableObject** — Each must have its own dedicated `.cs` file
 - Never use nullable reference types (`?` annotations)
 - Place `using` directives inside namespace
 
@@ -24,7 +25,9 @@ This repository uses consolidated LLM instructions. All guidelines for Copilot (
 
 - Use `[Test]` for synchronous tests
 - Use `[UnityTest]` with `IEnumerator` for async tests (NOT `async Task`)
-- Test method names: `MethodConditionExpectedResult` (PascalCase, no underscores)
+- **NO underscores in test method names**: `MethodConditionExpectedResult` (PascalCase only)
+- **NEVER use `#region`** in test code (or any code)
+- **One file per MonoBehaviour/ScriptableObject** — Test helper components need their own files
 - Check Unity Objects with `!= null` / `== null` directly
 
 ### Agent Behavior

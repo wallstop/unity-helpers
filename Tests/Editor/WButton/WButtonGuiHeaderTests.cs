@@ -8,14 +8,24 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
     public sealed class WButtonGuiHeaderTests
     {
+        [SetUp]
+        public void SetUp()
+        {
+            WButtonGUI.ClearGroupDataForTesting();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            WButtonGUI.ClearGroupDataForTesting();
+        }
+
         [Test]
         public void BuildGroupHeaderNoGroupingSuffixWhenSingleGroup()
         {
-            Dictionary<int, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
-            groupCounts.Clear();
-            Dictionary<int, string> groupNames = WButtonGUI.GetGroupNamesForTesting();
-            groupNames.Clear();
+            WButtonGUI.ClearGroupDataForTesting();
 
+            // Draw order >= -1 is top placement
             GUIContent header = WButtonGUI.BuildGroupHeader(-1);
             Assert.That(header.text, Is.EqualTo(WButtonStyles.TopGroupLabel.text));
         }
@@ -23,12 +33,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         [Test]
         public void BuildGroupHeaderAppendsDrawOrderWhenMultipleGroups()
         {
-            Dictionary<int, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
-            groupCounts.Clear();
-            groupCounts[-1] = 3;
-            groupCounts[-5] = 2;
-            Dictionary<int, string> groupNames = WButtonGUI.GetGroupNamesForTesting();
-            groupNames.Clear();
+            Dictionary<int, int> counts = new() { { -1, 3 }, { -5, 2 } };
+            WButtonGUI.SetGroupCountsForTesting(counts);
 
             GUIContent topHeader = WButtonGUI.BuildGroupHeader(-1);
             GUIContent bottomHeader = WButtonGUI.BuildGroupHeader(-5);
@@ -43,13 +49,11 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         [Test]
         public void BuildGroupHeaderUsesCustomGroupNameWhenProvided()
         {
-            Dictionary<int, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
-            groupCounts.Clear();
-            groupCounts[-1] = 2;
-            groupCounts[-4] = 1;
-            Dictionary<int, string> groupNames = WButtonGUI.GetGroupNamesForTesting();
-            groupNames.Clear();
-            groupNames[-4] = "Networking";
+            Dictionary<int, int> counts = new() { { -1, 2 }, { -4, 1 } };
+            WButtonGUI.SetGroupCountsForTesting(counts);
+
+            Dictionary<int, string> names = new() { { -4, "Networking" } };
+            WButtonGUI.SetGroupNamesForTesting(names);
 
             GUIContent custom = WButtonGUI.BuildGroupHeader(-4);
             GUIContent defaultHeader = WButtonGUI.BuildGroupHeader(-1);

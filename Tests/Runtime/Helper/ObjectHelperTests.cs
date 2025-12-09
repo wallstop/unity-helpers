@@ -1,15 +1,11 @@
 namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System.Collections;
-    using JetBrains.Annotations;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Tests.Core;
-
-    [UsedImplicitly]
-    public sealed class ObjectHelperComponent : MonoBehaviour { }
 
     public sealed class ObjectHelperTests : CommonTestBase
     {

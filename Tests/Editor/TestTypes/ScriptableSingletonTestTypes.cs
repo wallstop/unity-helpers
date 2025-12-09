@@ -73,24 +73,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
     }
 
     /// <summary>
-    /// A regular ScriptableObject (not a singleton) for testing that detection returns false.
-    /// </summary>
-    internal sealed class RegularScriptableObject : ScriptableObject
-    {
-        public SerializableDictionary<string, string> dictionary = new();
-        public SerializableHashSet<int> set = new();
-    }
-
-    /// <summary>
-    /// A MonoBehaviour for testing that detection returns false.
-    /// </summary>
-    internal sealed class RegularMonoBehaviour : MonoBehaviour
-    {
-        public SerializableDictionary<string, string> dictionary = new();
-        public SerializableHashSet<int> set = new();
-    }
-
-    /// <summary>
     /// ScriptableSingleton with complex nested serializable types.
     /// </summary>
     [FilePath("Temp/ComplexScriptableSingleton.asset", FilePathAttribute.Location.ProjectFolder)]

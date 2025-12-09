@@ -120,62 +120,6 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
         }
     }
 
-    [CustomPropertyDrawer(typeof(DrawerVisualRegressionKey))]
-    internal sealed class DrawerVisualRegressionKeyDrawer : PropertyDrawer
-    {
-        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
-        {
-            DrawerVisualRecorder.Record(DrawerVisualRole.DictionaryKey, property, position);
-            SerializedProperty idProperty = property?.FindPropertyRelative(
-                nameof(DrawerVisualRegressionKey.id)
-            );
-            if (idProperty != null)
-            {
-                EditorGUI.PropertyField(position, idProperty, GUIContent.none);
-            }
-        }
-
-        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
-        {
-            SerializedProperty idProperty = property?.FindPropertyRelative(
-                nameof(DrawerVisualRegressionKey.id)
-            );
-            return idProperty != null
-                ? EditorGUI.GetPropertyHeight(idProperty, GUIContent.none, true)
-                : EditorGUIUtility.singleLineHeight;
-        }
-    }
-
-    [CustomPropertyDrawer(typeof(DrawerVisualRegressionDictionaryValue))]
-    internal sealed class DrawerVisualRegressionDictionaryValueDrawer : PropertyDrawer
-    {
-        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
-        {
-            DrawerVisualRecorder.Record(DrawerVisualRole.DictionaryValue, property, position);
-            DrawerVisualRegressionValueDrawerHelpers.DrawValue(position, property);
-        }
-
-        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
-        {
-            return DrawerVisualRegressionValueDrawerHelpers.GetValueHeight(property);
-        }
-    }
-
-    [CustomPropertyDrawer(typeof(DrawerVisualRegressionSetValue))]
-    internal sealed class DrawerVisualRegressionSetValueDrawer : PropertyDrawer
-    {
-        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
-        {
-            DrawerVisualRecorder.Record(DrawerVisualRole.SetElement, property, position);
-            DrawerVisualRegressionValueDrawerHelpers.DrawValue(position, property);
-        }
-
-        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
-        {
-            return DrawerVisualRegressionValueDrawerHelpers.GetValueHeight(property);
-        }
-    }
-
     internal static class DrawerVisualRegressionValueDrawerHelpers
     {
         public static void DrawValue(Rect position, SerializedProperty property)
