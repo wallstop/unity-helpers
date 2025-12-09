@@ -196,7 +196,7 @@ private void WarningAction() { }
 
 1. Open Edit → Project Settings → Unity Helpers
 2. Navigate to WButton Color Palettes
-3. Add new color key (e.g., `"Danger"`)
+3. Add a new color key (e.g., `"Danger"`)
 4. Set background/text colors
 5. Use the key in your `[WButton]` attribute
 
@@ -262,7 +262,7 @@ public class LevelManager : MonoBehaviour
     public bool debugMode = false;
 
     // Setup group - appears above properties
-    [WButton("🔧 Initialize Level", drawOrder: -2, groupName: "Setup")]
+    [WButton("Initialize Level", drawOrder: -2, groupName: "Setup")]
     private void Initialize()
     {
         Debug.Log("Level initialized!");
@@ -314,7 +314,7 @@ public class LevelManager : MonoBehaviour
 }
 ```
 
-![Image placeholder: inspector-button-complete-example.png - Full inspector showing all parameter features working together]
+![Full inspector showing all parameter features working together](../../images/inspector/buttons/inspector-button-complete-example.png)
 
 ---
 
@@ -339,7 +339,7 @@ private void LogMessage()
 ### 2. Returning Values (With History)
 
 ```csharp
-[WButton("Roll Dice")]
+[WButton("Roll Dice", historyCapacity: 10, groupName: "Debug")]
 private int RollDice()
 {
     return Random.Range(1, 7);
@@ -352,10 +352,11 @@ private Vector3 GetPlayerPosition()
 }
 ```
 
-![Image placeholder: Button with result history showing multiple dice rolls: 4, 2, 6, 1, 5]
-![GIF placeholder: Clicking "Roll Dice" and seeing new result added to history]
+![Button with result history showing multiple dice rolls: 4, 2, 6, 1, 5](../../images/inspector/buttons/history-dice-rolls-2.png)
 
-**Behavior:** Shows return value in collapsible history panel
+![Clicking "Roll Dice" and seeing new result added to history](../../images/inspector/buttons/roll-dice-more-history.gif)
+
+**Behavior:** Shows return value in a collapsible history panel
 
 ---
 
@@ -379,7 +380,7 @@ private IEnumerator FadeOut()
 }
 ```
 
-![GIF placeholder: Button showing spinner while coroutine executes, then "Complete" status]
+![Button showing spinner while coroutine executes, then "Complete" status](../../images/inspector/buttons/enumerator-fade.gif)
 
 **Behavior:**
 
@@ -413,8 +414,7 @@ private async ValueTask<Texture2D> DownloadAssetAsync(CancellationToken ct)
 }
 ```
 
-![Image placeholder: Async button with "Running..." status and Cancel button]
-![GIF placeholder: Clicking button, showing spinner, then result appearing]
+![Clicking button, showing spinner, then result appearing](../../images/inspector/buttons/async-buttons-with-cancellation.gif)
 
 **Behavior:**
 
@@ -442,9 +442,9 @@ private async Task LongOperationAsync(CancellationToken ct)
 **Supported Signatures:**
 
 - `Task` (void async)
-- `Task<T>` (async with result)
+- `Task<T>` (async with a result)
 - `ValueTask` (void async, no heap allocation)
-- `ValueTask<T>` (async with result, no heap allocation)
+- `ValueTask<T>` (async with a result, no heap allocation)
 
 ---
 
@@ -467,7 +467,7 @@ private string GenerateId()
 - Per-method, per-target buffering (history survives inspector refresh)
 - Collapsible foldout for each method
 - Chronological order (newest first)
-- Pagination when history exceeds display threshold
+- Pagination when history exceeds the display threshold
 
 ---
 
@@ -621,7 +621,7 @@ private void SafeAction() => Debug.Log("Safe operation");
 
 1. Open `ProjectSettings/UnityHelpersSettings.asset`
 2. Add entry to `WButtonCustomColors` dictionary
-3. Set button background, text color, border
+3. Set a button background, text color, border
 
 ![Image placeholder: UnityHelpersSettings showing WButton custom color configuration]
 
@@ -1001,14 +1001,14 @@ public class AnimationTester : MonoBehaviour
 **Solutions:**
 
 1. Check `historyCapacity` - make sure it's > 0
-2. Verify return type is serializable
+2. Verify that the return type is serializable
 3. Check `UnityHelpersSettings.WButtonHistorySize` if using global setting
 
 ---
 
 ### Async Method Not Cancelling
 
-**Problem:** Cancel button doesn't stop async method
+**Problem:** Cancel button doesn't stop an async method
 
 **Solutions:**
 

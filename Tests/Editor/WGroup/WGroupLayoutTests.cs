@@ -58,8 +58,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 "\n--- Groups ---",
             };
 
-            foreach (WGroupDefinition group in layout.Groups)
+            for (int i = 0; i < layout.Groups.Count; i++)
             {
+                WGroupDefinition group = layout.Groups[i];
                 lines.Add(
                     $"  Group '{group.Name}' (DisplayName='{group.DisplayName}', DeclarationOrder={group.DeclarationOrder}):"
                 );
