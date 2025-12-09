@@ -22,6 +22,24 @@ repos:
         pass_filenames: false
         require_serial: true
         description: CSharpier is an opinionated C# formatter inspired by Prettier.
+      - id: csharp-naming
+        name: Lint C# method naming (no underscores)
+        entry: pwsh -NoProfile -File scripts/lint-csharp-naming.ps1 -StagedOnly
+        language: system
+        types:
+          - c#
+        pass_filenames: false
+        require_serial: true
+        description: Enforce PascalCase method names without underscores.
+      - id: csharp-no-regions
+        name: Lint C# files for #region directives
+        entry: pwsh -NoProfile -File scripts/lint-no-regions.ps1 -StagedOnly
+        language: system
+        types:
+          - c#
+        pass_filenames: false
+        require_serial: true
+        description: Prevent #region directives from being checked in.
 
   - repo: local
     hooks:
