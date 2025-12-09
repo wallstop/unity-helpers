@@ -1,6 +1,96 @@
-# Unity Main Thread Dispatcher
+# Unity Main Thread Dispatcher & Guard
 
-`UnityMainThreadDispatcher` is the package-wide bridge for marshalling callbacks from worker threads back onto Unity's main thread. The dispatcher is implemented as a `RuntimeSingleton<UnityMainThreadDispatcher>`, is marked `[ExecuteAlways]`, and runs both in Edit Mode and Play Mode so background logging, importers, and build scripts can all enqueue work safely.
+`UnityMainThreadDispatcher` and `UnityMainThreadGuard` provide thread-safe access to Unity's main thread from background workers, ensuring callbacks execute correctly and preventing common threading errors.
+
+## UnityMainThreadDispatcher
+
+The `UnityMainThreadDispatcher` is the package-wide bridge for marshalling callbacks from worker threads back onto Unity's main thread. The dispatcher is implemented as a `RuntimeSingleton<UnityMainThreadDispatcher>`, is marked `[ExecuteAlways]`, and runs both in Edit Mode and Play Mode so background logging, importers, and build scripts can all enqueue work safely.
+
+> **Visual Reference**
+>
+> ![Thread dispatcher marshalling workflow](../../images/utilities/threading/main-thread-dispatcher.png)
+> _Background thread callbacks queued and executed on Unity's main thread_
+
+## UnityMainThreadGuard
+
+The `UnityMainThreadGuard` ensures critical code executes on Unity's main thread, automatically dispatching to it if called from a worker thread.
+
+### Basic Usage
+
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Helper;
+
+public class BackgroundProcessor
+{
+    public void ProcessOnWorkerThread()
+    {
+        // This might be called from a background thread
+        UnityMainThreadGuard.EnsureMainThread(() =>
+        {
+            // This code ALWAYS executes on the main thread
+            Debug.Log("Safe to call Unity APIs here");
+            GameObject.FindObjectOfType<Player>().UpdateState();
+        });
+    }
+}
+```
+
+### Why It Exists
+
+**Problem:** Unity APIs must be called from the main thread, but async operations, Thread Pool work, and Task continuations often execute on background threads
+
+**Solution:** `UnityMainThreadGuard` automatically detects the current thread and marshals execution to the main thread if needed
+
+### API
+
+```csharp
+// Execute action on main thread (blocks if already on main thread)
+UnityMainThreadGuard.EnsureMainThread(Action action);
+
+// Check if currently on main thread
+bool isMainThread = UnityMainThreadGuard.IsMainThread;
+```
+
+### Use Cases
+
+```csharp
+// Async/await with Unity API access
+public async Task<GameObject> LoadAssetAsync(string path)
+{
+    var asset = await LoadFromDiskAsync(path);
+
+    // Ensure instantiation happens on main thread
+    GameObject result = null;
+    UnityMainThreadGuard.EnsureMainThread(() =>
+    {
+        result = Object.Instantiate(asset);
+    });
+
+    return result;
+}
+
+// Thread Pool work
+ThreadPool.QueueUserWorkItem(_ =>
+{
+    var data = ProcessHeavyComputation();
+
+    UnityMainThreadGuard.EnsureMainThread(() =>
+    {
+        ApplyToScene(data);  // Safe Unity API calls
+    });
+});
+
+// Task continuation
+Task.Run(() => ComputeData())
+    .ContinueWith(task =>
+    {
+        UnityMainThreadGuard.EnsureMainThread(() =>
+        {
+            DisplayResults(task.Result);
+        });
+    });
+```
 
 ## Default Bootstrapping Flow
 

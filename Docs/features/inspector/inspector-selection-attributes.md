@@ -45,7 +45,10 @@ public class EntityPermissions : MonoBehaviour
 }
 ```
 
-![Image placeholder: Toggle button toolbar with Move, Attack, UseItems, CastSpells]
+> **Visual Reference**
+>
+> ![WEnumToggleButtons with flag enum](../../images/inspector/wenum-toggle-buttons-basic.png)
+> _Flag enum permissions rendered as toggle buttons_
 
 ---
 
@@ -82,7 +85,10 @@ public enum DamageTypes
 public DamageTypes resistances = DamageTypes.Fire | DamageTypes.Ice;
 ```
 
-![Image placeholder: Toggle buttons grid with Select All/None buttons]
+> **Visual Reference**
+>
+> ![WEnumToggleButtons with Select All/None buttons](../../images/inspector/wenum-toggle-buttons-flags-select.png)
+> _Flag enum with Select All and Select None quick action buttons_
 
 **Behavior:**
 

@@ -47,22 +47,297 @@ public class PlayerController : MonoBehaviour
 }
 ```
 
-![Image placeholder: Inspector showing two buttons labeled "Heal Player" and "Take Damage"]
-
 ---
 
 ## Parameters
 
+The `[WButton]` attribute accepts several optional parameters to customize button appearance, behavior, and organization.
+
+### Parameter Overview
+
 ```csharp
 [WButton(
-    string displayName = null,           // Button label (defaults to method name)
-    int drawOrder = 0,                   // Position: -1+ above inspector, 0+ below
-    int historyCapacity = UseGlobalHistory,  // Results to keep per method
-    string colorKey = "Default",         // Color palette key
-    string groupName = null,             // Group header for organization
-    int priority = 0                     // Deprecated (use drawOrder instead)
+    string displayName = null,
+    int drawOrder = 0,
+    int historyCapacity = WButtonAttribute.UseGlobalHistory,
+    string priority = null,
+    string groupName = null
 )]
 ```
+
+---
+
+### displayName (string, optional)
+
+**Controls the text shown on the button in the inspector.**
+
+- **Default:** Uses the method name (e.g., `"RollDice"` for `RollDice()`)
+- **When to use:** Make buttons more readable or add context
+
+```csharp
+// Without displayName - shows "SpawnEnemy"
+[WButton]
+private void SpawnEnemy() { }
+
+// With displayName - shows "🔫 Spawn Enemy"
+[WButton("🔫 Spawn Enemy")]
+private void SpawnEnemy() { }
+
+// More descriptive labels
+[WButton("Reset Player to Checkpoint")]
+private void ResetPlayer() { }
+
+[WButton("Clear All Save Data")]
+private void ClearSaveData() { }
+```
+
+![Image placeholder: inspector-button-display-names.png - Side-by-side comparison showing method names vs custom display names]
+
+---
+
+### drawOrder (int, optional)
+
+**Controls where the button appears relative to the inspector properties.**
+
+- **Default:** `0` (appears below all inspector properties)
+- **Negative values (`-1`, `-2`, etc.):** Appear above inspector properties
+- **Positive values (`1`, `2`, etc.):** Appear below inspector properties
+- **Grouping:** Buttons with the same `drawOrder` are grouped together
+
+```csharp
+public class PlayerController : MonoBehaviour
+{
+    public int health = 100;
+    public float speed = 5f;
+
+    // These appear ABOVE the health/speed properties
+    [WButton("Initialize", drawOrder: -1)]
+    private void Initialize() { }
+
+    [WButton("Validate", drawOrder: -1)]
+    private void Validate() { }
+
+    // This appears BELOW the health/speed properties
+    [WButton("Debug Info", drawOrder: 1)]
+    private void ShowDebugInfo() { }
+}
+```
+
+**Visual layout:**
+
+```text
+┌─────────────────────────┐
+│ Initialize  │ Validate  │ ← drawOrder: -1 (above)
+├─────────────────────────┤
+│ Health: 100             │ ← Inspector properties
+│ Speed: 5.0              │
+├─────────────────────────┤
+│ Debug Info              │ ← drawOrder: 1 (below)
+└─────────────────────────┘
+```
+
+![Image placeholder: inspector-button-draw-order.png - Inspector showing buttons above and below properties]
+
+---
+
+### historyCapacity (int, optional)
+
+**Controls how many previous results are stored for methods that return values.**
+
+- **Default:** `WButtonAttribute.UseGlobalHistory` (uses project setting, typically 5)
+- **Range:** `1` to `10` results, or `-1` for global default
+- **Applies to:** Methods returning values, async tasks, or coroutines
+- **Does not affect:** `void` methods (no history stored)
+
+```csharp
+// Use global setting (default: 5 results)
+[WButton("Roll Dice")]
+private int RollDice() => Random.Range(1, 7);
+
+// Store only last result
+[WButton("Get Timestamp", historyCapacity: 1)]
+private string GetTimestamp() => DateTime.Now.ToString();
+
+// Store up to 10 results for detailed history
+[WButton("Measure Frame Time", historyCapacity: 10)]
+private float MeasureFrameTime() => Time.deltaTime * 1000f;
+
+// Disable history completely (1 = minimum)
+[WButton("Ping Server", historyCapacity: 1)]
+private async Task<string> PingServerAsync(CancellationToken ct)
+{
+    // ... ping logic
+    return "Pong!";
+}
+```
+
+![Image placeholder: inspector-button-history-capacity.png - History panels showing different capacity settings]
+
+**Performance tip:** Use lower values (`1-3`) for methods called frequently to reduce memory usage.
+
+---
+
+### priority (string, optional)
+
+**Applies custom color themes to buttons using predefined color keys.**
+
+- **Default:** `null` (uses default button color)
+- **Common values:** `"Default"`, `"Default-Light"`, `"Default-Dark"`, or custom keys
+- **Configure in:** Edit → Project Settings → Unity Helpers → WButton Color Palettes
+
+```csharp
+// Default blue button
+[WButton("Standard Action")]
+private void StandardAction() { }
+
+// Custom themed button (requires setup in project settings)
+[WButton("Dangerous Action", priority: "Danger")]
+private void DangerousAction() { }
+
+[WButton("Success Action", priority: "Success")]
+private void SuccessAction() { }
+
+[WButton("Warning Action", priority: "Warning")]
+private void WarningAction() { }
+```
+
+![Image placeholder: inspector-button-color-themes.png - Buttons with different color themes]
+
+**Setting up custom colors:**
+
+1. Open Edit → Project Settings → Unity Helpers
+2. Navigate to WButton Color Palettes
+3. Add new color key (e.g., `"Danger"`)
+4. Set background/text colors
+5. Use the key in your `[WButton]` attribute
+
+![Image placeholder: inspector-button-settings-colors.png - Project settings showing color palette configuration]
+
+---
+
+### groupName (string, optional)
+
+**Organizes buttons under labeled group headers.**
+
+- **Default:** `null` (no group header)
+- **Behavior:** All buttons with the same `groupName` and `drawOrder` appear together
+- **Best practice:** Use with `drawOrder` to create organized button sections
+
+```csharp
+public class GameManager : MonoBehaviour
+{
+    // "Debug Tools" group above properties
+    [WButton("Log State", drawOrder: -1, groupName: "Debug Tools")]
+    private void LogState() { }
+
+    [WButton("Clear Console", drawOrder: -1, groupName: "Debug Tools")]
+    private void ClearConsole() { }
+
+    // Inspector properties here
+
+    // "Save System" group below properties
+    [WButton("Save Game", drawOrder: 1, groupName: "Save System")]
+    private void SaveGame() { }
+
+    [WButton("Load Game", drawOrder: 1, groupName: "Save System")]
+    private void LoadGame() { }
+
+    [WButton("Delete Save", drawOrder: 1, groupName: "Save System")]
+    private void DeleteSave() { }
+}
+```
+
+**Visual layout:**
+
+```text
+┌─────────────────────────────┐
+│ ▼ Debug Tools               │ ← Group header
+│   Log State  Clear Console  │
+├─────────────────────────────┤
+│ (Inspector properties)      │
+├─────────────────────────────┤
+│ ▼ Save System               │ ← Group header
+│   Save Game                 │
+│   Load Game                 │
+│   Delete Save               │
+└─────────────────────────────┘
+```
+
+![Image placeholder: inspector-button-groups.png - Inspector showing grouped buttons with headers]
+
+**Notes:**
+
+- Group headers are collapsible (click the arrow to expand/collapse)
+- Groups can be configured to start expanded or collapsed in project settings
+- The first button in a group determines the group's display name
+
+---
+
+### Complete Example
+
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public class LevelManager : MonoBehaviour
+{
+    public int currentLevel = 1;
+    public bool debugMode = false;
+
+    // Setup group - appears above properties
+    [WButton("🔧 Initialize Level", drawOrder: -2, groupName: "Setup")]
+    private void Initialize()
+    {
+        Debug.Log("Level initialized!");
+    }
+
+    [WButton("✓ Validate Configuration", drawOrder: -2, groupName: "Setup")]
+    private void ValidateConfig()
+    {
+        Debug.Log("Configuration valid!");
+    }
+
+    // Debug group - appears above properties
+    [WButton("Roll Dice", drawOrder: -1, historyCapacity: 10, groupName: "Debug")]
+    private int RollDice() => Random.Range(1, 7);
+
+    [WButton("🎯 Spawn Test Enemy", drawOrder: -1, priority: "Warning", groupName: "Debug")]
+    private void SpawnTestEnemy()
+    {
+        // Spawn logic here
+    }
+
+    // Properties appear here in the inspector
+
+    // Actions group - appears below properties
+    [WButton("▶ Start Level", drawOrder: 1, priority: "Success", groupName: "Actions")]
+    private void StartLevel()
+    {
+        Debug.Log($"Starting level {currentLevel}...");
+    }
+
+    [WButton("⏸ Pause Game", drawOrder: 1, groupName: "Actions")]
+    private void PauseGame()
+    {
+        Time.timeScale = 0f;
+    }
+
+    [WButton("🔄 Restart Level", drawOrder: 1, priority: "Danger", groupName: "Actions")]
+    private void RestartLevel()
+    {
+        // Restart logic here
+    }
+
+    // Maintenance group - appears below everything else
+    [WButton("Clear Cache", drawOrder: 2, historyCapacity: 1, groupName: "Maintenance")]
+    private string ClearCache()
+    {
+        return $"Cache cleared at {System.DateTime.Now:HH:mm:ss}";
+    }
+}
+```
+
+![Image placeholder: inspector-button-complete-example.png - Full inspector showing all parameter features working together]
 
 ---
 

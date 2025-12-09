@@ -157,6 +157,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public bool isExpanded;
             public bool hasNullEntries;
             public bool hasDuplicates;
+            public bool pendingIsExpanded;
+            public float pendingFoldoutProgress;
             public int frameNumber;
         }
 
@@ -844,14 +846,35 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool hasDuplicates =
                 duplicateState.hasDuplicates && !string.IsNullOrEmpty(duplicateState.summary);
 
+            bool isSortedSet = IsSortedSetCached(property);
+            bool shouldDrawPendingEntry = hasInspector && elementType != null;
+            PendingEntry pendingEntry = null;
+            bool pendingIsExpanded = false;
+            float pendingFoldoutProgress = 0f;
+            if (shouldDrawPendingEntry)
+            {
+                pendingEntry = GetOrCreatePendingEntry(
+                    property,
+                    propertyPath,
+                    elementType,
+                    isSortedSet
+                );
+                pendingIsExpanded = pendingEntry.isExpanded;
+                pendingFoldoutProgress = GetPendingFoldoutProgress(pendingEntry);
+            }
+
             if (_heightCache.TryGetValue(cacheKey, out HeightCacheEntry cached))
             {
+                const float foldoutProgressTolerance = 0.001f;
                 if (
                     cached.frameNumber == currentFrame
                     && cached.arraySize == totalCount
                     && cached.isExpanded == property.isExpanded
                     && cached.hasNullEntries == hasNullEntries
                     && cached.hasDuplicates == hasDuplicates
+                    && cached.pendingIsExpanded == pendingIsExpanded
+                    && Mathf.Abs(cached.pendingFoldoutProgress - pendingFoldoutProgress)
+                        < foldoutProgressTolerance
                 )
                 {
                     return cached.height;
@@ -874,17 +897,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 height += GetWarningBarHeight() + SectionSpacing;
             }
 
-            bool isSortedSet = IsSortedSetCached(property);
-            bool shouldDrawPendingEntry = hasInspector && elementType != null;
             float pendingHeightWithSpacing = 0f;
-            if (shouldDrawPendingEntry)
+            if (shouldDrawPendingEntry && pendingEntry != null)
             {
-                PendingEntry pendingEntry = GetOrCreatePendingEntry(
-                    property,
-                    propertyPath,
-                    elementType,
-                    isSortedSet
-                );
                 pendingHeightWithSpacing = GetPendingSectionHeight(pendingEntry) + SectionSpacing;
             }
 
@@ -902,6 +917,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         property.isExpanded,
                         hasNullEntries,
                         hasDuplicates,
+                        pendingIsExpanded,
+                        pendingFoldoutProgress,
                         currentFrame
                     );
                     return emptyWithPendingHeight;
@@ -916,6 +933,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     property.isExpanded,
                     hasNullEntries,
                     hasDuplicates,
+                    pendingIsExpanded,
+                    pendingFoldoutProgress,
                     currentFrame
                 );
                 return emptyHeight;
@@ -953,6 +972,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 property.isExpanded,
                 hasNullEntries,
                 hasDuplicates,
+                pendingIsExpanded,
+                pendingFoldoutProgress,
                 currentFrame
             );
             return finalHeight;
@@ -965,6 +986,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool isExpanded,
             bool hasNullEntries,
             bool hasDuplicates,
+            bool pendingIsExpanded,
+            float pendingFoldoutProgress,
             int frameNumber
         )
         {
@@ -978,6 +1001,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             entry.isExpanded = isExpanded;
             entry.hasNullEntries = hasNullEntries;
             entry.hasDuplicates = hasDuplicates;
+            entry.pendingIsExpanded = pendingIsExpanded;
+            entry.pendingFoldoutProgress = pendingFoldoutProgress;
             entry.frameNumber = frameNumber;
         }
 

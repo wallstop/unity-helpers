@@ -201,6 +201,16 @@ characterImage.Fps = 24f; // Speed up animation
 characterImage.Fps = 6f;  // Slow down animation
 ```
 
+### Visual Demo
+
+> **LayeredImage in Action**
+>
+> ![GIF placeholder: LayeredImage showing multi-layer character animation with body, armor, and helmet layers compositing in real-time](../../images/inspector/layered-image-animation.gif)
+> _Character with dynamically composited equipment layers animating at runtime_
+>
+> ![GIF placeholder: LayeredImage layer swapping demo showing equipment being changed and animation updating instantly](../../images/inspector/layered-image-layer-swap.gif)
+> _Swapping equipment layers at runtime without pre-rendered sprite sheets_
+
 ### How Compositing Works
 
 LayeredImage performs these steps each frame:
@@ -266,6 +276,11 @@ All layers must have the same number of frames. Mixing 4-frame and 8-frame anima
 - Shader-based shape rendering
 
 **See full documentation:** [Editor Tools Guide - EnhancedImage](../editor-tools/editor-tools-guide.md#enhancedimage-editor)
+
+> **Visual Demo**
+>
+> ![GIF placeholder: EnhancedImage HDR color intensity slider being adjusted, showing bloom effect increasing](../../images/inspector/enhanced-image-hdr-bloom.gif)
+> _HDR color values above 1.0 create bloom effects when post-processing is enabled_
 
 **Quick example:**
 

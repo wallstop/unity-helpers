@@ -25,6 +25,11 @@ public sealed class CharacterStats : MonoBehaviour
 }
 ```
 
+> **Visual Reference**
+>
+> ![WGroup inspector rendering showing Vitals and Equipment groups](../../images/inspector/wgroup-basic-usage.png)
+> _Grouped fields with collapsible Vitals section and Equipment group with custom color_
+
 - Fields marked with `[WGroup]` define the first member of a group. The next serialized members are automatically captured up to the configured limit.
 - When auto-including infinitely, add `[WGroupEnd]` to the member that should terminate grouping.
 - Applying `[WGroup]` again later in the type merges the members into the existing group and resets the auto-include budget.

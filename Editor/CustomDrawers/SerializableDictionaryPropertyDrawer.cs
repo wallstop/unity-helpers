@@ -63,6 +63,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public bool isExpanded;
             public bool hasNullKeys;
             public bool hasDuplicates;
+            public bool pendingIsExpanded;
+            public float pendingFoldoutProgress;
             public int frameNumber;
         }
 
@@ -528,14 +530,27 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 duplicateState is { HasDuplicates: true }
                 && !string.IsNullOrEmpty(duplicateState.SummaryTooltip);
 
+            PendingEntry pending = GetOrCreatePendingEntry(
+                property,
+                keyType,
+                valueType,
+                isSortedDictionary
+            );
+            bool pendingIsExpanded = pending.isExpanded;
+            float pendingFoldoutProgress = GetPendingFoldoutProgress(pending);
+
             if (_heightCache.TryGetValue(cacheKey, out HeightCacheEntry cached))
             {
+                const float foldoutProgressTolerance = 0.001f;
                 if (
                     cached.frameNumber == currentFrame
                     && cached.arraySize == arraySize
                     && cached.isExpanded == property.isExpanded
                     && cached.hasNullKeys == hasNullKeys
                     && cached.hasDuplicates == hasDuplicates
+                    && cached.pendingIsExpanded == pendingIsExpanded
+                    && Mathf.Abs(cached.pendingFoldoutProgress - pendingFoldoutProgress)
+                        < foldoutProgressTolerance
                 )
                 {
                     return cached.height;
@@ -544,13 +559,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             float height = baseHeight;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
-
-            PendingEntry pending = GetOrCreatePendingEntry(
-                property,
-                keyType,
-                valueType,
-                isSortedDictionary
-            );
 
             height += spacing;
 
@@ -582,6 +590,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             cached.isExpanded = property.isExpanded;
             cached.hasNullKeys = hasNullKeys;
             cached.hasDuplicates = hasDuplicates;
+            cached.pendingIsExpanded = pendingIsExpanded;
+            cached.pendingFoldoutProgress = pendingFoldoutProgress;
             cached.frameNumber = currentFrame;
 
             return height;

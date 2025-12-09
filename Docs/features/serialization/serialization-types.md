@@ -47,7 +47,9 @@ public class Entity : MonoBehaviour
 }
 ```
 
-![Image placeholder: WGuid inspector showing GUID string and Generate button]
+> **Visual Reference**
+>
+> ![WGuid property drawer showing GUID field with Generate button](../../images/serialization/wguid-inspector.png)
 
 ---
 
@@ -85,7 +87,11 @@ WGuid empty = WGuid.EmptyGuid;
 - Validation warns if GUID is not version-4
 - Undo/redo support
 
-![Image placeholder: WGuid drawer with validation warning for non-v4 GUID]
+![WGuid drawer with validation warning for GUID input](../../images/serialization/wguid-inspector-obviously-invalid.png)
+
+![WGuid drawer with validation warning for non-v4 GUID](../../images/serialization/wguid-inspector-not-v4.png)
+
+![WGuid generate button showing that it generates new v4 GUIDs](../../images/serialization/wguid-inspector-generate.gif)
 
 ---
 
@@ -122,9 +128,9 @@ int comparison = id1.CompareTo(id2);  // 0
 
 ### Serialization Support
 
-**Unity:** Serialized as two `long` fields
-**JSON:** Serialized as GUID string
-**Protobuf:** Serialized as two `long` fields
+- **Unity:** Serialized as two `long` fields
+- **JSON:** Serialized as GUID string
+- **Protobuf:** Serialized as two `long` fields
 
 ```csharp
 using ProtoBuf;
@@ -158,13 +164,12 @@ using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 
 public class PrefabRegistry : MonoBehaviour
 {
+    public GameObject enemyPrefab;
+    public GameObject playerPrefab;
+
     public SerializableDictionary<string, GameObject> prefabs;
 
     private void Start()
-    {
-        // Add entries
-        prefabs.Add("Enemy", enemyPrefab);
-        prefabs["Player"] = playerPrefab;
 
         // Access entries
         if (prefabs.TryGetValue("Enemy", out GameObject prefab))
@@ -180,15 +185,26 @@ public class PrefabRegistry : MonoBehaviour
         {
             Debug.Log($"{kvp.Key}: {kvp.Value}");
         }
+
+        /*
+            Add entries (or overwrite)
+            WARNING: This is just for demo purposes! SerializableDictionary is meant for editor-mode persistence.
+            Nothing stops you from changing this at runtime, but it will be lost on next playthrough.
+        */
+        prefabs["Player"] = playerPrefab;
+        prefabs["Enemy"] = enemyPrefab;
     }
 }
 ```
 
-![Image placeholder: SerializableDictionary inspector showing key/value pairs with add/remove buttons]
-
 ---
 
 ### Inspector Features
+
+> **Visual Reference**
+>
+> ![SerializableDictionary property drawer with add/remove controls](../../images/serialization/serializable-dictionary-inspector.png)
+> _Dictionary inspector showing key-value pairs with pagination and inline editing_
 
 **Custom Drawer:**
 
@@ -303,7 +319,10 @@ public class UniqueItemTracker : MonoBehaviour
 }
 ```
 
-![Image placeholder: SerializableHashSet inspector with add/remove/sort buttons]
+> **Visual Reference**
+>
+> ![SerializableHashSet property drawer with duplicate detection](../../images/serialization/serializable-hashset-inspector.png)
+> _Set inspector with add/remove controls, duplicate highlighting, and pagination_
 
 ---
 
@@ -320,9 +339,11 @@ public class UniqueItemTracker : MonoBehaviour
 - Current selection badge for items on other pages
 - **New Entry foldout** to stage values before adding them to the runtime set (tune its animation via **Project Settings ▸ Wallstop Studios ▸ Unity Helpers ▸ Set Foldouts**)
 
-![Image placeholder: Set with duplicate entry highlighted in yellow]
-![Image placeholder: Set with null entry highlighted in red]
-![GIF placeholder: Adding duplicate and seeing shake animation]
+> **Visual Reference**
+>
+> ![SerializableHashSet duplicate and null highlighting](../../images/serialization/serializable-hashset-validation.png)
+> _Visual feedback for duplicate entries (yellow shake) and null values (red background)_
+> ![GIF placeholder: Adding duplicate and seeing shake animation]
 
 ---
 
@@ -425,6 +446,11 @@ private void Start()
 ## SerializableType
 
 Unity-friendly type reference that survives refactoring and namespace changes.
+
+> **Visual Reference**
+>
+> ![SerializableType property drawer with searchable type dropdown](../../images/serialization/serializable-type-inspector.png)
+> _Type selection with searchable dropdown, namespace filtering, and validation_
 
 ### Why SerializableType?
 
@@ -540,6 +566,11 @@ bool equal = typeRef.Equals(new SerializableType(typeof(PlayerController)));
 ## SerializableNullable
 
 Unity-friendly nullable value type wrapper.
+
+> **Visual Reference**
+>
+> ![SerializableNullable property drawer with HasValue checkbox](../../images/serialization/serializable-nullable-inspector.png)
+> _Nullable value type with HasValue checkbox and conditional value field_
 
 ### Why SerializableNullable?
 

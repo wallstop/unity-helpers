@@ -7,7 +7,7 @@
 *.userosscache
 *.sln.docstates
 
-.devcontainer/**
+TestFailures.txt
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

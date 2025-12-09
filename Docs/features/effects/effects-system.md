@@ -79,11 +79,19 @@ Data‑driven gameplay effects that modify stats, apply tags, and drive cosmetic
 
 This guide explains the concepts, how they work together, authoring patterns, recipes, best practices, and FAQs.
 
-Visuals
+### Visual Reference
 
 ![Effects Pipeline](../../images/effects/effects-pipeline.svg)
 
 ![Attribute Resolution](../../images/effects/attribute-resolution.svg)
+
+> **Effects in Action**
+>
+> ![GIF placeholder: Effect being applied to character showing buff icon appearing and stats changing](../../images/effects/effect-application-demo.gif)
+> _Applying a Haste effect: speed attribute increases, buff icon appears, timer counts down_
+>
+> ![GIF placeholder: Damage effect hitting character with health bar decreasing and cosmetic flash](../../images/effects/effect-damage-demo.gif)
+> _Instant damage effect: health attribute decreases with cosmetic damage flash_
 
 ## Concepts
 

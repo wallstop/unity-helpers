@@ -410,8 +410,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             // Reset retry state to ensure fresh start
             ScriptableObjectSingletonCreator.ResetRetryStateForTests();
 
-            // Thorough cleanup of all possible states
+            // Thorough cleanup of all possible states - delete via AssetDatabase first
+            AssetDatabase.DeleteAsset(retryAsset);
+            AssetDatabase.DeleteAsset(retryFolder);
+            AssetDatabase.DeleteAsset(retryFolderVariant);
             CleanupRetryTestState(retryFolder, retryAsset, blockerMeta, retryFolderVariant);
+            AssetDatabase.SaveAssets();
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             yield return null;
 
@@ -458,8 +462,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             );
 
             // Remove the blocker file completely and reset retry state for fresh retries
+            // Important: Delete via AssetDatabase first to properly clear internal state
+            AssetDatabase.DeleteAsset(retryFolder);
             CleanupRetryTestState(retryFolder, retryAsset, blockerMeta, retryFolderVariant);
             ScriptableObjectSingletonCreator.ResetRetryStateForTests();
+
+            // Force multiple refreshes to ensure Unity's internal state is fully cleared
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            yield return null;
+
+            // Second refresh pass - sometimes Unity needs this to fully clear internal GUID mappings
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             yield return null;
 
@@ -473,6 +486,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 "Retry folder should not exist yet"
             );
 
+            // Verify meta file is also gone on disk
+            string blockerMetaAbsolute = GetAbsolutePath(blockerMeta);
+            if (File.Exists(blockerMetaAbsolute))
+            {
+                // If meta file still exists on disk, try to delete it again and refresh
+                File.Delete(blockerMetaAbsolute);
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+                yield return null;
+            }
+
+            // Additional pre-retry diagnostics
+            string preRetryGuid = AssetDatabase.AssetPathToGUID(retryFolder);
+            string preRetryAssetGuid = AssetDatabase.AssetPathToGUID(retryAsset);
+            bool preRetryDirExists = Directory.Exists(GetAbsolutePath(retryFolder));
+            bool preRetryMetaExists = File.Exists(blockerMetaAbsolute);
+
             // Manually trigger ensure now that the blocker is gone - should succeed immediately
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             AssetDatabase.SaveAssets();
@@ -483,9 +512,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             bool assetExists = AssetDatabase.LoadAssetAtPath<Object>(retryAsset) != null;
             bool variantExists = AssetDatabase.IsValidFolder(retryFolderVariant);
 
+            // Extended diagnostics for debugging
+            string absoluteAssetPath = GetAbsolutePath(retryAsset);
+            bool assetFileOnDisk = File.Exists(absoluteAssetPath);
+            string postRetryFolderGuid = AssetDatabase.AssetPathToGUID(retryFolder);
+            string postRetryAssetGuid = AssetDatabase.AssetPathToGUID(retryAsset);
+
             string diagnostics =
                 $"folderExists={folderExists}, assetExists={assetExists}, variantExists={variantExists}, "
-                + $"blockerOnDisk={File.Exists(absoluteBlocker)}, metaOnDisk={File.Exists(GetAbsolutePath(blockerMeta))}";
+                + $"blockerOnDisk={File.Exists(absoluteBlocker)}, metaOnDisk={File.Exists(blockerMetaAbsolute)}, "
+                + $"assetFileOnDisk={assetFileOnDisk}, preRetryFolderGuid={preRetryGuid}, preRetryAssetGuid={preRetryAssetGuid}, "
+                + $"preRetryDirExists={preRetryDirExists}, preRetryMetaExists={preRetryMetaExists}, "
+                + $"postRetryFolderGuid={postRetryFolderGuid}, postRetryAssetGuid={postRetryAssetGuid}";
 
             Assert.IsTrue(
                 folderExists && assetExists && !variantExists,
@@ -500,9 +538,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             string retryFolderVariant
         )
         {
-            // Delete assets through AssetDatabase first
+            // Delete assets through AssetDatabase first - this properly clears Unity's internal state
             AssetDatabase.DeleteAsset(retryAsset);
             if (AssetDatabase.IsValidFolder(retryFolder))
+            {
+                AssetDatabase.DeleteAsset(retryFolder);
+            }
+            // Also try to delete the blocker file if it was imported as an asset
+            if (!AssetDatabase.IsValidFolder(retryFolder))
             {
                 AssetDatabase.DeleteAsset(retryFolder);
             }
@@ -515,6 +558,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             string absoluteFolder = GetAbsolutePath(retryFolder);
             string absoluteVariant = GetAbsolutePath(retryFolderVariant);
             string absoluteMeta = GetAbsolutePath(blockerMeta);
+            string absoluteAsset = GetAbsolutePath(retryAsset);
 
             // Delete blocker file if it exists
             if (File.Exists(absoluteFolder))
@@ -528,10 +572,35 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 File.Delete(absoluteMeta);
             }
 
+            // Delete folder meta if it exists (for when retryFolder is a directory)
+            string folderMeta = absoluteFolder + ".meta";
+            if (File.Exists(folderMeta))
+            {
+                File.Delete(folderMeta);
+            }
+
+            // Delete asset file if it exists
+            if (File.Exists(absoluteAsset))
+            {
+                File.Delete(absoluteAsset);
+            }
+
+            // Delete asset meta if it exists
+            string assetMeta = absoluteAsset + ".meta";
+            if (File.Exists(assetMeta))
+            {
+                File.Delete(assetMeta);
+            }
+
             // Delete folder on disk if it somehow exists as a directory
             if (Directory.Exists(absoluteFolder))
             {
                 Directory.Delete(absoluteFolder, true);
+                // Also delete the folder's meta file if the folder was a directory
+                if (File.Exists(folderMeta))
+                {
+                    File.Delete(folderMeta);
+                }
             }
             if (Directory.Exists(absoluteVariant))
             {
@@ -623,7 +692,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             // Reset retry state for clean test
             ScriptableObjectSingletonCreator.ResetRetryStateForTests();
 
+            // Thorough cleanup via AssetDatabase first
             AssetDatabase.DeleteAsset(noRetryAsset);
+            AssetDatabase.DeleteAsset(noRetryFolder);
+            AssetDatabase.DeleteAsset(noRetryVariant);
             if (AssetDatabase.IsValidFolder(noRetryFolder))
             {
                 AssetDatabase.DeleteAsset(noRetryFolder);
@@ -638,6 +710,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 File.Delete(absoluteBlockerMeta);
             }
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
 
             EnsureFolder(TestRoot);
             yield return null;
@@ -683,12 +757,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 "Variant folder should not be created"
             );
 
-            // Remove blocker
+            // Remove blocker via AssetDatabase first, then file system
+            AssetDatabase.DeleteAsset(noRetryFolder);
             DeleteFileIfExists(noRetryFolder);
             if (File.Exists(absoluteBlockerMeta))
             {
                 File.Delete(absoluteBlockerMeta);
             }
+            AssetDatabase.SaveAssets();
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             yield return null;
 
@@ -713,8 +789,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = originalRetrySetting;
 
+            // Extended diagnostics for debugging
+            string absoluteAssetPath = GetAbsolutePath(noRetryAsset);
+            bool assetFileOnDisk = File.Exists(absoluteAssetPath);
+            string postFolderGuid = AssetDatabase.AssetPathToGUID(noRetryFolder);
+            string postAssetGuid = AssetDatabase.AssetPathToGUID(noRetryAsset);
+
             string diagnostics =
-                $"folderExists={folderExists}, assetExists={assetExists}, variantExists={variantExists}";
+                $"folderExists={folderExists}, assetExists={assetExists}, variantExists={variantExists}, "
+                + $"assetFileOnDisk={assetFileOnDisk}, postFolderGuid={postFolderGuid}, postAssetGuid={postAssetGuid}";
 
             Assert.IsTrue(
                 folderExists && assetExists && !variantExists,

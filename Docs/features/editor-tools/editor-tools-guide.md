@@ -48,6 +48,8 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 - Auto-create singleton assets → [ScriptableObject Singleton Creator](#scriptableobject-singleton-creator)
 - Cache attribute metadata → [Attribute Metadata Cache Generator](#attribute-metadata-cache-generator)
 - Track sprite labels → [Sprite Label Processor](#sprite-label-processor)
+- Manually trigger script recompilation → [Request Script Recompilation](#request-script-recompilation)
+- Configure buffer settings → [Project Settings: Unity Helpers](#project-settings-unity-helpers)
 
 ### Enhance Inspector Workflows
 
@@ -107,6 +109,11 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 - Depth-of-field texture generation
 - Post-processing texture preparation
 
+> **Visual Demo**
+>
+> ![GIF placeholder: Image Blur Tool showing before/after comparison as blur radius slider is adjusted](../../images/editor-tools/image-blur-before-after.gif)
+> _Adjusting blur radius from 0 to 50 pixels on a UI background texture_
+
 ---
 
 ### Sprite Cropper
@@ -146,6 +153,11 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 - Preparing assets for efficient packing
 
 **Performance Impact:** Can reduce texture memory by 30-70% on padded sprites.
+
+> **Visual Demo**
+>
+> ![GIF placeholder: Sprite Cropper showing original sprite with padding, then cropped result side-by-side](../../images/editor-tools/sprite-cropper-comparison.gif)
+> _Before and after: transparent padding removed while preserving sprite content and pivot_
 
 **Related Tools:**
 
@@ -509,6 +521,14 @@ Result: Max Size → 64 (matches source)
 - Type frame numbers for precise positioning
 - Press Enter to apply frame changes
 
+> **Visual Demo**
+>
+> ![GIF placeholder: Sprite Animation Editor showing animation preview playing while frames are dragged to reorder](../../images/editor-tools/sprite-animation-editor-reorder.gif)
+> _Drag-and-drop frame reordering with real-time preview updates_
+>
+> ![GIF placeholder: Sprite Animation Editor FPS adjustment showing animation speed changing live](../../images/editor-tools/sprite-animation-editor-fps.gif)
+> _Adjusting FPS slider and seeing immediate preview speed change_
+
 ---
 
 ### Animation Creator
@@ -582,6 +602,11 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 - One‑click bulk clip creation from sprite folders
 - Converting exported frame sequences into clips
 - Large projects standardizing animation naming and FPS/loop
+
+> **Visual Demo**
+>
+> ![GIF placeholder: Animation Creator auto-parse workflow showing sprites being grouped and clips generated](../../images/editor-tools/animation-creator-auto-parse.gif)
+> _One-click auto-parse: sprites grouped by naming pattern, clips generated instantly_
 
 **Related Tools:**
 
@@ -666,6 +691,11 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 - Converting sprite sheets to animation clips with fine control
 - Mixed timings using AnimationCurves for frame pacing
 - Fast iteration via visual selection and preview
+
+> **Visual Demo**
+>
+> ![GIF placeholder: Sprite Sheet Animation Creator showing drag-select across sprite thumbnails with live preview](../../images/editor-tools/sprite-sheet-creator-select.gif)
+> _Drag-select frame ranges on sprite sheet thumbnails with instant preview playback_
 
 ---
 
@@ -780,6 +810,14 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 - Sprite preview helps verify timing
 - Multiple events can exist at same frame
 - Use "Re-Order" before saving for consistency
+
+> **Visual Demo**
+>
+> ![GIF placeholder: Animation Event Editor showing event being added and sprite preview updating to show frame at event time](../../images/editor-tools/animation-event-editor-preview.gif)
+> _Adding animation events with real-time sprite preview at each frame_
+>
+> ![GIF placeholder: Animation Event Editor showing invalid texture warning and Fix button being clicked](../../images/editor-tools/animation-event-editor-fix.gif)
+> _Automatic detection and one-click fix for texture Read/Write issues_
 
 **Common Method Signatures:**
 
@@ -1550,6 +1588,104 @@ Assets/
 - ✅ Fast dropdown population in editors
 - ✅ Automatic cache invalidation on changes
 - ✅ Only processes sprite texture types
+
+**Runtime Usage:**
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Helper;
+
+// Access cached sprite labels
+string[] labels = SpriteLabelCache.GetAllLabels();
+```
+
+---
+
+<a id="request-script-recompilation"></a>
+
+### Request Script Recompilation
+
+**Menu:** `Tools > Wallstop Studios > Unity Helpers > Request Script Recompilation`
+**Shortcut:** `Ctrl/Cmd + Alt + R` (configurable in Unity's Shortcut Manager)
+
+**Purpose:** Manually trigger Unity script recompilation without needing to modify files or restart the editor.
+
+> **Visual Reference**
+>
+> ![Request Script Recompilation menu item and shortcut](../../images/editor-tools/request-recompilation.png)
+> _Quick access to manual recompilation from menu or keyboard shortcut_
+
+**Key Features:**
+
+- One-click script recompilation
+- Customizable keyboard shortcut (default: Ctrl/Cmd + Alt + R)
+- Useful after external code generation or build processes
+- Available in Unity's Shortcut Manager under "Wallstop Studios / Request Script Compilation"
+
+**When to Use:**
+
+- After external code generation tools modify scripts
+- When Unity doesn't auto-detect file changes
+- To force recompilation without touching files
+- In automated workflows that need explicit compilation steps
+
+**Common Workflow:**
+
+```
+1. Run external code generator
+2. Press Ctrl+Alt+R (or use menu item)
+3. Wait for Unity to recompile scripts
+4. Continue working with updated code
+```
+
+---
+
+<a id="project-settings-unity-helpers"></a>
+
+### Project Settings: Unity Helpers
+
+**Menu:** `Edit > Project Settings > Wallstop Studios > Unity Helpers`
+
+**Purpose:** Centralized configuration for Unity Helpers features, including buffer settings, pagination defaults, and inspector behavior.
+
+> **Visual Reference**
+>
+> ![Project Settings panel for Unity Helpers](../../images/editor-tools/project-settings-unity-helpers.png)
+> _Centralized configuration panel in Unity's Project Settings_
+
+**Key Settings:**
+
+#### Coroutine Wait Buffer Defaults
+
+Configure default behavior for `WaitForSeconds`, `WaitForFixedUpdate`, and other yield instructions:
+
+```csharp
+// Settings affect runtime buffer pool behavior:
+- Quantization: How yield times are rounded (e.g., 0.1f rounds to nearest 0.1)
+- Entry Caps: Maximum number of cached wait instructions per type
+- LRU Mode: Least-recently-used eviction when caps are exceeded
+```
+
+**Impact:**
+
+- Reduces GC allocations from repeated coroutine yields
+- Settings apply automatically on domain reload and player start
+- Can be overridden at runtime if needed
+
+**Generated Asset:** `Resources/WallstopStudios/UnityHelpers/UnityHelpersBufferSettings.asset`
+
+#### Inspector Pagination Defaults
+
+- `StringInListPageSize`: Default page size for StringInList dropdowns (default: 50)
+- `WEnumToggleButtonsPageSize`: Default page size for enum toggle button grids (default: 20)
+- Per-attribute overrides available on individual fields
+
+**When to Adjust:**
+
+- Large option lists feel cramped (increase page size)
+- Inspector feels sluggish with many options (decrease page size)
+- Project-wide consistency for dropdown/toggle experiences
+
+---
 
 **Runtime Usage:**
 

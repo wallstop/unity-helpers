@@ -9,15 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](docs/overview/roadmap.md) for details
 
-### Added
-
-- Collapsible `WGroup` headers now honor a project-wide **Start WGroups Collapsed** toggle (Project Settings ▸ Wallstop Studios ▸ Unity Helpers), making the default state configurable without touching every attribute.
-
-### Changed
-
-- `WInLineEditor` now inherits the Inline Editors project setting by default, and that setting ships collapsed out of the box to match collapsible WGroup headers. Existing projects can still opt back into expanded or always-open foldouts via Project Settings.
-- `WInLineEditor` ping buttons now only render when a Project window tab is visible, preventing no-op buttons when the Project view is hidden.
-
 ## [2.2.0]
 
 ### Added
@@ -25,11 +16,16 @@ See [the roadmap](docs/overview/roadmap.md) for details
 - **Auto-Load Singleton System**: New singleton pattern with configurable lifetimes and thread-safe execution
   - `UnityMainThreadGuard` for ensuring operations run on the main thread
   - `UnityMainThreadDispatcher` with configurable lifecycle management
+  - `AutoLoadSingletonAttribute` for automatic singleton instantiation during Unity start-up phases
   - Reworked auto-load singleton architecture for better scene persistence
+- **Asset Change Detection**: Monitor asset changes with `DetectAssetChangedAttribute`
+  - Annotate methods to automatically execute when specific asset types are created or deleted
+  - Support for inheritance with `IncludeAssignableTypes` option
+  - Automatic registration and callback execution via asset processor
 - **Inspector Attributes & Drawers**: Comprehensive custom inspector tooling
   - `WGroup` attribute for visual grouping of inspector properties, including collapsible sections and palette-driven styling
   - `WButton` attribute with support for async/Task methods and custom styling
-  - `EnumToggleButtons` for toggle-based enum selection in inspector
+  - `WEnumToggleButtons` attribute for toggle-based enum selection in inspector
   - `WShowIf` conditional display attribute improvements
   - Enhanced dropdown attributes for better property selection
   - `StringInListAttribute` now supports `[StringInList(nameof(Method))]` to call parameterless instance or static methods on the decorated object, and the drawer exposes the same experience in both IMGUI and UI Toolkit inspectors
@@ -47,15 +43,16 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Configurable settings windows with improved layout and styling
   - Move up/down buttons for reordering collection elements
   - Add/remove buttons with improved visual styling
-  - Add `Request Script Recompilation` which will automatically recompile any script changes
-  - The “Request Script Compilation” utility now ships with a Unity Shortcut Manager binding (default **Ctrl/Cmd + Alt + R**) so you can trigger it without touching the menu. The shortcut appears under _Wallstop Studios / Request Script Compilation_ and can be remapped like any other Unity shortcut. The existing menu item remains at `Tools ▸ Wallstop Studios ▸ Unity Helpers`.
+  - Added **Request Script Recompilation** menu item (`Tools ▸ Wallstop Studios ▸ Unity Helpers`) to manually trigger script recompilation
+  - The "Request Script Compilation" utility includes a Unity Shortcut Manager binding (default **Ctrl/Cmd + Alt + R**) for quick access. The shortcut appears under _Wallstop Studios / Request Script Compilation_ and can be remapped like any other Unity shortcut.
   - Coroutine wait buffer defaults can now be configured under **Project Settings ▸ Wallstop Studios ▸ Unity Helpers**. The generated `Resources/WallstopStudios/UnityHelpers/UnityHelpersBufferSettings.asset` applies the selected quantization, entry caps, and LRU mode automatically on domain reload or when the player starts (unless your code overrides the values at runtime).
-  - Random and Performance runtime test suites now live in their own PlayMode assemblies, keeping namespaces tidy while still wiring markdown benchmark output to the existing docs.
 - **Random Number Generation**: Extended PRNG capabilities
-  - Additional random sampling methods with statistical improvements
+  - Added `BlastCircuitRandom` and `WaveSplatRandom` generators with improved performance characteristics
+  - New `RandomGeneratorMetadata` system for inspecting generator properties
+  - Extended random sampling methods with improved statistical distribution
 - **Grid Concave Hull Reliability**:
   - Edge-split and grid KNN hull builders now insert missing axis-aligned corners after the initial pass, guaranteeing concave stair, horseshoe, and serpentine inputs retain their interior vertices even when only sparse samples exist.
-  - New regression-focused tests (`UnityExtensionsGridConcaveHullTests`) cover staircase fallback, axis-corner preservation, and diagonal-only rejection to guard against future regressions.
+  - Improved handling of staircase patterns, axis-corner preservation, and diagonal-only rejection for more robust hull generation.
 
 ### Fixed
 
@@ -68,7 +65,6 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Optimized to reduce GC churn during effect processing
 - **Editor & Inspector**: Multiple rendering and caching bugs
   - Fixed stale label caching causing incorrect inspector display
-  - Fixed test assembly identification for proper test organization
   - Fixed scene loading edge cases in editor workflows
 - **Component System**: Runtime component query issues
   - Fixed `GetComponents` returning null arrays in some cases
@@ -97,13 +93,8 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Faster indexing and lookup in serializable data structures
   - Improved drawer update performance for complex inspector hierarchies
   - Data structure conversion optimizations
-  - Minor relational component performance, specifically for children components
-  - Reduced GC across a variety of property drawers, editor tools, and various helpers
-- **Code Quality**:
-  - Extensive test coverage additions (4,000+ total tests)
-  - Deterministic random number generation tests
-  - Better test organization and cleanup
-  - Editor-specific test improvements
+  - Minor relational component performance improvements, specifically for children components
+  - Reduced GC allocations across property drawers, editor tools, and various helpers
 - **Documentation**:
   - Major documentation refactor for clarity
   - Added GUID generation documentation
@@ -122,16 +113,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Simplified `TryAdd` methods for collections
   - Enforced `IComparable` constraint where appropriate for sorting
   - Better handling of null additions in collections
-- **Editor Workflow**:
-  - Auto-run CSharpier on code changes for consistent formatting
   - Updated editor tooling for better integration with Unity 2021.3+
-
-### Technical Notes
-
-- **Architecture**: Moved many editor drawers to dedicated namespace for better organization
-- **Reflection**: Significant reduction in reflection calls for improved editor performance
-- **Threading**: Enhanced thread safety with `UnityMainThreadGuard` and `UnityMainThreadDispatcher`
-- **Memory**: Reduced GC allocations in hot paths (IllusionFlow, spatial queries, random generation)
 
 ---
 

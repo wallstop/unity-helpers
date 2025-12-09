@@ -273,6 +273,31 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         continue;
                     }
 
+                    // Verify the asset was actually created - CreateAsset can fail silently
+                    Object createdAsset = AssetDatabase.LoadAssetAtPath(
+                        targetAssetPath,
+                        derivedType
+                    );
+                    if (createdAsset == null)
+                    {
+                        // Check if file exists on disk but Unity hasn't imported it yet
+                        if (DoesAssetFileExistOnDisk(targetAssetPath))
+                        {
+                            LogVerbose(
+                                $"ScriptableObjectSingletonCreator: Asset file created at {targetAssetPath} but not yet visible to AssetDatabase. Will retry."
+                            );
+                        }
+                        else
+                        {
+                            Debug.LogError(
+                                $"ScriptableObjectSingletonCreator: CreateAsset appeared to succeed but asset not found at {targetAssetPath}. This may indicate a stale asset database state."
+                            );
+                        }
+                        Object.DestroyImmediate(instance);
+                        retryRequested = true;
+                        continue;
+                    }
+
                     LogVerbose(
                         $"ScriptableObjectSingletonCreator: Created missing singleton for type {derivedType.FullName} at {targetAssetPath}."
                     );
