@@ -35,7 +35,7 @@ public class WeaponConfig : MonoBehaviour
 }
 ```
 
-![GIF placeholder: Toggling isRanged checkbox and fields appearing/disappearing]
+![Toggling isRanged checkbox and fields appearing/disappearing](../../images/inspector/conditional/basic-conditional-usage.gif)
 
 ---
 
@@ -86,13 +86,16 @@ public int ammoCapacity = 30;
 public float castTime = 1f;  // Visible for Ranged or Magic
 ```
 
-![Image placeholder: Enum dropdown changing and different fields appearing]
+![Enum dropdown changing and different fields appearing](../../images/inspector/conditional/slightly-advanced-conditional-usage.gif)
 
 ---
 
 ### Numeric Comparisons
 
 ```csharp
+public class Ability : ScriptableObject { }
+
+[Range(0, 100)]
 public int playerLevel = 1;
 
 [WShowIf(nameof(playerLevel), WShowIfComparison.GreaterThan, 5)]
@@ -105,7 +108,7 @@ public Ability ultimateAbility;
 public string tutorialMessage = "Level up to unlock abilities";
 ```
 
-![Image placeholder: Level slider showing fields appearing at different thresholds]
+![Level slider showing fields appearing at different thresholds](../../images/inspector/conditional/player-level-filter.gif)
 
 ---
 
@@ -121,7 +124,7 @@ public int spawnCount = 1;
 public string warningMessage = "Assign a prefab to spawn!";
 ```
 
-![GIF placeholder: Assigning prefab and spawn count field appearing]
+![Assigning prefab and spawn count field appearing](../../images/inspector/conditional/null-checks.gif)
 
 ---
 
