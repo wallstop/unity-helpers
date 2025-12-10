@@ -97,11 +97,8 @@ private void ClearSaveData() { }
 
 ### drawOrder (int, optional)
 
-**Controls where the button appears relative to the inspector properties.**
+**Controls where the button appears relative to other buttons in the same grouping, in ascending order.**
 
-- **Default:** `0` (appears below all inspector properties)
-- **Negative values (`-1`, `-2`, etc.):** Appear above inspector properties
-- **Positive values (`1`, `2`, etc.):** Appear below inspector properties
 - **Grouping:** Buttons with the same `drawOrder` are grouped together
 
 ```csharp
@@ -460,7 +457,7 @@ private string GenerateId()
 }
 ```
 
-![Image placeholder: History panel showing last 10 generated IDs]
+![History panel showing last 10 generated IDs](../../images/inspector/buttons/id-history.png)
 
 **Features:**
 
@@ -493,34 +490,32 @@ private void NoHistory() => Debug.Log("No history stored");
 
 ## Draw Order & Positioning
 
-Control where buttons appear in the inspector:
+Control where buttons appear in the inspector within the button area:
 
 ```csharp
 public class ButtonPositioning : MonoBehaviour
 {
-    // Appears ABOVE default inspector (drawOrder >= -1)
+    // Appears BELOW "Middle Button" (drawOrder > -1)
+    [WButton("Bottom Button", drawOrder: 1)]
+    private void BottomButton() => Debug.Log("Below Middle Button");
+
+    // Appears BELOW "Top Button" (drawOrder > 0)
+    [WButton("Middle Bottom", drawOrder: 0)]
+    private void AnotherBottom() => Debug.Log("Below Top Button");
+
+    // Appears at the top of button list (lowest draw order)
     [WButton("Top Button", drawOrder: -1)]
-    private void TopButton() => Debug.Log("Above inspector");
+    private void TopButton() => Debug.Log("Above all buttons");
 
     // Default inspector fields appear here
     public int someField = 10;
-
-    // Appears BELOW default inspector (drawOrder >= 0)
-    [WButton("Bottom Button", drawOrder: 0)]
-    private void BottomButton() => Debug.Log("Below inspector");
-
-    [WButton("Another Bottom", drawOrder: 1)]
-    private void AnotherBottom() => Debug.Log("Also below");
 }
 ```
 
-![Image placeholder: Inspector showing button above fields, then fields, then buttons below]
+![Inspector showing button order](../../images/inspector/buttons/button-order.png)
 
 **Positioning Rules:**
 
-- `drawOrder < -1`: Hidden (not drawn)
-- `drawOrder == -1`: Drawn at top (before default inspector)
-- `drawOrder >= 0`: Drawn at bottom (after default inspector)
 - Higher `drawOrder` values appear later within their section
 
 ---
@@ -528,19 +523,19 @@ public class ButtonPositioning : MonoBehaviour
 ### Pagination by Draw Order
 
 ```csharp
-[WButton("Action 1", drawOrder: 0)]
+[WButton(drawOrder: 0)]
 private void Action1() {}
 
-[WButton("Action 2", drawOrder: 0)]
+[WButton( drawOrder: 0)]
 private void Action2() {}
 
 // ... 10 more buttons with drawOrder: 0 ...
 
-[WButton("Action 12", drawOrder: 0)]
+[WButton(drawOrder: 0)]
 private void Action12() {}
 ```
 
-![Image placeholder: Button pagination controls showing "Page 1 of 2" with navigation buttons]
+![Button pagination controls showing "Page 1 of 2" with navigation buttons](../../images/inspector/buttons/button-pagination.gif)
 
 **Pagination Settings:**
 
@@ -568,7 +563,7 @@ private void SaveGame() => Debug.Log("Game saved");
 private void LoadGame() => Debug.Log("Game loaded");
 ```
 
-![Image placeholder: Two button groups with headers "Combat" and "Persistence"]
+![Two button groups with headers "Combat" and "Persistence"](../../images/inspector/buttons/button-groupings.png)
 
 **Grouping Behavior:**
 
@@ -593,23 +588,23 @@ private void LoadGame() => Debug.Log("Game loaded");
 - Enable/disable via `UnityHelpersSettings.WButtonFoldoutTweenEnabled`
 - Speed controlled by `UnityHelpersSettings.WButtonFoldoutSpeed` (default: 2.0, range: 2-12)
 
-![GIF placeholder: Button group folding/unfolding with smooth animation]
+![Button group folding/unfolding with smooth animation](../../images/inspector/buttons/button-group-foldout.gif)
 
 ---
 
 ## Color Theming
 
 ```csharp
-[WButton("Dangerous Action", colorKey: "Default-Dark")]
+[WButton("Dangerous Action", priority: "Default-Dark")]
 private void DangerousAction() => Debug.LogWarning("Dangerous!");
 
-[WButton("Safe Action", colorKey: "Default-Light")]
+[WButton("Safe Action", priority: "Default-Light")]
 private void SafeAction() => Debug.Log("Safe operation");
 ```
 
-![Image placeholder: Two buttons with different color themes (dark red and light green)]
+![Two buttons with different color themes (default dark/light)](../../images/inspector/buttons/button-colorings.png)
 
-**Built-in Color Keys:**
+**Built-in Priorities (Color Keys):**
 
 - `"Default"` - Theme-aware (adapts to Unity theme)
 - `"Default-Dark"` - Dark theme colors
@@ -623,7 +618,7 @@ private void SafeAction() => Debug.Log("Safe operation");
 2. Add entry to `WButtonCustomColors` dictionary
 3. Set a button background, text color, border
 
-![Image placeholder: UnityHelpersSettings showing WButton custom color configuration]
+![UnityHelpersSettings showing WButton custom color configuration](../../images/inspector/buttons/helper-settings-color-settings.png)
 
 ---
 
@@ -645,7 +640,7 @@ All buttons respect project-wide settings defined in `UnityHelpersSettings`:
 - `WButtonPageSize` (default: 6) - Buttons per page for pagination
 - `WButtonCustomColors` - Custom color palette dictionary
 
-![Image placeholder: UnityHelpersSettings showing all WButton configuration options]
+![UnityHelpersSettings showing all WButton configuration options](../../images/inspector/buttons/helper-button-settings.png)
 
 ---
 
@@ -704,7 +699,7 @@ private void KillAll() { ... }
 [WButton("Roll Loot", historyCapacity: 10)]
 private string RollLoot()
 {
-    return lootTable[Random.Range(0, lootTable.Length)];
+    return lootTable[PRNG.Instance.Next(0, lootTable.Length)];
 }
 
 // ✅ GOOD: No history needed for fixed actions
@@ -762,14 +757,14 @@ private async Task InfiniteLoopAsync()
 
 ```csharp
 // ✅ GOOD: Use colors to indicate risk/importance
-[WButton("Delete All Data", colorKey: "Default-Dark")]  // Dark = danger
+[WButton("Delete All Data", priority: "Default-Dark")]  // Dark = danger
 private void DeleteAllData() { ... }
 
-[WButton("Quick Save", colorKey: "Default-Light")]  // Light = safe
+[WButton("Quick Save", priority: "Default-Light")]  // Light = safe
 private void QuickSave() { ... }
 
 // ❌ BAD: Random colors without meaning
-[WButton("Log Message", colorKey: "CustomPurple")]  // Why purple?
+[WButton("Log Message", priority: "CustomPurple")]  // Why purple?
 private void LogMessage() { ... }
 ```
 
@@ -788,7 +783,7 @@ public class PlayerDebug : MonoBehaviour
     public int health = 100;
     public int gold = 0;
 
-    [WButton("Heal", groupName: "Health", colorKey: "Default-Light")]
+    [WButton("Heal", groupName: "Health", priority: "Default-Light")]
     private void Heal()
     {
         health = 100;
@@ -802,7 +797,7 @@ public class PlayerDebug : MonoBehaviour
         Debug.Log($"Took damage! Health: {health}");
     }
 
-    [WButton("Kill Player", groupName: "Health", colorKey: "Default-Dark")]
+    [WButton("Kill Player", groupName: "Health", priority: "Default-Dark")]
     private void Kill()
     {
         health = 0;
@@ -819,14 +814,14 @@ public class PlayerDebug : MonoBehaviour
     [WButton("Roll Reward", groupName: "Economy", historyCapacity: 10)]
     private int RollReward()
     {
-        int amount = Random.Range(10, 100);
+        int amount = PRNG.Instance.Next(10, 100);
         gold += amount;
         return amount;
     }
 }
 ```
 
-![Image placeholder: PlayerDebug inspector with Health and Economy button groups]
+![PlayerDebug inspector with Health and Economy button groups](../../images/inspector/buttons/player-debug.png)
 
 ---
 
@@ -870,7 +865,7 @@ public class DataManager : MonoBehaviour
 }
 ```
 
-![GIF placeholder: Async button showing loading spinner, then result]
+![Async button showing loading spinner, then result](../../images/inspector/buttons/data-manager-loading.gif)
 
 ---
 
@@ -897,7 +892,7 @@ public class LevelGenerator : MonoBehaviour
         // ... generation logic ...
     }
 
-    [WButton("Clear Level", colorKey: "Default-Dark")]
+    [WButton("Clear Level", priority: "Default-Dark")]
     private void ClearLevel()
     {
         // ... cleanup logic ...
@@ -914,20 +909,20 @@ public class LevelGenerator : MonoBehaviour
 }
 ```
 
-**Note:** Parameters are not yet supported in WButton. Use separate fields for configuration.
+![Level Generator script showing that WButton supports parameters](../../images/inspector/buttons/level-generator-with-parameters.png)
 
 ---
 
 ### Example 4: Coroutine Animation Testing
 
 ```csharp
-using UnityEngine;
 using System.Collections;
+using UnityEngine;
 using WallstopStudios.UnityHelpers.Core.Attributes;
 
 public class AnimationTester : MonoBehaviour
 {
-    private SpriteRenderer spriteRenderer;
+    public SpriteRenderer spriteRenderer;
 
     private void Awake()
     {
@@ -976,7 +971,7 @@ public class AnimationTester : MonoBehaviour
 }
 ```
 
-![GIF placeholder: Animation buttons triggering visual effects]
+![Animation buttons triggering visual effects](../../images/inspector/buttons/animation-tester-coroutines.gif)
 
 ---
 
@@ -988,9 +983,8 @@ public class AnimationTester : MonoBehaviour
 
 **Solutions:**
 
-1. Check `drawOrder` - values < -1 hide the button
-2. Ensure method is `private` or `protected` (public methods may conflict)
-3. Verify the component is enabled and active
+1. Ensure method is `private` or `protected` (public methods may conflict)
+2. Verify the component is enabled and active
 
 ---
 
