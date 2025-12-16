@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using System.Runtime.CompilerServices;
     using NUnit.Framework;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Utils;
 #if !SINGLE_THREADED
@@ -773,13 +774,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     {
                         PooledResource<int[]> pooled = rentals[i];
                         int size = pooled.resource.Length;
-                        if (!expectedOrder.TryGetValue(size, out Queue<int[]> queue))
-                        {
-                            queue = new Queue<int[]>();
-                            expectedOrder[size] = queue;
-                        }
-
-                        queue.Enqueue(pooled.resource);
+                        expectedOrder.GetOrAdd(size).Enqueue(pooled.resource);
                         pooled.Dispose();
                     }
 

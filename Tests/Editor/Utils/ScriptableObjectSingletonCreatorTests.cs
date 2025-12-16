@@ -1066,46 +1066,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTest");
         }
 
-        /// <summary>
-        /// Finds an existing folder on disk that matches the desired name case-insensitively.
-        /// Returns the actual folder name as it exists on disk, or null if not found.
-        /// </summary>
-        private static string FindExistingFolderCaseInsensitive(
-            string projectRoot,
-            string parentUnityPath,
-            string desiredName
-        )
-        {
-            if (string.IsNullOrEmpty(projectRoot))
-            {
-                return null;
-            }
-
-            string parentAbsolutePath = Path.Combine(projectRoot, parentUnityPath);
-            if (!Directory.Exists(parentAbsolutePath))
-            {
-                return null;
-            }
-
-            try
-            {
-                foreach (string dir in Directory.GetDirectories(parentAbsolutePath))
-                {
-                    string name = Path.GetFileName(dir);
-                    if (string.Equals(name, desiredName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return name;
-                    }
-                }
-            }
-            catch
-            {
-                // Ignore enumeration errors
-            }
-
-            return null;
-        }
-
         private static void TryDeleteFolder(string folder)
         {
             if (!AssetDatabase.IsValidFolder(folder))

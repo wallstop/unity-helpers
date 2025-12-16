@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Editor.Internal;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
@@ -1365,7 +1366,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static Vector2 GetScrollPosition(string key)
         {
-            return ScrollPositions.TryGetValue(key, out Vector2 position) ? position : Vector2.zero;
+            return ScrollPositions.GetOrElse(key, Vector2.zero);
         }
 
         private static Editor GetOrCreateEditor(Object value)

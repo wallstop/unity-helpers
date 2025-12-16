@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
     using System.Collections.Generic;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Extension;
 
     internal static class WButtonParameterDrawer
     {
@@ -81,11 +82,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             {
                 bool isNull = currentValue == null;
                 string nullKey = label.text;
-                if (!NullableLabelCache.TryGetValue(nullKey, out GUIContent nullLabel))
-                {
-                    nullLabel = new GUIContent($"{label.text} (Null)", label.tooltip);
-                    NullableLabelCache[nullKey] = nullLabel;
-                }
+                GUIContent nullLabel = NullableLabelCache.GetOrAdd(
+                    nullKey,
+                    () => new GUIContent($"{label.text} (Null)", label.tooltip)
+                );
                 bool newIsNull = EditorGUILayout.Toggle(nullLabel, isNull);
                 if (newIsNull)
                 {
@@ -295,11 +295,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 for (int elementIndex = 0; elementIndex < value.Length; elementIndex++)
                 {
                     object elementValue = value.GetValue(elementIndex);
-                    if (!ElementLabelCache.TryGetValue(elementIndex, out GUIContent elementLabel))
-                    {
-                        elementLabel = new GUIContent($"Element {elementIndex}");
-                        ElementLabelCache[elementIndex] = elementLabel;
-                    }
+                    GUIContent elementLabel = ElementLabelCache.GetOrAdd(
+                        elementIndex,
+                        idx => new GUIContent($"Element {idx}")
+                    );
                     EditorGUI.BeginChangeCheck();
                     object updatedElement = DrawElementField(
                         elementLabel,

@@ -128,12 +128,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
         private static string GetCachedIntString(int value)
         {
-            if (!IntToStringCache.TryGetValue(value, out string cached))
-            {
-                cached = value.ToString();
-                IntToStringCache[value] = cached;
-            }
-            return cached;
+            return IntToStringCache.GetOrAdd(value, v => v.ToString());
         }
 
         private static string GetPaginationLabel(int page, int totalPages)
@@ -156,12 +151,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             {
                 return RunningLabel;
             }
-            if (!RunningLabelByCountCache.TryGetValue(count, out string cached))
-            {
-                cached = "Running (" + GetCachedIntString(count) + ")";
-                RunningLabelByCountCache[count] = cached;
-            }
-            return cached;
+            return RunningLabelByCountCache.GetOrAdd(
+                count,
+                c => "Running (" + GetCachedIntString(c) + ")"
+            );
         }
 
         internal static bool DrawButtons(
@@ -499,33 +492,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 WButtonGroupPlacement groupPlacement = context.Metadata.GroupPlacement;
 
                 // Track all draw orders seen for this group (for warning purposes)
-                if (!drawOrdersPerGroup.TryGetValue(groupName, out HashSet<int> orders))
-                {
-                    orders = new HashSet<int>();
-                    drawOrdersPerGroup[groupName] = orders;
-                }
-                orders.Add(drawOrder);
+                drawOrdersPerGroup.GetOrAdd(groupName).Add(drawOrder);
 
                 // Track all group priorities seen for this group (for warning purposes)
-                if (!groupPrioritiesPerGroup.TryGetValue(groupName, out HashSet<int> priorities))
-                {
-                    priorities = new HashSet<int>();
-                    groupPrioritiesPerGroup[groupName] = priorities;
-                }
-                priorities.Add(groupPriority);
+                groupPrioritiesPerGroup.GetOrAdd(groupName).Add(groupPriority);
 
                 // Track all group placements seen for this group (for warning purposes)
-                if (
-                    !groupPlacementsPerGroup.TryGetValue(
-                        groupName,
-                        out HashSet<WButtonGroupPlacement> placements
-                    )
-                )
-                {
-                    placements = new HashSet<WButtonGroupPlacement>();
-                    groupPlacementsPerGroup[groupName] = placements;
-                }
-                placements.Add(groupPlacement);
+                groupPlacementsPerGroup.GetOrAdd(groupName).Add(groupPlacement);
 
                 if (
                     !namedGroupInfo.TryGetValue(

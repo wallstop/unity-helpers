@@ -154,8 +154,9 @@ Unity -batchmode -projectPath <Project> -runTests -testPlatform PlayMode -testRe
 - **Explicit types over `var`**: Always use explicit type declarations
 - **Braces required**: All control structures must use braces
 - **Using placement**: `using` directives go inside namespace
-- **No nullable reference types**: Do not use `?` nullable annotations
+- **No nullable reference types**: Do not use `?` nullable annotations (see Unity/Mono/IL2CPP Compatibility below)
 - **No regions**: Never use `#region` anywhere
+- **Unity/Mono/IL2CPP compatible**: All code must work with Unity's runtime constraints (see dedicated section below)
 
 ### Naming Conventions
 
@@ -187,7 +188,17 @@ Unity -batchmode -projectPath <Project> -runTests -testPlatform PlayMode -testRe
    - Organize code through class structure and file organization instead
    - If you see existing `#region` blocks, remove them
 
-4. **No nullable reference types**: Don't use `string?`, `object?`, etc.
+4. **NEVER use nullable reference types** — This is a strict, non-negotiable rule. Nullable reference types (NRTs) are NOT compatible with Unity/Mono/IL2CPP:
+   - ❌ `string?` — Never use nullable string
+   - ❌ `object?` — Never use nullable object
+   - ❌ `List<string>?` — Never use nullable collections
+   - ❌ `MyClass?` — Never use nullable class types
+   - ❌ `T?` where T is a reference type — Never use nullable generic reference types
+   - ❌ `#nullable enable` — Never enable nullable context
+   - ❌ Null-forgiving operator `!` (e.g., `value!`) — Never use this operator
+   - ✅ `string` — Use non-nullable reference types and handle null with runtime checks
+   - ✅ `int?`, `float?`, `bool?` — Nullable VALUE types are OK (these are `Nullable<T>` structs)
+   - **Why**: Unity uses Mono/IL2CPP which targets older .NET Standard. NRTs cause compilation failures, IL2CPP build errors, and runtime issues on platforms like WebGL, iOS, and Android.
 
 5. **One file per MonoBehaviour/ScriptableObject** — Each `MonoBehaviour` or `ScriptableObject` class MUST have its own dedicated `.cs` file (production AND test code):
    - ✅ `MyTestComponent.cs` containing only `class MyTestComponent : MonoBehaviour`
@@ -220,6 +231,163 @@ Unity -batchmode -projectPath <Project> -runTests -testPlatform PlayMode -testRe
      - ✅ Serialization/deserialization can detect missing or unset fields
      - ✅ IDE warnings appear when using the default/unset value
      - ✅ Explicit ordering prevents value changes when members are reordered
+
+7. **NEVER use `?.`, `??`, `??=`, or `ReferenceEquals` on UnityEngine.Object types** — Unity overrides `==` and `!=` operators for lifecycle-aware null checks. The standard C# null operators bypass this override and produce incorrect results:
+   - ❌ `gameObject?.SetActive(true)` — Bypasses Unity's null check
+   - ❌ `component ?? fallback` — Bypasses Unity's null check
+   - ❌ `_cached ??= GetComponent<T>()` — Bypasses Unity's null check
+   - ❌ `ReferenceEquals(gameObject, null)` — Bypasses Unity's null check
+   - ❌ `object.ReferenceEquals(transform, null)` — Bypasses Unity's null check
+   - ✅ `if (gameObject != null) gameObject.SetActive(true)` — Uses Unity's overridden operator
+   - ✅ `component != null ? component : fallback` — Uses Unity's overridden operator
+   - ✅ `if (_cached == null) _cached = GetComponent<T>()` — Uses Unity's overridden operator
+   - **Why**: `UnityEngine.Object` overrides `==` and `!=` to return `true` for destroyed objects (fake null). The `?.`, `??`, and `ReferenceEquals` operators check reference equality only, so destroyed objects appear non-null and cause `MissingReferenceException` at runtime.
+   - **This applies to ALL UnityEngine.Object-derived types**: `GameObject`, `Component`, `MonoBehaviour`, `ScriptableObject`, `Transform`, `Rigidbody`, `Collider`, `Renderer`, `Material`, `Texture`, `AudioClip`, `AnimationClip`, `Sprite`, etc.
+   - **Enforced in both production AND test code** — no exceptions
+
+8. **Use Unity Helpers collection/dictionary extensions** — Prefer the built-in extension methods from `WallstopStudios.UnityHelpers.Core.Extension` to simplify code and reduce boilerplate:
+   - **Dictionary extensions** (`DictionaryExtensions`):
+     - ✅ `dictionary.GetOrAdd(key)` — Gets or creates a new instance (requires `where V : new()`)
+     - ✅ `dictionary.GetOrAdd(key, () => new Value())` — Gets or creates with factory
+     - ✅ `dictionary.GetOrAdd(key, k => CreateFrom(k))` — Gets or creates with key-based factory
+     - ✅ `dictionary.GetOrElse(key, defaultValue)` — Gets or returns default (read-only)
+     - ✅ `dictionary.AddOrUpdate(key, creator, updater)` — Atomic add or update
+     - ✅ `dictionary.TryRemove(key, out value)` — Remove with out parameter
+     - ✅ `lhs.Merge(rhs)` — Combine two dictionaries
+     - ✅ `lhs.Difference(rhs)` — Find changed entries
+     - ✅ `dictionary.Reversed()` — Swap keys and values
+   - **List extensions** (`IListExtensions`):
+     - ✅ `list.Shuffle()` / `list.Shuffle(random)` — Fisher-Yates shuffle
+     - ✅ `list.Sort(SortAlgorithm.Tim)` — 17 sorting algorithms available
+     - ✅ `list.BinarySearch()` variants — Efficient searching
+   - **IEnumerable extensions** (`IEnumerableExtensions`):
+     - ✅ `enumerable.WhereNotNull()` — Filter null elements
+     - ✅ `enumerable.ToHashSet()` — Convert to HashSet
+   - **Examples**:
+
+     ```csharp
+     // ❌ Verbose pattern
+     if (!dictionary.TryGetValue(key, out List<Item> items))
+     {
+         items = new List<Item>();
+         dictionary[key] = items;
+     }
+     items.Add(newItem);
+
+     // ✅ Simplified with GetOrAdd
+     dictionary.GetOrAdd(key).Add(newItem);
+
+     // ✅ With factory for complex initialization
+     dictionary.GetOrAdd(key, () => new List<Item>(capacity)).Add(newItem);
+     ```
+
+   - These extensions are optimized for `ConcurrentDictionary` when applicable
+   - Located in `Runtime/Core/Extension/` — ensure proper `using` directive
+
+9. **Minimize allocations and maximize performance** — All production and editor code should aim for minimal GC allocations and high performance. This is critical for both runtime code (frame rate, GC spikes) and editor tooling (responsive UI, large project scalability):
+   - **Avoid LINQ in hot paths**: LINQ methods allocate iterators and delegates
+     - ❌ `items.Where(x => x.IsValid).ToList()` — Allocates iterator, delegate, and list
+     - ❌ `items.Any(x => x.Id == targetId)` — Allocates delegate
+     - ❌ `items.Select(x => x.Name).FirstOrDefault()` — Allocates iterator and delegate
+     - ✅ Use `for`/`foreach` loops with explicit logic instead
+     - ✅ Use `Buffers<T>.List` for temporary collections (zero-allocation pooling)
+   - **Avoid closures that capture variables**: Closures allocate heap objects
+     - ❌ `list.Find(item => item.Id == searchId)` — Captures `searchId`, allocates closure
+     - ❌ `items.RemoveAll(x => x.Owner == this)` — Captures `this`, allocates closure
+     - ✅ Use explicit loops or pass state via parameters/fields
+   - **Prefer structs over classes for small, short-lived data**:
+     - ✅ Use `struct` for data containers under ~16 bytes that don't need inheritance
+     - ✅ Use `readonly struct` for immutable value types
+     - ✅ Use `ref struct` for stack-only types when appropriate
+     - ❌ Avoid boxing structs (passing to `object`, non-generic collections)
+   - **Pool and reuse collections**:
+     - ✅ `using var lease = Buffers<T>.List.Get(out List<T> buffer);` — Returns to pool automatically
+     - ✅ `using var lease = Buffers<T>.HashSet.Get(out HashSet<T> buffer);`
+     - ✅ Clear and reuse collections instead of allocating new ones
+     - ❌ `new List<T>()` in frequently-called methods
+   - **Use stack allocation where appropriate**:
+     - ✅ `stackalloc` for small fixed-size arrays in performance-critical code
+     - ✅ Value tuples `(int x, int y)` instead of `Tuple<int, int>`
+   - **String operations**:
+     - ❌ String concatenation in loops (`str += value`)
+     - ❌ `string.Format()` or interpolation in hot paths
+     - ✅ `StringBuilder` for building strings (pooled if possible)
+     - ✅ Cache formatted strings when values don't change
+   - **Editor code is NOT exempt**: Editor tools must also be performant, especially for:
+     - Inspector drawing (called every frame when visible)
+     - Asset processing (may handle thousands of assets)
+     - Scene view rendering callbacks
+   - **Example transformation**:
+
+     ```csharp
+     // ❌ Allocates: iterator, delegate, closure, list
+     List<Enemy> activeEnemies = enemies.Where(e => e.Health > 0 && e.Distance < range).ToList();
+
+     // ✅ Zero allocations with pooled buffer
+     using var lease = Buffers<Enemy>.List.Get(out List<Enemy> activeEnemies);
+     for (int i = 0; i < enemies.Count; i++)
+     {
+         Enemy enemy = enemies[i];
+         if (enemy.Health > 0 && enemy.Distance < range)
+         {
+             activeEnemies.Add(enemy);
+         }
+     }
+     ```
+
+---
+
+## Unity/Mono/IL2CPP Compatibility
+
+**CRITICAL**: All code in this repository MUST be compatible with Unity's Mono and IL2CPP scripting backends. This package targets Unity 2021.3+ LTS and must work across all platforms including WebGL, iOS, Android, and consoles.
+
+### Forbidden C# Features
+
+The following modern C# features are NOT compatible with Unity/Mono/IL2CPP and must NEVER be used:
+
+| Feature                           | Example                          | Why Forbidden                               |
+| --------------------------------- | -------------------------------- | ------------------------------------------- |
+| Nullable reference types          | `string?`, `object?`, `T?`       | IL2CPP compilation failures, runtime issues |
+| Null-forgiving operator           | `value!`                         | Requires nullable context                   |
+| `#nullable` directives            | `#nullable enable`               | Not supported by Unity's compiler           |
+| `required` modifier               | `required string Name`           | C# 11 feature, not available                |
+| `init` accessors                  | `{ get; init; }`                 | C# 9 feature, limited support               |
+| File-scoped types                 | `file class Helper`              | C# 11 feature, not available                |
+| Raw string literals               | `"""text"""`                     | C# 11 feature, not available                |
+| Generic attributes                | `[Attr<T>]`                      | C# 11 feature, not available                |
+| Static abstract interface members | `static abstract void Method();` | Limited IL2CPP support                      |
+| `Span<T>` in some contexts        | Stack-allocated spans            | Limited support, avoid in hot paths         |
+
+### Safe C# Features
+
+These features ARE safe to use with Unity 2021.3+:
+
+- Pattern matching (`is`, `switch` expressions)
+- Null-coalescing operators (`??`, `??=`) — **ONLY for non-UnityEngine.Object types** (see Critical Rule #7)
+- Null-conditional operators (`?.`, `?[]`) — **ONLY for non-UnityEngine.Object types** (see Critical Rule #7)
+- Nullable VALUE types (`int?`, `float?`, `bool?`) — These are `Nullable<T>` structs, not NRTs
+- Expression-bodied members (`=>`)
+- Local functions
+- Tuples and deconstruction
+- `nameof()` operator
+- String interpolation (`$"{value}"`)
+- `async`/`await` (with Unity's limitations)
+- Default interface implementations (Unity 2021.2+)
+- Records (Unity 2021.2+, but prefer classes for serialization)
+
+### IL2CPP-Specific Considerations
+
+1. **Avoid heavy reflection**: IL2CPP strips unused code; reflection targets may be removed
+2. **Use `[Preserve]` attribute**: Mark types/members accessed only via reflection
+3. **Avoid `System.Reflection.Emit`**: Not supported on IL2CPP
+4. **Generic virtual methods**: Can cause issues; prefer non-generic alternatives
+5. **Test on IL2CPP**: Some code works in Editor (Mono) but fails in IL2CPP builds
+
+### Platform-Specific Notes
+
+- **WebGL**: No threading support, no `System.IO.File` operations
+- **iOS**: AOT compilation means no runtime code generation
+- **Android**: 64-bit requirements, potential JNI limitations
 
 ---
 
@@ -286,7 +454,15 @@ When using `[TestCase]`, `[Values]`, or other data-driven attributes with string
 3. **One file per MonoBehaviour/ScriptableObject**: Test helper components must be in their own dedicated files (see Critical Rules above)
 4. **No `async Task` test methods**: Unity Test Runner doesn't support them. Use `IEnumerator` with `[UnityTest]`
 5. **No `Assert.ThrowsAsync`**: It doesn't exist in Unity's NUnit version
-6. **Unity Object null checks**: Use `thing != null` / `thing == null` directly (Unity's Object equality)
+6. **Unity Object null checks**: For any `UnityEngine.Object`-derived type (`GameObject`, `Component`, `MonoBehaviour`, `ScriptableObject`, etc.):
+   - ✅ Use `Assert.IsTrue(thing != null)` or `Assert.IsFalse(thing == null)` — Uses Unity's overridden `==`
+   - ✅ Use `thing != null` / `thing == null` directly in test logic
+   - ❌ **NEVER use `Assert.IsNull(unityObject)`** — Bypasses Unity's null check, fails on destroyed objects
+   - ❌ **NEVER use `Assert.IsNotNull(unityObject)`** — Bypasses Unity's null check, passes on destroyed objects
+   - ❌ **NEVER use `Assert.That(unityObject, Is.Null)`** — Same problem
+   - ❌ **NEVER use `Assert.That(unityObject, Is.Not.Null)`** — Same problem
+   - ❌ **NEVER use `?.`, `??`, `??=` on Unity objects** — See Critical Rule #7
+   - ❌ **NEVER use `ReferenceEquals(unityObject, null)`** — Bypasses Unity's null check
 7. **Minimal comments**: Rely on expressive naming and assertions
 8. **No `[Description]` annotations**: Don't use Description attributes on tests
 9. **Prefer EditMode**: Use fast EditMode tests where possible

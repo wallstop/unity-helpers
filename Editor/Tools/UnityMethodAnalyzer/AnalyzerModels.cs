@@ -95,6 +95,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
         public List<string> Parameters { get; set; }
         public List<string> ParameterTypes { get; set; }
 
+        /// <summary>
+        /// Indicates whether this method is marked with [SuppressAnalyzer] attribute.
+        /// Methods marked as suppressed will not generate analyzer warnings.
+        /// </summary>
+        public bool IsSuppressed { get; set; }
+
         public AnalyzerMethodInfo()
         {
             Parameters = new List<string>();
@@ -114,9 +120,39 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
         public Dictionary<string, List<AnalyzerMethodInfo>> Methods { get; set; }
         public int LineNumber { get; set; }
 
+        /// <summary>
+        /// The generic type parameters declared by this class (e.g., ["TKey", "TValue"]).
+        /// </summary>
+        public List<string> GenericTypeParameters { get; set; }
+
+        /// <summary>
+        /// The concrete type arguments provided to the base class (e.g., ["int", "string"]).
+        /// Maps positionally to the base class's GenericTypeParameters.
+        /// </summary>
+        public List<string> BaseClassTypeArguments { get; set; }
+
+        /// <summary>
+        /// The full base class declaration including generic arguments (e.g., "WDropdownSelectorBase&lt;int&gt;").
+        /// </summary>
+        public string BaseClassFullDeclaration { get; set; }
+
+        /// <summary>
+        /// The list of interfaces implemented by this class.
+        /// </summary>
+        public List<string> ImplementedInterfaces { get; set; }
+
+        /// <summary>
+        /// Indicates whether this class is marked with [SuppressAnalyzer] attribute.
+        /// Classes marked as suppressed will not generate analyzer warnings.
+        /// </summary>
+        public bool IsSuppressed { get; set; }
+
         public AnalyzerClassInfo()
         {
             Methods = new Dictionary<string, List<AnalyzerMethodInfo>>();
+            GenericTypeParameters = new List<string>();
+            BaseClassTypeArguments = new List<string>();
+            ImplementedInterfaces = new List<string>();
         }
     }
 #endif

@@ -5,6 +5,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using System.Linq;
     using NUnit.Framework;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
@@ -139,10 +141,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         [Test]
         public void GroupKeyComparison()
         {
-            WButtonGroupKey key1 = new(0, "Actions", 0);
-            WButtonGroupKey key2 = new(0, "Actions", 0);
-            WButtonGroupKey key3 = new(0, "Debug", 1);
-            WButtonGroupKey key4 = new(1, "Actions", 2);
+            WButtonGroupKey key1 = new(0, 0, "Actions", 0, WButtonGroupPlacement.UseGlobalSetting);
+            WButtonGroupKey key2 = new(0, 0, "Actions", 0, WButtonGroupPlacement.UseGlobalSetting);
+            WButtonGroupKey key3 = new(0, 0, "Debug", 1, WButtonGroupPlacement.UseGlobalSetting);
+            WButtonGroupKey key4 = new(0, 1, "Actions", 2, WButtonGroupPlacement.UseGlobalSetting);
 
             // Same draw order, same group name, same declaration order
             Assert.That(key1.Equals(key2), Is.True);
@@ -160,12 +162,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         {
             List<WButtonGroupKey> keys = new()
             {
-                new WButtonGroupKey(5, "B", 5),
-                new WButtonGroupKey(0, "A", 0),
-                new WButtonGroupKey(0, "B", 1),
-                new WButtonGroupKey(-1, "C", 2),
-                new WButtonGroupKey(-10, "D", 3),
-                new WButtonGroupKey(0, "C", 4),
+                new WButtonGroupKey(0, 5, "B", 5, WButtonGroupPlacement.UseGlobalSetting),
+                new WButtonGroupKey(0, 0, "A", 0, WButtonGroupPlacement.UseGlobalSetting),
+                new WButtonGroupKey(0, 0, "B", 1, WButtonGroupPlacement.UseGlobalSetting),
+                new WButtonGroupKey(0, -1, "C", 2, WButtonGroupPlacement.UseGlobalSetting),
+                new WButtonGroupKey(0, -10, "D", 3, WButtonGroupPlacement.UseGlobalSetting),
+                new WButtonGroupKey(0, 0, "C", 4, WButtonGroupPlacement.UseGlobalSetting),
             };
 
             keys.Sort();
@@ -189,7 +191,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         public void DrawOrderZeroIsTopPlacement()
         {
             // Draw order >= -1 should be top placement
-            WButtonGroupKey key = new(0, null, 0);
+            WButtonGroupKey key = new(0, 0, null, 0, WButtonGroupPlacement.UseGlobalSetting);
             GUIContent header = WButtonGUI.BuildGroupHeader(key);
 
             // Should use top group label style
@@ -200,7 +202,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         public void DrawOrderMinusOneIsTopPlacement()
         {
             // Draw order -1 is still top placement (threshold is >= -1)
-            WButtonGroupKey key = new(-1, null, 0);
+            WButtonGroupKey key = new(0, -1, null, 0, WButtonGroupPlacement.UseGlobalSetting);
 
             WButtonGUI.ClearGroupDataForTesting();
             Dictionary<int, int> counts = new() { { -1, 1 } };
@@ -217,7 +219,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         public void DrawOrderMinusTwoIsBottomPlacement()
         {
             // Draw order < -1 is bottom placement
-            WButtonGroupKey key = new(-2, null, 0);
+            WButtonGroupKey key = new(0, -2, null, 0, WButtonGroupPlacement.UseGlobalSetting);
 
             WButtonGUI.ClearGroupDataForTesting();
             Dictionary<int, int> counts = new() { { -2, 1 } };
@@ -284,12 +286,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             foreach (WButtonMethodMetadata m in metadata)
             {
                 string key = m.GroupName ?? string.Empty;
-                if (!byGroup.TryGetValue(key, out List<WButtonMethodMetadata> list))
-                {
-                    list = new List<WButtonMethodMetadata>();
-                    byGroup[key] = list;
-                }
-                list.Add(m);
+                byGroup.GetOrAdd(key).Add(m);
             }
 
             // Verify Setup group has 2 buttons
@@ -455,12 +452,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             Dictionary<int, List<WButtonMethodMetadata>> byDrawOrder = new();
             foreach (WButtonMethodMetadata m in metadata)
             {
-                if (!byDrawOrder.TryGetValue(m.DrawOrder, out List<WButtonMethodMetadata> list))
-                {
-                    list = new List<WButtonMethodMetadata>();
-                    byDrawOrder[m.DrawOrder] = list;
-                }
-                list.Add(m);
+                byDrawOrder.GetOrAdd(m.DrawOrder).Add(m);
             }
 
             // Should have 3 draw orders: 0, -1, -2
@@ -493,8 +485,20 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         {
             // Create group keys simulating the user's scenario
             // Setup group first (declaration order 0), Debug group second (declaration order 2)
-            WButtonGroupKey setupKey = new(-1, "Setup", 0);
-            WButtonGroupKey debugKey = new(-1, "Debug", 2);
+            WButtonGroupKey setupKey = new(
+                0,
+                -1,
+                "Setup",
+                0,
+                WButtonGroupPlacement.UseGlobalSetting
+            );
+            WButtonGroupKey debugKey = new(
+                0,
+                -1,
+                "Debug",
+                2,
+                WButtonGroupPlacement.UseGlobalSetting
+            );
 
             // Setup should sort before Debug because it has lower declaration order
             int comparison = setupKey.CompareTo(debugKey);
@@ -512,9 +516,21 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             SortedDictionary<WButtonGroupKey, string> groups = new();
 
             // Add in declaration order: Zebra (0), Yak (1), Xenon (2)
-            WButtonGroupKey zebraKey = new(0, "Zebra", 0);
-            WButtonGroupKey yakKey = new(0, "Yak", 1);
-            WButtonGroupKey xenonKey = new(0, "Xenon", 2);
+            WButtonGroupKey zebraKey = new(
+                0,
+                0,
+                "Zebra",
+                0,
+                WButtonGroupPlacement.UseGlobalSetting
+            );
+            WButtonGroupKey yakKey = new(0, 0, "Yak", 1, WButtonGroupPlacement.UseGlobalSetting);
+            WButtonGroupKey xenonKey = new(
+                0,
+                0,
+                "Xenon",
+                2,
+                WButtonGroupPlacement.UseGlobalSetting
+            );
 
             groups[zebraKey] = "Zebra content";
             groups[yakKey] = "Yak content";

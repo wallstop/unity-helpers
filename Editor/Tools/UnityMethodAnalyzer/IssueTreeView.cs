@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
     using System.Collections.Generic;
     using System.Linq;
     using UnityEditor;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using UnityEditor.IMGUI.Controls;
     using UnityEngine;
 
@@ -62,6 +63,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
         public event Action<AnalyzerIssue> OnIssueSelected;
         public event Action<string, int> OnOpenFile;
         public event Action<string> OnRevealInExplorer;
+        public event Action<AnalyzerIssue> OnCopyIssueAsJson;
+        public event Action<AnalyzerIssue> OnCopyIssueAsMarkdown;
+        public event Action OnCopyAllAsJson;
+        public event Action OnCopyAllAsMarkdown;
 
         public IssueTreeView(TreeViewState state)
             : base(state)
@@ -105,31 +110,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 return root;
             }
 
-            IEnumerable<AnalyzerIssue> filteredIssues = _issues;
-
-            if (_severityFilter.HasValue)
-            {
-                filteredIssues = filteredIssues.Where(i => i.Severity == _severityFilter.Value);
-            }
-
-            if (_categoryFilter.HasValue)
-            {
-                filteredIssues = filteredIssues.Where(i => i.Category == _categoryFilter.Value);
-            }
-
-            if (!string.IsNullOrWhiteSpace(_searchFilter))
-            {
-                string search = _searchFilter.ToLowerInvariant();
-                filteredIssues = filteredIssues.Where(i =>
-                    i.ClassName.ToLowerInvariant().Contains(search)
-                    || i.MethodName.ToLowerInvariant().Contains(search)
-                    || i.IssueType.ToLowerInvariant().Contains(search)
-                    || i.FilePath.ToLowerInvariant().Contains(search)
-                    || i.Description.ToLowerInvariant().Contains(search)
-                );
-            }
-
-            List<AnalyzerIssue> issueList = filteredIssues.ToList();
+            // Build filtered list in a single pass to reduce allocations
+            List<AnalyzerIssue> issueList = BuildFilteredIssueList();
 
             if (issueList.Count == 0)
             {
@@ -160,48 +142,160 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             return root;
         }
 
+        /// <summary>
+        /// Builds a filtered issue list in a single pass to reduce allocations.
+        /// </summary>
+        private List<AnalyzerIssue> BuildFilteredIssueList()
+        {
+            bool hasSeverityFilter = _severityFilter.HasValue;
+            bool hasCategoryFilter = _categoryFilter.HasValue;
+            bool hasSearchFilter = !string.IsNullOrWhiteSpace(_searchFilter);
+            string searchLower = hasSearchFilter ? _searchFilter.ToLowerInvariant() : null;
+
+            // If no filters, return a copy of the list
+            if (!hasSeverityFilter && !hasCategoryFilter && !hasSearchFilter)
+            {
+                return new List<AnalyzerIssue>(_issues);
+            }
+
+            // Pre-allocate with estimated capacity
+            List<AnalyzerIssue> filtered = new(_issues.Count);
+
+            foreach (AnalyzerIssue issue in _issues)
+            {
+                // Apply severity filter
+                if (hasSeverityFilter && issue.Severity != _severityFilter.Value)
+                {
+                    continue;
+                }
+
+                // Apply category filter
+                if (hasCategoryFilter && issue.Category != _categoryFilter.Value)
+                {
+                    continue;
+                }
+
+                // Apply search filter
+                if (hasSearchFilter)
+                {
+                    bool matchesSearch =
+                        issue.ClassName.ToLowerInvariant().Contains(searchLower)
+                        || issue.MethodName.ToLowerInvariant().Contains(searchLower)
+                        || issue.IssueType.ToLowerInvariant().Contains(searchLower)
+                        || issue.FilePath.ToLowerInvariant().Contains(searchLower)
+                        || issue.Description.ToLowerInvariant().Contains(searchLower);
+
+                    if (!matchesSearch)
+                    {
+                        continue;
+                    }
+                }
+
+                filtered.Add(issue);
+            }
+
+            return filtered;
+        }
+
         private void BuildTreeBySeverity(TreeViewItem root, List<AnalyzerIssue> issues, ref int id)
         {
-            IOrderedEnumerable<IGrouping<IssueSeverity, AnalyzerIssue>> groups = issues
-                .GroupBy(i => i.Severity)
-                .OrderBy(g => (int)g.Key);
+            // Build grouped structure in a single pass using dictionary
+            Dictionary<IssueSeverity, Dictionary<string, List<AnalyzerIssue>>> severityGroups =
+                new();
 
-            foreach (IGrouping<IssueSeverity, AnalyzerIssue> group in groups)
+            foreach (AnalyzerIssue issue in issues)
             {
-                List<AnalyzerIssue> groupIssues = group.ToList();
-                string severityName = GetSeverityDisplayName(group.Key);
+                if (
+                    !severityGroups.TryGetValue(
+                        issue.Severity,
+                        out Dictionary<string, List<AnalyzerIssue>> fileGroups
+                    )
+                )
+                {
+                    fileGroups = new Dictionary<string, List<AnalyzerIssue>>();
+                    severityGroups[issue.Severity] = fileGroups;
+                }
+
+                fileGroups.GetOrAdd(issue.FilePath).Add(issue);
+            }
+
+            // Build tree from grouped data
+            foreach (
+                IssueSeverity severity in new[]
+                {
+                    IssueSeverity.Critical,
+                    IssueSeverity.High,
+                    IssueSeverity.Medium,
+                    IssueSeverity.Low,
+                    IssueSeverity.Info,
+                }
+            )
+            {
+                if (
+                    !severityGroups.TryGetValue(
+                        severity,
+                        out Dictionary<string, List<AnalyzerIssue>> fileGroups
+                    )
+                )
+                {
+                    continue;
+                }
+
+                int totalCount = 0;
+                foreach (List<AnalyzerIssue> fileIssues in fileGroups.Values)
+                {
+                    totalCount += fileIssues.Count;
+                }
+
+                string severityName = GetSeverityDisplayName(severity);
                 IssueTreeViewItem severityItem = new(
                     id++,
                     0,
-                    $"{severityName} ({groupIssues.Count})",
+                    $"{severityName} ({totalCount})",
                     isCategory: true,
-                    severity: group.Key
+                    severity: severity
                 )
                 {
-                    IssueCount = groupIssues.Count,
+                    IssueCount = totalCount,
                 };
 
-                IOrderedEnumerable<IGrouping<string, AnalyzerIssue>> fileGroups = groupIssues
-                    .GroupBy(i => i.FilePath)
-                    .OrderBy(g => g.Key);
+                List<string> sortedFilePaths = new(fileGroups.Keys);
+                sortedFilePaths.Sort(StringComparer.Ordinal);
 
-                foreach (IGrouping<string, AnalyzerIssue> fileGroup in fileGroups)
+                foreach (string filePath in sortedFilePaths)
                 {
-                    List<AnalyzerIssue> fileIssues = fileGroup.ToList();
+                    List<AnalyzerIssue> fileIssues = fileGroups[filePath];
+                    int criticalCount = 0;
+                    int highCount = 0;
+                    foreach (AnalyzerIssue issue in fileIssues)
+                    {
+                        if (issue.Severity == IssueSeverity.Critical)
+                        {
+                            criticalCount++;
+                        }
+                        else if (issue.Severity == IssueSeverity.High)
+                        {
+                            highCount++;
+                        }
+                    }
+
                     IssueTreeViewItem fileItem = new(
                         id++,
                         1,
-                        $"{fileGroup.Key} ({fileIssues.Count})",
-                        filePath: fileGroup.Key,
+                        $"{filePath} ({fileIssues.Count})",
+                        filePath: filePath,
                         isFile: true
                     )
                     {
                         IssueCount = fileIssues.Count,
-                        CriticalCount = fileIssues.Count(i => i.Severity == IssueSeverity.Critical),
-                        HighCount = fileIssues.Count(i => i.Severity == IssueSeverity.High),
+                        CriticalCount = criticalCount,
+                        HighCount = highCount,
                     };
 
-                    foreach (AnalyzerIssue issue in fileIssues.OrderBy(i => i.LineNumber))
+                    // Sort by line number
+                    fileIssues.Sort((a, b) => a.LineNumber.CompareTo(b.LineNumber));
+
+                    foreach (AnalyzerIssue issue in fileIssues)
                     {
                         string display = FormatIssueDisplay(issue);
                         IssueTreeViewItem issueItem = new(
@@ -225,47 +319,115 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
         private void BuildTreeByCategory(TreeViewItem root, List<AnalyzerIssue> issues, ref int id)
         {
-            IOrderedEnumerable<IGrouping<IssueCategory, AnalyzerIssue>> groups = issues
-                .GroupBy(i => i.Category)
-                .OrderBy(g => (int)g.Key);
+            // Build grouped structure in a single pass using dictionary
+            Dictionary<IssueCategory, Dictionary<string, List<AnalyzerIssue>>> categoryGroups =
+                new();
 
-            foreach (IGrouping<IssueCategory, AnalyzerIssue> group in groups)
+            foreach (AnalyzerIssue issue in issues)
             {
-                List<AnalyzerIssue> groupIssues = group.ToList();
-                string categoryName = GetCategoryDisplayName(group.Key);
+                if (
+                    !categoryGroups.TryGetValue(
+                        issue.Category,
+                        out Dictionary<string, List<AnalyzerIssue>> fileGroups
+                    )
+                )
+                {
+                    fileGroups = new Dictionary<string, List<AnalyzerIssue>>();
+                    categoryGroups[issue.Category] = fileGroups;
+                }
+
+                fileGroups.GetOrAdd(issue.FilePath).Add(issue);
+            }
+
+            // Build tree from grouped data
+            foreach (
+                IssueCategory category in new[]
+                {
+                    IssueCategory.UnityLifecycle,
+                    IssueCategory.UnityInheritance,
+                    IssueCategory.GeneralInheritance,
+                }
+            )
+            {
+                if (
+                    !categoryGroups.TryGetValue(
+                        category,
+                        out Dictionary<string, List<AnalyzerIssue>> fileGroups
+                    )
+                )
+                {
+                    continue;
+                }
+
+                int totalCount = 0;
+                int totalCritical = 0;
+                int totalHigh = 0;
+                foreach (List<AnalyzerIssue> fileIssues in fileGroups.Values)
+                {
+                    foreach (AnalyzerIssue issue in fileIssues)
+                    {
+                        totalCount++;
+                        if (issue.Severity == IssueSeverity.Critical)
+                        {
+                            totalCritical++;
+                        }
+                        else if (issue.Severity == IssueSeverity.High)
+                        {
+                            totalHigh++;
+                        }
+                    }
+                }
+
+                string categoryName = GetCategoryDisplayName(category);
                 IssueTreeViewItem categoryItem = new(
                     id++,
                     0,
-                    $"{categoryName} ({groupIssues.Count})",
+                    $"{categoryName} ({totalCount})",
                     isCategory: true
                 )
                 {
-                    IssueCount = groupIssues.Count,
-                    CriticalCount = groupIssues.Count(i => i.Severity == IssueSeverity.Critical),
-                    HighCount = groupIssues.Count(i => i.Severity == IssueSeverity.High),
+                    IssueCount = totalCount,
+                    CriticalCount = totalCritical,
+                    HighCount = totalHigh,
                 };
 
-                IOrderedEnumerable<IGrouping<string, AnalyzerIssue>> fileGroups = groupIssues
-                    .GroupBy(i => i.FilePath)
-                    .OrderBy(g => g.Key);
+                List<string> sortedFilePaths = new(fileGroups.Keys);
+                sortedFilePaths.Sort(StringComparer.Ordinal);
 
-                foreach (IGrouping<string, AnalyzerIssue> fileGroup in fileGroups)
+                foreach (string filePath in sortedFilePaths)
                 {
-                    List<AnalyzerIssue> fileIssues = fileGroup.ToList();
+                    List<AnalyzerIssue> fileIssues = fileGroups[filePath];
+                    int criticalCount = 0;
+                    int highCount = 0;
+                    foreach (AnalyzerIssue issue in fileIssues)
+                    {
+                        if (issue.Severity == IssueSeverity.Critical)
+                        {
+                            criticalCount++;
+                        }
+                        else if (issue.Severity == IssueSeverity.High)
+                        {
+                            highCount++;
+                        }
+                    }
+
                     IssueTreeViewItem fileItem = new(
                         id++,
                         1,
-                        $"{fileGroup.Key} ({fileIssues.Count})",
-                        filePath: fileGroup.Key,
+                        $"{filePath} ({fileIssues.Count})",
+                        filePath: filePath,
                         isFile: true
                     )
                     {
                         IssueCount = fileIssues.Count,
-                        CriticalCount = fileIssues.Count(i => i.Severity == IssueSeverity.Critical),
-                        HighCount = fileIssues.Count(i => i.Severity == IssueSeverity.High),
+                        CriticalCount = criticalCount,
+                        HighCount = highCount,
                     };
 
-                    foreach (AnalyzerIssue issue in fileIssues.OrderBy(i => i.LineNumber))
+                    // Sort by line number
+                    fileIssues.Sort((a, b) => a.LineNumber.CompareTo(b.LineNumber));
+
+                    foreach (AnalyzerIssue issue in fileIssues)
                     {
                         string display = FormatIssueDisplay(issue);
                         IssueTreeViewItem issueItem = new(
@@ -289,17 +451,64 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
         private void BuildTreeByFile(TreeViewItem root, List<AnalyzerIssue> issues, ref int id)
         {
-            IOrderedEnumerable<IGrouping<string, AnalyzerIssue>> fileGroups = issues
-                .GroupBy(i => i.FilePath)
-                .OrderByDescending(g => g.Count(i => i.Severity == IssueSeverity.Critical))
-                .ThenByDescending(g => g.Count(i => i.Severity == IssueSeverity.High))
-                .ThenBy(g => g.Key);
+            // Build grouped structure with counts in a single pass
+            Dictionary<string, (List<AnalyzerIssue> issues, int critical, int high)> fileGroups =
+                new();
 
-            foreach (IGrouping<string, AnalyzerIssue> fileGroup in fileGroups)
+            foreach (AnalyzerIssue issue in issues)
             {
-                List<AnalyzerIssue> fileIssues = fileGroup.ToList();
-                int criticalCount = fileIssues.Count(i => i.Severity == IssueSeverity.Critical);
-                int highCount = fileIssues.Count(i => i.Severity == IssueSeverity.High);
+                if (
+                    !fileGroups.TryGetValue(
+                        issue.FilePath,
+                        out (List<AnalyzerIssue> issues, int critical, int high) group
+                    )
+                )
+                {
+                    group = (new List<AnalyzerIssue>(), 0, 0);
+                }
+
+                group.issues.Add(issue);
+                if (issue.Severity == IssueSeverity.Critical)
+                {
+                    group.critical++;
+                }
+                else if (issue.Severity == IssueSeverity.High)
+                {
+                    group.high++;
+                }
+
+                fileGroups[issue.FilePath] = group;
+            }
+
+            // Sort file paths by critical count desc, high count desc, then alphabetically
+            List<string> sortedFilePaths = new(fileGroups.Keys);
+            sortedFilePaths.Sort(
+                (a, b) =>
+                {
+                    (List<AnalyzerIssue> _, int critical, int high) groupA = fileGroups[a];
+                    (List<AnalyzerIssue> _, int critical, int high) groupB = fileGroups[b];
+
+                    int criticalCompare = groupB.critical.CompareTo(groupA.critical);
+                    if (criticalCompare != 0)
+                    {
+                        return criticalCompare;
+                    }
+
+                    int highCompare = groupB.high.CompareTo(groupA.high);
+                    if (highCompare != 0)
+                    {
+                        return highCompare;
+                    }
+
+                    return string.Compare(a, b, StringComparison.Ordinal);
+                }
+            );
+
+            foreach (string filePath in sortedFilePaths)
+            {
+                (List<AnalyzerIssue> fileIssues, int criticalCount, int highCount) = fileGroups[
+                    filePath
+                ];
 
                 string prefix =
                     criticalCount > 0 ? "🔴 "
@@ -309,8 +518,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 IssueTreeViewItem fileItem = new(
                     id++,
                     0,
-                    $"{prefix}{fileGroup.Key} ({fileIssues.Count})",
-                    filePath: fileGroup.Key,
+                    $"{prefix}{filePath} ({fileIssues.Count})",
+                    filePath: filePath,
                     isFile: true
                 )
                 {
@@ -319,7 +528,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                     HighCount = highCount,
                 };
 
-                foreach (AnalyzerIssue issue in fileIssues.OrderBy(i => i.LineNumber))
+                // Sort by line number
+                fileIssues.Sort((a, b) => a.LineNumber.CompareTo(b.LineNumber));
+
+                foreach (AnalyzerIssue issue in fileIssues)
                 {
                     string display = FormatIssueDisplay(issue);
                     IssueTreeViewItem issueItem = new(
@@ -340,12 +552,31 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
         private void BuildFlatTree(TreeViewItem root, List<AnalyzerIssue> issues, ref int id)
         {
-            IOrderedEnumerable<AnalyzerIssue> sortedIssues = issues
-                .OrderBy(i => (int)i.Severity)
-                .ThenBy(i => i.FilePath)
-                .ThenBy(i => i.LineNumber);
+            // Sort in-place to avoid creating new collection
+            issues.Sort(
+                (a, b) =>
+                {
+                    int severityCompare = ((int)a.Severity).CompareTo((int)b.Severity);
+                    if (severityCompare != 0)
+                    {
+                        return severityCompare;
+                    }
 
-            foreach (AnalyzerIssue issue in sortedIssues)
+                    int fileCompare = string.Compare(
+                        a.FilePath,
+                        b.FilePath,
+                        StringComparison.Ordinal
+                    );
+                    if (fileCompare != 0)
+                    {
+                        return fileCompare;
+                    }
+
+                    return a.LineNumber.CompareTo(b.LineNumber);
+                }
+            );
+
+            foreach (AnalyzerIssue issue in issues)
             {
                 string display =
                     $"{FormatIssueDisplay(issue)} - {issue.FilePath}:{issue.LineNumber}";
@@ -484,36 +715,68 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             if (item is IssueTreeViewItem issueItem)
             {
                 string filePath = issueItem.FilePath;
-                if (issueItem.Issue != null)
+                AnalyzerIssue issue = issueItem.Issue;
+                if (issue != null)
                 {
-                    filePath = issueItem.Issue.FilePath;
-                }
-
-                if (string.IsNullOrEmpty(filePath))
-                {
-                    return;
+                    filePath = issue.FilePath;
                 }
 
                 GenericMenu menu = new();
-                menu.AddItem(
-                    new GUIContent("Open File"),
-                    false,
-                    () =>
-                    {
-                        int lineNumber = issueItem.LineNumber;
-                        if (issueItem.Issue != null)
-                        {
-                            lineNumber = issueItem.Issue.LineNumber;
-                        }
 
-                        OnOpenFile?.Invoke(filePath, lineNumber);
+                if (!string.IsNullOrEmpty(filePath))
+                {
+                    menu.AddItem(
+                        new GUIContent("Open File"),
+                        false,
+                        () =>
+                        {
+                            int lineNumber = issueItem.LineNumber;
+                            if (issue != null)
+                            {
+                                lineNumber = issue.LineNumber;
+                            }
+
+                            OnOpenFile?.Invoke(filePath, lineNumber);
+                        }
+                    );
+                    menu.AddItem(
+                        new GUIContent("Reveal in File Browser"),
+                        false,
+                        () => OnRevealInExplorer?.Invoke(filePath)
+                    );
+                }
+
+                if (issue != null)
+                {
+                    if (!string.IsNullOrEmpty(filePath))
+                    {
+                        menu.AddSeparator("");
                     }
+
+                    menu.AddItem(
+                        new GUIContent("Copy Issue as JSON"),
+                        false,
+                        () => OnCopyIssueAsJson?.Invoke(issue)
+                    );
+                    menu.AddItem(
+                        new GUIContent("Copy Issue as Markdown"),
+                        false,
+                        () => OnCopyIssueAsMarkdown?.Invoke(issue)
+                    );
+                }
+
+                menu.AddSeparator("");
+                menu.AddItem(
+                    new GUIContent("Copy All Issues as JSON"),
+                    false,
+                    () => OnCopyAllAsJson?.Invoke()
                 );
                 menu.AddItem(
-                    new GUIContent("Reveal in File Browser"),
+                    new GUIContent("Copy All Issues as Markdown"),
                     false,
-                    () => OnRevealInExplorer?.Invoke(filePath)
+                    () => OnCopyAllAsMarkdown?.Invoke()
                 );
+
                 menu.ShowAsContext();
             }
         }

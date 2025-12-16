@@ -5,11 +5,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using System.Text.Json.Serialization;
     using System.Threading;
     using System.Threading.Tasks;
     using UnityEditor;
     using UnityEditor.IMGUI.Controls;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Serialization;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using Object = UnityEngine.Object;
 
@@ -118,6 +120,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             _treeView.OnIssueSelected += OnIssueSelected;
             _treeView.OnOpenFile += OpenFileAtLine;
             _treeView.OnRevealInExplorer += RevealFileInExplorer;
+            _treeView.OnCopyIssueAsJson += CopyIssueToClipboardAsJson;
+            _treeView.OnCopyIssueAsMarkdown += CopyIssueToClipboardAsMarkdown;
+            _treeView.OnCopyAllAsJson += CopyAllIssuesToClipboardAsJson;
+            _treeView.OnCopyAllAsMarkdown += CopyAllIssuesToClipboardAsMarkdown;
 
             if (_sourcePaths == null || _sourcePaths.Count == 0)
             {
@@ -136,6 +142,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 _treeView.OnIssueSelected -= OnIssueSelected;
                 _treeView.OnOpenFile -= OpenFileAtLine;
                 _treeView.OnRevealInExplorer -= RevealFileInExplorer;
+                _treeView.OnCopyIssueAsJson -= CopyIssueToClipboardAsJson;
+                _treeView.OnCopyIssueAsMarkdown -= CopyIssueToClipboardAsMarkdown;
+                _treeView.OnCopyAllAsJson -= CopyAllIssuesToClipboardAsJson;
+                _treeView.OnCopyAllAsMarkdown -= CopyAllIssuesToClipboardAsMarkdown;
             }
         }
 
@@ -636,12 +646,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
             GUILayout.FlexibleSpace();
 
-            if (
-                _totalCount > 0
-                && GUILayout.Button("Export", GUILayout.Width(isNarrowLayout ? 60f : 100f))
-            )
+            if (_totalCount > 0)
             {
-                ExportReport();
+                if (GUILayout.Button("Export ▾", GUILayout.Width(isNarrowLayout ? 70f : 100f)))
+                {
+                    ShowExportMenu();
+                }
             }
 
             GUILayout.EndHorizontal();
@@ -921,11 +931,41 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
         {
             IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
             _totalCount = issues.Count;
-            _criticalCount = issues.Count(i => i.Severity == IssueSeverity.Critical);
-            _highCount = issues.Count(i => i.Severity == IssueSeverity.High);
-            _mediumCount = issues.Count(i => i.Severity == IssueSeverity.Medium);
-            _lowCount = issues.Count(i => i.Severity == IssueSeverity.Low);
-            _infoCount = issues.Count(i => i.Severity == IssueSeverity.Info);
+
+            // Count all severities in a single pass
+            int criticalCount = 0;
+            int highCount = 0;
+            int mediumCount = 0;
+            int lowCount = 0;
+            int infoCount = 0;
+
+            foreach (AnalyzerIssue issue in issues)
+            {
+                switch (issue.Severity)
+                {
+                    case IssueSeverity.Critical:
+                        criticalCount++;
+                        break;
+                    case IssueSeverity.High:
+                        highCount++;
+                        break;
+                    case IssueSeverity.Medium:
+                        mediumCount++;
+                        break;
+                    case IssueSeverity.Low:
+                        lowCount++;
+                        break;
+                    case IssueSeverity.Info:
+                        infoCount++;
+                        break;
+                }
+            }
+
+            _criticalCount = criticalCount;
+            _highCount = highCount;
+            _mediumCount = mediumCount;
+            _lowCount = lowCount;
+            _infoCount = infoCount;
         }
 
         private void UpdateTreeViewGrouping()
@@ -944,23 +984,36 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             Repaint();
         }
 
-        private void OpenFileAtLine(string relativePath, int lineNumber)
+        private void OpenFileAtLine(string filePath, int lineNumber)
         {
-            string fullPath = Path.Combine(Application.dataPath, "..", relativePath);
-            fullPath = Path.GetFullPath(fullPath);
+            // Handle both absolute and relative paths
+            string fullPath;
+            if (Path.IsPathRooted(filePath))
+            {
+                // Already an absolute path, use it directly
+                fullPath = Path.GetFullPath(filePath);
+            }
+            else
+            {
+                // Relative path - try combining with project root
+                fullPath = Path.Combine(Application.dataPath, "..", filePath);
+                fullPath = Path.GetFullPath(fullPath);
+            }
 
             if (!File.Exists(fullPath))
             {
-                string assetsPath = Path.Combine(Application.dataPath, relativePath);
+                // Try as relative to Assets folder
+                string assetsPath = Path.Combine(Application.dataPath, filePath);
                 if (File.Exists(assetsPath))
                 {
                     fullPath = assetsPath;
                 }
                 else
                 {
+                    // Search for the file by name in Assets folder
                     string[] foundFiles = Directory.GetFiles(
                         Application.dataPath,
-                        Path.GetFileName(relativePath),
+                        Path.GetFileName(filePath),
                         SearchOption.AllDirectories
                     );
 
@@ -971,51 +1024,120 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 }
             }
 
-            string assetPath = fullPath;
-            if (fullPath.StartsWith(Application.dataPath, StringComparison.OrdinalIgnoreCase))
+            // Convert to asset path for AssetDatabase
+            string assetPath = ConvertToAssetPath(fullPath);
+
+            if (assetPath != null)
             {
-                assetPath =
-                    "Assets" + fullPath.Substring(Application.dataPath.Length).Replace('\\', '/');
+                Object asset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
+                if (asset != null)
+                {
+                    AssetDatabase.OpenAsset(asset, lineNumber);
+                    return;
+                }
             }
 
-            Object asset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
-            if (asset != null)
+            // Fallback to external editor
+            if (File.Exists(fullPath))
             {
-                AssetDatabase.OpenAsset(asset, lineNumber);
+                UnityEditorInternal.InternalEditorUtility.OpenFileAtLineExternal(
+                    fullPath,
+                    lineNumber
+                );
             }
             else
             {
-                if (File.Exists(fullPath))
-                {
-                    UnityEditorInternal.InternalEditorUtility.OpenFileAtLineExternal(
-                        fullPath,
-                        lineNumber
-                    );
-                }
-                else
-                {
-                    Debug.LogWarning($"Could not find file: {relativePath}");
-                }
+                Debug.LogWarning($"Could not find file: {filePath}");
             }
         }
 
-        private void RevealFileInExplorer(string relativePath)
+        private static string ConvertToAssetPath(string fullPath)
         {
-            string fullPath = Path.Combine(Application.dataPath, "..", relativePath);
-            fullPath = Path.GetFullPath(fullPath);
+            if (string.IsNullOrEmpty(fullPath))
+            {
+                return null;
+            }
+
+            string normalizedPath = fullPath.Replace('\\', '/');
+
+            // Check if path is within Assets folder
+            string dataPath = Application.dataPath.Replace('\\', '/');
+            if (normalizedPath.StartsWith(dataPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return "Assets" + normalizedPath.Substring(dataPath.Length);
+            }
+
+            // Check if path is within a Package folder
+            // Packages can be in <ProjectRoot>/Packages/ or in the global package cache
+            string projectRoot = Path.GetDirectoryName(Application.dataPath).Replace('\\', '/');
+            string packagesPath = projectRoot + "/Packages";
+
+            if (normalizedPath.StartsWith(packagesPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return "Packages" + normalizedPath.Substring(packagesPath.Length);
+            }
+
+            // Check if we can find a matching Packages/* path by looking for package folder markers
+            int packagesIndex = normalizedPath.IndexOf(
+                "/Packages/",
+                StringComparison.OrdinalIgnoreCase
+            );
+            if (packagesIndex >= 0)
+            {
+                return normalizedPath.Substring(packagesIndex + 1);
+            }
+
+            // Also handle case where "Packages" appears as a parent folder
+            string[] pathParts = normalizedPath.Split('/');
+            for (int i = 0; i < pathParts.Length; i++)
+            {
+                if (
+                    pathParts[i].Equals("Packages", StringComparison.OrdinalIgnoreCase)
+                    && i + 1 < pathParts.Length
+                )
+                {
+                    // Check if the next part looks like a package name (contains '.')
+                    if (pathParts[i + 1].Contains('.'))
+                    {
+                        return string.Join("/", pathParts, i, pathParts.Length - i);
+                    }
+                }
+            }
+
+            // Path is not in Assets or Packages - return null to indicate external file
+            return null;
+        }
+
+        private void RevealFileInExplorer(string filePath)
+        {
+            // Handle both absolute and relative paths
+            string fullPath;
+            if (Path.IsPathRooted(filePath))
+            {
+                // Already an absolute path, use it directly
+                fullPath = Path.GetFullPath(filePath);
+            }
+            else
+            {
+                // Relative path - try combining with project root
+                fullPath = Path.Combine(Application.dataPath, "..", filePath);
+                fullPath = Path.GetFullPath(fullPath);
+            }
 
             if (!File.Exists(fullPath))
             {
-                string assetsPath = Path.Combine(Application.dataPath, relativePath);
+                // Try as relative to Assets folder
+                string assetsPath = Path.Combine(Application.dataPath, filePath);
                 if (File.Exists(assetsPath))
                 {
                     fullPath = assetsPath;
                 }
                 else
                 {
+                    // Search for the file by name in Assets folder
                     string[] foundFiles = Directory.GetFiles(
                         Application.dataPath,
-                        Path.GetFileName(relativePath),
+                        Path.GetFileName(filePath),
                         SearchOption.AllDirectories
                     );
 
@@ -1032,7 +1154,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             }
             else
             {
-                Debug.LogWarning($"Could not find file to reveal: {relativePath}");
+                Debug.LogWarning($"Could not find file to reveal: {filePath}");
             }
         }
 
@@ -1161,6 +1283,333 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             }
 
             return sb.ToString();
+        }
+
+        private void ShowExportMenu()
+        {
+            GenericMenu menu = new();
+            menu.AddItem(new GUIContent("Copy All as JSON"), false, CopyAllIssuesToClipboardAsJson);
+            menu.AddItem(
+                new GUIContent("Copy All as Markdown"),
+                false,
+                CopyAllIssuesToClipboardAsMarkdown
+            );
+            menu.AddSeparator("");
+            menu.AddItem(new GUIContent("Save as JSON..."), false, ExportReportAsJson);
+            menu.AddItem(new GUIContent("Save as Markdown..."), false, ExportReport);
+            menu.ShowAsContext();
+        }
+
+        private void CopyIssueToClipboardAsJson(AnalyzerIssue issue)
+        {
+            if (issue == null)
+            {
+                return;
+            }
+
+            try
+            {
+                string json = GenerateIssueJson(issue);
+                GUIUtility.systemCopyBuffer = json;
+                _statusMessage = "Issue copied to clipboard as JSON";
+            }
+            catch (Exception ex)
+            {
+                _statusMessage = $"Copy failed: {ex.Message}";
+                Debug.LogException(ex);
+            }
+        }
+
+        private void CopyIssueToClipboardAsMarkdown(AnalyzerIssue issue)
+        {
+            if (issue == null)
+            {
+                return;
+            }
+
+            try
+            {
+                string markdown = GenerateIssueMarkdown(issue);
+                GUIUtility.systemCopyBuffer = markdown;
+                _statusMessage = "Issue copied to clipboard as Markdown";
+            }
+            catch (Exception ex)
+            {
+                _statusMessage = $"Copy failed: {ex.Message}";
+                Debug.LogException(ex);
+            }
+        }
+
+        private void CopyAllIssuesToClipboardAsJson()
+        {
+            if (_analyzer?.Issues == null || _analyzer.Issues.Count == 0)
+            {
+                _statusMessage = "No issues to copy";
+                return;
+            }
+
+            try
+            {
+                string json = GenerateJsonReport();
+                GUIUtility.systemCopyBuffer = json;
+                _statusMessage = $"Copied {_analyzer.Issues.Count} issues to clipboard as JSON";
+            }
+            catch (Exception ex)
+            {
+                _statusMessage = $"Copy failed: {ex.Message}";
+                Debug.LogException(ex);
+            }
+        }
+
+        private void CopyAllIssuesToClipboardAsMarkdown()
+        {
+            if (_analyzer?.Issues == null || _analyzer.Issues.Count == 0)
+            {
+                _statusMessage = "No issues to copy";
+                return;
+            }
+
+            try
+            {
+                string markdown = GenerateMarkdownReport();
+                GUIUtility.systemCopyBuffer = markdown;
+                _statusMessage = $"Copied {_analyzer.Issues.Count} issues to clipboard as Markdown";
+            }
+            catch (Exception ex)
+            {
+                _statusMessage = $"Copy failed: {ex.Message}";
+                Debug.LogException(ex);
+            }
+        }
+
+        private void ExportReportAsJson()
+        {
+            string defaultName = $"method-analysis-report-{DateTime.Now:yyyy-MM-dd-HHmmss}.json";
+            string path = EditorUtility.SaveFilePanel(
+                "Export Analysis Report as JSON",
+                "",
+                defaultName,
+                "json"
+            );
+
+            if (string.IsNullOrEmpty(path))
+            {
+                return;
+            }
+
+            try
+            {
+                string report = GenerateJsonReport();
+                File.WriteAllText(path, report);
+                _statusMessage = $"Report exported to: {Path.GetFileName(path)}";
+                EditorUtility.RevealInFinder(path);
+            }
+            catch (Exception ex)
+            {
+                _statusMessage = $"Export failed: {ex.Message}";
+                Debug.LogException(ex);
+            }
+        }
+
+        private string GenerateIssueJson(AnalyzerIssue issue)
+        {
+            IssueJsonModel model = new(issue);
+            return Serializer.JsonStringify(model, pretty: true);
+        }
+
+        private string GenerateIssueMarkdown(AnalyzerIssue issue)
+        {
+            System.Text.StringBuilder sb = new();
+
+            string severityEmoji = issue.Severity switch
+            {
+                IssueSeverity.Critical => "🔴",
+                IssueSeverity.High => "🟠",
+                IssueSeverity.Medium => "🟡",
+                IssueSeverity.Low => "🟢",
+                IssueSeverity.Info => "🔵",
+                _ => "⚪",
+            };
+
+            sb.AppendLine(
+                $"## {severityEmoji} `{issue.ClassName}.{issue.MethodName}` - {issue.IssueType}"
+            );
+            sb.AppendLine();
+            sb.AppendLine($"**File:** `{issue.FilePath}:{issue.LineNumber}`");
+            sb.AppendLine();
+            sb.AppendLine($"**Severity:** {issue.Severity}");
+            sb.AppendLine();
+            sb.AppendLine($"**Category:** {issue.Category}");
+            sb.AppendLine();
+            sb.AppendLine($"**Description:** {issue.Description}");
+            sb.AppendLine();
+
+            if (!string.IsNullOrEmpty(issue.BaseClassName))
+            {
+                sb.AppendLine($"**Base Class:** `{issue.BaseClassName}`");
+                if (!string.IsNullOrEmpty(issue.BaseMethodSignature))
+                {
+                    sb.AppendLine($"**Base Method:** `{issue.BaseMethodSignature}`");
+                }
+            }
+
+            if (!string.IsNullOrEmpty(issue.DerivedMethodSignature))
+            {
+                sb.AppendLine($"**Derived Method:** `{issue.DerivedMethodSignature}`");
+            }
+
+            sb.AppendLine();
+            sb.AppendLine($"**Recommended Fix:** {issue.RecommendedFix}");
+
+            return sb.ToString();
+        }
+
+        private string GenerateJsonReport()
+        {
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+
+            AnalysisReportJsonModel report = new()
+            {
+                GeneratedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                TotalIssues = issues.Count,
+                Summary = new SummaryJsonModel
+                {
+                    BySeverity = new SeveritySummaryJsonModel
+                    {
+                        Critical = _criticalCount,
+                        High = _highCount,
+                        Medium = _mediumCount,
+                        Low = _lowCount,
+                        Info = _infoCount,
+                    },
+                    ByCategory = new CategorySummaryJsonModel
+                    {
+                        UnityLifecycle = issues.Count(i =>
+                            i.Category == IssueCategory.UnityLifecycle
+                        ),
+                        UnityInheritance = issues.Count(i =>
+                            i.Category == IssueCategory.UnityInheritance
+                        ),
+                        GeneralInheritance = issues.Count(i =>
+                            i.Category == IssueCategory.GeneralInheritance
+                        ),
+                    },
+                },
+                Issues = issues.Select(i => new IssueJsonModel(i)).ToList(),
+            };
+
+            return Serializer.JsonStringify(report, pretty: true);
+        }
+
+        private sealed class AnalysisReportJsonModel
+        {
+            [JsonPropertyName("generatedAt")]
+            public string GeneratedAt { get; set; }
+
+            [JsonPropertyName("totalIssues")]
+            public int TotalIssues { get; set; }
+
+            [JsonPropertyName("summary")]
+            public SummaryJsonModel Summary { get; set; }
+
+            [JsonPropertyName("issues")]
+            public List<IssueJsonModel> Issues { get; set; }
+        }
+
+        private sealed class SummaryJsonModel
+        {
+            [JsonPropertyName("bySeverity")]
+            public SeveritySummaryJsonModel BySeverity { get; set; }
+
+            [JsonPropertyName("byCategory")]
+            public CategorySummaryJsonModel ByCategory { get; set; }
+        }
+
+        private sealed class SeveritySummaryJsonModel
+        {
+            [JsonPropertyName("critical")]
+            public int Critical { get; set; }
+
+            [JsonPropertyName("high")]
+            public int High { get; set; }
+
+            [JsonPropertyName("medium")]
+            public int Medium { get; set; }
+
+            [JsonPropertyName("low")]
+            public int Low { get; set; }
+
+            [JsonPropertyName("info")]
+            public int Info { get; set; }
+        }
+
+        private sealed class CategorySummaryJsonModel
+        {
+            [JsonPropertyName("unityLifecycle")]
+            public int UnityLifecycle { get; set; }
+
+            [JsonPropertyName("unityInheritance")]
+            public int UnityInheritance { get; set; }
+
+            [JsonPropertyName("generalInheritance")]
+            public int GeneralInheritance { get; set; }
+        }
+
+        private sealed class IssueJsonModel
+        {
+            [JsonPropertyName("filePath")]
+            public string FilePath { get; set; }
+
+            [JsonPropertyName("lineNumber")]
+            public int LineNumber { get; set; }
+
+            [JsonPropertyName("className")]
+            public string ClassName { get; set; }
+
+            [JsonPropertyName("methodName")]
+            public string MethodName { get; set; }
+
+            [JsonPropertyName("issueType")]
+            public string IssueType { get; set; }
+
+            [JsonPropertyName("severity")]
+            public string Severity { get; set; }
+
+            [JsonPropertyName("category")]
+            public string Category { get; set; }
+
+            [JsonPropertyName("description")]
+            public string Description { get; set; }
+
+            [JsonPropertyName("recommendedFix")]
+            public string RecommendedFix { get; set; }
+
+            [JsonPropertyName("baseClassName")]
+            public string BaseClassName { get; set; }
+
+            [JsonPropertyName("baseMethodSignature")]
+            public string BaseMethodSignature { get; set; }
+
+            [JsonPropertyName("derivedMethodSignature")]
+            public string DerivedMethodSignature { get; set; }
+
+            public IssueJsonModel() { }
+
+            public IssueJsonModel(AnalyzerIssue issue)
+            {
+                FilePath = issue.FilePath;
+                LineNumber = issue.LineNumber;
+                ClassName = issue.ClassName;
+                MethodName = issue.MethodName;
+                IssueType = issue.IssueType;
+                Severity = issue.Severity.ToString();
+                Category = issue.Category.ToString();
+                Description = issue.Description;
+                RecommendedFix = issue.RecommendedFix;
+                BaseClassName = issue.BaseClassName;
+                BaseMethodSignature = issue.BaseMethodSignature;
+                DerivedMethodSignature = issue.DerivedMethodSignature;
+            }
         }
     }
 #endif

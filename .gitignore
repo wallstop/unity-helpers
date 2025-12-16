@@ -30,6 +30,8 @@ bld/
 [Oo]bj/
 [Ll]og/
 
+method-analysis-*
+
 TestProjects.meta
 
 # Visual Studio 2015 cache/options directory

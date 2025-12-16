@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
     using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
+    using WallstopStudios.UnityHelpers.Core.Extension;
 
     /// <summary>
     /// Analyzes C# files for Unity MonoBehaviour method issues.
@@ -20,11 +21,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
         private readonly ConcurrentDictionary<string, AnalyzerClassInfo> _classes = new();
         private readonly ConcurrentBag<AnalyzerIssue> _issues = new();
 
+        /// <summary>
+        /// Lookup dictionary for finding classes by their simple name (without namespace).
+        /// Maps simple class name to list of matching classes (handles same name in different namespaces).
+        /// </summary>
+        private ConcurrentDictionary<string, List<AnalyzerClassInfo>> _classNameLookup = new();
+
         public IReadOnlyList<AnalyzerIssue> Issues => _issues.ToList();
         public IReadOnlyDictionary<string, AnalyzerClassInfo> Classes => _classes;
 
         private static readonly Regex ClassRegex = new(
-            @"(?:(?<abstract>abstract)\s+)?(?:(?<sealed>sealed)\s+)?(?:(?<partial>partial)\s+)?class\s+(?<name>\w+)(?:\s*<[^>]+>)?(?:\s*:\s*(?<base>[^{]+))?",
+            @"(?:(?<abstract>abstract)\s+)?(?:(?<sealed>sealed)\s+)?(?:(?<partial>partial)\s+)?class\s+(?<name>\w+)(?:\s*<(?<typeParams>[^>]+)>)?(?:\s*:\s*(?<base>[^{]+))?",
             RegexOptions.Compiled
         );
 
@@ -38,13 +45,75 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             RegexOptions.Compiled
         );
 
+        private static readonly Regex SingleLineCommentRegex = new(
+            @"//[^\r\n]*",
+            RegexOptions.Compiled
+        );
+
+        private static readonly Regex MultiLineCommentRegex = new(
+            @"/\*[\s\S]*?\*/",
+            RegexOptions.Compiled
+        );
+
+        private static readonly Regex StringLiteralRegex = new(
+            @"@""(?:[^""]|"""")*""|""(?:[^""\\]|\\.)*""",
+            RegexOptions.Compiled
+        );
+
+        private static readonly Regex NewExpressionRegex = new(
+            @"new\s+(?<type>[\w<>\[\],\.]+)\s*\(",
+            RegexOptions.Compiled
+        );
+
+        private static readonly Regex GenericArgsRegex = new(
+            @"<(?<args>[^<>]+(?:<[^<>]+>[^<>]*)*)>",
+            RegexOptions.Compiled
+        );
+
+        private static readonly Regex PreprocessorDirectiveRegex = new(
+            @"^\s*#(?:if|else|elif|endif|define|undef|pragma|region|endregion|warning|error|line|nullable)[^\r\n]*",
+            RegexOptions.Compiled | RegexOptions.Multiline
+        );
+
+        private static readonly Regex SuppressAnalyzerAttributeRegex = new(
+            @"\[\s*SuppressAnalyzer(?:Attribute)?\s*(?:\([^)]*\))?\s*\]",
+            RegexOptions.Compiled
+        );
+
         /// <summary>
         /// Clears all cached data from a previous analysis.
         /// </summary>
         public void Clear()
         {
             _classes.Clear();
+            _classNameLookup.Clear();
             while (_issues.TryTake(out _)) { }
+        }
+
+        /// <summary>
+        /// Builds the class name lookup dictionary for O(1) base class resolution.
+        /// Should be called after all files have been parsed.
+        /// </summary>
+        private void BuildClassNameLookup()
+        {
+            _classNameLookup = new ConcurrentDictionary<string, List<AnalyzerClassInfo>>();
+
+            foreach (AnalyzerClassInfo classInfo in _classes.Values)
+            {
+                _classNameLookup.AddOrUpdate(
+                    classInfo.Name,
+                    _ => new List<AnalyzerClassInfo> { classInfo },
+                    (_, existing) =>
+                    {
+                        lock (existing)
+                        {
+                            existing.Add(classInfo);
+                        }
+
+                        return existing;
+                    }
+                );
+            }
         }
 
         /// <summary>
@@ -82,7 +151,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            await Task.Run(() => AnalyzeInheritance(), cancellationToken);
+            // Build lookup dictionary before inheritance analysis for O(1) class resolution
+            BuildClassNameLookup();
+
+            await Task.Run(() => AnalyzeInheritanceParallel(cancellationToken), cancellationToken);
             progress?.Report(1f);
         }
 
@@ -110,6 +182,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 ParseFile(file, rootPath);
             }
 
+            // Build lookup dictionary before inheritance analysis for O(1) class resolution
+            BuildClassNameLookup();
+
             AnalyzeInheritance();
         }
 
@@ -134,12 +209,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                     await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                     Task task = Task.Run(
-                        () =>
+                        async () =>
                         {
                             try
                             {
                                 cancellationToken.ThrowIfCancellationRequested();
-                                ParseFile(file, rootPath);
+                                await ParseFileAsync(file, rootPath).ConfigureAwait(false);
                                 cancellationToken.ThrowIfCancellationRequested();
 
                                 int current = Interlocked.Increment(ref completed);
@@ -173,41 +248,59 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             }
         }
 
-        private Task ParseFileAsync(string filePath, string rootPath)
-        {
-            ParseFile(filePath, rootPath);
-            return Task.CompletedTask;
-        }
-
         private void ParseFile(string filePath, string rootPath)
         {
             try
             {
                 string code = File.ReadAllText(filePath);
-                string relativePath = GetRelativePath(rootPath, filePath);
-
-                string currentNamespace = ExtractNamespace(code);
-                List<(int start, int end, string content)> classBlocks = ExtractClassBlocks(code);
-
-                foreach ((int start, int end, string content) classBlock in classBlocks)
-                {
-                    AnalyzerClassInfo classInfo = ExtractClassInfo(
-                        classBlock.content,
-                        relativePath,
-                        currentNamespace,
-                        code,
-                        classBlock.start
-                    );
-                    if (classInfo != null)
-                    {
-                        string key = classInfo.FullName;
-                        _classes.TryAdd(key, classInfo);
-                    }
-                }
+                ParseFileContent(filePath, rootPath, code);
             }
             catch (Exception)
             {
                 // Skip files that can't be parsed
+            }
+        }
+
+        private async Task ParseFileAsync(string filePath, string rootPath)
+        {
+            try
+            {
+                string code = await File.ReadAllTextAsync(filePath).ConfigureAwait(false);
+                ParseFileContent(filePath, rootPath, code);
+            }
+            catch (Exception)
+            {
+                // Skip files that can't be parsed
+            }
+        }
+
+        private void ParseFileContent(string filePath, string rootPath, string code)
+        {
+            string relativePath = GetRelativePath(rootPath, filePath);
+
+            // Strip comments, strings, and preprocessor directives before extracting classes
+            // This prevents false positives from code examples in string literals
+            string strippedCode = StripCommentsAndStrings(code);
+
+            string currentNamespace = ExtractNamespace(code);
+            List<(int start, int end, string content)> classBlocks = ExtractClassBlocks(
+                strippedCode
+            );
+
+            foreach ((int start, int end, string content) classBlock in classBlocks)
+            {
+                AnalyzerClassInfo classInfo = ExtractClassInfo(
+                    classBlock.content,
+                    relativePath,
+                    currentNamespace,
+                    code,
+                    classBlock.start
+                );
+                if (classInfo != null)
+                {
+                    string key = classInfo.FullName;
+                    _classes.TryAdd(key, classInfo);
+                }
             }
         }
 
@@ -239,6 +332,275 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
         {
             Match match = NamespaceRegex.Match(code);
             return match.Success ? match.Groups[1].Value : string.Empty;
+        }
+
+        /// <summary>
+        /// Strips comments, string literals, and preprocessor directives from code to avoid false positives in method detection.
+        /// Returns a version of the code with these elements replaced by spaces (preserving line numbers).
+        /// </summary>
+        private static string StripCommentsAndStrings(string code)
+        {
+            // Replace string literals first (they might contain // or /* which aren't comments)
+            string result = StringLiteralRegex.Replace(code, m => new string(' ', m.Length));
+
+            // Replace multi-line comments
+            result = MultiLineCommentRegex.Replace(
+                result,
+                m =>
+                {
+                    // Preserve newlines to keep line numbers correct
+                    int newlines = m.Value.Count(c => c == '\n');
+                    return new string('\n', newlines) + new string(' ', m.Length - newlines);
+                }
+            );
+
+            // Replace single-line comments
+            result = SingleLineCommentRegex.Replace(result, m => new string(' ', m.Length));
+
+            // Replace preprocessor directives (e.g., #if, #endif, etc.)
+            result = PreprocessorDirectiveRegex.Replace(result, m => new string(' ', m.Length));
+
+            return result;
+        }
+
+        /// <summary>
+        /// Checks if a method match is actually a 'new' expression (constructor call) rather than a method declaration.
+        /// This handles various patterns:
+        /// - Direct: new Vector3(...)
+        /// - Array initializer: new[] { new Vector3(...), new Vector3(...) }
+        /// - Collection initializer: new List&lt;Vector3&gt; { new Vector3(...) }
+        /// - Inline after comma: { new Vector3(0, 0, 0), new Vector3(1, 0, 0) }
+        /// - Named parameter: new(center: new Vector3(...), size: new Vector3(...))
+        /// - After close paren: ), new Vector3(...)
+        /// </summary>
+        private static bool IsNewExpression(string code, Match methodMatch)
+        {
+            int startPos = methodMatch.Index;
+            int searchStart = Math.Max(0, startPos - 100);
+            string prefix = code.Substring(searchStart, startPos - searchStart);
+
+            // Get the matched "return type" which for a new expression is often
+            // a type name that looks like a return type but isn't
+            string returnType = methodMatch.Groups["return"].Value.Trim();
+            string methodName = methodMatch.Groups["name"].Value;
+
+            // Pattern 1: Direct "new TypeName(" where TypeName matches the method name
+            if (
+                Regex.IsMatch(
+                    prefix,
+                    @"new\s+" + Regex.Escape(methodName) + @"\s*$",
+                    RegexOptions.RightToLeft
+                )
+            )
+            {
+                return true;
+            }
+
+            // Pattern 2: Check if we're inside a collection/array initializer context
+            // by looking for patterns like ", new" or "{ new" before the type name
+            // The "return type" would be "new" in this case since the regex captures it
+            if (string.Equals(returnType, "new", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            // Pattern 3: Return type contains "new" preceded by punctuation (e.g., ", new", "( new", ": new")
+            // This happens when the regex captures context like ", new" or "{ new" as the return type
+            if (
+                returnType.EndsWith(" new", StringComparison.Ordinal)
+                || returnType.EndsWith("\tnew", StringComparison.Ordinal)
+            )
+            {
+                return true;
+            }
+
+            // Pattern 4: Return type starts with punctuation that wouldn't be valid in a real return type
+            // This catches cases like ", new" where the comma gets captured
+            if (returnType.Length > 0 && !char.IsLetter(returnType[0]) && returnType[0] != '_')
+            {
+                return true;
+            }
+
+            // Pattern 5: Array initializer with generic types - "new Vector3(" preceded by ", " or "{ "
+            // This catches cases like: new[] { new Vector3(0f, 0f, 0f), new Vector3(1f, 0f, 0f) }
+            // where the second Vector3 appears after a comma
+            if (
+                Regex.IsMatch(
+                    prefix,
+                    @"[,{]\s*new\s+" + Regex.Escape(methodName) + @"(?:\s*<[^>]+>)?\s*$",
+                    RegexOptions.RightToLeft
+                )
+            )
+            {
+                return true;
+            }
+
+            // Pattern 6: After close paren with new - like ), new Vector3(...)
+            // This can occur in method call chains or nested expressions
+            if (
+                Regex.IsMatch(
+                    prefix,
+                    @"\)\s*,\s*new\s+" + Regex.Escape(methodName) + @"(?:\s*<[^>]+>)?\s*$",
+                    RegexOptions.RightToLeft
+                )
+            )
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Extracts generic type arguments from a type declaration like "WDropdownSelectorBase&lt;int&gt;".
+        /// Properly handles nested generics like "Dictionary&lt;string, List&lt;int&gt;&gt;".
+        /// </summary>
+        private static List<string> ExtractGenericArguments(string typeDeclaration)
+        {
+            List<string> args = new();
+            Match match = GenericArgsRegex.Match(typeDeclaration);
+            if (match.Success)
+            {
+                string argsStr = match.Groups["args"].Value;
+                args.AddRange(SplitByCommaRespectingGenerics(argsStr));
+            }
+
+            return args;
+        }
+
+        /// <summary>
+        /// Splits a string by commas, but respects nested angle brackets.
+        /// For example, "A, B&lt;C, D&gt;, E" becomes ["A", "B&lt;C, D&gt;", "E"].
+        /// </summary>
+        private static List<string> SplitByCommaRespectingGenerics(string input)
+        {
+            List<string> results = new();
+            int depth = 0;
+            int start = 0;
+
+            for (int i = 0; i < input.Length; i++)
+            {
+                char c = input[i];
+                if (c == '<')
+                {
+                    depth++;
+                }
+                else if (c == '>')
+                {
+                    depth--;
+                }
+                else if (c == ',' && depth == 0)
+                {
+                    string part = input.Substring(start, i - start).Trim();
+                    if (!string.IsNullOrEmpty(part))
+                    {
+                        results.Add(part);
+                    }
+
+                    start = i + 1;
+                }
+            }
+
+            // Add the last part
+            if (start < input.Length)
+            {
+                string part = input.Substring(start).Trim();
+                if (!string.IsNullOrEmpty(part))
+                {
+                    results.Add(part);
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Extracts generic type parameters from a class declaration like "class MyClass&lt;TKey, TValue&gt;".
+        /// </summary>
+        private static List<string> ExtractGenericTypeParameters(string typeParamsStr)
+        {
+            if (string.IsNullOrWhiteSpace(typeParamsStr))
+            {
+                return new List<string>();
+            }
+
+            return typeParamsStr
+                .Split(',')
+                .Select(p => p.Trim().Split(' ')[0]) // Handle "T : IComparable" style constraints
+                .Where(p => !string.IsNullOrEmpty(p))
+                .ToList();
+        }
+
+        /// <summary>
+        /// Resolves a type by substituting generic type parameters with their concrete arguments.
+        /// </summary>
+        private static string ResolveGenericType(
+            string type,
+            IReadOnlyList<string> baseTypeParams,
+            IReadOnlyList<string> derivedTypeArgs
+        )
+        {
+            if (
+                baseTypeParams == null
+                || derivedTypeArgs == null
+                || baseTypeParams.Count == 0
+                || derivedTypeArgs.Count == 0
+            )
+            {
+                return type;
+            }
+
+            string resolved = type;
+            int minCount = Math.Min(baseTypeParams.Count, derivedTypeArgs.Count);
+            for (int i = 0; i < minCount; i++)
+            {
+                string param = baseTypeParams[i];
+                string arg = derivedTypeArgs[i];
+
+                // Only replace whole words (type parameters)
+                resolved = Regex.Replace(resolved, @"\b" + Regex.Escape(param) + @"\b", arg);
+            }
+
+            return resolved;
+        }
+
+        /// <summary>
+        /// Checks if two types are equivalent, accounting for generic type resolution.
+        /// </summary>
+        private bool TypesAreEquivalent(
+            string derivedType,
+            string baseType,
+            AnalyzerClassInfo derivedClass,
+            AnalyzerClassInfo baseClass
+        )
+        {
+            // Direct match
+            if (string.Equals(derivedType, baseType, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            // Try resolving generics from derived class to base class
+            if (
+                derivedClass.BaseClassTypeArguments != null
+                && derivedClass.BaseClassTypeArguments.Count > 0
+                && baseClass.GenericTypeParameters != null
+                && baseClass.GenericTypeParameters.Count > 0
+            )
+            {
+                string resolvedBaseType = ResolveGenericType(
+                    baseType,
+                    baseClass.GenericTypeParameters,
+                    derivedClass.BaseClassTypeArguments
+                );
+
+                if (string.Equals(derivedType, resolvedBaseType, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static List<(int start, int end, string content)> ExtractClassBlocks(string code)
@@ -297,47 +659,75 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             }
 
             string className = classMatch.Groups["name"].Value;
+            string typeParamsStr = classMatch.Groups["typeParams"].Value;
             string baseList = classMatch.Groups["base"].Value.Trim();
             string baseClassName = null;
+            string baseClassFullDeclaration = null;
+            List<string> baseClassTypeArgs = new();
+            List<string> implementedInterfaces = new();
+
+            // Check if the class has [SuppressAnalyzer] attribute
+            // Look at the content before the class keyword for attributes
+            string contentBeforeClass = classContent.Substring(0, classMatch.Index);
+            bool classSuppressed = SuppressAnalyzerAttributeRegex.IsMatch(contentBeforeClass);
 
             if (!string.IsNullOrEmpty(baseList))
             {
-                string[] baseTypes = baseList.Split(',');
-                if (baseTypes.Length > 0)
+                // Remove 'where' constraint clause if present
+                int whereIndex = baseList.IndexOf(" where ", StringComparison.Ordinal);
+                if (whereIndex < 0)
                 {
-                    string firstBase = baseTypes[0].Trim();
-                    int genericIndex = firstBase.IndexOf('<');
-                    if (genericIndex > 0)
+                    whereIndex = baseList.IndexOf("\twhere ", StringComparison.Ordinal);
+                }
+
+                if (whereIndex < 0)
+                {
+                    whereIndex = baseList.IndexOf("\nwhere ", StringComparison.Ordinal);
+                }
+
+                if (whereIndex < 0)
+                {
+                    whereIndex = baseList.IndexOf("\rwhere ", StringComparison.Ordinal);
+                }
+
+                if (whereIndex >= 0)
+                {
+                    baseList = baseList.Substring(0, whereIndex).Trim();
+                }
+
+                // Use comma-respecting split to handle generic type arguments
+                List<string> baseTypes = SplitByCommaRespectingGenerics(baseList);
+                foreach (string bt in baseTypes)
+                {
+                    string trimmed = bt.Trim();
+                    if (string.IsNullOrEmpty(trimmed))
                     {
-                        firstBase = firstBase.Substring(0, genericIndex).Trim();
+                        continue;
                     }
 
-                    if (
-                        !string.IsNullOrEmpty(firstBase)
-                        && !firstBase.StartsWith("I", StringComparison.Ordinal)
-                    )
+                    // Extract the base name without generics
+                    int genericIndex = trimmed.IndexOf('<');
+                    string baseName =
+                        genericIndex > 0 ? trimmed.Substring(0, genericIndex).Trim() : trimmed;
+
+                    // Check if it's an interface
+                    // Handle nested interface types like "OuterClass.IInterface" or "OuterClass<T>.IInterface"
+                    bool isInterface = IsInterfaceType(trimmed);
+
+                    if (isInterface)
                     {
-                        baseClassName = firstBase;
+                        implementedInterfaces.Add(baseName);
                     }
-                    else if (baseTypes.Length > 1)
+                    else if (baseClassName == null)
                     {
-                        for (int i = 1; i < baseTypes.Length; i++)
+                        // First non-interface is the base class
+                        baseClassName = baseName;
+                        baseClassFullDeclaration = trimmed;
+
+                        // Extract generic arguments from the base class
+                        if (genericIndex > 0)
                         {
-                            string candidate = baseTypes[i].Trim();
-                            int gi = candidate.IndexOf('<');
-                            if (gi > 0)
-                            {
-                                candidate = candidate.Substring(0, gi).Trim();
-                            }
-
-                            if (
-                                !string.IsNullOrEmpty(candidate)
-                                && !candidate.StartsWith("I", StringComparison.Ordinal)
-                            )
-                            {
-                                baseClassName = candidate;
-                                break;
-                            }
+                            baseClassTypeArgs = ExtractGenericArguments(trimmed);
                         }
                     }
                 }
@@ -349,10 +739,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
             int lineNumber = CountLines(fullCode, classStartIndex);
 
+            // Strip comments before extracting methods to avoid false positives
+            string strippedContent = StripCommentsAndStrings(classContent);
+
             Dictionary<string, List<AnalyzerMethodInfo>> methods = ExtractMethods(
                 classContent,
+                strippedContent,
                 fullCode,
-                classStartIndex
+                classStartIndex,
+                classSuppressed
             );
 
             return new AnalyzerClassInfo
@@ -360,20 +755,95 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 Name = className,
                 FullName = fullName,
                 BaseClassName = baseClassName,
+                BaseClassFullDeclaration = baseClassFullDeclaration,
+                BaseClassTypeArguments = baseClassTypeArgs,
+                GenericTypeParameters = ExtractGenericTypeParameters(typeParamsStr),
+                ImplementedInterfaces = implementedInterfaces,
                 FilePath = filePath,
                 Methods = methods,
                 LineNumber = lineNumber,
+                IsSuppressed = classSuppressed,
             };
+        }
+
+        /// <summary>
+        /// Determines if a type declaration represents an interface.
+        /// Handles simple interfaces (IFoo), nested interfaces (Outer.IFoo), and generic interfaces (Outer&lt;T&gt;.IFoo).
+        /// </summary>
+        private static bool IsInterfaceType(string typeDeclaration)
+        {
+            if (string.IsNullOrEmpty(typeDeclaration))
+            {
+                return false;
+            }
+
+            // Remove generic arguments for analysis
+            string cleaned = RemoveGenericArguments(typeDeclaration);
+
+            // Check for nested interface: look for .I followed by uppercase letter
+            int dotIndex = cleaned.LastIndexOf('.');
+            if (dotIndex >= 0 && dotIndex < cleaned.Length - 2)
+            {
+                string afterDot = cleaned.Substring(dotIndex + 1);
+                if (afterDot.Length > 1 && afterDot[0] == 'I' && char.IsUpper(afterDot[1]))
+                {
+                    return true;
+                }
+            }
+
+            // Check for simple interface: starts with I and next char is uppercase
+            if (cleaned.Length > 1 && cleaned[0] == 'I' && char.IsUpper(cleaned[1]))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Removes generic arguments from a type string for simpler analysis.
+        /// E.g., "List&lt;int&gt;" becomes "List", "Dict&lt;K,V&gt;.Inner&lt;T&gt;" becomes "Dict.Inner"
+        /// </summary>
+        private static string RemoveGenericArguments(string type)
+        {
+            if (string.IsNullOrEmpty(type))
+            {
+                return type;
+            }
+
+            System.Text.StringBuilder result = new();
+            int depth = 0;
+            foreach (char c in type)
+            {
+                if (c == '<')
+                {
+                    depth++;
+                }
+                else if (c == '>')
+                {
+                    depth--;
+                }
+                else if (depth == 0)
+                {
+                    result.Append(c);
+                }
+            }
+
+            return result.ToString();
         }
 
         private static Dictionary<string, List<AnalyzerMethodInfo>> ExtractMethods(
             string classContent,
+            string strippedContent,
             string fullCode,
-            int classStartOffset
+            int classStartOffset,
+            bool classSuppressed
         )
         {
             Dictionary<string, List<AnalyzerMethodInfo>> methods = new();
-            MatchCollection methodMatches = MethodRegex.Matches(classContent);
+
+            // Use stripped content for matching to avoid false positives in comments
+            MatchCollection methodMatches = MethodRegex.Matches(strippedContent);
 
             foreach (Match match in methodMatches)
             {
@@ -382,6 +852,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 string methodName = match.Groups["name"].Value;
                 string paramsStr = match.Groups["params"].Value;
 
+                // Skip control flow statements that regex might incorrectly match
                 if (string.Equals(returnType, "if", StringComparison.Ordinal))
                 {
                     continue;
@@ -428,6 +899,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 }
 
                 if (string.Equals(returnType, "return", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                // Skip 'new' expressions (constructor calls) that regex might match as methods
+                // Check if this looks like "new TypeName(" by examining what comes before
+                if (IsNewExpression(strippedContent, match))
+                {
+                    continue;
+                }
+
+                // Skip if return type is 'new' (indicates this is a "new SomeType(" expression)
+                if (string.Equals(returnType, "new", StringComparison.Ordinal))
                 {
                     continue;
                 }
@@ -488,6 +972,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 string signature = $"{returnType} {methodName}({string.Join(", ", parameters)})";
                 int lineNumber = CountLines(fullCode, classStartOffset + match.Index);
 
+                // Check if the method has [SuppressAnalyzer] attribute
+                // Look at the original (non-stripped) content before the method for attributes
+                int methodPosInClass = match.Index;
+                int lookbackStart = Math.Max(0, methodPosInClass - 200);
+                string contentBeforeMethod = classContent.Substring(
+                    lookbackStart,
+                    methodPosInClass - lookbackStart
+                );
+                bool methodSuppressed =
+                    classSuppressed || SuppressAnalyzerAttributeRegex.IsMatch(contentBeforeMethod);
+
                 AnalyzerMethodInfo methodInfo = new()
                 {
                     Name = methodName,
@@ -512,14 +1007,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                     ReturnType = returnType,
                     Parameters = parameters,
                     ParameterTypes = parameterTypes,
+                    IsSuppressed = methodSuppressed,
                 };
 
-                if (!methods.ContainsKey(methodName))
-                {
-                    methods[methodName] = new List<AnalyzerMethodInfo>();
-                }
-
-                methods[methodName].Add(methodInfo);
+                methods.GetOrAdd(methodName).Add(methodInfo);
             }
 
             return methods;
@@ -543,54 +1034,110 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
         {
             foreach (AnalyzerClassInfo classInfo in _classes.Values)
             {
-                bool isUnityClass = IsUnityDerivedClass(classInfo);
-
-                AnalyzerClassInfo baseClass = null;
-                if (classInfo.BaseClassName != null)
-                {
-                    baseClass = FindBaseClass(classInfo.BaseClassName);
-                }
-
-                foreach (KeyValuePair<string, List<AnalyzerMethodInfo>> kvp in classInfo.Methods)
-                {
-                    string methodName = kvp.Key;
-                    List<AnalyzerMethodInfo> methods = kvp.Value;
-
-                    foreach (AnalyzerMethodInfo method in methods)
-                    {
-                        if (isUnityClass && UnityMethods.LifecycleMethods.Contains(methodName))
-                        {
-                            AnalyzeUnityLifecycleMethod(classInfo, method, baseClass);
-                        }
-
-                        if (baseClass != null)
-                        {
-                            AnalyzeMethodAgainstBase(classInfo, method, baseClass, isUnityClass);
-                        }
-                    }
-                }
-
-                if (baseClass != null)
-                {
-                    AnalyzeAgainstAncestors(classInfo, baseClass, isUnityClass);
-                }
+                AnalyzeClassInheritance(classInfo);
             }
         }
 
-        private AnalyzerClassInfo FindBaseClass(string baseClassName)
+        /// <summary>
+        /// Parallel version of inheritance analysis that processes classes concurrently.
+        /// </summary>
+        private void AnalyzeInheritanceParallel(CancellationToken cancellationToken)
         {
-            AnalyzerClassInfo match = _classes.Values.FirstOrDefault(c =>
-                string.Equals(c.Name, baseClassName, StringComparison.Ordinal)
-                || string.Equals(c.FullName, baseClassName, StringComparison.Ordinal)
-            );
-            if (match != null)
+            ParallelOptions parallelOptions = new()
             {
-                return match;
+                MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount),
+                CancellationToken = cancellationToken,
+            };
+
+            Parallel.ForEach(_classes.Values, parallelOptions, AnalyzeClassInheritance);
+        }
+
+        /// <summary>
+        /// Analyzes a single class for inheritance issues. Thread-safe for parallel execution.
+        /// </summary>
+        private void AnalyzeClassInheritance(AnalyzerClassInfo classInfo)
+        {
+            bool isUnityClass = IsUnityDerivedClass(classInfo);
+
+            AnalyzerClassInfo baseClass = null;
+            if (classInfo.BaseClassName != null)
+            {
+                baseClass = FindBaseClass(classInfo.BaseClassName);
             }
 
-            return _classes.Values.FirstOrDefault(c =>
-                c.FullName.EndsWith("." + baseClassName, StringComparison.Ordinal)
-            );
+            foreach (KeyValuePair<string, List<AnalyzerMethodInfo>> kvp in classInfo.Methods)
+            {
+                string methodName = kvp.Key;
+                List<AnalyzerMethodInfo> methods = kvp.Value;
+
+                foreach (AnalyzerMethodInfo method in methods)
+                {
+                    if (isUnityClass && UnityMethods.LifecycleMethods.Contains(methodName))
+                    {
+                        AnalyzeUnityLifecycleMethod(classInfo, method, baseClass);
+                    }
+
+                    if (baseClass != null)
+                    {
+                        AnalyzeMethodAgainstBase(classInfo, method, baseClass, isUnityClass);
+                    }
+                }
+            }
+
+            if (baseClass != null)
+            {
+                AnalyzeAgainstAncestors(classInfo, baseClass, isUnityClass);
+            }
+        }
+
+        /// <summary>
+        /// Finds a base class by name using the O(1) lookup dictionary.
+        /// Falls back to linear search for full name matches.
+        /// </summary>
+        private AnalyzerClassInfo FindBaseClass(string baseClassName)
+        {
+            // First, check if it's a full name match (contains namespace)
+            if (_classes.TryGetValue(baseClassName, out AnalyzerClassInfo directMatch))
+            {
+                return directMatch;
+            }
+
+            // Use the lookup dictionary for O(1) simple name lookup
+            if (_classNameLookup.TryGetValue(baseClassName, out List<AnalyzerClassInfo> candidates))
+            {
+                // If only one match, return it
+                if (candidates.Count == 1)
+                {
+                    return candidates[0];
+                }
+
+                // Multiple matches - prefer exact name match over namespace suffix match
+                lock (candidates)
+                {
+                    foreach (AnalyzerClassInfo candidate in candidates)
+                    {
+                        if (string.Equals(candidate.Name, baseClassName, StringComparison.Ordinal))
+                        {
+                            return candidate;
+                        }
+                    }
+
+                    // Return first candidate if no exact match
+                    return candidates.Count > 0 ? candidates[0] : null;
+                }
+            }
+
+            // Fallback: Check for namespace suffix match (e.g., "Namespace.ClassName")
+            string suffix = "." + baseClassName;
+            foreach (AnalyzerClassInfo classInfo in _classes.Values)
+            {
+                if (classInfo.FullName.EndsWith(suffix, StringComparison.Ordinal))
+                {
+                    return classInfo;
+                }
+            }
+
+            return null;
         }
 
         private bool IsUnityDerivedClass(AnalyzerClassInfo classInfo)
@@ -630,6 +1177,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             AnalyzerClassInfo baseClass
         )
         {
+            // Skip analysis for suppressed classes or methods
+            if (classInfo.IsSuppressed || method.IsSuppressed)
+            {
+                return;
+            }
+
             if (method.IsPrivate && baseClass != null)
             {
                 if (
@@ -801,6 +1354,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             bool isUnityClass
         )
         {
+            // Skip analysis for suppressed classes or methods
+            if (classInfo.IsSuppressed || method.IsSuppressed)
+            {
+                return;
+            }
+
             if (
                 !baseClass.Methods.TryGetValue(
                     method.Name,
@@ -889,17 +1448,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
                 if ((baseMethod.IsVirtual || baseMethod.IsAbstract) && !baseMethod.IsSealed)
                 {
-                    string derivedTypeStr = string.Join(", ", method.ParameterTypes);
-                    string baseTypeStr = string.Join(", ", baseMethod.ParameterTypes);
+                    // Check parameter types match, accounting for generics
+                    bool paramsMatch = ParameterTypesMatchWithGenerics(
+                        method.ParameterTypes,
+                        baseMethod.ParameterTypes,
+                        classInfo,
+                        baseClass
+                    );
 
-                    if (
-                        string.Equals(derivedTypeStr, baseTypeStr, StringComparison.Ordinal)
-                        && string.Equals(
-                            method.ReturnType,
-                            baseMethod.ReturnType,
-                            StringComparison.Ordinal
-                        )
-                    )
+                    // Check return type matches, accounting for generics
+                    bool returnTypeMatches = TypesAreEquivalent(
+                        method.ReturnType,
+                        baseMethod.ReturnType,
+                        classInfo,
+                        baseClass
+                    );
+
+                    if (paramsMatch && returnTypeMatches)
                     {
                         if (!method.IsOverride && !method.IsNew && !method.IsPrivate)
                         {
@@ -998,12 +1563,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
             if (method.IsOverride || method.IsNew)
             {
-                string derivedTypeStr = string.Join(", ", method.ParameterTypes);
+                // Use generic-aware parameter matching to find the base method
                 AnalyzerMethodInfo matchingMethod = baseMethods.FirstOrDefault(bm =>
-                    string.Equals(
-                        string.Join(", ", bm.ParameterTypes),
-                        derivedTypeStr,
-                        StringComparison.Ordinal
+                    ParameterTypesMatchWithGenerics(
+                        method.ParameterTypes,
+                        bm.ParameterTypes,
+                        classInfo,
+                        baseClass
                     )
                 );
 
@@ -1018,29 +1584,41 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
                     if (closestMethod != null)
                     {
-                        _issues.Add(
-                            new AnalyzerIssue(
-                                classInfo.FilePath,
-                                classInfo.Name,
-                                method.Name,
-                                "SignatureMismatch",
-                                $"Method '{method.Name}' in '{classInfo.Name}' has {(method.IsOverride ? "'override'" : "'new'")} but parameters don't match any base method in '{baseClass.Name}'.",
-                                IssueSeverity.High,
-                                "Ensure the derived method signature matches one of the base method overloads.",
-                                method.LineNumber,
-                                GetCategory(),
-                                baseClass.Name,
-                                closestMethod.Signature,
-                                method.Signature
-                            )
+                        // Check if parameter types match when considering generics
+                        bool paramsMatch = ParameterTypesMatchWithGenerics(
+                            method.ParameterTypes,
+                            closestMethod.ParameterTypes,
+                            classInfo,
+                            baseClass
                         );
+
+                        if (!paramsMatch)
+                        {
+                            _issues.Add(
+                                new AnalyzerIssue(
+                                    classInfo.FilePath,
+                                    classInfo.Name,
+                                    method.Name,
+                                    "SignatureMismatch",
+                                    $"Method '{method.Name}' in '{classInfo.Name}' has {(method.IsOverride ? "'override'" : "'new'")} but parameters don't match any base method in '{baseClass.Name}'.",
+                                    IssueSeverity.High,
+                                    "Ensure the derived method signature matches one of the base method overloads.",
+                                    method.LineNumber,
+                                    GetCategory(),
+                                    baseClass.Name,
+                                    closestMethod.Signature,
+                                    method.Signature
+                                )
+                            );
+                        }
                     }
                 }
                 else if (
-                    !string.Equals(
+                    !TypesAreEquivalent(
                         method.ReturnType,
                         matchingMethod.ReturnType,
-                        StringComparison.Ordinal
+                        classInfo,
+                        baseClass
                     )
                 )
                 {
@@ -1062,6 +1640,32 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                     );
                 }
             }
+        }
+
+        /// <summary>
+        /// Checks if parameter type lists match, accounting for generic type resolution.
+        /// </summary>
+        private bool ParameterTypesMatchWithGenerics(
+            IReadOnlyList<string> derivedTypes,
+            IReadOnlyList<string> baseTypes,
+            AnalyzerClassInfo derivedClass,
+            AnalyzerClassInfo baseClass
+        )
+        {
+            if (derivedTypes.Count != baseTypes.Count)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < derivedTypes.Count; i++)
+            {
+                if (!TypesAreEquivalent(derivedTypes[i], baseTypes[i], derivedClass, baseClass))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private void AnalyzeAgainstAncestors(
