@@ -38,6 +38,10 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 
 - Check prefabs for errors → [Prefab Checker](#prefab-checker)
 
+### Analyze Code Quality
+
+- Detect inheritance and Unity method issues → [Unity Method Analyzer](#unity-method-analyzer)
+
 ### Apply Visual Effects
 
 - Blur textures (backgrounds, DOF) → [Image Blur Tool](#image-blur-tool)
@@ -66,6 +70,8 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 2. [Animation Tools](#animation-tools)
 3. [Sprite Atlas Tools](#sprite-atlas-tools)
 4. [Validation & Quality Tools](#validation--quality-tools)
+   - [Prefab Checker](#prefab-checker)
+   - [Unity Method Analyzer](#unity-method-analyzer)
 5. [Custom Component Editors](#custom-component-editors)
 6. [Property Drawers & Attributes](#property-drawers--attributes)
 7. [Automation & Utilities](#automation--utilities)
@@ -1062,6 +1068,70 @@ maxTextureSize: 2048
 - Team onboarding with prefab standards
 - Migration validation after Unity upgrades
 - Continuous integration health checks
+
+---
+
+### Unity Method Analyzer
+
+**Menu:** `Tools > Wallstop Studios > Unity Helpers > Unity Method Analyzer`
+
+**Purpose:** Detect inheritance issues and Unity lifecycle method errors across your entire C# codebase before they cause runtime bugs.
+
+**📖 Full Documentation:** [Unity Method Analyzer Guide](unity-method-analyzer.md)
+
+**Key Features:**
+
+- **Static analysis** without external dependencies (no Roslyn required)
+- **Parallel scanning** of thousands of files
+- **Multiple issue categories**: Unity Lifecycle, Unity Inheritance, General Inheritance
+- **Five severity levels**: Critical, High, Medium, Low, Info
+- **Export options**: JSON and Markdown for CI/CD integration
+- **Flexible filtering**: By severity, category, or free-text search
+
+**What It Detects:**
+
+| Issue Type                   | Example                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------- |
+| Missing `override` keyword   | Hiding base method instead of overriding                                  |
+| Wrong Unity method signature | `OnCollisionEnter(Collider c)` instead of `OnCollisionEnter(Collision c)` |
+| Shadowed lifecycle methods   | Both base and derived class have `private void Start()`                   |
+| Static lifecycle methods     | `static void Awake()` won't be called by Unity                            |
+
+**Quick Start:**
+
+```
+1. Open Unity Method Analyzer
+2. Add source directories (e.g., Assets/Scripts)
+3. Click "Analyze Code"
+4. Review issues grouped by file, severity, or category
+5. Double-click to navigate to problematic code
+6. Export report for team review or CI/CD
+```
+
+> **Visual Demo**
+>
+> ![Unity Method Analyzer window showing detected issues](../../images/editor-tools/unity-method-analyzer/analyzer-overview.png)
+> _The analyzer scanning a project and displaying categorized issues_
+
+**Suppressing Warnings:**
+
+For test code or intentional patterns, use `[SuppressAnalyzer]`:
+
+```csharp
+[SuppressAnalyzer("Test fixture for analyzer validation")]
+public class TestClassWithIntentionalIssues : BaseClass
+{
+    public void HiddenMethod() { }  // Won't trigger warning
+}
+```
+
+**Best For:**
+
+- Pre-commit code validation
+- Code review assistance
+- CI/CD quality gates
+- Team onboarding
+- Post-refactoring verification
 
 ---
 

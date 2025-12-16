@@ -32,6 +32,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - `WShowIf` conditional display attribute improvements
   - Enhanced dropdown attributes for better property selection
   - `StringInListAttribute` now supports `[StringInList(nameof(Method))]` to call parameterless instance or static methods on the decorated object, and the drawer exposes the same experience in both IMGUI and UI Toolkit inspectors
+  - `WButton` now supports `groupPriority` and `groupPlacement` parameters for fine-grained control over button group ordering and positioning
 - **Serialization Data Structures**: Production-ready serializable collections
   - `SerializableDictionary<TKey, TValue>` with custom inspector drawer
   - `SerializableSortedDictionary<TKey, TValue>` with ordered iteration
@@ -49,6 +50,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Added **Request Script Recompilation** menu item (`Tools ▸ Wallstop Studios ▸ Unity Helpers`) to manually trigger script recompilation
   - The "Request Script Compilation" utility includes a Unity Shortcut Manager binding (default **Ctrl/Cmd + Alt + R**) for quick access. The shortcut appears under _Wallstop Studios / Request Script Compilation_ and can be remapped like any other Unity shortcut.
   - Coroutine wait buffer defaults can now be configured under **Project Settings ▸ Wallstop Studios ▸ Unity Helpers**. The generated `Resources/WallstopStudios/UnityHelpers/UnityHelpersBufferSettings.asset` applies the selected quantization, entry caps, and LRU mode automatically on domain reload or when the player starts (unless your code overrides the values at runtime).
+  - Added **Unity Method Analyzer** (`Tools ▸ Wallstop Studios ▸ Unity Helpers ▸ Unity Method Analyzer`) for detecting inheritance issues and Unity lifecycle method errors across C# codebases
 - **Random Number Generation**: Extended PRNG capabilities
   - Added `BlastCircuitRandom` and `WaveSplatRandom` generators with improved performance characteristics
   - New `RandomGeneratorMetadata` system for inspecting generator properties

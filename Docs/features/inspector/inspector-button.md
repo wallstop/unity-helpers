@@ -10,6 +10,8 @@ The `[WButton]` attribute exposes methods as clickable buttons in the Unity insp
 
 - [Basic Usage](#basic-usage)
 - [Parameters](#parameters)
+  - [groupPriority](#grouppriority-int-optional)
+  - [groupPlacement](#groupplacement-wbuttongroupplacement-optional)
 - [Execution Types](#execution-types)
 - [Result History](#result-history)
 - [Draw Order & Positioning](#draw-order--positioning)
@@ -61,7 +63,9 @@ The `[WButton]` attribute accepts several optional parameters to customize butto
     int drawOrder = 0,
     int historyCapacity = WButtonAttribute.UseGlobalHistory,
     string priority = null,
-    string groupName = null
+    string groupName = null,
+    int groupPriority = WButtonAttribute.NoGroupPriority,
+    WButtonGroupPlacement groupPlacement = WButtonGroupPlacement.UseGlobalSetting
 )]
 ```
 
@@ -244,6 +248,132 @@ public class GameManager : MonoBehaviour
 - Group headers are collapsible (click the arrow to expand/collapse)
 - Groups can be configured to start expanded or collapsed in project settings
 - The first button in a group determines the group's display name
+
+---
+
+### groupPriority (int, optional)
+
+**Controls the render order of button groups within a placement section.**
+
+- **Default:** `WButtonAttribute.NoGroupPriority` (renders after groups with explicit priorities)
+- **Lower values render first** within the same placement (top or bottom)
+- **Only applies** to buttons with a `groupName`; ungrouped buttons ignore this value
+
+```csharp
+public class ActionPanel : MonoBehaviour
+{
+    // This group renders FIRST (priority 0)
+    [WButton("Quick Save", groupName: "Primary", groupPriority: 0)]
+    private void QuickSave() { }
+
+    [WButton("Quick Load", groupName: "Primary", groupPriority: 0)]
+    private void QuickLoad() { }
+
+    // This group renders SECOND (priority 10)
+    [WButton("Debug Info", groupName: "Debug", groupPriority: 10)]
+    private void ShowDebugInfo() { }
+
+    // This group renders LAST (no explicit priority)
+    [WButton("Reset", groupName: "Misc")]
+    private void Reset() { }
+}
+```
+
+![Groups ordered by priority: Primary first, Debug second, Misc last](../../images/inspector/buttons/inspector-button-group-priority.png)
+
+**Important:** The first declared button in a group sets the canonical priority for the entire group. If other buttons in the same group specify different priorities, they are ignored and a warning is displayed in the inspector.
+
+```csharp
+// ⚠️ WARNING: Conflicting priorities in the same group
+[WButton("Action A", groupName: "Tools", groupPriority: 0)]  // This priority is used
+private void ActionA() { }
+
+[WButton("Action B", groupName: "Tools", groupPriority: 10)] // Ignored! Warning shown
+private void ActionB() { }
+```
+
+---
+
+### groupPlacement (WButtonGroupPlacement, optional)
+
+**Controls where a button group renders, overriding the global Unity Helpers setting.**
+
+- **Default:** `WButtonGroupPlacement.UseGlobalSetting`
+- **Options:**
+  - `UseGlobalSetting` — Respects the global setting in Project Settings
+  - `Top` — Always render above inspector properties
+  - `Bottom` — Always render below inspector properties
+- **Only applies** to buttons with a `groupName`; ungrouped buttons ignore this value
+
+```csharp
+public class MixedPlacementExample : MonoBehaviour
+{
+    public int health = 100;
+    public float speed = 5f;
+
+    // This group ALWAYS renders at the top, regardless of global setting
+    [WButton("Initialize", groupName: "Setup", groupPlacement: WButtonGroupPlacement.Top)]
+    private void Initialize() { }
+
+    [WButton("Validate", groupName: "Setup", groupPlacement: WButtonGroupPlacement.Top)]
+    private void Validate() { }
+
+    // Properties appear here (health, speed)
+
+    // This group ALWAYS renders at the bottom, regardless of global setting
+    [WButton("Cleanup", groupName: "Maintenance", groupPlacement: WButtonGroupPlacement.Bottom)]
+    private void Cleanup() { }
+
+    [WButton("Reset All", groupName: "Maintenance", groupPlacement: WButtonGroupPlacement.Bottom)]
+    private void ResetAll() { }
+}
+```
+
+![Setup group at top, properties in middle, Maintenance group at bottom](../../images/inspector/buttons/inspector-button-group-placement.png)
+
+**Important:** Like `groupPriority`, the first declared button in a group sets the canonical placement for the entire group. Conflicting values from other buttons in the same group are ignored with a warning.
+
+---
+
+### Combining groupPriority and groupPlacement
+
+Use both parameters together for fine-grained control:
+
+```csharp
+public class AdvancedButtonLayout : ScriptableObject
+{
+    // TOP SECTION - ordered by priority
+    [WButton("Generate IDs", groupName: "Authoring", groupPriority: 0, groupPlacement: WButtonGroupPlacement.Top)]
+    private void GenerateIds() { }
+
+    [WButton("Validate Data", groupName: "Validation", groupPriority: 1, groupPlacement: WButtonGroupPlacement.Top)]
+    private void ValidateData() { }
+
+    // Properties appear here
+
+    // BOTTOM SECTION - ordered by priority
+    [WButton("Export", groupName: "IO", groupPriority: 0, groupPlacement: WButtonGroupPlacement.Bottom)]
+    private void Export() { }
+
+    [WButton("Import", groupName: "IO", groupPriority: 0, groupPlacement: WButtonGroupPlacement.Bottom)]
+    private void Import() { }
+
+    [WButton("Submit to Server", groupName: "Network", groupPriority: 10, groupPlacement: WButtonGroupPlacement.Bottom)]
+    private void Submit() { }
+}
+```
+
+![Advanced layout: Authoring then Validation at top, IO then Network at bottom](../../images/inspector/buttons/inspector-button-advanced-layout.gif)
+
+**Rendering Order:**
+
+1. **Top Section** (sorted by `groupPriority`):
+   - Authoring (priority 0)
+   - Validation (priority 1)
+2. **Default Inspector Properties**
+3. **Bottom Section** (sorted by `groupPriority`):
+   - IO (priority 0)
+   - Network (priority 10)
 
 ---
 
