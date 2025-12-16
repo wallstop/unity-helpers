@@ -27,7 +27,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
     )]
     public sealed class UnityHelpersSettings : ScriptableSingleton<UnityHelpersSettings>
     {
-        internal static event Action SettingsSaved;
+        internal static event Action OnSettingsSaved;
         public const int MinPageSize = 5;
         public const int MaxPageSize = 500;
         public const int MaxSerializableDictionaryPageSize = 250;
@@ -102,7 +102,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private const float CustomColorDrawerMinLabelWidth = 28f;
         private const float CustomColorDrawerMaxLabelWidth = 90f;
         private const string WaitInstructionBufferFoldoutKey = "Buffers";
-        private static UnityHelpersBufferSettingsAsset waitInstructionBufferSettingsAsset;
+        private static UnityHelpersBufferSettingsAsset _waitInstructionBufferSettingsAsset;
         private static readonly GUIContent StringInListPageSizeContent =
             EditorGUIUtility.TrTextContent(
                 "StringInList Page Size",
@@ -396,6 +396,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             Tween = 2,
         }
 
+        [FormerlySerializedAs("waitInstructionBufferApplyOnLoad")]
         [SerializeField]
         [Tooltip(
             "Whether the configured wait instruction defaults should be applied automatically on domain reload and player start."
@@ -406,33 +407,38 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             collapsible: true,
             startCollapsed: true
         )]
-        private bool waitInstructionBufferApplyOnLoad = true;
+        private bool _waitInstructionBufferApplyOnLoad = true;
 
+        [FormerlySerializedAs("waitInstructionBufferQuantizationStepSeconds")]
         [SerializeField]
         [Tooltip(
             "Rounds requested WaitForSeconds durations to this step size before caching (set to 0 to disable)."
         )]
         [Min(0f)]
-        private float waitInstructionBufferQuantizationStepSeconds;
+        private float _waitInstructionBufferQuantizationStepSeconds;
 
+        [FormerlySerializedAs("waitInstructionBufferMaxDistinctEntries")]
         [SerializeField]
         [Tooltip(
             "Maximum number of distinct WaitForSeconds/Realtime entries cached (0 = unlimited)."
         )]
         [Min(0)]
-        private int waitInstructionBufferMaxDistinctEntries =
+        private int _waitInstructionBufferMaxDistinctEntries =
             Buffers.WaitInstructionDefaultMaxDistinctEntries;
 
+        [FormerlySerializedAs("waitInstructionBufferUseLruEviction")]
         [SerializeField]
         [Tooltip(
             "Evict the least recently used duration when the cache hits the distinct entry limit."
         )]
-        private bool waitInstructionBufferUseLruEviction;
+        private bool _waitInstructionBufferUseLruEviction;
 
+        [FormerlySerializedAs("waitInstructionBufferDefaultsInitialized")]
         [SerializeField]
         [HideInInspector]
-        private bool waitInstructionBufferDefaultsInitialized;
+        private bool _waitInstructionBufferDefaultsInitialized;
 
+        [FormerlySerializedAs("stringInListPageSize")]
         [SerializeField]
         [Tooltip("Maximum number of entries shown per page for StringInList dropdowns.")]
         [Range(MinPageSize, MaxPageSize)]
@@ -442,41 +448,47 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             autoIncludeCount: 4,
             collapsible: true
         )]
-        private int stringInListPageSize = DefaultStringInListPageSize;
+        private int _stringInListPageSize = DefaultStringInListPageSize;
 
+        [FormerlySerializedAs("serializableSetPageSize")]
         [SerializeField]
         [Tooltip(
             "Maximum number of entries shown per page when drawing SerializableHashSet/SerializableSortedSet inspectors."
         )]
         [Range(MinPageSize, MaxPageSize)]
-        private int serializableSetPageSize = DefaultSerializableSetPageSize;
+        private int _serializableSetPageSize = DefaultSerializableSetPageSize;
 
+        [FormerlySerializedAs("serializableSetStartCollapsed")]
         [SerializeField]
         [Tooltip(
             "Whether SerializableHashSet and SerializableSortedSet inspectors start collapsed when first rendered."
         )]
-        private bool serializableSetStartCollapsed = true;
+        private bool _serializableSetStartCollapsed = true;
 
+        [FormerlySerializedAs("serializableDictionaryPageSize")]
         [SerializeField]
         [Tooltip(
             "Maximum number of entries shown per page when drawing SerializableDictionary/SerializableSortedDictionary inspectors."
         )]
         [Range(MinPageSize, MaxSerializableDictionaryPageSize)]
-        private int serializableDictionaryPageSize = DefaultSerializableDictionaryPageSize;
+        private int _serializableDictionaryPageSize = DefaultSerializableDictionaryPageSize;
 
+        [FormerlySerializedAs("serializableDictionaryStartCollapsed")]
         [SerializeField]
         [Tooltip(
             "Whether SerializableDictionary and SerializableSortedDictionary inspectors start collapsed when first rendered."
         )]
-        private bool serializableDictionaryStartCollapsed = true;
+        private bool _serializableDictionaryStartCollapsed = true;
 
+        [FormerlySerializedAs("enumToggleButtonsPageSize")]
         [SerializeField]
         [Tooltip(
             "Maximum number of toggle buttons shown per page when drawing WEnumToggleButtons groups."
         )]
         [Range(MinPageSize, MaxPageSize)]
-        private int enumToggleButtonsPageSize = DefaultEnumToggleButtonsPageSize;
+        private int _enumToggleButtonsPageSize = DefaultEnumToggleButtonsPageSize;
 
+        [FormerlySerializedAs("wbuttonPageSize")]
         [SerializeField]
         [Tooltip("Maximum number of WButton actions displayed per page in inspector trays.")]
         [Range(MinPageSize, MaxPageSize)]
@@ -487,13 +499,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             collapsible: true
         )]
         [WGroupEnd("Pagination")]
-        private int wbuttonPageSize = DefaultWButtonPageSize;
+        private int _wbuttonPageSize = DefaultWButtonPageSize;
 
+        [FormerlySerializedAs("wbuttonHistorySize")]
         [SerializeField]
         [Tooltip("Number of recent invocation results retained per WButton method.")]
         [Range(MinWButtonHistorySize, MaxWButtonHistorySize)]
-        private int wbuttonHistorySize = DefaultWButtonHistorySize;
+        private int _wbuttonHistorySize = DefaultWButtonHistorySize;
 
+        [FormerlySerializedAs("wbuttonActionsPlacement")]
         [SerializeField]
         [Tooltip("Controls where WButton actions are rendered relative to the inspector content.")]
         [WGroup(
@@ -502,25 +516,29 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             autoIncludeCount: 3,
             collapsible: true
         )]
-        private WButtonActionsPlacement wbuttonActionsPlacement = WButtonActionsPlacement.Top;
+        private WButtonActionsPlacement _wbuttonActionsPlacement = WButtonActionsPlacement.Top;
 
+        [FormerlySerializedAs("wbuttonFoldoutBehavior")]
         [SerializeField]
         [Tooltip(
             "Determines whether WButton groups are always shown or foldouts start expanded/collapsed."
         )]
-        private WButtonFoldoutBehavior wbuttonFoldoutBehavior =
+        private WButtonFoldoutBehavior _wbuttonFoldoutBehavior =
             WButtonFoldoutBehavior.StartExpanded;
 
+        [FormerlySerializedAs("wbuttonFoldoutTweenEnabled")]
         [SerializeField]
         [Tooltip("Animate WButton action foldouts when toggled.")]
-        private bool wbuttonFoldoutTweenEnabled = true;
+        private bool _wbuttonFoldoutTweenEnabled = true;
 
+        [FormerlySerializedAs("wbuttonFoldoutSpeed")]
         [SerializeField]
         [Tooltip("Animation speed used when toggling WButton action foldouts.")]
-        [WShowIf(nameof(wbuttonFoldoutTweenEnabled))]
+        [WShowIf(nameof(_wbuttonFoldoutTweenEnabled))]
         [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
-        private float wbuttonFoldoutSpeed = DefaultFoldoutSpeed;
+        private float _wbuttonFoldoutSpeed = DefaultFoldoutSpeed;
 
+        [FormerlySerializedAs("wbuttonCancelButtonColor")]
         [SerializeField]
         [Tooltip(
             "Background color for the Cancel button that appears during async WButton execution."
@@ -532,20 +550,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             autoIncludeCount: 3,
             collapsible: true
         )]
-        private Color wbuttonCancelButtonColor = DefaultCancelButtonColor;
+        private Color _wbuttonCancelButtonColor = DefaultCancelButtonColor;
 
+        [FormerlySerializedAs("wbuttonCancelButtonTextColor")]
         [SerializeField]
         [Tooltip("Text color for the Cancel button.")]
-        private Color wbuttonCancelButtonTextColor = DefaultCancelButtonTextColor;
+        private Color _wbuttonCancelButtonTextColor = DefaultCancelButtonTextColor;
 
+        [FormerlySerializedAs("wbuttonClearHistoryButtonColor")]
         [SerializeField]
         [Tooltip("Background color for the Clear History button in WButton result history.")]
-        private Color wbuttonClearHistoryButtonColor = DefaultClearHistoryButtonColor;
+        private Color _wbuttonClearHistoryButtonColor = DefaultClearHistoryButtonColor;
 
+        [FormerlySerializedAs("wbuttonClearHistoryButtonTextColor")]
         [SerializeField]
         [Tooltip("Text color for the Clear History button.")]
-        private Color wbuttonClearHistoryButtonTextColor = DefaultClearHistoryButtonTextColor;
+        private Color _wbuttonClearHistoryButtonTextColor = DefaultClearHistoryButtonTextColor;
 
+        [FormerlySerializedAs("serializableDictionaryFoldoutTweenEnabled")]
         [SerializeField]
         [Tooltip(
             "Animation speed used when toggling SerializableDictionary pending entry foldouts."
@@ -556,82 +578,97 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             autoIncludeCount: 3,
             collapsible: true
         )]
-        private bool serializableDictionaryFoldoutTweenEnabled = true;
+        private bool _serializableDictionaryFoldoutTweenEnabled = true;
 
+        [FormerlySerializedAs("foldoutTweenSettingsInitialized")]
         [SerializeField]
         [HideInInspector]
-        private bool foldoutTweenSettingsInitialized;
+        private bool _foldoutTweenSettingsInitialized;
 
+        [FormerlySerializedAs("serializableDictionaryFoldoutSpeed")]
         [SerializeField]
         [Tooltip(
             "Animation speed used when toggling SerializableDictionary pending entry foldouts."
         )]
-        [WShowIf(nameof(serializableDictionaryFoldoutTweenEnabled))]
+        [WShowIf(nameof(_serializableDictionaryFoldoutTweenEnabled))]
         [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
-        private float serializableDictionaryFoldoutSpeed = DefaultFoldoutSpeed;
+        private float _serializableDictionaryFoldoutSpeed = DefaultFoldoutSpeed;
 
+        [FormerlySerializedAs("serializableSortedDictionaryFoldoutTweenEnabled")]
         [SerializeField]
         [Tooltip(
             "Animation speed used when toggling SerializableSortedDictionary pending entry foldouts."
         )]
-        private bool serializableSortedDictionaryFoldoutTweenEnabled = true;
+        private bool _serializableSortedDictionaryFoldoutTweenEnabled = true;
 
+        [FormerlySerializedAs("serializableSortedDictionaryFoldoutSpeed")]
         [SerializeField]
         [Tooltip(
             "Animation speed used when toggling SerializableSortedDictionary pending entry foldouts."
         )]
-        [WShowIf(nameof(serializableSortedDictionaryFoldoutTweenEnabled))]
+        [WShowIf(nameof(_serializableSortedDictionaryFoldoutTweenEnabled))]
         [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
-        private float serializableSortedDictionaryFoldoutSpeed = DefaultFoldoutSpeed;
+        private float _serializableSortedDictionaryFoldoutSpeed = DefaultFoldoutSpeed;
 
+        [FormerlySerializedAs("serializableSetFoldoutTweenEnabled")]
         [SerializeField]
         [Tooltip(
             "Enable animated transitions when expanding or collapsing SerializableHashSet manual entry foldouts."
         )]
         [WGroup("Serializable Sets", displayName: "Serializable Sets", collapsible: true)]
-        private bool serializableSetFoldoutTweenEnabled = true;
+        private bool _serializableSetFoldoutTweenEnabled = true;
 
+        [FormerlySerializedAs("serializableSetFoldoutSpeed")]
         [SerializeField]
         [Tooltip("Animation speed used when toggling SerializableHashSet manual entry foldouts.")]
-        [WShowIf(nameof(serializableSetFoldoutTweenEnabled))]
+        [WShowIf(nameof(_serializableSetFoldoutTweenEnabled))]
         [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
-        private float serializableSetFoldoutSpeed = DefaultFoldoutSpeed;
+        private float _serializableSetFoldoutSpeed = DefaultFoldoutSpeed;
 
+        [FormerlySerializedAs("serializableSetDuplicateTweenEnabled")]
         [SerializeField]
         [Tooltip(
             "Enable lateral shake animations when highlighting duplicate or invalid entries in SerializableSet inspectors."
         )]
-        private bool serializableSetDuplicateTweenEnabled = true;
+        private bool _serializableSetDuplicateTweenEnabled = true;
 
+        [FormerlySerializedAs("serializableSetDuplicateTweenCycles")]
         [SerializeField]
         [Tooltip(
             "When enabled, number of shake cycles to play for SerializableSet duplicate entries. Negative values loop indefinitely."
         )]
-        [WShowIf(nameof(serializableSetDuplicateTweenEnabled))]
-        private int serializableSetDuplicateTweenCycles = DefaultDuplicateTweenCycles;
+        [WShowIf(nameof(_serializableSetDuplicateTweenEnabled))]
+        private int _serializableSetDuplicateTweenCycles = DefaultDuplicateTweenCycles;
 
+        [FormerlySerializedAs("serializableSetTweensGroupEndSentinel")]
         [SerializeField]
         [HideInInspector]
-        private bool serializableSetTweensGroupEndSentinel;
+#pragma warning disable CS0169 // Field is never used
+        private bool _serializableSetTweensGroupEndSentinel;
+#pragma warning restore CS0169 // Field is never used
 
+        [FormerlySerializedAs("serializableSetDuplicateTweenSettingsInitialized")]
         [SerializeField]
         [HideInInspector]
-        private bool serializableSetDuplicateTweenSettingsInitialized;
+        private bool _serializableSetDuplicateTweenSettingsInitialized;
 
+        [FormerlySerializedAs("serializableSortedSetFoldoutTweenEnabled")]
         [SerializeField]
         [Tooltip(
             "Enable animated transitions when expanding or collapsing SerializableSortedSet manual entry foldouts."
         )]
         [WGroup("Sorted Set", displayName: "Sorted Sets", autoIncludeCount: 1, collapsible: true)]
-        private bool serializableSortedSetFoldoutTweenEnabled = true;
+        private bool _serializableSortedSetFoldoutTweenEnabled = true;
 
+        [FormerlySerializedAs("serializableSortedSetFoldoutSpeed")]
         [SerializeField]
         [Tooltip("Animation speed used when toggling SerializableSortedSet manual entry foldouts.")]
-        [WShowIf(nameof(serializableSortedSetFoldoutTweenEnabled))]
+        [WShowIf(nameof(_serializableSortedSetFoldoutTweenEnabled))]
         [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
         [WGroupEnd("Sorted Set Foldouts")]
-        private float serializableSortedSetFoldoutSpeed = DefaultFoldoutSpeed;
+        private float _serializableSortedSetFoldoutSpeed = DefaultFoldoutSpeed;
 
+        [FormerlySerializedAs("duplicateRowAnimationMode")]
         [SerializeField]
         [Tooltip(
             "Controls how duplicate entries are emphasized inside SerializableDictionary inspectors."
@@ -642,19 +679,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             autoIncludeCount: 1,
             collapsible: true
         )]
-        private DuplicateRowAnimationMode duplicateRowAnimationMode =
+        private DuplicateRowAnimationMode _duplicateRowAnimationMode =
             DuplicateRowAnimationMode.Tween;
 
+        [FormerlySerializedAs("duplicateRowTweenCycles")]
         [SerializeField]
         [Tooltip(
             "When using Tween, number of shake cycles to play for duplicate entries. Negative values loop indefinitely."
         )]
         [WShowIf(
-            nameof(duplicateRowAnimationMode),
+            nameof(_duplicateRowAnimationMode),
             expectedValues: new object[] { DuplicateRowAnimationMode.Tween }
         )]
-        private int duplicateRowTweenCycles = DefaultDuplicateTweenCycles;
+        private int _duplicateRowTweenCycles = DefaultDuplicateTweenCycles;
 
+        [FormerlySerializedAs("detectAssetChangeLoopWindowSeconds")]
         [SerializeField]
         [Tooltip(
             "Time window used to detect repeated DetectAssetChanged callbacks before loop suppression engages."
@@ -666,9 +705,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             autoIncludeCount: 1,
             collapsible: true
         )]
-        private float detectAssetChangeLoopWindowSeconds =
+        private float _detectAssetChangeLoopWindowSeconds =
             DefaultDetectAssetChangeLoopWindowSeconds;
 
+        [FormerlySerializedAs("serializableTypeIgnorePatterns")]
         [SerializeField]
         [Tooltip(
             "Regular expressions evaluated against type names to exclude them from SerializableType pickers."
@@ -679,10 +719,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             autoIncludeCount: 0,
             collapsible: true
         )]
-        private List<SerializableTypeIgnorePattern> serializableTypeIgnorePatterns;
-        private string[] serializableTypeIgnorePatternCache = Array.Empty<string>();
-        private int serializableTypeIgnorePatternCacheVersion = int.MinValue;
+        private List<SerializableTypeIgnorePattern> _serializableTypeIgnorePatterns;
+        private string[] _serializableTypeIgnorePatternCache = Array.Empty<string>();
+        private int _serializableTypeIgnorePatternCacheVersion = int.MinValue;
 
+        [FormerlySerializedAs("wgroupAutoIncludeMode")]
         [SerializeField]
         [Tooltip(
             "Controls how WGroup automatically includes additional serialized members after a group declaration."
@@ -693,25 +734,28 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             autoIncludeCount: 2,
             collapsible: true
         )]
-        private WGroupAutoIncludeMode wgroupAutoIncludeMode = WGroupAutoIncludeMode.Infinite;
+        private WGroupAutoIncludeMode _wgroupAutoIncludeMode = WGroupAutoIncludeMode.Infinite;
 
+        [FormerlySerializedAs("wgroupAutoIncludeRowCount")]
         [SerializeField]
         [Tooltip(
             "Number of additional serialized members captured when the WGroup auto include mode is set to Finite."
         )]
         [WShowIf(
-            nameof(wgroupAutoIncludeMode),
+            nameof(_wgroupAutoIncludeMode),
             expectedValues: new object[] { WGroupAutoIncludeMode.Finite }
         )]
         [Range(MinWGroupAutoIncludeRowCount, MaxWGroupAutoIncludeRowCount)]
-        private int wgroupAutoIncludeRowCount = DefaultWGroupAutoIncludeRowCount;
+        private int _wgroupAutoIncludeRowCount = DefaultWGroupAutoIncludeRowCount;
 
+        [FormerlySerializedAs("wgroupFoldoutsStartCollapsed")]
         [SerializeField]
         [Tooltip(
             "When enabled, collapsible WGroup headers start closed unless the attribute overrides startCollapsed."
         )]
-        private bool wgroupFoldoutsStartCollapsed = true;
+        private bool _wgroupFoldoutsStartCollapsed = true;
 
+        [FormerlySerializedAs("wbuttonCustomColors")]
         [SerializeField]
         [Tooltip("Named color palette applied to WButton custom color keys.")]
         [WGroup(
@@ -720,34 +764,39 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             autoIncludeCount: 4,
             collapsible: true
         )]
-        private WButtonCustomColorDictionary wbuttonCustomColors = new();
+        private WButtonCustomColorDictionary _wbuttonCustomColors = new();
 
+        [FormerlySerializedAs("wgroupCustomColors")]
         [SerializeField]
         [Tooltip("Named color palette applied to WGroup custom color keys.")]
-        private WGroupCustomColorDictionary wgroupCustomColors = new();
+        private WGroupCustomColorDictionary _wgroupCustomColors = new();
 
+        [FormerlySerializedAs("wenumToggleButtonsCustomColors")]
         [SerializeField]
         [Tooltip("Named color palette applied to WEnumToggleButtons color keys.")]
         [WGroupEnd("Color Palettes")]
-        private WEnumToggleButtonsCustomColorDictionary wenumToggleButtonsCustomColors = new();
+        private WEnumToggleButtonsCustomColorDictionary _wenumToggleButtonsCustomColors = new();
 
+        [FormerlySerializedAs("legacyWButtonPriorityColors")]
         [SerializeField]
         [FormerlySerializedAs("wbuttonPriorityColors")]
 #pragma warning disable CS0618 // Type or member is obsolete
         [HideInInspector]
-        private List<WButtonPriorityColor> legacyWButtonPriorityColors;
+        private List<WButtonPriorityColor> _legacyWButtonPriorityColors;
 #pragma warning restore CS0618 // Type or member is obsolete
 
+        [FormerlySerializedAs("serializableTypePatternsInitialized")]
         [SerializeField]
         [HideInInspector]
-        private bool serializableTypePatternsInitialized;
+        private bool _serializableTypePatternsInitialized;
 
         [NonSerialized]
-        private HashSet<string> wbuttonCustomColorSkipAutoSuggest;
+        private HashSet<string> _wbuttonCustomColorSkipAutoSuggest;
 
         [NonSerialized]
-        private HashSet<string> wgroupCustomColorSkipAutoSuggest;
+        private HashSet<string> _wgroupCustomColorSkipAutoSuggest;
 
+        [FormerlySerializedAs("inlineEditorFoldoutBehavior")]
         [SerializeField]
         [Tooltip(
             "Default foldout behavior used by WInLineEditor when a field does not override the mode."
@@ -758,26 +807,27 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             autoIncludeCount: 1,
             collapsible: true
         )]
-        private InlineEditorFoldoutBehavior inlineEditorFoldoutBehavior =
+        private InlineEditorFoldoutBehavior _inlineEditorFoldoutBehavior =
             InlineEditorFoldoutBehavior.StartCollapsed;
 
         internal HashSet<string> WButtonCustomColorSkipAutoSuggest
         {
-            get => wbuttonCustomColorSkipAutoSuggest;
-            set => wbuttonCustomColorSkipAutoSuggest = value;
+            get => _wbuttonCustomColorSkipAutoSuggest;
+            set => _wbuttonCustomColorSkipAutoSuggest = value;
         }
 
         internal HashSet<string> WGroupCustomColorSkipAutoSuggest
         {
-            get => wgroupCustomColorSkipAutoSuggest;
-            set => wgroupCustomColorSkipAutoSuggest = value;
+            get => _wgroupCustomColorSkipAutoSuggest;
+            set => _wgroupCustomColorSkipAutoSuggest = value;
         }
 
         [Serializable]
         internal sealed class SerializableTypeIgnorePattern
         {
+            [FormerlySerializedAs("pattern")]
             [SerializeField]
-            internal string pattern = string.Empty;
+            internal string _pattern = string.Empty;
 
             public SerializableTypeIgnorePattern() { }
 
@@ -788,37 +838,39 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
             public string Pattern
             {
-                get => pattern ?? string.Empty;
-                set => pattern = value ?? string.Empty;
+                get => _pattern ?? string.Empty;
+                set => _pattern = value ?? string.Empty;
             }
         }
 
         [Serializable]
         internal sealed class WButtonCustomColor
         {
+            [FormerlySerializedAs("buttonColor")]
             [SerializeField]
-            internal Color buttonColor = Color.white;
+            internal Color _buttonColor = Color.white;
 
+            [FormerlySerializedAs("textColor")]
             [SerializeField]
-            internal Color textColor = Color.black;
+            internal Color _textColor = Color.black;
 
             public Color ButtonColor
             {
-                get => buttonColor;
-                set => buttonColor = value;
+                get => _buttonColor;
+                set => _buttonColor = value;
             }
 
             public Color TextColor
             {
-                get => textColor;
-                set => textColor = value;
+                get => _textColor;
+                set => _textColor = value;
             }
 
             public void EnsureReadableText()
             {
-                if (textColor.maxColorComponent <= 0f)
+                if (_textColor.maxColorComponent <= 0f)
                 {
-                    textColor = WButtonColorUtility.GetReadableTextColor(buttonColor);
+                    _textColor = WButtonColorUtility.GetReadableTextColor(_buttonColor);
                 }
             }
         }
@@ -1002,29 +1054,31 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [Serializable]
         internal sealed class WGroupCustomColor
         {
+            [FormerlySerializedAs("backgroundColor")]
             [SerializeField]
-            internal Color backgroundColor = DefaultColorKeyButtonColor;
+            internal Color _backgroundColor = DefaultColorKeyButtonColor;
 
+            [FormerlySerializedAs("textColor")]
             [SerializeField]
-            internal Color textColor = Color.white;
+            internal Color _textColor = Color.white;
 
             public Color BackgroundColor
             {
-                get => backgroundColor;
-                set => backgroundColor = value;
+                get => _backgroundColor;
+                set => _backgroundColor = value;
             }
 
             public Color TextColor
             {
-                get => textColor;
-                set => textColor = value;
+                get => _textColor;
+                set => _textColor = value;
             }
 
             public void EnsureReadableText()
             {
-                if (textColor.maxColorComponent <= 0f)
+                if (_textColor.maxColorComponent <= 0f)
                 {
-                    textColor = WButtonColorUtility.GetReadableTextColor(backgroundColor);
+                    _textColor = WButtonColorUtility.GetReadableTextColor(_backgroundColor);
                 }
             }
         }
@@ -1036,55 +1090,59 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [Serializable]
         private sealed class WEnumToggleButtonsCustomColor
         {
+            [FormerlySerializedAs("selectedBackgroundColor")]
             [SerializeField]
-            private Color selectedBackgroundColor = DefaultColorKeyButtonColor;
+            private Color _selectedBackgroundColor = DefaultColorKeyButtonColor;
 
+            [FormerlySerializedAs("selectedTextColor")]
             [SerializeField]
-            private Color selectedTextColor = Color.white;
+            private Color _selectedTextColor = Color.white;
 
+            [FormerlySerializedAs("inactiveBackgroundColor")]
             [SerializeField]
-            private Color inactiveBackgroundColor = DefaultLightThemeButtonColor;
+            private Color _inactiveBackgroundColor = DefaultLightThemeButtonColor;
 
+            [FormerlySerializedAs("inactiveTextColor")]
             [SerializeField]
-            private Color inactiveTextColor = Color.black;
+            private Color _inactiveTextColor = Color.black;
 
             public Color SelectedBackgroundColor
             {
-                get => selectedBackgroundColor;
-                set => selectedBackgroundColor = value;
+                get => _selectedBackgroundColor;
+                set => _selectedBackgroundColor = value;
             }
 
             public Color SelectedTextColor
             {
-                get => selectedTextColor;
-                set => selectedTextColor = value;
+                get => _selectedTextColor;
+                set => _selectedTextColor = value;
             }
 
             public Color InactiveBackgroundColor
             {
-                get => inactiveBackgroundColor;
-                set => inactiveBackgroundColor = value;
+                get => _inactiveBackgroundColor;
+                set => _inactiveBackgroundColor = value;
             }
 
             public Color InactiveTextColor
             {
-                get => inactiveTextColor;
-                set => inactiveTextColor = value;
+                get => _inactiveTextColor;
+                set => _inactiveTextColor = value;
             }
 
             public void EnsureReadableText()
             {
-                if (selectedTextColor.maxColorComponent <= 0f)
+                if (_selectedTextColor.maxColorComponent <= 0f)
                 {
-                    selectedTextColor = WButtonColorUtility.GetReadableTextColor(
-                        selectedBackgroundColor
+                    _selectedTextColor = WButtonColorUtility.GetReadableTextColor(
+                        _selectedBackgroundColor
                     );
                 }
 
-                if (inactiveTextColor.maxColorComponent <= 0f)
+                if (_inactiveTextColor.maxColorComponent <= 0f)
                 {
-                    inactiveTextColor = WButtonColorUtility.GetReadableTextColor(
-                        inactiveBackgroundColor
+                    _inactiveTextColor = WButtonColorUtility.GetReadableTextColor(
+                        _inactiveBackgroundColor
                     );
                 }
             }
@@ -1164,16 +1222,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// </summary>
         public int StringInListPageSize
         {
-            get => Mathf.Clamp(stringInListPageSize, MinPageSize, MaxPageSize);
+            get => Mathf.Clamp(_stringInListPageSize, MinPageSize, MaxPageSize);
             set
             {
                 int clamped = Mathf.Clamp(value, MinPageSize, MaxPageSize);
-                if (clamped == stringInListPageSize)
+                if (clamped == _stringInListPageSize)
                 {
                     return;
                 }
 
-                stringInListPageSize = clamped;
+                _stringInListPageSize = clamped;
                 SaveSettings();
             }
         }
@@ -1183,16 +1241,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// </summary>
         public int SerializableSetPageSize
         {
-            get => Mathf.Clamp(serializableSetPageSize, MinPageSize, MaxPageSize);
+            get => Mathf.Clamp(_serializableSetPageSize, MinPageSize, MaxPageSize);
             set
             {
                 int clamped = Mathf.Clamp(value, MinPageSize, MaxPageSize);
-                if (clamped == serializableSetPageSize)
+                if (clamped == _serializableSetPageSize)
                 {
                     return;
                 }
 
-                serializableSetPageSize = clamped;
+                _serializableSetPageSize = clamped;
                 SaveSettings();
             }
         }
@@ -1202,15 +1260,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// </summary>
         public bool SerializableSetStartCollapsed
         {
-            get => serializableSetStartCollapsed;
+            get => _serializableSetStartCollapsed;
             set
             {
-                if (serializableSetStartCollapsed == value)
+                if (_serializableSetStartCollapsed == value)
                 {
                     return;
                 }
 
-                serializableSetStartCollapsed = value;
+                _serializableSetStartCollapsed = value;
                 SaveSettings();
             }
         }
@@ -1222,19 +1280,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         {
             get =>
                 Mathf.Clamp(
-                    serializableDictionaryPageSize,
+                    _serializableDictionaryPageSize,
                     MinPageSize,
                     MaxSerializableDictionaryPageSize
                 );
             set
             {
                 int clamped = Mathf.Clamp(value, MinPageSize, MaxSerializableDictionaryPageSize);
-                if (clamped == serializableDictionaryPageSize)
+                if (clamped == _serializableDictionaryPageSize)
                 {
                     return;
                 }
 
-                serializableDictionaryPageSize = clamped;
+                _serializableDictionaryPageSize = clamped;
                 SaveSettings();
             }
         }
@@ -1244,15 +1302,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// </summary>
         public bool SerializableDictionaryStartCollapsed
         {
-            get => serializableDictionaryStartCollapsed;
+            get => _serializableDictionaryStartCollapsed;
             set
             {
-                if (serializableDictionaryStartCollapsed == value)
+                if (_serializableDictionaryStartCollapsed == value)
                 {
                     return;
                 }
 
-                serializableDictionaryStartCollapsed = value;
+                _serializableDictionaryStartCollapsed = value;
                 SaveSettings();
             }
         }
@@ -1262,15 +1320,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// </summary>
         public bool WGroupFoldoutsStartCollapsed
         {
-            get => wgroupFoldoutsStartCollapsed;
+            get => _wgroupFoldoutsStartCollapsed;
             set
             {
-                if (wgroupFoldoutsStartCollapsed == value)
+                if (_wgroupFoldoutsStartCollapsed == value)
                 {
                     return;
                 }
 
-                wgroupFoldoutsStartCollapsed = value;
+                _wgroupFoldoutsStartCollapsed = value;
                 WGroupLayoutBuilder.ClearCache();
                 SaveSettings();
             }
@@ -1281,16 +1339,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// </summary>
         public int EnumToggleButtonsPageSize
         {
-            get => Mathf.Clamp(enumToggleButtonsPageSize, MinPageSize, MaxPageSize);
+            get => Mathf.Clamp(_enumToggleButtonsPageSize, MinPageSize, MaxPageSize);
             set
             {
                 int clamped = Mathf.Clamp(value, MinPageSize, MaxPageSize);
-                if (clamped == enumToggleButtonsPageSize)
+                if (clamped == _enumToggleButtonsPageSize)
                 {
                     return;
                 }
 
-                enumToggleButtonsPageSize = clamped;
+                _enumToggleButtonsPageSize = clamped;
                 SaveSettings();
             }
         }
@@ -1299,14 +1357,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [Obsolete("Use WButtonCustomColorDictionary for serialization instead.")]
         private sealed class WButtonPriorityColor
         {
+            [FormerlySerializedAs("priority")]
             [SerializeField]
-            internal string priority = DefaultWButtonColorKey;
+            internal string _priority = DefaultWButtonColorKey;
 
+            [FormerlySerializedAs("buttonColor")]
             [SerializeField]
-            private Color buttonColor = Color.white;
+            private Color _buttonColor = Color.white;
 
+            [FormerlySerializedAs("textColor")]
             [SerializeField]
-            private Color textColor = Color.black;
+            private Color _textColor = Color.black;
 
             public WButtonPriorityColor() { }
 
@@ -1320,23 +1381,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             public string Priority
             {
                 get =>
-                    string.IsNullOrWhiteSpace(priority) ? DefaultWButtonColorKey : priority.Trim();
+                    string.IsNullOrWhiteSpace(_priority)
+                        ? DefaultWButtonColorKey
+                        : _priority.Trim();
                 set =>
-                    priority = string.IsNullOrWhiteSpace(value)
+                    _priority = string.IsNullOrWhiteSpace(value)
                         ? DefaultWButtonColorKey
                         : value.Trim();
             }
 
             public Color ButtonColor
             {
-                get => buttonColor;
-                set => buttonColor = value;
+                get => _buttonColor;
+                set => _buttonColor = value;
             }
 
             public Color TextColor
             {
-                get => textColor;
-                set => textColor = value;
+                get => _textColor;
+                set => _textColor = value;
             }
         }
 
@@ -1345,16 +1408,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// </summary>
         public int WButtonPageSize
         {
-            get => Mathf.Clamp(wbuttonPageSize, MinPageSize, MaxPageSize);
+            get => Mathf.Clamp(_wbuttonPageSize, MinPageSize, MaxPageSize);
             set
             {
                 int clamped = Mathf.Clamp(value, MinPageSize, MaxPageSize);
-                if (clamped == wbuttonPageSize)
+                if (clamped == _wbuttonPageSize)
                 {
                     return;
                 }
 
-                wbuttonPageSize = clamped;
+                _wbuttonPageSize = clamped;
                 SaveSettings();
             }
         }
@@ -1364,16 +1427,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// </summary>
         public int WButtonHistorySize
         {
-            get => Mathf.Clamp(wbuttonHistorySize, MinWButtonHistorySize, MaxWButtonHistorySize);
+            get => Mathf.Clamp(_wbuttonHistorySize, MinWButtonHistorySize, MaxWButtonHistorySize);
             set
             {
                 int clamped = Mathf.Clamp(value, MinWButtonHistorySize, MaxWButtonHistorySize);
-                if (clamped == wbuttonHistorySize)
+                if (clamped == _wbuttonHistorySize)
                 {
                     return;
                 }
 
-                wbuttonHistorySize = clamped;
+                _wbuttonHistorySize = clamped;
                 SaveSettings();
             }
         }
@@ -1383,15 +1446,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// </summary>
         public DuplicateRowAnimationMode DuplicateRowAnimation
         {
-            get => duplicateRowAnimationMode;
+            get => _duplicateRowAnimationMode;
             set
             {
-                if (duplicateRowAnimationMode == value)
+                if (_duplicateRowAnimationMode == value)
                 {
                     return;
                 }
 
-                duplicateRowAnimationMode = value;
+                _duplicateRowAnimationMode = value;
                 SaveSettings();
             }
         }
@@ -1401,15 +1464,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// </summary>
         public int DuplicateRowTweenCycles
         {
-            get => duplicateRowTweenCycles;
+            get => _duplicateRowTweenCycles;
             set
             {
-                if (duplicateRowTweenCycles == value)
+                if (_duplicateRowTweenCycles == value)
                 {
                     return;
                 }
 
-                duplicateRowTweenCycles = value;
+                _duplicateRowTweenCycles = value;
                 SaveSettings();
             }
         }
@@ -1421,9 +1484,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         {
             get =>
                 Mathf.Clamp(
-                    detectAssetChangeLoopWindowSeconds <= 0f
+                    _detectAssetChangeLoopWindowSeconds <= 0f
                         ? DefaultDetectAssetChangeLoopWindowSeconds
-                        : detectAssetChangeLoopWindowSeconds,
+                        : _detectAssetChangeLoopWindowSeconds,
                     MinDetectAssetChangeLoopWindowSeconds,
                     MaxDetectAssetChangeLoopWindowSeconds
                 );
@@ -1434,29 +1497,32 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     MinDetectAssetChangeLoopWindowSeconds,
                     MaxDetectAssetChangeLoopWindowSeconds
                 );
-                if (Mathf.Approximately(clamped, detectAssetChangeLoopWindowSeconds))
+                if (Mathf.Approximately(clamped, _detectAssetChangeLoopWindowSeconds))
                 {
                     return;
                 }
 
-                detectAssetChangeLoopWindowSeconds = clamped;
+                _detectAssetChangeLoopWindowSeconds = clamped;
                 SaveSettings();
             }
         }
 
         internal IReadOnlyList<string> GetSerializableTypeIgnorePatterns()
         {
-            if (serializableTypeIgnorePatterns == null || serializableTypeIgnorePatterns.Count == 0)
+            if (
+                _serializableTypeIgnorePatterns == null
+                || _serializableTypeIgnorePatterns.Count == 0
+            )
             {
-                serializableTypeIgnorePatternCache = Array.Empty<string>();
-                serializableTypeIgnorePatternCacheVersion = 0;
-                return serializableTypeIgnorePatternCache;
+                _serializableTypeIgnorePatternCache = Array.Empty<string>();
+                _serializableTypeIgnorePatternCacheVersion = 0;
+                return _serializableTypeIgnorePatternCache;
             }
 
             int version = ComputeSerializableTypePatternVersion();
-            if (version == serializableTypeIgnorePatternCacheVersion)
+            if (version == _serializableTypeIgnorePatternCacheVersion)
             {
-                return serializableTypeIgnorePatternCache;
+                return _serializableTypeIgnorePatternCache;
             }
 
             using PooledResource<List<string>> patternsLease = Buffers<string>.List.Get(
@@ -1466,7 +1532,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 out HashSet<string> seen
             );
 
-            foreach (SerializableTypeIgnorePattern entry in serializableTypeIgnorePatterns)
+            foreach (SerializableTypeIgnorePattern entry in _serializableTypeIgnorePatterns)
             {
                 if (entry == null)
                 {
@@ -1486,10 +1552,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 }
             }
 
-            serializableTypeIgnorePatternCache =
+            _serializableTypeIgnorePatternCache =
                 patterns.Count == 0 ? Array.Empty<string>() : patterns.ToArray();
-            serializableTypeIgnorePatternCacheVersion = version;
-            return serializableTypeIgnorePatternCache;
+            _serializableTypeIgnorePatternCacheVersion = version;
+            return _serializableTypeIgnorePatternCache;
         }
 
         /// <summary>
@@ -1511,27 +1577,30 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public static bool ShouldStartSerializableSetCollapsed()
         {
             UnityHelpersSettings settings = instance;
-            return settings == null || settings.serializableSetStartCollapsed;
+            return settings == null || settings._serializableSetStartCollapsed;
         }
 
         private void InvalidateSerializableTypePatternCache()
         {
-            serializableTypeIgnorePatternCache = Array.Empty<string>();
-            serializableTypeIgnorePatternCacheVersion = int.MinValue;
+            _serializableTypeIgnorePatternCache = Array.Empty<string>();
+            _serializableTypeIgnorePatternCacheVersion = int.MinValue;
         }
 
         private int ComputeSerializableTypePatternVersion()
         {
-            if (serializableTypeIgnorePatterns == null || serializableTypeIgnorePatterns.Count == 0)
+            if (
+                _serializableTypeIgnorePatterns == null
+                || _serializableTypeIgnorePatterns.Count == 0
+            )
             {
                 return 0;
             }
 
             HashCode hash = new HashCode();
-            hash.Add(serializableTypeIgnorePatterns.Count);
-            for (int i = 0; i < serializableTypeIgnorePatterns.Count; i++)
+            hash.Add(_serializableTypeIgnorePatterns.Count);
+            for (int i = 0; i < _serializableTypeIgnorePatterns.Count; i++)
             {
-                SerializableTypeIgnorePattern entry = serializableTypeIgnorePatterns[i];
+                SerializableTypeIgnorePattern entry = _serializableTypeIgnorePatterns[i];
                 string trimmed = entry?.Pattern?.Trim() ?? string.Empty;
                 hash.Add(trimmed);
             }
@@ -1554,7 +1623,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public static bool ShouldStartSerializableDictionaryCollapsed()
         {
             UnityHelpersSettings settings = instance;
-            return settings == null || settings.serializableDictionaryStartCollapsed;
+            return settings == null || settings._serializableDictionaryStartCollapsed;
         }
 
         /// <summary>
@@ -1563,7 +1632,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public static bool ShouldStartWGroupCollapsed()
         {
             UnityHelpersSettings settings = instance;
-            return settings == null || settings.wgroupFoldoutsStartCollapsed;
+            return settings == null || settings._wgroupFoldoutsStartCollapsed;
         }
 
         public static int GetEnumToggleButtonsPageSize()
@@ -1604,11 +1673,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         {
             UnityHelpersSettings settings = instance;
             int clamped = Mathf.Clamp(
-                settings.wgroupAutoIncludeRowCount,
+                settings._wgroupAutoIncludeRowCount,
                 MinWGroupAutoIncludeRowCount,
                 MaxWGroupAutoIncludeRowCount
             );
-            return new WGroupAutoIncludeConfiguration(settings.wgroupAutoIncludeMode, clamped);
+            return new WGroupAutoIncludeConfiguration(settings._wgroupAutoIncludeMode, clamped);
         }
 
 #if UNITY_EDITOR
@@ -1618,8 +1687,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         )
         {
             UnityHelpersSettings settings = instance;
-            settings.wgroupAutoIncludeMode = mode;
-            settings.wgroupAutoIncludeRowCount = Mathf.Clamp(
+            settings._wgroupAutoIncludeMode = mode;
+            settings._wgroupAutoIncludeRowCount = Mathf.Clamp(
                 rowCount,
                 MinWGroupAutoIncludeRowCount,
                 MaxWGroupAutoIncludeRowCount
@@ -1667,30 +1736,30 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         public static WButtonActionsPlacement GetWButtonActionsPlacement()
         {
-            return instance.wbuttonActionsPlacement;
+            return instance._wbuttonActionsPlacement;
         }
 
         public static WButtonFoldoutBehavior GetWButtonFoldoutBehavior()
         {
-            return instance.wbuttonFoldoutBehavior;
+            return instance._wbuttonFoldoutBehavior;
         }
 
         public static bool ShouldTweenWButtonFoldouts()
         {
-            return instance.wbuttonFoldoutTweenEnabled;
+            return instance._wbuttonFoldoutTweenEnabled;
         }
 
         public static float GetWButtonFoldoutSpeed()
         {
-            return Mathf.Clamp(instance.wbuttonFoldoutSpeed, MinFoldoutSpeed, MaxFoldoutSpeed);
+            return Mathf.Clamp(instance._wbuttonFoldoutSpeed, MinFoldoutSpeed, MaxFoldoutSpeed);
         }
 
         public static WButtonPaletteEntry GetWButtonCancelButtonColors()
         {
             UnityHelpersSettings settings = instance;
             return new WButtonPaletteEntry(
-                settings.wbuttonCancelButtonColor,
-                settings.wbuttonCancelButtonTextColor
+                settings._wbuttonCancelButtonColor,
+                settings._wbuttonCancelButtonTextColor
             );
         }
 
@@ -1698,20 +1767,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         {
             UnityHelpersSettings settings = instance;
             return new WButtonPaletteEntry(
-                settings.wbuttonClearHistoryButtonColor,
-                settings.wbuttonClearHistoryButtonTextColor
+                settings._wbuttonClearHistoryButtonColor,
+                settings._wbuttonClearHistoryButtonTextColor
             );
         }
 
         public static bool ShouldTweenSerializableDictionaryFoldouts()
         {
-            return instance.serializableDictionaryFoldoutTweenEnabled;
+            return instance._serializableDictionaryFoldoutTweenEnabled;
         }
 
         public static float GetSerializableDictionaryFoldoutSpeed()
         {
             return Mathf.Clamp(
-                instance.serializableDictionaryFoldoutSpeed,
+                instance._serializableDictionaryFoldoutSpeed,
                 MinFoldoutSpeed,
                 MaxFoldoutSpeed
             );
@@ -1719,13 +1788,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         public static bool ShouldTweenSerializableSortedDictionaryFoldouts()
         {
-            return instance.serializableSortedDictionaryFoldoutTweenEnabled;
+            return instance._serializableSortedDictionaryFoldoutTweenEnabled;
         }
 
         public static float GetSerializableSortedDictionaryFoldoutSpeed()
         {
             return Mathf.Clamp(
-                instance.serializableSortedDictionaryFoldoutSpeed,
+                instance._serializableSortedDictionaryFoldoutSpeed,
                 MinFoldoutSpeed,
                 MaxFoldoutSpeed
             );
@@ -1733,13 +1802,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         public static bool ShouldTweenSerializableSetFoldouts()
         {
-            return instance.serializableSetFoldoutTweenEnabled;
+            return instance._serializableSetFoldoutTweenEnabled;
         }
 
         public static float GetSerializableSetFoldoutSpeed()
         {
             return Mathf.Clamp(
-                instance.serializableSetFoldoutSpeed,
+                instance._serializableSetFoldoutSpeed,
                 MinFoldoutSpeed,
                 MaxFoldoutSpeed
             );
@@ -1747,13 +1816,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         public static bool ShouldTweenSerializableSortedSetFoldouts()
         {
-            return instance.serializableSortedSetFoldoutTweenEnabled;
+            return instance._serializableSortedSetFoldoutTweenEnabled;
         }
 
         public static float GetSerializableSortedSetFoldoutSpeed()
         {
             return Mathf.Clamp(
-                instance.serializableSortedSetFoldoutSpeed,
+                instance._serializableSortedSetFoldoutSpeed,
                 MinFoldoutSpeed,
                 MaxFoldoutSpeed
             );
@@ -1761,33 +1830,33 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         public static DuplicateRowAnimationMode GetDuplicateRowAnimationMode()
         {
-            return instance.duplicateRowAnimationMode;
+            return instance._duplicateRowAnimationMode;
         }
 
         public static int GetDuplicateRowTweenCycleLimit()
         {
-            return instance.duplicateRowTweenCycles;
+            return instance._duplicateRowTweenCycles;
         }
 
         public static bool ShouldTweenSerializableSetDuplicates()
         {
-            return instance.serializableSetDuplicateTweenEnabled
-                && instance.duplicateRowAnimationMode == DuplicateRowAnimationMode.Tween;
+            return instance._serializableSetDuplicateTweenEnabled
+                && instance._duplicateRowAnimationMode == DuplicateRowAnimationMode.Tween;
         }
 
         public static int GetSerializableSetDuplicateTweenCycleLimit()
         {
-            if (!instance.serializableSetDuplicateTweenSettingsInitialized)
+            if (!instance._serializableSetDuplicateTweenSettingsInitialized)
             {
-                return instance.duplicateRowTweenCycles;
+                return instance._duplicateRowTweenCycles;
             }
 
-            return instance.serializableSetDuplicateTweenCycles;
+            return instance._serializableSetDuplicateTweenCycles;
         }
 
         public static InlineEditorFoldoutBehavior GetInlineEditorFoldoutBehavior()
         {
-            return instance.inlineEditorFoldoutBehavior;
+            return instance._inlineEditorFoldoutBehavior;
         }
 
         internal static void RegisterPaletteManualEdit(string propertyPath, string key)
@@ -1803,52 +1872,58 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         internal static class SerializedPropertyNames
         {
             internal const string SerializableTypeIgnorePatterns = nameof(
-                serializableTypeIgnorePatterns
+                _serializableTypeIgnorePatterns
             );
             internal const string SerializableTypePatternsInitialized = nameof(
-                serializableTypePatternsInitialized
+                _serializableTypePatternsInitialized
             );
             internal const string SerializableTypePattern = nameof(
-                SerializableTypeIgnorePattern.pattern
+                SerializableTypeIgnorePattern._pattern
             );
-            internal const string LegacyWButtonPriorityColors = nameof(legacyWButtonPriorityColors);
-            internal const string WButtonCustomColors = nameof(wbuttonCustomColors);
-            internal const string WGroupCustomColors = nameof(wgroupCustomColors);
+            internal const string LegacyWButtonPriorityColors = nameof(
+                _legacyWButtonPriorityColors
+            );
+            internal const string WButtonCustomColors = nameof(_wbuttonCustomColors);
+            internal const string WGroupCustomColors = nameof(_wgroupCustomColors);
             internal const string WGroupFoldoutsStartCollapsed = nameof(
-                wgroupFoldoutsStartCollapsed
+                _wgroupFoldoutsStartCollapsed
             );
             internal const string WEnumToggleButtonsCustomColors = nameof(
-                wenumToggleButtonsCustomColors
+                _wenumToggleButtonsCustomColors
             );
-            internal const string InlineEditorFoldoutBehavior = nameof(inlineEditorFoldoutBehavior);
-            internal const string WButtonFoldoutTweenEnabled = nameof(wbuttonFoldoutTweenEnabled);
+            internal const string InlineEditorFoldoutBehavior = nameof(
+                _inlineEditorFoldoutBehavior
+            );
+            internal const string WButtonFoldoutTweenEnabled = nameof(_wbuttonFoldoutTweenEnabled);
             internal const string SerializableDictionaryFoldoutTweenEnabled = nameof(
-                serializableDictionaryFoldoutTweenEnabled
+                _serializableDictionaryFoldoutTweenEnabled
             );
             internal const string SerializableSortedDictionaryFoldoutTweenEnabled = nameof(
-                serializableSortedDictionaryFoldoutTweenEnabled
+                _serializableSortedDictionaryFoldoutTweenEnabled
             );
             internal const string SerializableSetFoldoutTweenEnabled = nameof(
-                serializableSetFoldoutTweenEnabled
+                _serializableSetFoldoutTweenEnabled
             );
             internal const string SerializableSortedSetFoldoutTweenEnabled = nameof(
-                serializableSortedSetFoldoutTweenEnabled
+                _serializableSortedSetFoldoutTweenEnabled
             );
             internal const string FoldoutTweenSettingsInitialized = nameof(
-                foldoutTweenSettingsInitialized
+                _foldoutTweenSettingsInitialized
             );
             internal const string DetectAssetChangeLoopWindowSeconds = nameof(
-                detectAssetChangeLoopWindowSeconds
+                _detectAssetChangeLoopWindowSeconds
             );
 #pragma warning disable CS0618 // Type or member is obsolete
-            internal const string WButtonPriority = nameof(WButtonPriorityColor.priority);
+            internal const string WButtonPriority = nameof(WButtonPriorityColor._priority);
 #pragma warning restore CS0618 // Type or member is obsolete
-            internal const string WButtonCustomColorButton = nameof(WButtonCustomColor.buttonColor);
-            internal const string WButtonCustomColorText = nameof(WButtonCustomColor.textColor);
-            internal const string WGroupCustomColorBackground = nameof(
-                WGroupCustomColor.backgroundColor
+            internal const string WButtonCustomColorButton = nameof(
+                WButtonCustomColor._buttonColor
             );
-            internal const string WGroupCustomColorText = nameof(WGroupCustomColor.textColor);
+            internal const string WButtonCustomColorText = nameof(WButtonCustomColor._textColor);
+            internal const string WGroupCustomColorBackground = nameof(
+                WGroupCustomColor._backgroundColor
+            );
+            internal const string WGroupCustomColorText = nameof(WGroupCustomColor._textColor);
         }
 
         /// <summary>
@@ -1900,101 +1975,101 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// </summary>
         internal void OnEnable()
         {
-            stringInListPageSize = Mathf.Clamp(
-                stringInListPageSize <= 0 ? DefaultStringInListPageSize : stringInListPageSize,
+            _stringInListPageSize = Mathf.Clamp(
+                _stringInListPageSize <= 0 ? DefaultStringInListPageSize : _stringInListPageSize,
                 MinPageSize,
                 MaxPageSize
             );
-            serializableSetPageSize = Mathf.Clamp(
-                serializableSetPageSize <= 0
+            _serializableSetPageSize = Mathf.Clamp(
+                _serializableSetPageSize <= 0
                     ? DefaultSerializableSetPageSize
-                    : serializableSetPageSize,
+                    : _serializableSetPageSize,
                 MinPageSize,
                 MaxPageSize
             );
-            serializableDictionaryPageSize = Mathf.Clamp(
-                serializableDictionaryPageSize <= 0
+            _serializableDictionaryPageSize = Mathf.Clamp(
+                _serializableDictionaryPageSize <= 0
                     ? DefaultSerializableDictionaryPageSize
-                    : serializableDictionaryPageSize,
+                    : _serializableDictionaryPageSize,
                 MinPageSize,
                 MaxSerializableDictionaryPageSize
             );
-            enumToggleButtonsPageSize = Mathf.Clamp(
-                enumToggleButtonsPageSize <= 0
+            _enumToggleButtonsPageSize = Mathf.Clamp(
+                _enumToggleButtonsPageSize <= 0
                     ? DefaultEnumToggleButtonsPageSize
-                    : enumToggleButtonsPageSize,
+                    : _enumToggleButtonsPageSize,
                 MinPageSize,
                 MaxPageSize
             );
-            wbuttonPageSize = Mathf.Clamp(
-                wbuttonPageSize <= 0 ? DefaultWButtonPageSize : wbuttonPageSize,
+            _wbuttonPageSize = Mathf.Clamp(
+                _wbuttonPageSize <= 0 ? DefaultWButtonPageSize : _wbuttonPageSize,
                 MinPageSize,
                 MaxPageSize
             );
-            wbuttonHistorySize = Mathf.Clamp(
-                wbuttonHistorySize <= 0 ? DefaultWButtonHistorySize : wbuttonHistorySize,
+            _wbuttonHistorySize = Mathf.Clamp(
+                _wbuttonHistorySize <= 0 ? DefaultWButtonHistorySize : _wbuttonHistorySize,
                 MinWButtonHistorySize,
                 MaxWButtonHistorySize
             );
-            if (!Enum.IsDefined(typeof(WButtonActionsPlacement), wbuttonActionsPlacement))
+            if (!Enum.IsDefined(typeof(WButtonActionsPlacement), _wbuttonActionsPlacement))
             {
-                wbuttonActionsPlacement = WButtonActionsPlacement.Top;
+                _wbuttonActionsPlacement = WButtonActionsPlacement.Top;
             }
 
-            if (!Enum.IsDefined(typeof(WButtonFoldoutBehavior), wbuttonFoldoutBehavior))
+            if (!Enum.IsDefined(typeof(WButtonFoldoutBehavior), _wbuttonFoldoutBehavior))
             {
-                wbuttonFoldoutBehavior = WButtonFoldoutBehavior.StartExpanded;
+                _wbuttonFoldoutBehavior = WButtonFoldoutBehavior.StartExpanded;
             }
-            if (!Enum.IsDefined(typeof(WGroupAutoIncludeMode), wgroupAutoIncludeMode))
+            if (!Enum.IsDefined(typeof(WGroupAutoIncludeMode), _wgroupAutoIncludeMode))
             {
-                wgroupAutoIncludeMode = WGroupAutoIncludeMode.Infinite;
+                _wgroupAutoIncludeMode = WGroupAutoIncludeMode.Infinite;
             }
-            if (wgroupAutoIncludeRowCount < MinWGroupAutoIncludeRowCount)
+            if (_wgroupAutoIncludeRowCount < MinWGroupAutoIncludeRowCount)
             {
-                wgroupAutoIncludeRowCount = DefaultWGroupAutoIncludeRowCount;
+                _wgroupAutoIncludeRowCount = DefaultWGroupAutoIncludeRowCount;
             }
-            wgroupAutoIncludeRowCount = Mathf.Clamp(
-                wgroupAutoIncludeRowCount,
+            _wgroupAutoIncludeRowCount = Mathf.Clamp(
+                _wgroupAutoIncludeRowCount,
                 MinWGroupAutoIncludeRowCount,
                 MaxWGroupAutoIncludeRowCount
             );
-            wbuttonFoldoutSpeed = Mathf.Clamp(
-                wbuttonFoldoutSpeed <= 0f ? DefaultFoldoutSpeed : wbuttonFoldoutSpeed,
+            _wbuttonFoldoutSpeed = Mathf.Clamp(
+                _wbuttonFoldoutSpeed <= 0f ? DefaultFoldoutSpeed : _wbuttonFoldoutSpeed,
                 MinFoldoutSpeed,
                 MaxFoldoutSpeed
             );
-            serializableDictionaryFoldoutSpeed = Mathf.Clamp(
-                serializableDictionaryFoldoutSpeed <= 0f
+            _serializableDictionaryFoldoutSpeed = Mathf.Clamp(
+                _serializableDictionaryFoldoutSpeed <= 0f
                     ? DefaultFoldoutSpeed
-                    : serializableDictionaryFoldoutSpeed,
+                    : _serializableDictionaryFoldoutSpeed,
                 MinFoldoutSpeed,
                 MaxFoldoutSpeed
             );
-            serializableSortedDictionaryFoldoutSpeed = Mathf.Clamp(
-                serializableSortedDictionaryFoldoutSpeed <= 0f
+            _serializableSortedDictionaryFoldoutSpeed = Mathf.Clamp(
+                _serializableSortedDictionaryFoldoutSpeed <= 0f
                     ? DefaultFoldoutSpeed
-                    : serializableSortedDictionaryFoldoutSpeed,
+                    : _serializableSortedDictionaryFoldoutSpeed,
                 MinFoldoutSpeed,
                 MaxFoldoutSpeed
             );
-            serializableSetFoldoutSpeed = Mathf.Clamp(
-                serializableSetFoldoutSpeed <= 0f
+            _serializableSetFoldoutSpeed = Mathf.Clamp(
+                _serializableSetFoldoutSpeed <= 0f
                     ? DefaultFoldoutSpeed
-                    : serializableSetFoldoutSpeed,
+                    : _serializableSetFoldoutSpeed,
                 MinFoldoutSpeed,
                 MaxFoldoutSpeed
             );
-            serializableSortedSetFoldoutSpeed = Mathf.Clamp(
-                serializableSortedSetFoldoutSpeed <= 0f
+            _serializableSortedSetFoldoutSpeed = Mathf.Clamp(
+                _serializableSortedSetFoldoutSpeed <= 0f
                     ? DefaultFoldoutSpeed
-                    : serializableSortedSetFoldoutSpeed,
+                    : _serializableSortedSetFoldoutSpeed,
                 MinFoldoutSpeed,
                 MaxFoldoutSpeed
             );
-            detectAssetChangeLoopWindowSeconds = Mathf.Clamp(
-                detectAssetChangeLoopWindowSeconds <= 0f
+            _detectAssetChangeLoopWindowSeconds = Mathf.Clamp(
+                _detectAssetChangeLoopWindowSeconds <= 0f
                     ? DefaultDetectAssetChangeLoopWindowSeconds
-                    : detectAssetChangeLoopWindowSeconds,
+                    : _detectAssetChangeLoopWindowSeconds,
                 MinDetectAssetChangeLoopWindowSeconds,
                 MaxDetectAssetChangeLoopWindowSeconds
             );
@@ -2042,7 +2117,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             EnsureWGroupCustomColorDefaults();
             ApplyRuntimeConfiguration();
             Save(true);
-            SettingsSaved?.Invoke();
+            OnSettingsSaved?.Invoke();
         }
 
         private void ApplyRuntimeConfiguration()
@@ -2054,103 +2129,103 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         private bool EnsureSerializableTypePatternDefaults()
         {
-            serializableTypeIgnorePatterns ??= new List<SerializableTypeIgnorePattern>();
+            _serializableTypeIgnorePatterns ??= new List<SerializableTypeIgnorePattern>();
 
-            if (serializableTypePatternsInitialized)
+            if (_serializableTypePatternsInitialized)
             {
                 return false;
             }
 
-            if (serializableTypeIgnorePatterns.Count == 0)
+            if (_serializableTypeIgnorePatterns.Count == 0)
             {
                 IReadOnlyList<string> defaults = SerializableTypeCatalog.GetDefaultIgnorePatterns();
                 for (int index = 0; index < defaults.Count; index++)
                 {
-                    serializableTypeIgnorePatterns.Add(
+                    _serializableTypeIgnorePatterns.Add(
                         new SerializableTypeIgnorePattern(defaults[index])
                     );
                 }
                 InvalidateSerializableTypePatternCache();
             }
 
-            bool changed = !serializableTypePatternsInitialized;
-            serializableTypePatternsInitialized = true;
+            bool changed = !_serializableTypePatternsInitialized;
+            _serializableTypePatternsInitialized = true;
             return changed;
         }
 
         private bool EnsureFoldoutTweenDefaults()
         {
-            if (foldoutTweenSettingsInitialized)
+            if (_foldoutTweenSettingsInitialized)
             {
                 return false;
             }
 
-            if (!wbuttonFoldoutTweenEnabled)
+            if (!_wbuttonFoldoutTweenEnabled)
             {
-                wbuttonFoldoutTweenEnabled = true;
+                _wbuttonFoldoutTweenEnabled = true;
             }
 
-            if (!serializableDictionaryFoldoutTweenEnabled)
+            if (!_serializableDictionaryFoldoutTweenEnabled)
             {
-                serializableDictionaryFoldoutTweenEnabled = true;
+                _serializableDictionaryFoldoutTweenEnabled = true;
             }
 
-            if (!serializableSortedDictionaryFoldoutTweenEnabled)
+            if (!_serializableSortedDictionaryFoldoutTweenEnabled)
             {
-                serializableSortedDictionaryFoldoutTweenEnabled = true;
+                _serializableSortedDictionaryFoldoutTweenEnabled = true;
             }
 
-            if (!serializableSetFoldoutTweenEnabled)
+            if (!_serializableSetFoldoutTweenEnabled)
             {
-                serializableSetFoldoutTweenEnabled = true;
+                _serializableSetFoldoutTweenEnabled = true;
             }
 
-            if (!serializableSortedSetFoldoutTweenEnabled)
+            if (!_serializableSortedSetFoldoutTweenEnabled)
             {
-                serializableSortedSetFoldoutTweenEnabled = true;
+                _serializableSortedSetFoldoutTweenEnabled = true;
             }
 
-            foldoutTweenSettingsInitialized = true;
+            _foldoutTweenSettingsInitialized = true;
             return true;
         }
 
         private bool EnsureSerializableSetTweenDefaults()
         {
-            if (serializableSetDuplicateTweenSettingsInitialized)
+            if (_serializableSetDuplicateTweenSettingsInitialized)
             {
                 return false;
             }
 
-            serializableSetDuplicateTweenEnabled =
-                duplicateRowAnimationMode == DuplicateRowAnimationMode.Tween;
-            serializableSetDuplicateTweenCycles =
-                duplicateRowTweenCycles != 0
-                    ? duplicateRowTweenCycles
+            _serializableSetDuplicateTweenEnabled =
+                _duplicateRowAnimationMode == DuplicateRowAnimationMode.Tween;
+            _serializableSetDuplicateTweenCycles =
+                _duplicateRowTweenCycles != 0
+                    ? _duplicateRowTweenCycles
                     : DefaultDuplicateTweenCycles;
-            serializableSetDuplicateTweenSettingsInitialized = true;
+            _serializableSetDuplicateTweenSettingsInitialized = true;
             return true;
         }
 
         internal bool EnsureWButtonCustomColorDefaults()
         {
-            wbuttonCustomColors ??= new WButtonCustomColorDictionary();
+            _wbuttonCustomColors ??= new WButtonCustomColorDictionary();
 
             bool changed = false;
             changed |= MigrateLegacyWButtonPalette();
 
             if (
-                wbuttonCustomColors.TryGetValue(
+                _wbuttonCustomColors.TryGetValue(
                     DefaultWButtonColorKey,
                     out WButtonCustomColor legacyDefault
                 )
             )
             {
-                wbuttonCustomColors.TryAdd(WButtonLegacyColorKey, legacyDefault);
-                wbuttonCustomColors.Remove(DefaultWButtonColorKey);
+                _wbuttonCustomColors.TryAdd(WButtonLegacyColorKey, legacyDefault);
+                _wbuttonCustomColors.Remove(DefaultWButtonColorKey);
                 changed = true;
             }
 
-            if (!wbuttonCustomColors.ContainsKey(WButtonLegacyColorKey))
+            if (!_wbuttonCustomColors.ContainsKey(WButtonLegacyColorKey))
             {
                 WButtonCustomColor legacyColor = new()
                 {
@@ -2159,7 +2234,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         DefaultColorKeyButtonColor
                     ),
                 };
-                wbuttonCustomColors[WButtonLegacyColorKey] = legacyColor;
+                _wbuttonCustomColors[WButtonLegacyColorKey] = legacyColor;
                 changed = true;
             }
 
@@ -2176,14 +2251,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
             int paletteIndex = 0;
             foreach (
-                KeyValuePair<string, WButtonCustomColor> entry in wbuttonCustomColors.ToArray()
+                KeyValuePair<string, WButtonCustomColor> entry in _wbuttonCustomColors.ToArray()
             )
             {
                 WButtonCustomColor value = entry.Value;
                 if (value == null)
                 {
                     value = new WButtonCustomColor();
-                    wbuttonCustomColors[entry.Key] = value;
+                    _wbuttonCustomColors[entry.Key] = value;
                     value.ButtonColor = DefaultColorKeyButtonColor;
                     value.EnsureReadableText();
                     changed = true;
@@ -2232,13 +2307,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         private bool ShouldSkipWButtonAutoSuggest(string key)
         {
-            return ShouldSkipAutoSuggest(wbuttonCustomColorSkipAutoSuggest, key);
+            return ShouldSkipAutoSuggest(_wbuttonCustomColorSkipAutoSuggest, key);
         }
 
         private bool EnsureWButtonThemeEntry(string key, Color buttonColor, Color defaultTextColor)
         {
             if (
-                wbuttonCustomColors.TryGetValue(key, out WButtonCustomColor existing)
+                _wbuttonCustomColors.TryGetValue(key, out WButtonCustomColor existing)
                 && existing != null
             )
             {
@@ -2256,7 +2331,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 TextColor = textColor,
             };
             themeColor.EnsureReadableText();
-            wbuttonCustomColors[key] = themeColor;
+            _wbuttonCustomColors[key] = themeColor;
             return true;
         }
 
@@ -2276,13 +2351,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private bool MigrateLegacyWButtonPalette()
         {
 #pragma warning disable CS0618 // Type or member is obsolete
-            if (legacyWButtonPriorityColors == null || legacyWButtonPriorityColors.Count == 0)
+            if (_legacyWButtonPriorityColors == null || _legacyWButtonPriorityColors.Count == 0)
             {
                 return false;
             }
 
             bool changed = false;
-            foreach (WButtonPriorityColor legacy in legacyWButtonPriorityColors)
+            foreach (WButtonPriorityColor legacy in _legacyWButtonPriorityColors)
             {
 #pragma warning restore CS0618 // Type or member is obsolete
                 if (legacy == null)
@@ -2299,33 +2374,33 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             ? WButtonColorUtility.GetReadableTextColor(legacy.ButtonColor)
                             : legacy.TextColor,
                 };
-                wbuttonCustomColors[normalizedKey] = color;
+                _wbuttonCustomColors[normalizedKey] = color;
                 changed = true;
             }
 
-            legacyWButtonPriorityColors.Clear();
+            _legacyWButtonPriorityColors.Clear();
             return changed;
         }
 
         internal bool EnsureWGroupCustomColorDefaults()
         {
-            wgroupCustomColors ??= new WGroupCustomColorDictionary();
+            _wgroupCustomColors ??= new WGroupCustomColorDictionary();
 
             bool changed = false;
 
             if (
-                wgroupCustomColors.TryGetValue(
+                _wgroupCustomColors.TryGetValue(
                     DefaultWGroupColorKey,
                     out WGroupCustomColor legacyDefault
                 )
             )
             {
-                wgroupCustomColors.TryAdd(WGroupLegacyColorKey, legacyDefault);
-                wgroupCustomColors.Remove(DefaultWGroupColorKey);
+                _wgroupCustomColors.TryAdd(WGroupLegacyColorKey, legacyDefault);
+                _wgroupCustomColors.Remove(DefaultWGroupColorKey);
                 changed = true;
             }
 
-            if (!wgroupCustomColors.ContainsKey(WGroupLegacyColorKey))
+            if (!_wgroupCustomColors.ContainsKey(WGroupLegacyColorKey))
             {
                 WGroupCustomColor legacyColor = new()
                 {
@@ -2334,7 +2409,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         DefaultColorKeyButtonColor
                     ),
                 };
-                wgroupCustomColors[WGroupLegacyColorKey] = legacyColor;
+                _wgroupCustomColors[WGroupLegacyColorKey] = legacyColor;
                 changed = true;
             }
 
@@ -2350,13 +2425,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             );
 
             int paletteIndex = 0;
-            foreach (KeyValuePair<string, WGroupCustomColor> entry in wgroupCustomColors)
+            foreach (KeyValuePair<string, WGroupCustomColor> entry in _wgroupCustomColors)
             {
                 WGroupCustomColor value = entry.Value;
                 if (value == null)
                 {
                     value = new WGroupCustomColor();
-                    wgroupCustomColors[entry.Key] = value;
+                    _wgroupCustomColors[entry.Key] = value;
                     value.BackgroundColor = DefaultColorKeyButtonColor;
                     value.EnsureReadableText();
                     changed = true;
@@ -2405,19 +2480,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         private bool ShouldSkipWGroupAutoSuggest(string key)
         {
-            return ShouldSkipAutoSuggest(wgroupCustomColorSkipAutoSuggest, key);
+            return ShouldSkipAutoSuggest(_wgroupCustomColorSkipAutoSuggest, key);
         }
 
         private bool EnsureWEnumToggleButtonsCustomColorDefaults()
         {
-            if (wenumToggleButtonsCustomColors == null)
+            if (_wenumToggleButtonsCustomColors == null)
             {
-                wenumToggleButtonsCustomColors = new WEnumToggleButtonsCustomColorDictionary();
+                _wenumToggleButtonsCustomColors = new WEnumToggleButtonsCustomColorDictionary();
             }
 
             bool changed = false;
 
-            if (!wenumToggleButtonsCustomColors.ContainsKey(DefaultWEnumToggleButtonsColorKey))
+            if (!_wenumToggleButtonsCustomColors.ContainsKey(DefaultWEnumToggleButtonsColorKey))
             {
                 bool proSkin = EditorGUIUtility.isProSkin;
                 WEnumToggleButtonsCustomColor defaultColor = new()
@@ -2436,7 +2511,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         : DefaultLightThemeEnumInactiveTextColor,
                 };
                 defaultColor.EnsureReadableText();
-                wenumToggleButtonsCustomColors[DefaultWEnumToggleButtonsColorKey] = defaultColor;
+                _wenumToggleButtonsCustomColors[DefaultWEnumToggleButtonsColorKey] = defaultColor;
                 changed = true;
             }
 
@@ -2459,14 +2534,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 KeyValuePair<
                     string,
                     WEnumToggleButtonsCustomColor
-                > entry in wenumToggleButtonsCustomColors
+                > entry in _wenumToggleButtonsCustomColors
             )
             {
                 WEnumToggleButtonsCustomColor value = entry.Value;
                 if (value == null)
                 {
                     value = new WEnumToggleButtonsCustomColor();
-                    wenumToggleButtonsCustomColors[entry.Key] = value;
+                    _wenumToggleButtonsCustomColors[entry.Key] = value;
                     changed = true;
                 }
 
@@ -2497,7 +2572,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         )
         {
             if (
-                wenumToggleButtonsCustomColors.TryGetValue(
+                _wenumToggleButtonsCustomColors.TryGetValue(
                     key,
                     out WEnumToggleButtonsCustomColor existing
                 )
@@ -2525,14 +2600,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 InactiveTextColor = resolvedInactiveText,
             };
             themeColor.EnsureReadableText();
-            wenumToggleButtonsCustomColors[key] = themeColor;
+            _wenumToggleButtonsCustomColors[key] = themeColor;
             return true;
         }
 
         private bool EnsureThemeEntry(string key, Color background, Color defaultText)
         {
             if (
-                wgroupCustomColors.TryGetValue(key, out WGroupCustomColor existing)
+                _wgroupCustomColors.TryGetValue(key, out WGroupCustomColor existing)
                 && existing != null
             )
             {
@@ -2549,7 +2624,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         : defaultText,
             };
             themeColor.EnsureReadableText();
-            wgroupCustomColors[key] = themeColor;
+            _wgroupCustomColors[key] = themeColor;
             return true;
         }
 
@@ -2612,7 +2687,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return true;
             }
 
-            if (wbuttonCustomColors == null || wbuttonCustomColors.Count == 0)
+            if (_wbuttonCustomColors == null || _wbuttonCustomColors.Count == 0)
             {
                 return false;
             }
@@ -2621,7 +2696,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 ? DefaultWButtonColorKey
                 : colorKey.Trim();
 
-            foreach (string existingKey in wbuttonCustomColors.Keys)
+            foreach (string existingKey in _wbuttonCustomColors.Keys)
             {
                 if (string.Equals(existingKey, normalized, StringComparison.OrdinalIgnoreCase))
                 {
@@ -2644,14 +2719,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return true;
             }
 
-            if (wenumToggleButtonsCustomColors == null || wenumToggleButtonsCustomColors.Count == 0)
+            if (
+                _wenumToggleButtonsCustomColors == null
+                || _wenumToggleButtonsCustomColors.Count == 0
+            )
             {
                 return false;
             }
 
             string normalized = colorKey.Trim();
 
-            foreach (string existingKey in wenumToggleButtonsCustomColors.Keys)
+            foreach (string existingKey in _wenumToggleButtonsCustomColors.Keys)
             {
                 if (string.Equals(existingKey, normalized, StringComparison.OrdinalIgnoreCase))
                 {
@@ -2709,9 +2787,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
             string normalized = colorKey.Trim();
 
-            if (wbuttonCustomColors != null)
+            if (_wbuttonCustomColors != null)
             {
-                foreach (string existingKey in wbuttonCustomColors.Keys)
+                foreach (string existingKey in _wbuttonCustomColors.Keys)
                 {
                     if (string.Equals(existingKey, normalized, StringComparison.OrdinalIgnoreCase))
                     {
@@ -2739,10 +2817,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 )
             )
             {
-                wbuttonCustomColorSkipAutoSuggest ??= new HashSet<string>(
+                _wbuttonCustomColorSkipAutoSuggest ??= new HashSet<string>(
                     StringComparer.OrdinalIgnoreCase
                 );
-                wbuttonCustomColorSkipAutoSuggest.Add(trimmedKey);
+                _wbuttonCustomColorSkipAutoSuggest.Add(trimmedKey);
                 return;
             }
 
@@ -2754,10 +2832,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 )
             )
             {
-                wgroupCustomColorSkipAutoSuggest ??= new HashSet<string>(
+                _wgroupCustomColorSkipAutoSuggest ??= new HashSet<string>(
                     StringComparer.OrdinalIgnoreCase
                 );
-                wgroupCustomColorSkipAutoSuggest.Add(trimmedKey);
+                _wgroupCustomColorSkipAutoSuggest.Add(trimmedKey);
             }
         }
 
@@ -2795,9 +2873,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return DefaultWEnumToggleButtonsColorKey;
             }
 
-            if (wenumToggleButtonsCustomColors != null)
+            if (_wenumToggleButtonsCustomColors != null)
             {
-                foreach (string existingKey in wenumToggleButtonsCustomColors.Keys)
+                foreach (string existingKey in _wenumToggleButtonsCustomColors.Keys)
                 {
                     if (string.Equals(existingKey, colorKey, StringComparison.OrdinalIgnoreCase))
                     {
@@ -2861,8 +2939,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             )
             {
                 if (
-                    wbuttonCustomColors != null
-                    && wbuttonCustomColors.TryGetValue(
+                    _wbuttonCustomColors != null
+                    && _wbuttonCustomColors.TryGetValue(
                         WButtonLegacyColorKey,
                         out WButtonCustomColor legacy
                     )
@@ -2878,13 +2956,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return new WButtonPaletteEntry(fallbackButton, fallbackText);
             }
 
-            if (wbuttonCustomColors is not { Count: > 0 })
+            if (_wbuttonCustomColors is not { Count: > 0 })
             {
                 return GetThemeAwareDefaultWButtonPalette();
             }
 
             if (
-                wbuttonCustomColors.TryGetValue(normalized, out WButtonCustomColor directValue)
+                _wbuttonCustomColors.TryGetValue(normalized, out WButtonCustomColor directValue)
                 && directValue != null
             )
             {
@@ -2892,7 +2970,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return new WButtonPaletteEntry(directValue.ButtonColor, directValue.TextColor);
             }
 
-            foreach (KeyValuePair<string, WButtonCustomColor> entry in wbuttonCustomColors)
+            foreach (KeyValuePair<string, WButtonCustomColor> entry in _wbuttonCustomColors)
             {
                 if (
                     string.Equals(entry.Key, normalized, StringComparison.OrdinalIgnoreCase)
@@ -2928,8 +3006,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             EnsureWButtonCustomColorDefaults();
 
             if (
-                wbuttonCustomColors != null
-                && wbuttonCustomColors.TryGetValue(key, out WButtonCustomColor value)
+                _wbuttonCustomColors != null
+                && _wbuttonCustomColors.TryGetValue(key, out WButtonCustomColor value)
                 && value != null
             )
             {
@@ -2974,21 +3052,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return;
             }
 
-            wgroupCustomColors ??= new WGroupCustomColorDictionary();
+            _wgroupCustomColors ??= new WGroupCustomColorDictionary();
 
             if (ContainsWGroupColorKey(normalizedKey))
             {
                 return;
             }
 
-            int paletteIndex = wgroupCustomColors.Count;
+            int paletteIndex = _wgroupCustomColors.Count;
             Color suggested = WButtonColorUtility.SuggestPaletteColor(paletteIndex);
             WGroupCustomColor color = new()
             {
                 BackgroundColor = suggested,
                 TextColor = WButtonColorUtility.GetReadableTextColor(suggested),
             };
-            wgroupCustomColors[normalizedKey] = color;
+            _wgroupCustomColors[normalizedKey] = color;
             SaveSettings();
         }
 
@@ -3004,14 +3082,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return true;
             }
 
-            if (wgroupCustomColors == null || wgroupCustomColors.Count == 0)
+            if (_wgroupCustomColors == null || _wgroupCustomColors.Count == 0)
             {
                 return false;
             }
 
             string normalized = colorKey.Trim();
 
-            foreach (string existingKey in wgroupCustomColors.Keys)
+            foreach (string existingKey in _wgroupCustomColors.Keys)
             {
                 if (string.Equals(existingKey, normalized, StringComparison.OrdinalIgnoreCase))
                 {
@@ -3067,9 +3145,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return DefaultWGroupColorKey;
             }
 
-            if (wgroupCustomColors != null)
+            if (_wgroupCustomColors != null)
             {
-                foreach (string existingKey in wgroupCustomColors.Keys)
+                foreach (string existingKey in _wgroupCustomColors.Keys)
                 {
                     if (
                         string.Equals(
@@ -3108,8 +3186,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             EnsureWGroupCustomColorDefaults();
 
             if (
-                wgroupCustomColors != null
-                && wgroupCustomColors.TryGetValue(key, out WGroupCustomColor value)
+                _wgroupCustomColors != null
+                && _wgroupCustomColors.TryGetValue(key, out WGroupCustomColor value)
                 && value != null
             )
             {
@@ -3168,8 +3246,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             if (
-                wgroupCustomColors != null
-                && wgroupCustomColors.TryGetValue(normalized, out WGroupCustomColor directValue)
+                _wgroupCustomColors != null
+                && _wgroupCustomColors.TryGetValue(normalized, out WGroupCustomColor directValue)
                 && directValue != null
             )
             {
@@ -3177,9 +3255,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return new WGroupPaletteEntry(directValue.BackgroundColor, directValue.TextColor);
             }
 
-            if (wgroupCustomColors != null)
+            if (_wgroupCustomColors != null)
             {
-                foreach (KeyValuePair<string, WGroupCustomColor> entry in wgroupCustomColors)
+                foreach (KeyValuePair<string, WGroupCustomColor> entry in _wgroupCustomColors)
                 {
                     if (
                         string.Equals(entry.Key, normalized, StringComparison.OrdinalIgnoreCase)
@@ -3250,8 +3328,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
 
             if (
-                wenumToggleButtonsCustomColors != null
-                && wenumToggleButtonsCustomColors.TryGetValue(
+                _wenumToggleButtonsCustomColors != null
+                && _wenumToggleButtonsCustomColors.TryGetValue(
                     normalized,
                     out WEnumToggleButtonsCustomColor directValue
                 )
@@ -3267,13 +3345,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 );
             }
 
-            if (wenumToggleButtonsCustomColors != null)
+            if (_wenumToggleButtonsCustomColors != null)
             {
                 foreach (
                     KeyValuePair<
                         string,
                         WEnumToggleButtonsCustomColor
-                    > entry in wenumToggleButtonsCustomColors
+                    > entry in _wenumToggleButtonsCustomColors
                 )
                 {
                     if (
@@ -3326,8 +3404,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             EnsureWEnumToggleButtonsCustomColorDefaults();
 
             if (
-                wenumToggleButtonsCustomColors != null
-                && wenumToggleButtonsCustomColors.TryGetValue(
+                _wenumToggleButtonsCustomColors != null
+                && _wenumToggleButtonsCustomColors.TryGetValue(
                     key,
                     out WEnumToggleButtonsCustomColor value
                 )
@@ -3711,7 +3789,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         );
                         SerializedProperty patternsInitializedProperty =
                             serializedSettings.FindProperty(
-                                nameof(serializableTypePatternsInitialized)
+                                nameof(_serializableTypePatternsInitialized)
                             );
 
                         if (scriptProperty != null)
@@ -3736,7 +3814,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(serializableTypeIgnorePatterns),
+                                    nameof(_serializableTypeIgnorePatterns),
                                     StringComparison.Ordinal
                                 )
                             )
@@ -3752,17 +3830,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(stringInListPageSize),
+                                    nameof(_stringInListPageSize),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawIntSliderField(
                                     StringInListPageSizeContent,
-                                    settings.stringInListPageSize,
+                                    settings._stringInListPageSize,
                                     MinPageSize,
                                     MaxPageSize,
-                                    value => settings.stringInListPageSize = value
+                                    value => settings._stringInListPageSize = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -3771,17 +3849,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(serializableSetPageSize),
+                                    nameof(_serializableSetPageSize),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawIntSliderField(
                                     SerializableSetPageSizeContent,
-                                    settings.serializableSetPageSize,
+                                    settings._serializableSetPageSize,
                                     MinPageSize,
                                     MaxPageSize,
-                                    value => settings.serializableSetPageSize = value
+                                    value => settings._serializableSetPageSize = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -3790,15 +3868,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(serializableSetStartCollapsed),
+                                    nameof(_serializableSetStartCollapsed),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawToggleField(
                                     SerializableSetStartCollapsedContent,
-                                    settings.serializableSetStartCollapsed,
-                                    value => settings.serializableSetStartCollapsed = value
+                                    settings._serializableSetStartCollapsed,
+                                    value => settings._serializableSetStartCollapsed = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -3807,17 +3885,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(serializableDictionaryPageSize),
+                                    nameof(_serializableDictionaryPageSize),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawIntSliderField(
                                     SerializableDictionaryPageSizeContent,
-                                    settings.serializableDictionaryPageSize,
+                                    settings._serializableDictionaryPageSize,
                                     MinPageSize,
                                     MaxSerializableDictionaryPageSize,
-                                    value => settings.serializableDictionaryPageSize = value
+                                    value => settings._serializableDictionaryPageSize = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -3826,15 +3904,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(serializableDictionaryStartCollapsed),
+                                    nameof(_serializableDictionaryStartCollapsed),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawToggleField(
                                     SerializableDictionaryStartCollapsedContent,
-                                    settings.serializableDictionaryStartCollapsed,
-                                    value => settings.serializableDictionaryStartCollapsed = value
+                                    settings._serializableDictionaryStartCollapsed,
+                                    value => settings._serializableDictionaryStartCollapsed = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -3843,17 +3921,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(enumToggleButtonsPageSize),
+                                    nameof(_enumToggleButtonsPageSize),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawIntSliderField(
                                     EnumToggleButtonsPageSizeContent,
-                                    settings.enumToggleButtonsPageSize,
+                                    settings._enumToggleButtonsPageSize,
                                     MinPageSize,
                                     MaxPageSize,
-                                    value => settings.enumToggleButtonsPageSize = value
+                                    value => settings._enumToggleButtonsPageSize = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -3862,17 +3940,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wbuttonPageSize),
+                                    nameof(_wbuttonPageSize),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawIntSliderField(
                                     WButtonPageSizeContent,
-                                    settings.wbuttonPageSize,
+                                    settings._wbuttonPageSize,
                                     MinPageSize,
                                     MaxPageSize,
-                                    value => settings.wbuttonPageSize = value
+                                    value => settings._wbuttonPageSize = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -3881,17 +3959,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wbuttonHistorySize),
+                                    nameof(_wbuttonHistorySize),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawIntSliderField(
                                     WButtonHistorySizeContent,
-                                    settings.wbuttonHistorySize,
+                                    settings._wbuttonHistorySize,
                                     MinWButtonHistorySize,
                                     MaxWButtonHistorySize,
-                                    value => settings.wbuttonHistorySize = value
+                                    value => settings._wbuttonHistorySize = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -3900,15 +3978,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wbuttonActionsPlacement),
+                                    nameof(_wbuttonActionsPlacement),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawEnumPopupField(
                                     WButtonPlacementContent,
-                                    settings.wbuttonActionsPlacement,
-                                    value => settings.wbuttonActionsPlacement = value
+                                    settings._wbuttonActionsPlacement,
+                                    value => settings._wbuttonActionsPlacement = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -3917,15 +3995,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wbuttonFoldoutBehavior),
+                                    nameof(_wbuttonFoldoutBehavior),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawEnumPopupField(
                                     WButtonFoldoutBehaviorContent,
-                                    settings.wbuttonFoldoutBehavior,
-                                    value => settings.wbuttonFoldoutBehavior = value
+                                    settings._wbuttonFoldoutBehavior,
+                                    value => settings._wbuttonFoldoutBehavior = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -3934,15 +4012,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(inlineEditorFoldoutBehavior),
+                                    nameof(_inlineEditorFoldoutBehavior),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawEnumPopupField(
                                     InlineEditorFoldoutBehaviorContent,
-                                    settings.inlineEditorFoldoutBehavior,
-                                    value => settings.inlineEditorFoldoutBehavior = value
+                                    settings._inlineEditorFoldoutBehavior,
+                                    value => settings._inlineEditorFoldoutBehavior = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -3951,15 +4029,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wbuttonFoldoutTweenEnabled),
+                                    nameof(_wbuttonFoldoutTweenEnabled),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawToggleField(
                                     WButtonFoldoutTweenEnabledContent,
-                                    settings.wbuttonFoldoutTweenEnabled,
-                                    value => settings.wbuttonFoldoutTweenEnabled = value
+                                    settings._wbuttonFoldoutTweenEnabled,
+                                    value => settings._wbuttonFoldoutTweenEnabled = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -3968,22 +4046,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wbuttonFoldoutSpeed),
+                                    nameof(_wbuttonFoldoutSpeed),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
-                                if (!settings.wbuttonFoldoutTweenEnabled)
+                                if (!settings._wbuttonFoldoutTweenEnabled)
                                 {
                                     return true;
                                 }
 
                                 bool changed = DrawFloatSliderField(
                                     WButtonFoldoutSpeedContent,
-                                    settings.wbuttonFoldoutSpeed,
+                                    settings._wbuttonFoldoutSpeed,
                                     MinFoldoutSpeed,
                                     MaxFoldoutSpeed,
-                                    value => settings.wbuttonFoldoutSpeed = value,
+                                    value => settings._wbuttonFoldoutSpeed = value,
                                     true
                                 );
                                 dataChanged |= changed;
@@ -3993,15 +4071,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wbuttonCancelButtonColor),
+                                    nameof(_wbuttonCancelButtonColor),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawColorField(
                                     WButtonCancelButtonColorContent,
-                                    settings.wbuttonCancelButtonColor,
-                                    value => settings.wbuttonCancelButtonColor = value
+                                    settings._wbuttonCancelButtonColor,
+                                    value => settings._wbuttonCancelButtonColor = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -4010,15 +4088,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wbuttonCancelButtonTextColor),
+                                    nameof(_wbuttonCancelButtonTextColor),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawColorField(
                                     WButtonCancelButtonTextColorContent,
-                                    settings.wbuttonCancelButtonTextColor,
-                                    value => settings.wbuttonCancelButtonTextColor = value
+                                    settings._wbuttonCancelButtonTextColor,
+                                    value => settings._wbuttonCancelButtonTextColor = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -4027,15 +4105,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wbuttonClearHistoryButtonColor),
+                                    nameof(_wbuttonClearHistoryButtonColor),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawColorField(
                                     WButtonClearHistoryButtonColorContent,
-                                    settings.wbuttonClearHistoryButtonColor,
-                                    value => settings.wbuttonClearHistoryButtonColor = value
+                                    settings._wbuttonClearHistoryButtonColor,
+                                    value => settings._wbuttonClearHistoryButtonColor = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -4044,15 +4122,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wbuttonClearHistoryButtonTextColor),
+                                    nameof(_wbuttonClearHistoryButtonTextColor),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawColorField(
                                     WButtonClearHistoryButtonTextColorContent,
-                                    settings.wbuttonClearHistoryButtonTextColor,
-                                    value => settings.wbuttonClearHistoryButtonTextColor = value
+                                    settings._wbuttonClearHistoryButtonTextColor,
+                                    value => settings._wbuttonClearHistoryButtonTextColor = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -4061,7 +4139,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wbuttonCustomColors),
+                                    nameof(_wbuttonCustomColors),
                                     StringComparison.Ordinal
                                 )
                             )
@@ -4083,7 +4161,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wgroupCustomColors),
+                                    nameof(_wgroupCustomColors),
                                     StringComparison.Ordinal
                                 )
                             )
@@ -4105,7 +4183,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wenumToggleButtonsCustomColors),
+                                    nameof(_wenumToggleButtonsCustomColors),
                                     StringComparison.Ordinal
                                 )
                             )
@@ -4127,7 +4205,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(waitInstructionBufferApplyOnLoad),
+                                    nameof(_waitInstructionBufferApplyOnLoad),
                                     StringComparison.Ordinal
                                 )
                             )
@@ -4144,8 +4222,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                     );
                                     bool changed = DrawToggleField(
                                         WaitInstructionBufferApplyOnLoadContent,
-                                        settings.waitInstructionBufferApplyOnLoad,
-                                        value => settings.waitInstructionBufferApplyOnLoad = value
+                                        settings._waitInstructionBufferApplyOnLoad,
+                                        value => settings._waitInstructionBufferApplyOnLoad = value
                                     );
                                     dataChanged |= changed;
                                 }
@@ -4155,7 +4233,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(waitInstructionBufferQuantizationStepSeconds),
+                                    nameof(_waitInstructionBufferQuantizationStepSeconds),
                                     StringComparison.Ordinal
                                 )
                             )
@@ -4168,9 +4246,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 {
                                     bool changed = DrawFloatField(
                                         WaitInstructionBufferQuantizationContent,
-                                        settings.waitInstructionBufferQuantizationStepSeconds,
+                                        settings._waitInstructionBufferQuantizationStepSeconds,
                                         value =>
-                                            settings.waitInstructionBufferQuantizationStepSeconds =
+                                            settings._waitInstructionBufferQuantizationStepSeconds =
                                                 Mathf.Max(0f, value)
                                     );
                                     dataChanged |= changed;
@@ -4181,7 +4259,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(waitInstructionBufferMaxDistinctEntries),
+                                    nameof(_waitInstructionBufferMaxDistinctEntries),
                                     StringComparison.Ordinal
                                 )
                             )
@@ -4194,9 +4272,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 {
                                     bool changed = DrawIntField(
                                         WaitInstructionBufferMaxEntriesContent,
-                                        settings.waitInstructionBufferMaxDistinctEntries,
+                                        settings._waitInstructionBufferMaxDistinctEntries,
                                         value =>
-                                            settings.waitInstructionBufferMaxDistinctEntries =
+                                            settings._waitInstructionBufferMaxDistinctEntries =
                                                 Mathf.Max(0, value)
                                     );
                                     dataChanged |= changed;
@@ -4207,7 +4285,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(waitInstructionBufferUseLruEviction),
+                                    nameof(_waitInstructionBufferUseLruEviction),
                                     StringComparison.Ordinal
                                 )
                             )
@@ -4220,9 +4298,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 {
                                     bool changed = DrawToggleField(
                                         WaitInstructionBufferUseLruContent,
-                                        settings.waitInstructionBufferUseLruEviction,
+                                        settings._waitInstructionBufferUseLruEviction,
                                         value =>
-                                            settings.waitInstructionBufferUseLruEviction = value
+                                            settings._waitInstructionBufferUseLruEviction = value
                                     );
                                     dataChanged |= changed;
                                     DrawWaitInstructionBufferButtons(settings);
@@ -4233,16 +4311,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(serializableDictionaryFoldoutTweenEnabled),
+                                    nameof(_serializableDictionaryFoldoutTweenEnabled),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawToggleField(
                                     DictionaryFoldoutTweenEnabledContent,
-                                    settings.serializableDictionaryFoldoutTweenEnabled,
+                                    settings._serializableDictionaryFoldoutTweenEnabled,
                                     value =>
-                                        settings.serializableDictionaryFoldoutTweenEnabled = value
+                                        settings._serializableDictionaryFoldoutTweenEnabled = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -4251,22 +4329,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(serializableDictionaryFoldoutSpeed),
+                                    nameof(_serializableDictionaryFoldoutSpeed),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
-                                if (!settings.serializableDictionaryFoldoutTweenEnabled)
+                                if (!settings._serializableDictionaryFoldoutTweenEnabled)
                                 {
                                     return true;
                                 }
 
                                 bool changed = DrawFloatSliderField(
                                     DictionaryFoldoutSpeedContent,
-                                    settings.serializableDictionaryFoldoutSpeed,
+                                    settings._serializableDictionaryFoldoutSpeed,
                                     MinFoldoutSpeed,
                                     MaxFoldoutSpeed,
-                                    value => settings.serializableDictionaryFoldoutSpeed = value,
+                                    value => settings._serializableDictionaryFoldoutSpeed = value,
                                     true
                                 );
                                 dataChanged |= changed;
@@ -4276,16 +4354,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(serializableSortedDictionaryFoldoutTweenEnabled),
+                                    nameof(_serializableSortedDictionaryFoldoutTweenEnabled),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawToggleField(
                                     SortedDictionaryFoldoutTweenEnabledContent,
-                                    settings.serializableSortedDictionaryFoldoutTweenEnabled,
+                                    settings._serializableSortedDictionaryFoldoutTweenEnabled,
                                     value =>
-                                        settings.serializableSortedDictionaryFoldoutTweenEnabled =
+                                        settings._serializableSortedDictionaryFoldoutTweenEnabled =
                                             value
                                 );
                                 dataChanged |= changed;
@@ -4295,23 +4373,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(serializableSortedDictionaryFoldoutSpeed),
+                                    nameof(_serializableSortedDictionaryFoldoutSpeed),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
-                                if (!settings.serializableSortedDictionaryFoldoutTweenEnabled)
+                                if (!settings._serializableSortedDictionaryFoldoutTweenEnabled)
                                 {
                                     return true;
                                 }
 
                                 bool changed = DrawFloatSliderField(
                                     SortedDictionaryFoldoutSpeedContent,
-                                    settings.serializableSortedDictionaryFoldoutSpeed,
+                                    settings._serializableSortedDictionaryFoldoutSpeed,
                                     MinFoldoutSpeed,
                                     MaxFoldoutSpeed,
                                     value =>
-                                        settings.serializableSortedDictionaryFoldoutSpeed = value,
+                                        settings._serializableSortedDictionaryFoldoutSpeed = value,
                                     true
                                 );
                                 dataChanged |= changed;
@@ -4321,15 +4399,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(serializableSetFoldoutTweenEnabled),
+                                    nameof(_serializableSetFoldoutTweenEnabled),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawToggleField(
                                     SetFoldoutTweenEnabledContent,
-                                    settings.serializableSetFoldoutTweenEnabled,
-                                    value => settings.serializableSetFoldoutTweenEnabled = value
+                                    settings._serializableSetFoldoutTweenEnabled,
+                                    value => settings._serializableSetFoldoutTweenEnabled = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -4338,22 +4416,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(serializableSetFoldoutSpeed),
+                                    nameof(_serializableSetFoldoutSpeed),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
-                                if (!settings.serializableSetFoldoutTweenEnabled)
+                                if (!settings._serializableSetFoldoutTweenEnabled)
                                 {
                                     return true;
                                 }
 
                                 bool changed = DrawFloatSliderField(
                                     SetFoldoutSpeedContent,
-                                    settings.serializableSetFoldoutSpeed,
+                                    settings._serializableSetFoldoutSpeed,
                                     MinFoldoutSpeed,
                                     MaxFoldoutSpeed,
-                                    value => settings.serializableSetFoldoutSpeed = value,
+                                    value => settings._serializableSetFoldoutSpeed = value,
                                     true
                                 );
                                 dataChanged |= changed;
@@ -4363,16 +4441,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(serializableSortedSetFoldoutTweenEnabled),
+                                    nameof(_serializableSortedSetFoldoutTweenEnabled),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawToggleField(
                                     SortedSetFoldoutTweenEnabledContent,
-                                    settings.serializableSortedSetFoldoutTweenEnabled,
+                                    settings._serializableSortedSetFoldoutTweenEnabled,
                                     value =>
-                                        settings.serializableSortedSetFoldoutTweenEnabled = value
+                                        settings._serializableSortedSetFoldoutTweenEnabled = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -4381,22 +4459,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(serializableSortedSetFoldoutSpeed),
+                                    nameof(_serializableSortedSetFoldoutSpeed),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
-                                if (!settings.serializableSortedSetFoldoutTweenEnabled)
+                                if (!settings._serializableSortedSetFoldoutTweenEnabled)
                                 {
                                     return true;
                                 }
 
                                 bool changed = DrawFloatSliderField(
                                     SortedSetFoldoutSpeedContent,
-                                    settings.serializableSortedSetFoldoutSpeed,
+                                    settings._serializableSortedSetFoldoutSpeed,
                                     MinFoldoutSpeed,
                                     MaxFoldoutSpeed,
-                                    value => settings.serializableSortedSetFoldoutSpeed = value,
+                                    value => settings._serializableSortedSetFoldoutSpeed = value,
                                     true
                                 );
                                 dataChanged |= changed;
@@ -4406,15 +4484,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(duplicateRowAnimationMode),
+                                    nameof(_duplicateRowAnimationMode),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawEnumPopupField(
                                     DuplicateAnimationModeContent,
-                                    settings.duplicateRowAnimationMode,
-                                    value => settings.duplicateRowAnimationMode = value
+                                    settings._duplicateRowAnimationMode,
+                                    value => settings._duplicateRowAnimationMode = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -4423,13 +4501,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(duplicateRowTweenCycles),
+                                    nameof(_duplicateRowTweenCycles),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 if (
-                                    settings.duplicateRowAnimationMode
+                                    settings._duplicateRowAnimationMode
                                     != DuplicateRowAnimationMode.Tween
                                 )
                                 {
@@ -4438,8 +4516,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
                                 bool changed = DrawIntField(
                                     DuplicateTweenCyclesContent,
-                                    settings.duplicateRowTweenCycles,
-                                    value => settings.duplicateRowTweenCycles = value
+                                    settings._duplicateRowTweenCycles,
+                                    value => settings._duplicateRowTweenCycles = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -4448,7 +4526,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(detectAssetChangeLoopWindowSeconds),
+                                    nameof(_detectAssetChangeLoopWindowSeconds),
                                     StringComparison.Ordinal
                                 )
                             )
@@ -4458,7 +4536,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                     settings.DetectAssetChangeLoopWindowSeconds,
                                     MinDetectAssetChangeLoopWindowSeconds,
                                     MaxDetectAssetChangeLoopWindowSeconds,
-                                    value => settings.detectAssetChangeLoopWindowSeconds = value,
+                                    value => settings._detectAssetChangeLoopWindowSeconds = value,
                                     true
                                 );
                                 dataChanged |= changed;
@@ -4468,15 +4546,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(serializableSetDuplicateTweenEnabled),
+                                    nameof(_serializableSetDuplicateTweenEnabled),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawToggleField(
                                     SerializableSetDuplicateTweenEnabledContent,
-                                    settings.serializableSetDuplicateTweenEnabled,
-                                    value => settings.serializableSetDuplicateTweenEnabled = value
+                                    settings._serializableSetDuplicateTweenEnabled,
+                                    value => settings._serializableSetDuplicateTweenEnabled = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -4485,20 +4563,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(serializableSetDuplicateTweenCycles),
+                                    nameof(_serializableSetDuplicateTweenCycles),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
-                                if (!settings.serializableSetDuplicateTweenEnabled)
+                                if (!settings._serializableSetDuplicateTweenEnabled)
                                 {
                                     return true;
                                 }
 
                                 bool changed = DrawIntField(
                                     SerializableSetDuplicateTweenCyclesContent,
-                                    settings.serializableSetDuplicateTweenCycles,
-                                    value => settings.serializableSetDuplicateTweenCycles = value
+                                    settings._serializableSetDuplicateTweenCycles,
+                                    value => settings._serializableSetDuplicateTweenCycles = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -4507,15 +4585,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wgroupAutoIncludeMode),
+                                    nameof(_wgroupAutoIncludeMode),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawEnumPopupField(
                                     WGroupAutoIncludeModeContent,
-                                    settings.wgroupAutoIncludeMode,
-                                    value => settings.wgroupAutoIncludeMode = value
+                                    settings._wgroupAutoIncludeMode,
+                                    value => settings._wgroupAutoIncludeMode = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -4524,22 +4602,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wgroupAutoIncludeRowCount),
+                                    nameof(_wgroupAutoIncludeRowCount),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
-                                if (settings.wgroupAutoIncludeMode != WGroupAutoIncludeMode.Finite)
+                                if (settings._wgroupAutoIncludeMode != WGroupAutoIncludeMode.Finite)
                                 {
                                     return true;
                                 }
 
                                 bool changed = DrawIntSliderField(
                                     WGroupAutoIncludeCountContent,
-                                    settings.wgroupAutoIncludeRowCount,
+                                    settings._wgroupAutoIncludeRowCount,
                                     MinWGroupAutoIncludeRowCount,
                                     MaxWGroupAutoIncludeRowCount,
-                                    value => settings.wgroupAutoIncludeRowCount = value
+                                    value => settings._wgroupAutoIncludeRowCount = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -4548,15 +4626,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
-                                    nameof(wgroupFoldoutsStartCollapsed),
+                                    nameof(_wgroupFoldoutsStartCollapsed),
                                     StringComparison.Ordinal
                                 )
                             )
                             {
                                 bool changed = DrawToggleField(
                                     WGroupStartCollapsedContent,
-                                    settings.wgroupFoldoutsStartCollapsed,
-                                    value => settings.wgroupFoldoutsStartCollapsed = value
+                                    settings._wgroupFoldoutsStartCollapsed,
+                                    value => settings._wgroupFoldoutsStartCollapsed = value
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -4605,22 +4683,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     propertyPath,
-                                    nameof(foldoutTweenSettingsInitialized),
+                                    nameof(_foldoutTweenSettingsInitialized),
                                     StringComparison.Ordinal
                                 )
                                 || string.Equals(
                                     propertyPath,
-                                    nameof(serializableTypePatternsInitialized),
+                                    nameof(_serializableTypePatternsInitialized),
                                     StringComparison.Ordinal
                                 )
                                 || string.Equals(
                                     propertyPath,
-                                    nameof(legacyWButtonPriorityColors),
+                                    nameof(_legacyWButtonPriorityColors),
                                     StringComparison.Ordinal
                                 )
                                 || string.Equals(
                                     propertyPath,
-                                    nameof(serializableTypeIgnorePatterns),
+                                    nameof(_serializableTypeIgnorePatterns),
                                     StringComparison.Ordinal
                                 )
                             )
@@ -4648,7 +4726,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
                     settings.SaveSettings();
                     settings.ApplyWaitInstructionBufferDefaultsToAsset(
-                        settings.waitInstructionBufferApplyOnLoad
+                        settings._waitInstructionBufferApplyOnLoad
                     );
                     serializedSettings.UpdateIfRequiredOrScript();
                 },
@@ -4675,7 +4753,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         private void EnsureWaitInstructionBufferDefaultsInitialized()
         {
-            if (waitInstructionBufferDefaultsInitialized)
+            if (_waitInstructionBufferDefaultsInitialized)
             {
                 return;
             }
@@ -4686,26 +4764,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return;
             }
 
-            waitInstructionBufferApplyOnLoad = asset.ApplyOnLoad;
-            waitInstructionBufferQuantizationStepSeconds = asset.QuantizationStepSeconds;
-            waitInstructionBufferMaxDistinctEntries = asset.MaxDistinctEntries;
-            waitInstructionBufferUseLruEviction = asset.UseLruEviction;
-            waitInstructionBufferDefaultsInitialized = true;
+            _waitInstructionBufferApplyOnLoad = asset.ApplyOnLoad;
+            _waitInstructionBufferQuantizationStepSeconds = asset.QuantizationStepSeconds;
+            _waitInstructionBufferMaxDistinctEntries = asset.MaxDistinctEntries;
+            _waitInstructionBufferUseLruEviction = asset.UseLruEviction;
+            _waitInstructionBufferDefaultsInitialized = true;
         }
 
         private void CaptureWaitInstructionDefaultsFromRuntime()
         {
-            waitInstructionBufferQuantizationStepSeconds = Mathf.Max(
+            _waitInstructionBufferQuantizationStepSeconds = Mathf.Max(
                 0f,
                 Buffers.WaitInstructionQuantizationStepSeconds
             );
-            waitInstructionBufferMaxDistinctEntries = Mathf.Max(
+            _waitInstructionBufferMaxDistinctEntries = Mathf.Max(
                 0,
                 Buffers.WaitInstructionMaxDistinctEntries
             );
-            waitInstructionBufferUseLruEviction = Buffers.WaitInstructionUseLruEviction;
-            waitInstructionBufferDefaultsInitialized = true;
-            ApplyWaitInstructionBufferDefaultsToAsset(waitInstructionBufferApplyOnLoad);
+            _waitInstructionBufferUseLruEviction = Buffers.WaitInstructionUseLruEviction;
+            _waitInstructionBufferDefaultsInitialized = true;
+            ApplyWaitInstructionBufferDefaultsToAsset(_waitInstructionBufferApplyOnLoad);
         }
 
         private bool AreWaitInstructionDefaultsInSyncWithRuntime()
@@ -4716,17 +4794,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             );
             float configuredQuantization = Mathf.Max(
                 0f,
-                waitInstructionBufferQuantizationStepSeconds
+                _waitInstructionBufferQuantizationStepSeconds
             );
 
             int runtimeMaxEntries = Mathf.Max(0, Buffers.WaitInstructionMaxDistinctEntries);
-            int configuredMaxEntries = Mathf.Max(0, waitInstructionBufferMaxDistinctEntries);
+            int configuredMaxEntries = Mathf.Max(0, _waitInstructionBufferMaxDistinctEntries);
 
             bool runtimeUseLru = Buffers.WaitInstructionUseLruEviction;
 
             return Mathf.Approximately(configuredQuantization, runtimeQuantization)
                 && configuredMaxEntries == runtimeMaxEntries
-                && waitInstructionBufferUseLruEviction == runtimeUseLru;
+                && _waitInstructionBufferUseLruEviction == runtimeUseLru;
         }
 
         private void ApplyWaitInstructionBufferDefaultsToAsset(bool applyToRuntime)
@@ -4737,13 +4815,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 return;
             }
 
-            waitInstructionBufferQuantizationStepSeconds = Mathf.Max(
+            _waitInstructionBufferQuantizationStepSeconds = Mathf.Max(
                 0f,
-                waitInstructionBufferQuantizationStepSeconds
+                _waitInstructionBufferQuantizationStepSeconds
             );
-            waitInstructionBufferMaxDistinctEntries = Mathf.Max(
+            _waitInstructionBufferMaxDistinctEntries = Mathf.Max(
                 0,
-                waitInstructionBufferMaxDistinctEntries
+                _waitInstructionBufferMaxDistinctEntries
             );
 
             SerializedObject assetSerialized = new(asset);
@@ -4762,22 +4840,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
             if (applyOnLoadProperty != null)
             {
-                applyOnLoadProperty.boolValue = waitInstructionBufferApplyOnLoad;
+                applyOnLoadProperty.boolValue = _waitInstructionBufferApplyOnLoad;
             }
 
             if (quantizationProperty != null)
             {
-                quantizationProperty.floatValue = waitInstructionBufferQuantizationStepSeconds;
+                quantizationProperty.floatValue = _waitInstructionBufferQuantizationStepSeconds;
             }
 
             if (maxEntriesProperty != null)
             {
-                maxEntriesProperty.intValue = waitInstructionBufferMaxDistinctEntries;
+                maxEntriesProperty.intValue = _waitInstructionBufferMaxDistinctEntries;
             }
 
             if (useLruProperty != null)
             {
-                useLruProperty.boolValue = waitInstructionBufferUseLruEviction;
+                useLruProperty.boolValue = _waitInstructionBufferUseLruEviction;
             }
 
             bool assetChanged = assetSerialized.ApplyModifiedPropertiesWithoutUndo();
@@ -4804,18 +4882,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         private static UnityHelpersBufferSettingsAsset EnsureWaitInstructionBufferSettingsAsset()
         {
-            if (waitInstructionBufferSettingsAsset != null)
+            if (_waitInstructionBufferSettingsAsset != null)
             {
-                return waitInstructionBufferSettingsAsset;
+                return _waitInstructionBufferSettingsAsset;
             }
 
-            waitInstructionBufferSettingsAsset =
+            _waitInstructionBufferSettingsAsset =
                 AssetDatabase.LoadAssetAtPath<UnityHelpersBufferSettingsAsset>(
                     UnityHelpersBufferSettingsAsset.AssetPath
                 );
-            if (waitInstructionBufferSettingsAsset != null)
+            if (_waitInstructionBufferSettingsAsset != null)
             {
-                return waitInstructionBufferSettingsAsset;
+                return _waitInstructionBufferSettingsAsset;
             }
 
             string directory = Path.GetDirectoryName(UnityHelpersBufferSettingsAsset.AssetPath);
@@ -4829,8 +4907,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             created.SyncFromRuntime();
             AssetDatabase.CreateAsset(created, UnityHelpersBufferSettingsAsset.AssetPath);
             AssetDatabase.SaveAssets();
-            waitInstructionBufferSettingsAsset = created;
-            return waitInstructionBufferSettingsAsset;
+            _waitInstructionBufferSettingsAsset = created;
+            return _waitInstructionBufferSettingsAsset;
         }
     }
 #endif

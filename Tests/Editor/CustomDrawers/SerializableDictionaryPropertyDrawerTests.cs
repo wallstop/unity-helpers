@@ -2634,7 +2634,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 saveInvoked = true;
             }
 
-            UnityHelpersSettings.SettingsSaved += OnSettingsSaved;
+            UnityHelpersSettings.OnSettingsSaved += OnSettingsSaved;
             try
             {
                 SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
@@ -2656,7 +2656,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
             finally
             {
-                UnityHelpersSettings.SettingsSaved -= OnSettingsSaved;
+                UnityHelpersSettings.OnSettingsSaved -= OnSettingsSaved;
                 RemoveStringDictionaryEntry(keysProperty, valuesProperty, TestKey);
                 serializedSettings.ApplyModifiedPropertiesWithoutUndo();
                 serializedSettings.Update();
@@ -5157,8 +5157,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 testKey,
                 new UnityHelpersSettings.WButtonCustomColor
                 {
-                    buttonColor = Color.cyan,
-                    textColor = Color.yellow,
+                    _buttonColor = Color.cyan,
+                    _textColor = Color.yellow,
                 },
                 paletteProperty
             );
@@ -5244,8 +5244,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     testKey,
                     new UnityHelpersSettings.WButtonCustomColor
                     {
-                        buttonColor = new Color(i * 0.3f, 0.5f, 0.8f),
-                        textColor = Color.white,
+                        _buttonColor = new Color(i * 0.3f, 0.5f, 0.8f),
+                        _textColor = Color.white,
                     },
                     paletteProperty
                 );

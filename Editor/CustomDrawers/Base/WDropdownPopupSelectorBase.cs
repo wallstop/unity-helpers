@@ -1,9 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
 {
 #if UNITY_EDITOR
-    using System;
     using UnityEditor;
-    using UnityEditor.UIElements;
     using UnityEngine;
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Editor.Settings;

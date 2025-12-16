@@ -7,12 +7,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
     using System.Linq;
     using System.Text.Json.Serialization;
     using System.Threading;
-    using System.Threading.Tasks;
     using UnityEditor;
     using UnityEditor.IMGUI.Controls;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Serialization;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using Object = UnityEngine.Object;
 
     /// <summary>
@@ -31,7 +31,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                     SuppressUserPrompts = true;
                 }
             }
-            catch { }
+            catch
+            {
+                // Swallow
+            }
         }
 
         private static bool IsInvokedByTestRunner()
@@ -66,7 +69,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
         private MethodAnalyzer _analyzer;
         private IssueTreeView _treeView;
-        private Vector2 _scrollPosition;
         private Vector2 _detailScrollPosition;
 
         private AnalyzerIssue _selectedIssue;
@@ -218,7 +220,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
             float sectionHeight = EditorGUIUtility.singleLineHeight + 6f;
 
-            if (_sourcePathsFoldout && _sourcePaths != null && _sourcePaths.Count > 0)
+            if (_sourcePathsFoldout && _sourcePaths is { Count: > 0 })
             {
                 float pathsListHeight = Mathf.Min(
                     _sourcePaths.Count * (EditorGUIUtility.singleLineHeight + 4f),
@@ -312,19 +314,27 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             return sectionHeight + 4f;
         }
 
+        private static readonly Color AnalyzeButtonColor = new(0.25f, 0.68f, 0.38f, 1f);
+        private static readonly Color CancelButtonColor = new(0.92f, 0.29f, 0.33f, 1f);
+        private static readonly Color DisabledButtonColor = new(0.5f, 0.5f, 0.5f, 1f);
+
         private void DrawToolbar(bool isNarrowLayout)
         {
             GUILayout.BeginHorizontal(EditorStyles.helpBox, GUILayout.Height(ToolbarHeight));
-
-            Color originalBgColor = GUI.backgroundColor;
 
             bool hasValidPaths =
                 _sourcePaths != null
                 && _sourcePaths.Any(p => !string.IsNullOrEmpty(p) && Directory.Exists(p));
 
-            GUI.enabled = !_isAnalyzing && hasValidPaths;
+            bool analyzeEnabled = !_isAnalyzing && hasValidPaths;
+            Color analyzeColor = analyzeEnabled ? AnalyzeButtonColor : DisabledButtonColor;
+            Color analyzeTextColor = WButtonColorUtility.GetReadableTextColor(analyzeColor);
 
-            GUIStyle analyzeButtonStyle = new GUIStyle(GUI.skin.button)
+            GUIStyle analyzeButtonStyle = WButtonStyles.GetColoredButtonStyle(
+                analyzeColor,
+                analyzeTextColor
+            );
+            analyzeButtonStyle = new GUIStyle(analyzeButtonStyle)
             {
                 fontStyle = FontStyle.Bold,
                 fontSize = 13,
@@ -332,7 +342,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 padding = new RectOffset(12, 12, 4, 4),
             };
 
-            GUI.backgroundColor = new Color(0.2f, 0.7f, 0.3f);
+            GUI.enabled = analyzeEnabled;
 
             string buttonText = isNarrowLayout ? "▶ Analyze" : "▶ Analyze Code";
             float buttonWidth = isNarrowLayout ? 95f : 130f;
@@ -342,26 +352,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 StartAnalysis();
             }
 
-            GUI.backgroundColor = originalBgColor;
             GUI.enabled = true;
 
             if (_isAnalyzing)
             {
                 GUILayout.Space(8);
 
-                GUIStyle cancelButtonStyle = new GUIStyle(GUI.skin.button)
+                Color cancelTextColor = WButtonColorUtility.GetReadableTextColor(CancelButtonColor);
+                GUIStyle cancelButtonStyle = WButtonStyles.GetColoredButtonStyle(
+                    CancelButtonColor,
+                    cancelTextColor
+                );
+                cancelButtonStyle = new GUIStyle(cancelButtonStyle)
                 {
                     fixedHeight = ToolbarHeight - 8,
                 };
-
-                GUI.backgroundColor = new Color(0.8f, 0.3f, 0.3f);
 
                 if (GUILayout.Button("Cancel", cancelButtonStyle, GUILayout.Width(60)))
                 {
                     CancelAnalysis();
                 }
-
-                GUI.backgroundColor = originalBgColor;
 
                 GUILayout.Space(8);
 
@@ -380,7 +390,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
             GUILayout.FlexibleSpace();
 
-            GUIStyle statusStyle = new GUIStyle(EditorStyles.label)
+            GUIStyle statusStyle = new(EditorStyles.label)
             {
                 alignment = TextAnchor.MiddleRight,
                 wordWrap = true,
@@ -588,37 +598,34 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
         {
             GUILayout.BeginHorizontal(EditorStyles.helpBox);
 
-            GUIStyle totalStyle = new GUIStyle(EditorStyles.boldLabel)
-            {
-                alignment = TextAnchor.MiddleLeft,
-            };
+            GUIStyle totalStyle = new(EditorStyles.boldLabel) { alignment = TextAnchor.MiddleLeft };
             GUILayout.Label(
                 $"Total: {_totalCount}",
                 totalStyle,
                 GUILayout.Width(isNarrowLayout ? 60f : 80f)
             );
 
-            GUIStyle criticalStyle = new GUIStyle(EditorStyles.label)
+            GUIStyle criticalStyle = new(EditorStyles.label)
             {
                 normal = { textColor = new Color(1f, 0.3f, 0.3f) },
             };
 
-            GUIStyle highStyle = new GUIStyle(EditorStyles.label)
+            GUIStyle highStyle = new(EditorStyles.label)
             {
                 normal = { textColor = new Color(1f, 0.6f, 0.2f) },
             };
 
-            GUIStyle mediumStyle = new GUIStyle(EditorStyles.label)
+            GUIStyle mediumStyle = new(EditorStyles.label)
             {
                 normal = { textColor = new Color(1f, 0.9f, 0.2f) },
             };
 
-            GUIStyle lowStyle = new GUIStyle(EditorStyles.label)
+            GUIStyle lowStyle = new(EditorStyles.label)
             {
                 normal = { textColor = new Color(0.5f, 0.9f, 0.5f) },
             };
 
-            GUIStyle infoStyle = new GUIStyle(EditorStyles.label)
+            GUIStyle infoStyle = new(EditorStyles.label)
             {
                 normal = { textColor = new Color(0.5f, 0.7f, 1f) },
             };
@@ -851,74 +858,80 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
         private async void StartAnalysis()
         {
-            if (_isAnalyzing)
-            {
-                return;
-            }
-
-            _isAnalyzing = true;
-            _analysisProgress = 0f;
-            _statusMessage = "Analyzing...";
-            _selectedIssue = null;
-
-            _cancellationTokenSource?.Dispose();
-            _cancellationTokenSource = new CancellationTokenSource();
-
             try
             {
-                List<string> directories = new();
-                string rootPath = GetProjectRoot();
-
-                foreach (string sourcePath in _sourcePaths)
+                if (_isAnalyzing)
                 {
-                    if (string.IsNullOrEmpty(sourcePath))
-                    {
-                        continue;
-                    }
-
-                    if (Directory.Exists(sourcePath))
-                    {
-                        directories.Add(sourcePath);
-                    }
-                }
-
-                if (directories.Count == 0)
-                {
-                    _statusMessage = "No valid directories selected";
                     return;
                 }
 
-                Progress<float> progress = new Progress<float>(p =>
-                {
-                    _analysisProgress = p;
-                });
-
-                await _analyzer.AnalyzeAsync(
-                    rootPath,
-                    directories,
-                    progress,
-                    _cancellationTokenSource.Token
-                );
-
-                UpdateIssueCounts();
-                _treeView.SetIssues(_analyzer.Issues, rootPath);
-
-                _statusMessage = $"Analysis complete: {_totalCount} issues found";
-            }
-            catch (OperationCanceledException)
-            {
-                _statusMessage = "Analysis cancelled";
-            }
-            catch (Exception ex)
-            {
-                _statusMessage = $"Analysis failed: {ex.Message}";
-                Debug.LogException(ex);
-            }
-            finally
-            {
-                _isAnalyzing = false;
+                _isAnalyzing = true;
                 _analysisProgress = 0f;
-                Repaint();
+                _statusMessage = "Analyzing...";
+                _selectedIssue = null;
+
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = new CancellationTokenSource();
+
+                try
+                {
+                    List<string> directories = new();
+                    string rootPath = GetProjectRoot();
+
+                    foreach (string sourcePath in _sourcePaths)
+                    {
+                        if (string.IsNullOrEmpty(sourcePath))
+                        {
+                            continue;
+                        }
+
+                        if (Directory.Exists(sourcePath))
+                        {
+                            directories.Add(sourcePath);
+                        }
+                    }
+
+                    if (directories.Count == 0)
+                    {
+                        _statusMessage = "No valid directories selected";
+                        return;
+                    }
+
+                    Progress<float> progress = new(p =>
+                    {
+                        _analysisProgress = p;
+                    });
+
+                    await _analyzer.AnalyzeAsync(
+                        rootPath,
+                        directories,
+                        progress,
+                        _cancellationTokenSource.Token
+                    );
+
+                    UpdateIssueCounts();
+                    _treeView.SetIssues(_analyzer.Issues, rootPath);
+
+                    _statusMessage = $"Analysis complete: {_totalCount} issues found";
+                }
+                catch (OperationCanceledException)
+                {
+                    _statusMessage = "Analysis cancelled";
+                }
+                catch (Exception ex)
+                {
+                    _statusMessage = $"Analysis failed: {ex.Message}";
+                }
+                finally
+                {
+                    _isAnalyzing = false;
+                    _analysisProgress = 0f;
+                    Repaint();
+                }
+            }
+            catch (Exception e)
+            {
+                _statusMessage = $"Analysis failed: {e.Message}";
             }
         }
 
@@ -1069,7 +1082,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
             // Check if path is within a Package folder
             // Packages can be in <ProjectRoot>/Packages/ or in the global package cache
-            string projectRoot = Path.GetDirectoryName(Application.dataPath).Replace('\\', '/');
+            string projectRoot = Path.GetDirectoryName(Application.dataPath)?.Replace('\\', '/');
             string packagesPath = projectRoot + "/Packages";
 
             if (normalizedPath.StartsWith(packagesPath, StringComparison.OrdinalIgnoreCase))

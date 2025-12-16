@@ -1003,6 +1003,1340 @@ namespace TestNs
                 $"Should not flag new expressions in array initializers. Found: {string.Join(", ", boundsIssues.Select(i => $"{i.ClassName}.{i.MethodName}: {i.IssueType}"))}"
             );
         }
+
+        [Test]
+        public void OverrideMethodInGrandparentClassIsNotFlaggedAsSignatureMismatch()
+        {
+            // This test reproduces the WanderingProjectile bug
+            WriteTestFile(
+                "GrandparentOverride.cs",
+                @"
+namespace TestNs
+{
+    public class Core { }
+    public class Projectile
+    {
+        protected virtual void ReturnToPool(Core targetToDamage) { }
+        protected virtual void ReturnToPool() { }
+    }
+    public class MissileProjectile : Projectile
+    {
+        protected override void ReturnToPool() { base.ReturnToPool(); }
+    }
+    public class WanderingProjectile : MissileProjectile
+    {
+        protected override void ReturnToPool(Core targetToDamage) { base.ReturnToPool(targetToDamage); }
+    }
+}
+"
+            );
+            AnalyzeTestFiles();
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i =>
+                    i.IssueType == "SignatureMismatch" && i.ClassName == "WanderingProjectile"
+                )
+                .ToList();
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(0),
+                $"Should find matching virtual method in grandparent class. Found: {string.Join(", ", signatureMismatches.Select(i => i.DerivedMethodSignature))}"
+            );
+        }
+
+        [Test]
+        public void ActualSignatureMismatchInGrandchildIsStillFlagged()
+        {
+            WriteTestFile(
+                "ActualMismatchGrandchild.cs",
+                @"
+namespace TestNs
+{
+    public class Base { protected virtual void Process(int value) { } }
+    public class Middle : Base { protected override void Process(int value) { } }
+    public class Derived : Middle { protected override void Process(string value) { } }
+}
+"
+            );
+            AnalyzeTestFiles();
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i => i.IssueType == "SignatureMismatch" && i.ClassName == "Derived")
+                .ToList();
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(1),
+                "Should flag actual signature mismatch when no matching method exists in chain"
+            );
+        }
+
+        [Test]
+        public void OverrideMethodInGreatGrandparentClassIsNotFlaggedAsSignatureMismatch()
+        {
+            // This test reproduces the AIMovePositionState bug where Enter(object data)
+            // is defined in the great-grandparent class but the analyzer only looked at
+            // the immediate base class
+            WriteTestFile(
+                "GreatGrandparentOverride.cs",
+                @"
+namespace TestNs
+{
+    public class EntityState
+    {
+        public virtual void Enter(object data) { Enter(); }
+        public virtual void Enter() { }
+    }
+    public class E_FollowTarget_Astar_Base : EntityState
+    {
+        public override void Enter() { base.Enter(); }
+    }
+    public class AIMovePositionState : E_FollowTarget_Astar_Base
+    {
+        public override void Enter(object data) { base.Enter(data); }
+        public override void Enter() { base.Enter(); }
+    }
+}
+"
+            );
+            AnalyzeTestFiles();
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i =>
+                    i.IssueType == "SignatureMismatch" && i.ClassName == "AIMovePositionState"
+                )
+                .ToList();
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(0),
+                $"Should find matching virtual method in great-grandparent class. Found: {string.Join(", ", signatureMismatches.Select(i => $"{i.MethodName}: {i.DerivedMethodSignature}"))}"
+            );
+        }
+
+        [Test]
+        public void OverrideInDeepInheritanceChainWithIntermediateOverridesIsNotFlagged()
+        {
+            // Test deep inheritance where some intermediate classes override
+            // and others don't
+            WriteTestFile(
+                "DeepInheritance.cs",
+                @"
+namespace TestNs
+{
+    public class Level0
+    {
+        public virtual void MethodA() { }
+        public virtual void MethodB(int x) { }
+    }
+    public class Level1 : Level0
+    {
+        public override void MethodA() { }
+        // Does not override MethodB
+    }
+    public class Level2 : Level1
+    {
+        // Does not override either
+    }
+    public class Level3 : Level2
+    {
+        // Overrides MethodB from Level0
+        public override void MethodB(int x) { base.MethodB(x); }
+    }
+}
+"
+            );
+            AnalyzeTestFiles();
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i =>
+                    i.IssueType == "SignatureMismatch"
+                    && i.ClassName == "Level3"
+                    && i.MethodName == "MethodB"
+                )
+                .ToList();
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(0),
+                $"Should traverse entire chain to find MethodB in Level0. Found: {string.Join(", ", signatureMismatches.Select(i => i.DerivedMethodSignature))}"
+            );
+        }
+
+        [Test]
+        public void MultipleOverloadsInDifferentAncestorLevelsAreHandledCorrectly()
+        {
+            // Test case where different overloads of the same method are defined
+            // at different levels of the inheritance hierarchy
+            WriteTestFile(
+                "MultipleOverloadsAncestors.cs",
+                @"
+namespace TestNs
+{
+    public class RCDirgeState
+    {
+        public virtual void ExecuteCommand(MoveParameter param) { }
+    }
+    public class RCDirgeInteractState : RCDirgeState
+    {
+        public virtual void ExecuteCommand(InteractParameter param) { }
+    }
+    public class RCDirgeMoveState : RCDirgeInteractState
+    {
+        // Overrides the grandparent's method, not the parent's
+        public override void ExecuteCommand(MoveParameter param) { base.ExecuteCommand(param); }
+    }
+    public class MoveParameter { }
+    public class InteractParameter { }
+}
+"
+            );
+            AnalyzeTestFiles();
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i => i.IssueType == "SignatureMismatch" && i.ClassName == "RCDirgeMoveState")
+                .ToList();
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(0),
+                $"Should find matching ExecuteCommand(MoveParameter) in grandparent class. Found: {string.Join(", ", signatureMismatches.Select(i => i.DerivedMethodSignature))}"
+            );
+        }
+
+        [Test]
+        public void OverrideWithDifferentOverloadInImmediateBaseIsNotFlagged()
+        {
+            // Ensure we correctly handle when immediate base has a different overload
+            // but the correct overload exists in an ancestor
+            WriteTestFile(
+                "DifferentOverloadInBase.cs",
+                @"
+namespace TestNs
+{
+    public class Projectile
+    {
+        protected virtual void ReturnToPool(Core targetToDamage) { }
+        protected virtual void ReturnToPool() { }
+    }
+    public class MissileProjectile : Projectile
+    {
+        // Only overrides parameterless version
+        protected override void ReturnToPool() { base.ReturnToPool(); }
+    }
+    public class WanderingProjectile : MissileProjectile
+    {
+        // Overrides Core version from Projectile (grandparent)
+        protected override void ReturnToPool(Core targetToDamage)
+        {
+            base.ReturnToPool(targetToDamage);
+        }
+    }
+    public class Core { }
+}
+"
+            );
+            AnalyzeTestFiles();
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i =>
+                    i.IssueType == "SignatureMismatch" && i.ClassName == "WanderingProjectile"
+                )
+                .ToList();
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(0),
+                $"Should find ReturnToPool(Core) in Projectile grandparent. Found: {string.Join(", ", signatureMismatches.Select(i => i.DerivedMethodSignature))}"
+            );
+        }
+
+        [Test]
+        public void NewKeywordWithDifferentReturnTypeIsNotFlaggedAsReturnTypeMismatch()
+        {
+            // Using 'new' to hide a method with different return type is valid
+            WriteTestFile(
+                "NewKeywordReturnType.cs",
+                @"
+namespace TestNs
+{
+    public class EnvironmentalEffectBase
+    {
+        protected virtual void ApplyEffect(Core core) { }
+    }
+    public class FirePillarBurst : EnvironmentalEffectBase
+    {
+        protected new bool ApplyEffect(Core core) { return true; }
+    }
+    public class Core { }
+}
+"
+            );
+            AnalyzeTestFiles();
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> returnTypeMismatches = issues
+                .Where(i => i.IssueType == "ReturnTypeMismatch" && i.ClassName == "FirePillarBurst")
+                .ToList();
+            Assert.That(
+                returnTypeMismatches.Count,
+                Is.EqualTo(0),
+                $"Should not flag return type mismatch when using 'new' keyword. Found: {string.Join(", ", returnTypeMismatches.Select(i => $"{i.MethodName}: {i.DerivedMethodSignature}"))}"
+            );
+        }
+
+        [Test]
+        public void NewKeywordWithSameReturnTypeIsNotFlagged()
+        {
+            WriteTestFile(
+                "NewKeywordSameReturnType.cs",
+                @"
+namespace TestNs
+{
+    public class BaseClass
+    {
+        public void DoWork() { }
+    }
+    public class DerivedClass : BaseClass
+    {
+        public new void DoWork() { }
+    }
+}
+"
+            );
+            AnalyzeTestFiles();
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> newKeywordIssues = issues
+                .Where(i => i.ClassName == "DerivedClass" && i.MethodName == "DoWork")
+                .ToList();
+            // Should only report HidingNonVirtualMethod, not ReturnTypeMismatch
+            List<AnalyzerIssue> returnTypeIssues = newKeywordIssues
+                .Where(i => i.IssueType == "ReturnTypeMismatch")
+                .ToList();
+            Assert.That(
+                returnTypeIssues.Count,
+                Is.EqualTo(0),
+                "Should not flag return type mismatch for 'new' methods with same return type"
+            );
+        }
+
+        [Test]
+        public void OverrideWithDifferentReturnTypeIsStillFlagged()
+        {
+            // Ensure we still flag actual return type mismatches for override methods
+            WriteTestFile(
+                "OverrideReturnTypeMismatch.cs",
+                @"
+namespace TestNs
+{
+    public class BaseClass
+    {
+        public virtual int GetValue() => 0;
+    }
+    public class DerivedClass : BaseClass
+    {
+        public override string GetValue() => string.Empty;
+    }
+}
+"
+            );
+            AnalyzeTestFiles();
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> returnTypeMismatches = issues
+                .Where(i => i.IssueType == "ReturnTypeMismatch" && i.ClassName == "DerivedClass")
+                .ToList();
+            Assert.That(
+                returnTypeMismatches.Count,
+                Is.EqualTo(1),
+                "Should still flag return type mismatch for 'override' methods"
+            );
+        }
+
+        [Test]
+        public void NewKeywordWithDifferentReturnTypeAndParametersIsNotFlagged()
+        {
+            // New method with completely different signature
+            WriteTestFile(
+                "NewKeywordDifferentSignature.cs",
+                @"
+namespace TestNs
+{
+    public class BaseClass
+    {
+        public virtual void Process() { }
+    }
+    public class DerivedClass : BaseClass
+    {
+        public new int Process(string input) => 0;
+    }
+}
+"
+            );
+            AnalyzeTestFiles();
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> processIssues = issues
+                .Where(i => i.ClassName == "DerivedClass" && i.MethodName == "Process")
+                .ToList();
+            Assert.That(
+                processIssues.Count,
+                Is.EqualTo(0),
+                $"Should not flag 'new' method with different signature. Found: {string.Join(", ", processIssues.Select(i => i.IssueType))}"
+            );
+        }
+
+        [Test]
+        public void MultipleNewMethodsWithDifferentReturnTypesAreNotFlagged()
+        {
+            // Real-world pattern from LightningBurst and FirePillarBurst
+            WriteTestFile(
+                "MultipleNewMethods.cs",
+                @"
+namespace TestNs
+{
+    public class EnvironmentalEffectBase
+    {
+        protected virtual void ApplyEffect(Core core) { }
+        protected virtual void PlayEffect() { }
+    }
+    public class FirePillarBurst : EnvironmentalEffectBase
+    {
+        protected new bool ApplyEffect(Core core) { return true; }
+    }
+    public class LightningBurst : EnvironmentalEffectBase
+    {
+        protected new bool ApplyEffect(Core core) { return false; }
+    }
+    public class Core { }
+}
+"
+            );
+            AnalyzeTestFiles();
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> returnTypeMismatches = issues
+                .Where(i =>
+                    i.IssueType == "ReturnTypeMismatch"
+                    && (i.ClassName == "FirePillarBurst" || i.ClassName == "LightningBurst")
+                )
+                .ToList();
+            Assert.That(
+                returnTypeMismatches.Count,
+                Is.EqualTo(0),
+                $"Should not flag return type mismatch for any 'new' method. Found: {string.Join(", ", returnTypeMismatches.Select(i => $"{i.ClassName}.{i.MethodName}"))}"
+            );
+        }
+
+        [Test]
+        public void DefaultParameterValueDoesNotCauseSignatureMismatch()
+        {
+            // This test reproduces the Frostbite.StartEffect bug where
+            // "void StartEffect(GameObject source, int amount)" was incorrectly flagged
+            // as mismatching "void StartEffect(GameObject source, int amount = 1)"
+            WriteTestFile(
+                "DefaultParams.cs",
+                @"
+namespace TestNs
+{
+    public class BaseClass
+    {
+        public virtual void StartEffect(string source, int amount) { }
+    }
+
+    public class DerivedClass : BaseClass
+    {
+        public override void StartEffect(string source, int amount = 1)
+        {
+            base.StartEffect(source, amount);
+        }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i =>
+                    i.IssueType == "SignatureMismatch"
+                    && i.ClassName == "DerivedClass"
+                    && i.MethodName == "StartEffect"
+                )
+                .ToList();
+
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(0),
+                $"Should not flag signature mismatch when only difference is default parameter value. Found: {string.Join(", ", signatureMismatches.Select(i => $"base={i.BaseMethodSignature}, derived={i.DerivedMethodSignature}"))}"
+            );
+        }
+
+        [Test]
+        public void MultipleDefaultParametersDoNotCauseSignatureMismatch()
+        {
+            WriteTestFile(
+                "MultipleDefaultParams.cs",
+                @"
+namespace TestNs
+{
+    public class BaseClass
+    {
+        public virtual void Configure(string name, int value, bool enabled) { }
+    }
+
+    public class DerivedClass : BaseClass
+    {
+        public override void Configure(string name, int value = 10, bool enabled = true)
+        {
+            base.Configure(name, value, enabled);
+        }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i =>
+                    i.IssueType == "SignatureMismatch"
+                    && i.ClassName == "DerivedClass"
+                    && i.MethodName == "Configure"
+                )
+                .ToList();
+
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(0),
+                "Should not flag signature mismatch with multiple default parameters"
+            );
+        }
+
+        [Test]
+        public void DefaultParameterWithStringValueDoesNotCauseSignatureMismatch()
+        {
+            WriteTestFile(
+                "StringDefaultParam.cs",
+                @"
+namespace TestNs
+{
+    public class BaseClass
+    {
+        public virtual void Log(string message) { }
+    }
+
+    public class DerivedClass : BaseClass
+    {
+        public override void Log(string message = ""default message"")
+        {
+            base.Log(message);
+        }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i =>
+                    i.IssueType == "SignatureMismatch"
+                    && i.ClassName == "DerivedClass"
+                    && i.MethodName == "Log"
+                )
+                .ToList();
+
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(0),
+                "Should not flag signature mismatch when default parameter is a string value"
+            );
+        }
+
+        [Test]
+        public void DefaultParameterWithNullableValueDoesNotCauseSignatureMismatch()
+        {
+            WriteTestFile(
+                "NullableDefaultParam.cs",
+                @"
+namespace TestNs
+{
+    public class BaseClass
+    {
+        public virtual void Process(object data, int? count) { }
+    }
+
+    public class DerivedClass : BaseClass
+    {
+        public override void Process(object data, int? count = null)
+        {
+            base.Process(data, count);
+        }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i =>
+                    i.IssueType == "SignatureMismatch"
+                    && i.ClassName == "DerivedClass"
+                    && i.MethodName == "Process"
+                )
+                .ToList();
+
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(0),
+                "Should not flag signature mismatch when default parameter is null"
+            );
+        }
+
+        [Test]
+        public void YieldReturnStatementIsNotDetectedAsMethod()
+        {
+            // This test reproduces the SequenceBehaviourItem.Delay bug where
+            // "yield return Delay(TimeDelayAfterComplete);" was incorrectly detected
+            // as a method declaration
+            WriteTestFile(
+                "YieldReturn.cs",
+                @"
+namespace TestNs
+{
+    using System.Collections;
+
+    public class BaseClass
+    {
+        protected static IEnumerator Delay(float delay)
+        {
+            yield return null;
+        }
+    }
+
+    public class DerivedClass : BaseClass
+    {
+        private float TimeDelayAfterComplete = 1.0f;
+
+        public IEnumerator DoSomething()
+        {
+            yield return Delay(TimeDelayAfterComplete);
+        }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+
+            // Should not detect "Delay" as a method being shadowed when it's just a method call
+            List<AnalyzerIssue> delayIssues = issues
+                .Where(i =>
+                    i.MethodName == "Delay"
+                    && (
+                        i.IssueType == "PrivateMethodShadowing"
+                        || i.IssueType == "SignatureMismatch"
+                    )
+                )
+                .ToList();
+
+            Assert.That(
+                delayIssues.Count,
+                Is.EqualTo(0),
+                $"Should not flag 'yield return Delay(...)' as a method declaration. Found: {string.Join(", ", delayIssues.Select(i => $"{i.ClassName}.{i.MethodName}: {i.IssueType}"))}"
+            );
+        }
+
+        [Test]
+        public void YieldReturnWithTabIsNotDetectedAsMethod()
+        {
+            WriteTestFile(
+                "YieldReturnTab.cs",
+                @"
+namespace TestNs
+{
+    using System.Collections;
+
+    public class TestClass
+    {
+        public IEnumerator Process()
+        {
+            yield	return	WaitForSomething();
+        }
+
+        private IEnumerator WaitForSomething()
+        {
+            yield return null;
+        }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> falsePositives = issues
+                .Where(i => i.MethodName == "WaitForSomething" || i.MethodName == "Process")
+                .ToList();
+
+            // Should only find real methods, not yield return statements
+            Assert.That(
+                falsePositives.Count,
+                Is.EqualTo(0),
+                $"Should not flag yield return statements as method declarations. Found: {string.Join(", ", falsePositives.Select(i => $"{i.ClassName}.{i.MethodName}: {i.IssueType}"))}"
+            );
+        }
+
+        [Test]
+        public void MultipleYieldReturnStatementsAreNotDetectedAsMethods()
+        {
+            // Reproduces real-world pattern from SequenceBehaviourItem inheritance
+            WriteTestFile(
+                "MultipleYieldReturns.cs",
+                @"
+namespace TestNs
+{
+    using System.Collections;
+
+    public class SequenceBehaviourItem
+    {
+        public float TimeDelayAfterComplete = 0f;
+
+        protected virtual IEnumerator InternalInitiate()
+        {
+            yield return Delay(TimeDelayAfterComplete);
+        }
+
+        protected static IEnumerator Delay(float delay)
+        {
+            if (delay > 0f)
+                yield return null;
+        }
+    }
+
+    public class SequenceBehaviourItemControlToggle : SequenceBehaviourItem
+    {
+        protected override IEnumerator InternalInitiate()
+        {
+            // Do something
+            yield return Delay(TimeDelayAfterComplete);
+        }
+    }
+
+    public class SequenceBehaviourItemFadeScreen : SequenceBehaviourItem
+    {
+        protected override IEnumerator InternalInitiate()
+        {
+            // Do something else
+            yield return Delay(TimeDelayAfterComplete);
+        }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+
+            // Should not flag any "Delay" as private method shadowing
+            List<AnalyzerIssue> shadowingIssues = issues
+                .Where(i => i.MethodName == "Delay" && i.IssueType == "PrivateMethodShadowing")
+                .ToList();
+
+            Assert.That(
+                shadowingIssues.Count,
+                Is.EqualTo(0),
+                $"Should not flag 'yield return Delay(...)' calls in multiple derived classes as method shadowing. Found: {string.Join(", ", shadowingIssues.Select(i => $"{i.ClassName}.{i.MethodName}"))}"
+            );
+        }
+
+        [Test]
+        public void YieldBreakIsNotDetectedAsMethod()
+        {
+            WriteTestFile(
+                "YieldBreak.cs",
+                @"
+namespace TestNs
+{
+    using System.Collections;
+
+    public class TestClass
+    {
+        public IEnumerator Process(bool shouldExit)
+        {
+            if (shouldExit)
+            {
+                yield break;
+            }
+            yield return null;
+        }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            // This should not throw or cause any issues
+            Assert.That(_analyzer.Issues.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void RealWorldFrostbitePatternDoesNotCauseFalsePositive()
+        {
+            // Exact reproduction of the Frostbite issue
+            WriteTestFile(
+                "EffectBase.cs",
+                @"
+namespace TestNs
+{
+    public abstract class EffectBase
+    {
+        public virtual void StartEffect(object source, int amount) { }
+        public virtual void ApplyEffect() { }
+        public virtual void RemoveEffect() { }
+    }
+}
+"
+            );
+
+            WriteTestFile(
+                "Frostbite.cs",
+                @"
+namespace TestNs
+{
+    public class Frostbite : EffectBase
+    {
+        public override void StartEffect(object source, int amount = 1)
+        {
+            base.StartEffect(source, amount);
+        }
+
+        public override void ApplyEffect() { }
+        public override void RemoveEffect() { }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> frostbiteIssues = issues
+                .Where(i => i.ClassName == "Frostbite")
+                .ToList();
+
+            Assert.That(
+                frostbiteIssues.Count,
+                Is.EqualTo(0),
+                $"Real-world Frostbite pattern should not cause false positives. Found: {string.Join(", ", frostbiteIssues.Select(i => $"{i.MethodName}: {i.IssueType}"))}"
+            );
+        }
+
+        [Test]
+        public void RealWorldSequenceBehaviourPatternDoesNotCauseFalsePositive()
+        {
+            // Exact reproduction of the SequenceBehaviourItem issue
+            WriteTestFile(
+                "SequenceBase.cs",
+                @"
+namespace TestNs
+{
+    using System.Collections;
+
+    public class SequenceBehaviourItem
+    {
+        public float TimeDelayAfterComplete = 0f;
+
+        protected virtual IEnumerator InternalInitiate()
+        {
+            yield return Delay(TimeDelayAfterComplete);
+        }
+
+        protected static IEnumerator Delay(float delay)
+        {
+            yield return null;
+        }
+    }
+}
+"
+            );
+
+            WriteTestFile(
+                "SequenceControlToggle.cs",
+                @"
+namespace TestNs
+{
+    using System.Collections;
+
+    public class SequenceBehaviourItemControlToggle : SequenceBehaviourItem
+    {
+        protected override IEnumerator InternalInitiate()
+        {
+            yield return Delay(TimeDelayAfterComplete);
+        }
+    }
+}
+"
+            );
+
+            WriteTestFile(
+                "SequenceFadeScreen.cs",
+                @"
+namespace TestNs
+{
+    using System.Collections;
+
+    public class SequenceBehaviourItemFadeScreen : SequenceBehaviourItem
+    {
+        protected override IEnumerator InternalInitiate()
+        {
+            yield return Delay(TimeDelayAfterComplete);
+        }
+    }
+}
+"
+            );
+
+            WriteTestFile(
+                "SequenceSetLockState.cs",
+                @"
+namespace TestNs
+{
+    using System.Collections;
+
+    public class SequenceBehaviourItemSetLockState : SequenceBehaviourItem
+    {
+        protected override IEnumerator InternalInitiate()
+        {
+            yield return Delay(TimeDelayAfterComplete);
+        }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> delayIssues = issues.Where(i => i.MethodName == "Delay").ToList();
+
+            Assert.That(
+                delayIssues.Count,
+                Is.EqualTo(0),
+                $"Real-world SequenceBehaviourItem pattern should not cause false positives. Found: {string.Join(", ", delayIssues.Select(i => $"{i.ClassName}.{i.MethodName}: {i.IssueType}"))}"
+            );
+        }
+
+        [Test]
+        public void OverrideMethodWhenImmediateBaseHasDifferentOverloadIsNotFlagged()
+        {
+            // This test reproduces the AIMovePositionState bug where:
+            // - EntityState defines Enter() and Enter(object data)
+            // - E_FollowTarget_Astar_Base overrides only Enter()
+            // - AIMovePositionState overrides Enter(object data) from EntityState (grandparent)
+            // The analyzer was incorrectly flagging this because it found Enter() in the immediate
+            // base but not the Enter(object data) overload
+            WriteTestFile(
+                "ImmediateBaseDifferentOverload.cs",
+                @"
+namespace TestNs
+{
+    public class EntityState
+    {
+        public virtual void Enter(object data) { Enter(); }
+        public virtual void Enter() { }
+        public virtual void Exit() { }
+    }
+
+    public class E_FollowTarget_Astar_Base : EntityState
+    {
+        // Only overrides the parameterless version
+        public override void Enter() { base.Enter(); }
+    }
+
+    public class AIMovePositionState : E_FollowTarget_Astar_Base
+    {
+        // Overrides the Enter(object data) from EntityState (grandparent)
+        public override void Enter(object data) { base.Enter(data); }
+
+        // Also overrides the parameterless Enter from immediate base
+        public override void Enter() { base.Enter(); }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i =>
+                    i.IssueType == "SignatureMismatch"
+                    && i.ClassName == "AIMovePositionState"
+                    && i.MethodName == "Enter"
+                )
+                .ToList();
+
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(0),
+                $"Should find Enter(object data) in grandparent EntityState. Found: {string.Join(", ", signatureMismatches.Select(i => $"base={i.BaseMethodSignature}, derived={i.DerivedMethodSignature}"))}"
+            );
+        }
+
+        [Test]
+        public void OverrideMethodWithParameterWhenImmediateBaseHasParameterlessIsNotFlagged()
+        {
+            // Similar to WanderingProjectile pattern where:
+            // - Projectile has ReturnToPool() and ReturnToPool(Core)
+            // - MissileProjectile overrides only ReturnToPool()
+            // - WanderingProjectile overrides ReturnToPool(Core) from Projectile
+            WriteTestFile(
+                "ParameterOverloadInGrandparent.cs",
+                @"
+namespace TestNs
+{
+    public class Core { }
+
+    public class Projectile
+    {
+        protected virtual void ReturnToPool() { }
+        protected virtual void ReturnToPool(Core targetToDamage) { }
+    }
+
+    public class MissileProjectile : Projectile
+    {
+        protected override void ReturnToPool() { base.ReturnToPool(); }
+    }
+
+    public class WanderingProjectile : MissileProjectile
+    {
+        // Override the Core overload from grandparent Projectile
+        protected override void ReturnToPool(Core targetToDamage)
+        {
+            base.ReturnToPool(targetToDamage);
+        }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i =>
+                    i.IssueType == "SignatureMismatch" && i.ClassName == "WanderingProjectile"
+                )
+                .ToList();
+
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(0),
+                $"Should find ReturnToPool(Core) in grandparent Projectile. Found: {string.Join(", ", signatureMismatches.Select(i => $"{i.MethodName}: {i.DerivedMethodSignature}"))}"
+            );
+        }
+
+        [Test]
+        public void OverrideMethodWithDifferentParameterTypeFromDifferentAncestorIsNotFlagged()
+        {
+            // This reproduces the RCDirgeMoveState pattern where:
+            // - RCDirgeState defines ExecuteCommand(MoveParameter)
+            // - RCDirgeInteractState adds ExecuteCommand(InteractParameter)
+            // - RCDirgeMoveState overrides ExecuteCommand(MoveParameter) from grandparent
+            WriteTestFile(
+                "DifferentParameterTypeInAncestor.cs",
+                @"
+namespace TestNs
+{
+    public class MoveParameter { }
+    public class InteractParameter { }
+
+    public class RCDirgeState
+    {
+        public virtual void ExecuteCommand(MoveParameter param) { }
+    }
+
+    public class RCDirgeInteractState : RCDirgeState
+    {
+        // Adds a different overload with different parameter type
+        public virtual void ExecuteCommand(InteractParameter param) { }
+    }
+
+    public class RCDirgeMoveState : RCDirgeInteractState
+    {
+        // Overrides the grandparent's method, not the parent's
+        public override void ExecuteCommand(MoveParameter param)
+        {
+            base.ExecuteCommand(param);
+        }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i => i.IssueType == "SignatureMismatch" && i.ClassName == "RCDirgeMoveState")
+                .ToList();
+
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(0),
+                $"Should find ExecuteCommand(MoveParameter) in grandparent RCDirgeState. Found: {string.Join(", ", signatureMismatches.Select(i => $"{i.MethodName}: base={i.BaseMethodSignature}, derived={i.DerivedMethodSignature}"))}"
+            );
+        }
+
+        [Test]
+        public void FourLevelDeepInheritanceWithDifferentOverloadsAtEachLevelIsNotFlagged()
+        {
+            // Tests a complex scenario with many levels and different overloads at each
+            WriteTestFile(
+                "FourLevelDeepOverloads.cs",
+                @"
+namespace TestNs
+{
+    public class Level0
+    {
+        public virtual void Process() { }
+        public virtual void Process(int a) { }
+        public virtual void Process(int a, int b) { }
+        public virtual void Process(string s) { }
+    }
+
+    public class Level1 : Level0
+    {
+        // Only overrides Process()
+        public override void Process() { base.Process(); }
+    }
+
+    public class Level2 : Level1
+    {
+        // Only overrides Process(int)
+        public override void Process(int a) { base.Process(a); }
+    }
+
+    public class Level3 : Level2
+    {
+        // Overrides Process(int, int) from Level0 (3 levels up)
+        public override void Process(int a, int b) { base.Process(a, b); }
+
+        // Overrides Process(string) from Level0 (3 levels up)
+        public override void Process(string s) { base.Process(s); }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i => i.IssueType == "SignatureMismatch" && i.ClassName == "Level3")
+                .ToList();
+
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(0),
+                $"Should find all overloads in ancestor chain. Found: {string.Join(", ", signatureMismatches.Select(i => $"{i.MethodName}: {i.DerivedMethodSignature}"))}"
+            );
+        }
+
+        [Test]
+        public void ActualSignatureMismatchIsStillFlaggedWhenImmediateBaseHasDifferentOverload()
+        {
+            // Ensure we still catch real signature mismatches even when searching ancestors
+            WriteTestFile(
+                "RealMismatchWithDifferentOverloads.cs",
+                @"
+namespace TestNs
+{
+    public class Level0
+    {
+        public virtual void Process() { }
+        public virtual void Process(int a) { }
+    }
+
+    public class Level1 : Level0
+    {
+        public override void Process() { base.Process(); }
+    }
+
+    public class Level2 : Level1
+    {
+        // This is a real mismatch - trying to override Process(string)
+        // which doesn't exist anywhere in the chain
+        public override void Process(string s) { }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i =>
+                    i.IssueType == "SignatureMismatch"
+                    && i.ClassName == "Level2"
+                    && i.MethodName == "Process"
+                )
+                .ToList();
+
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(1),
+                "Should flag actual signature mismatch when method doesn't exist in any ancestor"
+            );
+        }
+
+        [Test]
+        public void OverrideFromAncestorWithReturnTypeMismatchIsFlagged()
+        {
+            // When we find a method in an ancestor but return type doesn't match
+            WriteTestFile(
+                "AncestorReturnTypeMismatch.cs",
+                @"
+namespace TestNs
+{
+    public class Level0
+    {
+        public virtual int GetValue() => 0;
+        public virtual int GetValue(int input) => input;
+    }
+
+    public class Level1 : Level0
+    {
+        public override int GetValue() => 1;
+    }
+
+    public class Level2 : Level1
+    {
+        // Tries to override GetValue(int) from Level0 but with wrong return type
+        public override string GetValue(int input) => input.ToString();
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> returnTypeMismatches = issues
+                .Where(i =>
+                    i.IssueType == "ReturnTypeMismatch"
+                    && i.ClassName == "Level2"
+                    && i.MethodName == "GetValue"
+                )
+                .ToList();
+
+            Assert.That(
+                returnTypeMismatches.Count,
+                Is.EqualTo(1),
+                "Should flag return type mismatch when overriding ancestor method"
+            );
+        }
+
+        [Test]
+        public void MultipleOverloadsInSameAncestorWithOneMatchingIsNotFlagged()
+        {
+            // Tests when an ancestor has multiple overloads and we override one of them
+            WriteTestFile(
+                "MultipleOverloadsOneMatching.cs",
+                @"
+namespace TestNs
+{
+    public class Level0
+    {
+        public virtual void Handle(int a) { }
+        public virtual void Handle(int a, int b) { }
+        public virtual void Handle(int a, int b, int c) { }
+    }
+
+    public class Level1 : Level0
+    {
+        public override void Handle(int a) { base.Handle(a); }
+    }
+
+    public class Level2 : Level1
+    {
+        // Override the two-param version from Level0
+        public override void Handle(int a, int b) { base.Handle(a, b); }
+    }
+
+    public class Level3 : Level2
+    {
+        // Override the three-param version from Level0 (3 levels up)
+        public override void Handle(int a, int b, int c) { base.Handle(a, b, c); }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i =>
+                    i.IssueType == "SignatureMismatch"
+                    && (i.ClassName == "Level2" || i.ClassName == "Level3")
+                )
+                .ToList();
+
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(0),
+                $"Should find matching overloads even with multiple options. Found: {string.Join(", ", signatureMismatches.Select(i => $"{i.ClassName}.{i.MethodName}"))}"
+            );
+        }
+
+        [Test]
+        public void OverrideWithGenericParameterFromAncestorIsNotFlagged()
+        {
+            // Tests the combination of generic types and ancestor lookups
+            WriteTestFile(
+                "GenericAncestorOverride.cs",
+                @"
+namespace TestNs
+{
+    public class BaseHandler<T>
+    {
+        public virtual void Handle(T item) { }
+        public virtual void Handle() { }
+    }
+
+    public class MiddleHandler<T> : BaseHandler<T>
+    {
+        // Only overrides parameterless
+        public override void Handle() { base.Handle(); }
+    }
+
+    public class IntHandler : MiddleHandler<int>
+    {
+        // Override Handle(T) which becomes Handle(int) from BaseHandler
+        public override void Handle(int item) { base.Handle(item); }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> signatureMismatches = issues
+                .Where(i => i.IssueType == "SignatureMismatch" && i.ClassName == "IntHandler")
+                .ToList();
+
+            Assert.That(
+                signatureMismatches.Count,
+                Is.EqualTo(0),
+                $"Should resolve generic type parameters when searching ancestors. Found: {string.Join(", ", signatureMismatches.Select(i => $"{i.MethodName}: {i.DerivedMethodSignature}"))}"
+            );
+        }
     }
 }
 #endif

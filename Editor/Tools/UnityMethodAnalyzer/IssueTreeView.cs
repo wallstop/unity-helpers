@@ -144,13 +144,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
         /// <summary>
         /// Builds a filtered issue list in a single pass to reduce allocations.
+        /// Uses case-insensitive comparison instead of ToLowerInvariant() to avoid string allocations.
         /// </summary>
         private List<AnalyzerIssue> BuildFilteredIssueList()
         {
             bool hasSeverityFilter = _severityFilter.HasValue;
             bool hasCategoryFilter = _categoryFilter.HasValue;
             bool hasSearchFilter = !string.IsNullOrWhiteSpace(_searchFilter);
-            string searchLower = hasSearchFilter ? _searchFilter.ToLowerInvariant() : null;
 
             // If no filters, return a copy of the list
             if (!hasSeverityFilter && !hasCategoryFilter && !hasSearchFilter)
@@ -175,15 +175,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                     continue;
                 }
 
-                // Apply search filter
+                // Apply search filter using IndexOf with OrdinalIgnoreCase to avoid string allocations
                 if (hasSearchFilter)
                 {
                     bool matchesSearch =
-                        issue.ClassName.ToLowerInvariant().Contains(searchLower)
-                        || issue.MethodName.ToLowerInvariant().Contains(searchLower)
-                        || issue.IssueType.ToLowerInvariant().Contains(searchLower)
-                        || issue.FilePath.ToLowerInvariant().Contains(searchLower)
-                        || issue.Description.ToLowerInvariant().Contains(searchLower);
+                        issue.ClassName.IndexOf(_searchFilter, StringComparison.OrdinalIgnoreCase)
+                            >= 0
+                        || issue.MethodName.IndexOf(
+                            _searchFilter,
+                            StringComparison.OrdinalIgnoreCase
+                        ) >= 0
+                        || issue.IssueType.IndexOf(
+                            _searchFilter,
+                            StringComparison.OrdinalIgnoreCase
+                        ) >= 0
+                        || issue.FilePath.IndexOf(_searchFilter, StringComparison.OrdinalIgnoreCase)
+                            >= 0
+                        || issue.Description.IndexOf(
+                            _searchFilter,
+                            StringComparison.OrdinalIgnoreCase
+                        ) >= 0;
 
                     if (!matchesSearch)
                     {

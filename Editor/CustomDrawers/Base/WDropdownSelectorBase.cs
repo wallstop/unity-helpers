@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.UIElements;
-    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Styles;
     using WallstopStudios.UnityHelpers.Utils;

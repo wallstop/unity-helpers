@@ -87,7 +87,6 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                     CyclicBufferConverterFactory.Instance,
                 },
             };
-            ;
         }
 
         public static JsonSerializerOptions GetPrettyJsonOptions()

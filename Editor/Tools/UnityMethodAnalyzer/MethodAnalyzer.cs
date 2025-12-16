@@ -81,6 +81,63 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
         );
 
         /// <summary>
+        /// Control flow keywords that should be skipped when parsing methods.
+        /// Using HashSet for O(1) lookup instead of sequential string comparisons.
+        /// </summary>
+        private static readonly HashSet<string> ControlFlowKeywords = new(StringComparer.Ordinal)
+        {
+            "if",
+            "while",
+            "for",
+            "foreach",
+            "switch",
+            "catch",
+            "using",
+            "lock",
+            "else",
+            "return",
+            "new",
+            "yield",
+        };
+
+        /// <summary>
+        /// Keywords that when found as a prefix in return types indicate non-method constructs.
+        /// For example, "yield return MethodName(...)" would have "yield return" as the return type.
+        /// </summary>
+        private static readonly string[] NonMethodReturnTypePrefixes = { "yield ", "yield\t" };
+
+        /// <summary>
+        /// Cached regex patterns for IsNewExpression to avoid repeated compilation.
+        /// Key is the method name, value is the compiled regex.
+        /// </summary>
+        private static readonly ConcurrentDictionary<string, Regex> NewExpressionPatternCache =
+            new();
+
+        /// <summary>
+        /// Pre-compiled regex for detecting "new TypeName(" pattern.
+        /// </summary>
+        private static readonly Regex DirectNewExpressionSuffixRegex = new(
+            @"new\s+\w+\s*$",
+            RegexOptions.Compiled | RegexOptions.RightToLeft
+        );
+
+        /// <summary>
+        /// Pre-compiled regex for detecting array/collection initializer patterns.
+        /// </summary>
+        private static readonly Regex ArrayInitializerNewExpressionRegex = new(
+            @"[,{]\s*new\s+\w+(?:\s*<[^>]+>)?\s*$",
+            RegexOptions.Compiled | RegexOptions.RightToLeft
+        );
+
+        /// <summary>
+        /// Pre-compiled regex for detecting close paren with new pattern.
+        /// </summary>
+        private static readonly Regex CloseParenNewExpressionRegex = new(
+            @"\)\s*,\s*new\s+\w+(?:\s*<[^>]+>)?\s*$",
+            RegexOptions.Compiled | RegexOptions.RightToLeft
+        );
+
+        /// <summary>
         /// Clears all cached data from a previous analysis.
         /// </summary>
         public void Clear()
@@ -337,30 +394,175 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
         /// <summary>
         /// Strips comments, string literals, and preprocessor directives from code to avoid false positives in method detection.
         /// Returns a version of the code with these elements replaced by spaces (preserving line numbers).
+        /// Uses a single-pass approach for better performance on large files.
         /// </summary>
         private static string StripCommentsAndStrings(string code)
         {
-            // Replace string literals first (they might contain // or /* which aren't comments)
-            string result = StringLiteralRegex.Replace(code, m => new string(' ', m.Length));
+            if (string.IsNullOrEmpty(code))
+            {
+                return code;
+            }
 
-            // Replace multi-line comments
-            result = MultiLineCommentRegex.Replace(
-                result,
-                m =>
+            char[] result = new char[code.Length];
+            int i = 0;
+            int length = code.Length;
+
+            while (i < length)
+            {
+                char c = code[i];
+
+                // Check for string literals
+                if (c == '"')
                 {
-                    // Preserve newlines to keep line numbers correct
-                    int newlines = m.Value.Count(c => c == '\n');
-                    return new string('\n', newlines) + new string(' ', m.Length - newlines);
+                    // Check for verbatim string @"..."
+                    if (i > 0 && code[i - 1] == '@')
+                    {
+                        result[i] = ' ';
+                        i++;
+                        while (i < length)
+                        {
+                            if (code[i] == '"')
+                            {
+                                // Check for escaped quote ""
+                                if (i + 1 < length && code[i + 1] == '"')
+                                {
+                                    result[i] = ' ';
+                                    result[i + 1] = ' ';
+                                    i += 2;
+                                }
+                                else
+                                {
+                                    result[i] = ' ';
+                                    i++;
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                result[i] = code[i] == '\n' ? '\n' : ' ';
+                                i++;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Regular string "..."
+                        result[i] = ' ';
+                        i++;
+                        while (i < length)
+                        {
+                            char sc = code[i];
+                            if (sc == '\\' && i + 1 < length)
+                            {
+                                // Escaped character
+                                result[i] = ' ';
+                                result[i + 1] = ' ';
+                                i += 2;
+                            }
+                            else if (sc == '"')
+                            {
+                                result[i] = ' ';
+                                i++;
+                                break;
+                            }
+                            else if (sc == '\n')
+                            {
+                                // Newline in string (shouldn't happen in valid code, but preserve it)
+                                result[i] = '\n';
+                                i++;
+                                break;
+                            }
+                            else
+                            {
+                                result[i] = ' ';
+                                i++;
+                            }
+                        }
+                    }
                 }
-            );
+                // Check for single-line comment //
+                else if (c == '/' && i + 1 < length && code[i + 1] == '/')
+                {
+                    while (i < length && code[i] != '\n')
+                    {
+                        result[i] = ' ';
+                        i++;
+                    }
 
-            // Replace single-line comments
-            result = SingleLineCommentRegex.Replace(result, m => new string(' ', m.Length));
+                    if (i < length)
+                    {
+                        result[i] = '\n';
+                        i++;
+                    }
+                }
+                // Check for multi-line comment /* ... */
+                else if (c == '/' && i + 1 < length && code[i + 1] == '*')
+                {
+                    result[i] = ' ';
+                    result[i + 1] = ' ';
+                    i += 2;
+                    while (i < length)
+                    {
+                        if (code[i] == '*' && i + 1 < length && code[i + 1] == '/')
+                        {
+                            result[i] = ' ';
+                            result[i + 1] = ' ';
+                            i += 2;
+                            break;
+                        }
 
-            // Replace preprocessor directives (e.g., #if, #endif, etc.)
-            result = PreprocessorDirectiveRegex.Replace(result, m => new string(' ', m.Length));
+                        result[i] = code[i] == '\n' ? '\n' : ' ';
+                        i++;
+                    }
+                }
+                // Check for preprocessor directive
+                else if (
+                    c == '#'
+                    && (i == 0 || code[i - 1] == '\n' || IsOnlyWhitespaceBefore(code, i))
+                )
+                {
+                    while (i < length && code[i] != '\n')
+                    {
+                        result[i] = ' ';
+                        i++;
+                    }
 
-            return result;
+                    if (i < length)
+                    {
+                        result[i] = '\n';
+                        i++;
+                    }
+                }
+                else
+                {
+                    result[i] = c;
+                    i++;
+                }
+            }
+
+            return new string(result);
+        }
+
+        /// <summary>
+        /// Checks if there is only whitespace between the start of the line and the given position.
+        /// </summary>
+        private static bool IsOnlyWhitespaceBefore(string code, int position)
+        {
+            for (int i = position - 1; i >= 0; i--)
+            {
+                char c = code[i];
+                if (c == '\n')
+                {
+                    return true;
+                }
+
+                if (c != ' ' && c != '\t')
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -385,13 +587,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             string methodName = methodMatch.Groups["name"].Value;
 
             // Pattern 1: Direct "new TypeName(" where TypeName matches the method name
-            if (
-                Regex.IsMatch(
-                    prefix,
-                    @"new\s+" + Regex.Escape(methodName) + @"\s*$",
-                    RegexOptions.RightToLeft
+            // Use cached regex pattern to avoid repeated compilation
+            Regex directPattern = NewExpressionPatternCache.GetOrAdd(
+                methodName,
+                name => new Regex(
+                    @"new\s+" + Regex.Escape(name) + @"\s*$",
+                    RegexOptions.Compiled | RegexOptions.RightToLeft
                 )
-            )
+            );
+
+            if (directPattern.IsMatch(prefix))
             {
                 return true;
             }
@@ -422,28 +627,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             }
 
             // Pattern 5: Array initializer with generic types - "new Vector3(" preceded by ", " or "{ "
-            // This catches cases like: new[] { new Vector3(0f, 0f, 0f), new Vector3(1f, 0f, 0f) }
-            // where the second Vector3 appears after a comma
-            if (
-                Regex.IsMatch(
-                    prefix,
-                    @"[,{]\s*new\s+" + Regex.Escape(methodName) + @"(?:\s*<[^>]+>)?\s*$",
-                    RegexOptions.RightToLeft
-                )
-            )
+            // Use pre-compiled regex for better performance
+            if (ArrayInitializerNewExpressionRegex.IsMatch(prefix))
             {
                 return true;
             }
 
             // Pattern 6: After close paren with new - like ), new Vector3(...)
-            // This can occur in method call chains or nested expressions
-            if (
-                Regex.IsMatch(
-                    prefix,
-                    @"\)\s*,\s*new\s+" + Regex.Escape(methodName) + @"(?:\s*<[^>]+>)?\s*$",
-                    RegexOptions.RightToLeft
-                )
-            )
+            // Use pre-compiled regex for better performance
+            if (CloseParenNewExpressionRegex.IsMatch(prefix))
             {
                 return true;
             }
@@ -852,53 +1044,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 string methodName = match.Groups["name"].Value;
                 string paramsStr = match.Groups["params"].Value;
 
-                // Skip control flow statements that regex might incorrectly match
-                if (string.Equals(returnType, "if", StringComparison.Ordinal))
+                // Skip control flow statements and 'new' expressions using O(1) HashSet lookup
+                if (ControlFlowKeywords.Contains(returnType))
                 {
                     continue;
                 }
 
-                if (string.Equals(returnType, "while", StringComparison.Ordinal))
+                // Skip return types that start with keywords indicating non-method constructs
+                // e.g., "yield return SomeMethod(...)" captures "yield return" as the return type
+                bool hasNonMethodPrefix = false;
+                foreach (string prefix in NonMethodReturnTypePrefixes)
                 {
-                    continue;
+                    if (returnType.StartsWith(prefix, StringComparison.Ordinal))
+                    {
+                        hasNonMethodPrefix = true;
+                        break;
+                    }
                 }
 
-                if (string.Equals(returnType, "for", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                if (string.Equals(returnType, "foreach", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                if (string.Equals(returnType, "switch", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                if (string.Equals(returnType, "catch", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                if (string.Equals(returnType, "using", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                if (string.Equals(returnType, "lock", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                if (string.Equals(returnType, "else", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                if (string.Equals(returnType, "return", StringComparison.Ordinal))
+                if (hasNonMethodPrefix)
                 {
                     continue;
                 }
@@ -906,12 +1070,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 // Skip 'new' expressions (constructor calls) that regex might match as methods
                 // Check if this looks like "new TypeName(" by examining what comes before
                 if (IsNewExpression(strippedContent, match))
-                {
-                    continue;
-                }
-
-                // Skip if return type is 'new' (indicates this is a "new SomeType(" expression)
-                if (string.Equals(returnType, "new", StringComparison.Ordinal))
                 {
                     continue;
                 }
@@ -930,11 +1088,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                             continue;
                         }
 
-                        parameters.Add(trimmed);
-                        int lastSpace = trimmed.LastIndexOf(' ');
+                        // Strip default value if present (e.g., "int amount = 1" -> "int amount")
+                        // This is important for signature comparison since default values
+                        // don't affect method signature matching in C#
+                        int equalsIndex = trimmed.IndexOf('=');
+                        string paramWithoutDefault =
+                            equalsIndex > 0 ? trimmed.Substring(0, equalsIndex).Trim() : trimmed;
+
+                        parameters.Add(paramWithoutDefault);
+                        int lastSpace = paramWithoutDefault.LastIndexOf(' ');
                         if (lastSpace > 0)
                         {
-                            string typeStr = trimmed.Substring(0, lastSpace).Trim();
+                            string typeStr = paramWithoutDefault.Substring(0, lastSpace).Trim();
                             if (typeStr.StartsWith("this ", StringComparison.Ordinal))
                             {
                                 typeStr = typeStr.Substring(5).Trim();
@@ -964,7 +1129,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                         }
                         else
                         {
-                            parameterTypes.Add(trimmed);
+                            parameterTypes.Add(paramWithoutDefault);
                         }
                     }
                 }
@@ -1196,11 +1361,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                     {
                         if (baseMethod.IsPrivate)
                         {
-                            string derivedTypeStr = string.Join(", ", method.ParameterTypes);
-                            string baseTypeStr = string.Join(", ", baseMethod.ParameterTypes);
-
                             if (
-                                string.Equals(derivedTypeStr, baseTypeStr, StringComparison.Ordinal)
+                                string.Equals(
+                                    method.ParameterTypesString,
+                                    baseMethod.ParameterTypesString,
+                                    StringComparison.Ordinal
+                                )
                             )
                             {
                                 _issues.Add(
@@ -1235,11 +1401,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             {
                 foreach (AnalyzerMethodInfo baseMethod in baseMethodsForReturnCheck)
                 {
-                    string derivedTypeStr = string.Join(", ", method.ParameterTypes);
-                    string baseTypeStr = string.Join(", ", baseMethod.ParameterTypes);
-
                     if (
-                        string.Equals(derivedTypeStr, baseTypeStr, StringComparison.Ordinal)
+                        string.Equals(
+                            method.ParameterTypesString,
+                            baseMethod.ParameterTypesString,
+                            StringComparison.Ordinal
+                        )
                         && !string.Equals(
                             method.ReturnType,
                             baseMethod.ReturnType,
@@ -1367,6 +1534,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 )
             )
             {
+                // Method not in immediate base - check if it's an override/new that might match ancestor
+                if (method.IsOverride || method.IsNew)
+                {
+                    AnalyzeOverrideAgainstAncestorChain(classInfo, method, baseClass, isUnityClass);
+                }
+
                 return;
             }
 
@@ -1389,10 +1562,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                         continue;
                     }
 
-                    string derivedTypeStr = string.Join(", ", method.ParameterTypes);
-                    string baseTypeStr = string.Join(", ", baseMethod.ParameterTypes);
-
-                    if (string.Equals(derivedTypeStr, baseTypeStr, StringComparison.Ordinal))
+                    if (
+                        string.Equals(
+                            method.ParameterTypesString,
+                            baseMethod.ParameterTypesString,
+                            StringComparison.Ordinal
+                        )
+                    )
                     {
                         _issues.Add(
                             new AnalyzerIssue(
@@ -1417,10 +1593,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 {
                     if (!method.IsNew && !method.IsOverride && !method.IsPrivate)
                     {
-                        string derivedTypeStr = string.Join(", ", method.ParameterTypes);
-                        string baseTypeStr = string.Join(", ", baseMethod.ParameterTypes);
-
-                        if (string.Equals(derivedTypeStr, baseTypeStr, StringComparison.Ordinal))
+                        if (
+                            string.Equals(
+                                method.ParameterTypesString,
+                                baseMethod.ParameterTypesString,
+                                StringComparison.Ordinal
+                            )
+                        )
                         {
                             IssueSeverity severity = isUnityMethod
                                 ? IssueSeverity.Critical
@@ -1575,24 +1754,55 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
                 if (matchingMethod == null)
                 {
-                    AnalyzerMethodInfo closestMethod = baseMethods
-                        .Where(bm => !bm.IsPrivate)
-                        .OrderByDescending(bm =>
-                            GetParameterSimilarity(method.ParameterTypes, bm.ParameterTypes)
-                        )
-                        .FirstOrDefault();
+                    // Method name exists in immediate base but no matching overload found.
+                    // Before reporting an error, search the entire ancestor chain for a matching overload.
+                    // This handles cases where the overridden method is defined in a grandparent or further ancestor.
+                    (AnalyzerMethodInfo ancestorMatch, AnalyzerClassInfo ancestorClass) =
+                        FindMatchingMethodInAncestorChain(classInfo, method, baseClass);
 
-                    if (closestMethod != null)
+                    if (ancestorMatch != null && ancestorClass != null)
                     {
-                        // Check if parameter types match when considering generics
-                        bool paramsMatch = ParameterTypesMatchWithGenerics(
-                            method.ParameterTypes,
-                            closestMethod.ParameterTypes,
-                            classInfo,
-                            baseClass
-                        );
+                        // Found matching method in ancestor - check return type for override
+                        if (
+                            method.IsOverride
+                            && !TypesAreEquivalent(
+                                method.ReturnType,
+                                ancestorMatch.ReturnType,
+                                classInfo,
+                                ancestorClass
+                            )
+                        )
+                        {
+                            _issues.Add(
+                                new AnalyzerIssue(
+                                    classInfo.FilePath,
+                                    classInfo.Name,
+                                    method.Name,
+                                    "ReturnTypeMismatch",
+                                    $"Method '{method.Name}' in '{classInfo.Name}' has different return type ({method.ReturnType}) than ancestor class '{ancestorClass.Name}' ({ancestorMatch.ReturnType}).",
+                                    IssueSeverity.High,
+                                    "Change the return type to match the base method.",
+                                    method.LineNumber,
+                                    GetCategory(),
+                                    ancestorClass.Name,
+                                    ancestorMatch.Signature,
+                                    method.Signature
+                                )
+                            );
+                        }
+                        // Otherwise, method correctly overrides an ancestor - no issue to report
+                    }
+                    else
+                    {
+                        // No matching method found in entire chain - report signature mismatch
+                        AnalyzerMethodInfo closestMethod = baseMethods
+                            .Where(bm => !bm.IsPrivate)
+                            .OrderByDescending(bm =>
+                                GetParameterSimilarity(method.ParameterTypes, bm.ParameterTypes)
+                            )
+                            .FirstOrDefault();
 
-                        if (!paramsMatch)
+                        if (closestMethod != null)
                         {
                             _issues.Add(
                                 new AnalyzerIssue(
@@ -1614,7 +1824,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                     }
                 }
                 else if (
-                    !TypesAreEquivalent(
+                    method.IsOverride
+                    && !TypesAreEquivalent(
                         method.ReturnType,
                         matchingMethod.ReturnType,
                         classInfo,
@@ -1622,6 +1833,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                     )
                 )
                 {
+                    // Only report return type mismatch for 'override' methods, not 'new' methods.
+                    // Using 'new' with a different return type is valid intentional method hiding.
                     _issues.Add(
                         new AnalyzerIssue(
                             classInfo.FilePath,
@@ -1635,6 +1848,253 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                             GetCategory(),
                             baseClass.Name,
                             matchingMethod.Signature,
+                            method.Signature
+                        )
+                    );
+                }
+            }
+        }
+
+        /// <summary>
+        /// Searches the ancestor chain (starting from the immediate base's parent) for a method
+        /// with matching signature. Used when the immediate base class has a method with the same
+        /// name but different parameters, to find the correct overload in an ancestor.
+        /// </summary>
+        /// <returns>
+        /// A tuple containing the matching method and the class it was found in,
+        /// or (null, null) if no match was found.
+        /// </returns>
+        private (
+            AnalyzerMethodInfo method,
+            AnalyzerClassInfo containingClass
+        ) FindMatchingMethodInAncestorChain(
+            AnalyzerClassInfo derivedClass,
+            AnalyzerMethodInfo methodToMatch,
+            AnalyzerClassInfo immediateBase
+        )
+        {
+            HashSet<string> visited = new() { derivedClass.FullName, immediateBase.FullName };
+            AnalyzerClassInfo currentAncestor =
+                immediateBase.BaseClassName != null
+                    ? FindBaseClass(immediateBase.BaseClassName)
+                    : null;
+
+            while (currentAncestor != null)
+            {
+                if (!visited.Add(currentAncestor.FullName))
+                {
+                    break;
+                }
+
+                if (
+                    currentAncestor.Methods.TryGetValue(
+                        methodToMatch.Name,
+                        out List<AnalyzerMethodInfo> ancestorMethods
+                    )
+                )
+                {
+                    foreach (AnalyzerMethodInfo ancestorMethod in ancestorMethods)
+                    {
+                        if (ancestorMethod.IsPrivate)
+                        {
+                            continue;
+                        }
+
+                        bool paramsMatch = ParameterTypesMatchWithGenerics(
+                            methodToMatch.ParameterTypes,
+                            ancestorMethod.ParameterTypes,
+                            derivedClass,
+                            currentAncestor
+                        );
+
+                        if (paramsMatch)
+                        {
+                            return (ancestorMethod, currentAncestor);
+                        }
+                    }
+                }
+
+                currentAncestor =
+                    currentAncestor.BaseClassName != null
+                        ? FindBaseClass(currentAncestor.BaseClassName)
+                        : null;
+            }
+
+            return (null, null);
+        }
+
+        /// <summary>
+        /// Searches the entire inheritance chain for a matching base method when analyzing
+        /// override/new methods. This handles cases where the method being overridden is
+        /// defined in an ancestor class, not the immediate base class.
+        /// </summary>
+        private void AnalyzeOverrideAgainstAncestorChain(
+            AnalyzerClassInfo classInfo,
+            AnalyzerMethodInfo method,
+            AnalyzerClassInfo immediateBase,
+            bool isUnityClass
+        )
+        {
+            // Skip analysis for suppressed classes or methods
+            if (classInfo.IsSuppressed || method.IsSuppressed)
+            {
+                return;
+            }
+
+            bool isUnityMethod = UnityMethods.LifecycleMethods.Contains(method.Name);
+            IssueCategory GetCategory() =>
+                isUnityClass
+                    ? (
+                        isUnityMethod
+                            ? IssueCategory.UnityLifecycle
+                            : IssueCategory.UnityInheritance
+                    )
+                    : IssueCategory.GeneralInheritance;
+
+            // Walk up the inheritance chain to find a matching base method
+            HashSet<string> visited = new() { classInfo.FullName };
+            AnalyzerClassInfo currentAncestor = immediateBase;
+            AnalyzerMethodInfo matchingAncestorMethod = null;
+            AnalyzerClassInfo matchingAncestorClass = null;
+
+            while (currentAncestor != null)
+            {
+                if (!visited.Add(currentAncestor.FullName))
+                {
+                    break;
+                }
+
+                if (
+                    currentAncestor.Methods.TryGetValue(
+                        method.Name,
+                        out List<AnalyzerMethodInfo> ancestorMethods
+                    )
+                )
+                {
+                    // Look for a matching method in this ancestor
+                    foreach (AnalyzerMethodInfo ancestorMethod in ancestorMethods)
+                    {
+                        if (ancestorMethod.IsPrivate)
+                        {
+                            continue;
+                        }
+
+                        bool paramsMatch = ParameterTypesMatchWithGenerics(
+                            method.ParameterTypes,
+                            ancestorMethod.ParameterTypes,
+                            classInfo,
+                            currentAncestor
+                        );
+
+                        if (paramsMatch)
+                        {
+                            matchingAncestorMethod = ancestorMethod;
+                            matchingAncestorClass = currentAncestor;
+                            break;
+                        }
+                    }
+
+                    if (matchingAncestorMethod != null)
+                    {
+                        break;
+                    }
+                }
+
+                currentAncestor =
+                    currentAncestor.BaseClassName != null
+                        ? FindBaseClass(currentAncestor.BaseClassName)
+                        : null;
+            }
+
+            if (matchingAncestorMethod != null && matchingAncestorClass != null)
+            {
+                // Found a matching method in an ancestor - check return type for override
+                if (
+                    method.IsOverride
+                    && !TypesAreEquivalent(
+                        method.ReturnType,
+                        matchingAncestorMethod.ReturnType,
+                        classInfo,
+                        matchingAncestorClass
+                    )
+                )
+                {
+                    _issues.Add(
+                        new AnalyzerIssue(
+                            classInfo.FilePath,
+                            classInfo.Name,
+                            method.Name,
+                            "ReturnTypeMismatch",
+                            $"Method '{method.Name}' in '{classInfo.Name}' has different return type ({method.ReturnType}) than ancestor class '{matchingAncestorClass.Name}' ({matchingAncestorMethod.ReturnType}).",
+                            IssueSeverity.High,
+                            "Change the return type to match the base method.",
+                            method.LineNumber,
+                            GetCategory(),
+                            matchingAncestorClass.Name,
+                            matchingAncestorMethod.Signature,
+                            method.Signature
+                        )
+                    );
+                }
+                // Method matches - no issue to report
+            }
+            else
+            {
+                // No matching method found in entire chain - report signature mismatch
+                // Find the closest method in the chain for the error message
+                AnalyzerMethodInfo closestMethod = null;
+                AnalyzerClassInfo closestClass = null;
+
+                visited = new HashSet<string> { classInfo.FullName };
+                currentAncestor = immediateBase;
+
+                while (currentAncestor != null && closestMethod == null)
+                {
+                    if (!visited.Add(currentAncestor.FullName))
+                    {
+                        break;
+                    }
+
+                    if (
+                        currentAncestor.Methods.TryGetValue(
+                            method.Name,
+                            out List<AnalyzerMethodInfo> ancestorMethods
+                        )
+                    )
+                    {
+                        closestMethod = ancestorMethods
+                            .Where(bm => !bm.IsPrivate)
+                            .OrderByDescending(bm =>
+                                GetParameterSimilarity(method.ParameterTypes, bm.ParameterTypes)
+                            )
+                            .FirstOrDefault();
+                        if (closestMethod != null)
+                        {
+                            closestClass = currentAncestor;
+                        }
+                    }
+
+                    currentAncestor =
+                        currentAncestor.BaseClassName != null
+                            ? FindBaseClass(currentAncestor.BaseClassName)
+                            : null;
+                }
+
+                if (closestMethod != null && closestClass != null)
+                {
+                    _issues.Add(
+                        new AnalyzerIssue(
+                            classInfo.FilePath,
+                            classInfo.Name,
+                            method.Name,
+                            "SignatureMismatch",
+                            $"Method '{method.Name}' in '{classInfo.Name}' has {(method.IsOverride ? "'override'" : "'new'")} but parameters don't match any base method in '{closestClass.Name}'.",
+                            IssueSeverity.High,
+                            "Ensure the derived method signature matches one of the base method overloads.",
+                            method.LineNumber,
+                            GetCategory(),
+                            closestClass.Name,
+                            closestMethod.Signature,
                             method.Signature
                         )
                     );
@@ -1737,11 +2197,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                     && !ancestorMethod.IsPrivate
                 )
                 {
-                    string derivedTypeStr = string.Join(", ", method.ParameterTypes);
-                    string ancestorTypeStr = string.Join(", ", ancestorMethod.ParameterTypes);
-
                     if (
-                        string.Equals(derivedTypeStr, ancestorTypeStr, StringComparison.Ordinal)
+                        string.Equals(
+                            method.ParameterTypesString,
+                            ancestorMethod.ParameterTypesString,
+                            StringComparison.Ordinal
+                        )
                         && string.Equals(
                             method.ReturnType,
                             ancestorMethod.ReturnType,
