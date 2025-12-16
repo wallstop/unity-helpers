@@ -380,6 +380,7 @@ Tests must cover:
 1. **Positive cases**: Verify the expected behavior works correctly under normal conditions
 2. **Negative cases**: Verify proper handling of invalid inputs, error conditions, and failure scenarios
 3. **Edge cases**: Test boundary conditions, empty inputs, null values, extreme values, and unusual but valid inputs
+4. **Normal cases**: Test typical, everyday usage scenarios with representative real-world data
 
 Examples of edge cases to consider:
 
@@ -393,7 +394,50 @@ Examples of edge cases to consider:
 - Boundary conditions (first/last elements, zero, negative numbers)
 - Large inputs that stress performance
 
+Examples of normal cases to consider:
+
+- Typical collection sizes (5-20 elements)
+- Common string formats and lengths
+- Representative numeric values within expected ranges
+- Standard workflows and method call sequences
+- Realistic combinations of parameters
+
 **Aim for thorough coverage** — it's better to have more tests than to miss important scenarios.
+
+### When Tests Are Too Involved
+
+If implementing comprehensive tests would be too time-consuming or complex for the current task:
+
+1. **Create or update `PLAN.md`** with detailed test requirements
+2. Add a new section or update an existing section with:
+   - **Test file location**: Where the test file should be created (following the mirror structure in `Tests/`)
+   - **Test class name**: Following the `*Tests.cs` naming convention
+   - **Specific test cases to implement**: List each test method name (PascalCase, no underscores) with a description
+   - **Edge cases to cover**: Enumerate specific boundary conditions and unusual inputs
+   - **Setup requirements**: Any test fixtures, mocks, or helper classes needed
+   - **Priority**: Mark as high/medium/low priority
+
+Example PLAN.md entry:
+
+```markdown
+## Test Backlog
+
+### SerializableDictionary Edge Case Tests
+
+**Priority:** High
+**File:** `Tests/Runtime/Core/Model/SerializableDictionaryEdgeCaseTests.cs`
+
+| Test Method                                                    | Description                               |
+| -------------------------------------------------------------- | ----------------------------------------- |
+| `AddDuplicateKeyThrowsArgumentException`                       | Verify adding existing key throws         |
+| `RemoveNonExistentKeyReturnsFalse`                             | Verify removing missing key returns false |
+| `EnumerationDuringModificationThrowsInvalidOperationException` | Verify concurrent modification detection  |
+| `SerializeDeserializePreservesOrderForLargeCollections`        | Test with 10,000+ entries                 |
+
+**Setup needed:** None (uses existing test infrastructure)
+```
+
+**Always prefer implementing tests directly** — only defer to PLAN.md when the test implementation would significantly delay the primary task or requires substantial additional research.
 
 ### Git Operations
 
