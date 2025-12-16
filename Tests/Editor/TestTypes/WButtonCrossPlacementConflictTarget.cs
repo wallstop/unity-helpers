@@ -4,9 +4,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
     /// <summary>
-    /// Test target with conflicting draw orders that cross the top/bottom threshold.
-    /// Draw order >= -1 is top placement, < -1 is bottom placement.
-    /// Expected: Uses first declared (0) which is top placement.
+    /// Test target with conflicting draw orders within the same group.
+    /// First declared has drawOrder 0, second has drawOrder -5.
+    /// Expected: Uses first declared drawOrder (0), but placement is determined by
+    /// groupPlacement (defaults to UseGlobalSetting, which defers to globalPlacementIsTop).
     /// </summary>
     public sealed class WButtonCrossPlacementConflictTarget : ScriptableObject
     {

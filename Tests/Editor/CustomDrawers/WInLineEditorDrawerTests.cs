@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 {
     using System;
+    using System.Linq;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -27,6 +28,74 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             WInLineEditorDrawer.ClearCachedStateForTesting();
             base.TearDown();
         }
+
+        // ==================== InlineEditorFoldoutBehaviorScope Validation ====================
+
+        [Test]
+        public void InlineEditorFoldoutBehaviorScopeAppliesAndRestoresSetting()
+        {
+            // Capture the original setting before our test
+            UnityHelpersSettings.InlineEditorFoldoutBehavior originalSetting =
+                UnityHelpersSettings.GetInlineEditorFoldoutBehavior();
+
+            // Test each behavior value is correctly applied
+            foreach (
+                UnityHelpersSettings.InlineEditorFoldoutBehavior behavior in System.Enum.GetValues(
+                    typeof(UnityHelpersSettings.InlineEditorFoldoutBehavior)
+                )
+            )
+            {
+                using (InlineEditorFoldoutBehaviorScope scope = new(behavior))
+                {
+                    UnityHelpersSettings.InlineEditorFoldoutBehavior currentBehavior =
+                        UnityHelpersSettings.GetInlineEditorFoldoutBehavior();
+                    Assert.That(
+                        currentBehavior,
+                        Is.EqualTo(behavior),
+                        $"InlineEditorFoldoutBehaviorScope should set behavior to {behavior}, but got {currentBehavior}"
+                    );
+                }
+
+                // After disposing the scope, verify the setting was restored
+                UnityHelpersSettings.InlineEditorFoldoutBehavior afterDisposeValue =
+                    UnityHelpersSettings.GetInlineEditorFoldoutBehavior();
+                Assert.That(
+                    afterDisposeValue,
+                    Is.EqualTo(originalSetting),
+                    $"InlineEditorFoldoutBehaviorScope should restore original value {originalSetting} after dispose, but got {afterDisposeValue}"
+                );
+            }
+        }
+
+        [TestCase(UnityHelpersSettings.InlineEditorFoldoutBehavior.StartCollapsed)]
+        [TestCase(UnityHelpersSettings.InlineEditorFoldoutBehavior.StartExpanded)]
+        [TestCase(UnityHelpersSettings.InlineEditorFoldoutBehavior.AlwaysOpen)]
+        public void InlineEditorFoldoutBehaviorScopeCorrectlySetsBehavior(
+            UnityHelpersSettings.InlineEditorFoldoutBehavior behavior
+        )
+        {
+            UnityHelpersSettings.InlineEditorFoldoutBehavior originalSetting =
+                UnityHelpersSettings.GetInlineEditorFoldoutBehavior();
+
+            using (InlineEditorFoldoutBehaviorScope scope = new(behavior))
+            {
+                UnityHelpersSettings.InlineEditorFoldoutBehavior currentBehavior =
+                    UnityHelpersSettings.GetInlineEditorFoldoutBehavior();
+                Assert.That(
+                    currentBehavior,
+                    Is.EqualTo(behavior),
+                    $"Scope should apply {behavior}"
+                );
+            }
+
+            Assert.That(
+                UnityHelpersSettings.GetInlineEditorFoldoutBehavior(),
+                Is.EqualTo(originalSetting),
+                "Scope should restore original value after dispose"
+            );
+        }
+
+        // ==================== Basic Foldout Tests ====================
 
         [Test]
         public void HeaderFoldoutControlsInlineHeight()
@@ -723,7 +792,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 
             using SerializedObject serializedHost = new(host);
             serializedHost.Update();
-            SerializedProperty property = serializedHost.FindProperty("collapsedTarget");
+            SerializedProperty property = serializedHost.FindProperty(
+                nameof(InlineEditorHost.collapsedTarget)
+            );
             Assert.That(property, Is.Not.Null);
 
             // Don't assign a target - leave it null
@@ -735,7 +806,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 
             // Get the attribute via reflection
             System.Reflection.FieldInfo targetField = typeof(InlineEditorHost).GetField(
-                "collapsedTarget",
+                nameof(InlineEditorHost.collapsedTarget),
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
             );
             WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
@@ -836,9 +907,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             // Find the property with the correct mode
             string propertyName = mode switch
             {
-                WInLineEditorMode.FoldoutCollapsed => "foldoutCollapsedTarget",
-                WInLineEditorMode.FoldoutExpanded => "foldoutExpandedTarget",
-                WInLineEditorMode.AlwaysExpanded => "alwaysExpandedTarget",
+                WInLineEditorMode.FoldoutCollapsed => nameof(
+                    ExplicitModeTestHost.foldoutCollapsedTarget
+                ),
+                WInLineEditorMode.FoldoutExpanded => nameof(
+                    ExplicitModeTestHost.foldoutExpandedTarget
+                ),
+                WInLineEditorMode.AlwaysExpanded => nameof(
+                    ExplicitModeTestHost.alwaysExpandedTarget
+                ),
                 _ => throw new ArgumentException($"Unsupported mode: {mode}"),
             };
 
@@ -1118,14 +1195,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 
             using SerializedObject serializedHost = new(host);
             serializedHost.Update();
-            SerializedProperty property = serializedHost.FindProperty("collapsedTarget");
+            SerializedProperty property = serializedHost.FindProperty(
+                nameof(InlineEditorHost.collapsedTarget)
+            );
             property.objectReferenceValue = target;
             serializedHost.ApplyModifiedPropertiesWithoutUndo();
             serializedHost.Update();
-            property = serializedHost.FindProperty("collapsedTarget");
+            property = serializedHost.FindProperty(nameof(InlineEditorHost.collapsedTarget));
 
             System.Reflection.FieldInfo targetField = typeof(InlineEditorHost).GetField(
-                "collapsedTarget",
+                nameof(InlineEditorHost.collapsedTarget),
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
             );
             WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
@@ -1433,16 +1512,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             {
                 settings = UnityHelpersSettings.instance;
 
-                // Use reflection to directly set the field, bypassing serialization delays
+                // Use the SerializedPropertyNames constant to get the field name, avoiding magic strings
+                string fieldName = UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .InlineEditorFoldoutBehavior;
                 fieldInfo = typeof(UnityHelpersSettings).GetField(
-                    "inlineEditorFoldoutBehavior",
+                    fieldName,
                     System.Reflection.BindingFlags.Instance
                         | System.Reflection.BindingFlags.NonPublic
                 );
                 if (fieldInfo == null)
                 {
                     throw new InvalidOperationException(
-                        "Could not locate inlineEditorFoldoutBehavior field via reflection."
+                        $"Could not locate '{fieldName}' field via reflection on {typeof(UnityHelpersSettings).FullName}. "
+                            + $"Available non-public instance fields: {string.Join(", ", typeof(UnityHelpersSettings).GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Select(f => f.Name))}"
                     );
                 }
 

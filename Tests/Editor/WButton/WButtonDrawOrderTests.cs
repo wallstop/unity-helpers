@@ -216,9 +216,32 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         }
 
         [Test]
-        public void DrawOrderMinusTwoIsBottomPlacement()
+        public void ExplicitBottomPlacementUsesBottomLabel()
         {
-            // Draw order < -1 is bottom placement
+            // GroupPlacement.Bottom should use bottom group label style.
+            // Note: DrawOrder does NOT determine placement; GroupPlacement does.
+            WButtonGroupKey key = new(0, -2, null, 0, WButtonGroupPlacement.Bottom);
+
+            WButtonGUI.ClearGroupDataForTesting();
+            Dictionary<int, int> counts = new() { { -2, 1 } };
+            WButtonGUI.SetGroupCountsForTesting(counts);
+
+            GUIContent header = WButtonGUI.BuildGroupHeader(key);
+
+            // Should use bottom group label style because GroupPlacement is Bottom
+            Assert.That(header, Is.Not.Null, "Header should not be null");
+            Assert.That(
+                header.text,
+                Is.EqualTo(WButtonStyles.BottomGroupLabel.text),
+                $"GroupPlacement.Bottom should use BottomGroupLabel. Got: {header.text}"
+            );
+        }
+
+        [Test]
+        public void UseGlobalSettingWithAnyDrawOrderUsesTopLabel()
+        {
+            // UseGlobalSetting defaults to Top label style in BuildGroupHeader.
+            // DrawOrder does NOT determine the label style; GroupPlacement does.
             WButtonGroupKey key = new(0, -2, null, 0, WButtonGroupPlacement.UseGlobalSetting);
 
             WButtonGUI.ClearGroupDataForTesting();
@@ -227,9 +250,13 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             GUIContent header = WButtonGUI.BuildGroupHeader(key);
 
-            // Should use bottom group label style
-            Assert.That(header, Is.Not.Null);
-            Assert.That(header.text, Is.EqualTo(WButtonStyles.BottomGroupLabel.text));
+            // UseGlobalSetting defaults to TopGroupLabel in BuildGroupHeader
+            Assert.That(header, Is.Not.Null, "Header should not be null");
+            Assert.That(
+                header.text,
+                Is.EqualTo(WButtonStyles.TopGroupLabel.text),
+                $"UseGlobalSetting should use TopGroupLabel in BuildGroupHeader (placement is resolved at render time). Got: {header.text}"
+            );
         }
 
         [Test]

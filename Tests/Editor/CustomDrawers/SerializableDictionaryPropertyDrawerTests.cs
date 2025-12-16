@@ -5052,14 +5052,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             {
                 settings = UnityHelpersSettings.instance;
 
+                string fieldName = UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableDictionaryFoldoutTweenEnabled;
                 fieldInfo = typeof(UnityHelpersSettings).GetField(
-                    "serializableDictionaryFoldoutTweenEnabled",
+                    fieldName,
                     BindingFlags.Instance | BindingFlags.NonPublic
                 );
                 if (fieldInfo == null)
                 {
                     throw new InvalidOperationException(
-                        "Could not locate serializableDictionaryFoldoutTweenEnabled field via reflection."
+                        $"Could not locate '{fieldName}' field via reflection on {typeof(UnityHelpersSettings).FullName}. "
+                            + $"Available non-public instance fields: {string.Join(", ", typeof(UnityHelpersSettings).GetFields(BindingFlags.Instance | BindingFlags.NonPublic).Select(f => f.Name))}"
                     );
                 }
 
@@ -5090,14 +5094,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             {
                 settings = UnityHelpersSettings.instance;
 
+                string fieldName = UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableSortedDictionaryFoldoutTweenEnabled;
                 fieldInfo = typeof(UnityHelpersSettings).GetField(
-                    "serializableSortedDictionaryFoldoutTweenEnabled",
+                    fieldName,
                     BindingFlags.Instance | BindingFlags.NonPublic
                 );
                 if (fieldInfo == null)
                 {
                     throw new InvalidOperationException(
-                        "Could not locate serializableSortedDictionaryFoldoutTweenEnabled field via reflection."
+                        $"Could not locate '{fieldName}' field via reflection on {typeof(UnityHelpersSettings).FullName}. "
+                            + $"Available non-public instance fields: {string.Join(", ", typeof(UnityHelpersSettings).GetFields(BindingFlags.Instance | BindingFlags.NonPublic).Select(f => f.Name))}"
                     );
                 }
 

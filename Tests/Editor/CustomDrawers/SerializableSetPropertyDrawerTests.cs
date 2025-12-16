@@ -2751,15 +2751,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             {
                 settings = UnityHelpersSettings.instance;
 
+                string fieldName = UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableSetFoldoutTweenEnabled;
                 fieldInfo = typeof(UnityHelpersSettings).GetField(
-                    "serializableSetFoldoutTweenEnabled",
+                    fieldName,
                     System.Reflection.BindingFlags.Instance
                         | System.Reflection.BindingFlags.NonPublic
                 );
                 if (fieldInfo == null)
                 {
                     throw new InvalidOperationException(
-                        "Could not locate serializableSetFoldoutTweenEnabled field via reflection."
+                        $"Could not locate '{fieldName}' field via reflection on {typeof(UnityHelpersSettings).FullName}. "
+                            + $"Available non-public instance fields: {string.Join(", ", typeof(UnityHelpersSettings).GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Select(f => f.Name))}"
                     );
                 }
 
@@ -2790,15 +2794,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             {
                 settings = UnityHelpersSettings.instance;
 
+                string fieldName = UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableSortedSetFoldoutTweenEnabled;
                 fieldInfo = typeof(UnityHelpersSettings).GetField(
-                    "serializableSortedSetFoldoutTweenEnabled",
+                    fieldName,
                     System.Reflection.BindingFlags.Instance
                         | System.Reflection.BindingFlags.NonPublic
                 );
                 if (fieldInfo == null)
                 {
                     throw new InvalidOperationException(
-                        "Could not locate serializableSortedSetFoldoutTweenEnabled field via reflection."
+                        $"Could not locate '{fieldName}' field via reflection on {typeof(UnityHelpersSettings).FullName}. "
+                            + $"Available non-public instance fields: {string.Join(", ", typeof(UnityHelpersSettings).GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Select(f => f.Name))}"
                     );
                 }
 

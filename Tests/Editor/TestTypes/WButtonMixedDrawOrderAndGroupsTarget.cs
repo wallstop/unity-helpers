@@ -5,6 +5,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
 
     /// <summary>
     /// Test target with mixed draw orders and groups to verify complex scenarios.
+    /// Note: DrawOrder determines SORTING order, not PLACEMENT.
+    /// Placement is determined by groupPlacement (defaults to UseGlobalSetting).
     /// </summary>
     public sealed class WButtonMixedDrawOrderAndGroupsTarget : ScriptableObject
     {
@@ -15,14 +17,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
         [WButton("Zero Second", drawOrder: 0, groupName: "Second Group")]
         public void ZeroSecond() { }
 
-        // Draw order -1 (still top placement)
+        // Draw order -1
         [WButton("Minus One First", drawOrder: -1, groupName: "A Group")]
         public void MinusOneFirst() { }
 
         [WButton("Minus One Second", drawOrder: -1, groupName: "B Group")]
         public void MinusOneSecond() { }
 
-        // Draw order -2 (bottom placement)
+        // Draw order -2
         [WButton("Minus Two First", drawOrder: -2, groupName: "Bottom A")]
         public void MinusTwoFirst() { }
 

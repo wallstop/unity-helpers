@@ -6,14 +6,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
     /// <summary>
     /// Test target for verifying WButton draw order and group name functionality.
     /// Contains buttons with various draw orders and group names to test:
-    /// - Arbitrary negative draw orders render at bottom
-    /// - Arbitrary positive draw orders render at top
+    /// - Different draw orders control sorting order within a placement section
     /// - Different group names at same draw order render separately
     /// - Declaration order is preserved within same draw order
+    /// Note: DrawOrder determines SORTING order, not PLACEMENT.
+    /// Placement is determined by groupPlacement (defaults to UseGlobalSetting).
     /// </summary>
     public sealed class WButtonDrawOrderTestTarget : ScriptableObject
     {
-        // Top placement buttons (draw order >= 0)
+        // Higher draw order buttons (render later within placement section)
         [WButton("Top Action 1", drawOrder: 0, groupName: "Actions")]
         public void TopAction1() { }
 
@@ -32,7 +33,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
         [WButton("Top High Order", drawOrder: 100)]
         public void TopHighOrder() { }
 
-        // Bottom placement buttons (draw order < 0)
+        // Lower draw order buttons (render earlier within placement section)
         [WButton("Bottom Action 1", drawOrder: -1, groupName: "Bottom Actions")]
         public void BottomAction1() { }
 

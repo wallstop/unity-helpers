@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Tests.Core;
@@ -587,29 +588,36 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         }
 
         [Test]
-        public void CrossPlacementConflictReverseUsesFirstDeclaredPlacement()
+        public void CrossPlacementConflictReverseUsesFirstDeclaredDrawOrder()
         {
-            // Arrange: First declared has draw order -5 (bottom placement)
+            // Arrange: First declared has draw order -5. Since groupPlacement is not specified,
+            // it defaults to UseGlobalSetting. Placement is determined by globalPlacementIsTop.
             WButtonCrossPlacementConflictReverseTarget asset = Track(
                 ScriptableObject.CreateInstance<WButtonCrossPlacementConflictReverseTarget>()
             );
             Editor editor = Track(Editor.CreateEditor(asset));
 
-            // Act
+            // Act: With globalPlacementIsTop=true (default), buttons render at Top
             Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
             Dictionary<WButtonGroupKey, bool> foldoutStates = new();
 
-            // Draw at bottom placement - should find the group here
-            bool drawnBottom = WButtonGUI.DrawButtons(
+            // Draw at top placement - should find the group here since UseGlobalSetting defaults to top
+            bool drawnTop = WButtonGUI.DrawButtons(
                 editor,
-                WButtonPlacement.Bottom,
+                WButtonPlacement.Top,
                 paginationStates,
                 foldoutStates,
-                UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen
+                UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen,
+                triggeredContexts: null,
+                globalPlacementIsTop: true
             );
 
-            // Assert: Group should be at bottom (draw order -5 < -1)
-            Assert.That(drawnBottom, Is.True, "Group should render at bottom placement");
+            // Assert: Group should use first declared draw order (-5), but placement is determined by globalPlacementIsTop
+            Assert.That(
+                drawnTop,
+                Is.True,
+                $"Group with UseGlobalSetting should render at Top when globalPlacementIsTop=true. Groups: {string.Join(", ", WButtonGUI.GetGroupCountsForTesting().Keys.Select(k => $"{k.GroupName}:{k.GroupPlacement}"))}"
+            );
 
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             WButtonGroupKey crossGroup = groupCounts.Keys.First(k =>
@@ -619,7 +627,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             Assert.That(
                 crossGroup.DrawOrder,
                 Is.EqualTo(-5),
-                "Should use draw order -5 (bottom placement)"
+                "Should use draw order -5 from first declared button"
+            );
+            Assert.That(
+                crossGroup.GroupPlacement,
+                Is.EqualTo(WButtonGroupPlacement.UseGlobalSetting),
+                "GroupPlacement should be UseGlobalSetting (default)"
             );
             Assert.That(
                 groupCounts[crossGroup],
@@ -777,17 +790,25 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             Dictionary<WButtonGroupKey, bool> foldoutStates = new();
             List<WButtonMethodContext> triggeredContexts = new();
 
+            // Note: WButtonConflictingDrawOrderTarget uses UseGlobalSetting (default).
+            // With globalPlacementIsTop=true (default), buttons render at Top placement.
+            // To ensure buttons are rendered, we call the Top placement.
             bool anyDrawn = WButtonGUI.DrawButtons(
                 editor,
-                WButtonPlacement.Bottom,
+                WButtonPlacement.Top,
                 paginationStates,
                 foldoutStates,
                 UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen,
-                triggeredContexts
+                triggeredContexts,
+                globalPlacementIsTop: true
             );
 
             // Assert: Buttons MUST be drawn
-            Assert.That(anyDrawn, Is.True, "Buttons must always be rendered");
+            Assert.That(
+                anyDrawn,
+                Is.True,
+                $"Buttons must always be rendered. Groups found: {string.Join(", ", WButtonGUI.GetGroupCountsForTesting().Keys.Select(k => $"{k.GroupName}:{k.DrawOrder}:{k.GroupPlacement}"))}"
+            );
 
             // Verify both buttons are accessible
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
@@ -824,15 +845,16 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         }
 
         [Test]
-        public void ButtonsWithNegativeDrawOrderRenderAtBottomPlacement()
+        public void ButtonsWithUseGlobalSettingRespectGlobalPlacement()
         {
-            // Arrange: User's scenario - both buttons have drawOrder < -1
+            // Arrange: WButtonConflictingDrawOrderTarget uses UseGlobalSetting (default).
+            // Placement is determined by globalPlacementIsTop parameter, not by drawOrder.
             WButtonConflictingDrawOrderTarget asset = Track(
                 ScriptableObject.CreateInstance<WButtonConflictingDrawOrderTarget>()
             );
             Editor editor = Track(Editor.CreateEditor(asset));
 
-            // Act: Try to draw at Top placement first
+            // Act: With globalPlacementIsTop=false, buttons should render at Bottom
             Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
             Dictionary<WButtonGroupKey, bool> foldoutStates = new();
 
@@ -841,7 +863,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 WButtonPlacement.Top,
                 paginationStates,
                 foldoutStates,
-                UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen
+                UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen,
+                triggeredContexts: null,
+                globalPlacementIsTop: false
             );
 
             // Clear for next check
@@ -852,19 +876,21 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 WButtonPlacement.Bottom,
                 paginationStates,
                 foldoutStates,
-                UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen
+                UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen,
+                triggeredContexts: null,
+                globalPlacementIsTop: false
             );
 
-            // Assert: With canonical draw order -21, buttons should render at Bottom placement only
+            // Assert: With globalPlacementIsTop=false, buttons render at Bottom placement
             Assert.That(
                 drawnTop,
                 Is.False,
-                "Group with drawOrder -21 should NOT render at Top placement"
+                $"Group with UseGlobalSetting should NOT render at Top when globalPlacementIsTop=false. DrawOrder: -21, GroupPlacement: {WButtonGroupPlacement.UseGlobalSetting}"
             );
             Assert.That(
                 drawnBottom,
                 Is.True,
-                "Group with drawOrder -21 should render at Bottom placement"
+                "Group with UseGlobalSetting should render at Bottom when globalPlacementIsTop=false"
             );
         }
 
@@ -910,10 +936,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         }
 
         [Test]
-        public void GroupWithCanonicalNegativeDrawOrderRendersAtBottom()
+        public void GroupWithCanonicalDrawOrderPreservesDrawOrderValue()
         {
-            // Specifically test that a group whose first-declared button has negative drawOrder
-            // renders at bottom placement
+            // Test that a group's canonical drawOrder is preserved from the first declared button.
+            // Note: drawOrder does NOT determine placement; groupPlacement does (defaults to UseGlobalSetting).
             WButtonConflictingDrawOrderTarget asset = Track(
                 ScriptableObject.CreateInstance<WButtonConflictingDrawOrderTarget>()
             );
@@ -922,23 +948,37 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
             Dictionary<WButtonGroupKey, bool> foldoutStates = new();
 
-            // Only draw at Bottom placement
-            bool drawnBottom = WButtonGUI.DrawButtons(
+            // With globalPlacementIsTop=true (default), UseGlobalSetting groups render at Top
+            bool drawnTop = WButtonGUI.DrawButtons(
                 editor,
-                WButtonPlacement.Bottom,
+                WButtonPlacement.Top,
                 paginationStates,
                 foldoutStates,
-                UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen
+                UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen,
+                triggeredContexts: null,
+                globalPlacementIsTop: true
             );
 
             // Assert
             Assert.That(
-                drawnBottom,
+                drawnTop,
                 Is.True,
-                "Group with canonical drawOrder -21 must render at Bottom"
+                $"Group with UseGlobalSetting must render at Top when globalPlacementIsTop=true. Groups: {string.Join(", ", WButtonGUI.GetGroupCountsForTesting().Keys.Select(k => $"{k.GroupName}:{k.DrawOrder}:{k.GroupPlacement}"))}"
             );
 
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
+            WButtonGroupKey setupGroup = groupCounts.Keys.First(k => k.GroupName == "Setup");
+
+            Assert.That(
+                setupGroup.DrawOrder,
+                Is.EqualTo(-21),
+                "Canonical drawOrder should be -21 from first declared button"
+            );
+            Assert.That(
+                setupGroup.GroupPlacement,
+                Is.EqualTo(WButtonGroupPlacement.UseGlobalSetting),
+                "GroupPlacement should be UseGlobalSetting (default)"
+            );
             Assert.That(
                 groupCounts.Values.Sum(),
                 Is.EqualTo(2),
@@ -1230,20 +1270,11 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         }
 
         [Test]
-        public void BottomPlacementGroupsRenderBeforeTopPlacementGroups()
+        public void GroupsAreSortedByDrawOrderInAscendingOrder()
         {
-            // Test that when both placements are rendered, Bottom (lower drawOrder) comes first
-            // This verifies the inspector renders in correct order
-
-            // Bottom placement has drawOrder < -1 (e.g., -21, -5, -2)
-            // Top placement has drawOrder >= -1 (e.g., -1, 0, 1)
-
-            // With groups:
-            // - Setup: drawOrder -21 (Bottom placement)
-            // - Debug: drawOrder -1 (Top placement)
-
-            // The Setup group should render BEFORE Debug group
-            // because -21 < -1
+            // Test that groups are sorted by drawOrder in ascending order.
+            // Note: drawOrder determines SORTING order, not PLACEMENT.
+            // Placement is determined by groupPlacement (or globalPlacementIsTop for UseGlobalSetting).
 
             WButtonConflictingDrawOrderTarget asset = Track(
                 ScriptableObject.CreateInstance<WButtonConflictingDrawOrderTarget>()
@@ -1257,12 +1288,129 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             WButtonMethodMetadata setupButton = metadata.First(m => m.GroupName == "Setup");
             Assert.That(
                 setupButton.DrawOrder,
-                Is.LessThan(-1),
-                "Setup should be in Bottom placement"
+                Is.EqualTo(-21),
+                "Setup group's first button should have drawOrder -21"
             );
 
             // This confirms the design: groups with lower drawOrder (like -21) should render
-            // before groups with higher drawOrder (like -1)
+            // before groups with higher drawOrder when sorted. However, placement (top/bottom)
+            // is determined by groupPlacement, not drawOrder.
+        }
+
+        [TestCase(
+            true,
+            WButtonPlacement.Top,
+            true,
+            TestName = "UseGlobalSettingRendersAtTopWhenGlobalIsTop"
+        )]
+        [TestCase(
+            true,
+            WButtonPlacement.Bottom,
+            false,
+            TestName = "UseGlobalSettingDoesNotRenderAtBottomWhenGlobalIsTop"
+        )]
+        [TestCase(
+            false,
+            WButtonPlacement.Top,
+            false,
+            TestName = "UseGlobalSettingDoesNotRenderAtTopWhenGlobalIsBottom"
+        )]
+        [TestCase(
+            false,
+            WButtonPlacement.Bottom,
+            true,
+            TestName = "UseGlobalSettingRendersAtBottomWhenGlobalIsBottom"
+        )]
+        public void UseGlobalSettingRespectsGlobalPlacementParameter(
+            bool globalPlacementIsTop,
+            WButtonPlacement placementToTry,
+            bool expectedDrawn
+        )
+        {
+            // Data-driven test to verify UseGlobalSetting respects globalPlacementIsTop parameter.
+            // This is a key behavior: drawOrder does NOT determine placement.
+            WButtonConflictingDrawOrderTarget asset = Track(
+                ScriptableObject.CreateInstance<WButtonConflictingDrawOrderTarget>()
+            );
+            Editor editor = Track(Editor.CreateEditor(asset));
+
+            Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
+            Dictionary<WButtonGroupKey, bool> foldoutStates = new();
+
+            bool drawn = WButtonGUI.DrawButtons(
+                editor,
+                placementToTry,
+                paginationStates,
+                foldoutStates,
+                UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen,
+                triggeredContexts: null,
+                globalPlacementIsTop: globalPlacementIsTop
+            );
+
+            Assert.That(
+                drawn,
+                Is.EqualTo(expectedDrawn),
+                $"With globalPlacementIsTop={globalPlacementIsTop} and placementToTry={placementToTry}, drawn should be {expectedDrawn}. "
+                    + $"Groups found: {string.Join(", ", WButtonGUI.GetGroupCountsForTesting().Keys.Select(k => $"{k.GroupName}:{k.DrawOrder}:{k.GroupPlacement}"))}"
+            );
+        }
+
+        [TestCase(-1000, TestName = "DrawOrderMinus1000DoesNotDeterminePlacement")]
+        [TestCase(-100, TestName = "DrawOrderMinus100DoesNotDeterminePlacement")]
+        [TestCase(-21, TestName = "DrawOrderMinus21DoesNotDeterminePlacement")]
+        [TestCase(-2, TestName = "DrawOrderMinus2DoesNotDeterminePlacement")]
+        [TestCase(-1, TestName = "DrawOrderMinus1DoesNotDeterminePlacement")]
+        [TestCase(0, TestName = "DrawOrder0DoesNotDeterminePlacement")]
+        [TestCase(1, TestName = "DrawOrder1DoesNotDeterminePlacement")]
+        [TestCase(100, TestName = "DrawOrder100DoesNotDeterminePlacement")]
+        public void DrawOrderDoesNotDeterminePlacement(int drawOrder)
+        {
+            // Verify that drawOrder does NOT determine placement.
+            // Placement is determined by groupPlacement only.
+            // A key is created with UseGlobalSetting (default), so placement depends on globalPlacementIsTop.
+            WButtonGroupKey key = new(
+                WButtonAttribute.NoGroupPriority,
+                drawOrder,
+                "TestGroup",
+                0,
+                WButtonGroupPlacement.UseGlobalSetting
+            );
+
+            // Regardless of drawOrder, a group with UseGlobalSetting will use TopGroupLabel
+            // in BuildGroupHeader because placement resolution happens at render time.
+            GUIContent header = WButtonGUI.BuildGroupHeader(key);
+            Assert.That(
+                header.text,
+                Does.Contain(WButtonStyles.TopGroupLabel.text).Or.EqualTo("TestGroup"),
+                $"DrawOrder {drawOrder} should not determine label style. UseGlobalSetting defaults to Top in BuildGroupHeader."
+            );
+        }
+
+        [TestCase(WButtonGroupPlacement.Top, "TopGroupLabel")]
+        [TestCase(WButtonGroupPlacement.Bottom, "BottomGroupLabel")]
+        public void ExplicitGroupPlacementDeterminesLabelStyle(
+            WButtonGroupPlacement placement,
+            string expectedLabelName
+        )
+        {
+            // Verify that explicit groupPlacement determines the label style.
+            WButtonGUI.ClearGroupDataForTesting();
+            Dictionary<int, int> counts = new() { { 0, 1 } };
+            WButtonGUI.SetGroupCountsForTesting(counts);
+
+            WButtonGroupKey key = new(WButtonAttribute.NoGroupPriority, 0, null, 0, placement);
+
+            GUIContent header = WButtonGUI.BuildGroupHeader(key);
+            GUIContent expectedLabel =
+                placement == WButtonGroupPlacement.Top
+                    ? WButtonStyles.TopGroupLabel
+                    : WButtonStyles.BottomGroupLabel;
+
+            Assert.That(
+                header.text,
+                Is.EqualTo(expectedLabel.text),
+                $"GroupPlacement.{placement} should use {expectedLabelName}"
+            );
         }
     }
 }

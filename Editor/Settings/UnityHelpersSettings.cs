@@ -897,8 +897,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
             public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
             {
-                SerializedProperty buttonColor = property.FindPropertyRelative("buttonColor");
-                SerializedProperty textColor = property.FindPropertyRelative("textColor");
+                SerializedProperty buttonColor = property.FindPropertyRelative(
+                    SerializedPropertyNames.WButtonCustomColorButton
+                );
+                SerializedProperty textColor = property.FindPropertyRelative(
+                    SerializedPropertyNames.WButtonCustomColorText
+                );
 
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
                 float availableWidth = Mathf.Max(0f, position.width - spacing);
@@ -966,16 +970,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
             {
                 SerializedProperty selectedBackground = property.FindPropertyRelative(
-                    "selectedBackgroundColor"
+                    SerializedPropertyNames.WEnumToggleButtonsSelectedBackground
                 );
                 SerializedProperty selectedText = property.FindPropertyRelative(
-                    "selectedTextColor"
+                    SerializedPropertyNames.WEnumToggleButtonsSelectedText
                 );
                 SerializedProperty inactiveBackground = property.FindPropertyRelative(
-                    "inactiveBackgroundColor"
+                    SerializedPropertyNames.WEnumToggleButtonsInactiveBackground
                 );
                 SerializedProperty inactiveText = property.FindPropertyRelative(
-                    "inactiveTextColor"
+                    SerializedPropertyNames.WEnumToggleButtonsInactiveText
                 );
 
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
@@ -1092,19 +1096,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         {
             [FormerlySerializedAs("selectedBackgroundColor")]
             [SerializeField]
-            private Color _selectedBackgroundColor = DefaultColorKeyButtonColor;
+            internal Color _selectedBackgroundColor = DefaultColorKeyButtonColor;
 
             [FormerlySerializedAs("selectedTextColor")]
             [SerializeField]
-            private Color _selectedTextColor = Color.white;
+            internal Color _selectedTextColor = Color.white;
 
             [FormerlySerializedAs("inactiveBackgroundColor")]
             [SerializeField]
-            private Color _inactiveBackgroundColor = DefaultLightThemeButtonColor;
+            internal Color _inactiveBackgroundColor = DefaultLightThemeButtonColor;
 
             [FormerlySerializedAs("inactiveTextColor")]
             [SerializeField]
-            private Color _inactiveTextColor = Color.black;
+            internal Color _inactiveTextColor = Color.black;
 
             public Color SelectedBackgroundColor
             {
@@ -1169,8 +1173,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
             public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
             {
-                SerializedProperty background = property.FindPropertyRelative("backgroundColor");
-                SerializedProperty text = property.FindPropertyRelative("textColor");
+                SerializedProperty background = property.FindPropertyRelative(
+                    SerializedPropertyNames.WGroupCustomColorBackground
+                );
+                SerializedProperty text = property.FindPropertyRelative(
+                    SerializedPropertyNames.WGroupCustomColorText
+                );
 
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
                 float availableWidth = Mathf.Max(0f, position.width - spacing);
@@ -1924,6 +1932,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 WGroupCustomColor._backgroundColor
             );
             internal const string WGroupCustomColorText = nameof(WGroupCustomColor._textColor);
+            internal const string WEnumToggleButtonsSelectedBackground = nameof(
+                WEnumToggleButtonsCustomColor._selectedBackgroundColor
+            );
+            internal const string WEnumToggleButtonsSelectedText = nameof(
+                WEnumToggleButtonsCustomColor._selectedTextColor
+            );
+            internal const string WEnumToggleButtonsInactiveBackground = nameof(
+                WEnumToggleButtonsCustomColor._inactiveBackgroundColor
+            );
+            internal const string WEnumToggleButtonsInactiveText = nameof(
+                WEnumToggleButtonsCustomColor._inactiveTextColor
+            );
         }
 
         /// <summary>

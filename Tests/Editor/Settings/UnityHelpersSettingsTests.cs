@@ -1869,6 +1869,507 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 $"For very narrow panel ({veryNarrowPanelWidth}px), labels should be hidden when halfWidth ({halfWidth}px) < threshold ({threshold}px)."
             );
         }
+
+        /// <summary>
+        /// Data-driven test that validates each SerializedPropertyNames constant maps to an actual field.
+        /// This prevents regressions where field names are changed but constants are not updated.
+        /// </summary>
+        [Test]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.SerializableTypeIgnorePatterns),
+            "SerializableTypeIgnorePatterns"
+        )]
+        [TestCase(
+            nameof(
+                UnityHelpersSettings.SerializedPropertyNames.SerializableTypePatternsInitialized
+            ),
+            "SerializableTypePatternsInitialized"
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.LegacyWButtonPriorityColors),
+            "LegacyWButtonPriorityColors"
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors),
+            "WButtonCustomColors"
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColors),
+            "WGroupCustomColors"
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.WGroupFoldoutsStartCollapsed),
+            "WGroupFoldoutsStartCollapsed"
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsCustomColors),
+            "WEnumToggleButtonsCustomColors"
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.InlineEditorFoldoutBehavior),
+            "InlineEditorFoldoutBehavior"
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.WButtonFoldoutTweenEnabled),
+            "WButtonFoldoutTweenEnabled"
+        )]
+        [TestCase(
+            nameof(
+                UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableDictionaryFoldoutTweenEnabled
+            ),
+            "SerializableDictionaryFoldoutTweenEnabled"
+        )]
+        [TestCase(
+            nameof(
+                UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableSortedDictionaryFoldoutTweenEnabled
+            ),
+            "SerializableSortedDictionaryFoldoutTweenEnabled"
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.SerializableSetFoldoutTweenEnabled),
+            "SerializableSetFoldoutTweenEnabled"
+        )]
+        [TestCase(
+            nameof(
+                UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableSortedSetFoldoutTweenEnabled
+            ),
+            "SerializableSortedSetFoldoutTweenEnabled"
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.FoldoutTweenSettingsInitialized),
+            "FoldoutTweenSettingsInitialized"
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.DetectAssetChangeLoopWindowSeconds),
+            "DetectAssetChangeLoopWindowSeconds"
+        )]
+        public void SerializedPropertyNamesMapsToActualField(
+            string constantName,
+            string expectedFieldDescription
+        )
+        {
+            Type settingsType = typeof(UnityHelpersSettings);
+            Type propertyNamesType = typeof(UnityHelpersSettings.SerializedPropertyNames);
+
+            System.Reflection.FieldInfo constantField = propertyNamesType.GetField(
+                constantName,
+                System.Reflection.BindingFlags.Public
+                    | System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.Static
+            );
+            Assert.IsNotNull(
+                constantField,
+                $"SerializedPropertyNames should have a constant named '{constantName}'."
+            );
+
+            string actualFieldName = (string)constantField.GetValue(null);
+            Assert.IsNotNull(
+                actualFieldName,
+                $"SerializedPropertyNames.{constantName} should have a non-null value."
+            );
+
+            System.Reflection.FieldInfo targetField = settingsType.GetField(
+                actualFieldName,
+                System.Reflection.BindingFlags.Instance
+                    | System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.Public
+            );
+
+            string availableFields = string.Join(
+                ", ",
+                settingsType
+                    .GetFields(
+                        System.Reflection.BindingFlags.Instance
+                            | System.Reflection.BindingFlags.NonPublic
+                            | System.Reflection.BindingFlags.Public
+                    )
+                    .Where(f =>
+                        f.Name.Contains(
+                            expectedFieldDescription.Replace("FoldoutTweenEnabled", ""),
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                        || f.Name.Contains(
+                            actualFieldName.TrimStart('_'),
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                    .Select(f => f.Name)
+            );
+
+            Assert.IsNotNull(
+                targetField,
+                $"SerializedPropertyNames.{constantName} = \"{actualFieldName}\" should reference an actual field on {settingsType.Name}. "
+                    + $"Related fields found: [{availableFields}]. "
+                    + $"This typically indicates a field was renamed without updating the constant."
+            );
+        }
+
+        /// <summary>
+        /// Tests that SerializedPropertyNames constants can be used to find SerializedProperty via SerializedObject.
+        /// This validates the constants work correctly in the Unity serialization context.
+        /// </summary>
+        [Test]
+        [TestCase(nameof(UnityHelpersSettings.SerializedPropertyNames.WButtonFoldoutTweenEnabled))]
+        [TestCase(
+            nameof(
+                UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableDictionaryFoldoutTweenEnabled
+            )
+        )]
+        [TestCase(
+            nameof(
+                UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableSortedDictionaryFoldoutTweenEnabled
+            )
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.SerializableSetFoldoutTweenEnabled)
+        )]
+        [TestCase(
+            nameof(
+                UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableSortedSetFoldoutTweenEnabled
+            )
+        )]
+        public void SerializedPropertyNamesResolvesToSerializedProperty(string constantName)
+        {
+            Type propertyNamesType = typeof(UnityHelpersSettings.SerializedPropertyNames);
+            System.Reflection.FieldInfo constantField = propertyNamesType.GetField(
+                constantName,
+                System.Reflection.BindingFlags.Public
+                    | System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.Static
+            );
+
+            string fieldName = (string)constantField.GetValue(null);
+
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            using SerializedObject serialized = new(settings);
+            serialized.Update();
+
+            SerializedProperty property = serialized.FindProperty(fieldName);
+
+            Assert.IsNotNull(
+                property,
+                $"SerializedPropertyNames.{constantName} = \"{fieldName}\" should resolve to a valid SerializedProperty. "
+                    + $"This could indicate the field is not serializable, has incorrect attributes, or was renamed."
+            );
+        }
+
+        /// <summary>
+        /// Validates that reflection-based field access for tween settings matches the SerializedPropertyNames constants.
+        /// This specifically tests the pattern used by TweenDisabledScope helper classes in tests.
+        /// </summary>
+        [Test]
+        [TestCase(
+            nameof(
+                UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableDictionaryFoldoutTweenEnabled
+            ),
+            typeof(bool)
+        )]
+        [TestCase(
+            nameof(
+                UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableSortedDictionaryFoldoutTweenEnabled
+            ),
+            typeof(bool)
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.SerializableSetFoldoutTweenEnabled),
+            typeof(bool)
+        )]
+        [TestCase(
+            nameof(
+                UnityHelpersSettings
+                    .SerializedPropertyNames
+                    .SerializableSortedSetFoldoutTweenEnabled
+            ),
+            typeof(bool)
+        )]
+        public void TweenFieldsAreAccessibleViaReflectionWithCorrectType(
+            string constantName,
+            Type expectedFieldType
+        )
+        {
+            Type propertyNamesType = typeof(UnityHelpersSettings.SerializedPropertyNames);
+            System.Reflection.FieldInfo constantField = propertyNamesType.GetField(
+                constantName,
+                System.Reflection.BindingFlags.Public
+                    | System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.Static
+            );
+
+            string fieldName = (string)constantField.GetValue(null);
+
+            System.Reflection.FieldInfo targetField = typeof(UnityHelpersSettings).GetField(
+                fieldName,
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+            );
+
+            Assert.IsNotNull(
+                targetField,
+                $"Field '{fieldName}' from SerializedPropertyNames.{constantName} should be accessible via reflection."
+            );
+
+            Assert.AreEqual(
+                expectedFieldType,
+                targetField.FieldType,
+                $"Field '{fieldName}' should be of type {expectedFieldType.Name}."
+            );
+
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            object value = targetField.GetValue(settings);
+            Assert.IsNotNull(
+                value,
+                $"Field '{fieldName}' value should be retrievable from UnityHelpersSettings.instance."
+            );
+        }
+
+        /// <summary>
+        /// Validates that WButtonCustomColor SerializedPropertyNames resolve to actual properties.
+        /// This catches bugs where field names are changed but constants are not updated,
+        /// which would cause PropertyDrawers to fail to find their child properties.
+        /// </summary>
+        [Test]
+        public void WButtonCustomColorPropertiesResolveCorrectly()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            using SerializedObject serialized = new(settings);
+            serialized.Update();
+
+            SerializedProperty paletteProperty = serialized.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            Assert.IsNotNull(paletteProperty, "Should find WButtonCustomColors property.");
+
+            SerializedProperty keysProperty = paletteProperty.FindPropertyRelative("_keys");
+            Assert.IsNotNull(keysProperty, "Should find keys property in dictionary.");
+
+            if (keysProperty.arraySize == 0)
+            {
+                Assert.Inconclusive(
+                    "No WButtonCustomColor entries exist to validate. Consider adding a test entry."
+                );
+                return;
+            }
+
+            SerializedProperty valuesProperty = paletteProperty.FindPropertyRelative("_values");
+            Assert.IsNotNull(valuesProperty, "Should find values property in dictionary.");
+            Assert.Greater(valuesProperty.arraySize, 0, "Should have at least one value entry.");
+
+            SerializedProperty firstValue = valuesProperty.GetArrayElementAtIndex(0);
+            Assert.IsNotNull(firstValue, "Should be able to get first value element.");
+
+            string buttonFieldName = UnityHelpersSettings
+                .SerializedPropertyNames
+                .WButtonCustomColorButton;
+            SerializedProperty buttonColor = firstValue.FindPropertyRelative(buttonFieldName);
+            Assert.IsNotNull(
+                buttonColor,
+                $"WButtonCustomColor should have property '{buttonFieldName}'. "
+                    + $"This typically indicates the field was renamed. "
+                    + $"Available properties: {GetAvailableRelativeProperties(firstValue)}"
+            );
+
+            string textFieldName = UnityHelpersSettings
+                .SerializedPropertyNames
+                .WButtonCustomColorText;
+            SerializedProperty textColor = firstValue.FindPropertyRelative(textFieldName);
+            Assert.IsNotNull(
+                textColor,
+                $"WButtonCustomColor should have property '{textFieldName}'. "
+                    + $"This typically indicates the field was renamed. "
+                    + $"Available properties: {GetAvailableRelativeProperties(firstValue)}"
+            );
+        }
+
+        /// <summary>
+        /// Validates that WGroupCustomColor SerializedPropertyNames resolve to actual properties.
+        /// This catches bugs where field names are changed but constants are not updated.
+        /// </summary>
+        [Test]
+        public void WGroupCustomColorPropertiesResolveCorrectly()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            using SerializedObject serialized = new(settings);
+            serialized.Update();
+
+            SerializedProperty paletteProperty = serialized.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColors
+            );
+            Assert.IsNotNull(paletteProperty, "Should find WGroupCustomColors property.");
+
+            SerializedProperty keysProperty = paletteProperty.FindPropertyRelative("_keys");
+            Assert.IsNotNull(keysProperty, "Should find keys property in dictionary.");
+
+            if (keysProperty.arraySize == 0)
+            {
+                Assert.Inconclusive(
+                    "No WGroupCustomColor entries exist to validate. Consider adding a test entry."
+                );
+                return;
+            }
+
+            SerializedProperty valuesProperty = paletteProperty.FindPropertyRelative("_values");
+            Assert.IsNotNull(valuesProperty, "Should find values property in dictionary.");
+            Assert.Greater(valuesProperty.arraySize, 0, "Should have at least one value entry.");
+
+            SerializedProperty firstValue = valuesProperty.GetArrayElementAtIndex(0);
+            Assert.IsNotNull(firstValue, "Should be able to get first value element.");
+
+            string backgroundFieldName = UnityHelpersSettings
+                .SerializedPropertyNames
+                .WGroupCustomColorBackground;
+            SerializedProperty backgroundColor = firstValue.FindPropertyRelative(
+                backgroundFieldName
+            );
+            Assert.IsNotNull(
+                backgroundColor,
+                $"WGroupCustomColor should have property '{backgroundFieldName}'. "
+                    + $"This typically indicates the field was renamed. "
+                    + $"Available properties: {GetAvailableRelativeProperties(firstValue)}"
+            );
+
+            string textFieldName = UnityHelpersSettings
+                .SerializedPropertyNames
+                .WGroupCustomColorText;
+            SerializedProperty textColor = firstValue.FindPropertyRelative(textFieldName);
+            Assert.IsNotNull(
+                textColor,
+                $"WGroupCustomColor should have property '{textFieldName}'. "
+                    + $"This typically indicates the field was renamed. "
+                    + $"Available properties: {GetAvailableRelativeProperties(firstValue)}"
+            );
+        }
+
+        /// <summary>
+        /// Validates that WEnumToggleButtonsCustomColor SerializedPropertyNames resolve to actual properties.
+        /// This catches bugs where field names are changed but constants are not updated.
+        /// </summary>
+        [Test]
+        public void WEnumToggleButtonsCustomColorPropertiesResolveCorrectly()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            using SerializedObject serialized = new(settings);
+            serialized.Update();
+
+            SerializedProperty paletteProperty = serialized.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsCustomColors
+            );
+            Assert.IsNotNull(
+                paletteProperty,
+                "Should find WEnumToggleButtonsCustomColors property."
+            );
+
+            SerializedProperty keysProperty = paletteProperty.FindPropertyRelative("_keys");
+            Assert.IsNotNull(keysProperty, "Should find keys property in dictionary.");
+
+            if (keysProperty.arraySize == 0)
+            {
+                Assert.Inconclusive(
+                    "No WEnumToggleButtonsCustomColor entries exist to validate. Consider adding a test entry."
+                );
+                return;
+            }
+
+            SerializedProperty valuesProperty = paletteProperty.FindPropertyRelative("_values");
+            Assert.IsNotNull(valuesProperty, "Should find values property in dictionary.");
+            Assert.Greater(valuesProperty.arraySize, 0, "Should have at least one value entry.");
+
+            SerializedProperty firstValue = valuesProperty.GetArrayElementAtIndex(0);
+            Assert.IsNotNull(firstValue, "Should be able to get first value element.");
+
+            string selectedBackgroundFieldName = UnityHelpersSettings
+                .SerializedPropertyNames
+                .WEnumToggleButtonsSelectedBackground;
+            SerializedProperty selectedBackground = firstValue.FindPropertyRelative(
+                selectedBackgroundFieldName
+            );
+            Assert.IsNotNull(
+                selectedBackground,
+                $"WEnumToggleButtonsCustomColor should have property '{selectedBackgroundFieldName}'. "
+                    + $"This typically indicates the field was renamed. "
+                    + $"Available properties: {GetAvailableRelativeProperties(firstValue)}"
+            );
+
+            string selectedTextFieldName = UnityHelpersSettings
+                .SerializedPropertyNames
+                .WEnumToggleButtonsSelectedText;
+            SerializedProperty selectedText = firstValue.FindPropertyRelative(
+                selectedTextFieldName
+            );
+            Assert.IsNotNull(
+                selectedText,
+                $"WEnumToggleButtonsCustomColor should have property '{selectedTextFieldName}'. "
+                    + $"This typically indicates the field was renamed. "
+                    + $"Available properties: {GetAvailableRelativeProperties(firstValue)}"
+            );
+
+            string inactiveBackgroundFieldName = UnityHelpersSettings
+                .SerializedPropertyNames
+                .WEnumToggleButtonsInactiveBackground;
+            SerializedProperty inactiveBackground = firstValue.FindPropertyRelative(
+                inactiveBackgroundFieldName
+            );
+            Assert.IsNotNull(
+                inactiveBackground,
+                $"WEnumToggleButtonsCustomColor should have property '{inactiveBackgroundFieldName}'. "
+                    + $"This typically indicates the field was renamed. "
+                    + $"Available properties: {GetAvailableRelativeProperties(firstValue)}"
+            );
+
+            string inactiveTextFieldName = UnityHelpersSettings
+                .SerializedPropertyNames
+                .WEnumToggleButtonsInactiveText;
+            SerializedProperty inactiveText = firstValue.FindPropertyRelative(
+                inactiveTextFieldName
+            );
+            Assert.IsNotNull(
+                inactiveText,
+                $"WEnumToggleButtonsCustomColor should have property '{inactiveTextFieldName}'. "
+                    + $"This typically indicates the field was renamed. "
+                    + $"Available properties: {GetAvailableRelativeProperties(firstValue)}"
+            );
+        }
+
+        /// <summary>
+        /// Helper method to get available relative properties for diagnostic messages.
+        /// </summary>
+        private static string GetAvailableRelativeProperties(SerializedProperty property)
+        {
+            List<string> propertyNames = new();
+            SerializedProperty iterator = property.Copy();
+            SerializedProperty endProperty = property.GetEndProperty();
+
+            if (iterator.NextVisible(true))
+            {
+                do
+                {
+                    if (SerializedProperty.EqualContents(iterator, endProperty))
+                    {
+                        break;
+                    }
+
+                    propertyNames.Add(iterator.name);
+                } while (iterator.NextVisible(false));
+            }
+
+            return propertyNames.Count > 0
+                ? string.Join(", ", propertyNames)
+                : "(no visible properties found)";
+        }
     }
 }
 #endif

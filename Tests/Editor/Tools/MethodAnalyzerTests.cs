@@ -557,27 +557,30 @@ namespace TestNs
             AnalyzeTestFiles();
 
             IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> allDerivedIssues = issues
+                .Where(i => i.ClassName == "DerivedClass")
+                .ToList();
 
             // GetValue should be suppressed
-            List<AnalyzerIssue> getValueIssues = issues
-                .Where(i => i.ClassName == "DerivedClass" && i.MethodName == "GetValue")
+            List<AnalyzerIssue> getValueIssues = allDerivedIssues
+                .Where(i => i.MethodName == "GetValue")
                 .ToList();
 
             Assert.That(
                 getValueIssues.Count,
                 Is.EqualTo(0),
-                $"Should skip issues for methods with [SuppressAnalyzer]. Found: {string.Join(", ", getValueIssues.Select(i => i.IssueType))}"
+                $"Should skip issues for methods with [SuppressAnalyzer]. Found: {string.Join(", ", getValueIssues.Select(i => i.IssueType))}. All DerivedClass issues: {string.Join("; ", allDerivedIssues.Select(i => $"{i.MethodName}:{i.IssueType}"))}"
             );
 
             // GetOther should still be flagged
-            List<AnalyzerIssue> getOtherIssues = issues
-                .Where(i => i.ClassName == "DerivedClass" && i.MethodName == "GetOther")
+            List<AnalyzerIssue> getOtherIssues = allDerivedIssues
+                .Where(i => i.MethodName == "GetOther")
                 .ToList();
 
             Assert.That(
                 getOtherIssues.Count,
                 Is.EqualTo(1),
-                "Should still flag methods without [SuppressAnalyzer]"
+                $"Should still flag methods without [SuppressAnalyzer]. All DerivedClass issues: {string.Join("; ", allDerivedIssues.Select(i => $"{i.MethodName}:{i.IssueType}"))}"
             );
         }
 
@@ -1347,9 +1350,11 @@ namespace TestNs
         }
 
         [Test]
-        public void NewKeywordWithDifferentReturnTypeAndParametersIsNotFlagged()
+        public void NewKeywordWithDifferentSignatureIsFlaggedAsSignatureMismatch()
         {
-            // New method with completely different signature
+            // New method with completely different signature should be flagged
+            // because 'new' indicates intention to hide a base method, but no matching
+            // method exists to hide when the signature is different
             WriteTestFile(
                 "NewKeywordDifferentSignature.cs",
                 @"
@@ -1373,8 +1378,13 @@ namespace TestNs
                 .ToList();
             Assert.That(
                 processIssues.Count,
-                Is.EqualTo(0),
-                $"Should not flag 'new' method with different signature. Found: {string.Join(", ", processIssues.Select(i => i.IssueType))}"
+                Is.EqualTo(1),
+                $"Should flag 'new' method with different signature as SignatureMismatch. Found {processIssues.Count} issues: {string.Join(", ", processIssues.Select(i => i.IssueType))}"
+            );
+            Assert.That(
+                processIssues[0].IssueType,
+                Is.EqualTo("SignatureMismatch"),
+                $"Issue type should be SignatureMismatch, but was {processIssues[0].IssueType}"
             );
         }
 
@@ -2335,6 +2345,448 @@ namespace TestNs
                 signatureMismatches.Count,
                 Is.EqualTo(0),
                 $"Should resolve generic type parameters when searching ancestors. Found: {string.Join(", ", signatureMismatches.Select(i => $"{i.MethodName}: {i.DerivedMethodSignature}"))}"
+            );
+        }
+
+        [Test]
+        public void SuppressAnalyzerOnlyAffectsImmediatelyFollowingMethod()
+        {
+            // Verify that [SuppressAnalyzer] on one method doesn't suppress subsequent methods
+            WriteTestFile(
+                "SuppressOnlyImmediate.cs",
+                @"
+namespace TestNs
+{
+    public class BaseClass
+    {
+        public virtual int Method1() => 0;
+        public virtual int Method2() => 0;
+        public virtual int Method3() => 0;
+    }
+
+    public class DerivedClass : BaseClass
+    {
+        [SuppressAnalyzer(""Intentional for testing"")]
+        public override string Method1() => string.Empty;
+
+        // Method2 should still be flagged - no [SuppressAnalyzer]
+        public override string Method2() => string.Empty;
+
+        [SuppressAnalyzer]
+        public override string Method3() => string.Empty;
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+
+            // Method1 should be suppressed
+            List<AnalyzerIssue> method1Issues = issues
+                .Where(i => i.ClassName == "DerivedClass" && i.MethodName == "Method1")
+                .ToList();
+            Assert.That(
+                method1Issues.Count,
+                Is.EqualTo(0),
+                $"Method1 should be suppressed. Found: {string.Join(", ", method1Issues.Select(i => i.IssueType))}"
+            );
+
+            // Method2 should be flagged
+            List<AnalyzerIssue> method2Issues = issues
+                .Where(i => i.ClassName == "DerivedClass" && i.MethodName == "Method2")
+                .ToList();
+            Assert.That(
+                method2Issues.Count,
+                Is.EqualTo(1),
+                $"Method2 should be flagged (no [SuppressAnalyzer]). All issues: {FormatIssues(issues)}"
+            );
+            Assert.That(
+                method2Issues[0].IssueType,
+                Is.EqualTo("ReturnTypeMismatch"),
+                $"Method2 should have ReturnTypeMismatch issue. Found: {method2Issues[0].IssueType}"
+            );
+
+            // Method3 should be suppressed
+            List<AnalyzerIssue> method3Issues = issues
+                .Where(i => i.ClassName == "DerivedClass" && i.MethodName == "Method3")
+                .ToList();
+            Assert.That(
+                method3Issues.Count,
+                Is.EqualTo(0),
+                $"Method3 should be suppressed. Found: {string.Join(", ", method3Issues.Select(i => i.IssueType))}"
+            );
+        }
+
+        [Test]
+        public void SuppressAnalyzerOnClassDoesNotAffectOtherClasses()
+        {
+            // Verify that [SuppressAnalyzer] on one class doesn't suppress issues in other classes
+            WriteTestFile(
+                "SuppressOnlyThisClass.cs",
+                @"
+namespace TestNs
+{
+    public class BaseClass
+    {
+        public virtual int GetValue() => 0;
+    }
+
+    [SuppressAnalyzer(""Suppressed class"")]
+    public class SuppressedClass : BaseClass
+    {
+        public override string GetValue() => string.Empty;
+    }
+
+    public class NotSuppressedClass : BaseClass
+    {
+        public override string GetValue() => string.Empty;
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+
+            // SuppressedClass should have no issues
+            List<AnalyzerIssue> suppressedIssues = issues
+                .Where(i => i.ClassName == "SuppressedClass")
+                .ToList();
+            Assert.That(
+                suppressedIssues.Count,
+                Is.EqualTo(0),
+                $"SuppressedClass should have no issues. Found: {string.Join(", ", suppressedIssues.Select(i => $"{i.MethodName}: {i.IssueType}"))}"
+            );
+
+            // NotSuppressedClass should be flagged
+            List<AnalyzerIssue> notSuppressedIssues = issues
+                .Where(i => i.ClassName == "NotSuppressedClass")
+                .ToList();
+            Assert.That(
+                notSuppressedIssues.Count,
+                Is.EqualTo(1),
+                $"NotSuppressedClass should be flagged. All issues: {FormatIssues(issues)}"
+            );
+        }
+
+        [Test]
+        [TestCase("UsingNewOnVirtual", "new void DoWork()")]
+        [TestCase("SignatureMismatch", "new int DoWork(string arg)")]
+        public void NewKeywordIsFlaggedWithAppropriateIssueType(
+            string expectedIssueType,
+            string methodDeclaration
+        )
+        {
+            // The 'new' keyword is bad practice and should always be flagged
+            WriteTestFile(
+                "NewKeyword.cs",
+                $@"
+namespace TestNs
+{{
+    public class BaseClass
+    {{
+        public virtual void DoWork() {{ }}
+    }}
+    public class DerivedClass : BaseClass
+    {{
+        public {methodDeclaration} {{ }}
+    }}
+}}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> derivedIssues = issues
+                .Where(i => i.ClassName == "DerivedClass" && i.MethodName == "DoWork")
+                .ToList();
+
+            Assert.That(
+                derivedIssues.Count,
+                Is.GreaterThan(0),
+                $"'new' keyword should be flagged. Method: '{methodDeclaration}'. All issues: {FormatIssues(issues)}"
+            );
+
+            Assert.That(
+                derivedIssues.Any(i => i.IssueType == expectedIssueType),
+                Is.True,
+                $"Expected issue type '{expectedIssueType}' for method '{methodDeclaration}'. Found: {string.Join(", ", derivedIssues.Select(i => i.IssueType))}"
+            );
+        }
+
+        [Test]
+        public void NewKeywordOnNonVirtualMethodIsFlagged()
+        {
+            // Using 'new' to hide a non-virtual method should be flagged as UsingNewOnNonVirtual
+            WriteTestFile(
+                "NewOnNonVirtual.cs",
+                @"
+namespace TestNs
+{
+    public class BaseClass
+    {
+        public void Process() { }
+    }
+    public class DerivedClass : BaseClass
+    {
+        public new void Process() { }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> processIssues = issues
+                .Where(i => i.ClassName == "DerivedClass" && i.MethodName == "Process")
+                .ToList();
+
+            // Should have a UsingNewOnNonVirtual issue
+            Assert.That(
+                processIssues.Count,
+                Is.EqualTo(1),
+                $"'new' keyword hiding non-virtual method should be flagged exactly once. All issues: {FormatIssues(issues)}"
+            );
+            Assert.That(
+                processIssues[0].IssueType,
+                Is.EqualTo("UsingNewOnNonVirtual"),
+                $"Issue type should be UsingNewOnNonVirtual. Actual: {processIssues[0].IssueType}"
+            );
+        }
+
+        [Test]
+        public void SuppressAnalyzerInCommentDoesNotSuppressMethod()
+        {
+            // Verify that [SuppressAnalyzer] in a comment doesn't suppress the following method
+            WriteTestFile(
+                "SuppressInComment.cs",
+                @"
+namespace TestNs
+{
+    public class BaseClass
+    {
+        public virtual int GetValue() => 0;
+    }
+
+    public class DerivedClass : BaseClass
+    {
+        // This comment mentions [SuppressAnalyzer] but should not suppress
+        public override string GetValue() => string.Empty;
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> getValueIssues = issues
+                .Where(i => i.ClassName == "DerivedClass" && i.MethodName == "GetValue")
+                .ToList();
+
+            Assert.That(
+                getValueIssues.Count,
+                Is.EqualTo(1),
+                $"Method should be flagged despite [SuppressAnalyzer] appearing in a comment. All issues: {FormatIssues(issues)}"
+            );
+            Assert.That(
+                getValueIssues[0].IssueType,
+                Is.EqualTo("ReturnTypeMismatch"),
+                $"Issue type should be ReturnTypeMismatch. Actual: {getValueIssues[0].IssueType}"
+            );
+        }
+
+        [Test]
+        public void SuppressAnalyzerInMultiLineCommentDoesNotSuppressMethod()
+        {
+            // Verify that [SuppressAnalyzer] in a multi-line comment doesn't suppress the method
+            WriteTestFile(
+                "SuppressInMultiLineComment.cs",
+                @"
+namespace TestNs
+{
+    public class BaseClass
+    {
+        public virtual int GetValue() => 0;
+    }
+
+    public class DerivedClass : BaseClass
+    {
+        /*
+         * Some documentation that mentions [SuppressAnalyzer] attribute
+         * but should not actually suppress analysis
+         */
+        public override string GetValue() => string.Empty;
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> getValueIssues = issues
+                .Where(i => i.ClassName == "DerivedClass" && i.MethodName == "GetValue")
+                .ToList();
+
+            Assert.That(
+                getValueIssues.Count,
+                Is.EqualTo(1),
+                $"Method should be flagged despite [SuppressAnalyzer] appearing in multi-line comment. All issues: {FormatIssues(issues)}"
+            );
+        }
+
+        [Test]
+        public void SuppressAnalyzerInStringLiteralDoesNotSuppressMethod()
+        {
+            // Verify that [SuppressAnalyzer] in a string literal doesn't suppress the method
+            WriteTestFile(
+                "SuppressInString.cs",
+                @"
+namespace TestNs
+{
+    public class BaseClass
+    {
+        public virtual int GetValue() => 0;
+    }
+
+    public class DerivedClass : BaseClass
+    {
+        private const string Instructions = ""Add [SuppressAnalyzer] to suppress"";
+        public override string GetValue() => string.Empty;
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> getValueIssues = issues
+                .Where(i => i.ClassName == "DerivedClass" && i.MethodName == "GetValue")
+                .ToList();
+
+            Assert.That(
+                getValueIssues.Count,
+                Is.EqualTo(1),
+                $"Method should be flagged despite [SuppressAnalyzer] appearing in a string. All issues: {FormatIssues(issues)}"
+            );
+        }
+
+        [Test]
+        public void NewKeywordOnVirtualMethodIsFlagged()
+        {
+            // Using 'new' on a virtual method should be flagged as UsingNewOnVirtual
+            WriteTestFile(
+                "NewOnVirtual.cs",
+                @"
+namespace TestNs
+{
+    public class BaseClass
+    {
+        public virtual void Process() { }
+    }
+    public class DerivedClass : BaseClass
+    {
+        public new void Process() { }
+    }
+}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> processIssues = issues
+                .Where(i => i.ClassName == "DerivedClass" && i.MethodName == "Process")
+                .ToList();
+
+            Assert.That(
+                processIssues.Count,
+                Is.EqualTo(1),
+                $"'new' keyword on virtual method should be flagged. All issues: {FormatIssues(issues)}"
+            );
+            Assert.That(
+                processIssues[0].IssueType,
+                Is.EqualTo("UsingNewOnVirtual"),
+                $"Issue type should be UsingNewOnVirtual. Actual: {processIssues[0].IssueType}"
+            );
+        }
+
+        [TestCase("public", "Low", Description = "Non-Unity base should have Low severity")]
+        [TestCase("private", null, Description = "Private methods should not be flagged")]
+        public void NewKeywordOnNonVirtualMethodSeverityDependsOnVisibility(
+            string visibility,
+            string expectedSeverity
+        )
+        {
+            // Test severity levels and visibility handling for 'new' on non-virtual methods
+            WriteTestFile(
+                "NewOnNonVirtualVisibility.cs",
+                $@"
+namespace TestNs
+{{
+    public class BaseClass
+    {{
+        public void Process() {{ }}
+    }}
+    public class DerivedClass : BaseClass
+    {{
+        {visibility} new void Process() {{ }}
+    }}
+}}
+"
+            );
+
+            AnalyzeTestFiles();
+
+            IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
+            List<AnalyzerIssue> processIssues = issues
+                .Where(i => i.ClassName == "DerivedClass" && i.MethodName == "Process")
+                .ToList();
+
+            if (expectedSeverity == null)
+            {
+                Assert.That(
+                    processIssues.Count,
+                    Is.EqualTo(0),
+                    $"{visibility} methods should not be flagged for UsingNewOnNonVirtual. All issues: {FormatIssues(issues)}"
+                );
+            }
+            else
+            {
+                Assert.That(
+                    processIssues.Count,
+                    Is.EqualTo(1),
+                    $"{visibility} methods should be flagged. All issues: {FormatIssues(issues)}"
+                );
+                Assert.That(
+                    processIssues[0].Severity.ToString(),
+                    Is.EqualTo(expectedSeverity),
+                    $"Severity for {visibility} should be {expectedSeverity}. Actual: {processIssues[0].Severity}"
+                );
+            }
+        }
+
+        /// <summary>
+        /// Helper method to format all issues for diagnostic output.
+        /// </summary>
+        private static string FormatIssues(IEnumerable<AnalyzerIssue> issues)
+        {
+            List<AnalyzerIssue> issueList = issues.ToList();
+            if (issueList.Count == 0)
+            {
+                return "(no issues)";
+            }
+
+            return string.Join(
+                "; ",
+                issueList.Select(i => $"{i.ClassName}.{i.MethodName}:{i.IssueType}")
             );
         }
     }

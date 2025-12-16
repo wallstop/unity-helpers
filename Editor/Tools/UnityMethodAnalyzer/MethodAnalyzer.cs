@@ -859,9 +859,38 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             List<string> implementedInterfaces = new();
 
             // Check if the class has [SuppressAnalyzer] attribute
-            // Look at the content before the class keyword for attributes
-            string contentBeforeClass = classContent.Substring(0, classMatch.Index);
-            bool classSuppressed = SuppressAnalyzerAttributeRegex.IsMatch(contentBeforeClass);
+            // Look backwards in the full code from the class start position to find attributes.
+            // We need to use fullCode because classContent starts at the class keyword,
+            // but attributes appear before the class keyword.
+            // Be careful not to pick up attributes from a method inside a previous class.
+            int lookbackStart = Math.Max(0, classStartIndex - 500);
+            string lookbackRegion = fullCode.Substring(
+                lookbackStart,
+                classStartIndex - lookbackStart
+            );
+
+            // Find the last closing brace in the lookback region - this marks the end of
+            // the previous class or method. Attributes for THIS class will be after it.
+            int lastBrace = -1;
+            for (int idx = lookbackRegion.Length - 1; idx >= 0; idx--)
+            {
+                if (lookbackRegion[idx] == '}')
+                {
+                    lastBrace = idx;
+                    break;
+                }
+            }
+
+            // Only search for [SuppressAnalyzer] after the last class/method boundary
+            string contentBeforeClass =
+                lastBrace >= 0 ? lookbackRegion.Substring(lastBrace + 1) : lookbackRegion;
+
+            // Strip comments from contentBeforeClass to avoid false positives when
+            // [SuppressAnalyzer] appears in a comment (e.g., "// no [SuppressAnalyzer] here").
+            string strippedContentBeforeClass = StripCommentsAndStrings(contentBeforeClass);
+            bool classSuppressed = SuppressAnalyzerAttributeRegex.IsMatch(
+                strippedContentBeforeClass
+            );
 
             if (!string.IsNullOrEmpty(baseList))
             {
@@ -1138,15 +1167,45 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 int lineNumber = CountLines(fullCode, classStartOffset + match.Index);
 
                 // Check if the method has [SuppressAnalyzer] attribute
-                // Look at the original (non-stripped) content before the method for attributes
-                int methodPosInClass = match.Index;
-                int lookbackStart = Math.Max(0, methodPosInClass - 200);
-                string contentBeforeMethod = classContent.Substring(
+                // Look backwards in the full (non-stripped) code for attributes.
+                // Note: match.Index is the position in strippedContent which has the same length
+                // as the original code due to space replacement, so we can use the same offset.
+                // We need to be careful not to pick up attributes from a previous method.
+                // Find the nearest boundary (closing brace from previous method body) and only
+                // look for attributes between that boundary and the current method.
+                int methodPosInFullCode = classStartOffset + match.Index;
+                int lookbackStart = Math.Max(0, methodPosInFullCode - 500);
+                string lookbackRegion = fullCode.Substring(
                     lookbackStart,
-                    methodPosInClass - lookbackStart
+                    methodPosInFullCode - lookbackStart
                 );
+
+                // Find the last closing brace in the lookback region - this marks the end of
+                // the previous method or initializer. Attributes for THIS method will be after it.
+                int lastBraceOrSemicolon = -1;
+                for (int idx = lookbackRegion.Length - 1; idx >= 0; idx--)
+                {
+                    char ch = lookbackRegion[idx];
+                    if (ch == '}' || ch == ';')
+                    {
+                        lastBraceOrSemicolon = idx;
+                        break;
+                    }
+                }
+
+                // Only search for [SuppressAnalyzer] after the last method boundary
+                string contentBeforeMethod =
+                    lastBraceOrSemicolon >= 0
+                        ? lookbackRegion.Substring(lastBraceOrSemicolon + 1)
+                        : lookbackRegion;
+
+                // Strip comments from contentBeforeMethod to avoid false positives when
+                // [SuppressAnalyzer] appears in a comment (e.g., "// no [SuppressAnalyzer] here").
+                string strippedContentBeforeMethod = StripCommentsAndStrings(contentBeforeMethod);
+
                 bool methodSuppressed =
-                    classSuppressed || SuppressAnalyzerAttributeRegex.IsMatch(contentBeforeMethod);
+                    classSuppressed
+                    || SuppressAnalyzerAttributeRegex.IsMatch(strippedContentBeforeMethod);
 
                 AnalyzerMethodInfo methodInfo = new()
                 {
@@ -1591,15 +1650,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
                 if (!baseMethod.IsVirtual && !baseMethod.IsAbstract)
                 {
-                    if (!method.IsNew && !method.IsOverride && !method.IsPrivate)
-                    {
-                        if (
-                            string.Equals(
-                                method.ParameterTypesString,
-                                baseMethod.ParameterTypesString,
-                                StringComparison.Ordinal
-                            )
+                    if (
+                        string.Equals(
+                            method.ParameterTypesString,
+                            baseMethod.ParameterTypesString,
+                            StringComparison.Ordinal
                         )
+                    )
+                    {
+                        if (!method.IsNew && !method.IsOverride && !method.IsPrivate)
                         {
                             IssueSeverity severity = isUnityMethod
                                 ? IssueSeverity.Critical
@@ -1614,6 +1673,31 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                                     $"Method '{method.Name}' in '{classInfo.Name}' hides non-virtual method in base class '{baseClass.Name}' without using 'new' keyword.",
                                     severity,
                                     "Either: (1) Add 'new' keyword if hiding is intentional, (2) Make base method 'virtual' and use 'override', or (3) Rename the derived method.",
+                                    method.LineNumber,
+                                    GetCategory(),
+                                    baseClass.Name,
+                                    baseMethod.Signature,
+                                    method.Signature
+                                )
+                            );
+                        }
+                        else if (method.IsNew && !method.IsPrivate)
+                        {
+                            // Using 'new' to intentionally hide a non-virtual method is still a code smell.
+                            // For Unity methods, this is higher priority since it can cause subtle bugs.
+                            IssueSeverity severity = isUnityMethod
+                                ? IssueSeverity.High
+                                : IssueSeverity.Low;
+
+                            _issues.Add(
+                                new AnalyzerIssue(
+                                    classInfo.FilePath,
+                                    classInfo.Name,
+                                    method.Name,
+                                    "UsingNewOnNonVirtual",
+                                    $"Method '{method.Name}' in '{classInfo.Name}' uses 'new' to hide non-virtual method in base class '{baseClass.Name}'.",
+                                    severity,
+                                    "Consider: (1) Make base method 'virtual' and use 'override' instead, or (2) Rename the derived method to avoid confusion.",
                                     method.LineNumber,
                                     GetCategory(),
                                     baseClass.Name,

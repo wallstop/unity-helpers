@@ -12,7 +12,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Utils;
 
-    internal enum WButtonPlacement
+    public enum WButtonPlacement
     {
         Top = 0,
         Bottom = 1,
