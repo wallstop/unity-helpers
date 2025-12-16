@@ -323,7 +323,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
         /// </summary>
         /// <param name="property">The property to bind.</param>
         /// <param name="labelText">The label text to display.</param>
-        public void BindProperty(SerializedProperty property, string labelText)
+        public virtual void BindProperty(SerializedProperty property, string labelText)
         {
             _boundObject = property.serializedObject;
             _propertyPath = property.propertyPath;

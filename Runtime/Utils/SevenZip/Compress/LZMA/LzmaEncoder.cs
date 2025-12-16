@@ -235,7 +235,11 @@ namespace SevenZip.Compression.LZMA
                 _highCoder.Init();
             }
 
-            public void Encode(RangeCoder.Encoder rangeEncoder, UInt32 symbol, UInt32 posState)
+            public virtual void Encode(
+                RangeCoder.Encoder rangeEncoder,
+                UInt32 symbol,
+                UInt32 posState
+            )
             {
                 if (symbol < Base.kNumLowLenSymbols)
                 {
@@ -327,7 +331,11 @@ namespace SevenZip.Compression.LZMA
                 }
             }
 
-            public new void Encode(RangeCoder.Encoder rangeEncoder, UInt32 symbol, UInt32 posState)
+            public override void Encode(
+                RangeCoder.Encoder rangeEncoder,
+                UInt32 symbol,
+                UInt32 posState
+            )
             {
                 base.Encode(rangeEncoder, symbol, posState);
                 if (--_counters[posState] == 0)

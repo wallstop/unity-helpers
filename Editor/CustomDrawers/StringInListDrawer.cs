@@ -911,7 +911,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     && optionLabel.StartsWith(searchTerm, StringComparison.OrdinalIgnoreCase);
             }
 
-            public new void BindProperty(SerializedProperty property, string labelText)
+            public override void BindProperty(SerializedProperty property, string labelText)
             {
                 _isStringProperty = property.propertyType == SerializedPropertyType.String;
                 _isIntegerProperty = property.propertyType == SerializedPropertyType.Integer;

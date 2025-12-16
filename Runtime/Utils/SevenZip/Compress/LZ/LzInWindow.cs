@@ -100,17 +100,17 @@ namespace SevenZip.Compression.LZ
             _pointerToLastSafePosition = _blockSize - keepSizeAfter;
         }
 
-        public void SetStream(System.IO.Stream stream)
+        public virtual void SetStream(System.IO.Stream stream)
         {
             _stream = stream;
         }
 
-        public void ReleaseStream()
+        public virtual void ReleaseStream()
         {
             _stream = null;
         }
 
-        public void Init()
+        public virtual void Init()
         {
             _bufferOffset = 0;
             _pos = 0;
@@ -119,7 +119,7 @@ namespace SevenZip.Compression.LZ
             ReadBlock();
         }
 
-        public void MovePos()
+        public virtual void MovePos()
         {
             _pos++;
             if (_pos > _posLimit)
@@ -134,13 +134,13 @@ namespace SevenZip.Compression.LZ
             }
         }
 
-        public Byte GetIndexByte(Int32 index)
+        public virtual Byte GetIndexByte(Int32 index)
         {
             return _bufferBase[_bufferOffset + _pos + index];
         }
 
         // index + limit have not to exceed _keepSizeAfter;
-        public UInt32 GetMatchLen(Int32 index, UInt32 distance, UInt32 limit)
+        public virtual UInt32 GetMatchLen(Int32 index, UInt32 distance, UInt32 limit)
         {
             if (_streamEndWasReached)
             {
@@ -163,7 +163,7 @@ namespace SevenZip.Compression.LZ
             return i;
         }
 
-        public UInt32 GetNumAvailableBytes()
+        public virtual UInt32 GetNumAvailableBytes()
         {
             return _streamPos - _pos;
         }

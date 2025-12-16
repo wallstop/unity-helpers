@@ -40,6 +40,8 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             internal AssetChangeFlags _flags;
             internal SubscriptionParameterMode _parameterMode;
             internal Type _createdParameterElementType;
+            internal bool _searchPrefabs;
+            internal bool _searchSceneObjects;
         }
 
         private sealed class AssetWatcher
@@ -54,12 +56,24 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 
             internal Type AssetType { get; }
             internal bool IncludeAssignableTypes { get; private set; }
+            internal bool SearchPrefabs { get; private set; }
+            internal bool SearchSceneObjects { get; private set; }
             internal HashSet<string> KnownAssetPaths { get; }
             internal List<MethodSubscription> Subscriptions { get; }
 
             internal void EnableAssignableMatching()
             {
                 IncludeAssignableTypes = true;
+            }
+
+            internal void EnablePrefabSearch()
+            {
+                SearchPrefabs = true;
+            }
+
+            internal void EnableSceneObjectSearch()
+            {
+                SearchSceneObjects = true;
             }
         }
 
@@ -461,8 +475,28 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             for (int i = 0; i < createdPaths.Count; i++)
             {
                 string path = createdPaths[i];
-                UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath(path, loadType);
-                instances.Add(asset);
+
+                // First try to load the main asset directly
+                UnityEngine.Object mainAsset = AssetDatabase.LoadAssetAtPath(path, loadType);
+                if (mainAsset != null)
+                {
+                    instances.Add(mainAsset);
+                    continue;
+                }
+
+                // If main asset doesn't match, check sub-assets (e.g., Sprites in a Texture2D)
+                UnityEngine.Object[] allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
+                if (allAssets != null)
+                {
+                    for (int j = 0; j < allAssets.Length; j++)
+                    {
+                        UnityEngine.Object subAsset = allAssets[j];
+                        if (subAsset != null && assetType.IsInstanceOfType(subAsset))
+                        {
+                            instances.Add(subAsset);
+                        }
+                    }
+                }
             }
 
             return instances;
@@ -500,7 +534,9 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 
             foreach (
                 UnityEngine.Object instance in EnumeratePersistedInstances(
-                    subscription._declaringType
+                    subscription._declaringType,
+                    subscription._searchPrefabs,
+                    subscription._searchSceneObjects
                 )
             )
             {
@@ -541,12 +577,15 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         }
 
         private static IEnumerable<UnityEngine.Object> EnumeratePersistedInstances(
-            Type declaringType
+            Type declaringType,
+            bool searchPrefabs = false,
+            bool searchSceneObjects = false
         )
         {
             HashSet<string> yieldedPaths = new(StringComparer.OrdinalIgnoreCase);
+            HashSet<int> yieldedInstanceIds = new();
 
-            // Primary search using Unity's type filter
+            // Primary search using Unity's type filter (for ScriptableObjects and direct asset types)
             string filter = $"t:{declaringType.Name}";
             string[] guids = AssetDatabase.FindAssets(filter);
             for (int i = 0; i < guids.Length; i++)
@@ -592,6 +631,126 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                     }
                 }
             }
+
+            // Search prefabs for MonoBehaviour components
+            if (searchPrefabs && typeof(Component).IsAssignableFrom(declaringType))
+            {
+                foreach (
+                    UnityEngine.Object component in EnumeratePrefabComponents(
+                        declaringType,
+                        yieldedPaths,
+                        yieldedInstanceIds
+                    )
+                )
+                {
+                    yield return component;
+                }
+            }
+
+            // Search open scenes for MonoBehaviour components
+            if (searchSceneObjects && typeof(Component).IsAssignableFrom(declaringType))
+            {
+                foreach (
+                    UnityEngine.Object component in EnumerateSceneComponents(
+                        declaringType,
+                        yieldedInstanceIds
+                    )
+                )
+                {
+                    yield return component;
+                }
+            }
+        }
+
+        private static IEnumerable<UnityEngine.Object> EnumeratePrefabComponents(
+            Type declaringType,
+            HashSet<string> yieldedPaths,
+            HashSet<int> yieldedInstanceIds
+        )
+        {
+            // Find all prefabs in the project
+            string[] prefabGuids = AssetDatabase.FindAssets("t:Prefab");
+            for (int i = 0; i < prefabGuids.Length; i++)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(prefabGuids[i]);
+                if (ShouldSkipPath(path))
+                {
+                    continue;
+                }
+
+                if (yieldedPaths.Contains(path))
+                {
+                    continue;
+                }
+
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (prefab == null)
+                {
+                    continue;
+                }
+
+                // Get all components of the declaring type (including children)
+                Component[] components = prefab.GetComponentsInChildren(declaringType, true);
+                for (int j = 0; j < components.Length; j++)
+                {
+                    Component component = components[j];
+                    if (component == null)
+                    {
+                        continue;
+                    }
+
+                    int instanceId = component.GetInstanceID();
+                    if (yieldedInstanceIds.Add(instanceId))
+                    {
+                        yield return component;
+                    }
+                }
+            }
+        }
+
+        private static IEnumerable<UnityEngine.Object> EnumerateSceneComponents(
+            Type declaringType,
+            HashSet<int> yieldedInstanceIds
+        )
+        {
+            // Search all loaded scenes
+            int sceneCount = UnityEngine.SceneManagement.SceneManager.sceneCount;
+            for (int sceneIndex = 0; sceneIndex < sceneCount; sceneIndex++)
+            {
+                UnityEngine.SceneManagement.Scene scene =
+                    UnityEngine.SceneManagement.SceneManager.GetSceneAt(sceneIndex);
+                if (!scene.isLoaded)
+                {
+                    continue;
+                }
+
+                GameObject[] rootObjects = scene.GetRootGameObjects();
+                for (int i = 0; i < rootObjects.Length; i++)
+                {
+                    GameObject root = rootObjects[i];
+                    if (root == null)
+                    {
+                        continue;
+                    }
+
+                    // Get all components of the declaring type (including children)
+                    Component[] components = root.GetComponentsInChildren(declaringType, true);
+                    for (int j = 0; j < components.Length; j++)
+                    {
+                        Component component = components[j];
+                        if (component == null)
+                        {
+                            continue;
+                        }
+
+                        int instanceId = component.GetInstanceID();
+                        if (yieldedInstanceIds.Add(instanceId))
+                        {
+                            yield return component;
+                        }
+                    }
+                }
+            }
         }
 
         private static List<string> CollectCreatedAssets(
@@ -632,6 +791,14 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                     continue;
                 }
 
+                // Check for sub-assets (e.g., Sprites are sub-assets of Texture2D)
+                // This is necessary because types like Sprite are not the main asset type
+                if (mainType != null && HasMatchingSubAsset(path, assetType))
+                {
+                    buffer.Add(path);
+                    continue;
+                }
+
                 // Fallback for test assets: Unity's GetMainAssetTypeAtPath may return incorrect
                 // types when test classes are defined in files that don't match the class name.
                 // Actually load the asset and check its runtime type.
@@ -648,6 +815,26 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                     }
                 }
             }
+        }
+
+        private static bool HasMatchingSubAsset(string path, Type assetType)
+        {
+            UnityEngine.Object[] allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
+            if (allAssets == null || allAssets.Length <= 1)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < allAssets.Length; i++)
+            {
+                UnityEngine.Object asset = allAssets[i];
+                if (asset != null && assetType.IsInstanceOfType(asset))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static List<string> CollectDeletedAssets(
@@ -785,7 +972,20 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                             _flags = attribute.Flags,
                             _parameterMode = parameterMode,
                             _createdParameterElementType = createdElementType,
+                            _searchPrefabs = attribute.SearchPrefabs,
+                            _searchSceneObjects = attribute.SearchSceneObjects,
                         };
+
+                        if (attribute.SearchPrefabs && !watcher.SearchPrefabs)
+                        {
+                            watcher.EnablePrefabSearch();
+                        }
+
+                        if (attribute.SearchSceneObjects && !watcher.SearchSceneObjects)
+                        {
+                            watcher.EnableSceneObjectSearch();
+                        }
+
                         watcher.Subscriptions.Add(subscription);
                     }
                 }

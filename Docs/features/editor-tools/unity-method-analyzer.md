@@ -39,7 +39,7 @@ The Unity Method Analyzer provides:
 | Missing `override` keyword | Hiding base method instead of overriding                                  |
 | Wrong method signature     | `OnCollisionEnter(Collider c)` instead of `OnCollisionEnter(Collision c)` |
 | Shadowed lifecycle methods | Both base and derived class have `private void Start()`                   |
-| Return type mismatches     | `void Update()` vs `IEnumerator Update()` in inheritance chain            |
+| Return type mismatches     | `void Start()` vs `IEnumerator Start()` in inheritance chain              |
 | Static lifecycle methods   | `static void Awake()` won't be called by Unity                            |
 
 ---
@@ -247,7 +247,7 @@ Organize results by:
 
 Focus on specific severity levels:
 
-![Filtering by severity level](../../images/editor-tools/unity-method-analyzer/severity-filter.png)
+![Filtering by severity level](../../images/editor-tools/unity-method-analyzer/severity-filter.gif)
 
 ### Category Filter
 

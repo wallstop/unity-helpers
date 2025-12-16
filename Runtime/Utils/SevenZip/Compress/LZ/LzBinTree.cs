@@ -48,17 +48,7 @@ namespace SevenZip.Compression.LZ
             }
         }
 
-        public new void SetStream(System.IO.Stream stream)
-        {
-            base.SetStream(stream);
-        }
-
-        public new void ReleaseStream()
-        {
-            base.ReleaseStream();
-        }
-
-        public new void Init()
+        public override void Init()
         {
             base.Init();
             for (UInt32 i = 0; i < _hashSizeSum; i++)
@@ -70,7 +60,7 @@ namespace SevenZip.Compression.LZ
             ReduceOffsets(-1);
         }
 
-        public new void MovePos()
+        public override void MovePos()
         {
             if (++_cyclicBufferPos >= _cyclicBufferSize)
             {
@@ -82,21 +72,6 @@ namespace SevenZip.Compression.LZ
             {
                 Normalize();
             }
-        }
-
-        public new Byte GetIndexByte(Int32 index)
-        {
-            return base.GetIndexByte(index);
-        }
-
-        public new UInt32 GetMatchLen(Int32 index, UInt32 distance, UInt32 limit)
-        {
-            return base.GetMatchLen(index, distance, limit);
-        }
-
-        public new UInt32 GetNumAvailableBytes()
-        {
-            return base.GetNumAvailableBytes();
         }
 
         public void Create(

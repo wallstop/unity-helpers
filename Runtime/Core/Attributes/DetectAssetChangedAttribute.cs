@@ -16,6 +16,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     {
         None = 0,
         IncludeAssignableTypes = 1 << 0,
+        SearchPrefabs = 1 << 1,
+        SearchSceneObjects = 1 << 2,
     }
 
     /// <summary>
@@ -77,5 +79,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
         public bool IncludeAssignableTypes =>
             (Options & DetectAssetChangedOptions.IncludeAssignableTypes) != 0;
+
+        public bool SearchPrefabs => (Options & DetectAssetChangedOptions.SearchPrefabs) != 0;
+
+        public bool SearchSceneObjects =>
+            (Options & DetectAssetChangedOptions.SearchSceneObjects) != 0;
     }
 }

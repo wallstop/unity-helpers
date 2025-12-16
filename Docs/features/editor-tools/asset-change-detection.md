@@ -21,33 +21,43 @@ The `[DetectAssetChanged]` attribute allows you to annotate methods that should 
 ## Basic Usage
 
 ```csharp
+using System.Collections.Generic;
 using UnityEngine;
 using WallstopStudios.UnityHelpers.Core.Attributes;
+using WallstopStudios.UnityHelpers.Core.Extension;
 
 public class SpriteCache : MonoBehaviour
 {
-    private static Dictionary<string, Sprite> _cache = new();
+    [SerializeField]
+    private List<Sprite> _allSprites = new();
 
-    [DetectAssetChanged(typeof(Sprite), AssetChangeFlags.Created | AssetChangeFlags.Deleted)]
-    private static void OnSpriteChanged(Sprite sprite)
+    [DetectAssetChanged(
+        typeof(Sprite),
+        AssetChangeFlags.Created | AssetChangeFlags.Created,
+        DetectAssetChangedOptions.SearchPrefabs
+    )]
+    private void OnSpriteChanged(Sprite[] createdSprites, string[] deletedSprites)
     {
-        if (sprite != null)
+        foreach (var sprite in createdSprites)
         {
-            Debug.Log($"Sprite changed: {sprite.name}");
-            InvalidateCache();
+            if (!_allSprites.Contains(sprite))
+            {
+                this.Log($"Found new sprite: {sprite.name}");
+                _allSprites.Add(sprite);
+            }
         }
-    }
 
-    private static void InvalidateCache()
-    {
-        _cache.Clear();
+        foreach (var sprite in deletedSprites)
+        {
+            this.Log($"Sprite deleted: {sprite}");
+        }
     }
 }
 ```
 
 > **Visual Reference**
 >
-> ![Asset change detection workflow diagram](../../images/editor-tools/asset-change-detection-flow.png)
+> ![Asset change detection workflow diagram](../../images/editor-tools/asset-change-detection-flow.gif)
 > _Automatic method invocation when assets are created or deleted_
 
 ---
@@ -82,8 +92,12 @@ public enum DetectAssetChangedOptions
 {
     None = 0,
     IncludeAssignableTypes = 1 << 0,  // Also trigger for derived types
+    SearchPrefabs = 1 << 1,           // Search prefabs for MonoBehaviour handlers
+    SearchSceneObjects = 1 << 2,      // Search open scenes for MonoBehaviour handlers
 }
 ```
+
+> **Important:** `SearchPrefabs` and `SearchSceneObjects` are only applicable to **instance methods** on **MonoBehaviour** classes. Static methods work without these options.
 
 ---
 
@@ -322,6 +336,92 @@ public class DataRegistry : MonoBehaviour
 }
 ```
 
+### Prefab-Based Instance Methods
+
+Use `SearchPrefabs` to invoke instance methods on MonoBehaviours attached to prefabs:
+
+```csharp
+public class SpriteCache : MonoBehaviour
+{
+    [SerializeField] private List<Sprite> _cachedSprites = new();
+
+    [DetectAssetChanged(
+        typeof(Sprite),
+        AssetChangeFlags.Created | AssetChangeFlags.Deleted,
+        DetectAssetChangedOptions.SearchPrefabs
+    )]
+    private void OnSpriteChanged(AssetChangeContext context)
+    {
+        // This instance method is called on the prefab asset
+        Debug.Log($"SpriteCache on prefab received sprite change: {context.Flags}");
+        RefreshCache();
+    }
+
+    private void RefreshCache()
+    {
+        _cachedSprites.Clear();
+        // Rebuild cache...
+    }
+}
+```
+
+**When to use:** When your MonoBehaviour needs instance-specific state or serialized fields
+
+### Scene Object Instance Methods
+
+Use `SearchSceneObjects` to invoke instance methods on MonoBehaviours in open scenes:
+
+```csharp
+public class LiveAssetWatcher : MonoBehaviour
+{
+    [SerializeField] private string _watchedFolder;
+
+    [DetectAssetChanged(
+        typeof(Texture2D),
+        AssetChangeFlags.Created,
+        DetectAssetChangedOptions.SearchSceneObjects
+    )]
+    private void OnTextureCreated(AssetChangeContext context)
+    {
+        // Called on every LiveAssetWatcher instance in all open scenes
+        foreach (string path in context.CreatedAssetPaths)
+        {
+            if (path.StartsWith(_watchedFolder))
+            {
+                Debug.Log($"{name} detected new texture: {path}");
+                HandleNewTexture(path);
+            }
+        }
+    }
+
+    private void HandleNewTexture(string path) { /* ... */ }
+}
+```
+
+**When to use:** For editor tools that need to react to changes based on scene-specific configuration
+
+### Combined Prefab and Scene Search
+
+Use both options together to find handlers in both prefabs and open scenes:
+
+```csharp
+public class UniversalAssetHandler : MonoBehaviour
+{
+    [DetectAssetChanged(
+        typeof(AudioClip),
+        AssetChangeFlags.Created | AssetChangeFlags.Deleted,
+        DetectAssetChangedOptions.SearchPrefabs | DetectAssetChangedOptions.SearchSceneObjects
+    )]
+    private void OnAudioClipChanged(AssetChangeContext context)
+    {
+        // Called on instances in both prefabs AND scene objects
+        Debug.Log($"{name} (on {gameObject.name}) received audio change");
+    }
+}
+```
+
+**Performance Note:** Searching prefabs and scenes has overhead. Use these options only when you need instance-specific behavior. For simple notifications, prefer static methods.
+
 ---
 
 ## Implementation Details
@@ -347,12 +447,27 @@ The `DetectAssetChangeProcessor` (Editor assembly) automatically:
 - Ensure the method is in a type that Unity can discover (not in a generic class)
 - Check that the asset type matches exactly (unless using `IncludeAssignableTypes`)
 - Verify the asset change flags match the operation (Created vs Deleted)
+- **For MonoBehaviour instance methods:**
+  - Use `SearchPrefabs` if the handler is on a prefab asset
+  - Use `SearchSceneObjects` if the handler is on a GameObject in a scene
+  - Instance methods without these options only work for ScriptableObjects saved as assets
+
+### MonoBehaviour Instance Methods Not Working
+
+If your instance method on a MonoBehaviour isn't being called:
+
+1. **On a prefab?** Add `DetectAssetChangedOptions.SearchPrefabs`
+2. **In a scene?** Add `DetectAssetChangedOptions.SearchSceneObjects`
+3. **Need both?** Combine: `SearchPrefabs | SearchSceneObjects`
+4. **Don't need instance state?** Use a `static` method instead (most efficient)
 
 ### Performance Issues
 
 - Profile with Unity Profiler during asset import
 - Consider deferring work with `EditorApplication.delayCall`
 - Use `static` methods to avoid unnecessary instance lookups
+- **Avoid `SearchPrefabs` in large projects** - it loads all prefabs to check for components
+- **Avoid `SearchSceneObjects` with many open scenes** - searches all loaded scenes
 
 ### Null Reference Exceptions
 

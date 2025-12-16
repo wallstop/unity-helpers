@@ -496,39 +496,33 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             );
             GUILayout.EndHorizontal();
 
-            if (newGroupByFile != _groupByFile)
-            {
-                _groupByFile = newGroupByFile;
-                if (_groupByFile)
-                {
-                    _groupBySeverity = false;
-                    _groupByCategory = false;
-                }
+            // These toggles act as radio buttons - exactly one must be selected.
+            // Detect which button was clicked by checking for a transition from false to true.
+            // If a button transitions from true to false (user clicked currently selected), ignore it.
+            // Use else-if to ensure only one transition is processed per frame.
+            bool fileClicked = newGroupByFile && !_groupByFile;
+            bool severityClicked = newGroupBySeverity && !_groupBySeverity;
+            bool categoryClicked = newGroupByCategory && !_groupByCategory;
 
+            if (fileClicked)
+            {
+                _groupByFile = true;
+                _groupBySeverity = false;
+                _groupByCategory = false;
                 UpdateTreeViewGrouping();
             }
-
-            if (newGroupBySeverity != _groupBySeverity)
+            else if (severityClicked)
             {
-                _groupBySeverity = newGroupBySeverity;
-                if (_groupBySeverity)
-                {
-                    _groupByFile = false;
-                    _groupByCategory = false;
-                }
-
+                _groupByFile = false;
+                _groupBySeverity = true;
+                _groupByCategory = false;
                 UpdateTreeViewGrouping();
             }
-
-            if (newGroupByCategory != _groupByCategory)
+            else if (categoryClicked)
             {
-                _groupByCategory = newGroupByCategory;
-                if (_groupByCategory)
-                {
-                    _groupByFile = false;
-                    _groupBySeverity = false;
-                }
-
+                _groupByFile = false;
+                _groupBySeverity = false;
+                _groupByCategory = true;
                 UpdateTreeViewGrouping();
             }
         }
@@ -858,86 +852,97 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
         private async void StartAnalysis()
         {
+            if (_isAnalyzing)
+            {
+                return;
+            }
+
+            _isAnalyzing = true;
+            _analysisProgress = 0f;
+            _statusMessage = "Analyzing...";
+            _selectedIssue = null;
+
+            _cancellationTokenSource?.Dispose();
+            _cancellationTokenSource = new CancellationTokenSource();
+
             try
             {
-                if (_isAnalyzing)
+                List<string> directories = new();
+                string rootPath = GetProjectRoot();
+
+                foreach (string sourcePath in _sourcePaths)
                 {
+                    if (string.IsNullOrEmpty(sourcePath))
+                    {
+                        continue;
+                    }
+
+                    if (Directory.Exists(sourcePath))
+                    {
+                        directories.Add(sourcePath);
+                    }
+                }
+
+                if (directories.Count == 0)
+                {
+                    _statusMessage = "No valid directories selected";
                     return;
                 }
 
-                _isAnalyzing = true;
-                _analysisProgress = 0f;
-                _statusMessage = "Analyzing...";
-                _selectedIssue = null;
-
-                _cancellationTokenSource?.Dispose();
-                _cancellationTokenSource = new CancellationTokenSource();
-
-                try
+                Progress<float> progress = new(p =>
                 {
-                    List<string> directories = new();
-                    string rootPath = GetProjectRoot();
+                    _analysisProgress = p;
+                });
 
-                    foreach (string sourcePath in _sourcePaths)
-                    {
-                        if (string.IsNullOrEmpty(sourcePath))
-                        {
-                            continue;
-                        }
+                await _analyzer.AnalyzeAsync(
+                    rootPath,
+                    directories,
+                    progress,
+                    _cancellationTokenSource.Token
+                );
 
-                        if (Directory.Exists(sourcePath))
-                        {
-                            directories.Add(sourcePath);
-                        }
-                    }
+                UpdateIssueCounts();
+                _treeView.SetIssues(_analyzer.Issues, rootPath);
 
-                    if (directories.Count == 0)
-                    {
-                        _statusMessage = "No valid directories selected";
-                        return;
-                    }
-
-                    Progress<float> progress = new(p =>
-                    {
-                        _analysisProgress = p;
-                    });
-
-                    await _analyzer.AnalyzeAsync(
-                        rootPath,
-                        directories,
-                        progress,
-                        _cancellationTokenSource.Token
-                    );
-
-                    UpdateIssueCounts();
-                    _treeView.SetIssues(_analyzer.Issues, rootPath);
-
-                    _statusMessage = $"Analysis complete: {_totalCount} issues found";
-                }
-                catch (OperationCanceledException)
-                {
-                    _statusMessage = "Analysis cancelled";
-                }
-                catch (Exception ex)
-                {
-                    _statusMessage = $"Analysis failed: {ex.Message}";
-                }
-                finally
-                {
-                    _isAnalyzing = false;
-                    _analysisProgress = 0f;
-                    Repaint();
-                }
+                _statusMessage = $"Analysis complete: {_totalCount} issues found";
             }
-            catch (Exception e)
+            catch (OperationCanceledException)
             {
-                _statusMessage = $"Analysis failed: {e.Message}";
+                _statusMessage = "Analysis cancelled";
+            }
+            catch (Exception ex)
+            {
+                _statusMessage = $"Analysis failed: {ex.Message}";
+            }
+            finally
+            {
+                ResetAnalysisState();
             }
         }
 
         private void CancelAnalysis()
         {
-            _cancellationTokenSource?.Cancel();
+            CancellationTokenSource cts = _cancellationTokenSource;
+            if (cts == null)
+            {
+                return;
+            }
+
+            if (!cts.IsCancellationRequested)
+            {
+                cts.Cancel();
+            }
+        }
+
+        /// <summary>
+        /// Resets the analysis state and UI to allow new analysis.
+        /// Called after analysis completes, fails, or is cancelled.
+        /// </summary>
+        private void ResetAnalysisState()
+        {
+            _isAnalyzing = false;
+            _analysisProgress = 0f;
+            Repaint();
         }
 
         private void UpdateIssueCounts()
