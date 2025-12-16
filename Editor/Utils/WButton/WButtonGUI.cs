@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
     using UnityEditor.AnimatedValues;
     using UnityEditorInternal;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Utils;
@@ -18,28 +19,40 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
     }
 
     /// <summary>
-    /// Compound key for grouping WButtons by draw order and group name.
-    /// This allows multiple groups with the same draw order but different names to render separately.
+    /// Compound key for grouping WButtons by group priority, draw order, and group name.
+    /// This allows multiple groups with different names to render separately with controlled ordering.
     /// </summary>
     internal readonly struct WButtonGroupKey
         : IEquatable<WButtonGroupKey>,
             IComparable<WButtonGroupKey>
     {
+        internal readonly int GroupPriority;
         internal readonly int DrawOrder;
         internal readonly string GroupName;
         internal readonly int DeclarationOrder;
+        internal readonly WButtonGroupPlacement GroupPlacement;
 
-        internal WButtonGroupKey(int drawOrder, string groupName, int declarationOrder)
+        internal WButtonGroupKey(
+            int groupPriority,
+            int drawOrder,
+            string groupName,
+            int declarationOrder,
+            WButtonGroupPlacement groupPlacement
+        )
         {
+            GroupPriority = groupPriority;
             DrawOrder = drawOrder;
             GroupName = groupName ?? string.Empty;
             DeclarationOrder = declarationOrder;
+            GroupPlacement = groupPlacement;
         }
 
         public bool Equals(WButtonGroupKey other)
         {
-            return DrawOrder == other.DrawOrder
+            return GroupPriority == other.GroupPriority
+                && DrawOrder == other.DrawOrder
                 && DeclarationOrder == other.DeclarationOrder
+                && GroupPlacement == other.GroupPlacement
                 && string.Equals(GroupName, other.GroupName, StringComparison.Ordinal);
         }
 
@@ -52,8 +65,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         {
             unchecked
             {
-                int hash = DrawOrder;
+                int hash = GroupPriority;
+                hash = hash * 31 + DrawOrder;
                 hash = hash * 31 + DeclarationOrder;
+                hash = hash * 31 + (int)GroupPlacement;
                 hash = hash * 31 + (GroupName?.GetHashCode() ?? 0);
                 return hash;
             }
@@ -61,12 +76,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
         public int CompareTo(WButtonGroupKey other)
         {
+            // First compare by group priority (lower values first, NoGroupPriority sorts last)
+            int priorityComparison = GroupPriority.CompareTo(other.GroupPriority);
+            if (priorityComparison != 0)
+            {
+                return priorityComparison;
+            }
+
+            // Then compare by draw order (lower values first)
             int drawOrderComparison = DrawOrder.CompareTo(other.DrawOrder);
             if (drawOrderComparison != 0)
             {
                 return drawOrderComparison;
             }
 
+            // Finally by declaration order to preserve source code order
             return DeclarationOrder.CompareTo(other.DeclarationOrder);
         }
     }
@@ -146,7 +170,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             IDictionary<WButtonGroupKey, WButtonPaginationState> paginationStates,
             IDictionary<WButtonGroupKey, bool> foldoutStates,
             UnityHelpersSettings.WButtonFoldoutBehavior foldoutBehavior,
-            List<WButtonMethodContext> triggeredContexts = null
+            List<WButtonMethodContext> triggeredContexts = null,
+            bool globalPlacementIsTop = true
         )
         {
             if (editor == null)
@@ -204,10 +229,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 foreach (KeyValuePair<WButtonGroupKey, List<WButtonMethodContext>> entry in groups)
                 {
                     WButtonGroupKey groupKey = entry.Key;
-                    int drawOrder = groupKey.DrawOrder;
-                    // Draw order >= -1 renders at top, draw order < -1 renders at bottom
-                    // This preserves the original behavior while fixing grouping
-                    bool drawOnTop = drawOrder >= -1;
+                    WButtonGroupPlacement groupPlacement = groupKey.GroupPlacement;
+
+                    // Resolve effective placement based on group placement setting
+                    bool drawOnTop;
+                    if (groupPlacement == WButtonGroupPlacement.UseGlobalSetting)
+                    {
+                        // Use global setting: render based on the global placement passed by caller
+                        drawOnTop = globalPlacementIsTop;
+                    }
+                    else
+                    {
+                        drawOnTop = groupPlacement == WButtonGroupPlacement.Top;
+                    }
+
                     if (
                         (placement == WButtonPlacement.Top && drawOnTop)
                         || (placement == WButtonPlacement.Bottom && !drawOnTop)
@@ -260,7 +295,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             GroupCounts.Clear();
             foreach (KeyValuePair<int, int> entry in counts)
             {
-                WButtonGroupKey key = new(entry.Key, null, 0);
+                WButtonGroupKey key = new(
+                    WButtonAttribute.NoGroupPriority,
+                    entry.Key,
+                    null,
+                    0,
+                    WButtonGroupPlacement.UseGlobalSetting
+                );
                 GroupCounts[key] = entry.Value;
             }
         }
@@ -274,7 +315,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             GroupNames.Clear();
             foreach (KeyValuePair<int, string> entry in names)
             {
-                WButtonGroupKey key = new(entry.Key, null, 0);
+                WButtonGroupKey key = new(
+                    WButtonAttribute.NoGroupPriority,
+                    entry.Key,
+                    null,
+                    0,
+                    WButtonGroupPlacement.UseGlobalSetting
+                );
                 GroupNames[key] = entry.Value;
             }
         }
@@ -405,19 +452,37 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             groups.Clear();
             leases.Clear();
             ConflictingDrawOrderWarnings.Clear();
+            ConflictingGroupPriorityWarnings.Clear();
+            ConflictingGroupPlacementWarnings.Clear();
 
             // For buttons with a groupName, we need to merge them into a single group even if they have different drawOrders.
-            // We use the first (minimum) declaration order's drawOrder as the canonical drawOrder for the group.
+            // We use the first (minimum) declaration order's values as the canonical values for the group.
             // Buttons without a groupName (empty string) are grouped by their individual drawOrder.
 
-            // Track: groupName -> (first declaration order, first draw order seen at that declaration order)
-            Dictionary<string, (int declarationOrder, int drawOrder)> namedGroupInfo = new();
+            // Track: groupName -> (first declaration order, canonical draw order, canonical group priority, canonical group placement)
+            Dictionary<
+                string,
+                (
+                    int declarationOrder,
+                    int drawOrder,
+                    int groupPriority,
+                    WButtonGroupPlacement groupPlacement
+                )
+            > namedGroupInfo = new();
 
             // Track conflicting draw orders for warning purposes
             // groupName -> HashSet of all draw orders seen for that group
             Dictionary<string, HashSet<int>> drawOrdersPerGroup = new();
 
-            // First pass: determine canonical draw order for each named group (based on first declared button)
+            // Track conflicting group priorities for warning purposes
+            // groupName -> HashSet of all group priorities seen for that group
+            Dictionary<string, HashSet<int>> groupPrioritiesPerGroup = new();
+
+            // Track conflicting group placements for warning purposes
+            // groupName -> HashSet of all group placements seen for that group
+            Dictionary<string, HashSet<WButtonGroupPlacement>> groupPlacementsPerGroup = new();
+
+            // First pass: determine canonical values for each named group (based on first declared button)
             foreach (WButtonMethodContext context in contexts)
             {
                 string groupName = context.Metadata.GroupName ?? string.Empty;
@@ -430,6 +495,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
                 int drawOrder = context.Metadata.DrawOrder;
                 int declarationOrder = context.Metadata.DeclarationOrder;
+                int groupPriority = context.Metadata.GroupPriority;
+                WButtonGroupPlacement groupPlacement = context.Metadata.GroupPlacement;
 
                 // Track all draw orders seen for this group (for warning purposes)
                 if (!drawOrdersPerGroup.TryGetValue(groupName, out HashSet<int> orders))
@@ -439,19 +506,55 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 }
                 orders.Add(drawOrder);
 
+                // Track all group priorities seen for this group (for warning purposes)
+                if (!groupPrioritiesPerGroup.TryGetValue(groupName, out HashSet<int> priorities))
+                {
+                    priorities = new HashSet<int>();
+                    groupPrioritiesPerGroup[groupName] = priorities;
+                }
+                priorities.Add(groupPriority);
+
+                // Track all group placements seen for this group (for warning purposes)
                 if (
-                    !namedGroupInfo.TryGetValue(
+                    !groupPlacementsPerGroup.TryGetValue(
                         groupName,
-                        out (int declarationOrder, int drawOrder) existing
+                        out HashSet<WButtonGroupPlacement> placements
                     )
                 )
                 {
-                    namedGroupInfo[groupName] = (declarationOrder, drawOrder);
+                    placements = new HashSet<WButtonGroupPlacement>();
+                    groupPlacementsPerGroup[groupName] = placements;
+                }
+                placements.Add(groupPlacement);
+
+                if (
+                    !namedGroupInfo.TryGetValue(
+                        groupName,
+                        out (
+                            int declarationOrder,
+                            int drawOrder,
+                            int groupPriority,
+                            WButtonGroupPlacement groupPlacement
+                        ) existing
+                    )
+                )
+                {
+                    namedGroupInfo[groupName] = (
+                        declarationOrder,
+                        drawOrder,
+                        groupPriority,
+                        groupPlacement
+                    );
                 }
                 else if (declarationOrder < existing.declarationOrder)
                 {
-                    // This button was declared earlier, use its draw order as canonical
-                    namedGroupInfo[groupName] = (declarationOrder, drawOrder);
+                    // This button was declared earlier, use its values as canonical
+                    namedGroupInfo[groupName] = (
+                        declarationOrder,
+                        drawOrder,
+                        groupPriority,
+                        groupPlacement
+                    );
                 }
             }
 
@@ -460,10 +563,58 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             {
                 if (entry.Value.Count > 1)
                 {
-                    (int declarationOrder, int drawOrder) info = namedGroupInfo[entry.Key];
+                    (
+                        int declarationOrder,
+                        int drawOrder,
+                        int groupPriority,
+                        WButtonGroupPlacement groupPlacement
+                    ) info = namedGroupInfo[entry.Key];
                     ConflictingDrawOrderWarnings[entry.Key] = new DrawOrderConflictInfo(
                         entry.Key,
                         info.drawOrder,
+                        entry.Value
+                    );
+                }
+            }
+
+            // Generate warnings for groups with conflicting group priorities
+            foreach (KeyValuePair<string, HashSet<int>> entry in groupPrioritiesPerGroup)
+            {
+                if (entry.Value.Count > 1)
+                {
+                    (
+                        int declarationOrder,
+                        int drawOrder,
+                        int groupPriority,
+                        WButtonGroupPlacement groupPlacement
+                    ) info = namedGroupInfo[entry.Key];
+                    ConflictingGroupPriorityWarnings[entry.Key] = new GroupPriorityConflictInfo(
+                        entry.Key,
+                        info.groupPriority,
+                        entry.Value
+                    );
+                }
+            }
+
+            // Generate warnings for groups with conflicting group placements
+            foreach (
+                KeyValuePair<
+                    string,
+                    HashSet<WButtonGroupPlacement>
+                > entry in groupPlacementsPerGroup
+            )
+            {
+                if (entry.Value.Count > 1)
+                {
+                    (
+                        int declarationOrder,
+                        int drawOrder,
+                        int groupPriority,
+                        WButtonGroupPlacement groupPlacement
+                    ) info = namedGroupInfo[entry.Key];
+                    ConflictingGroupPlacementWarnings[entry.Key] = new GroupPlacementConflictInfo(
+                        entry.Key,
+                        info.groupPlacement,
                         entry.Value
                     );
                 }
@@ -503,23 +654,40 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 string groupName = context.Metadata.GroupName ?? string.Empty;
                 int drawOrder;
                 int groupDeclarationOrder;
+                int groupPriority;
+                WButtonGroupPlacement groupPlacement;
 
                 if (!string.IsNullOrEmpty(groupName))
                 {
-                    // Named group: use the canonical draw order from the first declared button
-                    (int declarationOrder, int canonicalDrawOrder) info = namedGroupInfo[groupName];
+                    // Named group: use the canonical values from the first declared button
+                    (
+                        int declarationOrder,
+                        int canonicalDrawOrder,
+                        int canonicalGroupPriority,
+                        WButtonGroupPlacement canonicalGroupPlacement
+                    ) info = namedGroupInfo[groupName];
                     drawOrder = info.canonicalDrawOrder;
                     groupDeclarationOrder = info.declarationOrder;
+                    groupPriority = info.canonicalGroupPriority;
+                    groupPlacement = info.canonicalGroupPlacement;
                 }
                 else
                 {
-                    // Ungrouped button: use its own draw order
+                    // Ungrouped button: use its own values, ignore groupPriority and groupPlacement
                     drawOrder = context.Metadata.DrawOrder;
                     (int, string) lookupKey = (drawOrder, groupName);
                     groupDeclarationOrder = firstDeclarationOrderForUngrouped[lookupKey];
+                    groupPriority = WButtonAttribute.NoGroupPriority;
+                    groupPlacement = WButtonGroupPlacement.UseGlobalSetting;
                 }
 
-                WButtonGroupKey groupKey = new(drawOrder, groupName, groupDeclarationOrder);
+                WButtonGroupKey groupKey = new(
+                    groupPriority,
+                    drawOrder,
+                    groupName,
+                    groupDeclarationOrder,
+                    groupPlacement
+                );
 
                 if (!groups.TryGetValue(groupKey, out List<WButtonMethodContext> group))
                 {
@@ -555,12 +723,70 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         }
 
         /// <summary>
+        /// Information about conflicting group priorities within a named group.
+        /// </summary>
+        internal readonly struct GroupPriorityConflictInfo
+        {
+            internal readonly string GroupName;
+            internal readonly int CanonicalGroupPriority;
+            internal readonly HashSet<int> AllGroupPriorities;
+
+            internal GroupPriorityConflictInfo(
+                string groupName,
+                int canonicalGroupPriority,
+                HashSet<int> allGroupPriorities
+            )
+            {
+                GroupName = groupName;
+                CanonicalGroupPriority = canonicalGroupPriority;
+                AllGroupPriorities = allGroupPriorities;
+            }
+        }
+
+        /// <summary>
+        /// Information about conflicting group placements within a named group.
+        /// </summary>
+        internal readonly struct GroupPlacementConflictInfo
+        {
+            internal readonly string GroupName;
+            internal readonly WButtonGroupPlacement CanonicalGroupPlacement;
+            internal readonly HashSet<WButtonGroupPlacement> AllGroupPlacements;
+
+            internal GroupPlacementConflictInfo(
+                string groupName,
+                WButtonGroupPlacement canonicalGroupPlacement,
+                HashSet<WButtonGroupPlacement> allGroupPlacements
+            )
+            {
+                GroupName = groupName;
+                CanonicalGroupPlacement = canonicalGroupPlacement;
+                AllGroupPlacements = allGroupPlacements;
+            }
+        }
+
+        /// <summary>
         /// Warnings about groups with conflicting draw orders. Populated during grouping.
         /// </summary>
         private static readonly Dictionary<
             string,
             DrawOrderConflictInfo
         > ConflictingDrawOrderWarnings = new();
+
+        /// <summary>
+        /// Warnings about groups with conflicting group priorities. Populated during grouping.
+        /// </summary>
+        private static readonly Dictionary<
+            string,
+            GroupPriorityConflictInfo
+        > ConflictingGroupPriorityWarnings = new();
+
+        /// <summary>
+        /// Warnings about groups with conflicting group placements. Populated during grouping.
+        /// </summary>
+        private static readonly Dictionary<
+            string,
+            GroupPlacementConflictInfo
+        > ConflictingGroupPlacementWarnings = new();
 
         /// <summary>
         /// Gets the current conflicting draw order warnings. Used for testing and UI display.
@@ -574,11 +800,49 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         }
 
         /// <summary>
+        /// Gets the current conflicting group priority warnings. Used for testing and UI display.
+        /// </summary>
+        internal static IReadOnlyDictionary<
+            string,
+            GroupPriorityConflictInfo
+        > GetConflictingGroupPriorityWarnings()
+        {
+            return ConflictingGroupPriorityWarnings;
+        }
+
+        /// <summary>
+        /// Gets the current conflicting group placement warnings. Used for testing and UI display.
+        /// </summary>
+        internal static IReadOnlyDictionary<
+            string,
+            GroupPlacementConflictInfo
+        > GetConflictingGroupPlacementWarnings()
+        {
+            return ConflictingGroupPlacementWarnings;
+        }
+
+        /// <summary>
         /// Clears conflicting draw order warnings. Used for testing.
         /// </summary>
         internal static void ClearConflictingDrawOrderWarningsForTesting()
         {
             ConflictingDrawOrderWarnings.Clear();
+        }
+
+        /// <summary>
+        /// Clears conflicting group priority warnings. Used for testing.
+        /// </summary>
+        internal static void ClearConflictingGroupPriorityWarningsForTesting()
+        {
+            ConflictingGroupPriorityWarnings.Clear();
+        }
+
+        /// <summary>
+        /// Clears conflicting group placement warnings. Used for testing.
+        /// </summary>
+        internal static void ClearConflictingGroupPlacementWarningsForTesting()
+        {
+            ConflictingGroupPlacementWarnings.Clear();
         }
 
         private static void DrawGroup(
@@ -703,7 +967,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             );
 
             DrawPaginationControls(state, contexts.Count, pageSize);
-            DrawConflictingDrawOrderWarning(groupKey);
+            DrawConflictWarnings(groupKey);
 
             int startIndex = state._pageIndex * pageSize;
             int endIndex = Mathf.Min(startIndex + pageSize, contexts.Count);
@@ -780,6 +1044,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         private static readonly Dictionary<string, GUIContent> ConflictWarningContentCache = new();
 
         private static readonly Dictionary<string, string> ConflictWarningTextCache = new();
+        private static readonly Dictionary<string, string> GroupPriorityWarningTextCache = new();
+        private static readonly Dictionary<string, string> GroupPlacementWarningTextCache = new();
+
+        private static void DrawConflictWarnings(WButtonGroupKey groupKey)
+        {
+            DrawConflictingDrawOrderWarning(groupKey);
+            DrawConflictingGroupPriorityWarning(groupKey);
+            DrawConflictingGroupPlacementWarning(groupKey);
+        }
 
         private static void DrawConflictingDrawOrderWarning(WButtonGroupKey groupKey)
         {
@@ -813,6 +1086,85 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             EditorGUILayout.Space(2f);
         }
 
+        private static void DrawConflictingGroupPriorityWarning(WButtonGroupKey groupKey)
+        {
+            string groupName = groupKey.GroupName;
+            if (string.IsNullOrEmpty(groupName))
+            {
+                return;
+            }
+
+            if (
+                !ConflictingGroupPriorityWarnings.TryGetValue(
+                    groupName,
+                    out GroupPriorityConflictInfo conflict
+                )
+            )
+            {
+                return;
+            }
+
+            string cacheKey = "priority_" + groupName;
+            if (!GroupPriorityWarningTextCache.TryGetValue(cacheKey, out string warningText))
+            {
+                List<int> sortedPriorities = new(conflict.AllGroupPriorities);
+                sortedPriorities.Sort();
+                List<string> priorityStrings = new(sortedPriorities.Count);
+                foreach (int priority in sortedPriorities)
+                {
+                    priorityStrings.Add(
+                        priority == WButtonAttribute.NoGroupPriority
+                            ? "NoGroupPriority"
+                            : priority.ToString()
+                    );
+                }
+                string prioritiesText = string.Join(", ", priorityStrings);
+                string canonicalText =
+                    conflict.CanonicalGroupPriority == WButtonAttribute.NoGroupPriority
+                        ? "NoGroupPriority"
+                        : conflict.CanonicalGroupPriority.ToString();
+                warningText =
+                    $"Conflicting groupPriority values ({prioritiesText}) in group \"{groupName}\". Using {canonicalText} from first declared button.";
+                GroupPriorityWarningTextCache[cacheKey] = warningText;
+            }
+
+            EditorGUILayout.HelpBox(warningText, MessageType.Warning);
+            EditorGUILayout.Space(2f);
+        }
+
+        private static void DrawConflictingGroupPlacementWarning(WButtonGroupKey groupKey)
+        {
+            string groupName = groupKey.GroupName;
+            if (string.IsNullOrEmpty(groupName))
+            {
+                return;
+            }
+
+            if (
+                !ConflictingGroupPlacementWarnings.TryGetValue(
+                    groupName,
+                    out GroupPlacementConflictInfo conflict
+                )
+            )
+            {
+                return;
+            }
+
+            string cacheKey = "placement_" + groupName;
+            if (!GroupPlacementWarningTextCache.TryGetValue(cacheKey, out string warningText))
+            {
+                List<WButtonGroupPlacement> sortedPlacements = new(conflict.AllGroupPlacements);
+                sortedPlacements.Sort();
+                string placementsText = string.Join(", ", sortedPlacements);
+                warningText =
+                    $"Conflicting groupPlacement values ({placementsText}) in group \"{groupName}\". Using {conflict.CanonicalGroupPlacement} from first declared button.";
+                GroupPlacementWarningTextCache[cacheKey] = warningText;
+            }
+
+            EditorGUILayout.HelpBox(warningText, MessageType.Warning);
+            EditorGUILayout.Space(2f);
+        }
+
         /// <summary>
         /// Clears the conflict warning content cache. Used for testing.
         /// </summary>
@@ -820,6 +1172,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         {
             ConflictWarningContentCache.Clear();
             ConflictWarningTextCache.Clear();
+            GroupPriorityWarningTextCache.Clear();
+            GroupPlacementWarningTextCache.Clear();
         }
 
         private static bool GetFoldoutState(
@@ -866,10 +1220,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
         internal static GUIContent BuildGroupHeader(WButtonGroupKey groupKey)
         {
-            int drawOrder = groupKey.DrawOrder;
-            // Draw order >= -1 is top placement, < -1 is bottom placement
+            WButtonGroupPlacement groupPlacement = groupKey.GroupPlacement;
+            // Use placement to determine label style
             GUIContent baseLabel =
-                drawOrder >= -1 ? WButtonStyles.TopGroupLabel : WButtonStyles.BottomGroupLabel;
+                groupPlacement == WButtonGroupPlacement.Bottom
+                    ? WButtonStyles.BottomGroupLabel
+                    : WButtonStyles.TopGroupLabel;
 
             if (
                 GroupNames.TryGetValue(groupKey, out string customName)
@@ -899,6 +1255,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 return baseLabel;
             }
 
+            int drawOrder = groupKey.DrawOrder;
             (string, int) textCacheKey = (baseLabel.text, drawOrder);
             if (!GroupHeaderTextCache.TryGetValue(textCacheKey, out string textWithOrder))
             {
@@ -924,7 +1281,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         /// </summary>
         internal static GUIContent BuildGroupHeader(int drawOrder)
         {
-            WButtonGroupKey key = new(drawOrder, null, 0);
+            WButtonGroupKey key = new(
+                WButtonAttribute.NoGroupPriority,
+                drawOrder,
+                null,
+                0,
+                WButtonGroupPlacement.UseGlobalSetting
+            );
             return BuildGroupHeader(key);
         }
 

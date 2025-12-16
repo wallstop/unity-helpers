@@ -133,7 +133,7 @@ Quick reference for terms used throughout Unity Helpers documentation.
 ### Property Drawer
 
 - Custom inspector rendering for serialized fields
-- Examples: `[WShowIf]`, `[StringInList]`, `[DxReadOnly]`
+- Examples: `[WShowIf]`, `[StringInList]`, `[WReadOnly]`
 - Improves editor workflows with conditional display, validation, etc.
 - See: [Property Drawers](../features/editor-tools/editor-tools-guide.md#property-drawers--attributes)
 

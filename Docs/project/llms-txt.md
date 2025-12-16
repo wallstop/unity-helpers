@@ -39,10 +39,9 @@ AI assistants and LLM-powered tools can:
 
 If you're an AI assistant working with this repository, you can also reference:
 
-- [`LLM_INSTRUCTIONS.md`](../../LLM_INSTRUCTIONS.md) - Comprehensive guidelines for AI agents
-- [`AGENTS.md`](../../AGENTS.md) - Quick reference for agent-specific rules
+- [`.llm/context.md`](../../.llm/context.md) - Comprehensive guidelines for AI agents
 
-These files provide additional context about coding style, testing patterns, and repository-specific conventions.
+This file provides additional context about coding style, testing patterns, and repository-specific conventions.
 
 ## Related
 

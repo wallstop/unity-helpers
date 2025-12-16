@@ -19,7 +19,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
         {
             ResetEffectHandleId();
             RecordingCosmeticComponent.ResetCounters();
-            RecordingEffectBehavior.Reset();
+            RecordingEffectBehavior.ResetForTests();
         }
 
         [UnityTest]

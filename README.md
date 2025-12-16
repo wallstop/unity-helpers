@@ -683,8 +683,8 @@ Stop writing GetComponent boilerplate. Auto-wire components using attributes.
 - `[ParentComponent]` - Find components in parent hierarchy
 - `[ChildComponent]` - Find components in children
 - `[ValidateAssignment]` - Validate at edit time, show errors in inspector
-- `[NotNull]` - Must be assigned in inspector
-- `[DxReadOnly]` - Read-only display in inspector
+- `[WNotNull]` - Must be assigned in inspector
+- `[WReadOnly]` - Read-only display in inspector
 - `[WInLineEditor]` - Inline inspector editing for object references
 - `[WShowIf]` - Conditional display based on field values
 

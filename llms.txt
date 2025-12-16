@@ -34,14 +34,18 @@
 
 Professional inspector attributes eliminating custom PropertyDrawer code:
 
-- `[WGroup]` - Boxed sections with collapsible headers, color themes, animations
+- `[WGroup]` / `[WGroupEnd]` - Boxed sections with collapsible headers, color themes, animations
 - `[WButton]` - Method buttons with async support, cancellation, history
 - `[WShowIf]` - Conditional visibility (9 comparison operators)
 - `[WEnumToggleButtons]` - Flag enums as visual toggle grids
-- `[WReadOnly]` / `[DxReadOnly]` - Read-only inspector display
+- `[WReadOnly]` - Read-only inspector display
 - `[WInLineEditor]` - Inline nested editor for object references
-- `[WRequired]` - Validation attribute for required fields
-- `[StringInList]` - Dropdown selection from string lists
+- `[WNotNull]` - Validation for required fields (shows error in inspector)
+- `[ValidateAssignment]` - Runtime assignment validation with logging
+- `[StringInList]` - Dropdown selection from string lists or methods
+- `[WValueDropDown]` - Value dropdown selection
+- `[IntDropDown]` - Integer dropdown selection
+- `[EnumDisplayName]` - Custom display names for enum values
 
 ### Relational Components (Auto-Wiring)
 
@@ -234,6 +238,6 @@ builder.RegisterRelationalComponents();
 
 ## Optional
 
-- [LLM Instructions](https://github.com/wallstop/unity-helpers/blob/main/LLM_INSTRUCTIONS.md): Comprehensive AI agent guidelines for working with this repository
+- [LLM Instructions](https://github.com/wallstop/unity-helpers/blob/main/.llm/context.md): Comprehensive AI agent guidelines for working with this repository
 - [Third-Party Notices](https://github.com/wallstop/unity-helpers/blob/main/docs/project/third-party-notices.md): Attribution for included libraries
 - [Animation Event Editor](https://github.com/wallstop/unity-helpers/blob/main/docs/project/animation-event-editor.md): Detailed animation event editor documentation

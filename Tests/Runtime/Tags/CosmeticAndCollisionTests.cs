@@ -37,7 +37,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     {
         public static int RemoveInvocationCount { get; private set; }
 
-        public static void Reset()
+        public static void ResetForTests()
         {
             RemoveInvocationCount = 0;
         }
@@ -63,7 +63,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
         public void OnApplyAndRemoveEffectMaintainTargetList()
         {
             GameObject cosmetic = CreateTrackedGameObject("Cosmetic", typeof(CosmeticEffectData));
-            SpyCosmeticComponent.Reset();
+            SpyCosmeticComponent.ResetForTests();
             SpyCosmeticComponent component = cosmetic.AddComponent<SpyCosmeticComponent>();
             GameObject target = CreateTrackedGameObject("Target");
 
@@ -78,7 +78,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
         public void OnDestroyInvokesRemoveEffectForTrackedTargets()
         {
             GameObject cosmetic = CreateTrackedGameObject("Cosmetic", typeof(CosmeticEffectData));
-            SpyCosmeticComponent.Reset();
+            SpyCosmeticComponent.ResetForTests();
             SpyCosmeticComponent component = cosmetic.AddComponent<SpyCosmeticComponent>();
             GameObject target = CreateTrackedGameObject("Target");
 

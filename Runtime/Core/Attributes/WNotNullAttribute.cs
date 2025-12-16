@@ -5,15 +5,15 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System.Reflection;
 
     [AttributeUsage(AttributeTargets.Field)]
-    public sealed class NotNullAttribute : Attribute { }
+    public sealed class WNotNullAttribute : Attribute { }
 
-    public static class NotNullAttributeExtensions
+    public static class WNotNullAttributeExtensions
     {
         public static void CheckForNulls(this object o)
         {
 #if UNITY_EDITOR
             IEnumerable<FieldInfo> properties =
-                Helper.ReflectionHelpers.GetFieldsWithAttribute<NotNullAttribute>(o.GetType());
+                Helper.ReflectionHelpers.GetFieldsWithAttribute<WNotNullAttribute>(o.GetType());
 
             foreach (FieldInfo field in properties)
             {

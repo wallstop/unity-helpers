@@ -69,9 +69,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void DxReadOnlyAttributeDerivesFromPropertyAttribute()
+        public void WReadOnlyAttributeDerivesFromPropertyAttribute()
         {
-            Assert.IsInstanceOf<PropertyAttribute>(new DxReadOnlyAttribute());
+            Assert.IsInstanceOf<PropertyAttribute>(new WReadOnlyAttribute());
         }
     }
 }

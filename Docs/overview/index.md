@@ -107,8 +107,8 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **Douglas-Peucker** - Polyline simplification algorithm
 → [Math & Extensions](../features/utilities/math-and-extensions.md#geometry) | [Glossary](glossary.md#douglas-peucker-algorithm)
 
-**DxReadOnly** - Read-only inspector display attribute
-→ [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#dxreadonly-property-drawer) | [README](../../README.md#component-attributes)
+**WReadOnly** - Read-only inspector display attribute
+→ [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#wreadonly-property-drawer) | [README](../../README.md#component-attributes)
 
 ---
 
@@ -242,7 +242,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **Noise Maps** - Perlin noise generation
 → [README - Random Generators](../../README.md#random-number-generators)
 
-**NotNull Attribute** - Inspector validation attribute
+**WNotNull Attribute** - Inspector validation attribute
 → [README - Component Attributes](../../README.md#component-attributes)
 
 **Numeric Helpers** - PositiveMod, Clamp, Approximately

@@ -67,7 +67,7 @@ ReflectionHelpers now partitions cached delegates by **capability strategy** so 
 ### Current Consumers Snapshot
 
 - `Runtime/Core/Serialization/Serializer.cs` and `Runtime/Core/Serialization/JsonConverters/TypeConverter.cs` lean on static method invokers and type resolution to integrate ProtoBuf and JSON pipelines.
-- `Runtime/Core/Attributes` (`BaseRelationalComponentAttribute`, `RelationalComponentInitializer`, `NotNullAttribute`) depend on field getters/setters and collection factories for relational wiring.
+- `Runtime/Core/Attributes` (`BaseRelationalComponentAttribute`, `RelationalComponentInitializer`, `WNotNullAttribute`) depend on field getters/setters and collection factories for relational wiring.
 - `Runtime/Tags` (`AttributeMetadataCache`, `AttributeUtilities`, `AttributeMetadataFilters`) use attribute scanning plus cached getters/setters to hydrate metadata tables at startup.
 - `Runtime/Core/Helper/StringInList.cs` and `Runtime/Core/Helper/Logging/UnityLogTagFormatter.cs` use helper invokers for dynamic lookups during logging and formatting.
 - `Editor/AnimationEventEditor.cs`, `Editor/Tags/AttributeMetadataCacheGenerator.cs`, and `Editor/Utils/ScriptableObjectSingletonCreator.cs` call into the helpers for TypeCache-driven discovery and editor automation.

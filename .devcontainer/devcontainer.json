@@ -2,13 +2,11 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/dotnet
 {
   "name": "C# (.NET)",
-  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-  "image": "mcr.microsoft.com/devcontainers/dotnet:1-9.0-bookworm",
-  "features": {
-    "ghcr.io/devcontainers/features/dotnet:2": {},
-    "ghcr.io/devcontainers/features/git-lfs:1": {},
-    "ghcr.io/devcontainers/features/powershell:1": {},
-    "ghcr.io/devcontainers/features/python:1": {},
-    "ghcr.io/nikiforovall/devcontainer-features/dotnet-csharpier:1": {}
-  }
+  // Use the Dockerfile in this directory
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  // Run any post-create commands
+  "postCreateCommand": "dotnet tool restore || true"
 }

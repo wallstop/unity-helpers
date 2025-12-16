@@ -25,7 +25,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags.Helpers
 
         public static int InstanceCount => InstanceIds.Count;
 
-        public static void Reset()
+        public static void ResetForTests()
         {
             ApplyCount = 0;
             TickCount = 0;

@@ -60,48 +60,37 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 UnityHelpersSettings.GetWButtonActionsPlacement();
             UnityHelpersSettings.WButtonFoldoutBehavior foldoutBehavior =
                 UnityHelpersSettings.GetWButtonFoldoutBehavior();
-            bool placementIsTop = placement == UnityHelpersSettings.WButtonActionsPlacement.Top;
+            bool globalPlacementIsTop =
+                placement == UnityHelpersSettings.WButtonActionsPlacement.Top;
 
-            // When placement is Top: render ALL buttons above properties
-            // When placement is Bottom: render ALL buttons below properties
-            // We always call both Top and Bottom placements to ensure all buttons render
-            // regardless of their individual drawOrder values.
-            // Lower drawOrder values should render FIRST, so we render Bottom placement
-            // (which has lower drawOrder values like -21, -5, etc.) before Top placement
-            // (which has higher drawOrder values like -1, 0, 1, etc.)
-            if (placementIsTop)
+            // When global placement is Top: render buttons above properties
+            // When global placement is Bottom: render buttons below properties
+            //
+            // Groups with explicit placement override render in their specified location:
+            // - GroupPlacement.Top: always render at top (before properties)
+            // - GroupPlacement.Bottom: always render at bottom (after properties)
+            // - GroupPlacement.UseGlobalSetting: follow the global placement setting
+            //
+            // We call DrawButtons twice per location:
+            // 1. WButtonPlacement.Top pass: draws groups that should appear at top
+            // 2. WButtonPlacement.Bottom pass: draws groups that should appear at bottom
+            //
+            // At top of inspector (before properties):
+            // - Groups with placement == Top
+            // - Groups with UseGlobalSetting when global is Top
+            if (
+                WButtonGUI.DrawButtons(
+                    this,
+                    WButtonPlacement.Top,
+                    _paginationStates,
+                    _foldoutStates,
+                    foldoutBehavior,
+                    triggeredContexts,
+                    globalPlacementIsTop
+                )
+            )
             {
-                // Draw buttons with drawOrder < -1 (bottom placement buttons) FIRST
-                // These have lower drawOrder values and should appear first
-                if (
-                    WButtonGUI.DrawButtons(
-                        this,
-                        WButtonPlacement.Bottom,
-                        _paginationStates,
-                        _foldoutStates,
-                        foldoutBehavior,
-                        triggeredContexts
-                    )
-                )
-                {
-                    EditorGUILayout.Space();
-                }
-
-                // Draw buttons with drawOrder >= -1 (top placement buttons) SECOND
-                // These have higher drawOrder values and should appear after
-                if (
-                    WButtonGUI.DrawButtons(
-                        this,
-                        WButtonPlacement.Top,
-                        _paginationStates,
-                        _foldoutStates,
-                        foldoutBehavior,
-                        triggeredContexts
-                    )
-                )
-                {
-                    EditorGUILayout.Space();
-                }
+                EditorGUILayout.Space();
             }
 
             string scriptPathOrNull = scriptProperty != null ? scriptProperty.propertyPath : null;
@@ -143,41 +132,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
             serializedObject.ApplyModifiedProperties();
 
-            // When placement is Bottom: render ALL buttons below properties
-            // Same ordering as Top: lower drawOrder values render first
-            if (!placementIsTop)
+            // At bottom of inspector (after properties):
+            // - Groups with placement == Bottom
+            // - Groups with UseGlobalSetting when global is Bottom
+            if (
+                WButtonGUI.DrawButtons(
+                    this,
+                    WButtonPlacement.Bottom,
+                    _paginationStates,
+                    _foldoutStates,
+                    foldoutBehavior,
+                    triggeredContexts,
+                    globalPlacementIsTop
+                )
+            )
             {
-                // Draw buttons with drawOrder < -1 (bottom placement buttons) FIRST
-                // These have lower drawOrder values and should appear first
-                if (
-                    WButtonGUI.DrawButtons(
-                        this,
-                        WButtonPlacement.Bottom,
-                        _paginationStates,
-                        _foldoutStates,
-                        foldoutBehavior,
-                        triggeredContexts
-                    )
-                )
-                {
-                    EditorGUILayout.Space();
-                }
-
-                // Draw buttons with drawOrder >= -1 (top placement buttons) SECOND
-                // These have higher drawOrder values and should appear after
-                if (
-                    WButtonGUI.DrawButtons(
-                        this,
-                        WButtonPlacement.Top,
-                        _paginationStates,
-                        _foldoutStates,
-                        foldoutBehavior,
-                        triggeredContexts
-                    )
-                )
-                {
-                    EditorGUILayout.Space();
-                }
+                EditorGUILayout.Space();
             }
 
             if (triggeredContexts.Count > 0)

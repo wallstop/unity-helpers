@@ -141,6 +141,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             HistoryCapacity = attribute.HistoryCapacity;
             ColorKey = string.IsNullOrEmpty(colorKey) ? null : colorKey;
             GroupName = string.IsNullOrWhiteSpace(attribute.GroupName) ? null : attribute.GroupName;
+            GroupPriority = attribute.GroupPriority;
+            GroupPlacement = attribute.GroupPlacement;
             DeclarationOrder = declarationOrder;
         }
 
@@ -159,6 +161,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         internal string ColorKey { get; }
 
         internal string GroupName { get; }
+
+        /// <summary>
+        /// Controls the render order of this button's group within its placement section.
+        /// Lower values render first. Value of <see cref="WButtonAttribute.NoGroupPriority"/>
+        /// means no explicit priority was set and the group sorts after groups with explicit priorities.
+        /// </summary>
+        internal int GroupPriority { get; }
+
+        /// <summary>
+        /// Controls whether this button's group renders at the top or bottom of the inspector,
+        /// overriding the global Unity Helpers setting.
+        /// </summary>
+        internal WButtonGroupPlacement GroupPlacement { get; }
 
         /// <summary>
         /// The order in which this method was discovered during reflection.

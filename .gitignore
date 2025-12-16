@@ -12,6 +12,9 @@ TestFailures.txt
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
+progress/**
+progress.meta
+
 .claude/*
 .codex/*
 

@@ -5,12 +5,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
     [TestFixture]
-    public sealed class NotNullAttributeTests
+    public sealed class WNotNullAttributeTests
     {
         [Test]
         public void CheckForNullsThrowsWhenAnnotatedFieldIsNull()
         {
-            NotNullHolder holder = new();
+            WNotNullHolder holder = new();
             Assert.Throws<ArgumentNullException>(() => holder.CheckForNulls());
 
             holder.reference = new object();
@@ -18,9 +18,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
     }
 
-    internal sealed class NotNullHolder
+    internal sealed class WNotNullHolder
     {
-        [NotNull]
+        [WNotNull]
         public object reference;
     }
 }

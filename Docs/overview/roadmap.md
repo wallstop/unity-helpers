@@ -4,7 +4,7 @@ This roadmap outlines planned enhancements to Unity Helpers. All "Currently ship
 
 ## 1. Comprehensive Inspector Tooling
 
-**Currently shipping:** Attribute and property drawer suite covering enum toggles, dropdowns, conditional display, grouping, buttons, and validation. Key attributes: `WEnumToggleButtons`, `WShowIf`, `WValueDropDown`, `WGroup`, `WButton`, `NotNull`, `ValidateAssignment`.
+**Currently shipping:** Attribute and property drawer suite covering enum toggles, dropdowns, conditional display, grouping, buttons, and validation. Key attributes: `WEnumToggleButtons`, `WShowIf`, `WValueDropDown`, `WGroup`, `WButton`, `WNotNull`, `ValidateAssignment`.
 
 **Next up:**
 

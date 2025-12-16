@@ -6,8 +6,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
     // https://www.patrykgalach.com/2020/01/20/readonly-attribute-in-unity-editor/
-    [CustomPropertyDrawer(typeof(DxReadOnlyAttribute))]
-    public sealed class DxReadOnlyPropertyDrawer : PropertyDrawer
+    [CustomPropertyDrawer(typeof(WReadOnlyAttribute))]
+    public sealed class WReadOnlyPropertyDrawer : PropertyDrawer
     {
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {

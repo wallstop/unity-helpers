@@ -56,7 +56,7 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 - Inline inspector for object references → [WInLineEditor](#winlineeditor-property-drawer)
 - Conditional field display → [WShowIf Property Drawer](#wshowif-property-drawer)
 - Dropdown for strings/ints → [StringInList](#stringinlist-property-drawer) | [IntDropdown](#intdropdown-property-drawer)
-- Read-only inspector fields → [DxReadOnly Property Drawer](#dxreadonly-property-drawer)
+- Read-only inspector fields → [WReadOnly Property Drawer](#wreadonly-property-drawer)
 
 ---
 
@@ -1430,9 +1430,9 @@ public int qualityLevel = 3;
 
 ---
 
-### DxReadOnly Property Drawer
+### WReadOnly Property Drawer
 
-**Attribute:** `[DxReadOnly]`
+**Attribute:** `[WReadOnly]`
 
 **Purpose:** Display fields as read-only in the inspector (grayed out, non-editable).
 
@@ -1441,10 +1441,10 @@ public int qualityLevel = 3;
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Attributes;
 
-[DxReadOnly]
+[WReadOnly]
 public int calculatedValue;
 
-[DxReadOnly]
+[WReadOnly]
 public string currentState;
 ```
 
@@ -1470,7 +1470,7 @@ public class CharacterStats : MonoBehaviour
     public int baseHealth = 100;
     public int healthBonus = 0;
 
-    [DxReadOnly]
+    [WReadOnly]
     public int totalHealth;
 
     private void OnValidate()
@@ -1877,7 +1877,7 @@ else
 - WShowIf - Conditional field visibility
 - StringInList - Dropdown selection for strings
 - IntDropdown - Dropdown selection for integers
-- DxReadOnly - Read-only inspector fields
+- WReadOnly - Read-only inspector fields
 
 **Automation:**
 
@@ -2176,7 +2176,7 @@ This package provides **20+ editor tools** across multiple categories:
 
 **4 Property Drawers:**
 
-- WShowIf, StringInList, IntDropdown, DxReadOnly
+- WShowIf, StringInList, IntDropdown, WReadOnly
 
 **3 Automated Systems:**
 
