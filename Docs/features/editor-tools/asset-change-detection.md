@@ -2,7 +2,7 @@
 
 **Automatically respond to asset creation and deletion events.**
 
-The `[DetectAssetChanged]` attribute allows you to annotate methods that should execute automatically when specific asset types are created or deleted in the Unity Editor. Perfect for cache invalidation, auto-configuration, validation, and maintaining derived data.
+The `[DetectAssetChanged]` attribute allows you to annotate methods that should execute automatically when specific asset types are created or deleted in the Unity Editor. Perfect for cache invalidation, autoconfiguration, validation, and maintaining derived data.
 
 ---
 
@@ -442,11 +442,11 @@ The `DetectAssetChangeProcessor` (Editor assembly) automatically:
 
 ## Troubleshooting
 
-### Method Not Called
+### Method Is Not Called
 
 - Ensure the method is in a type that Unity can discover (not in a generic class)
 - Check that the asset type matches exactly (unless using `IncludeAssignableTypes`)
-- Verify the asset change flags match the operation (Created vs Deleted)
+- Verify the asset change flags match the operation (Created vs. Deleted)
 - **For MonoBehaviour instance methods:**
   - Use `SearchPrefabs` if the handler is on a prefab asset
   - Use `SearchSceneObjects` if the handler is on a GameObject in a scene
@@ -478,6 +478,6 @@ If your instance method on a MonoBehaviour isn't being called:
 
 ## Related Features
 
-- [Attribute Metadata Cache Generator](./attribute-metadata-cache-generator.md) - Caches attribute metadata for fast lookup
-- [ScriptableObject Singleton Creator](./scriptableobject-singleton-creator.md) - Auto-creates singleton assets
+- [Attribute Metadata Cache Generator](./editor-tools-guide.md#attribute-metadata-cache-generator) - Caches attribute metadata for fast lookup
+- [ScriptableObject Singleton Creator](./editor-tools-guide.md#scriptableobject-singleton-creator) - Auto-creates singleton assets
 - [Inspector Attributes](../inspector/inspector-overview.md) - Other custom inspector features
