@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         private sealed class SampleComponent
         {
             public int InstanceField;
-            public static string StaticField;
+            public static string StaticField = null;
 
             public string Name { get; set; }
             public static int StaticCount { get; set; }

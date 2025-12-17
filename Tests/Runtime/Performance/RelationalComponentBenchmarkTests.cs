@@ -1,3 +1,4 @@
+#pragma warning disable CS0169 // Field is never used
 namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
 {
     using System;

@@ -17,7 +17,7 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 ### Optimize Sprite Memory & Performance
 
 - Remove transparent padding → [Sprite Cropper](#sprite-cropper)
-- Adjust texture sizes automatically → [Fit Texture Size](#fit-texture-size)
+- Adjust texture size automatically → [Fit Texture Size](#fit-texture-size)
 - Batch apply import settings → [Texture Settings Applier](#texture-settings-applier)
 - Standardize sprite settings → [Sprite Settings Applier](#sprite-settings-applier)
 - Adjust sprite pivots → [Sprite Pivot Adjuster](#sprite-pivot-adjuster)
@@ -118,7 +118,8 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 > **Visual Demo**
 >
 > ![GIF placeholder: Image Blur Tool showing before/after comparison as blur radius slider is adjusted](../../images/editor-tools/image-blur-before-after.gif)
-> _Adjusting blur radius from 0 to 50 pixels on a UI background texture_
+>
+> _Adjusting blur radius from 0 to 200 pixels on a UI background texture_
 
 ---
 
@@ -163,6 +164,7 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 > **Visual Demo**
 >
 > ![GIF placeholder: Sprite Cropper showing original sprite with padding, then cropped result side-by-side](../../images/editor-tools/sprite-cropper-comparison.gif)
+>
 > _Before and after: transparent padding removed while preserving sprite content and pivot_
 
 **Related Tools:**
@@ -530,9 +532,11 @@ Result: Max Size → 64 (matches source)
 > **Visual Demo**
 >
 > ![GIF placeholder: Sprite Animation Editor showing animation preview playing while frames are dragged to reorder](../../images/editor-tools/sprite-animation-editor-reorder.gif)
+>
 > _Drag-and-drop frame reordering with real-time preview updates_
 >
 > ![GIF placeholder: Sprite Animation Editor FPS adjustment showing animation speed changing live](../../images/editor-tools/sprite-animation-editor-fps.gif)
+>
 > _Adjusting FPS slider and seeing immediate preview speed change_
 
 ---
@@ -612,6 +616,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 > **Visual Demo**
 >
 > ![GIF placeholder: Animation Creator auto-parse workflow showing sprites being grouped and clips generated](../../images/editor-tools/animation-creator-auto-parse.gif)
+>
 > _One-click auto-parse: sprites grouped by naming pattern, clips generated instantly_
 
 **Related Tools:**
@@ -701,6 +706,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 > **Visual Demo**
 >
 > ![GIF placeholder: Sprite Sheet Animation Creator showing drag-select across sprite thumbnails with live preview](../../images/editor-tools/sprite-sheet-creator-select.gif)
+>
 > _Drag-select frame ranges on sprite sheet thumbnails with instant preview playback_
 
 ---
@@ -711,7 +717,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 
 **Purpose:** Advanced visual editor for creating and managing animation events with sprite preview, method auto-discovery, and parameter editing.
 
-> Need the implementation details? See the architecture notes in `docs/project/animation-event-editor.md` (helper breakdown, control flow, testing).
+> Need the implementation details? See the [architecture notes](../../project/animation-event-editor.md) (helper breakdown, control flow, testing).
 
 **Key Features:**
 
@@ -816,14 +822,6 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 - Sprite preview helps verify timing
 - Multiple events can exist at same frame
 - Use "Re-Order" before saving for consistency
-
-> **Visual Demo**
->
-> ![GIF placeholder: Animation Event Editor showing event being added and sprite preview updating to show frame at event time](../../images/editor-tools/animation-event-editor-preview.gif)
-> _Adding animation events with real-time sprite preview at each frame_
->
-> ![GIF placeholder: Animation Event Editor showing invalid texture warning and Fix button being clicked](../../images/editor-tools/animation-event-editor-fix.gif)
-> _Automatic detection and one-click fix for texture Read/Write issues_
 
 **Common Method Signatures:**
 
@@ -1111,6 +1109,7 @@ maxTextureSize: 2048
 > **Visual Demo**
 >
 > ![Unity Method Analyzer window showing detected issues](../../images/editor-tools/unity-method-analyzer/analyzer-overview.png)
+>
 > _The analyzer scanning a project and displaying categorized issues_
 
 **Suppressing Warnings:**
@@ -1681,8 +1680,9 @@ string[] labels = SpriteLabelCache.GetAllLabels();
 
 > **Visual Reference**
 >
-> ![Request Script Recompilation menu item and shortcut](../../images/editor-tools/request-recompilation.png)
-> _Quick access to manual recompilation from menu or keyboard shortcut_
+> ![Request Script Recompilation menu item](../../images/editor-tools/request-recompilation.png)
+>
+> ![Request Script Recompilation shortcut](../../images/editor-tools/request-recompilation-shortcut.png)
 
 **Key Features:**
 

@@ -140,6 +140,17 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
             TimeSpan elapsed = _timer.Elapsed;
             TimeSpan deltaTime = TimeSpan.FromMilliseconds(1000 / _fps);
+
+            // Prevent time accumulation drift: if _lastTick has fallen significantly behind
+            // (e.g., editor was paused/unfocused, or this is the first update after construction),
+            // clamp it BEFORE checking the frame advance condition. This prevents rapid "catch-up"
+            // animation that makes the preview appear to run at too high FPS.
+            // Allow at most one frame of lag before resetting to current time.
+            if (elapsed - _lastTick > deltaTime + deltaTime)
+            {
+                _lastTick = elapsed - deltaTime;
+            }
+
             if (!force && _lastTick + deltaTime > elapsed)
             {
                 return;
@@ -147,6 +158,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
             _index = _index.WrappedIncrement(_computed.Length);
             _lastTick += deltaTime;
+
             Render(_index);
         }
 

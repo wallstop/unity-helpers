@@ -153,7 +153,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         private class BaseWithSibling : MonoBehaviour
         {
             [SiblingComponent]
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
             protected internal SpriteRenderer _spriteRenderer;
+#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
 
             public SpriteRenderer SR => _spriteRenderer;
         }
