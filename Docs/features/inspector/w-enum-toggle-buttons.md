@@ -38,7 +38,7 @@ public MovementCapabilities unlockedAbilities;
 
 > **Visual Reference**
 >
-> ![WEnumToggleButtons showing flag enum as toggleable buttons](../../images/inspector/wenum-toggle-buttons-flags.png)
+> ![WEnumToggleButtons showing flag enum as toggleable buttons](../../images/inspector/selection/wenum-toggle-buttons-flags-select.png)
 > _Flag enum rendered as individual toggle buttons with Select All/None options_
 
 ```csharp

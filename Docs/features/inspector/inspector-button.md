@@ -101,9 +101,11 @@ private void ClearSaveData() { }
 
 ### drawOrder (int, optional)
 
-**Controls where the button appears relative to other buttons in the same grouping, in ascending order.**
+**Controls the sort order of buttons within their placement section (top or bottom).**
 
-- **Grouping:** Buttons with the same `drawOrder` are grouped together
+- **Lower values render first** within the same placement section
+- **Buttons are sorted by drawOrder**, then by declaration order for buttons with the same drawOrder
+- **Does NOT control placement** — use `groupPlacement` to control whether buttons appear above or below properties
 
 ```csharp
 public class PlayerController1 : MonoBehaviour
@@ -111,14 +113,14 @@ public class PlayerController1 : MonoBehaviour
     public int health = 100;
     public float speed = 5f;
 
-    // These appear ABOVE the health/speed properties
+    // These buttons render in order: Initialize, Validate, Debug Info
+    // Placement (above/below properties) is controlled by groupPlacement or global settings
     [WButton("Initialize", drawOrder: -1)]
     private void Initialize() { }
 
-    [WButton("Validate", drawOrder: -1)]
+    [WButton("Validate", drawOrder: 0)]
     private void Validate() { }
 
-    // This appears BELOW the health/speed properties
     [WButton("Debug Info", drawOrder: 1)]
     private void ShowDebugInfo() { }
 }
@@ -126,7 +128,7 @@ public class PlayerController1 : MonoBehaviour
 
 **Visual layout:**
 
-![Inspector showing buttons above and below properties](../../images/inspector/buttons/inspector-button-draw-order.png)
+![Inspector showing buttons sorted by draw order](../../images/inspector/buttons/inspector-button-draw-order.png)
 
 ---
 
@@ -212,31 +214,31 @@ private void WarningAction() { }
 **Organizes buttons under labeled group headers.**
 
 - **Default:** `null` (no group header)
-- **Behavior:** All buttons with the same `groupName` and `drawOrder` appear together
-- **Best practice:** Use with `drawOrder` to create organized button sections
+- **Behavior:** All buttons with the same `groupName` are merged into a single group
+- **Best practice:** Use with `groupPlacement` and `groupPriority` to control where groups appear
 
 ```csharp
 public class GameManager : MonoBehaviour
 {
-    // "Debug Tools" group above properties
-    [WButton("Log State", drawOrder: -1, groupName: "Debug Tools")]
+    // "Debug Tools" group - will appear based on groupPlacement or global settings
+    [WButton("Log State", groupName: "Debug Tools", groupPlacement: WButtonGroupPlacement.Top)]
     private void LogState() { }
 
-    [WButton("Clear Console", drawOrder: -1, groupName: "Debug Tools")]
+    [WButton("Clear Console", groupName: "Debug Tools")]
     private void ClearConsole() { }
 
     // Inspector properties here
     public int currentLevel = 1;
     public bool debugMode = false;
 
-    // "Save System" group below properties
-    [WButton("Save Game", drawOrder: 1, groupName: "Save System")]
+    // "Save System" group - explicitly placed at bottom
+    [WButton("Save Game", groupName: "Save System", groupPlacement: WButtonGroupPlacement.Bottom)]
     private void SaveGame() { }
 
-    [WButton("Load Game", drawOrder: 1, groupName: "Save System")]
+    [WButton("Load Game", groupName: "Save System")]
     private void LoadGame() { }
 
-    [WButton("Delete Save", drawOrder: 1, groupName: "Save System")]
+    [WButton("Delete Save", groupName: "Save System")]
     private void DeleteSave() { }
 }
 ```
@@ -247,7 +249,7 @@ public class GameManager : MonoBehaviour
 
 - Group headers are collapsible (click the arrow to expand/collapse)
 - Groups can be configured to start expanded or collapsed in project settings
-- The first button in a group determines the group's display name
+- The first button in a group determines the group's canonical properties (groupPlacement, groupPriority, drawOrder)
 
 ---
 
@@ -340,30 +342,66 @@ public class MixedPlacementExample : MonoBehaviour
 Use both parameters together for fine-grained control:
 
 ```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+[CreateAssetMenu(
+    fileName = "AdvancedButtonLayout",
+    menuName = "Wallstop Studios/Advanced Button Layout"
+)]
 public class AdvancedButtonLayout : ScriptableObject
 {
     // TOP SECTION - ordered by priority
-    [WButton("Generate IDs", groupName: "Authoring", groupPriority: 0, groupPlacement: WButtonGroupPlacement.Top)]
-    private void GenerateIds() { }
-
-    [WButton("Validate Data", groupName: "Validation", groupPriority: 1, groupPlacement: WButtonGroupPlacement.Top)]
+    [WButton(
+        "Validate Data",
+        groupName: "Validation",
+        groupPriority: 1,
+        groupPlacement: WButtonGroupPlacement.Top
+    )]
     private void ValidateData() { }
+
+    [WButton(
+        "Generate IDs",
+        groupName: "Authoring",
+        groupPriority: 0,
+        groupPlacement: WButtonGroupPlacement.Top
+    )]
+    private void GenerateIds() { }
 
     // Properties appear here
 
+    public int property1;
+    public string property2;
+
     // BOTTOM SECTION - ordered by priority
-    [WButton("Export", groupName: "IO", groupPriority: 0, groupPlacement: WButtonGroupPlacement.Bottom)]
+
+    [WButton(
+        "Submit to Server",
+        groupName: "Network",
+        groupPriority: 10,
+        groupPlacement: WButtonGroupPlacement.Bottom
+    )]
+    private void Submit() { }
+
+    [WButton(
+        "Export",
+        groupName: "IO",
+        groupPriority: 0,
+        groupPlacement: WButtonGroupPlacement.Bottom
+    )]
     private void Export() { }
 
-    [WButton("Import", groupName: "IO", groupPriority: 0, groupPlacement: WButtonGroupPlacement.Bottom)]
+    [WButton(
+        "Import",
+        groupName: "IO",
+        groupPriority: 0,
+        groupPlacement: WButtonGroupPlacement.Bottom
+    )]
     private void Import() { }
-
-    [WButton("Submit to Server", groupName: "Network", groupPriority: 10, groupPlacement: WButtonGroupPlacement.Bottom)]
-    private void Submit() { }
 }
 ```
 
-![Advanced layout: Authoring then Validation at top, IO then Network at bottom](../../images/inspector/buttons/inspector-button-advanced-layout.gif)
+![Advanced layout: Authoring then Validation at top, IO then Network at bottom](../../images/inspector/buttons/inspector-button-advanced-layout.png)
 
 **Rendering Order:**
 
@@ -388,24 +426,24 @@ public class LevelManager : MonoBehaviour
     public int currentLevel = 1;
     public bool debugMode = false;
 
-    // Setup group - appears above properties
-    [WButton("Initialize Level", drawOrder: -2, groupName: "Setup")]
+    // Setup group - explicitly placed at top, renders first due to groupPriority: 0
+    [WButton("Initialize Level", groupName: "Setup", groupPriority: 0, groupPlacement: WButtonGroupPlacement.Top)]
     private void Initialize()
     {
         Debug.Log("Level initialized!");
     }
 
-    [WButton("✓ Validate Configuration", drawOrder: -2, groupName: "Setup")]
+    [WButton("✓ Validate Configuration", groupName: "Setup")]
     private void ValidateConfig()
     {
         Debug.Log("Configuration valid!");
     }
 
-    // Debug group - appears above properties
-    [WButton("Roll Dice", drawOrder: -1, historyCapacity: 10, groupName: "Debug")]
+    // Debug group - explicitly placed at top, renders second due to groupPriority: 1
+    [WButton("Roll Dice", historyCapacity: 10, groupName: "Debug", groupPriority: 1, groupPlacement: WButtonGroupPlacement.Top)]
     private int RollDice() => Random.Range(1, 7);
 
-    [WButton("🎯 Spawn Test Enemy", drawOrder: -1, priority: "Warning", groupName: "Debug")]
+    [WButton("🎯 Spawn Test Enemy", priority: "Warning", groupName: "Debug")]
     private void SpawnTestEnemy()
     {
         // Spawn logic here
@@ -413,27 +451,27 @@ public class LevelManager : MonoBehaviour
 
     // Properties appear here in the inspector
 
-    // Actions group - appears below properties
-    [WButton("▶ Start Level", drawOrder: 1, priority: "Success", groupName: "Actions")]
+    // Actions group - explicitly placed at bottom, renders first in bottom section due to groupPriority: 0
+    [WButton("▶ Start Level", priority: "Success", groupName: "Actions", groupPriority: 0, groupPlacement: WButtonGroupPlacement.Bottom)]
     private void StartLevel()
     {
         Debug.Log($"Starting level {currentLevel}...");
     }
 
-    [WButton("⏸ Pause Game", drawOrder: 1, groupName: "Actions")]
+    [WButton("⏸ Pause Game", groupName: "Actions")]
     private void PauseGame()
     {
         Time.timeScale = 0f;
     }
 
-    [WButton("🔄 Restart Level", drawOrder: 1, priority: "Danger", groupName: "Actions")]
+    [WButton("🔄 Restart Level", priority: "Danger", groupName: "Actions")]
     private void RestartLevel()
     {
         // Restart logic here
     }
 
-    // Maintenance group - appears below everything else
-    [WButton("Clear Cache", drawOrder: 2, historyCapacity: 1, groupName: "Maintenance")]
+    // Maintenance group - explicitly placed at bottom, renders last in bottom section due to groupPriority: 10
+    [WButton("Clear Cache", historyCapacity: 1, groupName: "Maintenance", groupPriority: 10, groupPlacement: WButtonGroupPlacement.Bottom)]
     private string ClearCache()
     {
         return $"Cache cleared at {System.DateTime.Now:HH:mm:ss}";
@@ -620,24 +658,22 @@ private void NoHistory() => Debug.Log("No history stored");
 
 ## Draw Order & Positioning
 
-Control where buttons appear in the inspector within the button area:
+Control the sort order of buttons within their placement section:
 
 ```csharp
 public class ButtonPositioning : MonoBehaviour
 {
-    // Appears BELOW "Middle Button" (drawOrder > -1)
-    [WButton("Bottom Button", drawOrder: 1)]
-    private void BottomButton() => Debug.Log("Below Middle Button");
-
-    // Appears BELOW "Top Button" (drawOrder > 0)
-    [WButton("Middle Bottom", drawOrder: 0)]
-    private void AnotherBottom() => Debug.Log("Below Top Button");
-
-    // Appears at the top of button list (lowest draw order)
+    // Buttons are sorted by drawOrder (lower values first)
     [WButton("Top Button", drawOrder: -1)]
-    private void TopButton() => Debug.Log("Above all buttons");
+    private void TopButton() => Debug.Log("Renders first (lowest drawOrder)");
 
-    // Default inspector fields appear here
+    [WButton("Middle Button", drawOrder: 0)]
+    private void MiddleButton() => Debug.Log("Renders second");
+
+    [WButton("Bottom Button", drawOrder: 1)]
+    private void BottomButton() => Debug.Log("Renders last (highest drawOrder)");
+
+    // Inspector fields - buttons appear above or below based on groupPlacement/global settings
     public int someField = 10;
 }
 ```
@@ -646,7 +682,9 @@ public class ButtonPositioning : MonoBehaviour
 
 **Positioning Rules:**
 
-- Higher `drawOrder` values appear later within their section
+- **Lower `drawOrder` values render first** within a placement section
+- **Placement (above/below properties)** is controlled by `groupPlacement` or the global `WButtonPlacement` setting, not by `drawOrder`
+- **Within the same `drawOrder`**, buttons render in declaration order (source code order)
 
 ---
 

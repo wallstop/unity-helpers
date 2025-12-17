@@ -55,7 +55,7 @@ The Unity Method Analyzer provides:
 ### Your First Scan
 
 1. **Open the analyzer** from the menu
-2. **Add source directories** — By default, scans from project root
+2. **Add source directories** — By default, scans from the project root
 3. **Click "Analyze Code"** — Wait for the progress bar to complete
 4. **Review results** — Issues appear grouped by file, severity, or category
 
@@ -207,7 +207,7 @@ Configure which directories to scan:
 
 ### Understanding the Results Tree
 
-Results display in a hierarchical tree view:
+The results are displayed in a hierarchical tree view:
 
 ![Results tree showing issues grouped by file](../../images/editor-tools/unity-method-analyzer/results-tree.png)
 
@@ -380,7 +380,7 @@ public class TestClass : BaseClass
 
 ### Performance Tips
 
-- **Scan specific directories** rather than entire project
+- **Scan specific directories** rather than the entire project
 - **Use filters** to focus on relevant issues
 - **Close other editor windows** during large scans
 - **Exclude generated code** directories

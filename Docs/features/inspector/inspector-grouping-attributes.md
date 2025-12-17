@@ -234,8 +234,8 @@ public int totalPoints;  // Included in "stats" group, then closes it
 ```csharp
 public class WGroupAttribute
 {
-    public const int UseGlobalAutoInclude = -1;   // Default: use project setting
-    public const int InfiniteAutoInclude = -2;    // Include until WGroupEnd
+    public const int InfiniteAutoInclude = -1;    // Include until WGroupEnd
+    public const int UseGlobalAutoInclude = -2;   // Default: use project setting
 }
 ```
 

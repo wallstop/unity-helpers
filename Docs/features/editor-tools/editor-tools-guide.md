@@ -405,19 +405,19 @@ Generate Mip Maps: false
 
 **GrowAndShrink:**
 
-- Sets max texture size to nearest power-of-2 that fits source
+- Sets max texture size to the nearest power-of-2 that fits the source
 - Example: 1500x800 source → 2048 max size
 - Prevents both over-allocation and quality loss
 
 **GrowOnly:**
 
-- Increases max size if source is larger
+- Increases max size if the source is larger
 - Never decreases size
 - Useful for preventing quality loss on imports
 
 **ShrinkOnly:**
 
-- Decreases max size if source is smaller
+- Decreases max size if the source is smaller
 - Never increases size
 - Useful for reducing memory usage
 
@@ -450,7 +450,7 @@ Result: Max Size → 64 (matches source)
 
 - Reads actual source width/height (not imported size)
 - Calculates required power-of-2: `size = max(width, height)`
-- Rounds up to next power-of-2 (32, 64, 128, 256, 512, 1024, 2048, 4096, 8192)
+- Rounds up to the next power-of-2 (32, 64, 128, 256, 512, 1024, 2048, 4096, 8192)
 - Applies based on fit mode constraints
 
 **Best For:**
@@ -458,7 +458,7 @@ Result: Max Size → 64 (matches source)
 - Fixing texture import settings after bulk imports
 - Optimizing memory usage automatically
 - Ensuring quality matches source resolution
-- Standardizing texture settings across project
+- Standardizing texture settings across the project
 - Build size optimization
 
 **Performance:**
@@ -523,9 +523,9 @@ Result: Max Size → 64 (matches source)
 
 **Tips:**
 
-- Use multi-file browser for entire animation sets
+- Use the multi-file browser for entire animation sets
 - Preview updates automatically while dragging
-- FPS changes only affect preview until saved
+- FPS changes only affect the preview until saved
 - Type frame numbers for precise positioning
 - Press Enter to apply frame changes
 
@@ -550,7 +550,7 @@ Result: Max Size → 64 (matches source)
 **Problems Solved:**
 
 - Manual and error‑prone clip creation from many sprites
-- Inconsistent frame ordering (lexicographic vs numeric)
+- Inconsistent frame ordering (lexicographic vs. numeric)
 - Collisions/duplicates when generating many clips at once
 - Repeating busywork when adding suffixes/prefixes across sets
 
@@ -560,7 +560,7 @@ Result: Max Size → 64 (matches source)
 - Auto‑parse into clips using naming patterns (one click)
 - Custom group regex with named groups `(?<base>)(?<index>)`
 - Case‑insensitive grouping and numeric sorting toggle
-- Prefix clip names with leaf folder or full folder path
+- Prefix clip names with a leaf folder or full folder path
 - Auto‑parse name prefix/suffix and duplicate‑name resolution
 - Dry‑run and preview (see groups and final asset paths)
 - Per‑clip FPS and loop flag; bulk name append/remove
@@ -636,7 +636,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 
 **What It Analyzes:**
 
-- New: exist in source but not destination
+- New: exist in the source but not the destination
 - Changed: exist in both but differ (hash mismatch)
 - Unchanged: identical in both (duplicates)
 - Destination Orphans: only in destination
@@ -756,7 +756,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 **Non-Explicit Mode:**
 
 - Shows all public methods with valid signatures
-- Use "Search" field to filter by type/method name
+- Use the "Search" field to filter by type/method name
 - Good for discovery and prototyping
 
 **Control Frame Time:**
@@ -769,7 +769,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 - Automatically shows sprite at event time
 - Requires texture Read/Write enabled
 - "Fix" button to enable Read/Write if needed
-- Warns if sprite packed too tightly
+- Warns if a sprite is packed too tightly
 
 **Event Management:**
 
@@ -788,7 +788,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 
 **Reordering:**
 
-- "Move Up"/"Move Down" for events at same time
+- "Move Up"/"Move Down" for events at the same time
 - "Re-Order" button sorts all events by time
 - Maintains proper event order for playback
 
@@ -803,7 +803,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 - `float` - FloatField editor
 - `string` - TextField editor
 - `UnityEngine.Object` - ObjectField editor
-- `Enum` - Dropdown with override option
+- `Enum` - Dropdown with an override option
 
 **Best For:**
 
@@ -820,7 +820,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 - Use "Animation Search" for quick filtering
 - Frame numbers are more intuitive than time values
 - Sprite preview helps verify timing
-- Multiple events can exist at same frame
+- Multiple events can exist at the same frame
 - Use "Re-Order" before saving for consistency
 
 **Common Method Signatures:**
@@ -958,7 +958,7 @@ maxTextureSize: 2048
 
 **Scan and Preview:**
 
-- Shows exact sprite count that will be added/removed
+- Shows the exact sprite count that will be added/removed
 - Prevents accidental overwrites
 - Displays current vs. scanned sprite lists
 
@@ -972,14 +972,14 @@ maxTextureSize: 2048
 **Batch Operations:**
 
 - "Generate/Update All .spriteatlas Assets" - processes all configs
-- "Pack All Generated Sprite Atlases" - packs all atlases in project
+- "Pack All Generated Sprite Atlases" - packs all atlases in the project
 - Progress bars for long operations
 
 **Best For:**
 
 - Managing large sprite collections
 - Automating sprite atlas creation
-- Consistent atlas configuration across team
+- Consistent atlas configuration across the team
 - Dynamic sprite selection based on naming conventions
 - Organizing sprites by labels/tags
 - Build pipeline atlas generation
@@ -989,7 +989,7 @@ maxTextureSize: 2048
 - Use regex for consistent naming patterns
 - Combine multiple source folders for complex selections
 - Test regex patterns with "Scan Folders" before generating
-- Keep source sprites uncompressed for best atlas quality
+- Keep source sprites uncompressed for the best atlas quality
 - Use labels for cross-folder sprite grouping
 - Regular expressions use case-insensitive matching
 
@@ -1174,7 +1174,7 @@ These custom inspectors enhance Unity components with additional functionality a
 
 1. Adjust tolerance slider (lower = more accurate, higher = simpler)
 2. Click "Optimize" to simplify polygon points
-3. Collider updates with reduced point count
+3. Collider updates with a reduced point count
 
 **Best For:**
 
@@ -1210,14 +1210,14 @@ These custom inspectors enhance Unity components with additional functionality a
 
 - Warns if using "Default UI Material"
 - "Incorrect Material Detected - Try Fix?" button (yellow)
-- Automatically finds and applies correct BackgroundMask material
+- Automatically finds and applies the correct BackgroundMask material
 - Material path: `Shaders/Materials/BackgroundMask-Material.mat`
 
 **Shape Mask:**
 
 - Requires shader with `_ShapeMask` texture2D property
 - Allows complex masking effects
-- Integrates with custom shader system
+- Integrates with a custom shader system
 
 **HDR Color:**
 
@@ -1229,7 +1229,7 @@ These custom inspectors enhance Unity components with additional functionality a
 
 - UI elements requiring HDR effects
 - Masked UI images
-- Custom shaped UI elements
+- Custom-shaped UI elements
 - Material-based UI effects
 
 **Workflow:**
@@ -1314,7 +1314,7 @@ public class AbilityDatabase : ScriptableObject
 
 - Bespoke implementation (no Odin dependency) tailored to the most common inline editing workflows.
 - Reuses Unity’s native editors, respecting custom inspectors, validation, and undo.
-- Optional scroll view keeps large inspectors usable without stealing space from the parent inspector.
+- Optional scroll view that keeps large inspectors usable without stealing space from the parent inspector.
 - Preview support for assets that implement `HasPreviewGUI`.
 - Header includes a quick “Ping” button so you can jump to the asset whenever the Project window is visible.
 
@@ -1621,7 +1621,7 @@ Assets/
 - Managing game settings as unique assets
 - Centralizing configuration data
 - Ensuring essential ScriptableObjects exist
-- Team workflows preventing missing asset errors
+- Team workflows to prevent missing asset errors
 - Automatic project setup for new developers
 
 **Customization:**
@@ -1643,17 +1643,17 @@ Assets/
 1. Monitors sprite asset imports/reimports (PNG, JPG, JPEG)
 2. Detects changes to asset labels on sprites
 3. Updates global sprite label cache automatically
-4. Provides cached label list to tools like Sprite Atlas Generator
+4. Provides a cached label list to tools like Sprite Atlas Generator
 
 **What Gets Cached:**
 
 - All unique asset labels across sprite assets
-- Sorted alphabetically for consistent display
+- Sorted alphabetically for a consistent display
 - Updated on import, not at runtime
 
 **Performance Benefits:**
 
-- ✅ No need to scan entire project for labels
+- ✅ No need to scan the entire project for labels
 - ✅ Fast dropdown population in editors
 - ✅ Automatic cache invalidation on changes
 - ✅ Only processes sprite texture types
@@ -1781,14 +1781,14 @@ public List<string> selectedLabels;
 
 - Tools requiring sprite label selection
 - Dropdown menus for label filtering
-- Maintaining label consistency across project
+- Maintaining label consistency across the project
 - Fast label-based sprite queries
 
 **Technical Notes:**
 
 - Skips execution in batch mode and CI environments
 - Uses efficient HashSet for uniqueness checks
-- Sorted results for consistent UI display
+- Sorted results for a consistent UI display
 - Thread-safe cache updates
 
 ---
@@ -1844,7 +1844,7 @@ RelationalTypeMetadata relational = cache.GetRelationalMetadataForType(typeof(My
 - On Unity editor startup (automatic)
 - After script recompilation (automatic)
 - Manual trigger via menu item
-- After domain reload in editor
+- After domain reload in the editor
 
 **Best For:**
 
@@ -1852,7 +1852,7 @@ RelationalTypeMetadata relational = cache.GetRelationalMetadataForType(typeof(My
 - Games using extensive parent/child relationships
 - Optimizing startup time for complex prefabs
 - IL2CPP builds where reflection is expensive
-- Tools needing to enumerate available attributes
+- Tools that need to enumerate available attributes
 
 ---
 
@@ -1888,8 +1888,8 @@ else
 
 **Use Cases:**
 
-- Asset creation wizards defaulting to selected folder
-- Context menu extensions operating on current location
+- Asset creation wizards defaulting to the selected folder
+- Context menu extensions operating on the current location
 - Batch processing tools respecting working directory
 
 **Technical Notes:**
@@ -1902,7 +1902,7 @@ else
 
 - Context-aware asset creation
 - User-friendly editor tools
-- Respecting current working directory
+- Respecting the current working directory
 
 ---
 
@@ -2097,7 +2097,7 @@ else
 
 - All tools remember last used directories
 - Most tools support drag-and-drop folders
-- Batch operations show progress in console
+- Batch operations show progress in the console
 
 ---
 
@@ -2133,14 +2133,14 @@ else
 
 **Tool window won't open:**
 
-- Check console for errors
-- Verify package is in correct location
+- Check the console for errors
+- Verify that the package is in the correct location
 - Try reimporting package
 
 **Settings not applying:**
 
 - Ensure textures aren't in use
-- Check console for import errors
+- Check the console for import errors
 - Verify file permissions
 
 **Cache not regenerating:**
@@ -2161,7 +2161,7 @@ else
 
 **Organization:**
 
-- Keep sprites in organized folder structure
+- Keep sprites in an organized folder structure
 - Use consistent naming conventions
 - Separate by type (UI, Characters, Environment)
 
@@ -2176,7 +2176,7 @@ else
 - Run Prefab Checker before commits
 - Use [ValidateAssignment] on critical fields
 - Maintain consistent texture settings per category
-- Use the manual recompile menu/shortcut when iterating on packages to avoid reopening the project
+- Use the manual recompilation menu/shortcut when iterating on packages to avoid reopening the project
 
 **Workflow:**
 
@@ -2203,7 +2203,7 @@ else
 **Related Components:**
 
 - `ScriptableObjectSingleton<T>` - Base class for settings
-- `AttributesComponent` - Base class for attribute system
+- `AttributesComponent` - Base class for the attribute system
 - `LayeredImage` - UI Toolkit multi-layer sprite rendering
 
 ---

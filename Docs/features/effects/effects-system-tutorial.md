@@ -142,7 +142,7 @@ Select `HasteEffect` and set these values in Inspector:
 - Size: `1`
 - Element 0:
   - Prefab: Drag a particle system prefab (or create one)
-  - Requires Instancing: ✅ (creates new instance per application)
+  - Requires Instancing: ✅ (creates a new instance per application)
 
 ---
 
@@ -432,11 +432,11 @@ void TryApplyBuff(AttributeEffect effect)
 - **No!** Use `MaxHealth` as an Attribute (modified by buffs), but keep `CurrentHealth` as a regular field (modified by damage/healing)
 - **Why:** CurrentHealth is modified by many systems (combat, regeneration, etc.). Using it as an Attribute causes state conflicts when effects and other systems both try to modify it
 - **Pattern:** Attribute for max/cap, regular field for current/depleting value
-- **See:** "Understanding Attributes: What to Model and What to Avoid" in main documentation
+- **See:** "Understanding Attributes: What to Model and What to Avoid" in the main documentation
 
 ### "Attribute 'Speed' not found"
 
-- **Cause:** Attribute name in effect doesn't match field name in AttributesComponent
+- **Cause:** Attribute name in effect doesn't match the field name in AttributesComponent
 - **Fix:** Names must match exactly (case-sensitive): `Speed` not `speed`
 - **Tip:** Use Attribute Metadata Cache generator for dropdown validation
 
@@ -444,7 +444,7 @@ void TryApplyBuff(AttributeEffect effect)
 
 - **Check:** Does target GameObject have an `AttributesComponent`?
 - **Check:** Is `EffectHandler` component added? (Usually added automatically)
-- **Check:** Are there any errors in console?
+- **Check:** Are there any errors in the console?
 
 ### Particles don't spawn
 
@@ -498,7 +498,7 @@ if (player.HasTag("Invulnerable"))
 
 ### Designer Workflows
 
-1. Create effect library (30+ common effects)
+1. Create an effect library (30+ common effects)
 2. Designers mix/match on items, abilities, enemies
 3. Programmers never touch effect code again!
 

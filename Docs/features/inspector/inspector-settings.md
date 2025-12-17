@@ -206,17 +206,18 @@ private int CustomHistory() => Random.Range(1, 100);
 
 **Default:** Bottom
 **Options:** Top, Bottom
-**Applies to:** `[WButton]` buttons with default `drawOrder`
+**Applies to:** `[WButton]` buttons using `groupPlacement: WButtonGroupPlacement.UseGlobalSetting`
 
 **Description:** Default placement of buttons in the inspector.
 
 - **Top:** Buttons appear before default inspector fields
 - **Bottom:** Buttons appear after default inspector fields
 
-**Note:** `drawOrder` parameter overrides this setting:
+**Note:** Use the `groupPlacement` parameter on individual buttons to override this setting:
 
-- `drawOrder >= -1` → Top (above inspector)
-- `drawOrder >= 0` → Bottom (below inspector)
+- `groupPlacement: WButtonGroupPlacement.Top` → Always render above inspector properties
+- `groupPlacement: WButtonGroupPlacement.Bottom` → Always render below inspector properties
+- `groupPlacement: WButtonGroupPlacement.UseGlobalSetting` → Follow this global setting (default)
 
 ---
 

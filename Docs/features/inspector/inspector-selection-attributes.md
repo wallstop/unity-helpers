@@ -47,7 +47,7 @@ public class EntityPermissions : MonoBehaviour
 
 > **Visual Reference**
 >
-> ![WEnumToggleButtons with flag enum](../../images/inspector/wenum-toggle-buttons-basic.png)
+> ![WEnumToggleButtons with flag enum](../../images/inspector/selection/wenum-toggle-buttons-basic.png)
 > _Flag enum permissions rendered as toggle buttons_
 
 ---
@@ -87,7 +87,7 @@ public DamageTypes resistances = DamageTypes.Fire | DamageTypes.Ice;
 
 > **Visual Reference**
 >
-> ![WEnumToggleButtons with Select All/None buttons](../../images/inspector/wenum-toggle-buttons-flags-select.png)
+> ![WEnumToggleButtons with Select All/None buttons](../../images/inspector/selection/wenum-toggle-buttons-flags-select.png)
 > _Flag enum with Select All and Select None quick action buttons_
 
 **Behavior:**
@@ -107,7 +107,10 @@ public enum WeaponType { Melee, Ranged, Magic }
 public WeaponType weaponType = WeaponType.Melee;
 ```
 
-![Image placeholder: Radio-style toggle buttons (only one active)]
+> **Visual Reference**
+>
+> ![Radio-style toggle buttons](../../images/inspector/selection/wenum-toggle-buttons-radio.png)
+> _Standard enum rendered as radio-style toggle buttons (only one active)_
 
 **Behavior:**
 
@@ -133,7 +136,10 @@ public enum AllAbilities
 public AllAbilities unlockedAbilities;
 ```
 
-![Image placeholder: Paginated toggle buttons with navigation controls]
+> **Visual Reference**
+>
+> ![Paginated toggle buttons](../../images/inspector/selection/wenum-toggle-buttons-pagination.gif)
+> _Paginated toggle buttons with First, Previous, Next, Last navigation controls_
 
 **Features:**
 
@@ -160,7 +166,10 @@ public Permissions twoColumns;
 public Permissions singleColumn;
 ```
 
-![Image placeholder: Three different layouts showing 1, 2, and auto columns]
+> **Visual Reference**
+>
+> ![Toggle button layouts](../../images/inspector/selection/wenum-toggle-buttons-layouts.png)
+> _Different column layouts: automatic, 2 columns, and single column_
 
 ---
 
@@ -174,7 +183,10 @@ public Permissions darkTheme;
 public Permissions lightTheme;
 ```
 
-![Image placeholder: Toggle buttons with different color themes]
+> **Visual Reference**
+>
+> ![Toggle button themes](../../images/inspector/selection/wenum-toggle-buttons-themes.png)
+> _Toggle buttons with dark and light color themes_
 
 ---
 
@@ -207,7 +219,10 @@ public float damageMultiplier = 1.0f;
 public string difficulty = "Normal";
 ```
 
-![Image placeholder: Dropdown showing predefined values]
+> **Visual Reference**
+>
+> ![WValueDropDown with predefined values](../../images/inspector/selection/wvalue-dropdown-basic.png)
+> _Dropdown showing predefined integer, float, and string values_
 
 ---
 
@@ -308,7 +323,10 @@ public int refreshRate = 60;
 public int threadCount = 4;
 ```
 
-![Image placeholder: Integer dropdown showing predefined values]
+> **Visual Reference**
+>
+> ![IntDropdown with predefined values](../../images/inspector/selection/int-dropdown-basic.png)
+> _Integer dropdown showing predefined frame rate options_
 
 ---
 
@@ -357,7 +375,10 @@ public string difficulty = "Normal";
 public string teamColor = "Red";
 ```
 
-![Image placeholder: String dropdown showing popup with search bar and results]
+> **Visual Reference**
+>
+> ![StringInList with search popup](../../images/inspector/selection/string-in-list-basic.png)
+> _String dropdown with inline popup showing search bar and results_
 
 ---
 
@@ -428,7 +449,10 @@ public static class SceneLibrary
 
 When the menu contains more entries than the configured limit, clicking the field opens a popup that embeds the search bar and pagination controls directly in the dropdown itself. The inspector row remains single-line, but the popup still supports fast filtering and page navigation.
 
-![Image placeholder: Popup window with search box filtering results]
+> **Visual Reference**
+>
+> ![StringInList search popup](../../images/inspector/selection/string-in-list-search.gif)
+> _Popup window with search box filtering results in real-time_
 
 **Features:**
 

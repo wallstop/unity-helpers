@@ -3,7 +3,7 @@
 ## TL;DR — What Problem This Solves
 
 - **⭐ Build buff/debuff systems without writing custom code for every effect.**
-- Data‑driven ScriptableObjects: designers create 100s of effects, programmers build system once.
+- Data‑driven ScriptableObjects: designers create 100s of effects, programmers build the system once.
 - **Time saved: Weeks of boilerplate eliminated + designers empowered to iterate freely.**
 - **✨ Attributes are NOT required!** Use the system purely for tag-based state management and timed cosmetic effects.
 
@@ -63,7 +63,7 @@ target.ApplyEffect(hasteEffect);
 
 **Designer Workflow:**
 
-1. Create effect asset in 30 seconds (no code)
+1. Create the effect asset in 30 seconds (no code)
 2. Test in-game immediately
 3. Tweak values and iterate freely
 4. Create variations (Haste II, Haste III) by duplicating assets
@@ -73,7 +73,7 @@ target.ApplyEffect(hasteEffect);
 - **Programmer time saved**: Weeks of boilerplate → system built once
 - **Designer empowerment**: Block creating 100s of effects instantly
 - **Iteration speed**: Change values without code changes/recompiles
-- **Maintainability**: All effects in one system vs scattered scripts
+- **Maintainability**: All effects in one system vs. scattered scripts
 
 Data‑driven gameplay effects that modify stats, apply tags, and drive cosmetic presentation.
 
@@ -84,14 +84,6 @@ This guide explains the concepts, how they work together, authoring patterns, re
 ![Effects Pipeline](../../images/effects/effects-pipeline.svg)
 
 ![Attribute Resolution](../../images/effects/attribute-resolution.svg)
-
-> **Effects in Action**
->
-> ![GIF placeholder: Effect being applied to character showing buff icon appearing and stats changing](../../images/effects/effect-application-demo.gif)
-> _Applying a Haste effect: speed attribute increases, buff icon appears, timer counts down_
->
-> ![GIF placeholder: Damage effect hitting character with health bar decreasing and cosmetic flash](../../images/effects/effect-damage-demo.gif)
-> _Instant damage effect: health attribute decreases with cosmetic damage flash_
 
 ## Concepts
 
@@ -135,7 +127,7 @@ public class CharacterStats : AttributesComponent
 
 - modifications: e.g., `{ attribute: "Speed", action: Multiplication, value: 1.5f }`
 - durationType: `Duration` with `duration = 5`
-- resetDurationOnReapplication: true to refresh timer on reapply
+- resetDurationOnReapplication: true to refresh timer on re-apply
 - effectTags: e.g., `[ "Haste" ]`
 - cosmeticEffects: prefab with `CosmeticEffectData` + `CosmeticEffectComponent` scripts
 
@@ -179,7 +171,7 @@ Attributes work best for values that are:
 
 **Why?** These values are frequently modified by multiple systems:
 
-- Combat system subtracts health on damage
+- Combat system subtracts health upon damage
 - Healing system adds health
 - Regeneration ticks add health over time
 - Death system resets health to zero
@@ -279,15 +271,15 @@ void ApplyHealthBuff()
 
 ### Why This Matters
 
-When you use Attributes for frequently-mutated "current" values:
+When you use Attributes for frequently mutated "current" values:
 
-1. **State conflicts** - Effects system and other systems fight over the value
+1. **State conflicts** - The effects system and other systems fight over the value
 2. **Save/load bugs** - Unclear whether to save base value or current value with modifiers
 3. **Unexpected restorations** - Removing an effect may restore old base value, losing damage/healing
 4. **Performance overhead** - Recalculating modifications on every damage tick
 5. **Complexity** - Need to carefully coordinate between effects and direct mutations
 
-**The Golden Rule:** If a value is modified by systems outside the effects system regularly (combat, regeneration, consumption), it should NOT be an Attribute. Use a regular field instead, and let Attributes handle the maximums/limits.
+**The Golden Rule:** If a value is modified by systems outside the effects system regularly (combat, regeneration, consumption), it should NOT be an Attribute. Use a regular field instead and let Attributes handle the maximums/limits.
 
 ## Using Tags WITHOUT Attributes
 
@@ -439,7 +431,7 @@ CosmeticEffectData (Container GameObject/Prefab)
 
 ### Step 1: Create a prefab with CosmeticEffectData\*\*
 
-1. Create new GameObject in scene
+1. Create a new GameObject in the scene
 2. Add Component → `CosmeticEffectData`
 3. Add your custom cosmetic components (particle systems, audio sources, etc.)
 4. Save as prefab
@@ -535,7 +527,7 @@ public class StatusIconCosmetic : CosmeticEffectComponent
 
 - New cosmetic instance created for each application
 - Best for: Particles, per-effect animations, independent visuals
-- Each application has isolated state
+- Each application has an isolated state
 - Higher memory cost, but full independence
 
 ```csharp
@@ -561,7 +553,7 @@ public class FireParticleCosmetic : CosmeticEffectComponent
 
 **CleansUpSelf = false (Automatic - Default):**
 
-- EffectHandler destroys the GameObject when effect is removed
+- EffectHandler destroys the GameObject when an effect is removed
 - Simplest option for most cases
 - Immediate cleanup
 
@@ -757,7 +749,7 @@ A single effect can have multiple cosmetic components with different behaviors:
    - If `RequiresInstancing = true`: Instantiate and parent to target
    - If `RequiresInstancing = false`: Reuse existing instance
 4. Call `OnApplyEffect(target)` on all components
-5. Cosmetics remain active while effect is active
+5. Cosmetics remain active while an effect is active
 
 **Removal Flow:**
 
@@ -797,7 +789,7 @@ A single effect can have multiple cosmetic components with different behaviors:
 - Effect: Multiplication `Speed *= 1.5f`, `Duration=5`, `resetDurationOnReapplication=true`, tag `Haste`.
 - Apply to extend: reapply before expiry to reset the timer.
 
-### 2) Poison: "Poisoned" tag for 10s with periodic damage
+### 2) Poison: "Poisoned" tag 10s with periodic damage
 
 - periodicEffects: add a definition with `interval = 1s`, `maxTicks = 10`, and an empty `modifications` array (ticks drive behaviours)
 - behaviors: attach a `PoisonDamageBehavior` that applies damage during `OnPeriodicTick` (sample below)
@@ -834,7 +826,7 @@ Pair this with a health component that owns mutable current-health state instead
 
 - durationType: Infinite
 - modifications: Addition `{ attribute: "Defense", value: 10f }`
-- Apply on equip, store handle, remove on unequip.
+- Apply on equip, store the handle, remove on unequip.
 
 ### 4) One‑off Permanent Bonus
 
@@ -845,13 +837,13 @@ Pair this with a health component that owns mutable current-health state instead
 
 - Set `stackingMode` on the effect asset to control reapplication:
   - `Stack` keeps separate handles (respecting `maximumStacks`, trimming the oldest when the cap is reached).
-  - `Refresh` reuses the first handle; set `resetDurationOnReapplication = true` if the timer should reset on reapply.
+  - `Refresh` reuses the first handle; set `resetDurationOnReapplication = true` if the timer should reset on reapplication.
   - `Replace` removes existing handles in the same group before adding a new one.
   - `Ignore` rejects duplicate applications.
 - Use `stackGroup = CustomKey` with a shared `stackGroupKey` when different assets should share a stack identity.
 - Inspect active stacks with `EffectHandler.GetEffectStackCount(effect)` or tag counts for debugging and UI.
 
-### 6) Shared vs Instanced Cosmetics
+### 6) Shared vs. Instanced Cosmetics
 
 - In `CosmeticEffectData`, set a component’s `RequiresInstance = true` for per‑application instances (e.g., particles).
 - Keep `RequiresInstance = false` for shared presenters (e.g., status icon overlay).
@@ -866,7 +858,7 @@ Pair this with a health component that owns mutable current-health state instead
 ### Effect Behaviours
 
 - Attach `EffectBehavior` ScriptableObjects to the `behaviors` list for per-handle runtime logic.
-- The system clones behaviours on apply and calls `OnApply`, `OnTick` (each frame), `OnPeriodicTick` (after periodic payloads fire), and `OnRemove`.
+- The system clones behaviours on application and calls `OnApply`, `OnTick` (each frame), `OnPeriodicTick` (after periodic payloads fire), and `OnRemove`.
 - Behaviours are ideal for integrating bespoke systems (e.g., camera shakes, AI hooks, quest tracking) while keeping designer-authored effects data-driven.
 - Keep behaviours stateless or store per-handle state on the cloned instance; clean up in `OnRemove`.
 
@@ -875,7 +867,7 @@ Pair this with a health component that owns mutable current-health state instead
 - Use Addition for flat changes; Multiplication for percentage changes; Override sparingly (wins last).
 - Use the Attribute Metadata Cache generator to power editor dropdowns for `attribute` names and avoid typos.
 - Centralize tag strings as constants to prevent mistakes and improve refactor safety.
-- Prefer shared cosmetics where feasible; instantiate only when state must be isolated per application.
+- Prefer shared cosmetics where feasible; instantiate only when the state must be isolated per application.
 - If reapplication should refresh timers, set `resetDurationOnReapplication = true` on the effect.
 
 ### Type-Safe Effect References with Enums
@@ -997,7 +989,7 @@ void UpdateEffectTooltip(EffectType effectType)
 **Benefits:**
 
 ✅ **Type safety** - Compiler catches typos and missing effects
-✅ **Refactoring** - Rename effects across entire codebase reliably
+✅ **Refactoring** - Rename effects across the entire codebase reliably
 ✅ **Autocomplete** - IDE suggests all available effects
 ✅ **Performance** - Dictionary lookup faster than Resources.Load
 ✅ **No magic strings** - Effect references are code symbols, not brittle strings
@@ -1228,9 +1220,9 @@ Q: Two systems apply the same tag. Who owns removal?
 
 - The tag is reference‑counted. Each application increments the count; removal decrements it. The tag is removed when the count reaches 0.
 
-Q: When should I use tags vs checking stats?
+Q: When should I use tags vs. checking stats?
 
-- Use tags to represent categorical states (e.g., Stunned/Poisoned/Invulnerable) independent from numeric values. Check stats for numeric thresholds or calculations.
+- Use tags to represent categorical states (e.g., Stunned/Poisoned/Invulnerable) independent of numeric values. Check stats for numeric thresholds or calculations.
 
 Q: How do I check if an effect modifies a specific attribute?
 
@@ -1249,7 +1241,7 @@ Q: How do I query tag counts or check multiple tags at once?
 - Effect didn’t clean up cosmetics
   - Confirm `RequiresInstance` is set correctly and components either clean up themselves (`CleansUpSelf`) or are destroyed by `EffectHandler`.
 
-- Duration didn’t refresh on reapply
+- Duration didn’t refresh on reapplication
   - Set `resetDurationOnReapplication = true` on the `AttributeEffect`.
 
 ## Advanced Scenarios: Beyond Buffs and Debuffs
@@ -1453,7 +1445,7 @@ public class EnemyAI : MonoBehaviour
 
 - ✅ **Multiple sources** - Dash, power-ups, debug mode all grant invulnerability independently
 - ✅ **Reference-counted** - All sources must end before invulnerability is removed
-- ✅ **Decoupled** - Combat system doesn't know about dash, debug, or cutscene systems
+- ✅ **Decoupled** - The combat system doesn't know about dash, debug, or cutscene systems
 - ✅ **Designer-friendly** - Create new invulnerability sources without code changes
 - ✅ **Debuggable** - Inspect TagHandler to see exactly why someone is invulnerable
 
@@ -1573,7 +1565,7 @@ public class EnemyAI : MonoBehaviour
 
 ### Pattern 3: Permission and Unlock Systems
 
-**The Problem:** Games have many gated systems (abilities, areas, features). Tracking unlocks with individual booleans becomes unwieldy.
+**The Problem:** Games have many gated systems (abilities, areas, features). Tracking all unlockables with individual booleans becomes unwieldy.
 
 **The Solution:**
 
@@ -1701,7 +1693,7 @@ public class SaveSystem : MonoBehaviour
 
 - ✅ **Persistent** - Infinite duration effects work like permanent flags
 - ✅ **Serializable** - Easy to save/load by checking tags
-- ✅ **Discoverable** - Inspect TagHandler to see all unlocks
+- ✅ **Discoverable** - Inspect TagHandler to see all unlockables
 - ✅ **No hardcoded strings** - Create unlock effects as assets
 - ✅ **Prevents duplication** - Reference-counting handles multiple unlock sources
 
@@ -1822,7 +1814,7 @@ public class ElementalInteractions : MonoBehaviour
 - ✅ **Composable** - Elements interact naturally through tags
 - ✅ **Discoverable** - All active elements visible in TagHandler
 - ✅ **Designer-friendly** - Create new elements without code changes
-- ✅ **Debuggable** - See exact element state at any moment
+- ✅ **Debuggable** - See the exact element state at any moment
 - ✅ **Extensible** - Add new elements and interactions easily
 
 ### Pattern 5: State Machine Replacement
