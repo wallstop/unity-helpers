@@ -1,16 +1,16 @@
-using UnityEngine;
-using WallstopStudios.UnityHelpers.Core.Attributes;
-
 namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
 {
-    internal sealed class ToggleDropdownAsset : ScriptableObject
+    using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+
+    internal sealed class ToggleDropDownAsset : ScriptableObject
     {
         [WEnumToggleButtons]
-        [WValueDropDown(typeof(DropdownProvider), nameof(DropdownProvider.GetModes))]
+        [WValueDropDown(typeof(DropDownProvider), nameof(DropDownProvider.GetModes))]
         public string mode;
     }
 
-    internal static class DropdownProvider
+    internal static class DropDownProvider
     {
         internal static string[] GetModes()
         {

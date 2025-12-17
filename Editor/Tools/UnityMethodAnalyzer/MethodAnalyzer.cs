@@ -646,7 +646,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
         }
 
         /// <summary>
-        /// Extracts generic type arguments from a type declaration like "WDropdownSelectorBase&lt;int&gt;".
+        /// Extracts generic type arguments from a type declaration like "WDropDownSelectorBase&lt;int&gt;".
         /// Properly handles nested generics like "Dictionary&lt;string, List&lt;int&gt;&gt;".
         /// </summary>
         private static List<string> ExtractGenericArguments(string typeDeclaration)

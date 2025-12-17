@@ -332,7 +332,7 @@ public string unrelatedField;  // Also included!
 [WGroup("stats", colorKey: "CustomRed")]  // Why red?
 ```
 
-### 4. Collapsible vs Always-Open
+### 4. Collapsible vs. Always-Open
 
 ```csharp
 // ✅ GOOD: Always-visible for frequently accessed data

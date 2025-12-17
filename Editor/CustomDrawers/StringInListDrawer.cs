@@ -772,7 +772,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private sealed class StringInListPopupSelectorElement : WDropdownPopupSelectorBase<string>
+        private sealed class StringInListPopupSelectorElement : WDropDownPopupSelectorBase<string>
         {
             private readonly string[] _options;
             private readonly StringInListAttribute _attribute;
@@ -817,7 +817,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private sealed class StringInListSelector : WDropdownSelectorBase<string>
+        private sealed class StringInListSelector : WDropDownSelectorBase<string>
         {
             private readonly string[] _options;
             private readonly StringInListAttribute _attribute;

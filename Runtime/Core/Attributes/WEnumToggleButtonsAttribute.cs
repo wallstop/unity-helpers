@@ -53,7 +53,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// public string difficulty;
     ///
     /// [WEnumToggleButtons(ButtonsPerRow = 4)]
-    /// [IntDropdown(15, 30, 45, 60)]
+    /// [IntDropDown(15, 30, 45, 60)]
     /// public int targetFrameRate;
     ///
     /// [WEnumToggleButtons]
@@ -63,13 +63,20 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// </example>
     public sealed class WEnumToggleButtonsAttribute : PropertyAttribute
     {
-        private string colorKey;
+        private string _colorKey;
 
         /// <summary>
         /// Initializes the attribute with automatic row sizing.
         /// </summary>
         public WEnumToggleButtonsAttribute()
-            : this(0) { }
+            : this(
+                buttonsPerRow: 0,
+                showSelectAll: true,
+                showSelectNone: true,
+                enablePagination: true,
+                pageSize: 0,
+                colorKey: null
+            ) { }
 
         /// <summary>
         /// Initializes the attribute with a fixed number of buttons per row.
@@ -80,6 +87,49 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// </param>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="buttonsPerRow"/> is negative.</exception>
         public WEnumToggleButtonsAttribute(int buttonsPerRow)
+            : this(
+                buttonsPerRow: buttonsPerRow,
+                showSelectAll: true,
+                showSelectNone: true,
+                enablePagination: true,
+                pageSize: 0,
+                colorKey: null
+            ) { }
+
+        /// <summary>
+        /// Initializes the attribute with full control over all configuration options.
+        /// </summary>
+        /// <param name="buttonsPerRow">
+        /// Number of buttons to render per row. Values below one fall back to automatic sizing.
+        /// Use zero to keep the automatic layout behaviour while still enabling the optional toolbar controls.
+        /// </param>
+        /// <param name="showSelectAll">
+        /// Whether a quick action button for selecting every flag should be displayed.
+        /// Only meaningful for <c>[Flags]</c> enums.
+        /// </param>
+        /// <param name="showSelectNone">
+        /// Whether a quick action button for clearing every flag should be displayed.
+        /// Only meaningful for <c>[Flags]</c> enums.
+        /// </param>
+        /// <param name="enablePagination">
+        /// Whether pagination may be applied when the option count exceeds the configured threshold.
+        /// </param>
+        /// <param name="pageSize">
+        /// The maximum number of options displayed per page before pagination occurs.
+        /// Values less than or equal to zero defer to the project-wide default.
+        /// </param>
+        /// <param name="colorKey">
+        /// An optional palette key used to resolve theming for the toggle buttons.
+        /// </param>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="buttonsPerRow"/> is negative.</exception>
+        public WEnumToggleButtonsAttribute(
+            int buttonsPerRow = 0,
+            bool showSelectAll = true,
+            bool showSelectNone = true,
+            bool enablePagination = true,
+            int pageSize = 0,
+            string colorKey = null
+        )
         {
             if (buttonsPerRow < 0)
             {
@@ -90,6 +140,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             }
 
             ButtonsPerRow = buttonsPerRow;
+            ShowSelectAll = showSelectAll;
+            ShowSelectNone = showSelectNone;
+            EnablePagination = enablePagination;
+            PageSize = pageSize;
+            ColorKey = colorKey;
         }
 
         /// <summary>
@@ -102,33 +157,33 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// Gets or sets a value indicating whether a quick action button for selecting every flag should be displayed.
         /// Only meaningful for <c>[Flags]</c> enums.
         /// </summary>
-        public bool ShowSelectAll { get; set; } = true;
+        public bool ShowSelectAll { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether a quick action button for clearing every flag should be displayed.
         /// Only meaningful for <c>[Flags]</c> enums.
         /// </summary>
-        public bool ShowSelectNone { get; set; } = true;
+        public bool ShowSelectNone { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether pagination may be applied when the option count exceeds the configured threshold.
         /// Disable when all options should always be visible regardless of their count.
         /// </summary>
-        public bool EnablePagination { get; set; } = true;
+        public bool EnablePagination { get; set; }
 
         /// <summary>
         /// Gets or sets the maximum number of options displayed per page before pagination occurs.
         /// Values less than or equal to zero defer to the project-wide default stored in <c>UnityHelpersSettings</c>.
         /// </summary>
-        public int PageSize { get; set; } = 0;
+        public int PageSize { get; set; }
 
         /// <summary>
         /// Gets or sets an optional palette key used to resolve theming for the toggle buttons.
         /// </summary>
         public string ColorKey
         {
-            get => colorKey;
-            set => colorKey = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            get => _colorKey;
+            set => _colorKey = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
         }
     }
 }

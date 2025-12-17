@@ -2,7 +2,7 @@
 
 **Show or hide fields dynamically based on runtime values.**
 
-The `[WShowIf]` attribute creates dynamic inspector layouts that adapt to field values without writing custom PropertyDrawers. Perfect for reducing clutter, creating contextual UI, and guiding designers toward valid configurations.
+The `[WShowIf]` attribute creates dynamic inspector layouts that adapt to field values without writing custom PropertyDrawers. Perfect for reducing clutter, creating a contextual UI, and guiding designers toward valid configurations.
 
 ---
 
@@ -550,7 +550,7 @@ public class GraphicsSettings : MonoBehaviour
 
 ### Field Not Showing
 
-**Problem:** Field doesn't appear when condition should be true
+**Problem:** Field doesn't appear when a condition should be true
 
 **Solutions:**
 
@@ -567,7 +567,7 @@ public class GraphicsSettings : MonoBehaviour
 
 **Solutions:**
 
-1. Ensure condition field exists and is spelled correctly
+1. Ensure the condition field exists and is spelled correctly
 2. Make condition field `public` (not `private` or `protected`)
 3. For properties, ensure they have a public getter
 4. For methods, ensure they're public and parameterless

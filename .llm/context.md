@@ -171,16 +171,52 @@ Unity -batchmode -projectPath <Project> -runTests -testPlatform PlayMode -testRe
 
 ### Critical Rules
 
-1. **NO underscores in ANY method names** — This applies to ALL code (production AND test). This is a strict `.editorconfig` rule that must never be violated:
+1. **`using` directives MUST be inside the namespace** — All `using` directives must be placed INSIDE the namespace declaration, NEVER at the top of the file outside the namespace. This is a strict `.editorconfig` rule:
+   - ✅ Correct:
+
+     ```csharp
+     namespace WallstopStudios.UnityHelpers.Core
+     {
+         using System;
+         using System.Collections.Generic;
+         using UnityEngine;
+
+         public sealed class MyClass
+         {
+             // ...
+         }
+     }
+     ```
+
+   - ❌ Incorrect:
+
+     ```csharp
+     using System;
+     using System.Collections.Generic;
+     using UnityEngine;
+
+     namespace WallstopStudios.UnityHelpers.Core
+     {
+         public sealed class MyClass
+         {
+             // ...
+         }
+     }
+     ```
+
+   - This applies to ALL C# files (production AND test code)
+   - The only exception is `global using` directives if ever used (but prefer avoiding them)
+
+2. **NO underscores in ANY method names** — This applies to ALL code (production AND test). This is a strict `.editorconfig` rule that must never be violated:
    - ✅ `GetInvocationStatusNoActiveInvocationReturnsZeroRunningCount`
    - ❌ `GetInvocationStatus_NoActiveInvocation_ReturnsZeroRunningCount`
    - ✅ `ValidateInputReturnsErrorWhenEmpty`
    - ❌ `ValidateInput_Returns_Error_When_Empty`
    - This includes test methods — always use PascalCase without underscores
 
-2. **Avoid `var`**: Use expressive types everywhere
+3. **Avoid `var`**: Use expressive types everywhere
 
-3. **NEVER use `#region`** — No regions anywhere in the codebase (production OR test code). This is an absolute rule with zero exceptions:
+4. **NEVER use `#region`** — No regions anywhere in the codebase (production OR test code). This is an absolute rule with zero exceptions:
    - ❌ `#region Helper Methods`
    - ❌ `#endregion`
    - ❌ `#region Test Setup`
@@ -188,7 +224,7 @@ Unity -batchmode -projectPath <Project> -runTests -testPlatform PlayMode -testRe
    - Organize code through class structure and file organization instead
    - If you see existing `#region` blocks, remove them
 
-4. **NEVER use nullable reference types** — This is a strict, non-negotiable rule. Nullable reference types (NRTs) are NOT compatible with Unity/Mono/IL2CPP:
+5. **NEVER use nullable reference types** — This is a strict, non-negotiable rule. Nullable reference types (NRTs) are NOT compatible with Unity/Mono/IL2CPP:
    - ❌ `string?` — Never use nullable string
    - ❌ `object?` — Never use nullable object
    - ❌ `List<string>?` — Never use nullable collections
@@ -200,7 +236,7 @@ Unity -batchmode -projectPath <Project> -runTests -testPlatform PlayMode -testRe
    - ✅ `int?`, `float?`, `bool?` — Nullable VALUE types are OK (these are `Nullable<T>` structs)
    - **Why**: Unity uses Mono/IL2CPP which targets older .NET Standard. NRTs cause compilation failures, IL2CPP build errors, and runtime issues on platforms like WebGL, iOS, and Android.
 
-5. **One file per MonoBehaviour/ScriptableObject** — Each `MonoBehaviour` or `ScriptableObject` class MUST have its own dedicated `.cs` file (production AND test code):
+6. **One file per MonoBehaviour/ScriptableObject** — Each `MonoBehaviour` or `ScriptableObject` class MUST have its own dedicated `.cs` file (production AND test code):
    - ✅ `MyTestComponent.cs` containing only `class MyTestComponent : MonoBehaviour`
    - ✅ `TestScriptableObject.cs` containing only `class TestScriptableObject : ScriptableObject`
    - ❌ Multiple MonoBehaviours in the same file
@@ -208,7 +244,7 @@ Unity -batchmode -projectPath <Project> -runTests -testPlatform PlayMode -testRe
    - This is a Unity requirement for proper serialization and asset creation
    - **Enforced by pre-commit hook and CI/CD analyzer** — violations will block commits and fail builds
 
-6. **Enum design requirements** — All enums must follow these rules to distinguish between "unset/default" and "explicitly set" values:
+7. **Enum design requirements** — All enums must follow these rules to distinguish between "unset/default" and "explicitly set" values:
    - **Explicit values required**: Every enum member must have an explicitly assigned integer value
    - **First member must be `None` or `Unknown` with value `0`**: This represents the uninitialized/default state
    - **Mark the zero value as `[Obsolete]`**: Use a non-erroring obsolete attribute to warn users to select a meaningful value
@@ -232,7 +268,7 @@ Unity -batchmode -projectPath <Project> -runTests -testPlatform PlayMode -testRe
      - ✅ IDE warnings appear when using the default/unset value
      - ✅ Explicit ordering prevents value changes when members are reordered
 
-7. **NEVER use `?.`, `??`, `??=`, or `ReferenceEquals` on UnityEngine.Object types** — Unity overrides `==` and `!=` operators for lifecycle-aware null checks. The standard C# null operators bypass this override and produce incorrect results:
+8. **NEVER use `?.`, `??`, `??=`, or `ReferenceEquals` on UnityEngine.Object types** — Unity overrides `==` and `!=` operators for lifecycle-aware null checks. The standard C# null operators bypass this override and produce incorrect results:
    - ❌ `gameObject?.SetActive(true)` — Bypasses Unity's null check
    - ❌ `component ?? fallback` — Bypasses Unity's null check
    - ❌ `_cached ??= GetComponent<T>()` — Bypasses Unity's null check
@@ -245,7 +281,7 @@ Unity -batchmode -projectPath <Project> -runTests -testPlatform PlayMode -testRe
    - **This applies to ALL UnityEngine.Object-derived types**: `GameObject`, `Component`, `MonoBehaviour`, `ScriptableObject`, `Transform`, `Rigidbody`, `Collider`, `Renderer`, `Material`, `Texture`, `AudioClip`, `AnimationClip`, `Sprite`, etc.
    - **Enforced in both production AND test code** — no exceptions
 
-8. **Use Unity Helpers collection/dictionary extensions** — Prefer the built-in extension methods from `WallstopStudios.UnityHelpers.Core.Extension` to simplify code and reduce boilerplate:
+9. **Use Unity Helpers collection/dictionary extensions** — Prefer the built-in extension methods from `WallstopStudios.UnityHelpers.Core.Extension` to simplify code and reduce boilerplate:
    - **Dictionary extensions** (`DictionaryExtensions`):
      - ✅ `dictionary.GetOrAdd(key)` — Gets or creates a new instance (requires `where V : new()`)
      - ✅ `dictionary.GetOrAdd(key, () => new Value())` — Gets or creates with factory
@@ -284,56 +320,57 @@ Unity -batchmode -projectPath <Project> -runTests -testPlatform PlayMode -testRe
    - These extensions are optimized for `ConcurrentDictionary` when applicable
    - Located in `Runtime/Core/Extension/` — ensure proper `using` directive
 
-9. **Minimize allocations and maximize performance** — All production and editor code should aim for minimal GC allocations and high performance. This is critical for both runtime code (frame rate, GC spikes) and editor tooling (responsive UI, large project scalability):
-   - **Avoid LINQ in hot paths**: LINQ methods allocate iterators and delegates
-     - ❌ `items.Where(x => x.IsValid).ToList()` — Allocates iterator, delegate, and list
-     - ❌ `items.Any(x => x.Id == targetId)` — Allocates delegate
-     - ❌ `items.Select(x => x.Name).FirstOrDefault()` — Allocates iterator and delegate
-     - ✅ Use `for`/`foreach` loops with explicit logic instead
-     - ✅ Use `Buffers<T>.List` for temporary collections (zero-allocation pooling)
-   - **Avoid closures that capture variables**: Closures allocate heap objects
-     - ❌ `list.Find(item => item.Id == searchId)` — Captures `searchId`, allocates closure
-     - ❌ `items.RemoveAll(x => x.Owner == this)` — Captures `this`, allocates closure
-     - ✅ Use explicit loops or pass state via parameters/fields
-   - **Prefer structs over classes for small, short-lived data**:
-     - ✅ Use `struct` for data containers under ~16 bytes that don't need inheritance
-     - ✅ Use `readonly struct` for immutable value types
-     - ✅ Use `ref struct` for stack-only types when appropriate
-     - ❌ Avoid boxing structs (passing to `object`, non-generic collections)
-   - **Pool and reuse collections**:
-     - ✅ `using var lease = Buffers<T>.List.Get(out List<T> buffer);` — Returns to pool automatically
-     - ✅ `using var lease = Buffers<T>.HashSet.Get(out HashSet<T> buffer);`
-     - ✅ Clear and reuse collections instead of allocating new ones
-     - ❌ `new List<T>()` in frequently-called methods
-   - **Use stack allocation where appropriate**:
-     - ✅ `stackalloc` for small fixed-size arrays in performance-critical code
-     - ✅ Value tuples `(int x, int y)` instead of `Tuple<int, int>`
-   - **String operations**:
-     - ❌ String concatenation in loops (`str += value`)
-     - ❌ `string.Format()` or interpolation in hot paths
-     - ✅ `StringBuilder` for building strings (pooled if possible)
-     - ✅ Cache formatted strings when values don't change
-   - **Editor code is NOT exempt**: Editor tools must also be performant, especially for:
-     - Inspector drawing (called every frame when visible)
-     - Asset processing (may handle thousands of assets)
-     - Scene view rendering callbacks
-   - **Example transformation**:
+10. **Minimize allocations and maximize performance** — All production and editor code should aim for minimal GC allocations and high performance. This is critical for both runtime code (frame rate, GC spikes) and editor tooling (responsive UI, large project scalability):
 
-     ```csharp
-     // ❌ Allocates: iterator, delegate, closure, list
-     List<Enemy> activeEnemies = enemies.Where(e => e.Health > 0 && e.Distance < range).ToList();
+- **Avoid LINQ in hot paths**: LINQ methods allocate iterators and delegates
+  - ❌ `items.Where(x => x.IsValid).ToList()` — Allocates iterator, delegate, and list
+  - ❌ `items.Any(x => x.Id == targetId)` — Allocates delegate
+  - ❌ `items.Select(x => x.Name).FirstOrDefault()` — Allocates iterator and delegate
+  - ✅ Use `for`/`foreach` loops with explicit logic instead
+  - ✅ Use `Buffers<T>.List` for temporary collections (zero-allocation pooling)
+- **Avoid closures that capture variables**: Closures allocate heap objects
+  - ❌ `list.Find(item => item.Id == searchId)` — Captures `searchId`, allocates closure
+  - ❌ `items.RemoveAll(x => x.Owner == this)` — Captures `this`, allocates closure
+  - ✅ Use explicit loops or pass state via parameters/fields
+- **Prefer structs over classes for small, short-lived data**:
+  - ✅ Use `struct` for data containers under ~16 bytes that don't need inheritance
+  - ✅ Use `readonly struct` for immutable value types
+  - ✅ Use `ref struct` for stack-only types when appropriate
+  - ❌ Avoid boxing structs (passing to `object`, non-generic collections)
+- **Pool and reuse collections**:
+  - ✅ `using var lease = Buffers<T>.List.Get(out List<T> buffer);` — Returns to pool automatically
+  - ✅ `using var lease = Buffers<T>.HashSet.Get(out HashSet<T> buffer);`
+  - ✅ Clear and reuse collections instead of allocating new ones
+  - ❌ `new List<T>()` in frequently-called methods
+- **Use stack allocation where appropriate**:
+  - ✅ `stackalloc` for small fixed-size arrays in performance-critical code
+  - ✅ Value tuples `(int x, int y)` instead of `Tuple<int, int>`
+- **String operations**:
+  - ❌ String concatenation in loops (`str += value`)
+  - ❌ `string.Format()` or interpolation in hot paths
+  - ✅ `StringBuilder` for building strings (pooled if possible)
+  - ✅ Cache formatted strings when values don't change
+- **Editor code is NOT exempt**: Editor tools must also be performant, especially for:
+  - Inspector drawing (called every frame when visible)
+  - Asset processing (may handle thousands of assets)
+  - Scene view rendering callbacks
+- **Example transformation**:
 
-     // ✅ Zero allocations with pooled buffer
-     using var lease = Buffers<Enemy>.List.Get(out List<Enemy> activeEnemies);
-     for (int i = 0; i < enemies.Count; i++)
-     {
-         Enemy enemy = enemies[i];
-         if (enemy.Health > 0 && enemy.Distance < range)
-         {
-             activeEnemies.Add(enemy);
-         }
-     }
-     ```
+  ```csharp
+  // ❌ Allocates: iterator, delegate, closure, list
+  List<Enemy> activeEnemies = enemies.Where(e => e.Health > 0 && e.Distance < range).ToList();
+
+  // ✅ Zero allocations with pooled buffer
+  using var lease = Buffers<Enemy>.List.Get(out List<Enemy> activeEnemies);
+  for (int i = 0; i < enemies.Count; i++)
+  {
+      Enemy enemy = enemies[i];
+      if (enemy.Health > 0 && enemy.Distance < range)
+      {
+          activeEnemies.Add(enemy);
+      }
+  }
+  ```
 
 ---
 
@@ -510,31 +547,247 @@ When using `[TestCase]`, `[Values]`, or other data-driven attributes with string
 
 ### Command-Line Tools
 
-The dev container includes modern, optimized CLI tools. Prefer these over traditional alternatives:
+The dev container includes modern, high-performance CLI tools. **Always use these tools instead of their traditional counterparts** — they are faster, more intuitive, and provide better output.
 
-| Modern Tool           | Replaces     | Why Better                                                        |
-| --------------------- | ------------ | ----------------------------------------------------------------- |
-| `rg` (ripgrep)        | `grep`       | 10x faster, respects `.gitignore`, better regex                   |
-| `fd`                  | `find`       | Intuitive syntax, respects `.gitignore`, faster                   |
-| `bat`                 | `cat`/`less` | Syntax highlighting, line numbers, git integration                |
-| `eza`                 | `ls`         | Icons, git status, tree view, better defaults                     |
-| `delta`               | `diff`       | Side-by-side diffs, syntax highlighting (auto-configured for git) |
-| `fzf`                 | —            | Fuzzy finder for files, history, anything                         |
-| `z` (zoxide)          | `cd`         | Learns your habits, jump to frequent directories                  |
-| `jq`                  | —            | JSON processor and pretty-printer                                 |
-| `yq`                  | —            | YAML processor (like jq for YAML)                                 |
-| `duf`                 | `df`         | Better disk usage display                                         |
-| `htop`                | `top`        | Interactive process viewer                                        |
-| `ncdu`                | `du`         | Interactive disk usage analyzer                                   |
-| `ag` (silversearcher) | `grep`       | Fast code search (alternative to rg)                              |
-| `tldr`                | `man`        | Simplified man pages with examples                                |
+#### Tool Reference
 
-**Usage guidelines:**
+| Modern Tool           | Replaces     | Why Better                                                          |
+| --------------------- | ------------ | ------------------------------------------------------------------- |
+| `rg` (ripgrep)        | `grep`       | 10-100x faster, respects `.gitignore`, better regex, colored output |
+| `fd`                  | `find`       | 5x faster, intuitive syntax, respects `.gitignore`, colored output  |
+| `bat`                 | `cat`/`less` | Syntax highlighting, line numbers, git integration                  |
+| `eza`                 | `ls`         | Icons, git status, tree view, better defaults                       |
+| `delta`               | `diff`       | Side-by-side diffs, syntax highlighting (auto-configured for git)   |
+| `sd`                  | `sed`        | Intuitive syntax, regex support, no escaping headaches              |
+| `dust`                | `du`         | Visual directory size with percentages, sorted output               |
+| `procs`               | `ps`         | Colored output, tree view, searchable, better defaults              |
+| `tokei`               | `cloc`       | Fast code statistics by language, accurate line counts              |
+| `fzf`                 | —            | Fuzzy finder for files, history, anything                           |
+| `z` (zoxide)          | `cd`         | Learns your habits, jump to frequent directories                    |
+| `jq`                  | —            | JSON processor and pretty-printer                                   |
+| `yq`                  | —            | YAML processor (like jq for YAML)                                   |
+| `duf`                 | `df`         | Better disk usage display                                           |
+| `htop`                | `top`        | Interactive process viewer                                          |
+| `ncdu`                | `du`         | Interactive disk usage analyzer                                     |
+| `ag` (silversearcher) | `grep`       | Fast code search (alternative to rg)                                |
+| `tldr`                | `man`        | Simplified man pages with examples                                  |
 
-- Always prefer `rg` for searching file contents
-- Use `fd` for finding files by name (e.g., `fd "\.cs$"` instead of `find . -name "*.cs"`)
-- Use `bat` when you need syntax-highlighted file viewing
-- The shell aliases `grep`, `find`, `cat`, `ls`, `cd`, and `df` to their modern equivalents
+#### Shell Aliases (Pre-configured)
+
+The following aliases are configured in the dev container, so traditional commands automatically use modern tools:
+
+```bash
+grep → rg        # ripgrep
+find → fd        # fd-find
+cat  → bat       # bat with syntax highlighting
+ls   → eza       # eza with icons
+cd   → z         # zoxide smart navigation
+df   → duf       # disk usage
+sed  → sd        # intuitive find-and-replace
+du   → dust      # visual disk usage
+ps   → procs     # modern process viewer
+```
+
+#### Mandatory Tool Usage Rules
+
+**ALWAYS use `rg` (ripgrep) instead of `grep`:**
+
+```bash
+# ✅ CORRECT - Use ripgrep
+rg "function_name" --type cs                    # Search C# files
+rg "TODO|FIXME" -g "*.cs"                       # Search with glob pattern
+rg "pattern" -C 3                               # Show 3 lines of context
+rg "class \w+" --pcre2                          # Use PCRE2 regex
+rg "error" -i                                   # Case-insensitive search
+rg "pattern" -l                                 # List matching files only
+rg "pattern" --no-ignore                        # Include gitignored files
+rg "pattern" -A 5 -B 2                          # 5 lines after, 2 before
+
+# ❌ NEVER use grep
+grep -r "pattern" .                             # Slow, no syntax highlighting
+grep -rn "pattern" --include="*.cs" .           # Verbose, slower
+```
+
+**ALWAYS use `fd` instead of `find`:**
+
+```bash
+# ✅ CORRECT - Use fd
+fd "\.cs$"                                      # Find all C# files
+fd "Tests" --type d                             # Find directories named Tests
+fd "\.meta$" Runtime/                           # Find .meta files in Runtime/
+fd -e cs -e json                                # Find files with extensions
+fd "pattern" --hidden                           # Include hidden files
+fd "pattern" --no-ignore                        # Include gitignored files
+fd "pattern" -x echo {}                         # Execute command on results
+fd "^test" --type f -X bat                      # Open all matching files in bat
+
+# ❌ NEVER use find
+find . -name "*.cs"                             # Slow, verbose syntax
+find . -type d -name "Tests"                    # More typing, slower
+```
+
+**ALWAYS use `bat` instead of `cat` for file viewing:**
+
+```bash
+# ✅ CORRECT - Use bat
+bat file.cs                                     # View with syntax highlighting
+bat -n file.cs                                  # Show line numbers only
+bat -r 10:20 file.cs                            # Show lines 10-20
+bat --diff file1.cs file2.cs                    # Side-by-side diff
+bat -l cs                                       # Force C# syntax highlighting
+bat -p file.cs                                  # Plain output (no decorations)
+
+# ❌ NEVER use cat for reading source files
+cat file.cs                                     # No highlighting, no line numbers
+```
+
+**ALWAYS use `eza` instead of `ls`:**
+
+```bash
+# ✅ CORRECT - Use eza
+eza -la                                         # List all with details
+eza --tree                                      # Tree view
+eza --tree --level=2                            # Tree with depth limit
+eza -la --git                                   # Show git status
+eza --icons                                     # Show file type icons
+
+# ❌ NEVER use ls
+ls -la                                          # No icons, no git status
+```
+
+**ALWAYS use `duf` instead of `df`:**
+
+```bash
+# ✅ CORRECT - Use duf
+duf                                             # Show disk usage beautifully
+
+# ❌ NEVER use df
+df -h                                           # Hard to read output
+```
+
+**ALWAYS use `sd` instead of `sed` for find-and-replace:**
+
+```bash
+# ✅ CORRECT - Use sd
+sd 'oldPattern' 'newPattern' file.cs            # Simple replacement
+sd 'foo(\d+)' 'bar$1' file.cs                   # Regex with capture groups
+sd -F 'literal.string' 'replacement' file.cs    # Fixed string (no regex)
+echo "hello world" | sd 'world' 'universe'      # Pipe support
+fd -e cs | xargs sd 'OldClass' 'NewClass'       # Bulk replace in files
+
+# ❌ NEVER use sed
+sed -i 's/old/new/g' file.cs                    # Escape nightmare
+sed -E 's/foo([0-9]+)/bar\1/g' file.cs          # Confusing syntax
+```
+
+**ALWAYS use `dust` instead of `du` for disk usage:**
+
+```bash
+# ✅ CORRECT - Use dust
+dust                                            # Visual size breakdown of current dir
+dust -r                                         # Reverse order (largest last)
+dust -d 2                                       # Limit depth to 2 levels
+dust Runtime/                                   # Analyze specific directory
+dust -n 20                                      # Show top 20 entries
+
+# ❌ NEVER use du
+du -sh *                                        # No visual breakdown, unsorted
+du -h --max-depth=2                             # Harder to read output
+```
+
+**ALWAYS use `procs` instead of `ps` for process viewing:**
+
+```bash
+# ✅ CORRECT - Use procs
+procs                                           # List all processes (colored, sorted)
+procs --tree                                    # Show process tree
+procs dotnet                                    # Filter by name
+procs --sortd cpu                               # Sort by CPU descending
+procs --watch                                   # Watch mode (auto-refresh)
+
+# ❌ NEVER use ps
+ps aux                                          # Hard to read, no colors
+ps aux | grep dotnet                            # Awkward filtering
+```
+
+**Use `tokei` for code statistics:**
+
+```bash
+# ✅ CORRECT - Use tokei
+tokei                                           # Statistics for current project
+tokei Runtime/                                  # Statistics for specific directory
+tokei -e Tests                                  # Exclude directory
+tokei -t "C#"                                   # Only count C# files
+tokei --sort code                               # Sort by lines of code
+```
+
+#### Common Workflow Patterns
+
+**Finding and searching code:**
+
+```bash
+# Find all C# files containing a pattern
+rg "SerializableDictionary" --type cs
+
+# Find test files
+fd "Tests\.cs$"
+
+# Search in specific directory
+rg "IRandom" Runtime/Core/Random/
+
+# Find files modified recently and search them
+fd -e cs --changed-within 1d -x rg "pattern" {}
+
+# Count occurrences
+rg "TODO" --type cs -c
+
+# Search and replace preview (find what would change)
+rg "OldName" --type cs -l | xargs -I {} bat {} -r 1:5
+```
+
+**Viewing and comparing files:**
+
+```bash
+# View file with context
+bat -r 50:100 Runtime/Core/Helper/Buffers.cs
+
+# Compare files
+delta file1.cs file2.cs
+
+# View git diff with syntax highlighting (automatic via delta)
+git diff
+
+# Pretty-print JSON
+jq '.' package.json
+
+# Pretty-print YAML
+yq '.' some-file.yaml
+```
+
+**Interactive navigation:**
+
+```bash
+# Fuzzy find and open file
+fd -e cs | fzf | xargs bat
+
+# Search history interactively
+history | fzf
+
+# Jump to frequently used directory
+z Runtime                                       # Jump to most-used Runtime path
+zi                                              # Interactive directory selection
+```
+
+#### Performance Comparison
+
+| Task                         | Traditional    | Modern Tool | Speedup              |
+| ---------------------------- | -------------- | ----------- | -------------------- |
+| Search 10k files for pattern | `grep -r`      | `rg`        | 10-100x              |
+| Find files by extension      | `find -name`   | `fd -e`     | 5-10x                |
+| List directory with details  | `ls -la`       | `eza -la`   | Similar + features   |
+| View file with highlighting  | `cat` + manual | `bat`       | Instant highlighting |
+
+**Bottom line:** Modern tools are not just faster — they have better defaults, respect `.gitignore` automatically, provide colored output, and have more intuitive syntax. There is no reason to use the traditional tools in this dev container.
 
 ### Code Formatting
 
@@ -547,6 +800,82 @@ dotnet tool run csharpier format .
 ```
 
 This ensures consistent formatting across the codebase. Do not skip this step.
+
+### Unity Meta File Generation
+
+**CRITICAL: Always generate `.meta` files for every new file or folder created in the Unity package.**
+
+Unity requires a corresponding `.meta` file for every asset. Missing `.meta` files will cause Unity to generate new ones with different GUIDs, breaking references.
+
+#### Using the Meta File Generator
+
+After creating any new file or folder, run:
+
+```bash
+./scripts/generate-meta.sh <path-to-file-or-folder>
+```
+
+Examples:
+
+```bash
+# For a new C# script
+./scripts/generate-meta.sh Runtime/Core/NewFeature/MyNewClass.cs
+
+# For a new folder
+./scripts/generate-meta.sh Runtime/Core/NewFeature
+
+# For documentation
+./scripts/generate-meta.sh docs/features/new-feature.md
+
+# For assembly definitions
+./scripts/generate-meta.sh Runtime/NewAssembly.asmdef
+```
+
+#### When to Generate Meta Files
+
+Generate a `.meta` file whenever you create:
+
+- **C# source files** (`.cs`) — Uses `MonoImporter`
+- **Assembly definitions** (`.asmdef`, `.asmref`) — Uses appropriate importer
+- **Documentation** (`.md`, `.txt`, `.json`, `.xml`, `.yaml`) — Uses `TextScriptImporter`
+- **Shaders** (`.shader`, `.compute`, `.hlsl`, `.cginc`) — Uses appropriate shader importer
+- **UI files** (`.uss`, `.uxml`) — Uses UI Toolkit importers
+- **Folders/directories** — Uses `DefaultImporter` with `folderAsset: yes`
+- **Any other asset file** — The script handles most common Unity file types
+
+#### Important Rules
+
+1. **Never skip meta file generation** — Every file and folder needs a `.meta` file
+2. **Generate meta files in creation order** — Create parent folders' meta files before children
+3. **Use the script, don't manually create meta files** — The script generates proper GUIDs and importer settings
+4. **Don't modify existing meta files** — Changing GUIDs breaks asset references
+5. **Generate after file creation** — The file must exist before generating its meta file
+
+#### Supported File Types
+
+The script automatically selects the correct importer for:
+
+| Extension(s)                      | Importer Type                       |
+| --------------------------------- | ----------------------------------- |
+| `.cs`                             | MonoImporter                        |
+| `.asmdef`                         | AssemblyDefinitionImporter          |
+| `.asmref`                         | AssemblyDefinitionReferenceImporter |
+| `.shader`                         | ShaderImporter                      |
+| `.compute`                        | ComputeShaderImporter               |
+| `.shadergraph`, `.shadersubgraph` | ScriptedImporter                    |
+| `.uss`, `.uxml`                   | Simple format (timeCreated)         |
+| `.mat`                            | NativeFormatImporter                |
+| `.asset`                          | NativeFormatImporter                |
+| `.prefab`                         | PrefabImporter                      |
+| `.unity`                          | DefaultImporter                     |
+| `.png`, `.jpg`, `.tga`, etc.      | TextureImporter                     |
+| `.wav`, `.mp3`, `.ogg`, etc.      | AudioImporter                       |
+| `.fbx`, `.obj`, `.dae`, etc.      | ModelImporter                       |
+| `.ttf`, `.otf`                    | TrueTypeFontImporter                |
+| `.md`, `.txt`, `.json`, `.xml`    | TextScriptImporter                  |
+| `package.json`                    | PackageManifestImporter             |
+| directories                       | DefaultImporter (folderAsset)       |
+| other                             | DefaultImporter                     |
 
 ### Testing Requirements for Bug Fixes and New Features
 

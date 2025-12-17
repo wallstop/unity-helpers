@@ -20,12 +20,12 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// <example>
     /// Inline list:
     /// <code>
-    /// [IntDropdown(0, 30, 60, 120)]
+    /// [IntDropDown(0, 30, 60, 120)]
     /// public int frameRate;
     /// </code>
     /// Static provider:
     /// <code>
-    /// [IntDropdown(typeof(FrameRateLibrary), nameof(FrameRateLibrary.GetSupportedFrameRates))]
+    /// [IntDropDown(typeof(FrameRateLibrary), nameof(FrameRateLibrary.GetSupportedFrameRates))]
     /// public int frameRate;
     ///
     /// private static class FrameRateLibrary
@@ -35,7 +35,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// </code>
     /// Instance provider:
     /// <code>
-    /// [IntDropdown(nameof(GetAvailableIds))]
+    /// [IntDropDown(nameof(GetAvailableIds))]
     /// public int selectedId;
     ///
     /// private IEnumerable&lt;int&gt; GetAvailableIds() =&gt; cachedIds;

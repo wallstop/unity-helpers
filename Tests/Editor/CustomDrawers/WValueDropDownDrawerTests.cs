@@ -468,13 +468,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         private static void InvokeApplySelection(BaseField<string> selector, int optionIndex)
         {
-            WDropdownSelectorBase<string> dropdownSelector =
-                selector as WDropdownSelectorBase<string>;
+            WDropDownSelectorBase<string> dropDownSelector =
+                selector as WDropDownSelectorBase<string>;
             Assert.IsNotNull(
-                dropdownSelector,
-                $"Expected selector to derive from WDropdownSelectorBase<string>, but was {selector?.GetType().FullName ?? "null"}."
+                dropDownSelector,
+                $"Expected selector to derive from WDropDownSelectorBase<string>, but was {selector?.GetType().FullName ?? "null"}."
             );
-            dropdownSelector.ApplySelection(optionIndex);
+            dropDownSelector.ApplySelection(optionIndex);
         }
     }
 

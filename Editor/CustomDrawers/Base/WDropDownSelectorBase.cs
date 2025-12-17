@@ -15,7 +15,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
     /// Subclasses must implement type-specific methods for display, selection, and matching logic.
     /// </summary>
     /// <typeparam name="TValue">The type of the field value (string, int, etc.).</typeparam>
-    public abstract class WDropdownSelectorBase<TValue> : BaseField<TValue>
+    public abstract class WDropDownSelectorBase<TValue> : BaseField<TValue>
     {
         private const float ButtonWidth = 24f;
         private const float PaginationButtonHeight = 20f;
@@ -131,7 +131,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
             return element;
         }
 
-        protected WDropdownSelectorBase()
+        protected WDropDownSelectorBase()
             : base(string.Empty, CreateInputElement(out VisualElement baseInput))
         {
             EnsureBuffers();

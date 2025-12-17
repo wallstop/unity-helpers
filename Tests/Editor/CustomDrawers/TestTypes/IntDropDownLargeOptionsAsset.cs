@@ -6,13 +6,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
     [Serializable]
-    internal sealed class IntDropdownNoOptionsAsset : ScriptableObject
+    internal sealed class IntDropDownLargeOptionsAsset : ScriptableObject
     {
         [IntDropDown(
-            typeof(IntDropdownEmptySource),
-            nameof(IntDropdownEmptySource.GetEmptyOptions)
+            typeof(IntDropDownLargeSource),
+            nameof(IntDropDownLargeSource.GetLargeOptions)
         )]
-        public int unspecified;
+        public int selection = 100;
     }
 #endif
 }

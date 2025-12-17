@@ -1019,7 +1019,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private sealed class WValueDropDownPopupSelectorElement : WDropdownPopupSelectorBase<string>
+        private sealed class WValueDropDownPopupSelectorElement : WDropDownPopupSelectorBase<string>
         {
             private readonly object[] _options;
             private readonly WValueDropDownAttribute _attribute;
@@ -1093,7 +1093,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private sealed class WValueDropDownSelector : WDropdownSelectorBase<string>
+        private sealed class WValueDropDownSelector : WDropDownSelectorBase<string>
         {
             private readonly object[] _options;
             private readonly WValueDropDownAttribute _attribute;

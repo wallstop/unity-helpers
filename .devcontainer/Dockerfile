@@ -11,10 +11,22 @@ ARG TARGETARCH=amd64
 # - ncdu: Disk usage analyzer with ncurses interface
 # - tree: Directory listing in tree format
 # - tldr: Simplified man pages with practical examples
-# - hyperfine: Command-line benchmarking tool
 # - silversearcher-ag: Fast code search (ag command)
 # - moreutils: Additional Unix utilities (sponge, parallel, etc.)
-# - duf: Disk usage/free utility (better df)
+#
+# Additional tools installed from GitHub releases:
+# - fd: Fast file finder (better find)
+# - bat: Cat with syntax highlighting
+# - fzf: Fuzzy finder
+# - delta: Better git diffs
+# - eza: Modern ls replacement
+# - zoxide: Smarter cd command
+# - yq: YAML processor
+# - duf: Better df
+# - sd: Intuitive find-and-replace (better sed)
+# - dust: Visual disk usage (better du)
+# - procs: Modern process viewer (better ps)
+# - tokei: Code statistics
 RUN apt-get update && apt-get install -y \
     ripgrep \
     jq \
@@ -84,6 +96,31 @@ RUN DUF_VERSION="0.8.1" \
     | tar -xz -C /usr/local/bin duf \
     && chmod +x /usr/local/bin/duf
 
+# Install sd (intuitive find-and-replace, better sed) from GitHub releases
+RUN SD_VERSION="1.0.0" \
+    && curl -fsSL "https://github.com/chmln/sd/releases/download/v${SD_VERSION}/sd-v${SD_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+    | tar -xz --strip-components=1 -C /usr/local/bin sd-v${SD_VERSION}-x86_64-unknown-linux-gnu/sd \
+    && chmod +x /usr/local/bin/sd
+
+# Install dust (intuitive disk usage, better du) from GitHub releases
+RUN DUST_VERSION="1.1.1" \
+    && curl -fsSL "https://github.com/bootandy/dust/releases/download/v${DUST_VERSION}/dust-v${DUST_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+    | tar -xz --strip-components=1 -C /usr/local/bin dust-v${DUST_VERSION}-x86_64-unknown-linux-gnu/dust \
+    && chmod +x /usr/local/bin/dust
+
+# Install procs (modern replacement for ps) from GitHub releases
+RUN PROCS_VERSION="0.14.8" \
+    && curl -fsSL "https://github.com/dalance/procs/releases/download/v${PROCS_VERSION}/procs-v${PROCS_VERSION}-x86_64-linux.zip" -o /tmp/procs.zip \
+    && unzip -q /tmp/procs.zip -d /usr/local/bin \
+    && chmod +x /usr/local/bin/procs \
+    && rm /tmp/procs.zip
+
+# Install tokei (code statistics) from GitHub releases
+RUN TOKEI_VERSION="12.1.2" \
+    && curl -fsSL "https://github.com/XAMPPRocky/tokei/releases/download/v${TOKEI_VERSION}/tokei-x86_64-unknown-linux-gnu.tar.gz" \
+    | tar -xz -C /usr/local/bin tokei \
+    && chmod +x /usr/local/bin/tokei
+
 # Install PowerShell
 RUN wget -q https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb \
     && dpkg -i packages-microsoft-prod.deb \
@@ -130,6 +167,9 @@ RUN echo '\n# Modern CLI tool aliases' >> /etc/bash.bashrc \
     && echo 'alias find="fd"' >> /etc/bash.bashrc \
     && echo 'alias grep="rg"' >> /etc/bash.bashrc \
     && echo 'alias df="duf"' >> /etc/bash.bashrc \
+    && echo 'alias sed="sd"' >> /etc/bash.bashrc \
+    && echo 'alias du="dust"' >> /etc/bash.bashrc \
+    && echo 'alias ps="procs"' >> /etc/bash.bashrc \
     && echo 'alias cd="z"' >> /etc/bash.bashrc \
     && echo 'alias cdi="zi"' >> /etc/bash.bashrc
 

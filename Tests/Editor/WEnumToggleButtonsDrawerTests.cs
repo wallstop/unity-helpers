@@ -113,17 +113,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         [UnityTest]
         public IEnumerator GetPropertyHeightUsesCachedLayoutWhenAvailable()
         {
-            ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
+            ToggleDropDownAsset asset = CreateScriptableObject<ToggleDropDownAsset>();
             using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(ToggleDropdownAsset.mode)
+                nameof(ToggleDropDownAsset.mode)
             );
             Assert.IsNotNull(property, "Failed to locate serialized property for test asset.");
 
-            FieldInfo fieldInfo = typeof(ToggleDropdownAsset).GetField(
-                nameof(ToggleDropdownAsset.mode),
+            FieldInfo fieldInfo = typeof(ToggleDropDownAsset).GetField(
+                nameof(ToggleDropDownAsset.mode),
                 BindingFlags.Instance | BindingFlags.Public
             );
             Assert.IsNotNull(fieldInfo, "Failed to locate field info for test asset.");
@@ -165,12 +165,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         [Test]
         public void CreateToggleSetHandlesMissingFieldInfo()
         {
-            ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
+            ToggleDropDownAsset asset = CreateScriptableObject<ToggleDropDownAsset>();
             using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(ToggleDropdownAsset.mode)
+                nameof(ToggleDropDownAsset.mode)
             );
             Assert.IsNotNull(property, "Failed to locate serialized property for test asset.");
 
@@ -187,17 +187,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         [UnityTest]
         public IEnumerator GetPropertyHeightIgnoresExternalIndentation()
         {
-            ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
+            ToggleDropDownAsset asset = CreateScriptableObject<ToggleDropDownAsset>();
             using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(ToggleDropdownAsset.mode)
+                nameof(ToggleDropDownAsset.mode)
             );
             Assert.IsNotNull(property, "Failed to locate serialized property for test asset.");
 
-            FieldInfo fieldInfo = typeof(ToggleDropdownAsset).GetField(
-                nameof(ToggleDropdownAsset.mode),
+            FieldInfo fieldInfo = typeof(ToggleDropDownAsset).GetField(
+                nameof(ToggleDropDownAsset.mode),
                 BindingFlags.Instance | BindingFlags.Public
             );
             Assert.IsNotNull(fieldInfo);
@@ -241,17 +241,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
         [Test]
         public void GetPropertyHeightRespectsGroupPaddingContext()
         {
-            ToggleDropdownAsset asset = CreateScriptableObject<ToggleDropdownAsset>();
+            ToggleDropDownAsset asset = CreateScriptableObject<ToggleDropDownAsset>();
             using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(ToggleDropdownAsset.mode)
+                nameof(ToggleDropDownAsset.mode)
             );
             Assert.IsNotNull(property, "Failed to locate serialized property for test asset.");
 
-            FieldInfo fieldInfo = typeof(ToggleDropdownAsset).GetField(
-                nameof(ToggleDropdownAsset.mode),
+            FieldInfo fieldInfo = typeof(ToggleDropDownAsset).GetField(
+                nameof(ToggleDropDownAsset.mode),
                 BindingFlags.Instance | BindingFlags.Public
             );
             Assert.IsNotNull(fieldInfo);

@@ -494,11 +494,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 // Track all draw orders seen for this group (for warning purposes)
                 drawOrdersPerGroup.GetOrAdd(groupName).Add(drawOrder);
 
-                // Track all group priorities seen for this group (for warning purposes)
-                groupPrioritiesPerGroup.GetOrAdd(groupName).Add(groupPriority);
+                // Track only explicit group priorities for conflict detection (ignore NoGroupPriority sentinel)
+                if (groupPriority != WButtonAttribute.NoGroupPriority)
+                {
+                    groupPrioritiesPerGroup.GetOrAdd(groupName).Add(groupPriority);
+                }
 
-                // Track all group placements seen for this group (for warning purposes)
-                groupPlacementsPerGroup.GetOrAdd(groupName).Add(groupPlacement);
+                // Track only explicit group placements for conflict detection (ignore UseGlobalSetting sentinel)
+                if (groupPlacement != WButtonGroupPlacement.UseGlobalSetting)
+                {
+                    groupPlacementsPerGroup.GetOrAdd(groupName).Add(groupPlacement);
+                }
 
                 if (
                     !namedGroupInfo.TryGetValue(

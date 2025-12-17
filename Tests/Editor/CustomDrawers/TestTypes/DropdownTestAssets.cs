@@ -32,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
         }
     }
 
-    internal static class IntDropdownSource
+    internal static class IntDropDownSource
     {
         internal static int[] GetStaticOptions()
         {
@@ -40,7 +40,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
         }
     }
 
-    internal static class IntDropdownEmptySource
+    internal static class IntDropDownEmptySource
     {
         internal static int[] GetEmptyOptions()
         {
@@ -48,7 +48,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
         }
     }
 
-    internal static class IntDropdownLargeSource
+    internal static class IntDropDownLargeSource
     {
         internal static int[] GetLargeOptions()
         {

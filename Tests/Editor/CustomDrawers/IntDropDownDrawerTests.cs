@@ -16,26 +16,26 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using PropertyAttribute = UnityEngine.PropertyAttribute;
 
     [TestFixture]
-    public sealed class IntDropdownDrawerTests : CommonTestBase
+    public sealed class IntDropDownDrawerTests : CommonTestBase
     {
         [Test]
         public void CreatePropertyGUIWithoutOptionsReturnsHelpBox()
         {
-            IntDropdownNoOptionsAsset asset = CreateScriptableObject<IntDropdownNoOptionsAsset>();
+            IntDropDownNoOptionsAsset asset = CreateScriptableObject<IntDropDownNoOptionsAsset>();
             using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(IntDropdownNoOptionsAsset.unspecified)
+                nameof(IntDropDownNoOptionsAsset.unspecified)
             );
             Assert.IsNotNull(property, "Failed to locate int property.");
 
-            IntDropdownDrawer drawer = new();
+            IntDropDownDrawer drawer = new();
             AssignAttribute(
                 drawer,
                 new IntDropDownAttribute(
-                    typeof(IntDropdownEmptySource),
-                    nameof(IntDropdownEmptySource.GetEmptyOptions)
+                    typeof(IntDropDownEmptySource),
+                    nameof(IntDropDownEmptySource.GetEmptyOptions)
                 )
             );
             VisualElement element = drawer.CreatePropertyGUI(property);
@@ -45,47 +45,47 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void CreatePropertyGUIWithOptionsReturnsSelectorField()
         {
-            IntDropdownTestAsset asset = CreateScriptableObject<IntDropdownTestAsset>();
+            IntDropDownTestAsset asset = CreateScriptableObject<IntDropDownTestAsset>();
             asset.validValue = 10;
             using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(IntDropdownTestAsset.validValue)
+                nameof(IntDropDownTestAsset.validValue)
             );
             Assert.IsNotNull(property, "Failed to locate valid value property.");
 
-            IntDropdownDrawer drawer = new();
+            IntDropDownDrawer drawer = new();
             AssignAttribute(drawer, new IntDropDownAttribute(5, 10, 15));
             VisualElement element = drawer.CreatePropertyGUI(property);
             Assert.IsInstanceOf<BaseField<int>>(element);
 
             BaseField<int> selector = (BaseField<int>)element;
             DropdownField dropdown = selector.Q<DropdownField>();
-            Assert.IsNotNull(dropdown, "Dropdown field was not created.");
+            Assert.IsNotNull(dropdown, "DropDown field was not created.");
             Assert.That(dropdown.value, Is.EqualTo("10"));
         }
 
         [Test]
         public void CreatePropertyGUILargeOptionsReturnsPopupSelector()
         {
-            IntDropdownLargeOptionsAsset asset =
-                CreateScriptableObject<IntDropdownLargeOptionsAsset>();
+            IntDropDownLargeOptionsAsset asset =
+                CreateScriptableObject<IntDropDownLargeOptionsAsset>();
             asset.selection = 100;
             using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(IntDropdownLargeOptionsAsset.selection)
+                nameof(IntDropDownLargeOptionsAsset.selection)
             );
             Assert.IsNotNull(property, "Failed to locate selection property.");
 
-            IntDropdownDrawer drawer = new();
+            IntDropDownDrawer drawer = new();
             AssignAttribute(
                 drawer,
                 new IntDropDownAttribute(
-                    typeof(IntDropdownLargeSource),
-                    nameof(IntDropdownLargeSource.GetLargeOptions)
+                    typeof(IntDropDownLargeSource),
+                    nameof(IntDropDownLargeSource.GetLargeOptions)
                 )
             );
             VisualElement element = drawer.CreatePropertyGUI(property);
@@ -97,18 +97,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator OnGUIClampsValuesOutsideConfiguredOptions()
         {
-            IntDropdownTestAsset asset = CreateScriptableObject<IntDropdownTestAsset>();
+            IntDropDownTestAsset asset = CreateScriptableObject<IntDropDownTestAsset>();
             asset.missingValue = 999;
 
             using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(IntDropdownTestAsset.missingValue)
+                nameof(IntDropDownTestAsset.missingValue)
             );
             Assert.IsNotNull(property, "Failed to locate missing value property.");
 
-            IntDropdownDrawer drawer = new();
+            IntDropDownDrawer drawer = new();
             AssignAttribute(drawer, new IntDropDownAttribute(5, 10, 15));
             Rect position = new(0f, 0f, 240f, EditorGUIUtility.singleLineHeight);
             GUIContent label = new("Missing");
@@ -125,18 +125,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator OnGUILeavesValidSelectionUnchanged()
         {
-            IntDropdownTestAsset asset = CreateScriptableObject<IntDropdownTestAsset>();
+            IntDropDownTestAsset asset = CreateScriptableObject<IntDropDownTestAsset>();
             asset.validValue = 10;
 
             using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(IntDropdownTestAsset.validValue)
+                nameof(IntDropDownTestAsset.validValue)
             );
             Assert.IsNotNull(property, "Failed to locate valid value property.");
 
-            IntDropdownDrawer drawer = new();
+            IntDropDownDrawer drawer = new();
             AssignAttribute(drawer, new IntDropDownAttribute(5, 10, 15));
             Rect position = new(0f, 0f, 240f, EditorGUIUtility.singleLineHeight);
             GUIContent label = new("Valid");
@@ -153,12 +153,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void InstanceMethodProviderReturnsValues()
         {
-            IntDropdownInstanceMethodAsset asset =
-                CreateScriptableObject<IntDropdownInstanceMethodAsset>();
+            IntDropDownInstanceMethodAsset asset =
+                CreateScriptableObject<IntDropDownInstanceMethodAsset>();
             asset.dynamicValues.AddRange(new[] { 100, 200, 300 });
 
             IntDropDownAttribute attribute = new(
-                nameof(IntDropdownInstanceMethodAsset.GetDynamicValues)
+                nameof(IntDropDownInstanceMethodAsset.GetDynamicValues)
             );
             int[] options = attribute.GetOptions(asset);
 
@@ -172,7 +172,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void InstanceMethodProviderWithNoContextReturnsEmpty()
         {
             IntDropDownAttribute attribute = new(
-                nameof(IntDropdownInstanceMethodAsset.GetDynamicValues)
+                nameof(IntDropDownInstanceMethodAsset.GetDynamicValues)
             );
             int[] options = attribute.GetOptions(null);
             Assert.That(options.Length, Is.EqualTo(0));
@@ -182,8 +182,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void StaticMethodProviderReturnsValues()
         {
             IntDropDownAttribute attribute = new(
-                typeof(IntDropdownSource),
-                nameof(IntDropdownSource.GetStaticOptions)
+                typeof(IntDropDownSource),
+                nameof(IntDropDownSource.GetStaticOptions)
             );
             int[] options = attribute.Options;
 
@@ -217,7 +217,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void RequiresInstanceContextIsTrueForInstanceProvider()
         {
             IntDropDownAttribute attribute = new(
-                nameof(IntDropdownInstanceMethodAsset.GetDynamicValues)
+                nameof(IntDropDownInstanceMethodAsset.GetDynamicValues)
             );
             Assert.That(attribute.RequiresInstanceContext, Is.True);
         }
@@ -233,8 +233,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void RequiresInstanceContextIsFalseForStaticProvider()
         {
             IntDropDownAttribute attribute = new(
-                typeof(IntDropdownSource),
-                nameof(IntDropdownSource.GetStaticOptions)
+                typeof(IntDropDownSource),
+                nameof(IntDropDownSource.GetStaticOptions)
             );
             Assert.That(attribute.RequiresInstanceContext, Is.False);
         }
@@ -243,13 +243,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void TypeAndMethodConstructorWithInstanceMethodReturnsContextValues()
         {
             // This tests the fix for instance methods with the (Type, string) constructor
-            IntDropdownInstanceMethodAsset asset =
-                CreateScriptableObject<IntDropdownInstanceMethodAsset>();
+            IntDropDownInstanceMethodAsset asset =
+                CreateScriptableObject<IntDropDownInstanceMethodAsset>();
             asset.dynamicValues.AddRange(new[] { 50, 100, 150 });
 
             IntDropDownAttribute attribute = new(
-                typeof(IntDropdownInstanceMethodAsset),
-                nameof(IntDropdownInstanceMethodAsset.GetDynamicValues)
+                typeof(IntDropDownInstanceMethodAsset),
+                nameof(IntDropDownInstanceMethodAsset.GetDynamicValues)
             );
             int[] options = attribute.GetOptions(asset);
 
@@ -264,8 +264,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             // When no context is provided, instance method should return empty
             IntDropDownAttribute attribute = new(
-                typeof(IntDropdownInstanceMethodAsset),
-                nameof(IntDropdownInstanceMethodAsset.GetDynamicValues)
+                typeof(IntDropDownInstanceMethodAsset),
+                nameof(IntDropDownInstanceMethodAsset.GetDynamicValues)
             );
             int[] options = attribute.Options;
 
@@ -278,8 +278,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             // When using (Type, string) constructor with an instance method,
             // RequiresInstanceContext should be true
             IntDropDownAttribute attribute = new(
-                typeof(IntDropdownInstanceMethodAsset),
-                nameof(IntDropdownInstanceMethodAsset.GetDynamicValues)
+                typeof(IntDropDownInstanceMethodAsset),
+                nameof(IntDropDownInstanceMethodAsset.GetDynamicValues)
             );
             Assert.That(attribute.RequiresInstanceContext, Is.True);
         }
@@ -289,8 +289,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             // Verify the attribute can retrieve options from large source
             IntDropDownAttribute attribute = new(
-                typeof(IntDropdownLargeSource),
-                nameof(IntDropdownLargeSource.GetLargeOptions)
+                typeof(IntDropDownLargeSource),
+                nameof(IntDropDownLargeSource.GetLargeOptions)
             );
             int[] options = attribute.Options;
 
@@ -303,22 +303,22 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator OnGUIHandlesLargeOptionsListWithoutException()
         {
-            IntDropdownLargeOptionsAsset asset =
-                CreateScriptableObject<IntDropdownLargeOptionsAsset>();
+            IntDropDownLargeOptionsAsset asset =
+                CreateScriptableObject<IntDropDownLargeOptionsAsset>();
             asset.selection = 100;
 
             using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(IntDropdownLargeOptionsAsset.selection)
+                nameof(IntDropDownLargeOptionsAsset.selection)
             );
             Assert.IsNotNull(property, "Failed to locate selection property.");
 
-            IntDropdownDrawer drawer = new();
+            IntDropDownDrawer drawer = new();
             IntDropDownAttribute attribute = new(
-                typeof(IntDropdownLargeSource),
-                nameof(IntDropdownLargeSource.GetLargeOptions)
+                typeof(IntDropDownLargeSource),
+                nameof(IntDropDownLargeSource.GetLargeOptions)
             );
             AssignAttribute(drawer, attribute);
             Rect position = new(0f, 0f, 400f, EditorGUIUtility.singleLineHeight);
@@ -336,20 +336,20 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
-        public void CreatePropertyGUIShowsErrorForStringFieldWithIntDropdown()
+        public void CreatePropertyGUIShowsErrorForStringFieldWithIntDropDown()
         {
-            IntDropdownTypeMismatchAsset asset =
-                CreateScriptableObject<IntDropdownTypeMismatchAsset>();
+            IntDropDownTypeMismatchAsset asset =
+                CreateScriptableObject<IntDropDownTypeMismatchAsset>();
 
             using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(IntDropdownTypeMismatchAsset.stringFieldWithIntDropdown)
+                nameof(IntDropDownTypeMismatchAsset.stringFieldWithIntDropDown)
             );
             Assert.IsNotNull(property, "Failed to locate string field property.");
 
-            IntDropdownDrawer drawer = new();
+            IntDropDownDrawer drawer = new();
             AssignAttribute(drawer, new IntDropDownAttribute(1, 2, 3));
             VisualElement element = drawer.CreatePropertyGUI(property);
 
@@ -373,20 +373,20 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
-        public void CreatePropertyGUIShowsErrorForFloatFieldWithIntDropdown()
+        public void CreatePropertyGUIShowsErrorForFloatFieldWithIntDropDown()
         {
-            IntDropdownTypeMismatchAsset asset =
-                CreateScriptableObject<IntDropdownTypeMismatchAsset>();
+            IntDropDownTypeMismatchAsset asset =
+                CreateScriptableObject<IntDropDownTypeMismatchAsset>();
 
             using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(IntDropdownTypeMismatchAsset.floatFieldWithIntDropdown)
+                nameof(IntDropDownTypeMismatchAsset.floatFieldWithIntDropDown)
             );
             Assert.IsNotNull(property, "Failed to locate float field property.");
 
-            IntDropdownDrawer drawer = new();
+            IntDropDownDrawer drawer = new();
             AssignAttribute(drawer, new IntDropDownAttribute(1, 2, 3));
             VisualElement element = drawer.CreatePropertyGUI(property);
 
@@ -405,27 +405,27 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [TestCase(
-            nameof(IntDropdownTypeMismatchAsset.stringFieldWithIntDropdown),
+            nameof(IntDropDownTypeMismatchAsset.stringFieldWithIntDropDown),
             "string",
             Description = "String field should show type mismatch"
         )]
         [TestCase(
-            nameof(IntDropdownTypeMismatchAsset.floatFieldWithIntDropdown),
+            nameof(IntDropDownTypeMismatchAsset.floatFieldWithIntDropDown),
             "float",
             Description = "Float field should show type mismatch"
         )]
         [TestCase(
-            nameof(IntDropdownTypeMismatchAsset.boolFieldWithIntDropdown),
+            nameof(IntDropDownTypeMismatchAsset.boolFieldWithIntDropDown),
             "bool",
             Description = "Bool field should show type mismatch"
         )]
-        public void IntDropdownTypeMismatchShowsErrorForVariousTypes(
+        public void IntDropDownTypeMismatchShowsErrorForVariousTypes(
             string fieldName,
             string expectedTypeName
         )
         {
-            IntDropdownTypeMismatchAsset asset =
-                CreateScriptableObject<IntDropdownTypeMismatchAsset>();
+            IntDropDownTypeMismatchAsset asset =
+                CreateScriptableObject<IntDropDownTypeMismatchAsset>();
 
             using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
@@ -433,7 +433,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(fieldName);
             Assert.IsNotNull(property, $"Failed to locate {fieldName} property.");
 
-            IntDropdownDrawer drawer = new();
+            IntDropDownDrawer drawer = new();
             AssignAttribute(drawer, new IntDropDownAttribute(1, 2, 3));
             VisualElement element = drawer.CreatePropertyGUI(property);
 

@@ -155,7 +155,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
         public List<string> BaseClassTypeArguments { get; set; }
 
         /// <summary>
-        /// The full base class declaration including generic arguments (e.g., "WDropdownSelectorBase&lt;int&gt;").
+        /// The full base class declaration including generic arguments (e.g., "WDropDownSelectorBase&lt;int&gt;").
         /// </summary>
         public string BaseClassFullDeclaration { get; set; }
 

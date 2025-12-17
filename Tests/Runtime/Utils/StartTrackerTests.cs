@@ -200,39 +200,72 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         /// <summary>
-        /// Data-driven test verifying the exact frame timing of the Started property.
+        /// Verifies Started is false immediately after creation (0 frames waited).
         /// </summary>
-        /// <param name="framesToWait">Number of frames to wait before checking.</param>
-        /// <param name="expectedStarted">Expected value of Started after waiting.</param>
         [UnityTest]
-        public IEnumerator StartedStateAtFrame(
-            [Values(0, 1, 2, 3)] int framesToWait,
-            [Values] bool expectedStarted
-        )
+        public IEnumerator StartedStateAtFrameZeroIsFalse()
         {
-            // Only run valid combinations: Started should be true after 2+ frames, false before
-            bool validCombination =
-                (framesToWait >= 2 && expectedStarted) || (framesToWait < 2 && !expectedStarted);
-
-            if (!validCombination)
-            {
-                Assert.Ignore("Skipping invalid combination");
-                yield break;
-            }
-
             GameObject go = Track(new GameObject("Tracker", typeof(StartTracker)));
             StartTracker tracker = go.GetComponent<StartTracker>();
 
-            for (int i = 0; i < framesToWait; i++)
-            {
-                yield return null;
-            }
-
-            Assert.AreEqual(
-                expectedStarted,
+            Assert.IsFalse(
                 tracker.Started,
-                $"After {framesToWait} frame(s), Started should be {expectedStarted}. "
-                    + $"Actual frame count: {Time.frameCount}"
+                $"After 0 frame(s), Started should be false. Actual frame count: {Time.frameCount}"
+            );
+            yield break;
+        }
+
+        /// <summary>
+        /// Verifies Started is false after 1 frame waited.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StartedStateAtFrameOneIsFalse()
+        {
+            GameObject go = Track(new GameObject("Tracker", typeof(StartTracker)));
+            StartTracker tracker = go.GetComponent<StartTracker>();
+
+            yield return null;
+
+            Assert.IsFalse(
+                tracker.Started,
+                $"After 1 frame(s), Started should be false. Actual frame count: {Time.frameCount}"
+            );
+        }
+
+        /// <summary>
+        /// Verifies Started is true after 2 frames waited.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StartedStateAtFrameTwoIsTrue()
+        {
+            GameObject go = Track(new GameObject("Tracker", typeof(StartTracker)));
+            StartTracker tracker = go.GetComponent<StartTracker>();
+
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(
+                tracker.Started,
+                $"After 2 frame(s), Started should be true. Actual frame count: {Time.frameCount}"
+            );
+        }
+
+        /// <summary>
+        /// Verifies Started is true after 3 frames waited.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StartedStateAtFrameThreeIsTrue()
+        {
+            GameObject go = Track(new GameObject("Tracker", typeof(StartTracker)));
+            StartTracker tracker = go.GetComponent<StartTracker>();
+
+            yield return null;
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(
+                tracker.Started,
+                $"After 3 frame(s), Started should be true. Actual frame count: {Time.frameCount}"
             );
         }
     }

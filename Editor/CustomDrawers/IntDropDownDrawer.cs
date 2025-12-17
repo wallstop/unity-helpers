@@ -12,7 +12,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.Settings;
 
     [CustomPropertyDrawer(typeof(IntDropDownAttribute))]
-    public sealed class IntDropdownDrawer : PropertyDrawer
+    public sealed class IntDropDownDrawer : PropertyDrawer
     {
         private static readonly Dictionary<int, string> IntToStringCache = new();
         private static readonly Dictionary<int, string[]> DisplayOptionsCache = new();
@@ -92,7 +92,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         /// <param name="label">The label displayed next to the field.</param>
         /// <example>
         /// <code>
-        /// [IntDropdown(1, 2, 3)]
+        /// [IntDropDown(1, 2, 3)]
         /// public int qualityLevel;
         /// </code>
         /// </example>
@@ -198,7 +198,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (GUI.Button(fieldRect, displayValue, EditorStyles.popup))
             {
-                WDropdownPopupWindow.ShowForIntDropdown(
+                WDropdownPopupWindow.ShowForIntDropDown(
                     fieldRect,
                     property,
                     options,
@@ -228,7 +228,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (options.Length == 0)
             {
                 return new HelpBox(
-                    "No options available for IntDropdown.",
+                    "No options available for IntDropDown.",
                     HelpBoxMessageType.Info
                 );
             }
@@ -238,26 +238,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (options.Length > pageSize)
             {
-                IntDropdownPopupSelectorElement popupElement = new(options, displayedOptions);
+                IntDropDownPopupSelectorElement popupElement = new(options, displayedOptions);
                 popupElement.BindProperty(property, property.displayName);
                 return popupElement;
             }
 
-            IntDropdownSelector selector = new(options, displayedOptions);
+            IntDropDownSelector selector = new(options, displayedOptions);
             selector.BindProperty(property, property.displayName);
             return selector;
         }
 
         /// <summary>
-        /// UI Toolkit popup selector element for IntDropdown with large option lists.
+        /// UI Toolkit popup selector element for IntDropDown with large option lists.
         /// Uses IMGUI rendering via IMGUIContainer to show the popup button.
         /// </summary>
-        private sealed class IntDropdownPopupSelectorElement : WDropdownPopupSelectorBase<int>
+        private sealed class IntDropDownPopupSelectorElement : WDropDownPopupSelectorBase<int>
         {
             private readonly int[] _options;
             private readonly string[] _displayedOptions;
 
-            public IntDropdownPopupSelectorElement(int[] options, string[] displayedOptions)
+            public IntDropDownPopupSelectorElement(int[] options, string[] displayedOptions)
             {
                 _options = options ?? Array.Empty<int>();
                 _displayedOptions = displayedOptions ?? Array.Empty<string>();
@@ -285,7 +285,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 int pageSize
             )
             {
-                WDropdownPopupWindow.ShowForIntDropdown(
+                WDropdownPopupWindow.ShowForIntDropDown(
                     controlRect,
                     property,
                     _options,
@@ -296,15 +296,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         }
 
         /// <summary>
-        /// UI Toolkit inline selector for IntDropdown with small option lists.
+        /// UI Toolkit inline selector for IntDropDown with small option lists.
         /// Provides search, pagination, and autocomplete functionality.
         /// </summary>
-        private sealed class IntDropdownSelector : WDropdownSelectorBase<int>
+        private sealed class IntDropDownSelector : WDropDownSelectorBase<int>
         {
             private readonly int[] _options;
             private readonly string[] _displayedOptions;
 
-            public IntDropdownSelector(int[] options, string[] displayedOptions)
+            public IntDropDownSelector(int[] options, string[] displayedOptions)
             {
                 _options = options ?? Array.Empty<int>();
                 _displayedOptions = displayedOptions ?? Array.Empty<string>();
@@ -340,7 +340,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             protected override int GetDefaultValue() => 0;
 
-            protected override string UndoActionName => "Change IntDropdown Selection";
+            protected override string UndoActionName => "Change IntDropDown Selection";
         }
 
         private static string GetTypeMismatchMessage(SerializedProperty property)

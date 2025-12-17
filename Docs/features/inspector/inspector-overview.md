@@ -2,7 +2,7 @@
 
 **Stop writing boilerplate. Start designing in the inspector.**
 
-Unity Helpers includes a powerful suite of inspector attributes and serialization types that transform how you author components and data. These features eliminate repetitive code, provide designer-friendly workflows, and make your inspector experiences rival commercial tools like Odin Inspector.
+Unity Helpers includes a powerful suite of inspector attributes and serialization types that transform how you author components and data. These features eliminate repetitive code, provide designer-friendly workflows, and make your inspector experience rival commercial tools like Odin Inspector.
 
 ---
 
@@ -93,7 +93,7 @@ Unity-friendly wrappers for complex data:
 
 - **[WGuid](../serialization/serialization-types.md#wguid)** - Immutable GUID using two longs (faster than System.Guid for Unity)
 - **[SerializableDictionary](../serialization/serialization-types.md#serializabledictionary)** - Key/value pairs with custom drawer
-- **[SerializableSet](../serialization/serialization-types.md#serializableset)** - HashSet and SortedSet with duplicate detection, pagination, reordering
+- **[SerializableSet](../serialization/serialization-types.md#serializablehashset--serializablesortedset)** - HashSet and SortedSet with duplicate detection, pagination, reordering
 - **[SerializableType](../serialization/serialization-types.md#serializabletype)** - Type references that survive refactoring
 - **[SerializableNullable](../serialization/serialization-types.md#serializablenullable)** - Nullable value types
 

@@ -6,7 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
     [Serializable]
-    internal sealed class IntDropdownTestAsset : ScriptableObject
+    internal sealed class IntDropDownTestAsset : ScriptableObject
     {
         [IntDropDown(5, 10, 15)]
         public int missingValue = 5;

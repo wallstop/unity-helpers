@@ -10,7 +10,7 @@ Unity Helpers provides four powerful selection attributes that replace standard 
 
 - [WEnumToggleButtons](#wenumtogglebuttons)
 - [WValueDropDown](#wvaluedropdown)
-- [IntDropdown](#intdropdown)
+- [IntDropDown](#intdropdown)
 - [StringInList](#stringinlist)
 - [Comparison Table](#comparison-table)
 - [Best Practices](#best-practices)
@@ -47,7 +47,8 @@ public class EntityPermissions : MonoBehaviour
 
 > **Visual Reference**
 >
-> ![WEnumToggleButtons with flag enum](../../images/inspector/selection/wenum-toggle-buttons-basic.png)
+> ![WEnumToggleButtons with flag enum](../../images/inspector/selection/wenum-toggle-buttons-basic.gif)
+>
 > _Flag enum permissions rendered as toggle buttons_
 
 ---
@@ -88,6 +89,7 @@ public DamageTypes resistances = DamageTypes.Fire | DamageTypes.Ice;
 > **Visual Reference**
 >
 > ![WEnumToggleButtons with Select All/None buttons](../../images/inspector/selection/wenum-toggle-buttons-flags-select.png)
+>
 > _Flag enum with Select All and Select None quick action buttons_
 
 **Behavior:**
@@ -110,6 +112,7 @@ public WeaponType weaponType = WeaponType.Melee;
 > **Visual Reference**
 >
 > ![Radio-style toggle buttons](../../images/inspector/selection/wenum-toggle-buttons-radio.png)
+>
 > _Standard enum rendered as radio-style toggle buttons (only one active)_
 
 **Behavior:**
@@ -139,6 +142,7 @@ public AllAbilities unlockedAbilities;
 > **Visual Reference**
 >
 > ![Paginated toggle buttons](../../images/inspector/selection/wenum-toggle-buttons-pagination.gif)
+>
 > _Paginated toggle buttons with First, Previous, Next, Last navigation controls_
 
 **Features:**
@@ -169,6 +173,7 @@ public Permissions singleColumn;
 > **Visual Reference**
 >
 > ![Toggle button layouts](../../images/inspector/selection/wenum-toggle-buttons-layouts.png)
+>
 > _Different column layouts: automatic, 2 columns, and single column_
 
 ---
@@ -186,6 +191,7 @@ public Permissions lightTheme;
 > **Visual Reference**
 >
 > ![Toggle button themes](../../images/inspector/selection/wenum-toggle-buttons-themes.png)
+>
 > _Toggle buttons with dark and light color themes_
 
 ---
@@ -193,8 +199,8 @@ public Permissions lightTheme;
 ### Combining with Other Attributes
 
 ```csharp
-// Works with IntDropdown/StringInList/WValueDropDown!
-[IntDropdown(0, 30, 60, 120)]
+// Works with IntDropDown/StringInList/WValueDropDown!
+[IntDropDown(0, 30, 60, 120)]
 [WEnumToggleButtons]
 public int frameRate = 60;  // Shows as toggle buttons instead of dropdown
 ```
@@ -221,7 +227,8 @@ public string difficulty = "Normal";
 
 > **Visual Reference**
 >
-> ![WValueDropDown with predefined values](../../images/inspector/selection/wvalue-dropdown-basic.png)
+> ![WValueDropDown with predefined values](../../images/inspector/selection/wvalue-dropdown-basic.gif)
+>
 > _Dropdown showing predefined integer, float, and string values_
 
 ---
@@ -309,23 +316,24 @@ public class Config : MonoBehaviour
 
 ---
 
-## IntDropdown
+## IntDropDown
 
 Integer field rendered as a dropdown with predefined options.
 
 ### Basic Usage
 
 ```csharp
-[IntDropdown(0, 30, 60, 120, 240)]
+[IntDropDown(0, 30, 60, 120, 240)]
 public int refreshRate = 60;
 
-[IntDropdown(1, 2, 4, 8, 16, 32)]
+[IntDropDown(1, 2, 4, 8, 16, 32)]
 public int threadCount = 4;
 ```
 
 > **Visual Reference**
 >
-> ![IntDropdown with predefined values](../../images/inspector/selection/int-dropdown-basic.png)
+> ![IntDropDown with predefined values](../../images/inspector/selection/int-dropdown-basic.png)
+>
 > _Integer dropdown showing predefined frame rate options_
 
 ---
@@ -335,7 +343,7 @@ public int threadCount = 4;
 ```csharp
 public class FrameRateConfig : MonoBehaviour
 {
-    [IntDropdown(typeof(FrameRateLibrary), nameof(FrameRateLibrary.GetSupportedFrameRates))]
+    [IntDropDown(typeof(FrameRateLibrary), nameof(FrameRateLibrary.GetSupportedFrameRates))]
     public int targetFrameRate = 60;
 }
 
@@ -353,7 +361,7 @@ public static class FrameRateLibrary
 ### Fallback Behavior
 
 ```csharp
-[IntDropdown(10, 20, 30)]
+[IntDropDown(10, 20, 30)]
 public int value = 25;  // Not in list! Shows as standard IntField
 ```
 
@@ -497,7 +505,7 @@ public string entityTag = "Player";
 
 ## Comparison Table
 
-| Feature                | WEnumToggleButtons | WValueDropDown | IntDropdown | StringInList      |
+| Feature                | WEnumToggleButtons | WValueDropDown | IntDropDown | StringInList      |
 | ---------------------- | ------------------ | -------------- | ----------- | ----------------- |
 | **Primary Use**        | Enums, flag enums  | Any type       | Integers    | Strings           |
 | **Visual Style**       | Toggle buttons     | Dropdown       | Dropdown    | Dropdown + search |
@@ -526,8 +534,8 @@ public Features enabledFeatures;
 [WValueDropDown(0.5f, 1.0f, 1.5f, 2.0f)]
 public float speedMultiplier;
 
-// ✅ GOOD: IntDropdown for integer-specific options
-[IntDropdown(30, 60, 120, 240)]
+// ✅ GOOD: IntDropDown for integer-specific options
+[IntDropDown(30, 60, 120, 240)]
 public int frameRate;
 
 // ✅ GOOD: StringInList for string validation
@@ -691,10 +699,10 @@ using WallstopStudios.UnityHelpers.Core.Attributes;
 
 public class PerformanceSettings : MonoBehaviour
 {
-    [IntDropdown(30, 60, 90, 120, 144, 240, -1)]
+    [IntDropDown(30, 60, 90, 120, 144, 240, -1)]
     public int targetFrameRate = 60;  // -1 = unlimited
 
-    [IntDropdown(0, 1, 2, 3, 4)]
+    [IntDropDown(0, 1, 2, 3, 4)]
     public int vsyncCount = 0;  // 0 = disabled
 
     [WEnumToggleButtons]

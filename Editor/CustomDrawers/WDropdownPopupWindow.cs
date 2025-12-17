@@ -272,14 +272,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         }
 
         /// <summary>
-        /// Shows the dropdown popup for an IntDropdown property.
+        /// Shows the dropdown popup for an IntDropDown property.
         /// </summary>
         /// <param name="buttonRect">The GUI rect of the button that triggered the popup (in GUI space).</param>
         /// <param name="property">The serialized property being edited.</param>
         /// <param name="options">Available integer options.</param>
         /// <param name="displayLabels">Display labels for options.</param>
         /// <param name="pageSize">Maximum items per page.</param>
-        public static void ShowForIntDropdown(
+        public static void ShowForIntDropDown(
             Rect buttonRect,
             SerializedProperty property,
             int[] options,

@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
     /// via IMGUIContainer for displaying large option lists with a popup window.
     /// </summary>
     /// <typeparam name="TValue">The type of the field value (string, int, etc.).</typeparam>
-    public abstract class WDropdownPopupSelectorBase<TValue> : BaseField<TValue>
+    public abstract class WDropDownPopupSelectorBase<TValue> : BaseField<TValue>
     {
         private SerializedObject _serializedObject;
         private string _propertyPath = string.Empty;
@@ -55,7 +55,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
             return container;
         }
 
-        protected WDropdownPopupSelectorBase()
+        protected WDropDownPopupSelectorBase()
             : base(string.Empty, CreateInputElement(out IMGUIContainer container))
         {
             AddToClassList("unity-base-field");

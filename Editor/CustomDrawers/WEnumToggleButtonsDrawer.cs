@@ -18,8 +18,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     [CustomPropertyDrawer(typeof(WEnumToggleButtonsAttribute))]
     public sealed class WEnumToggleButtonsDrawer : PropertyDrawer
     {
-        private const float ToolbarSpacing = 4f;
+        private const float ToolbarSpacing = 6f;
+        private const float ToolbarButtonGap = 8f;
         private const float MinButtonWidth = 68f;
+        private const float ToolbarButtonMinWidth = 60f;
         private const float PaginationButtonWidth = 22f;
         private const float PaginationLabelMinWidth = 80f;
         private const float SummarySpacing = 2f;
@@ -403,22 +405,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             bool alignedPair = drawSelectAll && drawSelectNone;
-            float halfWidth = rect.width * 0.5f;
 
-            if (drawSelectAll)
+            if (alignedPair)
             {
-                Rect selectAllRect = alignedPair
-                    ? new Rect(rect.x, rect.y, Mathf.Floor(halfWidth), rect.height)
-                    : rect;
+                // Calculate widths: each button gets half minus half the gap
+                float availableWidth = rect.width - ToolbarButtonGap;
+                float buttonWidth = Mathf.Max(
+                    ToolbarButtonMinWidth,
+                    Mathf.Floor(availableWidth * 0.5f)
+                );
 
+                // Draw "All" button as standalone (not joined)
+                Rect selectAllRect = new(rect.x, rect.y, buttonWidth, rect.height);
                 bool allActive = WEnumToggleButtonsUtility.AreAllFlagsSelected(property, toggleSet);
-                ButtonSegment segment = alignedPair ? ButtonSegment.Left : ButtonSegment.Single;
-                GUIStyle style = GetButtonStyle(segment, allActive, palette);
+                GUIStyle allStyle = GetButtonStyle(ButtonSegment.Single, allActive, palette);
                 bool selectAllPressed = GUI.Toggle(
                     selectAllRect,
                     allActive,
                     SelectAllContent,
-                    style
+                    allStyle
                 );
 
                 if (selectAllPressed && !allActive)
@@ -426,35 +431,46 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     WEnumToggleButtonsUtility.ApplySelectAll(property, toggleSet);
                     property.serializedObject.ApplyModifiedProperties();
                 }
-            }
 
-            if (drawSelectNone)
-            {
-                Rect selectNoneRect;
-                if (alignedPair)
-                {
-                    float width = rect.width - Mathf.Floor(rect.width * 0.5f);
-                    selectNoneRect = new Rect(
-                        rect.x + Mathf.Floor(rect.width * 0.5f),
-                        rect.y,
-                        width,
-                        rect.height
-                    );
-                }
-                else
-                {
-                    selectNoneRect = rect;
-                }
-
+                // Draw "None" button as standalone (not joined) with gap
+                Rect selectNoneRect = new(
+                    selectAllRect.xMax + ToolbarButtonGap,
+                    rect.y,
+                    rect.width - buttonWidth - ToolbarButtonGap,
+                    rect.height
+                );
                 bool noneActive = WEnumToggleButtonsUtility.AreNoFlagsSelected(property);
-                ButtonSegment segment = alignedPair ? ButtonSegment.Right : ButtonSegment.Single;
-                GUIStyle style = GetButtonStyle(segment, noneActive, palette);
+                GUIStyle noneStyle = GetButtonStyle(ButtonSegment.Single, noneActive, palette);
                 bool selectNonePressed = GUI.Toggle(
                     selectNoneRect,
                     noneActive,
                     SelectNoneContent,
-                    style
+                    noneStyle
                 );
+
+                if (selectNonePressed && !noneActive)
+                {
+                    WEnumToggleButtonsUtility.ApplySelectNone(property);
+                    property.serializedObject.ApplyModifiedProperties();
+                }
+            }
+            else if (drawSelectAll)
+            {
+                bool allActive = WEnumToggleButtonsUtility.AreAllFlagsSelected(property, toggleSet);
+                GUIStyle style = GetButtonStyle(ButtonSegment.Single, allActive, palette);
+                bool selectAllPressed = GUI.Toggle(rect, allActive, SelectAllContent, style);
+
+                if (selectAllPressed && !allActive)
+                {
+                    WEnumToggleButtonsUtility.ApplySelectAll(property, toggleSet);
+                    property.serializedObject.ApplyModifiedProperties();
+                }
+            }
+            else if (drawSelectNone)
+            {
+                bool noneActive = WEnumToggleButtonsUtility.AreNoFlagsSelected(property);
+                GUIStyle style = GetButtonStyle(ButtonSegment.Single, noneActive, palette);
+                bool selectNonePressed = GUI.Toggle(rect, noneActive, SelectNoneContent, style);
 
                 if (selectNonePressed && !noneActive)
                 {
