@@ -557,10 +557,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             int bufferLength = count / 2 + 1;
-            using PooledResource<T[]> bufferLease = WallstopArrayPool<T>.Get(
-                bufferLength,
-                out T[] buffer
-            );
+            using PooledArray<T> bufferLease = SystemArrayPool<T>.Get(bufferLength, out T[] buffer);
             GrailSortRange(array, buffer, 0, count - 1, comparer);
         }
 
@@ -608,10 +605,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             int bufferLength = count / 2 + 1;
-            using PooledResource<T[]> tempLease = WallstopArrayPool<T>.Get(
-                bufferLength,
-                out T[] buffer
-            );
+            using PooledArray<T> tempLease = SystemArrayPool<T>.Get(bufferLength, out T[] buffer);
 
             while (runs.Count > 1)
             {
@@ -660,7 +654,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             int minRun = ComputeTimSortMinRun(count);
-            using PooledResource<T[]> bufferLease = WallstopArrayPool<T>.Get(
+            using PooledArray<T> bufferLease = SystemArrayPool<T>.Get(
                 Math.Max(count / 2 + 1, 32),
                 out T[] buffer
             );
@@ -797,10 +791,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 InitializeJesseHeap(ascendingPiles, heap, comparer);
                 InitializeJesseHeap(descendingPiles, heap, comparer);
 
-                using PooledResource<T[]> outputLease = WallstopArrayPool<T>.Get(
-                    count,
-                    out T[] output
-                );
+                using PooledArray<T> outputLease = SystemArrayPool<T>.Get(count, out T[] output);
                 int outputIndex = 0;
                 while (heap.Count > 0)
                 {
@@ -851,7 +842,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return;
             }
 
-            using PooledResource<T[]> bufferLease = WallstopArrayPool<T>.Get(
+            using PooledArray<T> bufferLease = SystemArrayPool<T>.Get(
                 Math.Max(count / 2 + 1, 64),
                 out T[] buffer
             );
@@ -1105,7 +1096,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return;
             }
 
-            using PooledResource<T[]> bufferLease = WallstopArrayPool<T>.Get(count, out T[] buffer);
+            using PooledArray<T> bufferLease = SystemArrayPool<T>.Get(count, out T[] buffer);
             int runSize = 1;
             while (runSize < count)
             {
@@ -1163,28 +1154,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int pivotCount = bucketCount - 1;
             int sampleSize = Math.Min(length, bucketCount * 2 - 1);
 
-            using PooledResource<T[]> sampleLease = WallstopArrayPool<T>.Get(
-                sampleSize,
-                out T[] sample
-            );
+            using PooledArray<T> sampleLease = SystemArrayPool<T>.Get(sampleSize, out T[] sample);
             Ips4oBuildSample(array, left, right, sample, sampleSize);
             Array.Sort(sample, 0, sampleSize, comparer);
 
-            using PooledResource<T[]> pivotLease = WallstopArrayPool<T>.Get(
-                pivotCount,
-                out T[] pivots
-            );
+            using PooledArray<T> pivotLease = SystemArrayPool<T>.Get(pivotCount, out T[] pivots);
             Ips4oSelectPivots(sample, sampleSize, pivots, bucketCount);
 
-            using PooledResource<int[]> countLease = WallstopArrayPool<int>.Get(
+            using PooledArray<int> countLease = WallstopArrayPool<int>.Get(
                 bucketCount,
                 out int[] bucketCounts
             );
-            using PooledResource<int[]> offsetLease = WallstopArrayPool<int>.Get(
+            using PooledArray<int> offsetLease = WallstopArrayPool<int>.Get(
                 bucketCount,
                 out int[] bucketOffsets
             );
-            using PooledResource<int[]> positionLease = WallstopArrayPool<int>.Get(
+            using PooledArray<int> positionLease = WallstopArrayPool<int>.Get(
                 bucketCount,
                 out int[] bucketPositions
             );
@@ -1205,10 +1190,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             Array.Copy(bucketOffsets, bucketPositions, bucketCount);
 
-            using PooledResource<T[]> bufferLease = WallstopArrayPool<T>.Get(
-                length,
-                out T[] buffer
-            );
+            using PooledArray<T> bufferLease = SystemArrayPool<T>.Get(length, out T[] buffer);
             for (int i = left; i <= right; ++i)
             {
                 T value = array[i];
@@ -1372,16 +1354,15 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             int bufferLength = Math.Max(32, count / 2 + 1);
-            using PooledResource<T[]> tempLease = WallstopArrayPool<T>.Get(
-                bufferLength,
-                out T[] buffer
-            );
+            using PooledArray<T> tempLease = SystemArrayPool<T>.Get(bufferLength, out T[] buffer);
 
             using PooledResource<List<PowerSortPlusCandidate>> heapLease =
                 Buffers<PowerSortPlusCandidate>.List.Get(out List<PowerSortPlusCandidate> heap);
 
-            using PooledResource<PowerSortPlusNode[]> nodeLease =
-                WallstopArrayPool<PowerSortPlusNode>.Get(runs.Count, out PowerSortPlusNode[] nodes);
+            using PooledArray<PowerSortPlusNode> nodeLease = SystemArrayPool<PowerSortPlusNode>.Get(
+                runs.Count,
+                out PowerSortPlusNode[] nodes
+            );
             int headIndex = BuildPowerSortPlusRuns(runs, nodes);
 
             for (int nodeIndex = headIndex; nodeIndex != -1; nodeIndex = nodes[nodeIndex].next)
@@ -1455,7 +1436,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return;
             }
 
-            using PooledResource<T[]> bufferLease = WallstopArrayPool<T>.Get(count, out T[] buffer);
+            using PooledArray<T> bufferLease = SystemArrayPool<T>.Get(count, out T[] buffer);
             using PooledResource<List<(int start, int length)>> runsLease = Buffers<(
                 int start,
                 int length

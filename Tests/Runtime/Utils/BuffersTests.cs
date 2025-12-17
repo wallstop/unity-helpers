@@ -79,10 +79,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             for (int i = 0; i < 100; ++i)
             {
-                using PooledResource<int[]> resource = WallstopArrayPool<int>.Get(
-                    i,
-                    out int[] buffer
-                );
+                using PooledArray<int> resource = WallstopArrayPool<int>.Get(i, out int[] buffer);
                 Assert.AreEqual(i, buffer.Length);
                 for (int j = 0; j < i; ++j)
                 {
@@ -92,10 +89,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             for (int i = 0; i < 100; ++i)
             {
-                using PooledResource<int[]> resource = WallstopArrayPool<int>.Get(
-                    i,
-                    out int[] buffer
-                );
+                using PooledArray<int> resource = WallstopArrayPool<int>.Get(i, out int[] buffer);
                 Assert.AreEqual(i, buffer.Length);
                 for (int j = 0; j < i; ++j)
                 {
@@ -115,10 +109,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void WallstopFastArrayPoolGetZeroSizeReturnsEmptyArrayWithNoOpDispose()
         {
-            using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
-                0,
-                out int[] buffer
-            );
+            using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(0, out int[] buffer);
             Assert.NotNull(buffer);
             Assert.AreEqual(0, buffer.Length);
             Assert.AreSame(Array.Empty<int>(), buffer);
@@ -128,10 +119,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void WallstopFastArrayPoolGetPositiveSizeReturnsArrayWithCorrectLength()
         {
             const int size = 10;
-            using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
-                size,
-                out int[] buffer
-            );
+            using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(size, out int[] buffer);
 
             Assert.NotNull(buffer);
             Assert.AreEqual(size, buffer.Length);
@@ -143,18 +131,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int size = 5;
             int[] firstArray;
 
-            using (
-                PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
-                    size,
-                    out int[] buffer
-                )
-            )
+            using (PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(size, out int[] buffer))
             {
                 firstArray = buffer;
                 firstArray[0] = 42;
             }
 
-            using PooledResource<int[]> pooledReused = WallstopFastArrayPool<int>.Get(
+            using PooledArray<int> pooledReused = WallstopFastArrayPool<int>.Get(
                 size,
                 out int[] reused
             );
@@ -165,15 +148,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void WallstopFastArrayPoolZeroLengthAlwaysSharedInstance()
         {
-            using PooledResource<int[]> first = WallstopFastArrayPool<int>.Get(0, out int[] zeroA);
-            using PooledResource<int[]> second = WallstopFastArrayPool<int>.Get(0, out int[] zeroB);
+            using PooledArray<int> first = WallstopFastArrayPool<int>.Get(0, out int[] zeroA);
+            using PooledArray<int> second = WallstopFastArrayPool<int>.Get(0, out int[] zeroB);
 
             Assert.AreSame(Array.Empty<int>(), zeroA);
             Assert.AreSame(zeroA, zeroB);
 
             for (int i = 0; i < 32; i++)
             {
-                using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
+                using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
                     0,
                     out int[] zeroBuffer
                 );
@@ -196,11 +179,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             for (int i = 0; i < iterations; i++)
             {
-                using PooledResource<int[]> small = WallstopFastArrayPool<int>.Get(
+                using PooledArray<int> small = WallstopFastArrayPool<int>.Get(
                     smallSize,
                     out int[] smallArray
                 );
-                using PooledResource<int[]> large = WallstopFastArrayPool<int>.Get(
+                using PooledArray<int> large = WallstopFastArrayPool<int>.Get(
                     largeSize,
                     out int[] largeArray
                 );
@@ -212,7 +195,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             for (int i = 0; i < iterations; i++)
             {
-                using PooledResource<int[]> small = WallstopFastArrayPool<int>.Get(
+                using PooledArray<int> small = WallstopFastArrayPool<int>.Get(
                     smallSize,
                     out int[] smallArray
                 );
@@ -229,7 +212,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             for (int i = 0; i < iterations; i++)
             {
-                using PooledResource<int[]> large = WallstopFastArrayPool<int>.Get(
+                using PooledArray<int> large = WallstopFastArrayPool<int>.Get(
                     largeSize,
                     out int[] largeArray
                 );
@@ -252,7 +235,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int maxSize = 128;
 
             using (
-                PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
+                PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
                     maxSize,
                     out int[] maxArray
                 )
@@ -265,7 +248,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 for (int size = 1; size <= maxSize; size += 5)
                 {
-                    using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
+                    using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
                         size,
                         out int[] array
                     );
@@ -277,7 +260,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 for (int size = maxSize - 1; size >= 1; size -= 7)
                 {
-                    using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
+                    using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
                         size,
                         out int[] array
                     );
@@ -291,23 +274,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void WallstopFastArrayPoolGetDifferentSizesReturnsCorrectArrays()
         {
             int[] sizes = { 1, 5, 10, 100, 1000 };
-            List<PooledResource<int[]>> pooledArrays = new();
+            List<PooledArray<int>> pooledArrays = new();
 
             try
             {
                 foreach (int size in sizes)
                 {
-                    PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
-                        size,
-                        out int[] array
-                    );
+                    PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(size, out int[] array);
                     pooledArrays.Add(pooled);
                     Assert.AreEqual(size, array.Length);
                 }
             }
             finally
             {
-                foreach (PooledResource<int[]> pooled in pooledArrays)
+                foreach (PooledArray<int> pooled in pooledArrays)
                 {
                     pooled.Dispose();
                 }
@@ -319,9 +299,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             const int size = 10;
 
-            using (
-                PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(size, out int[] array)
-            )
+            using (PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(size, out int[] array))
             {
                 for (int i = 0; i < size; i++)
                 {
@@ -329,7 +307,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
             }
 
-            using PooledResource<int[]> pooledReused = WallstopFastArrayPool<int>.Get(
+            using PooledArray<int> pooledReused = WallstopFastArrayPool<int>.Get(
                 size,
                 out int[] reused
             );
@@ -344,26 +322,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             const int size = 7;
             const int count = 5;
-            List<PooledResource<int[]>> pooledArrays = new();
+            List<PooledArray<int>> pooledArrays = new();
 
             try
             {
                 for (int i = 0; i < count; i++)
                 {
-                    PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
-                        size,
-                        out int[] array
-                    );
+                    PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(size, out int[] array);
                     pooledArrays.Add(pooled);
                     Assert.AreEqual(size, array.Length);
                 }
 
-                HashSet<int[]> distinctArrays = pooledArrays.Select(p => p.resource).ToHashSet();
+                HashSet<int[]> distinctArrays = pooledArrays.Select(p => p.array).ToHashSet();
                 Assert.AreEqual(count, distinctArrays.Count);
             }
             finally
             {
-                foreach (PooledResource<int[]> pooled in pooledArrays)
+                foreach (PooledArray<int> pooled in pooledArrays)
                 {
                     pooled.Dispose();
                 }
@@ -375,15 +350,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             const int size = 10;
 
-            using PooledResource<int[]> intPooled = WallstopFastArrayPool<int>.Get(
+            using PooledArray<int> intPooled = WallstopFastArrayPool<int>.Get(
                 size,
                 out int[] intBuffer
             );
-            using PooledResource<long[]> longPooled = WallstopFastArrayPool<long>.Get(
+            using PooledArray<long> longPooled = WallstopFastArrayPool<long>.Get(
                 size,
                 out long[] longBuffer
             );
-            using PooledResource<float[]> floatPooled = WallstopFastArrayPool<float>.Get(
+            using PooledArray<float> floatPooled = WallstopFastArrayPool<float>.Get(
                 size,
                 out float[] floatBuffer
             );
@@ -397,7 +372,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void WallstopFastArrayPoolLargeArraysWork()
         {
             const int size = 100000;
-            using PooledResource<byte[]> pooled = WallstopFastArrayPool<byte>.Get(
+            using PooledArray<byte> pooled = WallstopFastArrayPool<byte>.Get(
                 size,
                 out byte[] array
             );
@@ -411,7 +386,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int outerSize = 5;
             const int innerSize = 3;
 
-            using PooledResource<int[]> outer = WallstopFastArrayPool<int>.Get(
+            using PooledArray<int> outer = WallstopFastArrayPool<int>.Get(
                 outerSize,
                 out int[] outerArray
             );
@@ -420,7 +395,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             outerArray[0] = 1;
 
             using (
-                PooledResource<int[]> inner = WallstopFastArrayPool<int>.Get(
+                PooledArray<int> inner = WallstopFastArrayPool<int>.Get(
                     innerSize,
                     out int[] innerArray
                 )
@@ -446,7 +421,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             for (int i = 0; i < iterations; i++)
             {
                 int size = random.Next(1, maxSize);
-                using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
+                using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
                     size,
                     out int[] array
                 );
@@ -583,7 +558,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
                     {
                         int size = random.Next(1, 50) + threadId;
-                        using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
+                        using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
                             size,
                             out int[] array
                         );
@@ -622,7 +597,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     PcgRandom random = new(threadId);
                     foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
                     {
-                        using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
+                        using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
                             arraySize,
                             out int[] array
                         );
@@ -667,7 +642,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
                     {
                         int size = random.NextOf(sizes);
-                        using PooledResource<long[]> pooled = WallstopFastArrayPool<long>.Get(
+                        using PooledArray<long> pooled = WallstopFastArrayPool<long>.Get(
                             size,
                             out long[] array
                         );
@@ -718,7 +693,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
                     {
                         int size = random.Next(1, 30);
-                        using PooledResource<byte[]> pooled = WallstopFastArrayPool<byte>.Get(
+                        using PooledArray<byte> pooled = WallstopFastArrayPool<byte>.Get(
                             size,
                             out byte[] array
                         );
@@ -754,12 +729,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 {
                     int baseSize = 12 + threadId * 24;
                     int[] threadSizes = { baseSize, baseSize + 3, baseSize + 6 };
-                    List<PooledResource<int[]>> rentals = new();
+                    List<PooledArray<int>> rentals = new();
 
                     for (int i = 0; i < allocationsPerThread; i++)
                     {
                         int size = threadSizes[i % threadSizes.Length];
-                        PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
+                        PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
                             size,
                             out int[] array
                         );
@@ -772,9 +747,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
                     for (int i = rentals.Count - 1; i >= 0; i--)
                     {
-                        PooledResource<int[]> pooled = rentals[i];
-                        int size = pooled.resource.Length;
-                        expectedOrder.GetOrAdd(size).Enqueue(pooled.resource);
+                        PooledArray<int> pooled = rentals[i];
+                        int size = pooled.Array.Length;
+                        expectedOrder.GetOrAdd(size).Enqueue(pooled.Array);
                         pooled.Dispose();
                     }
 
@@ -783,7 +758,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                         while (pair.Value.Count > 0)
                         {
                             int[] expected = pair.Value.Dequeue();
-                            using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
+                            using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
                                 pair.Key,
                                 out int[] array
                             );
@@ -817,7 +792,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     PcgRandom random = new(threadId + 400);
                     foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
                     {
-                        using PooledResource<int[]> pooled = WallstopArrayPool<int>.Get(
+                        using PooledArray<int> pooled = WallstopArrayPool<int>.Get(
                             arraySize,
                             out int[] arrayBuffer
                         );
@@ -860,7 +835,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
                     {
                         int size = random.NextOf(sizes);
-                        using PooledResource<byte[]> pooled = WallstopArrayPool<byte>.Get(
+                        using PooledArray<byte> pooled = WallstopArrayPool<byte>.Get(
                             size,
                             out byte[] byteBuffer
                         );
@@ -944,7 +919,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
                         for (int size = threadId + 1; size <= maxPoolSize; size += threadCount)
                         {
-                            using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
+                            using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
                                 size,
                                 out int[] array
                             );
@@ -992,7 +967,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                         foreach (int i in Enumerable.Range(0, operationsPerThread).Shuffled(random))
                         {
                             int size = random.Next(1, 100);
-                            using PooledResource<float[]> pooled = WallstopFastArrayPool<float>.Get(
+                            using PooledArray<float> pooled = WallstopFastArrayPool<float>.Get(
                                 size,
                                 out float[] array
                             );
@@ -1037,7 +1012,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void WallstopFastArrayPoolEdgeCaseVeryLargeSize()
         {
             const int veryLargeSize = 1000000;
-            using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
+            using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
                 veryLargeSize,
                 out int[] array
             );
@@ -1050,7 +1025,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void WallstopFastArrayPoolEdgeCaseSizeOne()
         {
-            using PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(1, out int[] array);
+            using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(1, out int[] array);
             Array.Clear(array, 0, array.Length);
             Assert.AreEqual(1, array.Length);
             Assert.AreEqual(0, array[0]);
@@ -1065,36 +1040,36 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int size = 15;
             int[][] arrays = new int[3][];
             {
-                using PooledResource<int[]> pooled1 = WallstopFastArrayPool<int>.Get(
+                using PooledArray<int> pooled1 = WallstopFastArrayPool<int>.Get(
                     size,
                     out int[] arr1
                 );
                 arrays[0] = arr1;
-                using PooledResource<int[]> pooled2 = WallstopFastArrayPool<int>.Get(
+                using PooledArray<int> pooled2 = WallstopFastArrayPool<int>.Get(
                     size,
                     out int[] arr2
                 );
                 arrays[1] = arr2;
-                using PooledResource<int[]> pooled3 = WallstopFastArrayPool<int>.Get(
+                using PooledArray<int> pooled3 = WallstopFastArrayPool<int>.Get(
                     size,
                     out int[] arr3
                 );
                 arrays[2] = arr3;
             }
 
-            using PooledResource<int[]> pooledReuse1 = WallstopFastArrayPool<int>.Get(
+            using PooledArray<int> pooledReuse1 = WallstopFastArrayPool<int>.Get(
                 size,
                 out int[] reuse1
             );
             Assert.AreSame(arrays[0], reuse1);
 
-            using PooledResource<int[]> pooledReuse2 = WallstopFastArrayPool<int>.Get(
+            using PooledArray<int> pooledReuse2 = WallstopFastArrayPool<int>.Get(
                 size,
                 out int[] reuse2
             );
             Assert.AreSame(arrays[1], reuse2);
 
-            using PooledResource<int[]> pooledReuse3 = WallstopFastArrayPool<int>.Get(
+            using PooledArray<int> pooledReuse3 = WallstopFastArrayPool<int>.Get(
                 size,
                 out int[] reuse3
             );
@@ -1110,7 +1085,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void WallstopArrayPoolGetZeroSizeReturnsEmptyArrayWithNoOpDispose()
         {
-            using PooledResource<int[]> pooled = WallstopArrayPool<int>.Get(0, out int[] buffer);
+            using PooledArray<int> pooled = WallstopArrayPool<int>.Get(0, out int[] buffer);
             Assert.NotNull(buffer);
             Assert.AreEqual(0, buffer.Length);
             Assert.AreSame(Array.Empty<int>(), buffer);
@@ -1120,7 +1095,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void WallstopArrayPoolGetPositiveSizeReturnsArrayWithCorrectLength()
         {
             const int size = 10;
-            using PooledResource<int[]> pooled = WallstopArrayPool<int>.Get(size, out int[] buffer);
+            using PooledArray<int> pooled = WallstopArrayPool<int>.Get(size, out int[] buffer);
 
             Assert.NotNull(buffer);
             Assert.AreEqual(size, buffer.Length);
@@ -1132,15 +1107,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int size = 5;
             int[] firstArray;
 
-            using (
-                PooledResource<int[]> pooled = WallstopArrayPool<int>.Get(size, out int[] buffer)
-            )
+            using (PooledArray<int> pooled = WallstopArrayPool<int>.Get(size, out int[] buffer))
             {
                 firstArray = buffer;
                 firstArray[0] = 42;
             }
 
-            using PooledResource<int[]> pooledReused = WallstopArrayPool<int>.Get(
+            using PooledArray<int> pooledReused = WallstopArrayPool<int>.Get(
                 size,
                 out int[] reused
             );
@@ -1574,7 +1547,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void WallstopArrayPoolArraysAreClearedOnReturn()
         {
             const int size = 10;
-            using (PooledResource<int[]> pooled = WallstopArrayPool<int>.Get(size, out int[] array))
+            using (PooledArray<int> pooled = WallstopArrayPool<int>.Get(size, out int[] array))
             {
                 for (int i = 0; i < size; i++)
                 {
@@ -1582,7 +1555,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
             }
 
-            using PooledResource<int[]> pooledReused = WallstopArrayPool<int>.Get(
+            using PooledArray<int> pooledReused = WallstopArrayPool<int>.Get(
                 size,
                 out int[] reused
             );
@@ -1595,8 +1568,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void WallstopArrayPoolDifferentSizesReturnDifferentArrays()
         {
-            using PooledResource<int[]> pooled5 = WallstopArrayPool<int>.Get(5, out int[] a5);
-            using PooledResource<int[]> pooled10 = WallstopArrayPool<int>.Get(10, out int[] a10);
+            using PooledArray<int> pooled5 = WallstopArrayPool<int>.Get(5, out int[] a5);
+            using PooledArray<int> pooled10 = WallstopArrayPool<int>.Get(10, out int[] a10);
 
             Assert.AreNotSame(a5, a10);
             Assert.AreEqual(5, a5.Length);
@@ -1613,10 +1586,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 for (int i = 0; i < 3; i++)
                 {
-                    PooledResource<int[]> pooled = WallstopFastArrayPool<int>.Get(
-                        size,
-                        out int[] array
-                    );
+                    PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(size, out int[] array);
                     arrays.Add(array);
                 }
 
@@ -1627,6 +1597,254 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 foreach (int[] array in arrays)
                 {
                     WallstopFastArrayPool<int>.Get(0, out _).Dispose();
+                }
+            }
+        }
+
+        [Test]
+        public void SystemArrayPoolGetNegativeSizeThrowsArgumentOutOfRangeException()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => SystemArrayPool<int>.Get(-1, out _));
+        }
+
+        [Test]
+        public void SystemArrayPoolGetZeroSizeReturnsEmptyArrayAndZeroLength()
+        {
+            using PooledArray<int> pooled = SystemArrayPool<int>.Get(0, out int[] buffer);
+            Assert.IsTrue(buffer != null);
+            Assert.AreEqual(0, buffer.Length);
+            Assert.AreEqual(0, pooled.length);
+            Assert.AreSame(Array.Empty<int>(), buffer);
+        }
+
+        [Test]
+        public void SystemArrayPoolGetPositiveSizeReturnsArrayAtLeastRequestedSize()
+        {
+            const int requestedSize = 10;
+            using PooledArray<int> pooled = SystemArrayPool<int>.Get(
+                requestedSize,
+                out int[] buffer
+            );
+
+            Assert.IsTrue(buffer != null);
+            Assert.GreaterOrEqual(buffer.Length, requestedSize);
+            Assert.AreEqual(requestedSize, pooled.length);
+        }
+
+        [Test]
+        public void SystemArrayPoolLengthPropertyReturnsOriginalRequestedSize()
+        {
+            int[] testSizes = { 1, 7, 15, 33, 100, 257, 1000 };
+            foreach (int size in testSizes)
+            {
+                using PooledArray<int> pooled = SystemArrayPool<int>.Get(size, out int[] buffer);
+                Assert.AreEqual(size, pooled.length);
+                Assert.GreaterOrEqual(buffer.Length, size);
+            }
+        }
+
+        [Test]
+        public void SystemArrayPoolBufferMayBeLargerThanRequested()
+        {
+            const int requestedSize = 33;
+            using PooledArray<int> pooled = SystemArrayPool<int>.Get(
+                requestedSize,
+                out int[] buffer
+            );
+
+            Assert.AreEqual(requestedSize, pooled.length);
+            Assert.GreaterOrEqual(buffer.Length, requestedSize);
+        }
+
+        [Test]
+        public void SystemArrayPoolGetWithClearArrayClearsRequestedPortionOnly()
+        {
+            const int requestedSize = 50;
+            using PooledArray<int> pooled = SystemArrayPool<int>.Get(
+                requestedSize,
+                clearArray: true,
+                out int[] buffer
+            );
+
+            for (int i = 0; i < requestedSize; i++)
+            {
+                Assert.AreEqual(0, buffer[i]);
+            }
+        }
+
+        [Test]
+        public void SystemArrayPoolDisposeReturnsArrayToPool()
+        {
+            const int requestedSize = 100;
+            int[] firstArray;
+            {
+                PooledArray<int> pooled = SystemArrayPool<int>.Get(requestedSize, out int[] buffer);
+                firstArray = buffer;
+                pooled.Dispose();
+            }
+
+            using PooledArray<int> pooled2 = SystemArrayPool<int>.Get(
+                requestedSize,
+                out int[] reused
+            );
+            Assert.AreSame(firstArray, reused);
+        }
+
+        [Test]
+        public void SystemArrayPoolDoubleDisposeIsNoOp()
+        {
+            const int requestedSize = 10;
+            PooledArray<int> pooled = SystemArrayPool<int>.Get(requestedSize, out int[] buffer);
+
+            pooled.Dispose();
+            Assert.DoesNotThrow(() => pooled.Dispose());
+        }
+
+        [Test]
+        public void SystemArrayPoolArrayPropertyReturnsBackingArray()
+        {
+            const int requestedSize = 25;
+            using PooledArray<int> pooled = SystemArrayPool<int>.Get(
+                requestedSize,
+                out int[] buffer
+            );
+
+            Assert.AreSame(buffer, pooled.array);
+        }
+
+        [Test]
+        public void SystemArrayPoolGetWithoutOutParameterWorks()
+        {
+            const int requestedSize = 15;
+            using PooledArray<int> pooled = SystemArrayPool<int>.Get(requestedSize);
+
+            Assert.IsTrue(pooled.array != null);
+            Assert.GreaterOrEqual(pooled.array.Length, requestedSize);
+            Assert.AreEqual(requestedSize, pooled.length);
+        }
+
+        [Test]
+        public void SystemArrayPoolCanBeUsedWithVariousTypes()
+        {
+            using PooledArray<string> stringPooled = SystemArrayPool<string>.Get(
+                10,
+                out string[] stringBuffer
+            );
+            using PooledArray<double> doublePooled = SystemArrayPool<double>.Get(
+                20,
+                out double[] doubleBuffer
+            );
+            using PooledArray<object> objectPooled = SystemArrayPool<object>.Get(
+                5,
+                out object[] objectBuffer
+            );
+
+            Assert.GreaterOrEqual(stringBuffer.Length, 10);
+            Assert.AreEqual(10, stringPooled.length);
+
+            Assert.GreaterOrEqual(doubleBuffer.Length, 20);
+            Assert.AreEqual(20, doublePooled.length);
+
+            Assert.GreaterOrEqual(objectBuffer.Length, 5);
+            Assert.AreEqual(5, objectPooled.length);
+        }
+
+        [Test]
+        public void SystemArrayPoolWriteAndReadWithinRequestedLength()
+        {
+            const int requestedSize = 50;
+            using PooledArray<int> pooled = SystemArrayPool<int>.Get(
+                requestedSize,
+                out int[] buffer
+            );
+
+            for (int i = 0; i < pooled.length; i++)
+            {
+                buffer[i] = i * 2;
+            }
+
+            for (int i = 0; i < pooled.length; i++)
+            {
+                Assert.AreEqual(i * 2, buffer[i]);
+            }
+        }
+
+        [Test]
+        public void SystemArrayPoolDefaultStructIsDisposable()
+        {
+            PooledArray<int> defaultPooled = default;
+            Assert.DoesNotThrow(() => defaultPooled.Dispose());
+            Assert.AreEqual(0, defaultPooled.length);
+            Assert.IsTrue(defaultPooled.array == null);
+        }
+
+        [Test]
+        public void SystemArrayPoolClearArrayFalseDoesNotClear()
+        {
+            const int requestedSize = 10;
+
+            int[] firstArray;
+            {
+                PooledArray<int> pooled = SystemArrayPool<int>.Get(requestedSize, out int[] buffer);
+                firstArray = buffer;
+                for (int i = 0; i < requestedSize; i++)
+                {
+                    buffer[i] = i + 100;
+                }
+                pooled.Dispose();
+            }
+
+            using PooledArray<int> pooled2 = SystemArrayPool<int>.Get(
+                requestedSize,
+                clearArray: false,
+                out int[] reused
+            );
+
+            if (ReferenceEquals(firstArray, reused))
+            {
+                for (int i = 0; i < requestedSize; i++)
+                {
+                    Assert.AreEqual(i + 100, reused[i]);
+                }
+            }
+        }
+
+        [Test]
+        public void SystemArrayPoolVariousSizesWorkCorrectly()
+        {
+            int[] sizes =
+            {
+                1,
+                2,
+                3,
+                4,
+                7,
+                8,
+                15,
+                16,
+                31,
+                32,
+                63,
+                64,
+                127,
+                128,
+                255,
+                256,
+                511,
+                512,
+                1023,
+                1024,
+            };
+
+            foreach (int size in sizes)
+            {
+                using PooledArray<byte> pooled = SystemArrayPool<byte>.Get(size, out byte[] buffer);
+                Assert.AreEqual(size, pooled.length);
+                Assert.GreaterOrEqual(buffer.Length, size);
+
+                for (int i = 0; i < pooled.length; i++)
+                {
+                    buffer[i] = (byte)(i % 256);
                 }
             }
         }

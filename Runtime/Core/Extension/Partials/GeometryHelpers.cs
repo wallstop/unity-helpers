@@ -349,7 +349,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return;
             }
 
-            using PooledResource<float[]> angleBufferResource = WallstopFastArrayPool<float>.Get(
+            using PooledArray<float> angleBufferResource = SystemArrayPool<float>.Get(
                 count,
                 out float[] angles
             );
@@ -576,7 +576,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return;
             }
 
-            using PooledResource<float[]> angleBufferResource = WallstopFastArrayPool<float>.Get(
+            using PooledArray<float> angleBufferResource = SystemArrayPool<float>.Get(
                 count,
                 out float[] angles
             );

@@ -1117,7 +1117,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             IEnumerable<string> assetPaths,
             string[] defaultFolders,
             out PooledResource<List<string>> listResource,
-            out PooledResource<string[]> arrayResource
+            out PooledArray<string> arrayResource
         )
         {
             listResource = default;
@@ -1135,7 +1135,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             if (assetPaths is IReadOnlyList<string> readonlyList)
             {
-                arrayResource = WallstopArrayPool<string>.Get(
+                arrayResource = SystemArrayPool<string>.Get(
                     readonlyList.Count,
                     out string[] buffer
                 );
@@ -1149,10 +1149,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
             if (assetPaths is ICollection<string> collection)
             {
-                arrayResource = WallstopArrayPool<string>.Get(
-                    collection.Count,
-                    out string[] buffer
-                );
+                arrayResource = SystemArrayPool<string>.Get(collection.Count, out string[] buffer);
                 collection.CopyTo(buffer, 0);
                 return buffer;
             }
@@ -1160,7 +1157,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             listResource = Buffers<string>.List.Get(out List<string> list);
             list.AddRange(assetPaths);
 
-            arrayResource = WallstopArrayPool<string>.Get(list.Count, out string[] temp);
+            arrayResource = SystemArrayPool<string>.Get(list.Count, out string[] temp);
             list.CopyTo(temp);
             return temp;
         }
@@ -1176,7 +1173,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 assetPaths,
                 DefaultPrefabSearchFolders,
                 out PooledResource<List<string>> pathListResource,
-                out PooledResource<string[]> pathArrayResource
+                out PooledArray<string> pathArrayResource
             );
 
             try
@@ -1210,7 +1207,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 assetPaths,
                 DefaultScriptableObjectSearchFolders,
                 out PooledResource<List<string>> pathListResource,
-                out PooledResource<string[]> pathArrayResource
+                out PooledArray<string> pathArrayResource
             );
 
             try

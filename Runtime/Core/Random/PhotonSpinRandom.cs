@@ -72,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             get
             {
-                using PooledResource<byte[]> payloadLease = WallstopArrayPool<byte>.Get(
+                using PooledArray<byte> payloadLease = WallstopArrayPool<byte>.Get(
                     ElementByteSize,
                     out byte[] buffer
                 );

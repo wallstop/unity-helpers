@@ -326,6 +326,138 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
                 );
             });
         }
+
+        [Test]
+        public void RunChecksWithMultipleValidFoldersCompletesWithoutError()
+        {
+            // Create multiple valid subfolders each with a prefab
+            string subFolder1 = Path.Combine(Root, "SubFolder1").SanitizePath();
+            string subFolder2 = Path.Combine(Root, "SubFolder2").SanitizePath();
+            string subFolder3 = Path.Combine(Root, "SubFolder3").SanitizePath();
+
+            EnsureFolder(subFolder1);
+            EnsureFolder(subFolder2);
+            EnsureFolder(subFolder3);
+
+            // Create prefabs in each folder
+            string prefabPath1 = Path.Combine(subFolder1, "Prefab1.prefab").SanitizePath();
+            string prefabPath2 = Path.Combine(subFolder2, "Prefab2.prefab").SanitizePath();
+            string prefabPath3 = Path.Combine(subFolder3, "Prefab3.prefab").SanitizePath();
+
+            GameObject go1 = Track(new GameObject("Prefab1"));
+            GameObject go2 = Track(new GameObject("Prefab2"));
+            GameObject go3 = Track(new GameObject("Prefab3"));
+
+            PrefabUtility.SaveAsPrefabAsset(go1, prefabPath1);
+            PrefabUtility.SaveAsPrefabAsset(go2, prefabPath2);
+            PrefabUtility.SaveAsPrefabAsset(go3, prefabPath3);
+
+            TrackAssetPath(prefabPath1);
+            TrackAssetPath(prefabPath2);
+            TrackAssetPath(prefabPath3);
+
+            AssetDatabase.Refresh();
+
+            PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
+            checker._assetPaths = new List<string> { subFolder1, subFolder2, subFolder3 };
+
+            Assert.DoesNotThrow(
+                () => checker.RunChecksImproved(),
+                "RunChecksImproved() should complete without error when scanning multiple valid folders"
+            );
+        }
+
+        [Test]
+        [TestCase(1, TestName = "SingleFolder")]
+        [TestCase(2, TestName = "TwoFolders")]
+        [TestCase(5, TestName = "FiveFolders")]
+        [TestCase(10, TestName = "TenFolders")]
+        public void RunChecksWithVariousFolderCountsCompletesWithoutError(int folderCount)
+        {
+            // This test exercises the folder array handling with various sizes to catch
+            // issues with array pooling or sizing (such as the SystemArrayPool bug).
+            List<string> folders = new();
+
+            for (int i = 0; i < folderCount; i++)
+            {
+                string folder = Path.Combine(Root, $"TestFolder{i}").SanitizePath();
+                EnsureFolder(folder);
+                folders.Add(folder);
+
+                // Create a prefab in each folder
+                string prefabPath = Path.Combine(folder, $"TestPrefab{i}.prefab").SanitizePath();
+                GameObject go = Track(new GameObject($"TestPrefab{i}"));
+                PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
+                TrackAssetPath(prefabPath);
+            }
+
+            AssetDatabase.Refresh();
+
+            PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
+            checker._assetPaths = folders;
+
+            Assert.DoesNotThrow(
+                () => checker.RunChecksImproved(),
+                $"RunChecksImproved() should complete without error when scanning {folderCount} folder(s)"
+            );
+        }
+
+        [Test]
+        public void RunChecksWithDuplicateFoldersCompletesWithoutError()
+        {
+            // Tests that duplicate folder paths are handled gracefully
+            string prefabPath = Path.Combine(Root, "DuplicateTest.prefab").SanitizePath();
+            EnsureFolder(Path.GetDirectoryName(prefabPath).SanitizePath());
+
+            GameObject go = Track(new GameObject("DuplicateTestPrefab"));
+            PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
+            TrackAssetPath(prefabPath);
+            AssetDatabase.Refresh();
+
+            PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
+            // Same folder listed multiple times
+            checker._assetPaths = new List<string> { Root, Root, Root };
+
+            Assert.DoesNotThrow(
+                () => checker.RunChecksImproved(),
+                "RunChecksImproved() should handle duplicate folder paths gracefully"
+            );
+        }
+
+        [Test]
+        public void RunChecksWithNestedFoldersCompletesWithoutError()
+        {
+            // Tests scanning with both parent and child folders
+            string parentFolder = Path.Combine(Root, "Parent").SanitizePath();
+            string childFolder = Path.Combine(parentFolder, "Child").SanitizePath();
+
+            EnsureFolder(childFolder);
+
+            // Create prefabs in both folders
+            string parentPrefabPath = Path.Combine(parentFolder, "ParentPrefab.prefab")
+                .SanitizePath();
+            string childPrefabPath = Path.Combine(childFolder, "ChildPrefab.prefab").SanitizePath();
+
+            GameObject parentGo = Track(new GameObject("ParentPrefab"));
+            GameObject childGo = Track(new GameObject("ChildPrefab"));
+
+            PrefabUtility.SaveAsPrefabAsset(parentGo, parentPrefabPath);
+            PrefabUtility.SaveAsPrefabAsset(childGo, childPrefabPath);
+
+            TrackAssetPath(parentPrefabPath);
+            TrackAssetPath(childPrefabPath);
+
+            AssetDatabase.Refresh();
+
+            PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
+            // Both parent and child folder in the list
+            checker._assetPaths = new List<string> { parentFolder, childFolder };
+
+            Assert.DoesNotThrow(
+                () => checker.RunChecksImproved(),
+                "RunChecksImproved() should handle nested folder paths gracefully"
+            );
+        }
     }
 #endif
 }

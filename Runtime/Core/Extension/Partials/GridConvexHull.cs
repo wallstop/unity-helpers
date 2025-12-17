@@ -572,8 +572,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     if (colinear.Count > 0)
                     {
                         // Sort by distance and add all (excluding duplicates)
-                        using PooledResource<float[]> distancesRes =
-                            WallstopFastArrayPool<float>.Get(colinear.Count, out float[] distances);
+                        using PooledArray<float> distancesRes = SystemArrayPool<float>.Get(
+                            colinear.Count,
+                            out float[] distances
+                        );
                         for (int i = 0; i < colinear.Count; ++i)
                         {
                             distances[i] = DistanceSquared(current, colinear[i]);
@@ -651,11 +653,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             using PooledResource<List<int>> indicesResource = Buffers<int>.List.Get(
                 out List<int> scratchIndices
             );
-            using PooledResource<float[]> distancesResource = WallstopFastArrayPool<float>.Get(
+            using PooledArray<float> distancesResource = SystemArrayPool<float>.Get(
                 Math.Max(1, vectorPoints.Count),
                 out float[] scratchDistances
             );
-            using PooledResource<bool[]> membershipResource = WallstopFastArrayPool<bool>.Get(
+            using PooledArray<bool> membershipResource = SystemArrayPool<bool>.Get(
                 Math.Max(1, vectorPoints.Count),
                 out bool[] membership
             );

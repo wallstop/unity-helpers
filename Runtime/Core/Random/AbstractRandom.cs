@@ -906,10 +906,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 return count == 1 ? buffer[0] : buffer[Next(count)];
             }
 
-            using PooledResource<T[]> pooled = WallstopFastArrayPool<T>.Get(
-                enumCount,
-                out T[] temp
-            );
+            using PooledArray<T> pooled = SystemArrayPool<T>.Get(enumCount, out T[] temp);
             Span<T> tempSpan = temp.AsSpan(0, enumCount);
             int index = PopulateAllowedValues(enumValues, exclusions, tempSpan);
             if (index == 0)
@@ -943,10 +940,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 return count == 1 ? buffer[0] : buffer[Next(count)];
             }
 
-            using PooledResource<T[]> pooled = WallstopFastArrayPool<T>.Get(
-                enumCount,
-                out T[] temp
-            );
+            using PooledArray<T> pooled = SystemArrayPool<T>.Get(enumCount, out T[] temp);
             Span<T> tempSpan = temp.AsSpan(0, enumCount);
             int index = PopulateAllowedValues(enumValues, exclusions, tempSpan);
             if (index == 0)
@@ -1283,7 +1277,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
             int width = noiseMap.GetLength(0);
             int height = noiseMap.GetLength(1);
-            using PooledResource<Vector2[]> octaveOffsetBuffer = WallstopFastArrayPool<Vector2>.Get(
+            using PooledArray<Vector2> octaveOffsetBuffer = SystemArrayPool<Vector2>.Get(
                 octaves,
                 out Vector2[] octaveOffsets
             );

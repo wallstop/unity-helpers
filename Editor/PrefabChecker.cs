@@ -452,15 +452,11 @@ namespace WallstopStudios.UnityHelpers.Editor
                 TryRecordHistory(p);
             }
 
-            using PooledResource<string[]> folderArrayLease = WallstopArrayPool<string>.Get(
-                validPaths.Count,
-                out string[] folderArray
-            );
-            for (int i = 0; i < validPaths.Count; i++)
-            {
-                folderArray[i] = validPaths[i];
-            }
-
+            // Use ToArray() to create an exact-sized array for AssetDatabase.FindAssets.
+            // SystemArrayPool returns arrays larger than requested (power-of-2 bucketing),
+            // and Unity's FindAssets iterates over the entire array, causing NullReferenceException
+            // from null elements when passed to Paths.ConvertSeparatorsToUnity.
+            string[] folderArray = validPaths.ToArray();
             string[] guids = AssetDatabase.FindAssets("t:prefab", folderArray);
             int totalPrefabsChecked = 0;
             int totalIssuesFound = 0;

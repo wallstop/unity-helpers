@@ -1,9 +1,8 @@
 // LzmaEncoder.cs
 
-using System;
-
 namespace SevenZip.Compression.LZMA
 {
+    using System;
     using RangeCoder;
 
     public class Encoder : ICoder, ISetCoderProperties, IWriteCoderProperties

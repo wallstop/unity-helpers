@@ -456,17 +456,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     {
                         if (folderAssetPaths.Count > 0)
                         {
-                            using PooledResource<string[]> folderLease =
-                                WallstopArrayPool<string>.Get(
-                                    folderAssetPaths.Count,
-                                    out string[] folders
-                                );
-                            for (int i = 0; i < folderAssetPaths.Count; i++)
-                            {
-                                folders[i] = folderAssetPaths[i];
-                            }
-
-                            string[] guids = AssetDatabase.FindAssets("t:Texture2D", folders);
+                            string[] guids = AssetDatabase.FindAssets(
+                                "t:Texture2D",
+                                folderAssetPaths.ToArray()
+                            );
                             for (int i = 0; i < guids.Length; i++)
                             {
                                 string p = AssetDatabase.GUIDToAssetPath(guids[i]);

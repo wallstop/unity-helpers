@@ -648,8 +648,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             const int BucketCount = 1 << BitsPerPass;
             Span<int> counts = stackalloc int[BucketCount];
 
-            using PooledResource<ElementData[]> scratchResource =
-                WallstopArrayPool<ElementData>.Get(length, out ElementData[] scratch);
+            using PooledArray<ElementData> scratchResource = SystemArrayPool<ElementData>.Get(
+                length,
+                out ElementData[] scratch
+            );
             ElementData[] source = elements;
             ElementData[] destination = scratch;
             bool dataInScratch = false;

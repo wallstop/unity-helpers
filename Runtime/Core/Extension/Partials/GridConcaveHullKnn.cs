@@ -74,7 +74,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             Vector2 firstPoint = dataSet[firstIndex];
             int maxSteps = Math.Max(16, totalPoints * 6);
 
-            using PooledResource<bool[]> availabilityResource = WallstopFastArrayPool<bool>.Get(
+            using PooledArray<bool> availabilityResource = SystemArrayPool<bool>.Get(
                 totalPoints,
                 out bool[] availability
             );
@@ -83,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 out List<int> neighborIndices
             );
 
-            using PooledResource<float[]> distanceBufferRes = WallstopFastArrayPool<float>.Get(
+            using PooledArray<float> distanceBufferRes = SystemArrayPool<float>.Get(
                 totalPoints,
                 out float[] neighborDistances
             );
@@ -205,7 +205,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             FastVector3Int firstPoint = dataSet[firstIndex];
             int maxSteps = Math.Max(16, dataSet.Count * 6);
 
-            using PooledResource<bool[]> availabilityResource = WallstopFastArrayPool<bool>.Get(
+            using PooledArray<bool> availabilityResource = SystemArrayPool<bool>.Get(
                 totalPoints,
                 out bool[] availability
             );
@@ -214,13 +214,15 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 out List<int> neighborIndices
             );
 
-            using PooledResource<float[]> distanceBufferResource = WallstopFastArrayPool<float>.Get(
+            using PooledArray<float> distanceBufferResource = SystemArrayPool<float>.Get(
                 totalPoints,
                 out float[] neighborDistances
             );
 
-            using PooledResource<Vector2[]> worldPositionsResource =
-                WallstopFastArrayPool<Vector2>.Get(totalPoints, out Vector2[] worldPositions);
+            using PooledArray<Vector2> worldPositionsResource = SystemArrayPool<Vector2>.Get(
+                totalPoints,
+                out Vector2[] worldPositions
+            );
             for (int i = 0; i < totalPoints; ++i)
             {
                 worldPositions[i] = grid.CellToWorld(dataSet[i]);
@@ -280,7 +282,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 return;
             }
-            using PooledResource<float[]> distancesResource = WallstopFastArrayPool<float>.Get(
+            using PooledArray<float> distancesResource = SystemArrayPool<float>.Get(
                 count,
                 out float[] distances
             );
@@ -302,7 +304,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 return;
             }
-            using PooledResource<float[]> angleRes = WallstopFastArrayPool<float>.Get(
+            using PooledArray<float> angleRes = SystemArrayPool<float>.Get(
                 count,
                 out float[] angles
             );
@@ -326,7 +328,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return;
             }
 
-            using PooledResource<float[]> distancesResource = WallstopFastArrayPool<float>.Get(
+            using PooledArray<float> distancesResource = SystemArrayPool<float>.Get(
                 count,
                 out float[] distances
             );
@@ -351,7 +353,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return;
             }
 
-            using PooledResource<float[]> distancesResource = WallstopFastArrayPool<float>.Get(
+            using PooledArray<float> distancesResource = SystemArrayPool<float>.Get(
                 count,
                 out float[] distances
             );
@@ -377,7 +379,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return;
             }
 
-            using PooledResource<float[]> angleBufferResource = WallstopFastArrayPool<float>.Get(
+            using PooledArray<float> angleBufferResource = SystemArrayPool<float>.Get(
                 count,
                 out float[] angles
             );

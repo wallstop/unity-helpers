@@ -342,6 +342,61 @@ Unity -batchmode -projectPath <Project> -runTests -testPlatform PlayMode -testRe
   - ✅ `using var lease = Buffers<T>.HashSet.Get(out HashSet<T> buffer);`
   - ✅ Clear and reuse collections instead of allocating new ones
   - ❌ `new List<T>()` in frequently-called methods
+- **Choose the right array pool**:
+
+  > **⚠️ CRITICAL: Array Pool Selection Directly Impacts Memory Usage**
+  >
+  > Using the wrong array pool for your use case **will cause memory leaks**. Read this section carefully before choosing a pool.
+  - **`WallstopArrayPool<T>`** / **`WallstopFastArrayPool<T>`** — Use **ONLY** for **constant or tightly bounded sizes**. Returns arrays of EXACT requested size. Pools arrays by exact size in a dictionary/list keyed by size.
+
+    **⚠️ MEMORY LEAK WARNING**: These pools create a separate pool bucket for EVERY unique size requested. If you pass variable sizes (user input, collection.Count, dynamic values), each unique size creates a new bucket that persists forever, causing unbounded memory growth.
+    - ✅ **SAFE**: Compile-time constants (`Get(16)`, `Get(64)`, `Get(256)`)
+    - ✅ **SAFE**: Algorithm-bounded sizes with small fixed upper limits (bucket counts capped at 32)
+    - ✅ **SAFE**: PRNG internal state buffers (fixed sizes like 16, 32, 64 bytes)
+    - ✅ **SAFE**: Sizes from a small, known set of values (e.g., enum-based sizes)
+    - ❌ **MEMORY LEAK**: `Get(userInput)` — Every unique user value creates a permanent bucket
+    - ❌ **MEMORY LEAK**: `Get(collection.Count)` — Every unique collection size leaks memory
+    - ❌ **MEMORY LEAK**: `Get(random.Next(1, 1000))` — Creates up to 1000 permanent buckets
+    - ❌ **MEMORY LEAK**: `Get(dynamicCalculation)` — Unbounded sizes = unbounded memory
+
+    **Rule of thumb**: If you cannot enumerate ALL possible sizes at compile time, use `SystemArrayPool<T>` instead.
+
+    **`WallstopFastArrayPool<T>`** is identical but does NOT clear arrays on return. Use for `unmanaged` types where you'll overwrite all values before reading.
+
+  - **`SystemArrayPool<T>`** — Use for **variable or unpredictable sizes**. Returns arrays of AT LEAST requested size (may be larger due to power-of-2 bucketing). Wraps .NET's `ArrayPool<T>.Shared` which efficiently handles varied sizes.
+    - ✅ Sorting algorithm buffers (scale with input: `count / 2`, `count`)
+    - ✅ Collection copies of unknown size
+    - ✅ Any size derived from user input or external data
+    - ✅ Sizes computed at runtime based on data
+    - ✅ Large arrays (1KB+) where exact sizing doesn't matter
+
+  - **CRITICAL for `SystemArrayPool`**: The returned array may be LARGER than requested. Always use `pooledArray.Length` (the originally requested size), NOT `array.Length`:
+
+    ```csharp
+    // ✅ Correct - use pooledArray.Length
+    using PooledArray<int> pooled = SystemArrayPool<int>.Get(count, out int[] buffer);
+    for (int i = 0; i < pooled.Length; i++)  // Use pooled.Length, not buffer.Length
+    {
+        buffer[i] = ProcessItem(i);
+    }
+
+    // ❌ Wrong - buffer.Length may be larger than requested
+    for (int i = 0; i < buffer.Length; i++)  // May iterate past valid data!
+    {
+        ...
+    }
+    ```
+
+  - **Decision flowchart**:
+
+    ```text
+    Is the size a compile-time constant or from a small fixed set?
+    ├─ YES → Use WallstopArrayPool<T> (or WallstopFastArrayPool<T> for unmanaged types)
+    └─ NO  → Is the size derived from user input, collection sizes, or runtime calculations?
+             ├─ YES → Use SystemArrayPool<T>
+             └─ NO  → When in doubt, use SystemArrayPool<T> (safer default)
+    ```
+
 - **Use stack allocation where appropriate**:
   - ✅ `stackalloc` for small fixed-size arrays in performance-critical code
   - ✅ Value tuples `(int x, int y)` instead of `Tuple<int, int>`
@@ -551,26 +606,26 @@ The dev container includes modern, high-performance CLI tools. **Always use thes
 
 #### Tool Reference
 
-| Modern Tool           | Replaces     | Why Better                                                          |
-| --------------------- | ------------ | ------------------------------------------------------------------- |
-| `rg` (ripgrep)        | `grep`       | 10-100x faster, respects `.gitignore`, better regex, colored output |
-| `fd`                  | `find`       | 5x faster, intuitive syntax, respects `.gitignore`, colored output  |
-| `bat`                 | `cat`/`less` | Syntax highlighting, line numbers, git integration                  |
-| `eza`                 | `ls`         | Icons, git status, tree view, better defaults                       |
-| `delta`               | `diff`       | Side-by-side diffs, syntax highlighting (auto-configured for git)   |
-| `sd`                  | `sed`        | Intuitive syntax, regex support, no escaping headaches              |
-| `dust`                | `du`         | Visual directory size with percentages, sorted output               |
-| `procs`               | `ps`         | Colored output, tree view, searchable, better defaults              |
-| `tokei`               | `cloc`       | Fast code statistics by language, accurate line counts              |
-| `fzf`                 | —            | Fuzzy finder for files, history, anything                           |
-| `z` (zoxide)          | `cd`         | Learns your habits, jump to frequent directories                    |
-| `jq`                  | —            | JSON processor and pretty-printer                                   |
-| `yq`                  | —            | YAML processor (like jq for YAML)                                   |
-| `duf`                 | `df`         | Better disk usage display                                           |
-| `htop`                | `top`        | Interactive process viewer                                          |
-| `ncdu`                | `du`         | Interactive disk usage analyzer                                     |
-| `ag` (silversearcher) | `grep`       | Fast code search (alternative to rg)                                |
-| `tldr`                | `man`        | Simplified man pages with examples                                  |
+| Modern Tool           | Replaces     | Why Better                                                                           |
+| --------------------- | ------------ | ------------------------------------------------------------------------------------ |
+| `rg` (ripgrep)        | `grep`       | 10-100x faster, respects `.gitignore`, better regex, colored output                  |
+| `fd`                  | `find`       | 5x faster, intuitive syntax, respects `.gitignore`, colored output                   |
+| `bat`                 | `cat`/`less` | Syntax highlighting, line numbers, git integration (use `--paging=never` in scripts) |
+| `eza`                 | `ls`         | Icons, git status, tree view, better defaults                                        |
+| `delta`               | `diff`       | Side-by-side diffs, syntax highlighting (auto-configured for git)                    |
+| `sd`                  | `sed`        | Intuitive syntax, regex support, no escaping headaches                               |
+| `dust`                | `du`         | Visual directory size with percentages, sorted output                                |
+| `procs`               | `ps`         | Colored output, tree view, searchable, better defaults                               |
+| `tokei`               | `cloc`       | Fast code statistics by language, accurate line counts                               |
+| `fzf`                 | —            | Fuzzy finder for files, history, anything                                            |
+| `z` (zoxide)          | `cd`         | Learns your habits, jump to frequent directories                                     |
+| `jq`                  | —            | JSON processor and pretty-printer                                                    |
+| `yq`                  | —            | YAML processor (like jq for YAML)                                                    |
+| `duf`                 | `df`         | Better disk usage display                                                            |
+| `htop`                | `top`        | Interactive process viewer                                                           |
+| `ncdu`                | `du`         | Interactive disk usage analyzer                                                      |
+| `ag` (silversearcher) | `grep`       | Fast code search (alternative to rg)                                                 |
+| `tldr`                | `man`        | Simplified man pages with examples                                                   |
 
 #### Shell Aliases (Pre-configured)
 
@@ -579,7 +634,7 @@ The following aliases are configured in the dev container, so traditional comman
 ```bash
 grep → rg        # ripgrep
 find → fd        # fd-find
-cat  → bat       # bat with syntax highlighting
+cat  → bat       # bat with syntax highlighting (use --paging=never)
 ls   → eza       # eza with icons
 cd   → z         # zoxide smart navigation
 df   → duf       # disk usage
@@ -619,26 +674,37 @@ fd -e cs -e json                                # Find files with extensions
 fd "pattern" --hidden                           # Include hidden files
 fd "pattern" --no-ignore                        # Include gitignored files
 fd "pattern" -x echo {}                         # Execute command on results
-fd "^test" --type f -X bat                      # Open all matching files in bat
+fd "^test" --type f -X bat --paging=never       # Open all matching files in bat
 
 # ❌ NEVER use find
 find . -name "*.cs"                             # Slow, verbose syntax
 find . -type d -name "Tests"                    # More typing, slower
 ```
 
-**ALWAYS use `bat` instead of `cat` for file viewing:**
+**ALWAYS use `bat` instead of `cat` (with `--paging=never`):**
 
 ```bash
-# ✅ CORRECT - Use bat
-bat file.cs                                     # View with syntax highlighting
-bat -n file.cs                                  # Show line numbers only
-bat -r 10:20 file.cs                            # Show lines 10-20
-bat --diff file1.cs file2.cs                    # Side-by-side diff
-bat -l cs                                       # Force C# syntax highlighting
-bat -p file.cs                                  # Plain output (no decorations)
+# ✅ CORRECT - Use bat with --paging=never
+bat --paging=never file.cs                      # View with syntax highlighting
+bat --paging=never -n file.cs                   # Show line numbers only
+bat --paging=never -r 10:20 file.cs             # Show lines 10-20
+bat --paging=never -p file.cs                   # Plain output (no decorations)
+bat --paging=never -l cs file.txt               # Force C# syntax highlighting
+bat --paging=never --style=plain file.cs        # No line numbers or decorations
 
-# ❌ NEVER use cat for reading source files
-cat file.cs                                     # No highlighting, no line numbers
+# ✅ CORRECT - Combining with other tools
+head -n 50 file.cs | bat --paging=never -l cs   # First 50 lines with highlighting
+tail -n 50 file.cs | bat --paging=never -l cs   # Last 50 lines with highlighting
+rg "pattern" -C 3 | bat --paging=never -l cs    # Search results with highlighting
+
+# ❌ NEVER use bare bat without --paging=never - it will block
+bat file.cs                                     # BLOCKS waiting for pager input!
+bat -n file.cs                                  # BLOCKS!
+bat -r 10:20 file.cs                            # BLOCKS!
+
+# ❌ NEVER use cat - no syntax highlighting
+cat file.cs                                     # No highlighting, harder to read
+cat -n file.cs                                  # No highlighting
 ```
 
 **ALWAYS use `eza` instead of `ls`:**
@@ -749,7 +815,7 @@ rg "OldName" --type cs -l | xargs -I {} bat {} -r 1:5
 
 ```bash
 # View file with context
-bat -r 50:100 Runtime/Core/Helper/Buffers.cs
+bat --paging=never -r 50:100 Runtime/Core/Helper/Buffers.cs
 
 # Compare files
 delta file1.cs file2.cs
@@ -788,6 +854,58 @@ zi                                              # Interactive directory selectio
 | View file with highlighting  | `cat` + manual | `bat`       | Instant highlighting |
 
 **Bottom line:** Modern tools are not just faster — they have better defaults, respect `.gitignore` automatically, provide colored output, and have more intuitive syntax. There is no reason to use the traditional tools in this dev container.
+
+#### Using Modern Tools with xargs and Shell Subcommands
+
+**CRITICAL**: When using `xargs`, `sh -c`, or any shell subcommand, you MUST still use modern tools. The shell aliases are NOT available inside subshells spawned by `xargs -I {} sh -c '...'` or similar constructs.
+
+**Always use the actual tool names (`rg`, `fd`, `bat`, etc.) in xargs commands:**
+
+```bash
+# ✅ CORRECT - Use modern tools explicitly in xargs
+fd -e cs | xargs -I {} sh -c 'rg "pattern" "{}" && echo "Found in: {}"'
+fd -e cs | xargs -I {} sh -c 'rg -q "^namespace" "{}" || echo "No namespace: {}"'
+fd -e cs -x rg "using" {}                       # fd's native -x flag (preferred)
+fd -e cs -X bat --paging=never                  # fd's -X for batch execution
+
+# ❌ NEVER use traditional tools in xargs (aliases don't work in subshells)
+fd -e cs | xargs -I {} sh -c 'grep "pattern" "{}"'     # grep is slow
+find . -name "*.cs" | xargs grep "pattern"             # Both find AND grep are wrong
+fd -e cs | xargs -I {} sh -c 'cat "{}"'                # cat has no highlighting, use bat --paging=never
+```
+
+**Prefer `fd`'s native execution over xargs when possible:**
+
+```bash
+# ✅ BEST - Use fd's -x (per-file) or -X (batch) flags
+fd -e cs -x rg "TODO" {}                        # Run rg on each file
+fd -e cs -X rg "TODO"                           # Run rg once with all files as args
+fd -e cs -x bat --paging=never -r 1:10 {}       # Show first 10 lines of each file
+
+# ✅ GOOD - Use xargs with modern tools when fd flags aren't enough
+fd -e cs | xargs -I {} sh -c 'rg -q "^using" "{}" && rg -q "^namespace" "{}" && echo "OK: {}"'
+
+# ❌ AVOID - Unnecessary xargs when fd can do it
+fd -e cs | xargs rg "pattern"                   # fd -e cs -X rg "pattern" is cleaner
+```
+
+**Complex filtering with modern tools:**
+
+```bash
+# ✅ CORRECT - Check files for conditions using rg
+fd -e cs | while read -r f; do
+    if rg -q "^using" "$f" && ! rg -q "^namespace" "$f"; then
+        echo "Violation: $f"
+    fi
+done
+
+# ✅ CORRECT - Using fd with rg for multi-step analysis
+fd -e cs -x sh -c 'rg -l "^using" "$1" | xargs -I {} rg -L "^namespace" {}' _ {}
+
+# ❌ NEVER mix traditional and modern tools
+fd -e cs | xargs grep "pattern"                 # Use rg, not grep
+find . -name "*.cs" -exec rg "pattern" {} \;   # Use fd, not find
+```
 
 ### Code Formatting
 
@@ -1055,8 +1173,12 @@ Do not copy or clone this repository elsewhere. If you need test results, ask th
 ### Pooling & Buffering
 
 - **`Buffers<T>.List`** / **`Buffers<T>.HashSet`** — Zero-allocation collection leases
-- **`WallstopArrayPool<T>`** — Array pooling
+- **`WallstopArrayPool<T>`** — Exact-size array pooling (use for fixed/predictable sizes)
+- **`SystemArrayPool<T>`** — Variable-size array pooling (wraps `System.Buffers.ArrayPool<T>.Shared`)
+- **`WallstopFastArrayPool<T>`** — Exact-size array pooling without clearing (unmanaged types)
 - Pattern: `using var lease = Buffers<T>.List.Get(out List<T> buffer);`
+- Pattern: `using PooledArray<T> pooled = SystemArrayPool<T>.Get(count, out T[] buffer);`
+- **⚠️ WARNING**: `WallstopArrayPool<T>` and `WallstopFastArrayPool<T>` leak memory if used with variable sizes — see "Choose the right array pool" in Coding Style for details
 
 ### Singletons
 

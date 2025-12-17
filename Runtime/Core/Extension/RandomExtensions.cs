@@ -147,10 +147,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             HashSet<T> exclude = new(exceptions);
-            using PooledResource<T[]> pooled = WallstopArrayPool<T>.Get(
-                source.Count,
-                out T[] buffer
-            );
+            using PooledArray<T> pooled = SystemArrayPool<T>.Get(source.Count, out T[] buffer);
             int n = 0;
             for (int i = 0; i < source.Count; ++i)
             {
@@ -1062,7 +1059,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int count
         )
         {
-            using PooledResource<T[]> arrayBuffer = WallstopArrayPool<T>.Get(count, out T[] result);
+            using PooledArray<T> arrayBuffer = SystemArrayPool<T>.Get(count, out T[] result);
 
             for (int i = 0; i < count; ++i)
             {

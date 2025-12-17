@@ -2340,44 +2340,274 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             PolygonCollider2D collider = owner.GetComponent<PolygonCollider2D>();
             collider.pathCount = 1;
-            collider.SetPath(
-                0,
-                new[]
-                {
-                    new Vector2(0f, 0f),
-                    new Vector2(0f, 1f),
-                    new Vector2(1f, 1f),
-                    new Vector2(1f, 0f),
-                }
-            );
+            Vector2[] originalPath = new[]
+            {
+                new Vector2(0f, 0f),
+                new Vector2(0f, 1f),
+                new Vector2(1f, 1f),
+                new Vector2(1f, 0f),
+            };
+            collider.SetPath(0, originalPath);
 
             Rect outer = new(-1f, -1f, 4f, 4f);
             collider.Invert(outer);
 
-            Assert.AreEqual(2, collider.pathCount);
+            Assert.AreEqual(
+                2,
+                collider.pathCount,
+                $"Expected 2 paths after inversion, got {collider.pathCount}"
+            );
+
+            Vector2[] expectedOuterPath = new[]
+            {
+                new Vector2(outer.xMin, outer.yMin),
+                new Vector2(outer.xMin, outer.yMax),
+                new Vector2(outer.xMax, outer.yMax),
+                new Vector2(outer.xMax, outer.yMin),
+            };
             Vector2[] outerPath = collider.GetPath(0);
-            CollectionAssert.AreEqual(
-                new[]
-                {
-                    new Vector2(outer.xMin, outer.yMin),
-                    new Vector2(outer.xMin, outer.yMax),
-                    new Vector2(outer.xMax, outer.yMax),
-                    new Vector2(outer.xMax, outer.yMin),
-                },
-                outerPath
+            Assert.AreEqual(
+                expectedOuterPath.Length,
+                outerPath.Length,
+                $"Outer path length mismatch. Expected {expectedOuterPath.Length}, got {outerPath.Length}. "
+                    + $"Actual path: [{string.Join(", ", outerPath)}]"
+            );
+            CollectionAssert.AreEqual(expectedOuterPath, outerPath);
+
+            Vector2[] expectedInnerPath = new[]
+            {
+                new Vector2(1f, 0f),
+                new Vector2(1f, 1f),
+                new Vector2(0f, 1f),
+                new Vector2(0f, 0f),
+            };
+            Vector2[] innerPath = collider.GetPath(1);
+            Assert.AreEqual(
+                expectedInnerPath.Length,
+                innerPath.Length,
+                $"Inner path length mismatch. Expected {expectedInnerPath.Length}, got {innerPath.Length}. "
+                    + $"Actual path: [{string.Join(", ", innerPath)}]"
+            );
+            CollectionAssert.AreEqual(expectedInnerPath, innerPath);
+
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator InvertPolygonColliderWithTrianglePath()
+        {
+            GameObject owner = Track(
+                new GameObject("PolygonColliderTriangleTest", typeof(PolygonCollider2D))
+            );
+
+            PolygonCollider2D collider = owner.GetComponent<PolygonCollider2D>();
+            collider.pathCount = 1;
+            Vector2[] originalPath = new[]
+            {
+                new Vector2(0f, 0f),
+                new Vector2(0.5f, 1f),
+                new Vector2(1f, 0f),
+            };
+            collider.SetPath(0, originalPath);
+
+            Rect outer = new(-1f, -1f, 3f, 3f);
+            collider.Invert(outer);
+
+            Assert.AreEqual(
+                2,
+                collider.pathCount,
+                $"Expected 2 paths after triangle inversion, got {collider.pathCount}"
+            );
+
+            Vector2[] outerPath = collider.GetPath(0);
+            Assert.AreEqual(
+                4,
+                outerPath.Length,
+                $"Outer path should have 4 vertices (rectangle), got {outerPath.Length}. "
+                    + $"Actual path: [{string.Join(", ", outerPath)}]"
             );
 
             Vector2[] innerPath = collider.GetPath(1);
-            CollectionAssert.AreEqual(
-                new[]
-                {
-                    new Vector2(1f, 0f),
-                    new Vector2(1f, 1f),
-                    new Vector2(0f, 1f),
-                    new Vector2(0f, 0f),
-                },
-                innerPath
+            Assert.AreEqual(
+                3,
+                innerPath.Length,
+                $"Inner path should have 3 vertices (triangle reversed), got {innerPath.Length}. "
+                    + $"Actual path: [{string.Join(", ", innerPath)}]"
             );
+
+            // Verify the inner path is the original reversed
+            Vector2[] expectedInnerPath = new[]
+            {
+                new Vector2(1f, 0f),
+                new Vector2(0.5f, 1f),
+                new Vector2(0f, 0f),
+            };
+            CollectionAssert.AreEqual(expectedInnerPath, innerPath);
+
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator InvertPolygonColliderWithMultiplePaths()
+        {
+            GameObject owner = Track(
+                new GameObject("PolygonColliderMultiPathTest", typeof(PolygonCollider2D))
+            );
+
+            PolygonCollider2D collider = owner.GetComponent<PolygonCollider2D>();
+            collider.pathCount = 2;
+
+            // First path: outer square
+            Vector2[] path1 = new[]
+            {
+                new Vector2(0f, 0f),
+                new Vector2(0f, 2f),
+                new Vector2(2f, 2f),
+                new Vector2(2f, 0f),
+            };
+            collider.SetPath(0, path1);
+
+            // Second path: inner triangle (hole)
+            Vector2[] path2 = new[]
+            {
+                new Vector2(0.5f, 0.5f),
+                new Vector2(1f, 1.5f),
+                new Vector2(1.5f, 0.5f),
+            };
+            collider.SetPath(1, path2);
+
+            Rect outer = new(-2f, -2f, 6f, 6f);
+            collider.Invert(outer);
+
+            Assert.AreEqual(
+                3,
+                collider.pathCount,
+                $"Expected 3 paths after multi-path inversion, got {collider.pathCount}"
+            );
+
+            // First path should be the outer rectangle
+            Vector2[] outerPath = collider.GetPath(0);
+            Assert.AreEqual(
+                4,
+                outerPath.Length,
+                $"Outer path should have 4 vertices, got {outerPath.Length}"
+            );
+
+            // Second path should be path1 reversed
+            Vector2[] invertedPath1 = collider.GetPath(1);
+            Assert.AreEqual(
+                4,
+                invertedPath1.Length,
+                $"First inverted path should have 4 vertices, got {invertedPath1.Length}. "
+                    + $"Actual: [{string.Join(", ", invertedPath1)}]"
+            );
+
+            // Third path should be path2 reversed
+            Vector2[] invertedPath2 = collider.GetPath(2);
+            Assert.AreEqual(
+                3,
+                invertedPath2.Length,
+                $"Second inverted path should have 3 vertices, got {invertedPath2.Length}. "
+                    + $"Actual: [{string.Join(", ", invertedPath2)}]"
+            );
+
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator InvertPolygonColliderWithZeroPaths()
+        {
+            GameObject owner = Track(
+                new GameObject("PolygonColliderZeroPathTest", typeof(PolygonCollider2D))
+            );
+
+            PolygonCollider2D collider = owner.GetComponent<PolygonCollider2D>();
+            collider.pathCount = 0;
+
+            Rect outer = new(-1f, -1f, 4f, 4f);
+            int originalPathCount = collider.pathCount;
+
+            collider.Invert(outer);
+
+            Assert.AreEqual(
+                originalPathCount,
+                collider.pathCount,
+                "Inverting a collider with zero paths should leave path count unchanged"
+            );
+
+            yield return null;
+        }
+
+        [Test]
+        public void InvertPolygonColliderWithNullThrows()
+        {
+            PolygonCollider2D nullCollider = null;
+            Rect outer = new(-1f, -1f, 4f, 4f);
+
+            Assert.Throws<ArgumentNullException>(() => nullCollider.Invert(outer));
+        }
+
+        [UnityTest]
+        public IEnumerator InvertPolygonColliderWithPentagon()
+        {
+            GameObject owner = Track(
+                new GameObject("PolygonColliderPentagonTest", typeof(PolygonCollider2D))
+            );
+
+            PolygonCollider2D collider = owner.GetComponent<PolygonCollider2D>();
+            collider.pathCount = 1;
+
+            // Pentagon with 5 vertices
+            float radius = 1f;
+            Vector2[] pentagon = new Vector2[5];
+            for (int i = 0; i < 5; i++)
+            {
+                float angle = Mathf.PI / 2f + i * 2f * Mathf.PI / 5f;
+                pentagon[i] = new Vector2(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius);
+            }
+            collider.SetPath(0, pentagon);
+
+            Rect outer = new(-3f, -3f, 6f, 6f);
+            collider.Invert(outer);
+
+            Assert.AreEqual(
+                2,
+                collider.pathCount,
+                $"Expected 2 paths after pentagon inversion, got {collider.pathCount}"
+            );
+
+            Vector2[] outerPath = collider.GetPath(0);
+            Assert.AreEqual(
+                4,
+                outerPath.Length,
+                $"Outer path should have 4 vertices, got {outerPath.Length}"
+            );
+
+            Vector2[] innerPath = collider.GetPath(1);
+            Assert.AreEqual(
+                5,
+                innerPath.Length,
+                $"Inner path should have 5 vertices (pentagon reversed), got {innerPath.Length}. "
+                    + $"Actual path: [{string.Join(", ", innerPath)}]"
+            );
+
+            // Verify the inner path is the original reversed
+            for (int i = 0; i < 5; i++)
+            {
+                int reversedIndex = 4 - i;
+                Assert.AreEqual(
+                    pentagon[reversedIndex].x,
+                    innerPath[i].x,
+                    0.0001f,
+                    $"Pentagon vertex {i} x mismatch"
+                );
+                Assert.AreEqual(
+                    pentagon[reversedIndex].y,
+                    innerPath[i].y,
+                    0.0001f,
+                    $"Pentagon vertex {i} y mismatch"
+                );
+            }
 
             yield return null;
         }

@@ -1,9 +1,9 @@
 // LzBinTree.cs
 
-using System;
-
 namespace SevenZip.Compression.LZ
 {
+    using System;
+
     public class BinTree : InWindow, IMatchFinder
     {
         UInt32 _cyclicBufferPos;

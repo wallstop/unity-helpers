@@ -75,7 +75,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             {
                 ulong state1 = ((ulong)_a << 32) | _b;
                 ulong state2 = ((ulong)_c << 32) | _d;
-                using PooledResource<byte[]> payloadLease = WallstopArrayPool<byte>.Get(
+                using PooledArray<byte> payloadLease = WallstopArrayPool<byte>.Get(
                     PayloadByteCount,
                     out byte[] buffer
                 );

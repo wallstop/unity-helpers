@@ -1,7 +1,7 @@
-using System;
-
 namespace SevenZip.Compression.RangeCoder
 {
+    using System;
+
     struct BitTreeEncoder
     {
         readonly BitEncoder[] Models;

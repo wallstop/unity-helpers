@@ -25,7 +25,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// </summary>
         public static float WaitInstructionQuantizationStepSeconds
         {
-            get => Volatile.Read(ref waitInstructionQuantizationStepSeconds);
+            get => Volatile.Read(ref _waitInstructionQuantizationStepSeconds);
             set
             {
                 float sanitized = value;
@@ -33,7 +33,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                 {
                     sanitized = 0f;
                 }
-                Volatile.Write(ref waitInstructionQuantizationStepSeconds, sanitized);
+                Volatile.Write(ref _waitInstructionQuantizationStepSeconds, sanitized);
             }
         }
 
@@ -43,11 +43,11 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// </summary>
         public static int WaitInstructionMaxDistinctEntries
         {
-            get => Volatile.Read(ref waitInstructionMaxDistinctEntries);
+            get => Volatile.Read(ref _waitInstructionMaxDistinctEntries);
             set
             {
                 int sanitized = value < 0 ? 0 : value;
-                Volatile.Write(ref waitInstructionMaxDistinctEntries, sanitized);
+                Volatile.Write(ref _waitInstructionMaxDistinctEntries, sanitized);
             }
         }
 
@@ -58,8 +58,8 @@ namespace WallstopStudios.UnityHelpers.Utils
             BuildDiagnostics(
                 WaitForSecondsCacheName,
                 GetWaitForSecondsEntryCount(),
-                Volatile.Read(ref waitForSecondsLimitHits),
-                Volatile.Read(ref waitForSecondsEvictions)
+                Volatile.Read(ref _waitForSecondsLimitHits),
+                Volatile.Read(ref _waitForSecondsEvictions)
             );
 
         /// <summary>
@@ -69,8 +69,8 @@ namespace WallstopStudios.UnityHelpers.Utils
             BuildDiagnostics(
                 WaitForSecondsRealtimeCacheName,
                 GetWaitForSecondsRealtimeEntryCount(),
-                Volatile.Read(ref waitForSecondsRealtimeLimitHits),
-                Volatile.Read(ref waitForSecondsRealtimeEvictions)
+                Volatile.Read(ref _waitForSecondsRealtimeLimitHits),
+                Volatile.Read(ref _waitForSecondsRealtimeEvictions)
             );
 
         /// <summary>
@@ -92,8 +92,8 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// </remarks>
         public static bool WaitInstructionUseLruEviction
         {
-            get => Volatile.Read(ref waitInstructionUseLruEvictionFlag) != 0;
-            set => Volatile.Write(ref waitInstructionUseLruEvictionFlag, value ? 1 : 0);
+            get => Volatile.Read(ref _waitInstructionUseLruEvictionFlag) != 0;
+            set => Volatile.Write(ref _waitInstructionUseLruEvictionFlag, value ? 1 : 0);
         }
 
         /// <summary>
@@ -111,13 +111,13 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// </remarks>
         private readonly struct WaitInstructionCacheEntry<TInstruction>
         {
-            internal readonly TInstruction value;
-            internal readonly LinkedListNode<float> node;
+            internal readonly TInstruction _value;
+            internal readonly LinkedListNode<float> _node;
 
             internal WaitInstructionCacheEntry(TInstruction value, LinkedListNode<float> node)
             {
-                this.value = value;
-                this.node = node;
+                this._value = value;
+                this._node = node;
             }
         }
 
@@ -137,14 +137,14 @@ namespace WallstopStudios.UnityHelpers.Utils
         private const string WaitForSecondsCacheName = "WaitForSeconds";
         private const string WaitForSecondsRealtimeCacheName = "WaitForSecondsRealtime";
 
-        private static float waitInstructionQuantizationStepSeconds;
-        private static int waitInstructionMaxDistinctEntries =
+        private static float _waitInstructionQuantizationStepSeconds;
+        private static int _waitInstructionMaxDistinctEntries =
             WaitInstructionDefaultMaxDistinctEntries;
-        private static int waitInstructionUseLruEvictionFlag;
-        private static int waitForSecondsLimitHits;
-        private static int waitForSecondsRealtimeLimitHits;
-        private static int waitForSecondsEvictions;
-        private static int waitForSecondsRealtimeEvictions;
+        private static int _waitInstructionUseLruEvictionFlag;
+        private static int _waitForSecondsLimitHits;
+        private static int _waitForSecondsRealtimeLimitHits;
+        private static int _waitForSecondsEvictions;
+        private static int _waitForSecondsRealtimeEvictions;
         private static readonly object WaitInstructionCacheLock = new();
 
         /// <summary>
@@ -201,8 +201,8 @@ namespace WallstopStudios.UnityHelpers.Utils
                 WaitForSecondsOrder,
                 wait => CreateWaitForSeconds(wait),
                 seconds,
-                ref waitForSecondsLimitHits,
-                ref waitForSecondsEvictions,
+                ref _waitForSecondsLimitHits,
+                ref _waitForSecondsEvictions,
                 WaitForSecondsCacheName,
                 allowEviction: true
             );
@@ -220,8 +220,8 @@ namespace WallstopStudios.UnityHelpers.Utils
                 WaitForSecondsOrder,
                 wait => CreateWaitForSeconds(wait),
                 seconds,
-                ref waitForSecondsLimitHits,
-                ref waitForSecondsEvictions,
+                ref _waitForSecondsLimitHits,
+                ref _waitForSecondsEvictions,
                 WaitForSecondsCacheName,
                 allowEviction: false
             );
@@ -245,8 +245,8 @@ namespace WallstopStudios.UnityHelpers.Utils
                 WaitForSecondsRealtimeOrder,
                 wait => CreateWaitForSecondsRealtime(wait),
                 seconds,
-                ref waitForSecondsRealtimeLimitHits,
-                ref waitForSecondsRealtimeEvictions,
+                ref _waitForSecondsRealtimeLimitHits,
+                ref _waitForSecondsRealtimeEvictions,
                 WaitForSecondsRealtimeCacheName,
                 allowEviction: true
             );
@@ -264,8 +264,8 @@ namespace WallstopStudios.UnityHelpers.Utils
                 WaitForSecondsRealtimeOrder,
                 wait => CreateWaitForSecondsRealtime(wait),
                 seconds,
-                ref waitForSecondsRealtimeLimitHits,
-                ref waitForSecondsRealtimeEvictions,
+                ref _waitForSecondsRealtimeLimitHits,
+                ref _waitForSecondsRealtimeEvictions,
                 WaitForSecondsRealtimeCacheName,
                 allowEviction: false
             );
@@ -322,12 +322,12 @@ namespace WallstopStudios.UnityHelpers.Utils
 #endif
                 if (cache.TryGetValue(quantized, out WaitInstructionCacheEntry<TInstruction> entry))
                 {
-                    if (entry.node.List != null)
+                    if (entry._node.List != null)
                     {
-                        order.Remove(entry.node);
-                        order.AddLast(entry.node);
+                        order.Remove(entry._node);
+                        order.AddLast(entry._node);
                     }
-                    return entry.value;
+                    return entry._value;
                 }
 
                 bool useLru =
@@ -457,10 +457,10 @@ namespace WallstopStudios.UnityHelpers.Utils
             WaitInstructionQuantizationStepSeconds = 0f;
             WaitInstructionMaxDistinctEntries = WaitInstructionDefaultMaxDistinctEntries;
             WaitInstructionUseLruEviction = false;
-            Volatile.Write(ref waitForSecondsLimitHits, 0);
-            Volatile.Write(ref waitForSecondsRealtimeLimitHits, 0);
-            Volatile.Write(ref waitForSecondsEvictions, 0);
-            Volatile.Write(ref waitForSecondsRealtimeEvictions, 0);
+            Volatile.Write(ref _waitForSecondsLimitHits, 0);
+            Volatile.Write(ref _waitForSecondsRealtimeLimitHits, 0);
+            Volatile.Write(ref _waitForSecondsEvictions, 0);
+            Volatile.Write(ref _waitForSecondsRealtimeEvictions, 0);
         }
 
         internal static IDisposable BeginWaitInstructionTestScope()
@@ -470,34 +470,34 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         private sealed class WaitInstructionTestScope : IDisposable
         {
-            private readonly WaitInstructionCacheSnapshot<WaitForSeconds> waitForSecondsSnapshot;
-            private readonly WaitInstructionCacheSnapshot<WaitForSecondsRealtime> waitForSecondsRealtimeSnapshot;
-            private readonly float quantizationStepSnapshot;
-            private readonly int maxDistinctEntriesSnapshot;
-            private readonly bool useLruSnapshot;
-            private readonly int waitForSecondsLimitHitsSnapshot;
-            private readonly int waitForSecondsRealtimeLimitHitsSnapshot;
-            private readonly int waitForSecondsEvictionsSnapshot;
-            private readonly int waitForSecondsRealtimeEvictionsSnapshot;
-            private bool disposed;
+            private readonly WaitInstructionCacheSnapshot<WaitForSeconds> _waitForSecondsSnapshot;
+            private readonly WaitInstructionCacheSnapshot<WaitForSecondsRealtime> _waitForSecondsRealtimeSnapshot;
+            private readonly float _quantizationStepSnapshot;
+            private readonly int _maxDistinctEntriesSnapshot;
+            private readonly bool _useLruSnapshot;
+            private readonly int _waitForSecondsLimitHitsSnapshot;
+            private readonly int _waitForSecondsRealtimeLimitHitsSnapshot;
+            private readonly int _waitForSecondsEvictionsSnapshot;
+            private readonly int _waitForSecondsRealtimeEvictionsSnapshot;
+            private bool _disposed;
 
             internal WaitInstructionTestScope()
             {
-                waitForSecondsSnapshot = SnapshotCache(WaitForSeconds, WaitForSecondsOrder);
-                waitForSecondsRealtimeSnapshot = SnapshotCache(
+                _waitForSecondsSnapshot = SnapshotCache(WaitForSeconds, WaitForSecondsOrder);
+                _waitForSecondsRealtimeSnapshot = SnapshotCache(
                     WaitForSecondsRealtime,
                     WaitForSecondsRealtimeOrder
                 );
-                quantizationStepSnapshot = WaitInstructionQuantizationStepSeconds;
-                maxDistinctEntriesSnapshot = WaitInstructionMaxDistinctEntries;
-                useLruSnapshot = WaitInstructionUseLruEviction;
-                waitForSecondsLimitHitsSnapshot = Volatile.Read(ref waitForSecondsLimitHits);
-                waitForSecondsRealtimeLimitHitsSnapshot = Volatile.Read(
-                    ref waitForSecondsRealtimeLimitHits
+                _quantizationStepSnapshot = WaitInstructionQuantizationStepSeconds;
+                _maxDistinctEntriesSnapshot = WaitInstructionMaxDistinctEntries;
+                _useLruSnapshot = WaitInstructionUseLruEviction;
+                _waitForSecondsLimitHitsSnapshot = Volatile.Read(ref _waitForSecondsLimitHits);
+                _waitForSecondsRealtimeLimitHitsSnapshot = Volatile.Read(
+                    ref _waitForSecondsRealtimeLimitHits
                 );
-                waitForSecondsEvictionsSnapshot = Volatile.Read(ref waitForSecondsEvictions);
-                waitForSecondsRealtimeEvictionsSnapshot = Volatile.Read(
-                    ref waitForSecondsRealtimeEvictions
+                _waitForSecondsEvictionsSnapshot = Volatile.Read(ref _waitForSecondsEvictions);
+                _waitForSecondsRealtimeEvictionsSnapshot = Volatile.Read(
+                    ref _waitForSecondsRealtimeEvictions
                 );
 
                 ResetWaitInstructionCachesForTesting();
@@ -505,31 +505,31 @@ namespace WallstopStudios.UnityHelpers.Utils
 
             public void Dispose()
             {
-                if (disposed)
+                if (_disposed)
                 {
                     return;
                 }
-                disposed = true;
+                _disposed = true;
 
-                WaitInstructionQuantizationStepSeconds = quantizationStepSnapshot;
-                WaitInstructionMaxDistinctEntries = maxDistinctEntriesSnapshot;
-                WaitInstructionUseLruEviction = useLruSnapshot;
-                Volatile.Write(ref waitForSecondsLimitHits, waitForSecondsLimitHitsSnapshot);
+                WaitInstructionQuantizationStepSeconds = _quantizationStepSnapshot;
+                WaitInstructionMaxDistinctEntries = _maxDistinctEntriesSnapshot;
+                WaitInstructionUseLruEviction = _useLruSnapshot;
+                Volatile.Write(ref _waitForSecondsLimitHits, _waitForSecondsLimitHitsSnapshot);
                 Volatile.Write(
-                    ref waitForSecondsRealtimeLimitHits,
-                    waitForSecondsRealtimeLimitHitsSnapshot
+                    ref _waitForSecondsRealtimeLimitHits,
+                    _waitForSecondsRealtimeLimitHitsSnapshot
                 );
-                Volatile.Write(ref waitForSecondsEvictions, waitForSecondsEvictionsSnapshot);
+                Volatile.Write(ref _waitForSecondsEvictions, _waitForSecondsEvictionsSnapshot);
                 Volatile.Write(
-                    ref waitForSecondsRealtimeEvictions,
-                    waitForSecondsRealtimeEvictionsSnapshot
+                    ref _waitForSecondsRealtimeEvictions,
+                    _waitForSecondsRealtimeEvictionsSnapshot
                 );
 
-                RestoreCache(WaitForSeconds, WaitForSecondsOrder, waitForSecondsSnapshot);
+                RestoreCache(WaitForSeconds, WaitForSecondsOrder, _waitForSecondsSnapshot);
                 RestoreCache(
                     WaitForSecondsRealtime,
                     WaitForSecondsRealtimeOrder,
-                    waitForSecondsRealtimeSnapshot
+                    _waitForSecondsRealtimeSnapshot
                 );
             }
 
@@ -548,7 +548,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                         KeyValuePair<float, WaitInstructionCacheEntry<TInstruction>> pair in cache
                     )
                     {
-                        entries[pair.Key] = pair.Value.value;
+                        entries[pair.Key] = pair.Value._value;
                     }
 
                     List<float> ordering = new(order);
@@ -1263,6 +1263,263 @@ namespace WallstopStudios.UnityHelpers.Utils
     }
 #endif
 
+    /// <summary>
+    /// A wrapper around <see cref="System.Buffers.ArrayPool{T}"/> that provides a Wallstop-style
+    /// auto-disposal pattern using <see cref="PooledArray{T}"/>.
+    /// </summary>
+    /// <typeparam name="T">The element type for the arrays.</typeparam>
+    /// <remarks>
+    /// <para>
+    /// <strong>Key Difference from <see cref="WallstopArrayPool{T}"/>:</strong>
+    /// This pool uses .NET's <see cref="System.Buffers.ArrayPool{T}.Shared"/> which returns arrays
+    /// that may be <em>larger</em> than the requested size (typically rounded up to a power of 2).
+    /// Callers MUST use the <see cref="PooledArray{T}.length"/> property (which returns the
+    /// originally requested length) instead of accessing the underlying array's Length directly.
+    /// </para>
+    /// <para>
+    /// <strong>When to use this pool:</strong>
+    /// Use <see cref="SystemArrayPool{T}"/> when array sizes vary widely or unpredictably (e.g., user input,
+    /// collection sizes, dynamically computed sizes). The shared pool handles size bucketing efficiently,
+    /// reducing memory fragmentation for variable-size workloads.
+    /// </para>
+    /// <para>
+    /// <strong>When to use <see cref="WallstopArrayPool{T}"/> instead:</strong>
+    /// Use <see cref="WallstopArrayPool{T}"/> when array sizes are fixed or highly predictable (e.g., internal
+    /// PRNG state buffers, algorithm-constant sizes). This avoids the overhead of size bucketing when you
+    /// always request the same size.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// // Correct usage - use lease.Length, not lease.Array.Length
+    /// using PooledArray&lt;int&gt; lease = SystemArrayPool&lt;int&gt;.Get(count, out int[] buffer);
+    /// for (int i = 0; i &lt; lease.Length; i++)  // ✓ Use lease.Length
+    /// {
+    ///     buffer[i] = ProcessItem(i);
+    /// }
+    ///
+    /// // WRONG - buffer.Length may be larger than requested
+    /// for (int i = 0; i &lt; buffer.Length; i++)  // ✗ May iterate past valid data
+    /// {
+    ///     ...
+    /// }
+    /// </code>
+    /// </example>
+    public static class SystemArrayPool<T>
+    {
+        /// <summary>
+        /// Gets a pooled array of at least the specified size. When disposed, the array is returned to the pool.
+        /// </summary>
+        /// <param name="minimumLength">The minimum size of the array to retrieve. Must be non-negative.</param>
+        /// <returns>A <see cref="PooledArray{T}"/> wrapping an array of at least the specified size.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when minimumLength is negative.</exception>
+        /// <remarks>
+        /// The returned array may be larger than <paramref name="minimumLength"/>. Always use
+        /// <see cref="PooledArray{T}.length"/> to determine the valid portion of the array.
+        /// </remarks>
+        public static PooledArray<T> Get(int minimumLength)
+        {
+            return Get(minimumLength, out _);
+        }
+
+        /// <summary>
+        /// Gets a pooled array of at least the specified size and outputs the array. When disposed, the array is returned to the pool.
+        /// </summary>
+        /// <param name="minimumLength">The minimum size of the array to retrieve. Must be non-negative.</param>
+        /// <param name="array">The retrieved array. May be larger than <paramref name="minimumLength"/>.</param>
+        /// <returns>A <see cref="PooledArray{T}"/> wrapping the array with proper length tracking.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when minimumLength is negative.</exception>
+        /// <remarks>
+        /// The returned array may be larger than <paramref name="minimumLength"/>. Always use
+        /// <see cref="PooledArray{T}.length"/> (or the <paramref name="minimumLength"/> you passed in)
+        /// to determine the valid portion of the array.
+        /// </remarks>
+        public static PooledArray<T> Get(int minimumLength, out T[] array)
+        {
+            if (minimumLength < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(minimumLength),
+                    minimumLength,
+                    "Must be non-negative."
+                );
+            }
+
+            if (minimumLength == 0)
+            {
+                array = Array.Empty<T>();
+                return new PooledArray<T>(array, 0);
+            }
+
+            array = System.Buffers.ArrayPool<T>.Shared.Rent(minimumLength);
+            return new PooledArray<T>(array, minimumLength);
+        }
+
+        /// <summary>
+        /// Gets a pooled array of at least the specified size with optional clearing. When disposed, the array is returned to the pool.
+        /// </summary>
+        /// <param name="minimumLength">The minimum size of the array to retrieve. Must be non-negative.</param>
+        /// <param name="clearArray">If true, the array is cleared to default values before being returned.</param>
+        /// <param name="array">The retrieved array. May be larger than <paramref name="minimumLength"/>.</param>
+        /// <returns>A <see cref="PooledArray{T}"/> wrapping the array with proper length tracking.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when minimumLength is negative.</exception>
+        /// <remarks>
+        /// <para>
+        /// When <paramref name="clearArray"/> is true, only the portion of the array up to
+        /// <paramref name="minimumLength"/> is guaranteed to be cleared. The remainder of the
+        /// array (if any) may contain stale data.
+        /// </para>
+        /// <para>
+        /// For security-sensitive scenarios or when using reference types, consider always setting
+        /// <paramref name="clearArray"/> to true to prevent data leakage between uses.
+        /// </para>
+        /// </remarks>
+        public static PooledArray<T> Get(int minimumLength, bool clearArray, out T[] array)
+        {
+            if (minimumLength < 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(minimumLength),
+                    minimumLength,
+                    "Must be non-negative."
+                );
+            }
+
+            if (minimumLength == 0)
+            {
+                array = Array.Empty<T>();
+                return new PooledArray<T>(array, 0);
+            }
+
+            array = System.Buffers.ArrayPool<T>.Shared.Rent(minimumLength);
+            if (clearArray)
+            {
+                Array.Clear(array, 0, minimumLength);
+            }
+            return new PooledArray<T>(array, minimumLength);
+        }
+    }
+
+    /// <summary>
+    /// A struct that wraps a pooled array and automatically returns it to the pool when disposed.
+    /// This struct provides a unified return type for all array pools (<see cref="SystemArrayPool{T}"/>,
+    /// <see cref="WallstopArrayPool{T}"/>, and <see cref="WallstopFastArrayPool{T}"/>).
+    /// </summary>
+    /// <typeparam name="T">The element type for the array.</typeparam>
+    /// <remarks>
+    /// <para>
+    /// <strong>Important:</strong> The underlying <see cref="array"/> may be larger than the
+    /// requested size (especially when using <see cref="SystemArrayPool{T}"/>). Always use
+    /// <see cref="length"/> to determine the valid portion of the array.
+    /// </para>
+    /// <para>
+    /// This struct implements <see cref="IDisposable"/> to enable automatic resource return via
+    /// 'using' statements. The array is returned to the pool when <see cref="Dispose"/> is called.
+    /// </para>
+    /// <para>
+    /// <strong>Warning:</strong> Do NOT use <c>foreach</c> on pooled arrays since
+    /// <see cref="array"/>.Length may exceed <see cref="length"/>. Use indexed iteration instead.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// // Using with SystemArrayPool (array may be larger than requested)
+    /// using PooledArray&lt;int&gt; pooled = SystemArrayPool&lt;int&gt;.Get(100, out int[] array);
+    /// for (int i = 0; i &lt; pooled.Length; i++) // Use pooled.Length, not array.Length
+    /// {
+    ///     array[i] = i * 2;
+    /// }
+    ///
+    /// // Using with WallstopArrayPool (array is exact size)
+    /// using PooledArray&lt;int&gt; pooled2 = WallstopArrayPool&lt;int&gt;.Get(100, out int[] buffer);
+    /// for (int i = 0; i &lt; pooled2.Length; i++)
+    /// {
+    ///     buffer[i] = i * 3;
+    /// }
+    /// </code>
+    /// </example>
+    public struct PooledArray<T> : IDisposable
+    {
+        /// <summary>
+        /// The underlying pooled array. May be larger than <see cref="length"/> when using
+        /// <see cref="SystemArrayPool{T}"/> (due to power-of-2 bucketing), or exactly equal
+        /// to <see cref="length"/> when using <see cref="WallstopArrayPool{T}"/> or
+        /// <see cref="WallstopFastArrayPool{T}"/>.
+        /// </summary>
+        public readonly T[] array;
+
+        /// <summary>
+        /// The originally requested length. Use this instead of <see cref="array"/>.Length
+        /// to determine the valid portion of the array.
+        /// </summary>
+        public readonly int length;
+
+        private readonly Action<T[]> _onDispose;
+        private bool _disposed;
+
+        /// <summary>
+        /// Creates a new <see cref="PooledArray{T}"/> wrapping the specified array with the given logical length.
+        /// Uses the default disposal action that returns the array to <see cref="System.Buffers.ArrayPool{T}.Shared"/>.
+        /// </summary>
+        /// <param name="array">The pooled array.</param>
+        /// <param name="length">The logical length (originally requested size).</param>
+        internal PooledArray(T[] array, int length)
+            : this(array, length, null) { }
+
+        /// <summary>
+        /// Creates a new <see cref="PooledArray{T}"/> wrapping the specified array with the given logical length
+        /// and custom disposal action.
+        /// </summary>
+        /// <param name="array">The pooled array.</param>
+        /// <param name="length">The logical length (originally requested size).</param>
+        /// <param name="onDispose">The action to invoke when disposing. If null, uses the default
+        /// <see cref="System.Buffers.ArrayPool{T}.Shared"/> return logic.</param>
+        internal PooledArray(T[] array, int length, Action<T[]> onDispose)
+        {
+            this.array = array;
+            this.length = length;
+            _onDispose = onDispose;
+            _disposed = false;
+        }
+
+        /// <summary>
+        /// Returns the array to the pool. The clearing behavior depends on which pool the array came from:
+        /// <list type="bullet">
+        /// <item><see cref="SystemArrayPool{T}"/>: Array is NOT cleared by default</item>
+        /// <item><see cref="WallstopArrayPool{T}"/>: Array IS cleared on return</item>
+        /// <item><see cref="WallstopFastArrayPool{T}"/>: Array is NOT cleared (for performance)</item>
+        /// </list>
+        /// </summary>
+        /// <remarks>
+        /// After disposal, the array should not be used as it may be reused by another caller.
+        /// For reference types when using <see cref="SystemArrayPool{T}"/>, consider using
+        /// <see cref="SystemArrayPool{T}.Get(int, bool, out T[])"/> with clearArray=true
+        /// to prevent data leakage.
+        /// </remarks>
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+            _disposed = true;
+
+            if (array == null || array.Length == 0)
+            {
+                return;
+            }
+
+            if (_onDispose != null)
+            {
+                _onDispose(array);
+            }
+            else
+            {
+                System.Buffers.ArrayPool<T>.Shared.Return(array);
+            }
+        }
+    }
+
 #if SINGLE_THREADED
     /// <summary>
     /// A static array pool that provides pooled arrays of specific sizes.
@@ -1270,18 +1527,54 @@ namespace WallstopStudios.UnityHelpers.Utils
     /// This single-threaded implementation uses Dictionary and List for storage.
     /// </summary>
     /// <typeparam name="T">The element type for the arrays.</typeparam>
+    /// <remarks>
+    /// <para>
+    /// Unlike <see cref="SystemArrayPool{T}"/>, this pool returns arrays of the <em>exact</em> requested size,
+    /// making it ideal for fixed-size or predictable-size scenarios where memory efficiency is important.
+    /// </para>
+    /// <para>
+    /// Arrays are automatically cleared when returned to the pool to prevent data leakage.
+    /// </para>
+    /// <para>
+    /// <strong>⚠️ MEMORY LEAK WARNING:</strong> This pool creates a separate pool bucket for EVERY unique
+    /// size requested. If you pass variable sizes (user input, collection.Count, dynamic values), each unique
+    /// size creates a new bucket that persists forever, causing unbounded memory growth.
+    /// </para>
+    /// <para>
+    /// <strong>SAFE uses:</strong>
+    /// <list type="bullet">
+    ///   <item><description>Compile-time constants: <c>Get(16)</c>, <c>Get(64)</c>, <c>Get(256)</c></description></item>
+    ///   <item><description>Algorithm-bounded sizes with small fixed upper limits</description></item>
+    ///   <item><description>PRNG internal state buffers (fixed sizes like 16, 32, 64 bytes)</description></item>
+    ///   <item><description>Sizes from a small, known set of values</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <strong>UNSAFE uses (will leak memory):</strong>
+    /// <list type="bullet">
+    ///   <item><description><c>Get(userInput)</c> — Every unique user value creates a permanent bucket</description></item>
+    ///   <item><description><c>Get(collection.Count)</c> — Every unique collection size leaks memory</description></item>
+    ///   <item><description><c>Get(random.Next(1, 1000))</c> — Creates up to 1000 permanent buckets</description></item>
+    ///   <item><description><c>Get(dynamicCalculation)</c> — Unbounded sizes = unbounded memory</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <strong>Rule of thumb:</strong> If you cannot enumerate ALL possible sizes at compile time,
+    /// use <see cref="SystemArrayPool{T}"/> instead.
+    /// </para>
+    /// </remarks>
     public static class WallstopArrayPool<T>
     {
-        private static readonly Dictionary<int, List<T[]>> _pool = new();
-        private static readonly Action<T[]> _onDispose = Release;
+        private static readonly Dictionary<int, List<T[]>> Pool = new();
+        private static readonly Action<T[]> OnDispose = Release;
 
         /// <summary>
         /// Gets a pooled array of the specified size. When disposed, the array is cleared and returned to the pool.
         /// </summary>
         /// <param name="size">The size of the array to retrieve. Must be non-negative.</param>
-        /// <returns>A PooledResource wrapping an array of the specified size.</returns>
+        /// <returns>A <see cref="PooledArray{T}"/> wrapping an array of the exact specified size.</returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when size is negative.</exception>
-        public static PooledResource<T[]> Get(int size)
+        public static PooledArray<T> Get(int size)
         {
             return Get(size, out _);
         }
@@ -1290,10 +1583,10 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// Gets a pooled array of the specified size and outputs the value. When disposed, the array is cleared and returned to the pool.
         /// </summary>
         /// <param name="size">The size of the array to retrieve. Must be non-negative.</param>
-        /// <param name="value">The retrieved array.</param>
-        /// <returns>A PooledResource wrapping an array of the specified size.</returns>
+        /// <param name="array">The retrieved array. Will be exactly <paramref name="size"/> elements.</param>
+        /// <returns>A <see cref="PooledArray{T}"/> wrapping an array of the exact specified size.</returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when size is negative.</exception>
-        public static PooledResource<T[]> Get(int size, out T[] value)
+        public static PooledArray<T> Get(int size, out T[] array)
         {
             switch (size)
             {
@@ -1307,30 +1600,30 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
                 case 0:
                 {
-                    value = Array.Empty<T>();
-                    return new PooledResource<T[]>(value, _ => { });
+                    array = Array.Empty<T>();
+                    return new PooledArray<T>(array, 0, null);
                 }
             }
 
-            List<T[]> pool = _pool.GetOrAdd(size);
+            List<T[]> pool = Pool.GetOrAdd(size);
 
             if (pool.Count == 0)
             {
-                value = new T[size];
-                return new PooledResource<T[]>(value, _onDispose);
+                array = new T[size];
+                return new PooledArray<T>(array, size, OnDispose);
             }
 
             int lastIndex = pool.Count - 1;
-            value = pool[lastIndex];
+            array = pool[lastIndex];
             pool.RemoveAt(lastIndex);
-            return new PooledResource<T[]>(value, _onDispose);
+            return new PooledArray<T>(array, size, OnDispose);
         }
 
         private static void Release(T[] resource)
         {
             int length = resource.Length;
             Array.Clear(resource, 0, length);
-            List<T[]> pool = _pool.GetOrAdd(length);
+            List<T[]> pool = Pool.GetOrAdd(length);
             pool.Add(resource);
         }
     }
@@ -1341,6 +1634,42 @@ namespace WallstopStudios.UnityHelpers.Utils
     /// This multi-threaded implementation uses ConcurrentDictionary and ConcurrentStack for thread-safe storage.
     /// </summary>
     /// <typeparam name="T">The element type for the arrays.</typeparam>
+    /// <remarks>
+    /// <para>
+    /// Unlike <see cref="SystemArrayPool{T}"/>, this pool returns arrays of the <em>exact</em> requested size,
+    /// making it ideal for fixed-size or predictable-size scenarios where memory efficiency is important.
+    /// </para>
+    /// <para>
+    /// Arrays are automatically cleared when returned to the pool to prevent data leakage.
+    /// </para>
+    /// <para>
+    /// <strong>⚠️ MEMORY LEAK WARNING:</strong> This pool creates a separate pool bucket for EVERY unique
+    /// size requested. If you pass variable sizes (user input, collection.Count, dynamic values), each unique
+    /// size creates a new bucket that persists forever, causing unbounded memory growth.
+    /// </para>
+    /// <para>
+    /// <strong>SAFE uses:</strong>
+    /// <list type="bullet">
+    ///   <item><description>Compile-time constants: <c>Get(16)</c>, <c>Get(64)</c>, <c>Get(256)</c></description></item>
+    ///   <item><description>Algorithm-bounded sizes with small fixed upper limits</description></item>
+    ///   <item><description>PRNG internal state buffers (fixed sizes like 16, 32, 64 bytes)</description></item>
+    ///   <item><description>Sizes from a small, known set of values</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <strong>UNSAFE uses (will leak memory):</strong>
+    /// <list type="bullet">
+    ///   <item><description><c>Get(userInput)</c> — Every unique user value creates a permanent bucket</description></item>
+    ///   <item><description><c>Get(collection.Count)</c> — Every unique collection size leaks memory</description></item>
+    ///   <item><description><c>Get(random.Next(1, 1000))</c> — Creates up to 1000 permanent buckets</description></item>
+    ///   <item><description><c>Get(dynamicCalculation)</c> — Unbounded sizes = unbounded memory</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <strong>Rule of thumb:</strong> If you cannot enumerate ALL possible sizes at compile time,
+    /// use <see cref="SystemArrayPool{T}"/> instead.
+    /// </para>
+    /// </remarks>
     public static class WallstopArrayPool<T>
     {
         private static readonly ConcurrentDictionary<int, ConcurrentStack<T[]>> _pool = new();
@@ -1351,9 +1680,9 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// This method is thread-safe.
         /// </summary>
         /// <param name="size">The size of the array to retrieve. Must be non-negative.</param>
-        /// <returns>A PooledResource wrapping an array of the specified size.</returns>
+        /// <returns>A <see cref="PooledArray{T}"/> wrapping an array of the exact specified size.</returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when size is negative.</exception>
-        public static PooledResource<T[]> Get(int size)
+        public static PooledArray<T> Get(int size)
         {
             return Get(size, out _);
         }
@@ -1363,10 +1692,10 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// This method is thread-safe.
         /// </summary>
         /// <param name="size">The size of the array to retrieve. Must be non-negative.</param>
-        /// <param name="value">The retrieved array.</param>
-        /// <returns>A PooledResource wrapping an array of the specified size.</returns>
+        /// <param name="array">The retrieved array. Will be exactly <paramref name="size"/> elements.</param>
+        /// <returns>A <see cref="PooledArray{T}"/> wrapping an array of the exact specified size.</returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when size is negative.</exception>
-        public static PooledResource<T[]> Get(int size, out T[] value)
+        public static PooledArray<T> Get(int size, out T[] array)
         {
             switch (size)
             {
@@ -1380,18 +1709,18 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
                 case 0:
                 {
-                    value = Array.Empty<T>();
-                    return new PooledResource<T[]>(value, _ => { });
+                    array = Array.Empty<T>();
+                    return new PooledArray<T>(array, 0, null);
                 }
             }
 
             ConcurrentStack<T[]> result = _pool.GetOrAdd(size, _ => new ConcurrentStack<T[]>());
-            if (!result.TryPop(out value))
+            if (!result.TryPop(out array))
             {
-                value = new T[size];
+                array = new T[size];
             }
 
-            return new PooledResource<T[]>(value, _onRelease);
+            return new PooledArray<T>(array, size, _onRelease);
         }
 
         private static void Release(T[] resource)
@@ -1410,25 +1739,58 @@ namespace WallstopStudios.UnityHelpers.Utils
     /// Unlike WallstopArrayPool, arrays are NOT cleared when returned to the pool, providing better performance.
     /// This single-threaded implementation uses a List of Stacks indexed by array size for O(1) lookups.
     /// </summary>
-    /// <typeparam name="T">The element type for the arrays.</typeparam>
+    /// <typeparam name="T">The element type for the arrays. Must be an unmanaged type.</typeparam>
     /// <remarks>
-    /// IMPORTANT: This pool does NOT clear arrays on release. Callers must manually clear arrays if needed.
-    /// This design trades safety for performance in scenarios where array contents don't need to be reset.
+    /// <para>
+    /// <strong>Warning:</strong> This pool does NOT clear arrays on release. Arrays may contain
+    /// data from previous uses. Only use this pool when you will overwrite all array contents
+    /// before reading, or when stale data is acceptable.
+    /// </para>
+    /// <para>
+    /// Unlike <see cref="SystemArrayPool{T}"/>, this pool returns arrays of the <em>exact</em> requested size.
+    /// </para>
+    /// <para>
+    /// <strong>⚠️ MEMORY LEAK WARNING:</strong> This pool creates a separate pool bucket for EVERY unique
+    /// size requested. If you pass variable sizes (user input, collection.Count, dynamic values), each unique
+    /// size creates a new bucket that persists forever, causing unbounded memory growth.
+    /// </para>
+    /// <para>
+    /// <strong>SAFE uses:</strong>
+    /// <list type="bullet">
+    ///   <item><description>Compile-time constants: <c>Get(16)</c>, <c>Get(64)</c>, <c>Get(256)</c></description></item>
+    ///   <item><description>Algorithm-bounded sizes with small fixed upper limits</description></item>
+    ///   <item><description>PRNG internal state buffers (fixed sizes like 16, 32, 64 bytes)</description></item>
+    ///   <item><description>Sizes from a small, known set of values</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <strong>UNSAFE uses (will leak memory):</strong>
+    /// <list type="bullet">
+    ///   <item><description><c>Get(userInput)</c> — Every unique user value creates a permanent bucket</description></item>
+    ///   <item><description><c>Get(collection.Count)</c> — Every unique collection size leaks memory</description></item>
+    ///   <item><description><c>Get(random.Next(1, 1000))</c> — Creates up to 1000 permanent buckets</description></item>
+    ///   <item><description><c>Get(dynamicCalculation)</c> — Unbounded sizes = unbounded memory</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <strong>Rule of thumb:</strong> If you cannot enumerate ALL possible sizes at compile time,
+    /// use <see cref="SystemArrayPool{T}"/> instead.
+    /// </para>
     /// </remarks>
     public static class WallstopFastArrayPool<T>
         where T : unmanaged
     {
-        private static readonly List<Stack<T[]>> _pool = new();
-        private static readonly Action<T[]> _onRelease = Release;
+        private static readonly List<Stack<T[]>> Pool = new();
+        private static readonly Action<T[]> OnRelease = Release;
 
         /// <summary>
         /// Gets a pooled array of the specified size. When disposed, the array is returned to the pool WITHOUT being cleared.
         /// </summary>
         /// <param name="size">The size of the array to retrieve. Must be non-negative.</param>
-        /// <returns>A PooledResource wrapping an array of the specified size.</returns>
+        /// <returns>A <see cref="PooledArray{T}"/> wrapping an array of the exact specified size.</returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when size is negative.</exception>
         /// <remarks>Arrays are NOT cleared on return. The caller is responsible for clearing if needed.</remarks>
-        public static PooledResource<T[]> Get(int size)
+        public static PooledArray<T> Get(int size)
         {
             return Get(size, out _);
         }
@@ -1437,11 +1799,11 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// Gets a pooled array of the specified size and outputs the value. When disposed, the array is returned to the pool WITHOUT being cleared.
         /// </summary>
         /// <param name="size">The size of the array to retrieve. Must be non-negative.</param>
-        /// <param name="value">The retrieved array.</param>
-        /// <returns>A PooledResource wrapping an array of the specified size.</returns>
+        /// <param name="array">The retrieved array. Will be exactly <paramref name="size"/> elements.</param>
+        /// <returns>A <see cref="PooledArray{T}"/> wrapping an array of the exact specified size.</returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when size is negative.</exception>
         /// <remarks>Arrays are NOT cleared on return. The caller is responsible for clearing if needed.</remarks>
-        public static PooledResource<T[]> Get(int size, out T[] value)
+        public static PooledArray<T> Get(int size, out T[] array)
         {
             switch (size)
             {
@@ -1455,34 +1817,34 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
                 case 0:
                 {
-                    value = Array.Empty<T>();
-                    return new PooledResource<T[]>(value, _ => { });
+                    array = Array.Empty<T>();
+                    return new PooledArray<T>(array, 0, null);
                 }
             }
 
-            while (_pool.Count <= size)
+            while (Pool.Count <= size)
             {
-                _pool.Add(null);
+                Pool.Add(null);
             }
 
-            Stack<T[]> pool = _pool[size];
+            Stack<T[]> pool = Pool[size];
             if (pool == null)
             {
                 pool = new Stack<T[]>();
-                _pool[size] = pool;
+                Pool[size] = pool;
             }
 
-            if (!pool.TryPop(out value))
+            if (!pool.TryPop(out array))
             {
-                value = new T[size];
+                array = new T[size];
             }
 
-            return new PooledResource<T[]>(value, _onRelease);
+            return new PooledArray<T>(array, size, OnRelease);
         }
 
         private static void Release(T[] resource)
         {
-            _pool[resource.Length].Push(resource);
+            Pool[resource.Length].Push(resource);
         }
     }
 #else
@@ -1491,10 +1853,43 @@ namespace WallstopStudios.UnityHelpers.Utils
     /// Unlike WallstopArrayPool, arrays are NOT cleared when returned to the pool, providing better performance.
     /// This multi-threaded implementation uses a List of ConcurrentStacks with ReaderWriterLockSlim for thread-safe index access.
     /// </summary>
-    /// <typeparam name="T">The element type for the arrays.</typeparam>
+    /// <typeparam name="T">The element type for the arrays. Must be an unmanaged type.</typeparam>
     /// <remarks>
-    /// IMPORTANT: This pool does NOT clear arrays on release. Callers must manually clear arrays if needed.
-    /// This design trades safety for performance in scenarios where array contents don't need to be reset.
+    /// <para>
+    /// <strong>Warning:</strong> This pool does NOT clear arrays on release. Arrays may contain
+    /// data from previous uses. Only use this pool when you will overwrite all array contents
+    /// before reading, or when stale data is acceptable.
+    /// </para>
+    /// <para>
+    /// Unlike <see cref="SystemArrayPool{T}"/>, this pool returns arrays of the <em>exact</em> requested size.
+    /// </para>
+    /// <para>
+    /// <strong>⚠️ MEMORY LEAK WARNING:</strong> This pool creates a separate pool bucket for EVERY unique
+    /// size requested. If you pass variable sizes (user input, collection.Count, dynamic values), each unique
+    /// size creates a new bucket that persists forever, causing unbounded memory growth.
+    /// </para>
+    /// <para>
+    /// <strong>SAFE uses:</strong>
+    /// <list type="bullet">
+    ///   <item><description>Compile-time constants: <c>Get(16)</c>, <c>Get(64)</c>, <c>Get(256)</c></description></item>
+    ///   <item><description>Algorithm-bounded sizes with small fixed upper limits</description></item>
+    ///   <item><description>PRNG internal state buffers (fixed sizes like 16, 32, 64 bytes)</description></item>
+    ///   <item><description>Sizes from a small, known set of values</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <strong>UNSAFE uses (will leak memory):</strong>
+    /// <list type="bullet">
+    ///   <item><description><c>Get(userInput)</c> — Every unique user value creates a permanent bucket</description></item>
+    ///   <item><description><c>Get(collection.Count)</c> — Every unique collection size leaks memory</description></item>
+    ///   <item><description><c>Get(random.Next(1, 1000))</c> — Creates up to 1000 permanent buckets</description></item>
+    ///   <item><description><c>Get(dynamicCalculation)</c> — Unbounded sizes = unbounded memory</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <strong>Rule of thumb:</strong> If you cannot enumerate ALL possible sizes at compile time,
+    /// use <see cref="SystemArrayPool{T}"/> instead.
+    /// </para>
     /// </remarks>
     public static class WallstopFastArrayPool<T>
         where T : unmanaged
@@ -1508,10 +1903,10 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// This method is thread-safe.
         /// </summary>
         /// <param name="size">The size of the array to retrieve. Must be non-negative.</param>
-        /// <returns>A PooledResource wrapping an array of the specified size.</returns>
+        /// <returns>A <see cref="PooledArray{T}"/> wrapping an array of the exact specified size.</returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when size is negative.</exception>
         /// <remarks>Arrays are NOT cleared on return. The caller is responsible for clearing if needed.</remarks>
-        public static PooledResource<T[]> Get(int size)
+        public static PooledArray<T> Get(int size)
         {
             return Get(size, out _);
         }
@@ -1521,11 +1916,11 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// This method is thread-safe.
         /// </summary>
         /// <param name="size">The size of the array to retrieve. Must be non-negative.</param>
-        /// <param name="value">The retrieved array.</param>
-        /// <returns>A PooledResource wrapping an array of the specified size.</returns>
+        /// <param name="array">The retrieved array. Will be exactly <paramref name="size"/> elements.</param>
+        /// <returns>A <see cref="PooledArray{T}"/> wrapping an array of the exact specified size.</returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when size is negative.</exception>
         /// <remarks>Arrays are NOT cleared on return. The caller is responsible for clearing if needed.</remarks>
-        public static PooledResource<T[]> Get(int size, out T[] value)
+        public static PooledArray<T> Get(int size, out T[] array)
         {
             switch (size)
             {
@@ -1539,8 +1934,8 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
                 case 0:
                 {
-                    value = Array.Empty<T>();
-                    return new PooledResource<T[]>(value, _ => { });
+                    array = Array.Empty<T>();
+                    return new PooledArray<T>(array, 0, null);
                 }
             }
 
@@ -1646,12 +2041,12 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
             }
 
-            if (!pool.TryPop(out value))
+            if (!pool.TryPop(out array))
             {
-                value = new T[size];
+                array = new T[size];
             }
 
-            return new PooledResource<T[]>(value, _onRelease);
+            return new PooledArray<T>(array, size, _onRelease);
         }
 
         private static void Release(T[] resource)

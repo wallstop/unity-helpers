@@ -123,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Utils
 
             // Use array pool for destination buffer
             int newSize = newWidth * newHeight;
-            using PooledResource<Color[]> pooledColors = WallstopFastArrayPool<Color>.Get(
+            using PooledArray<Color> pooledColors = SystemArrayPool<Color>.Get(
                 newSize,
                 out Color[] newColors
             );

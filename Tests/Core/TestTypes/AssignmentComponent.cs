@@ -1,10 +1,10 @@
-using System;
-using System.Collections.Generic;
-using UnityEngine;
-using WallstopStudios.UnityHelpers.Core.Attributes;
-
 namespace WallstopStudios.UnityHelpers.Tests.Core.TestTypes
 {
+    using System;
+    using System.Collections.Generic;
+    using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+
     public sealed class AssignmentComponent : MonoBehaviour
     {
         [ValidateAssignment]

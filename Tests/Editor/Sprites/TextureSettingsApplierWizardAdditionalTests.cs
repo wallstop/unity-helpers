@@ -163,6 +163,95 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         }
 
         [Test]
+        public void DirectorySearchWithManyDirectoriesSucceeds()
+        {
+            // This test specifically targets the bug where SystemArrayPool returned larger arrays
+            // than requested, causing null values to be passed to AssetDatabase.FindAssets
+            // By using multiple directories, we increase the chance of hitting the array size mismatch
+
+            string[] dirs = new string[5];
+            string[] textures = new string[5];
+
+            for (int i = 0; i < dirs.Length; i++)
+            {
+                dirs[i] = (Root + "/Multi" + i).SanitizePath();
+                EnsureFolder(dirs[i]);
+                textures[i] = (dirs[i] + "/tex" + i + ".png").SanitizePath();
+                CreatePng(textures[i], 4, 4, Color.white);
+            }
+
+            AssetDatabase.Refresh();
+
+            TextureSettingsApplierWindow window = Track(
+                ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
+            );
+            window.textures = new System.Collections.Generic.List<Texture2D>();
+            window.directories = new System.Collections.Generic.List<Object>();
+
+            for (int i = 0; i < dirs.Length; i++)
+            {
+                Object dirAsset = AssetDatabase.LoadAssetAtPath<Object>(dirs[i]);
+                Assert.IsTrue(
+                    dirAsset != null,
+                    $"Expected directory asset at '{dirs[i]}' to be loaded"
+                );
+                window.directories.Add(dirAsset);
+            }
+
+            window.applyFilterMode = true;
+            window.filterMode = FilterMode.Trilinear;
+
+            // This was failing before the fix because SystemArrayPool.Get returns larger arrays
+            // and the null elements caused AssetDatabase.FindAssets to crash
+            Assert.DoesNotThrow(
+                () => window.ApplySettings(),
+                "ApplySettings with multiple directories should not throw NullReferenceException"
+            );
+
+            AssetDatabase.Refresh();
+
+            for (int i = 0; i < textures.Length; i++)
+            {
+                TextureImporter imp = AssetImporter.GetAtPath(textures[i]) as TextureImporter;
+                Assert.IsTrue(
+                    imp != null,
+                    $"Expected importer at path '{textures[i]}' to not be null"
+                );
+                Assert.That(
+                    imp.filterMode,
+                    Is.EqualTo(FilterMode.Trilinear),
+                    $"Texture at '{textures[i]}' should have Trilinear filter mode"
+                );
+            }
+        }
+
+        [Test]
+        public void CalculateStatsWithDirectoriesDoesNotThrow()
+        {
+            // CalculateStats internally calls GetTargetTexturePaths which was affected by the same bug
+            string dir = (Root + "/CalcStatsDir").SanitizePath();
+            EnsureFolder(dir);
+            string tex = (dir + "/calcstats.png").SanitizePath();
+            CreatePng(tex, 8, 8, Color.white);
+            AssetDatabase.Refresh();
+
+            TextureSettingsApplierWindow window = Track(
+                ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
+            );
+            window.textures = new System.Collections.Generic.List<Texture2D>();
+            window.directories = new System.Collections.Generic.List<Object>
+            {
+                AssetDatabase.LoadAssetAtPath<Object>(dir),
+            };
+
+            // CalculateStats calls GetTargetTexturePaths which had the array pool bug
+            Assert.DoesNotThrow(
+                () => window.CalculateStats(),
+                "CalculateStats with directories should not throw"
+            );
+        }
+
+        [Test]
         public void WizardAppliesNamedPlatformOverride()
         {
             string dir = Root.SanitizePath();

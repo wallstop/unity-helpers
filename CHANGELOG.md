@@ -55,6 +55,11 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Added `BlastCircuitRandom` and `WaveSplatRandom` generators with improved performance characteristics
   - New `RandomGeneratorMetadata` system for inspecting generator properties
   - Extended random sampling methods with improved statistical distribution
+- **Array Pooling**: New `SystemArrayPool<T>` and unified `PooledArray<T>` return type
+  - Added `SystemArrayPool<T>` wrapping `System.Buffers.ArrayPool<T>.Shared` for variable-sized allocations
+  - Added `PooledArray<T>` struct as unified return type for all array pools with proper `Length` tracking
+  - `WallstopArrayPool<T>` and `WallstopFastArrayPool<T>` now return `PooledArray<T>` instead of `PooledResource<T[]>`
+  - Critical for `SystemArrayPool<T>`: returned arrays may be larger than requested; always use `pooled.Length`, not `array.Length`
 - **Grid Concave Hull Reliability**:
   - Edge-split and grid KNN hull builders now insert missing axis-aligned corners after the initial pass, guaranteeing concave stair, horseshoe, and serpentine inputs retain their interior vertices even when only sparse samples exist.
   - Improved handling of staircase patterns, axis-corner preservation, and diagonal-only rejection for more robust hull generation.
@@ -112,6 +117,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Removed `KVector2` (deprecated, use Unity's built-in Vector2)
   - Renamed `KGuid` -> `WGuid`, changed data layout
   - Forced `WallstopFastArrayPool` to force `unmanaged` types. This pool does not clear arrays and can leak references.
+  - `WallstopArrayPool<T>` and `WallstopFastArrayPool<T>` now return `PooledArray<T>` instead of `PooledResource<T[]>`. Update usages from `pooled.resource` to `pooled.Array` and consider using `pooled.Length` for iteration bounds.
   - The legacy line-division concave hull overload `BuildConcaveHull(IEnumerable<FastVector3Int>, Grid, float scaleFactor, float concavity)` has been marked `[Obsolete]` and now throws `NotSupportedException`. Use `ConcaveHullStrategy.Knn` or `ConcaveHullStrategy.EdgeSplit` (and their dedicated helpers) instead; the docs now call out this retirement explicitly.
   - `StringInList` inspectors now keep the property row single-line and open a dedicated popup that contains search, pagination, and keyboard navigation for large catalogs (applies to both IMGUI and UI Toolkit drawers, including `SerializableType`).
 - **API Improvements**:

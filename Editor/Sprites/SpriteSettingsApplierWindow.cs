@@ -225,17 +225,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             // Search in folders via AssetDatabase
             if (folderAssetPaths.Count > 0)
             {
-                using PooledResource<string[]> bufferResource = WallstopArrayPool<string>.Get(
-                    folderAssetPaths.Count,
-                    out string[] folders
+                string[] guids = AssetDatabase.FindAssets(
+                    "t:Texture2D",
+                    folderAssetPaths.ToArray()
                 );
-
-                for (int i = 0; i < folderAssetPaths.Count; i++)
-                {
-                    folders[i] = folderAssetPaths[i];
-                }
-
-                string[] guids = AssetDatabase.FindAssets("t:Texture2D", folders);
                 foreach (string guid in guids)
                 {
                     string assetPath = AssetDatabase.GUIDToAssetPath(guid);
@@ -287,7 +280,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             return filePaths;
         }
 
-        private void CalculateStats()
+        internal void CalculateStats()
         {
             _totalSpritesToProcess = 0;
             _spritesThatWillChange = 0;

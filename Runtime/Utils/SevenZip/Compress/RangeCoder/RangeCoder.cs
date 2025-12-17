@@ -1,7 +1,7 @@
-using System;
-
 namespace SevenZip.Compression.RangeCoder
 {
+    using System;
+
     class Encoder
     {
         public const uint kTopValue = (1 << 24);

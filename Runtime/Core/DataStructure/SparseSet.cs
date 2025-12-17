@@ -312,7 +312,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             private readonly T[] _elements;
             private readonly int[] _dense;
             private readonly int _count;
-            private PooledResource<T[]> _pooledArray;
+            private PooledArray<T> _pooledArray;
             private int _index;
             private T _current;
             private bool _initialized;
@@ -330,7 +330,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 // Rent array and populate on first use
                 if (count > 0)
                 {
-                    _pooledArray = WallstopArrayPool<T>.Get(count, out T[] temp);
+                    _pooledArray = SystemArrayPool<T>.Get(count, out T[] temp);
                     for (int i = 0; i < count; i++)
                     {
                         temp[i] = elements[dense[i]];
@@ -343,7 +343,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 if (++_index < _count)
                 {
-                    _current = _pooledArray.resource[_index];
+                    _current = _pooledArray.array[_index];
                     return true;
                 }
 

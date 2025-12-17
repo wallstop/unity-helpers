@@ -267,8 +267,8 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                 AnimatedSpriteLayer[] layers = _layers;
                 int layerCount = layers.Length;
 
-                using PooledResource<LayerFrameInfo[]> frameInfoLease =
-                    WallstopArrayPool<LayerFrameInfo>.Get(
+                using PooledArray<LayerFrameInfo> frameInfoLease =
+                    SystemArrayPool<LayerFrameInfo>.Get(
                         layerCount,
                         out LayerFrameInfo[] frameInfos
                     );
@@ -373,7 +373,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                 }
 
                 int compositeLength = compositeWidth * compositeHeight;
-                using PooledResource<Color[]> compositeLease = WallstopFastArrayPool<Color>.Get(
+                using PooledArray<Color> compositeLease = SystemArrayPool<Color>.Get(
                     compositeLength,
                     out Color[] bufferPixels
                 );
@@ -500,7 +500,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                 int finalHeight = maxY - minY + 1;
                 int finalLength = finalWidth * finalHeight;
 
-                using PooledResource<Color[]> finalLease = WallstopFastArrayPool<Color>.Get(
+                using PooledArray<Color> finalLease = SystemArrayPool<Color>.Get(
                     finalLength,
                     out Color[] finalPixels
                 );

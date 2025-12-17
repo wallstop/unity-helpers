@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
@@ -26,8 +27,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         public override void TearDown()
         {
             base.TearDown();
-            AssetDatabase.DeleteAsset("Assets/Temp");
-            AssetDatabase.Refresh();
+            // Reset DetectAssetChangeProcessor to avoid triggering loop protection
+            // when multiple assets are deleted during cleanup
+            DetectAssetChangeProcessor.ResetForTesting();
+            CleanupTrackedFoldersAndAssets();
             SpritePivotAdjuster.SuppressUserPrompts = false;
         }
 

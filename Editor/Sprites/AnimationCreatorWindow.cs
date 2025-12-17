@@ -874,8 +874,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     validFrames.Sort((s1, s2) => EditorUtility.NaturalCompare(s1.name, s2.name));
 
                     float timeStep = 1f / framesPerSecond;
-                    using PooledResource<ObjectReferenceKeyframe[]> keyframesResource =
-                        WallstopArrayPool<ObjectReferenceKeyframe>.Get(
+                    using PooledArray<ObjectReferenceKeyframe> keyframesResource =
+                        SystemArrayPool<ObjectReferenceKeyframe>.Get(
                             validFrames.Count,
                             out ObjectReferenceKeyframe[] keyframes
                         );

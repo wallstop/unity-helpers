@@ -352,7 +352,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             // Rent a temporary array from the pool to avoid reading already-modified values
-            using PooledResource<ulong[]> pooled = WallstopFastArrayPool<ulong>.Get(
+            using PooledArray<ulong> pooled = SystemArrayPool<ulong>.Get(
                 _bits.Length,
                 out ulong[] temp
             );

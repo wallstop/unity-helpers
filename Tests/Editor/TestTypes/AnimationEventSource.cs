@@ -1,8 +1,8 @@
-using UnityEngine;
-using WallstopStudios.UnityHelpers.Core.Attributes;
-
 namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
 {
+    using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+
     public class AnimationEventSource : MonoBehaviour
     {
         [AnimationEvent]
