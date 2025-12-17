@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     using UnityEngine;
     using Utils;
 
+    // ReSharper disable once GrammarMistakeInComment
     /// <summary>
     /// Manages the application and removal of AttributeEffects on a GameObject.
     /// Handles effect duration tracking, tag application, cosmetic effects, and attribute modifications.
@@ -24,7 +25,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// <para>
     /// Example usage:
     /// <code>
-    /// EffectHandler effectHandler = gameObject.GetComponent&lt;EffectHandler&gt;();
+    /// var effectHandler = gameObject.GetComponent&lt;EffectHandler&gt;();
     ///
     /// // Apply an effect
     /// AttributeEffect poisonEffect = ...;
@@ -56,7 +57,9 @@ namespace WallstopStudios.UnityHelpers.Tags
         public event Action<EffectHandle> OnEffectRemoved;
 
         [SiblingComponent]
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
         private TagHandler _tagHandler;
+#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
 
         [SiblingComponent(Optional = true)]
         private HashSet<AttributesComponent> _attributes;

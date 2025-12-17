@@ -213,10 +213,33 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 PrefabPath
             );
             Track(prefab1);
+
+            // Diagnostic: Verify prefab1 was created correctly
+            Assert.IsTrue(prefab1 != null, $"Failed to create prefab1 at {PrefabPath}");
+            TestPrefabAssetChangeHandler handler1 =
+                prefab1.GetComponent<TestPrefabAssetChangeHandler>();
+            Assert.IsTrue(
+                handler1 != null,
+                $"Prefab1 at {PrefabPath} does not have TestPrefabAssetChangeHandler component. "
+                    + $"This may indicate the MonoBehaviour is in an Editor folder and cannot be attached to GameObjects."
+            );
+
+            string prefab2Path = Root + "/TestPrefab2.prefab";
             GameObject prefab2 = CreatePrefabWithComponent<TestPrefabAssetChangeHandler>(
-                Root + "/TestPrefab2.prefab"
+                prefab2Path
             );
             Track(prefab2);
+
+            // Diagnostic: Verify prefab2 was created correctly
+            Assert.IsTrue(prefab2 != null, $"Failed to create prefab2 at {prefab2Path}");
+            TestPrefabAssetChangeHandler handler2 =
+                prefab2.GetComponent<TestPrefabAssetChangeHandler>();
+            Assert.IsTrue(
+                handler2 != null,
+                $"Prefab2 at {prefab2Path} does not have TestPrefabAssetChangeHandler component. "
+                    + $"This may indicate the MonoBehaviour is in an Editor folder and cannot be attached to GameObjects."
+            );
+
             CreatePayloadAsset();
             ClearTestState();
 
@@ -235,11 +258,13 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             Assert.AreEqual(
                 2,
                 TestPrefabAssetChangeHandler.RecordedInstances.Count,
-                "Expected handlers from both prefabs to be invoked"
+                $"Expected handlers from both prefabs to be invoked. "
+                    + $"RecordedContexts.Count={TestPrefabAssetChangeHandler.RecordedContexts.Count}, "
+                    + $"Prefab1 exists={prefab1 != null}, Prefab2 exists={prefab2 != null}"
             );
 
             // Cleanup extra prefab
-            DeleteAssetIfExists(Root + "/TestPrefab2.prefab");
+            DeleteAssetIfExists(prefab2Path);
         }
 
         [Test]
@@ -373,7 +398,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         {
             // Arrange - Create hierarchy with handler on child
             GameObject parent = Track(new GameObject("Parent"));
-            GameObject child = new GameObject("Child");
+            GameObject child = new("Child");
             child.transform.SetParent(parent.transform);
             TestSceneAssetChangeHandler handler = child.AddComponent<TestSceneAssetChangeHandler>();
 
@@ -473,9 +498,26 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             GameObject prefab = CreatePrefabWithComponent<TestCombinedSearchHandler>(PrefabPath);
             Track(prefab);
 
+            // Diagnostic: Verify prefab was created correctly
+            Assert.IsTrue(prefab != null, $"Failed to create prefab at {PrefabPath}");
+            TestCombinedSearchHandler prefabHandler =
+                prefab.GetComponent<TestCombinedSearchHandler>();
+            Assert.IsTrue(
+                prefabHandler != null,
+                $"Prefab at {PrefabPath} does not have TestCombinedSearchHandler component. "
+                    + $"This may indicate the MonoBehaviour is in an Editor folder and cannot be attached to GameObjects."
+            );
+
             GameObject sceneGo = Track(new GameObject("SceneCombinedHandler"));
             TestCombinedSearchHandler sceneHandler =
                 sceneGo.AddComponent<TestCombinedSearchHandler>();
+
+            // Diagnostic: Verify scene object was created correctly
+            Assert.IsTrue(
+                sceneHandler != null,
+                "Failed to add TestCombinedSearchHandler to scene object. "
+                    + "This may indicate the MonoBehaviour is in an Editor folder and cannot be attached to GameObjects."
+            );
 
             CreatePayloadAsset();
             ClearTestState();
@@ -495,7 +537,10 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             Assert.AreEqual(
                 2,
                 TestCombinedSearchHandler.RecordedInstances.Count,
-                "Expected both prefab and scene handlers to be invoked"
+                $"Expected both prefab and scene handlers to be invoked. "
+                    + $"RecordedContexts.Count={TestCombinedSearchHandler.RecordedContexts.Count}, "
+                    + $"Prefab exists={prefab != null}, Prefab has handler={prefabHandler != null}, "
+                    + $"SceneGo exists={sceneGo != null}, Scene handler={sceneHandler != null}"
             );
         }
 
@@ -505,8 +550,28 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             // Arrange - Instantiate prefab in scene (creates a scene instance)
             GameObject prefab = CreatePrefabWithComponent<TestCombinedSearchHandler>(PrefabPath);
             Track(prefab);
+
+            // Diagnostic: Verify prefab was created correctly
+            Assert.IsTrue(prefab != null, $"Failed to create prefab at {PrefabPath}");
+            TestCombinedSearchHandler prefabHandler =
+                prefab.GetComponent<TestCombinedSearchHandler>();
+            Assert.IsTrue(
+                prefabHandler != null,
+                $"Prefab at {PrefabPath} does not have TestCombinedSearchHandler component. "
+                    + $"This may indicate the MonoBehaviour is in an Editor folder and cannot be attached to GameObjects."
+            );
+
             GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             Track(instance);
+
+            // Diagnostic: Verify instantiated prefab has component
+            Assert.IsTrue(instance != null, "Failed to instantiate prefab in scene");
+            TestCombinedSearchHandler instanceHandler =
+                instance.GetComponent<TestCombinedSearchHandler>();
+            Assert.IsTrue(
+                instanceHandler != null,
+                "Instantiated prefab does not have TestCombinedSearchHandler component"
+            );
 
             CreatePayloadAsset();
             ClearTestState();
@@ -527,7 +592,10 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             Assert.GreaterOrEqual(
                 TestCombinedSearchHandler.RecordedInstances.Count,
                 1,
-                "Expected at least one handler to be invoked"
+                $"Expected at least one handler to be invoked. "
+                    + $"RecordedContexts.Count={TestCombinedSearchHandler.RecordedContexts.Count}, "
+                    + $"Prefab exists={prefab != null}, Prefab handler={prefabHandler != null}, "
+                    + $"Instance exists={instance != null}, Instance handler={instanceHandler != null}"
             );
         }
 
@@ -581,7 +649,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         public void HandlerHandlesDestroyedObjectsDuringEnumeration()
         {
             // Arrange
-            GameObject go = new GameObject("Handler");
+            GameObject go = new("Handler");
             TestSceneAssetChangeHandler handler = go.AddComponent<TestSceneAssetChangeHandler>();
 
             CreatePayloadAsset();
@@ -638,18 +706,37 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         )
         {
             // Arrange
+            GameObject prefab = null;
+            TestCombinedSearchHandler prefabHandler = null;
+            GameObject sceneGo = null;
+            TestCombinedSearchHandler sceneHandler = null;
+
             if (createPrefab)
             {
-                GameObject prefab = CreatePrefabWithComponent<TestCombinedSearchHandler>(
-                    PrefabPath
-                );
+                prefab = CreatePrefabWithComponent<TestCombinedSearchHandler>(PrefabPath);
                 Track(prefab);
+
+                // Diagnostic: Verify prefab was created correctly
+                Assert.IsTrue(prefab != null, $"Failed to create prefab at {PrefabPath}");
+                prefabHandler = prefab.GetComponent<TestCombinedSearchHandler>();
+                Assert.IsTrue(
+                    prefabHandler != null,
+                    $"Prefab at {PrefabPath} does not have TestCombinedSearchHandler component. "
+                        + $"This may indicate the MonoBehaviour is in an Editor folder and cannot be attached to GameObjects."
+                );
             }
 
             if (createSceneObject)
             {
-                GameObject sceneGo = Track(new GameObject("CombinedHandler"));
-                sceneGo.AddComponent<TestCombinedSearchHandler>();
+                sceneGo = Track(new GameObject("CombinedHandler"));
+                sceneHandler = sceneGo.AddComponent<TestCombinedSearchHandler>();
+
+                // Diagnostic: Verify scene object was created correctly
+                Assert.IsTrue(
+                    sceneHandler != null,
+                    "Failed to add TestCombinedSearchHandler to scene object. "
+                        + "This may indicate the MonoBehaviour is in an Editor folder and cannot be attached to GameObjects."
+                );
             }
 
             CreatePayloadAsset();
@@ -670,8 +757,139 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             Assert.AreEqual(
                 expectedInvocations,
                 TestCombinedSearchHandler.RecordedInstances.Count,
-                $"Expected {expectedInvocations} invocations"
+                $"Expected {expectedInvocations} invocations. "
+                    + $"createPrefab={createPrefab}, createSceneObject={createSceneObject}, "
+                    + $"Prefab exists={prefab != null}, Prefab handler={prefabHandler != null}, "
+                    + $"SceneGo exists={sceneGo != null}, Scene handler={sceneHandler != null}, "
+                    + $"RecordedContexts.Count={TestCombinedSearchHandler.RecordedContexts.Count}"
             );
+        }
+
+        [Test]
+        public void PrefabComponentCanBeAddedToGameObject()
+        {
+            // This test verifies that TestPrefabAssetChangeHandler is NOT in an Editor folder
+            // and can be properly added to GameObjects (a prerequisite for all prefab tests)
+            GameObject go = new("TestAddComponent");
+            try
+            {
+                TestPrefabAssetChangeHandler handler =
+                    go.AddComponent<TestPrefabAssetChangeHandler>();
+                Assert.IsTrue(
+                    handler != null,
+                    "TestPrefabAssetChangeHandler must NOT be in an Editor folder. "
+                        + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
+                        + "Move TestPrefabAssetChangeHandler to a non-Editor folder (e.g., Tests/Runtime/)."
+                );
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void SceneComponentCanBeAddedToGameObject()
+        {
+            // This test verifies that TestSceneAssetChangeHandler is NOT in an Editor folder
+            // and can be properly added to GameObjects (a prerequisite for all scene handler tests)
+            GameObject go = new("TestAddComponent");
+            try
+            {
+                TestSceneAssetChangeHandler handler =
+                    go.AddComponent<TestSceneAssetChangeHandler>();
+                Assert.IsTrue(
+                    handler != null,
+                    "TestSceneAssetChangeHandler must NOT be in an Editor folder. "
+                        + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
+                        + "Move TestSceneAssetChangeHandler to a non-Editor folder (e.g., Tests/Runtime/)."
+                );
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void CombinedComponentCanBeAddedToGameObject()
+        {
+            // This test verifies that TestCombinedSearchHandler is NOT in an Editor folder
+            // and can be properly added to GameObjects (a prerequisite for all combined handler tests)
+            GameObject go = new("TestAddComponent");
+            try
+            {
+                TestCombinedSearchHandler handler = go.AddComponent<TestCombinedSearchHandler>();
+                Assert.IsTrue(
+                    handler != null,
+                    "TestCombinedSearchHandler must NOT be in an Editor folder. "
+                        + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
+                        + "Move TestCombinedSearchHandler to a non-Editor folder (e.g., Tests/Runtime/)."
+                );
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void NestedComponentCanBeAddedToGameObject()
+        {
+            // This test verifies that TestNestedPrefabHandler is NOT in an Editor folder
+            // and can be properly added to GameObjects (a prerequisite for all nested handler tests)
+            GameObject go = new("TestAddComponent");
+            try
+            {
+                TestNestedPrefabHandler handler = go.AddComponent<TestNestedPrefabHandler>();
+                Assert.IsTrue(
+                    handler != null,
+                    "TestNestedPrefabHandler must NOT be in an Editor folder. "
+                        + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
+                        + "Move TestNestedPrefabHandler to a non-Editor folder (e.g., Tests/Runtime/)."
+                );
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void CreatePrefabWithComponentReturnsValidPrefabWithComponent()
+        {
+            // Arrange & Act
+            EnsureFolder();
+            string testPrefabPath = Root + "/ValidationTestPrefab.prefab";
+            GameObject prefab = CreatePrefabWithComponent<TestPrefabAssetChangeHandler>(
+                testPrefabPath
+            );
+
+            try
+            {
+                // Assert - Verify the prefab asset was created
+                Assert.IsTrue(
+                    prefab != null,
+                    $"CreatePrefabWithComponent failed to create prefab at {testPrefabPath}"
+                );
+
+                // Verify it's actually a prefab asset
+                GameObject loadedPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(testPrefabPath);
+                Assert.IsTrue(loadedPrefab != null, $"Prefab asset not found at {testPrefabPath}");
+
+                // Verify the component is on the prefab
+                TestPrefabAssetChangeHandler handler =
+                    loadedPrefab.GetComponent<TestPrefabAssetChangeHandler>();
+                Assert.IsTrue(
+                    handler != null,
+                    $"TestPrefabAssetChangeHandler component not found on prefab at {testPrefabPath}. "
+                        + "This indicates AddComponent failed, likely because the script is in an Editor folder."
+                );
+            }
+            finally
+            {
+                DeleteAssetIfExists(testPrefabPath);
+            }
         }
 
         private static void CleanupTestFolders()
@@ -790,7 +1008,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             where T : Component
         {
             EnsureFolder();
-            GameObject go = new GameObject(typeof(T).Name);
+            GameObject go = new(typeof(T).Name);
             go.AddComponent<T>();
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
             Object.DestroyImmediate(go);
@@ -801,8 +1019,8 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         private static GameObject CreateNestedPrefabWithHandler(string path)
         {
             EnsureFolder();
-            GameObject root = new GameObject("Root");
-            GameObject child = new GameObject("Child");
+            GameObject root = new("Root");
+            GameObject child = new("Child");
             child.transform.SetParent(root.transform);
             child.AddComponent<TestNestedPrefabHandler>();
 
@@ -815,7 +1033,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         private static GameObject CreatePrefabWithMultipleHandlers(string path)
         {
             EnsureFolder();
-            GameObject go = new GameObject("MultiHandler");
+            GameObject go = new("MultiHandler");
             go.AddComponent<TestPrefabAssetChangeHandler>();
             go.AddComponent<TestPrefabAssetChangeHandler>();
 

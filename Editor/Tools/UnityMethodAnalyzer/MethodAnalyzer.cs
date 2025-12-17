@@ -204,14 +204,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            await ProcessFilesAsync(csFiles, rootPath, progress, cancellationToken);
+            await ProcessFilesAsync(csFiles, rootPath, progress, cancellationToken)
+                .ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
 
             // Build lookup dictionary before inheritance analysis for O(1) class resolution
             BuildClassNameLookup();
 
-            await Task.Run(() => AnalyzeInheritanceParallel(cancellationToken), cancellationToken);
+            await Task.Run(() => AnalyzeInheritanceParallel(cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
             progress?.Report(1f);
         }
 

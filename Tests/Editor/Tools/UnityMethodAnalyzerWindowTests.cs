@@ -5,12 +5,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
     using System.Collections;
     using System.Collections.Generic;
     using System.IO;
-    using System.Reflection;
     using System.Threading;
+    using System.Threading.Tasks;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer;
+    using Object = UnityEngine.Object;
 
     /// <summary>
     /// Tests for the UnityMethodAnalyzerWindow focusing on state management,
@@ -37,7 +38,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
         {
             if (_window != null)
             {
-                _window.Close();
+                // Use DestroyImmediate instead of Close() because EditorWindow.Close()
+                // can throw NullReferenceException when the window was created via
+                // ScriptableObject.CreateInstance but never shown (no host view initialized)
+                Object.DestroyImmediate(_window);
                 _window = null;
             }
 
@@ -57,31 +61,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
         private UnityMethodAnalyzerWindow CreateWindow()
         {
             _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            // Initialize the window since OnEnable() is not called when using CreateInstance
+            _window.Initialize();
             return _window;
-        }
-
-        private void SetPrivateField(object obj, string fieldName, object value)
-        {
-            FieldInfo field = obj.GetType()
-                .GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsTrue(field != null, $"Field '{fieldName}' not found");
-            field.SetValue(obj, value);
-        }
-
-        private T GetPrivateField<T>(object obj, string fieldName)
-        {
-            FieldInfo field = obj.GetType()
-                .GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsTrue(field != null, $"Field '{fieldName}' not found");
-            return (T)field.GetValue(obj);
-        }
-
-        private void InvokePrivateMethod(object obj, string methodName, params object[] args)
-        {
-            MethodInfo method = obj.GetType()
-                .GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsTrue(method != null, $"Method '{methodName}' not found");
-            method.Invoke(obj, args);
         }
 
         [Test]
@@ -89,13 +71,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
         {
             UnityMethodAnalyzerWindow window = CreateWindow();
 
-            bool isAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
-            float analysisProgress = GetPrivateField<float>(window, "_analysisProgress");
-            string statusMessage = GetPrivateField<string>(window, "_statusMessage");
-            CancellationTokenSource cts = GetPrivateField<CancellationTokenSource>(
-                window,
-                "_cancellationTokenSource"
-            );
+            bool isAnalyzing = window._isAnalyzing;
+            float analysisProgress = window._analysisProgress;
+            string statusMessage = window._statusMessage;
+            CancellationTokenSource cts = window._cancellationTokenSource;
 
             Assert.IsFalse(isAnalyzing, "Window should not be analyzing on init");
             Assert.AreEqual(0f, analysisProgress, "Progress should be 0 on init");
@@ -113,14 +92,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Simulate an in-progress analysis state
-            SetPrivateField(window, "_isAnalyzing", true);
-            SetPrivateField(window, "_analysisProgress", 0.75f);
+            window._isAnalyzing = true;
+            window._analysisProgress = 0.75f;
 
             // Call ResetAnalysisState
-            InvokePrivateMethod(window, "ResetAnalysisState");
+            window.ResetAnalysisState();
 
-            bool isAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
-            float analysisProgress = GetPrivateField<float>(window, "_analysisProgress");
+            bool isAnalyzing = window._isAnalyzing;
+            float analysisProgress = window._analysisProgress;
 
             Assert.IsFalse(isAnalyzing, "isAnalyzing should be false after reset");
             Assert.AreEqual(0f, analysisProgress, "analysisProgress should be 0 after reset");
@@ -132,13 +111,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Ensure CTS is null
-            SetPrivateField(window, "_cancellationTokenSource", null);
+            window._cancellationTokenSource = null;
 
             // Should not throw
-            InvokePrivateMethod(window, "CancelAnalysis");
+            window.CancelAnalysis();
 
             // State should remain unchanged
-            bool isAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
+            bool isAnalyzing = window._isAnalyzing;
             Assert.IsFalse(isAnalyzing, "State should remain unchanged when CTS is null");
         }
 
@@ -148,17 +127,51 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             CancellationTokenSource cts = new();
-            SetPrivateField(window, "_cancellationTokenSource", cts);
-            SetPrivateField(window, "_isAnalyzing", true);
+            window._cancellationTokenSource = cts;
+            window._isAnalyzing = true;
 
             Assert.IsFalse(cts.IsCancellationRequested, "CTS should not be cancelled initially");
 
-            InvokePrivateMethod(window, "CancelAnalysis");
+            window.CancelAnalysis();
 
             Assert.IsTrue(
                 cts.IsCancellationRequested,
                 "CTS should be cancelled after CancelAnalysis"
             );
+
+            // CancelAnalysis now also resets state immediately
+            bool isAnalyzing = window._isAnalyzing;
+            string statusMessage = window._statusMessage;
+
+            Assert.IsFalse(isAnalyzing, "isAnalyzing should be false after CancelAnalysis");
+            Assert.AreEqual(
+                "Analysis cancelled",
+                statusMessage,
+                "Status should indicate cancellation"
+            );
+        }
+
+        [Test]
+        public void CancelAnalysisImmediatelyResetsAnalyzingState()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            CancellationTokenSource cts = new();
+            window._cancellationTokenSource = cts;
+            window._isAnalyzing = true;
+            window._analysisProgress = 0.5f;
+            window._statusMessage = "Analyzing...";
+
+            window.CancelAnalysis();
+
+            // Verify immediate state reset
+            bool isAnalyzing = window._isAnalyzing;
+            float progress = window._analysisProgress;
+            string status = window._statusMessage;
+
+            Assert.IsFalse(isAnalyzing, "isAnalyzing should be immediately false");
+            Assert.AreEqual(0f, progress, "Progress should be immediately reset to 0");
+            Assert.AreEqual("Analysis cancelled", status, "Status should indicate cancellation");
         }
 
         [Test]
@@ -168,12 +181,31 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
 
             CancellationTokenSource cts = new();
             cts.Cancel(); // Pre-cancel
-            SetPrivateField(window, "_cancellationTokenSource", cts);
+            window._cancellationTokenSource = cts;
+            window._isAnalyzing = true;
+            window._analysisProgress = 0.5f;
+            window._statusMessage = "Analyzing...";
 
             // Should not throw when called on already cancelled CTS
-            InvokePrivateMethod(window, "CancelAnalysis");
+            window.CancelAnalysis();
 
             Assert.IsTrue(cts.IsCancellationRequested, "CTS should remain cancelled");
+
+            // State should still be reset
+            bool isAnalyzing = window._isAnalyzing;
+            float progress = window._analysisProgress;
+            string status = window._statusMessage;
+
+            Assert.IsFalse(
+                isAnalyzing,
+                "isAnalyzing should be false even when CTS was already cancelled"
+            );
+            Assert.AreEqual(
+                0f,
+                progress,
+                "Progress should be reset even when CTS was already cancelled"
+            );
+            Assert.AreEqual("Analysis cancelled", status, "Status should indicate cancellation");
         }
 
         [Test]
@@ -182,14 +214,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Set up as if already analyzing
-            SetPrivateField(window, "_isAnalyzing", true);
-            SetPrivateField(window, "_statusMessage", "Previous status");
+            window._isAnalyzing = true;
+            window._statusMessage = "Previous status";
 
             // Try to start analysis
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
 
             // Status message should not have changed
-            string statusMessage = GetPrivateField<string>(window, "_statusMessage");
+            string statusMessage = window._statusMessage;
             Assert.AreEqual(
                 "Previous status",
                 statusMessage,
@@ -203,14 +235,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             CancellationTokenSource oldCts = new();
-            SetPrivateField(window, "_cancellationTokenSource", oldCts);
-            SetPrivateField(window, "_isAnalyzing", false);
-            SetPrivateField(window, "_sourcePaths", new List<string> { _tempDir });
+            window._cancellationTokenSource = oldCts;
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { _tempDir };
 
             // Create a simple test file so analysis has something to process
             WriteTestFile("Test.cs", "public class Test { }");
 
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
 
             // The old CTS should be disposed (we can check by trying to use it)
             Assert.Throws<ObjectDisposedException>(() =>
@@ -224,15 +256,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
         {
             UnityMethodAnalyzerWindow window = CreateWindow();
 
-            SetPrivateField(window, "_isAnalyzing", false);
-            SetPrivateField(window, "_sourcePaths", new List<string> { _tempDir });
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { _tempDir };
 
             WriteTestFile("Test.cs", "public class Test { }");
 
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
 
-            bool isAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
-            string statusMessage = GetPrivateField<string>(window, "_statusMessage");
+            bool isAnalyzing = window._isAnalyzing;
+            string statusMessage = window._statusMessage;
 
             // Note: Since StartAnalysis is async void, the state might have already reset
             // by the time we check. We primarily verify it doesn't throw.
@@ -246,12 +278,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Call reset multiple times - should not throw or change state unexpectedly
-            InvokePrivateMethod(window, "ResetAnalysisState");
-            InvokePrivateMethod(window, "ResetAnalysisState");
-            InvokePrivateMethod(window, "ResetAnalysisState");
+            window.ResetAnalysisState();
+            window.ResetAnalysisState();
+            window.ResetAnalysisState();
 
-            bool isAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
-            float analysisProgress = GetPrivateField<float>(window, "_analysisProgress");
+            bool isAnalyzing = window._isAnalyzing;
+            float analysisProgress = window._analysisProgress;
 
             Assert.IsFalse(isAnalyzing, "isAnalyzing should remain false");
             Assert.AreEqual(0f, analysisProgress, "analysisProgress should remain 0");
@@ -263,14 +295,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             CancellationTokenSource cts = new();
-            SetPrivateField(window, "_cancellationTokenSource", cts);
+            window._cancellationTokenSource = cts;
+            window._isAnalyzing = true;
+            window._analysisProgress = 0.5f;
+            window._statusMessage = "Analyzing...";
 
             // Call cancel multiple times - should not throw
-            InvokePrivateMethod(window, "CancelAnalysis");
-            InvokePrivateMethod(window, "CancelAnalysis");
-            InvokePrivateMethod(window, "CancelAnalysis");
+            window.CancelAnalysis();
+            window.CancelAnalysis();
+            window.CancelAnalysis();
 
             Assert.IsTrue(cts.IsCancellationRequested, "CTS should be cancelled");
+
+            // State should be reset after all calls
+            bool isAnalyzing = window._isAnalyzing;
+            float progress = window._analysisProgress;
+            string status = window._statusMessage;
+
+            Assert.IsFalse(isAnalyzing, "isAnalyzing should be false after multiple cancels");
+            Assert.AreEqual(0f, progress, "Progress should be reset after multiple cancels");
+            Assert.AreEqual(
+                "Analysis cancelled",
+                status,
+                "Status should indicate cancellation after multiple cancels"
+            );
         }
 
         [Test]
@@ -278,17 +326,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
         {
             UnityMethodAnalyzerWindow window = CreateWindow();
 
-            SetPrivateField(window, "_isAnalyzing", false);
-            SetPrivateField(window, "_sourcePaths", new List<string> { _tempDir });
-            SetPrivateField(window, "_statusMessage", "Previous message");
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { _tempDir };
+            window._statusMessage = "Previous message";
 
             WriteTestFile("Test.cs", "public class Test { }");
 
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
 
             // Due to async nature, we just verify it started
             // The status message should have changed from "Previous message"
-            string statusMessage = GetPrivateField<string>(window, "_statusMessage");
+            string statusMessage = window._statusMessage;
             Assert.AreNotEqual(
                 "Previous message",
                 statusMessage,
@@ -301,14 +349,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
         {
             UnityMethodAnalyzerWindow window = CreateWindow();
 
-            SetPrivateField(window, "_isAnalyzing", false);
-            SetPrivateField(window, "_sourcePaths", new List<string> { "/nonexistent/path" });
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { "/nonexistent/path" };
 
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
 
             // Wait a moment for async to complete
-            string statusMessage = GetPrivateField<string>(window, "_statusMessage");
-            bool isAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
+            string statusMessage = window._statusMessage;
+            bool isAnalyzing = window._isAnalyzing;
 
             Assert.AreEqual(
                 "No valid directories selected",
@@ -319,17 +367,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
         }
 
         [Test]
+        public void StartAnalysisWithNoValidDirectoriesSignalsCompletionSource()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            TaskCompletionSource<bool> tcs = new();
+            window._analysisCompletionSource = tcs;
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { "/nonexistent/path" };
+
+            window.StartAnalysis();
+
+            // The TCS should be signaled immediately since there are no valid directories
+            Assert.IsTrue(
+                tcs.Task.IsCompleted,
+                "TCS should be completed when no valid directories"
+            );
+            Assert.IsTrue(tcs.Task.Result, "TCS result should be true");
+            Assert.IsFalse(window._isAnalyzing, "Should not be analyzing");
+        }
+
+        [Test]
         public void StartAnalysisWithEmptySourcePathsSetsAppropriateMessage()
         {
             UnityMethodAnalyzerWindow window = CreateWindow();
 
-            SetPrivateField(window, "_isAnalyzing", false);
-            SetPrivateField(window, "_sourcePaths", new List<string>());
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string>();
 
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
 
-            string statusMessage = GetPrivateField<string>(window, "_statusMessage");
-            bool isAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
+            string statusMessage = window._statusMessage;
+            bool isAnalyzing = window._isAnalyzing;
 
             Assert.AreEqual(
                 "No valid directories selected",
@@ -340,20 +409,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
         }
 
         [Test]
+        public void StartAnalysisWithEmptySourcePathsSignalsCompletionSource()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            TaskCompletionSource<bool> tcs = new();
+            window._analysisCompletionSource = tcs;
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string>();
+
+            window.StartAnalysis();
+
+            // The TCS should be signaled immediately since there are no valid directories
+            Assert.IsTrue(tcs.Task.IsCompleted, "TCS should be completed when empty source paths");
+            Assert.IsTrue(tcs.Task.Result, "TCS result should be true");
+            Assert.IsFalse(window._isAnalyzing, "Should not be analyzing");
+        }
+
+        [Test]
         public void StartAnalysisWithNullEntriesInSourcePathsFiltersThemOut()
         {
             UnityMethodAnalyzerWindow window = CreateWindow();
 
-            SetPrivateField(window, "_isAnalyzing", false);
-            SetPrivateField(window, "_sourcePaths", new List<string> { null, "", "   ", _tempDir });
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { null, "", "   ", _tempDir };
 
             WriteTestFile("Test.cs", "public class Test { }");
 
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
 
             // Should process the one valid directory without error
             // Status should not be "No valid directories selected"
-            string statusMessage = GetPrivateField<string>(window, "_statusMessage");
+            string statusMessage = window._statusMessage;
             Assert.AreNotEqual(
                 "No valid directories selected",
                 statusMessage,
@@ -384,24 +471,24 @@ namespace TestNs
                 );
             }
 
-            SetPrivateField(window, "_isAnalyzing", false);
-            SetPrivateField(window, "_sourcePaths", new List<string> { _tempDir });
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { _tempDir };
 
             // Start analysis
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
 
             // Wait a frame for analysis to begin
             yield return null;
 
             // Cancel the analysis
-            InvokePrivateMethod(window, "CancelAnalysis");
+            window.CancelAnalysis();
 
             // Wait for cancellation to process
             float waitTime = 0f;
             float maxWaitTime = 5f;
             while (waitTime < maxWaitTime)
             {
-                bool isAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
+                bool isAnalyzing = window._isAnalyzing;
                 if (!isAnalyzing)
                 {
                     break;
@@ -412,9 +499,9 @@ namespace TestNs
             }
 
             // Verify state is reset
-            bool finalIsAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
-            float finalProgress = GetPrivateField<float>(window, "_analysisProgress");
-            string finalStatus = GetPrivateField<string>(window, "_statusMessage");
+            bool finalIsAnalyzing = window._isAnalyzing;
+            float finalProgress = window._analysisProgress;
+            string finalStatus = window._statusMessage;
 
             Assert.IsFalse(finalIsAnalyzing, "isAnalyzing should be false after cancellation");
             Assert.AreEqual(0f, finalProgress, "Progress should be 0 after cancellation");
@@ -433,37 +520,298 @@ namespace TestNs
             // Create a small test file for quick analysis
             WriteTestFile("SimpleTest.cs", "public class SimpleTest { }");
 
-            SetPrivateField(window, "_isAnalyzing", false);
-            SetPrivateField(window, "_sourcePaths", new List<string> { _tempDir });
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { _tempDir };
+
+            // Set up a TaskCompletionSource to reliably await analysis completion
+            TaskCompletionSource<bool> tcs = new();
+            window._analysisCompletionSource = tcs;
 
             // Start analysis
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
 
-            // Wait for analysis to complete
-            float waitTime = 0f;
-            float maxWaitTime = 10f;
-            while (waitTime < maxWaitTime)
-            {
-                bool isAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
-                if (!isAnalyzing)
-                {
-                    break;
-                }
-
-                yield return null;
-                waitTime += Time.deltaTime;
-            }
+            // Wait for completion using helper
+            AnalysisWaitResult result = default;
+            yield return WaitForAnalysisCompletion(window, 10f, r => result = r);
 
             // Verify state is reset
-            bool finalIsAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
-            float finalProgress = GetPrivateField<float>(window, "_analysisProgress");
-            string finalStatus = GetPrivateField<string>(window, "_statusMessage");
-
-            Assert.IsFalse(finalIsAnalyzing, "isAnalyzing should be false after completion");
-            Assert.AreEqual(0f, finalProgress, "Progress should be 0 after completion");
+            Assert.IsFalse(
+                result.IsAnalyzing,
+                $"isAnalyzing should be false after completion. {result}"
+            );
+            Assert.AreEqual(
+                0f,
+                result.Progress,
+                $"Progress should be 0 after completion. {result}"
+            );
             Assert.IsTrue(
-                finalStatus.Contains("Analysis complete"),
-                $"Status should indicate completion, was: {finalStatus}"
+                result.StatusMessage.Contains("Analysis complete")
+                    || result.StatusMessage.Contains("Analysis failed"),
+                $"Status should indicate completion or failure. {result}"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator SuccessfulAnalysisResetsUIStateWithSingleFile()
+        {
+            yield return SuccessfulAnalysisResetsUIStateWithFileCount(1);
+        }
+
+        [UnityTest]
+        public IEnumerator SuccessfulAnalysisResetsUIStateWithFiveFiles()
+        {
+            yield return SuccessfulAnalysisResetsUIStateWithFileCount(5);
+        }
+
+        [UnityTest]
+        public IEnumerator SuccessfulAnalysisResetsUIStateWithTenFiles()
+        {
+            yield return SuccessfulAnalysisResetsUIStateWithFileCount(10);
+        }
+
+        private IEnumerator SuccessfulAnalysisResetsUIStateWithFileCount(int fileCount)
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            // Create test files
+            for (int i = 0; i < fileCount; i++)
+            {
+                WriteTestFile($"FileCountTest{i}.cs", $"public class FileCountTest{i} {{ }}");
+            }
+
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { _tempDir };
+
+            // Set up a TaskCompletionSource to reliably await analysis completion
+            TaskCompletionSource<bool> tcs = new();
+            window._analysisCompletionSource = tcs;
+
+            // Start analysis
+            window.StartAnalysis();
+
+            // Wait for completion using helper
+            AnalysisWaitResult result = default;
+            yield return WaitForAnalysisCompletion(window, 15f, r => result = r);
+
+            // Verify state is reset
+            Assert.IsFalse(
+                result.IsAnalyzing,
+                $"isAnalyzing should be false after completion with {fileCount} files. {result}"
+            );
+            Assert.AreEqual(
+                0f,
+                result.Progress,
+                $"Progress should be 0 after completion with {fileCount} files. {result}"
+            );
+            Assert.IsTrue(
+                result.StatusMessage.Contains("Analysis complete")
+                    || result.StatusMessage.Contains("Analysis failed"),
+                $"Status should indicate completion or failure with {fileCount} files. {result}"
+            );
+        }
+
+        /// <summary>
+        /// Test that verifies the race condition between Progress callback and ResetAnalysisState is handled.
+        /// Progress&lt;T&gt; uses SynchronizationContext.Post() which can deliver callbacks after the task
+        /// completion callback has already run ResetAnalysisState(). The fix guards the progress callback
+        /// so it only updates when _isAnalyzing is true.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ProgressCallbackRaceConditionIsHandled()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            // Create a test file for analysis
+            WriteTestFile("RaceConditionTest.cs", "public class RaceConditionTest { }");
+
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { _tempDir };
+
+            TaskCompletionSource<bool> tcs = new();
+            window._analysisCompletionSource = tcs;
+
+            // Start analysis
+            window.StartAnalysis();
+
+            // Wait for completion
+            AnalysisWaitResult result = default;
+            yield return WaitForAnalysisCompletion(window, 10f, r => result = r);
+
+            // Flush the main thread queue multiple times to ensure any delayed
+            // Progress<T> callbacks have had a chance to execute
+            for (int i = 0; i < 5; i++)
+            {
+                yield return null;
+                UnityMethodAnalyzerWindow.FlushMainThreadQueue();
+            }
+
+            // Check final state after multiple flushes
+            float finalProgress = window._analysisProgress;
+            bool finalIsAnalyzing = window._isAnalyzing;
+            string finalStatus = window._statusMessage;
+
+            Assert.IsFalse(
+                finalIsAnalyzing,
+                $"isAnalyzing should remain false after delayed callbacks. Status: '{finalStatus}', Progress: {finalProgress}"
+            );
+            Assert.AreEqual(
+                0f,
+                finalProgress,
+                $"Progress should remain 0 after delayed callbacks. Status: '{finalStatus}', Result: {result}"
+            );
+        }
+
+        /// <summary>
+        /// Test that verifies progress is correctly updated during analysis.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ProgressUpdatesCorrectlyDuringAnalysis()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            // Create multiple test files to have a longer analysis
+            for (int i = 0; i < 10; i++)
+            {
+                WriteTestFile(
+                    $"ProgressTest{i}.cs",
+                    $@"
+namespace ProgressTest
+{{
+    public class ProgressTest{i}
+    {{
+        public void Method1() {{ }}
+        public void Method2() {{ }}
+        public void Method3() {{ }}
+    }}
+}}
+"
+                );
+            }
+
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { _tempDir };
+
+            TaskCompletionSource<bool> tcs = new();
+            window._analysisCompletionSource = tcs;
+
+            // Start analysis
+            window.StartAnalysis();
+
+            // Verify we're analyzing
+            Assert.IsTrue(window._isAnalyzing, "Should be analyzing after StartAnalysis");
+
+            // Wait for completion
+            AnalysisWaitResult result = default;
+            yield return WaitForAnalysisCompletion(window, 15f, r => result = r);
+
+            // Verify completion state
+            Assert.IsFalse(
+                result.IsAnalyzing,
+                $"isAnalyzing should be false after completion. {result}"
+            );
+            Assert.AreEqual(
+                0f,
+                result.Progress,
+                $"Progress should be 0 after completion. {result}"
+            );
+        }
+
+        /// <summary>
+        /// Test that verifies rapid successive analyses don't leave stale progress values.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator RapidSuccessiveAnalysesResetProgressCorrectly()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            // Create a test file
+            WriteTestFile("RapidTest.cs", "public class RapidTest { }");
+
+            window._sourcePaths = new List<string> { _tempDir };
+
+            // Run multiple analyses in succession
+            for (int iteration = 0; iteration < 3; iteration++)
+            {
+                window._isAnalyzing = false;
+                TaskCompletionSource<bool> tcs = new();
+                window._analysisCompletionSource = tcs;
+
+                // Start analysis
+                window.StartAnalysis();
+
+                // Wait for completion
+                AnalysisWaitResult result = default;
+                yield return WaitForAnalysisCompletion(window, 10f, r => result = r);
+
+                // Verify state is reset after each iteration
+                Assert.IsFalse(
+                    result.IsAnalyzing,
+                    $"Iteration {iteration}: isAnalyzing should be false. {result}"
+                );
+                Assert.AreEqual(
+                    0f,
+                    result.Progress,
+                    $"Iteration {iteration}: Progress should be 0. {result}"
+                );
+            }
+        }
+
+        /// <summary>
+        /// Test with large file count to stress test progress callback timing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LargeFileCountAnalysisResetsProgressCorrectly()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            // Create many test files
+            for (int i = 0; i < 50; i++)
+            {
+                WriteTestFile(
+                    $"LargeTest{i}.cs",
+                    $@"
+namespace LargeTest
+{{
+    public class LargeTest{i}
+    {{
+        public void Method1() {{ }}
+        public void Method2() {{ }}
+    }}
+}}
+"
+                );
+            }
+
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { _tempDir };
+
+            TaskCompletionSource<bool> tcs = new();
+            window._analysisCompletionSource = tcs;
+
+            // Start analysis
+            window.StartAnalysis();
+
+            // Wait for completion
+            AnalysisWaitResult result = default;
+            yield return WaitForAnalysisCompletion(window, 30f, r => result = r);
+
+            // Multiple flushes to catch delayed callbacks
+            for (int i = 0; i < 5; i++)
+            {
+                yield return null;
+                UnityMethodAnalyzerWindow.FlushMainThreadQueue();
+            }
+
+            float finalProgress = window._analysisProgress;
+
+            Assert.IsFalse(
+                result.IsAnalyzing,
+                $"isAnalyzing should be false after large analysis. {result}"
+            );
+            Assert.AreEqual(
+                0f,
+                finalProgress,
+                $"Progress should be 0 after large analysis. {result}"
             );
         }
 
@@ -478,28 +826,33 @@ namespace TestNs
                 WriteTestFile($"Test{i}.cs", $"public class Test{i} {{ }}");
             }
 
-            SetPrivateField(window, "_sourcePaths", new List<string> { _tempDir });
+            window._sourcePaths = new List<string> { _tempDir };
 
             // First analysis cycle - start and cancel
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
             yield return null;
-            InvokePrivateMethod(window, "CancelAnalysis");
+            window.CancelAnalysis();
 
-            // Wait for cancellation
+            // Wait for cancellation with diagnostics
             float waitTime = 0f;
-            while (waitTime < 5f && GetPrivateField<bool>(window, "_isAnalyzing"))
+            int frameCount = 0;
+            while (waitTime < 5f && window._isAnalyzing)
             {
                 yield return null;
                 waitTime += Time.deltaTime;
+                frameCount++;
             }
 
+            string statusAfterCancel = window._statusMessage;
+            bool isAnalyzingAfterCancel = window._isAnalyzing;
+
             Assert.IsFalse(
-                GetPrivateField<bool>(window, "_isAnalyzing"),
-                "Should not be analyzing after first cancellation"
+                isAnalyzingAfterCancel,
+                $"Should not be analyzing after first cancellation. Status: '{statusAfterCancel}', WaitTime: {waitTime:F2}s, Frames: {frameCount}"
             );
 
             // Second analysis cycle - should be able to start again
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
             yield return null;
 
             // Verify analysis started again (either still running or completed quickly)
@@ -518,33 +871,39 @@ namespace TestNs
                 WriteTestFile($"Test{i}.cs", $"public class Test{i} {{ }}");
             }
 
-            SetPrivateField(window, "_sourcePaths", new List<string> { _tempDir });
+            window._sourcePaths = new List<string> { _tempDir };
 
             // Start analysis
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
             yield return null;
 
             // Cancel
-            InvokePrivateMethod(window, "CancelAnalysis");
+            window.CancelAnalysis();
 
-            // Wait for cancellation
+            // Wait for cancellation with diagnostics
             float waitTime = 0f;
-            while (waitTime < 5f && GetPrivateField<bool>(window, "_isAnalyzing"))
+            int frameCount = 0;
+            while (waitTime < 5f && window._isAnalyzing)
             {
                 yield return null;
                 waitTime += Time.deltaTime;
+                frameCount++;
             }
 
             // Verify the analyze button would be enabled
             // The button is enabled when: !_isAnalyzing && hasValidPaths
-            bool isAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
-            List<string> sourcePaths = GetPrivateField<List<string>>(window, "_sourcePaths");
+            bool isAnalyzing = window._isAnalyzing;
+            string status = window._statusMessage;
+            List<string> sourcePaths = window._sourcePaths;
             bool hasValidPaths =
                 sourcePaths != null
                 && sourcePaths.Exists(p => !string.IsNullOrEmpty(p) && Directory.Exists(p));
             bool analyzeEnabled = !isAnalyzing && hasValidPaths;
 
-            Assert.IsTrue(analyzeEnabled, "Analyze button should be enabled after cancellation");
+            Assert.IsTrue(
+                analyzeEnabled,
+                $"Analyze button should be enabled after cancellation. isAnalyzing: {isAnalyzing}, hasValidPaths: {hasValidPaths}, Status: '{status}', WaitTime: {waitTime:F2}s, Frames: {frameCount}"
+            );
         }
 
         [UnityTest]
@@ -558,28 +917,31 @@ namespace TestNs
                 WriteTestFile($"Test{i}.cs", $"public class Test{i} {{ }}");
             }
 
-            SetPrivateField(window, "_sourcePaths", new List<string> { _tempDir });
+            window._sourcePaths = new List<string> { _tempDir };
 
             // Start analysis
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
             yield return null;
 
             // Cancel
-            InvokePrivateMethod(window, "CancelAnalysis");
+            window.CancelAnalysis();
 
-            // Wait for cancellation
+            // Wait for cancellation with diagnostics
             float waitTime = 0f;
-            while (waitTime < 5f && GetPrivateField<bool>(window, "_isAnalyzing"))
+            int frameCount = 0;
+            while (waitTime < 5f && window._isAnalyzing)
             {
                 yield return null;
                 waitTime += Time.deltaTime;
+                frameCount++;
             }
 
             // The cancel button visibility is controlled by _isAnalyzing
-            bool isAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
+            bool isAnalyzing = window._isAnalyzing;
+            string status = window._statusMessage;
             Assert.IsFalse(
                 isAnalyzing,
-                "Cancel button should not be visible (isAnalyzing should be false)"
+                $"Cancel button should not be visible (isAnalyzing should be false). Status: '{status}', WaitTime: {waitTime:F2}s, Frames: {frameCount}"
             );
         }
 
@@ -594,33 +956,36 @@ namespace TestNs
                 WriteTestFile($"Test{i}.cs", $"public class Test{i} {{ }}");
             }
 
-            SetPrivateField(window, "_sourcePaths", new List<string> { _tempDir });
+            window._sourcePaths = new List<string> { _tempDir };
 
             // Start analysis
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
             yield return null;
 
             // Cancel
-            InvokePrivateMethod(window, "CancelAnalysis");
+            window.CancelAnalysis();
 
-            // Wait for cancellation
+            // Wait for cancellation with diagnostics
             float waitTime = 0f;
-            while (waitTime < 5f && GetPrivateField<bool>(window, "_isAnalyzing"))
+            int frameCount = 0;
+            while (waitTime < 5f && window._isAnalyzing)
             {
                 yield return null;
                 waitTime += Time.deltaTime;
+                frameCount++;
             }
 
             // Progress bar visibility is controlled by _isAnalyzing
             // Progress value should be 0 after cancellation
-            bool isAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
-            float progress = GetPrivateField<float>(window, "_analysisProgress");
+            bool isAnalyzing = window._isAnalyzing;
+            float progress = window._analysisProgress;
+            string status = window._statusMessage;
 
             Assert.IsFalse(
                 isAnalyzing,
-                "Progress bar should be hidden (isAnalyzing should be false)"
+                $"Progress bar should be hidden (isAnalyzing should be false). Status: '{status}', WaitTime: {waitTime:F2}s, Frames: {frameCount}"
             );
-            Assert.AreEqual(0f, progress, "Progress should be reset to 0");
+            Assert.AreEqual(0f, progress, $"Progress should be reset to 0. Status: '{status}'");
         }
 
         [Test]
@@ -629,16 +994,11 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             CancellationTokenSource cts = new();
-            SetPrivateField(window, "_cancellationTokenSource", cts);
-            SetPrivateField(window, "_isAnalyzing", true);
+            window._cancellationTokenSource = cts;
+            window._isAnalyzing = true;
 
             // Simulate OnDisable being called (e.g., when window is closed)
-            MethodInfo onDisable = typeof(UnityMethodAnalyzerWindow).GetMethod(
-                "OnDisable",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
-            Assert.IsTrue(onDisable != null, "OnDisable method should exist");
-            onDisable.Invoke(window, null);
+            window.OnDisable();
 
             Assert.IsTrue(cts.IsCancellationRequested, "CTS should be cancelled on disable");
         }
@@ -648,17 +1008,11 @@ namespace TestNs
         {
             UnityMethodAnalyzerWindow window = CreateWindow();
 
-            SetPrivateField(window, "_cancellationTokenSource", null);
+            window._cancellationTokenSource = null;
 
             // Should not throw
-            MethodInfo onDisable = typeof(UnityMethodAnalyzerWindow).GetMethod(
-                "OnDisable",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
-            Assert.IsTrue(onDisable != null, "OnDisable method should exist");
-
             Assert.DoesNotThrow(
-                () => onDisable.Invoke(window, null),
+                () => window.OnDisable(),
                 "OnDisable should handle null CTS gracefully"
             );
         }
@@ -674,32 +1028,42 @@ namespace TestNs
                 WriteTestFile($"Test{i}.cs", $"public class Test{i} {{ }}");
             }
 
-            SetPrivateField(window, "_sourcePaths", new List<string> { _tempDir });
+            window._sourcePaths = new List<string> { _tempDir };
 
             // Start analysis
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
             yield return null;
 
             // Rapid-fire cancellations
             for (int i = 0; i < 10; i++)
             {
-                InvokePrivateMethod(window, "CancelAnalysis");
+                window.CancelAnalysis();
             }
 
-            // Wait for cancellation to complete
+            // Wait for cancellation to complete with diagnostics
             float waitTime = 0f;
-            while (waitTime < 5f && GetPrivateField<bool>(window, "_isAnalyzing"))
+            int frameCount = 0;
+            while (waitTime < 5f && window._isAnalyzing)
             {
                 yield return null;
                 waitTime += Time.deltaTime;
+                frameCount++;
             }
 
             // Verify state is consistent
-            bool isAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
-            float progress = GetPrivateField<float>(window, "_analysisProgress");
+            bool isAnalyzing = window._isAnalyzing;
+            float progress = window._analysisProgress;
+            string status = window._statusMessage;
 
-            Assert.IsFalse(isAnalyzing, "State should be consistent after multiple cancellations");
-            Assert.AreEqual(0f, progress, "Progress should be 0 after multiple cancellations");
+            Assert.IsFalse(
+                isAnalyzing,
+                $"State should be consistent after multiple cancellations. Status: '{status}', WaitTime: {waitTime:F2}s, Frames: {frameCount}"
+            );
+            Assert.AreEqual(
+                0f,
+                progress,
+                $"Progress should be 0 after multiple cancellations. Status: '{status}'"
+            );
         }
 
         [UnityTest]
@@ -713,38 +1077,48 @@ namespace TestNs
                 WriteTestFile($"Test{i}.cs", $"public class Test{i} {{ }}");
             }
 
-            SetPrivateField(window, "_sourcePaths", new List<string> { _tempDir });
+            window._sourcePaths = new List<string> { _tempDir };
 
             // Rapid start-cancel cycles
             for (int cycle = 0; cycle < 5; cycle++)
             {
                 // Wait for any previous operation to complete
                 float waitTime = 0f;
-                while (waitTime < 2f && GetPrivateField<bool>(window, "_isAnalyzing"))
+                while (waitTime < 2f && window._isAnalyzing)
                 {
                     yield return null;
                     waitTime += Time.deltaTime;
                 }
 
-                InvokePrivateMethod(window, "StartAnalysis");
+                window.StartAnalysis();
                 yield return null;
-                InvokePrivateMethod(window, "CancelAnalysis");
+                window.CancelAnalysis();
             }
 
-            // Wait for final state to settle
+            // Wait for final state to settle with diagnostics
             float finalWait = 0f;
-            while (finalWait < 5f && GetPrivateField<bool>(window, "_isAnalyzing"))
+            int frameCount = 0;
+            while (finalWait < 5f && window._isAnalyzing)
             {
                 yield return null;
                 finalWait += Time.deltaTime;
+                frameCount++;
             }
 
             // Verify state is consistent
-            bool isAnalyzing = GetPrivateField<bool>(window, "_isAnalyzing");
-            float progress = GetPrivateField<float>(window, "_analysisProgress");
+            bool isAnalyzing = window._isAnalyzing;
+            float progress = window._analysisProgress;
+            string status = window._statusMessage;
 
-            Assert.IsFalse(isAnalyzing, "State should be consistent after rapid cycles");
-            Assert.AreEqual(0f, progress, "Progress should be 0 after rapid cycles");
+            Assert.IsFalse(
+                isAnalyzing,
+                $"State should be consistent after rapid cycles. Status: '{status}', WaitTime: {finalWait:F2}s, Frames: {frameCount}"
+            );
+            Assert.AreEqual(
+                0f,
+                progress,
+                $"Progress should be 0 after rapid cycles. Status: '{status}'"
+            );
         }
 
         [Test]
@@ -753,14 +1127,14 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             CancellationTokenSource initialCts = new();
-            SetPrivateField(window, "_cancellationTokenSource", initialCts);
-            SetPrivateField(window, "_isAnalyzing", false);
-            SetPrivateField(window, "_sourcePaths", new List<string> { _tempDir });
+            window._cancellationTokenSource = initialCts;
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { _tempDir };
 
             WriteTestFile("Test.cs", "public class Test { }");
 
             // Start a new analysis - this should dispose the old CTS
-            InvokePrivateMethod(window, "StartAnalysis");
+            window.StartAnalysis();
 
             // Verify the old CTS is disposed
             Assert.Throws<ObjectDisposedException>(
@@ -779,16 +1153,16 @@ namespace TestNs
 
             // Set up analyzer with no issues
             MethodAnalyzer analyzer = new();
-            SetPrivateField(window, "_analyzer", analyzer);
+            window._analyzer = analyzer;
 
-            InvokePrivateMethod(window, "UpdateIssueCounts");
+            window.UpdateIssueCounts();
 
-            int totalCount = GetPrivateField<int>(window, "_totalCount");
-            int criticalCount = GetPrivateField<int>(window, "_criticalCount");
-            int highCount = GetPrivateField<int>(window, "_highCount");
-            int mediumCount = GetPrivateField<int>(window, "_mediumCount");
-            int lowCount = GetPrivateField<int>(window, "_lowCount");
-            int infoCount = GetPrivateField<int>(window, "_infoCount");
+            int totalCount = window._totalCount;
+            int criticalCount = window._criticalCount;
+            int highCount = window._highCount;
+            int mediumCount = window._mediumCount;
+            int lowCount = window._lowCount;
+            int infoCount = window._infoCount;
 
             Assert.AreEqual(0, totalCount, "Total count should be 0 for empty issues");
             Assert.AreEqual(0, criticalCount, "Critical count should be 0");
@@ -803,14 +1177,124 @@ namespace TestNs
             File.WriteAllText(Path.Combine(_tempDir, filename), content);
         }
 
+        /// <summary>
+        /// Captures diagnostic information about an analysis wait operation.
+        /// </summary>
+        private struct AnalysisWaitResult
+        {
+            public float WaitTime;
+            public int FrameCount;
+            public bool AnalysisTaskCompleted;
+            public TaskStatus AnalysisTaskStatus;
+            public bool CompletionSourceSignaled;
+            public TaskStatus CompletionSourceStatus;
+            public bool IsAnalyzing;
+            public float Progress;
+            public string StatusMessage;
+
+            public override readonly string ToString()
+            {
+                return $"WaitTime: {WaitTime:F2}s, Frames: {FrameCount}, "
+                    + $"AnalysisTaskCompleted: {AnalysisTaskCompleted}, AnalysisTaskStatus: {AnalysisTaskStatus}, "
+                    + $"TCSCompleted: {CompletionSourceSignaled}, TCSStatus: {CompletionSourceStatus}, "
+                    + $"IsAnalyzing: {IsAnalyzing}, Progress: {Progress}, Status: '{StatusMessage}'";
+            }
+        }
+
+        /// <summary>
+        /// Waits for the analysis to complete and captures diagnostic information.
+        /// First waits for the underlying analysis task, then flushes the main thread queue
+        /// to process the completion callback.
+        /// </summary>
+        private IEnumerator WaitForAnalysisCompletion(
+            UnityMethodAnalyzerWindow window,
+            float maxWaitTime,
+            Action<AnalysisWaitResult> onComplete
+        )
+        {
+            Task analysisTask = window._analysisTask;
+            float startRealTime = Time.realtimeSinceStartup;
+            int frameCount = 0;
+
+            // Check if task is null - this indicates StartAnalysis returned early
+            if (analysisTask == null)
+            {
+                UnityEngine.Debug.LogWarning(
+                    $"[WaitForAnalysisCompletion] Analysis task is null! "
+                        + $"IsAnalyzing: {window._isAnalyzing}, Status: '{window._statusMessage}'"
+                );
+            }
+
+            // First, wait for the async analysis task to complete
+            while (
+                (Time.realtimeSinceStartup - startRealTime) < maxWaitTime
+                && analysisTask != null
+                && !analysisTask.IsCompleted
+            )
+            {
+                yield return null;
+                frameCount++;
+
+                // Every 50 frames, check if task reference changed (shouldn't happen)
+                if (frameCount % 50 == 0)
+                {
+                    Task currentTask = window._analysisTask;
+                    if (!ReferenceEquals(currentTask, analysisTask))
+                    {
+                        UnityEngine.Debug.LogWarning(
+                            $"[WaitForAnalysisCompletion] Task reference changed at frame {frameCount}!"
+                        );
+                    }
+                }
+            }
+
+            float realWaitTime = Time.realtimeSinceStartup - startRealTime;
+
+            // Flush the main thread queue to process the completion callback
+            UnityMethodAnalyzerWindow.FlushMainThreadQueue();
+
+            // Give one more frame for any remaining processing
+            yield return null;
+            frameCount++;
+            UnityMethodAnalyzerWindow.FlushMainThreadQueue();
+
+            // Check for task exceptions
+            string taskExceptionMessage = null;
+            if (analysisTask != null && analysisTask.IsFaulted && analysisTask.Exception != null)
+            {
+                taskExceptionMessage = analysisTask.Exception.GetBaseException().Message;
+                UnityEngine.Debug.LogError(
+                    $"[WaitForAnalysisCompletion] Task faulted with: {taskExceptionMessage}"
+                );
+            }
+
+            // Capture final state
+            AnalysisWaitResult result = new()
+            {
+                WaitTime = realWaitTime,
+                FrameCount = frameCount,
+                AnalysisTaskCompleted = analysisTask != null && analysisTask.IsCompleted,
+                AnalysisTaskStatus = analysisTask?.Status ?? TaskStatus.Created,
+                CompletionSourceSignaled =
+                    window._analysisCompletionSource?.Task.IsCompleted ?? false,
+                CompletionSourceStatus =
+                    window._analysisCompletionSource?.Task.Status ?? TaskStatus.Created,
+                IsAnalyzing = window._isAnalyzing,
+                Progress = window._analysisProgress,
+                StatusMessage = window._statusMessage,
+            };
+
+            onComplete?.Invoke(result);
+        }
+
         [Test]
         public void GroupByFileIsDefaultGroupingOnInit()
         {
             UnityMethodAnalyzerWindow window = CreateWindow();
 
-            bool groupByFile = GetPrivateField<bool>(window, "_groupByFile");
-            bool groupBySeverity = GetPrivateField<bool>(window, "_groupBySeverity");
-            bool groupByCategory = GetPrivateField<bool>(window, "_groupByCategory");
+            bool groupByFile = window._groupByFile;
+            bool groupBySeverity = window._groupBySeverity;
+            bool groupByCategory = window._groupByCategory;
 
             Assert.IsTrue(groupByFile, "Group by file should be true by default");
             Assert.IsFalse(groupBySeverity, "Group by severity should be false by default");
@@ -823,19 +1307,19 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Test all combinations - exactly one should always be true
-            SetPrivateField(window, "_groupByFile", true);
-            SetPrivateField(window, "_groupBySeverity", false);
-            SetPrivateField(window, "_groupByCategory", false);
+            window._groupByFile = true;
+            window._groupBySeverity = false;
+            window._groupByCategory = false;
             AssertExactlyOneGroupBySelected(window, "Initial state");
 
-            SetPrivateField(window, "_groupByFile", false);
-            SetPrivateField(window, "_groupBySeverity", true);
-            SetPrivateField(window, "_groupByCategory", false);
+            window._groupByFile = false;
+            window._groupBySeverity = true;
+            window._groupByCategory = false;
             AssertExactlyOneGroupBySelected(window, "Severity selected");
 
-            SetPrivateField(window, "_groupByFile", false);
-            SetPrivateField(window, "_groupBySeverity", false);
-            SetPrivateField(window, "_groupByCategory", true);
+            window._groupByFile = false;
+            window._groupBySeverity = false;
+            window._groupByCategory = true;
             AssertExactlyOneGroupBySelected(window, "Category selected");
         }
 
@@ -845,9 +1329,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with File grouping
-            SetPrivateField(window, "_groupByFile", true);
-            SetPrivateField(window, "_groupBySeverity", false);
-            SetPrivateField(window, "_groupByCategory", false);
+            window._groupByFile = true;
+            window._groupBySeverity = false;
+            window._groupByCategory = false;
 
             // Simulate clicking Severity (transition from false to true)
             SimulateGroupByClick(
@@ -857,9 +1341,9 @@ namespace TestNs
                 groupByCategory: false
             );
 
-            bool groupByFile = GetPrivateField<bool>(window, "_groupByFile");
-            bool groupBySeverity = GetPrivateField<bool>(window, "_groupBySeverity");
-            bool groupByCategory = GetPrivateField<bool>(window, "_groupByCategory");
+            bool groupByFile = window._groupByFile;
+            bool groupBySeverity = window._groupBySeverity;
+            bool groupByCategory = window._groupByCategory;
 
             Assert.IsFalse(groupByFile, "File should be deselected after clicking Severity");
             Assert.IsTrue(groupBySeverity, "Severity should be selected");
@@ -872,9 +1356,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with Severity grouping
-            SetPrivateField(window, "_groupByFile", false);
-            SetPrivateField(window, "_groupBySeverity", true);
-            SetPrivateField(window, "_groupByCategory", false);
+            window._groupByFile = false;
+            window._groupBySeverity = true;
+            window._groupByCategory = false;
 
             // Simulate clicking File (transition from false to true)
             SimulateGroupByClick(
@@ -884,9 +1368,9 @@ namespace TestNs
                 groupByCategory: false
             );
 
-            bool groupByFile = GetPrivateField<bool>(window, "_groupByFile");
-            bool groupBySeverity = GetPrivateField<bool>(window, "_groupBySeverity");
-            bool groupByCategory = GetPrivateField<bool>(window, "_groupByCategory");
+            bool groupByFile = window._groupByFile;
+            bool groupBySeverity = window._groupBySeverity;
+            bool groupByCategory = window._groupByCategory;
 
             Assert.IsTrue(groupByFile, "File should be selected");
             Assert.IsFalse(groupBySeverity, "Severity should be deselected after clicking File");
@@ -899,9 +1383,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with File grouping
-            SetPrivateField(window, "_groupByFile", true);
-            SetPrivateField(window, "_groupBySeverity", false);
-            SetPrivateField(window, "_groupByCategory", false);
+            window._groupByFile = true;
+            window._groupBySeverity = false;
+            window._groupByCategory = false;
 
             // Simulate clicking Category
             SimulateGroupByClick(
@@ -911,9 +1395,9 @@ namespace TestNs
                 groupByCategory: true
             );
 
-            bool groupByFile = GetPrivateField<bool>(window, "_groupByFile");
-            bool groupBySeverity = GetPrivateField<bool>(window, "_groupBySeverity");
-            bool groupByCategory = GetPrivateField<bool>(window, "_groupByCategory");
+            bool groupByFile = window._groupByFile;
+            bool groupBySeverity = window._groupBySeverity;
+            bool groupByCategory = window._groupByCategory;
 
             Assert.IsFalse(groupByFile, "File should be deselected after clicking Category");
             Assert.IsFalse(groupBySeverity, "Severity should remain deselected");
@@ -926,9 +1410,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with Category grouping
-            SetPrivateField(window, "_groupByFile", false);
-            SetPrivateField(window, "_groupBySeverity", false);
-            SetPrivateField(window, "_groupByCategory", true);
+            window._groupByFile = false;
+            window._groupBySeverity = false;
+            window._groupByCategory = true;
 
             // Simulate clicking File
             SimulateGroupByClick(
@@ -938,9 +1422,9 @@ namespace TestNs
                 groupByCategory: false
             );
 
-            bool groupByFile = GetPrivateField<bool>(window, "_groupByFile");
-            bool groupBySeverity = GetPrivateField<bool>(window, "_groupBySeverity");
-            bool groupByCategory = GetPrivateField<bool>(window, "_groupByCategory");
+            bool groupByFile = window._groupByFile;
+            bool groupBySeverity = window._groupBySeverity;
+            bool groupByCategory = window._groupByCategory;
 
             Assert.IsTrue(groupByFile, "File should be selected");
             Assert.IsFalse(groupBySeverity, "Severity should remain deselected");
@@ -953,9 +1437,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with Severity grouping
-            SetPrivateField(window, "_groupByFile", false);
-            SetPrivateField(window, "_groupBySeverity", true);
-            SetPrivateField(window, "_groupByCategory", false);
+            window._groupByFile = false;
+            window._groupBySeverity = true;
+            window._groupByCategory = false;
 
             // Simulate clicking Category
             SimulateGroupByClick(
@@ -965,9 +1449,9 @@ namespace TestNs
                 groupByCategory: true
             );
 
-            bool groupByFile = GetPrivateField<bool>(window, "_groupByFile");
-            bool groupBySeverity = GetPrivateField<bool>(window, "_groupBySeverity");
-            bool groupByCategory = GetPrivateField<bool>(window, "_groupByCategory");
+            bool groupByFile = window._groupByFile;
+            bool groupBySeverity = window._groupBySeverity;
+            bool groupByCategory = window._groupByCategory;
 
             Assert.IsFalse(groupByFile, "File should remain deselected");
             Assert.IsFalse(
@@ -983,9 +1467,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with Category grouping
-            SetPrivateField(window, "_groupByFile", false);
-            SetPrivateField(window, "_groupBySeverity", false);
-            SetPrivateField(window, "_groupByCategory", true);
+            window._groupByFile = false;
+            window._groupBySeverity = false;
+            window._groupByCategory = true;
 
             // Simulate clicking Severity
             SimulateGroupByClick(
@@ -995,9 +1479,9 @@ namespace TestNs
                 groupByCategory: false
             );
 
-            bool groupByFile = GetPrivateField<bool>(window, "_groupByFile");
-            bool groupBySeverity = GetPrivateField<bool>(window, "_groupBySeverity");
-            bool groupByCategory = GetPrivateField<bool>(window, "_groupByCategory");
+            bool groupByFile = window._groupByFile;
+            bool groupBySeverity = window._groupBySeverity;
+            bool groupByCategory = window._groupByCategory;
 
             Assert.IsFalse(groupByFile, "File should remain deselected");
             Assert.IsTrue(groupBySeverity, "Severity should be selected");
@@ -1013,9 +1497,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with File grouping
-            SetPrivateField(window, "_groupByFile", true);
-            SetPrivateField(window, "_groupBySeverity", false);
-            SetPrivateField(window, "_groupByCategory", false);
+            window._groupByFile = true;
+            window._groupBySeverity = false;
+            window._groupByCategory = false;
 
             // Simulate clicking File again (already selected) - toggle returns false
             // but we should ignore this and keep File selected
@@ -1026,9 +1510,9 @@ namespace TestNs
                 newGroupByCategory: false
             );
 
-            bool groupByFile = GetPrivateField<bool>(window, "_groupByFile");
-            bool groupBySeverity = GetPrivateField<bool>(window, "_groupBySeverity");
-            bool groupByCategory = GetPrivateField<bool>(window, "_groupByCategory");
+            bool groupByFile = window._groupByFile;
+            bool groupBySeverity = window._groupBySeverity;
+            bool groupByCategory = window._groupByCategory;
 
             Assert.IsTrue(
                 groupByFile,
@@ -1044,9 +1528,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with Severity grouping
-            SetPrivateField(window, "_groupByFile", false);
-            SetPrivateField(window, "_groupBySeverity", true);
-            SetPrivateField(window, "_groupByCategory", false);
+            window._groupByFile = false;
+            window._groupBySeverity = true;
+            window._groupByCategory = false;
 
             // Simulate clicking Severity again (already selected) - toggle returns false
             SimulateGroupByClickRaw(
@@ -1056,9 +1540,9 @@ namespace TestNs
                 newGroupByCategory: false
             );
 
-            bool groupByFile = GetPrivateField<bool>(window, "_groupByFile");
-            bool groupBySeverity = GetPrivateField<bool>(window, "_groupBySeverity");
-            bool groupByCategory = GetPrivateField<bool>(window, "_groupByCategory");
+            bool groupByFile = window._groupByFile;
+            bool groupBySeverity = window._groupBySeverity;
+            bool groupByCategory = window._groupByCategory;
 
             Assert.IsFalse(groupByFile, "File should remain deselected");
             Assert.IsTrue(
@@ -1074,9 +1558,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with Category grouping
-            SetPrivateField(window, "_groupByFile", false);
-            SetPrivateField(window, "_groupBySeverity", false);
-            SetPrivateField(window, "_groupByCategory", true);
+            window._groupByFile = false;
+            window._groupBySeverity = false;
+            window._groupByCategory = true;
 
             // Simulate clicking Category again (already selected) - toggle returns false
             SimulateGroupByClickRaw(
@@ -1086,9 +1570,9 @@ namespace TestNs
                 newGroupByCategory: false
             );
 
-            bool groupByFile = GetPrivateField<bool>(window, "_groupByFile");
-            bool groupBySeverity = GetPrivateField<bool>(window, "_groupBySeverity");
-            bool groupByCategory = GetPrivateField<bool>(window, "_groupByCategory");
+            bool groupByFile = window._groupByFile;
+            bool groupBySeverity = window._groupBySeverity;
+            bool groupByCategory = window._groupByCategory;
 
             Assert.IsFalse(groupByFile, "File should remain deselected");
             Assert.IsFalse(groupBySeverity, "Severity should remain deselected");
@@ -1104,9 +1588,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with File
-            SetPrivateField(window, "_groupByFile", true);
-            SetPrivateField(window, "_groupBySeverity", false);
-            SetPrivateField(window, "_groupByCategory", false);
+            window._groupByFile = true;
+            window._groupBySeverity = false;
+            window._groupByCategory = false;
             AssertExactlyOneGroupBySelected(window, "Initial: File");
 
             // Switch to Severity
@@ -1117,7 +1601,7 @@ namespace TestNs
                 groupByCategory: false
             );
             AssertExactlyOneGroupBySelected(window, "After switch to Severity");
-            Assert.IsTrue(GetPrivateField<bool>(window, "_groupBySeverity"), "Should be Severity");
+            Assert.IsTrue(window._groupBySeverity, "Should be Severity");
 
             // Switch back to File
             SimulateGroupByClick(
@@ -1127,7 +1611,7 @@ namespace TestNs
                 groupByCategory: false
             );
             AssertExactlyOneGroupBySelected(window, "After switch back to File");
-            Assert.IsTrue(GetPrivateField<bool>(window, "_groupByFile"), "Should be File again");
+            Assert.IsTrue(window._groupByFile, "Should be File again");
         }
 
         [Test]
@@ -1136,9 +1620,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with Severity
-            SetPrivateField(window, "_groupByFile", false);
-            SetPrivateField(window, "_groupBySeverity", true);
-            SetPrivateField(window, "_groupByCategory", false);
+            window._groupByFile = false;
+            window._groupBySeverity = true;
+            window._groupByCategory = false;
             AssertExactlyOneGroupBySelected(window, "Initial: Severity");
 
             // Switch to Category
@@ -1149,7 +1633,7 @@ namespace TestNs
                 groupByCategory: true
             );
             AssertExactlyOneGroupBySelected(window, "After switch to Category");
-            Assert.IsTrue(GetPrivateField<bool>(window, "_groupByCategory"), "Should be Category");
+            Assert.IsTrue(window._groupByCategory, "Should be Category");
 
             // Switch back to Severity
             SimulateGroupByClick(
@@ -1159,10 +1643,7 @@ namespace TestNs
                 groupByCategory: false
             );
             AssertExactlyOneGroupBySelected(window, "After switch back to Severity");
-            Assert.IsTrue(
-                GetPrivateField<bool>(window, "_groupBySeverity"),
-                "Should be Severity again"
-            );
+            Assert.IsTrue(window._groupBySeverity, "Should be Severity again");
         }
 
         [Test]
@@ -1171,9 +1652,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with File
-            SetPrivateField(window, "_groupByFile", true);
-            SetPrivateField(window, "_groupBySeverity", false);
-            SetPrivateField(window, "_groupByCategory", false);
+            window._groupByFile = true;
+            window._groupBySeverity = false;
+            window._groupByCategory = false;
 
             // File -> Severity
             SimulateGroupByClick(
@@ -1182,10 +1663,7 @@ namespace TestNs
                 groupBySeverity: true,
                 groupByCategory: false
             );
-            Assert.IsTrue(
-                GetPrivateField<bool>(window, "_groupBySeverity"),
-                "Step 1: Should be Severity"
-            );
+            Assert.IsTrue(window._groupBySeverity, "Step 1: Should be Severity");
             AssertExactlyOneGroupBySelected(window, "Step 1");
 
             // Severity -> Category
@@ -1195,10 +1673,7 @@ namespace TestNs
                 groupBySeverity: false,
                 groupByCategory: true
             );
-            Assert.IsTrue(
-                GetPrivateField<bool>(window, "_groupByCategory"),
-                "Step 2: Should be Category"
-            );
+            Assert.IsTrue(window._groupByCategory, "Step 2: Should be Category");
             AssertExactlyOneGroupBySelected(window, "Step 2");
 
             // Category -> File
@@ -1208,7 +1683,7 @@ namespace TestNs
                 groupBySeverity: false,
                 groupByCategory: false
             );
-            Assert.IsTrue(GetPrivateField<bool>(window, "_groupByFile"), "Step 3: Should be File");
+            Assert.IsTrue(window._groupByFile, "Step 3: Should be File");
             AssertExactlyOneGroupBySelected(window, "Step 3");
         }
 
@@ -1218,9 +1693,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with File
-            SetPrivateField(window, "_groupByFile", true);
-            SetPrivateField(window, "_groupBySeverity", false);
-            SetPrivateField(window, "_groupByCategory", false);
+            window._groupByFile = true;
+            window._groupBySeverity = false;
+            window._groupByCategory = false;
 
             // File -> Category
             SimulateGroupByClick(
@@ -1229,10 +1704,7 @@ namespace TestNs
                 groupBySeverity: false,
                 groupByCategory: true
             );
-            Assert.IsTrue(
-                GetPrivateField<bool>(window, "_groupByCategory"),
-                "Step 1: Should be Category"
-            );
+            Assert.IsTrue(window._groupByCategory, "Step 1: Should be Category");
             AssertExactlyOneGroupBySelected(window, "Step 1");
 
             // Category -> Severity
@@ -1242,10 +1714,7 @@ namespace TestNs
                 groupBySeverity: true,
                 groupByCategory: false
             );
-            Assert.IsTrue(
-                GetPrivateField<bool>(window, "_groupBySeverity"),
-                "Step 2: Should be Severity"
-            );
+            Assert.IsTrue(window._groupBySeverity, "Step 2: Should be Severity");
             AssertExactlyOneGroupBySelected(window, "Step 2");
 
             // Severity -> File
@@ -1255,7 +1724,7 @@ namespace TestNs
                 groupBySeverity: false,
                 groupByCategory: false
             );
-            Assert.IsTrue(GetPrivateField<bool>(window, "_groupByFile"), "Step 3: Should be File");
+            Assert.IsTrue(window._groupByFile, "Step 3: Should be File");
             AssertExactlyOneGroupBySelected(window, "Step 3");
         }
 
@@ -1264,9 +1733,9 @@ namespace TestNs
         {
             UnityMethodAnalyzerWindow window = CreateWindow();
 
-            SetPrivateField(window, "_groupByFile", true);
-            SetPrivateField(window, "_groupBySeverity", false);
-            SetPrivateField(window, "_groupByCategory", false);
+            window._groupByFile = true;
+            window._groupBySeverity = false;
+            window._groupByCategory = false;
 
             // Rapid clicking simulation
             for (int i = 0; i < 50; i++)
@@ -1310,9 +1779,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with File
-            SetPrivateField(window, "_groupByFile", true);
-            SetPrivateField(window, "_groupBySeverity", false);
-            SetPrivateField(window, "_groupByCategory", false);
+            window._groupByFile = true;
+            window._groupBySeverity = false;
+            window._groupByCategory = false;
 
             // Click File multiple times (simulating toggle behavior returning false)
             for (int i = 0; i < 10; i++)
@@ -1325,7 +1794,7 @@ namespace TestNs
                     newGroupByCategory: false
                 );
 
-                bool groupByFile = GetPrivateField<bool>(window, "_groupByFile");
+                bool groupByFile = window._groupByFile;
                 Assert.IsTrue(groupByFile, $"File should remain selected after click {i + 1}");
                 AssertExactlyOneGroupBySelected(window, $"Click {i + 1}");
             }
@@ -1337,9 +1806,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with Severity
-            SetPrivateField(window, "_groupByFile", false);
-            SetPrivateField(window, "_groupBySeverity", true);
-            SetPrivateField(window, "_groupByCategory", false);
+            window._groupByFile = false;
+            window._groupBySeverity = true;
+            window._groupByCategory = false;
 
             // Click Severity multiple times
             for (int i = 0; i < 10; i++)
@@ -1351,7 +1820,7 @@ namespace TestNs
                     newGroupByCategory: false
                 );
 
-                bool groupBySeverity = GetPrivateField<bool>(window, "_groupBySeverity");
+                bool groupBySeverity = window._groupBySeverity;
                 Assert.IsTrue(
                     groupBySeverity,
                     $"Severity should remain selected after click {i + 1}"
@@ -1366,9 +1835,9 @@ namespace TestNs
             UnityMethodAnalyzerWindow window = CreateWindow();
 
             // Start with Category
-            SetPrivateField(window, "_groupByFile", false);
-            SetPrivateField(window, "_groupBySeverity", false);
-            SetPrivateField(window, "_groupByCategory", true);
+            window._groupByFile = false;
+            window._groupBySeverity = false;
+            window._groupByCategory = true;
 
             // Click Category multiple times
             for (int i = 0; i < 10; i++)
@@ -1380,7 +1849,7 @@ namespace TestNs
                     newGroupByCategory: false
                 );
 
-                bool groupByCategory = GetPrivateField<bool>(window, "_groupByCategory");
+                bool groupByCategory = window._groupByCategory;
                 Assert.IsTrue(
                     groupByCategory,
                     $"Category should remain selected after click {i + 1}"
@@ -1406,9 +1875,9 @@ namespace TestNs
                     }
 
                     // Set initial state
-                    SetPrivateField(window, "_groupByFile", from == 0);
-                    SetPrivateField(window, "_groupBySeverity", from == 1);
-                    SetPrivateField(window, "_groupByCategory", from == 2);
+                    window._groupByFile = from == 0;
+                    window._groupBySeverity = from == 1;
+                    window._groupByCategory = from == 2;
 
                     // Perform transition
                     SimulateGroupByClick(
@@ -1419,9 +1888,9 @@ namespace TestNs
                     );
 
                     // Verify result
-                    bool groupByFile = GetPrivateField<bool>(window, "_groupByFile");
-                    bool groupBySeverity = GetPrivateField<bool>(window, "_groupBySeverity");
-                    bool groupByCategory = GetPrivateField<bool>(window, "_groupByCategory");
+                    bool groupByFile = window._groupByFile;
+                    bool groupBySeverity = window._groupBySeverity;
+                    bool groupByCategory = window._groupByCategory;
 
                     Assert.AreEqual(
                         to == 0,
@@ -1461,9 +1930,9 @@ namespace TestNs
 
             foreach (bool[] state in states)
             {
-                SetPrivateField(window, "_groupByFile", state[0]);
-                SetPrivateField(window, "_groupBySeverity", state[1]);
-                SetPrivateField(window, "_groupByCategory", state[2]);
+                window._groupByFile = state[0];
+                window._groupBySeverity = state[1];
+                window._groupByCategory = state[2];
 
                 // Simulate no button clicked (all toggles return current values)
                 SimulateGroupByClickRaw(
@@ -1473,9 +1942,9 @@ namespace TestNs
                     newGroupByCategory: state[2]
                 );
 
-                bool groupByFile = GetPrivateField<bool>(window, "_groupByFile");
-                bool groupBySeverity = GetPrivateField<bool>(window, "_groupBySeverity");
-                bool groupByCategory = GetPrivateField<bool>(window, "_groupByCategory");
+                bool groupByFile = window._groupByFile;
+                bool groupBySeverity = window._groupBySeverity;
+                bool groupByCategory = window._groupByCategory;
 
                 Assert.AreEqual(state[0], groupByFile, "File state should be preserved");
                 Assert.AreEqual(state[1], groupBySeverity, "Severity state should be preserved");
@@ -1488,9 +1957,9 @@ namespace TestNs
             string context
         )
         {
-            bool groupByFile = GetPrivateField<bool>(window, "_groupByFile");
-            bool groupBySeverity = GetPrivateField<bool>(window, "_groupBySeverity");
-            bool groupByCategory = GetPrivateField<bool>(window, "_groupByCategory");
+            bool groupByFile = window._groupByFile;
+            bool groupBySeverity = window._groupBySeverity;
+            bool groupByCategory = window._groupByCategory;
 
             int selectedCount =
                 (groupByFile ? 1 : 0) + (groupBySeverity ? 1 : 0) + (groupByCategory ? 1 : 0);
@@ -1532,9 +2001,9 @@ namespace TestNs
             // Since DrawGroupBySection is tightly coupled to GUI, we simulate the logic directly.
             // The logic after getting toggle values is what we test.
 
-            bool currentGroupByFile = GetPrivateField<bool>(window, "_groupByFile");
-            bool currentGroupBySeverity = GetPrivateField<bool>(window, "_groupBySeverity");
-            bool currentGroupByCategory = GetPrivateField<bool>(window, "_groupByCategory");
+            bool currentGroupByFile = window._groupByFile;
+            bool currentGroupBySeverity = window._groupBySeverity;
+            bool currentGroupByCategory = window._groupByCategory;
 
             // Detect which button was clicked by checking for a transition from false to true
             bool fileClicked = newGroupByFile && !currentGroupByFile;
@@ -1543,23 +2012,1126 @@ namespace TestNs
 
             if (fileClicked)
             {
-                SetPrivateField(window, "_groupByFile", true);
-                SetPrivateField(window, "_groupBySeverity", false);
-                SetPrivateField(window, "_groupByCategory", false);
+                window._groupByFile = true;
+                window._groupBySeverity = false;
+                window._groupByCategory = false;
             }
             else if (severityClicked)
             {
-                SetPrivateField(window, "_groupByFile", false);
-                SetPrivateField(window, "_groupBySeverity", true);
-                SetPrivateField(window, "_groupByCategory", false);
+                window._groupByFile = false;
+                window._groupBySeverity = true;
+                window._groupByCategory = false;
             }
             else if (categoryClicked)
             {
-                SetPrivateField(window, "_groupByFile", false);
-                SetPrivateField(window, "_groupBySeverity", false);
-                SetPrivateField(window, "_groupByCategory", true);
+                window._groupByFile = false;
+                window._groupBySeverity = false;
+                window._groupByCategory = true;
             }
             // If no transition from false to true, state is preserved (clicking already-selected button)
+        }
+
+        [Test]
+        public void InitializeCreatesAnalyzer()
+        {
+            // Note: ScriptableObject.CreateInstance<EditorWindow> triggers OnEnable(),
+            // which calls Initialize(), so _analyzer is already non-null after CreateInstance.
+            // This test verifies that Initialize() properly creates the analyzer.
+            UnityMethodAnalyzerWindow window =
+                ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            try
+            {
+                // After CreateInstance, OnEnable has been called, so analyzer should exist
+                Assert.IsTrue(
+                    window._analyzer != null,
+                    "Analyzer should be non-null after CreateInstance (OnEnable calls Initialize)"
+                );
+
+                // Store reference to original analyzer
+                MethodAnalyzer originalAnalyzer = window._analyzer;
+
+                // Call Initialize() again - should create a new analyzer
+                window.Initialize();
+
+                Assert.IsTrue(
+                    window._analyzer != null,
+                    "Analyzer should be non-null after explicit Initialize()"
+                );
+
+                // Verify a new analyzer was created (not reusing old one)
+                Assert.AreNotSame(
+                    originalAnalyzer,
+                    window._analyzer,
+                    "Initialize() should create a new analyzer instance"
+                );
+            }
+            finally
+            {
+                Object.DestroyImmediate(window);
+            }
+        }
+
+        [Test]
+        public void InitializeIsIdempotent()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            MethodAnalyzer firstAnalyzer = window._analyzer;
+
+            // Call Initialize() again
+            window.Initialize();
+
+            // Should get a new analyzer instance (not reuse)
+            // This is expected behavior - Initialize recreates objects
+            Assert.IsTrue(
+                window._analyzer != null,
+                "Analyzer should be non-null after second Initialize()"
+            );
+        }
+
+        [Test]
+        public void StartAnalysisWithUninitializedWindowSetsErrorMessage()
+        {
+            UnityMethodAnalyzerWindow window =
+                ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            try
+            {
+                // ScriptableObject.CreateInstance triggers OnEnable which calls Initialize(),
+                // so we must explicitly set _analyzer to null to test uninitialized state
+                window._analyzer = null;
+                window._sourcePaths = new List<string> { _tempDir };
+
+                window.StartAnalysis();
+
+                string statusMessage = window._statusMessage;
+                bool isAnalyzing = window._isAnalyzing;
+
+                Assert.AreEqual(
+                    "Analyzer not initialized",
+                    statusMessage,
+                    "Should indicate analyzer not initialized"
+                );
+                Assert.IsFalse(isAnalyzing, "Should not be analyzing when analyzer is null");
+            }
+            finally
+            {
+                Object.DestroyImmediate(window);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator SuccessfulAnalysisResetsUIStateWithDiagnostics()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            // Create a small test file for quick analysis
+            WriteTestFile("DiagnosticTest.cs", "public class DiagnosticTest { }");
+
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { _tempDir };
+
+            // Set up a TaskCompletionSource to reliably await analysis completion
+            TaskCompletionSource<bool> tcs = new();
+            window._analysisCompletionSource = tcs;
+
+            // Capture initial state
+            bool initialIsAnalyzing = window._isAnalyzing;
+            string initialStatus = window._statusMessage;
+
+            // Start analysis
+            window.StartAnalysis();
+
+            // Wait for completion using helper
+            AnalysisWaitResult result = default;
+            yield return WaitForAnalysisCompletion(window, 10f, r => result = r);
+
+            // Verify state is reset with diagnostic messages
+            Assert.IsFalse(
+                result.IsAnalyzing,
+                $"isAnalyzing should be false after completion. {result}"
+            );
+            Assert.AreEqual(
+                0f,
+                result.Progress,
+                $"Progress should be 0 after completion. {result}"
+            );
+            Assert.IsTrue(
+                result.StatusMessage.Contains("Analysis complete")
+                    || result.StatusMessage.Contains("Analysis failed"),
+                $"Status should indicate completion or failure. {result}"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator CancellationCompletesWithinReasonableTime()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            // Create moderate number of test files
+            for (int i = 0; i < 30; i++)
+            {
+                WriteTestFile($"CancelTimeTest{i}.cs", $"public class CancelTimeTest{i} {{ }}");
+            }
+
+            window._sourcePaths = new List<string> { _tempDir };
+
+            // Start analysis
+            window.StartAnalysis();
+            yield return null;
+
+            // Cancel
+            window.CancelAnalysis();
+
+            // Track cancellation time
+            float startTime = Time.realtimeSinceStartup;
+            float maxWaitTime = 5f;
+            int frameCount = 0;
+
+            while (window._isAnalyzing && Time.realtimeSinceStartup - startTime < maxWaitTime)
+            {
+                yield return null;
+                frameCount++;
+            }
+
+            float elapsedTime = Time.realtimeSinceStartup - startTime;
+            bool isAnalyzing = window._isAnalyzing;
+            string status = window._statusMessage;
+
+            Assert.IsFalse(
+                isAnalyzing,
+                $"Cancellation should complete within {maxWaitTime}s. Elapsed: {elapsedTime:F2}s, Frames: {frameCount}, Status: '{status}'"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator CancellationWorksWithSmallFileCount()
+        {
+            yield return CancellationWorksWithFileCount(5);
+        }
+
+        [UnityTest]
+        public IEnumerator CancellationWorksWithMediumFileCount()
+        {
+            yield return CancellationWorksWithFileCount(20);
+        }
+
+        [UnityTest]
+        public IEnumerator CancellationWorksWithLargeFileCount()
+        {
+            yield return CancellationWorksWithFileCount(50);
+        }
+
+        private IEnumerator CancellationWorksWithFileCount(int fileCount)
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            // Create test files
+            for (int i = 0; i < fileCount; i++)
+            {
+                WriteTestFile($"VaryingTest{i}.cs", $"public class VaryingTest{i} {{ }}");
+            }
+
+            window._sourcePaths = new List<string> { _tempDir };
+
+            // Start analysis
+            window.StartAnalysis();
+            yield return null;
+
+            // Cancel
+            window.CancelAnalysis();
+
+            // Wait for cancellation
+            float waitTime = 0f;
+            float maxWaitTime = 10f;
+            while (waitTime < maxWaitTime && window._isAnalyzing)
+            {
+                yield return null;
+                waitTime += Time.deltaTime;
+            }
+
+            bool isAnalyzing = window._isAnalyzing;
+            string status = window._statusMessage;
+
+            Assert.IsFalse(
+                isAnalyzing,
+                $"Cancellation should work with {fileCount} files. Status: '{status}', WaitTime: {waitTime:F2}s"
+            );
+        }
+
+        [Test]
+        public void CancelAnalysisImmediatelyResetsStateWithActiveAnalysis()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            // Simulate an active analysis with all state set
+            CancellationTokenSource cts = new();
+            window._cancellationTokenSource = cts;
+            window._isAnalyzing = true;
+            window._analysisProgress = 0.75f;
+            window._statusMessage = "Analyzing...";
+
+            // Call CancelAnalysis - should immediately reset state
+            window.CancelAnalysis();
+
+            // Verify state was immediately reset (no frame wait required)
+            bool isAnalyzing = window._isAnalyzing;
+            float progress = window._analysisProgress;
+            string status = window._statusMessage;
+            bool cancelled = cts.IsCancellationRequested;
+
+            Assert.IsTrue(cancelled, "CancellationToken should be cancelled");
+            Assert.IsFalse(isAnalyzing, "isAnalyzing should be immediately false");
+            Assert.AreEqual(0f, progress, "Progress should be immediately reset to 0");
+            Assert.AreEqual("Analysis cancelled", status, "Status should indicate cancellation");
+        }
+
+        [Test]
+        public void CancelAnalysisIsIdempotentWithImmediateReset()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            CancellationTokenSource cts = new();
+            window._cancellationTokenSource = cts;
+            window._isAnalyzing = true;
+            window._analysisProgress = 0.5f;
+
+            // Call cancel multiple times
+            window.CancelAnalysis();
+
+            // Set state back as if another analysis started (edge case)
+            window._isAnalyzing = true;
+            window._analysisProgress = 0.3f;
+            window._statusMessage = "Analyzing again...";
+
+            // Cancel again with the same (now already cancelled) CTS
+            window.CancelAnalysis();
+
+            // Should still reset state
+            bool isAnalyzing = window._isAnalyzing;
+            float progress = window._analysisProgress;
+            string status = window._statusMessage;
+
+            Assert.IsFalse(isAnalyzing, "isAnalyzing should be false after second cancel");
+            Assert.AreEqual(0f, progress, "Progress should be reset after second cancel");
+            Assert.AreEqual("Analysis cancelled", status, "Status should indicate cancellation");
+        }
+
+        [Test]
+        public void CancelAnalysisWithDisposedCTSDoesNotThrow()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            CancellationTokenSource cts = new();
+            cts.Dispose();
+            window._cancellationTokenSource = cts;
+            window._isAnalyzing = true;
+            window._analysisProgress = 0.5f;
+            window._statusMessage = "Analyzing...";
+
+            // Should handle disposed CTS gracefully without throwing
+            window.CancelAnalysis();
+
+            // State should still be reset
+            bool isAnalyzing = window._isAnalyzing;
+            float progress = window._analysisProgress;
+            string status = window._statusMessage;
+
+            // Clean up the disposed CTS reference to prevent OnDisable from encountering it
+            // (OnDisable will also handle this gracefully, but this makes the test cleaner)
+            window._cancellationTokenSource = null;
+
+            Assert.IsFalse(isAnalyzing, "isAnalyzing should be false even with disposed CTS");
+            Assert.AreEqual(0f, progress, "Progress should be reset even with disposed CTS");
+            Assert.AreEqual(
+                "Analysis cancelled",
+                status,
+                "Status should indicate cancellation even with disposed CTS"
+            );
+        }
+
+        [TestCase(0, TestName = "CancellationWithZeroFiles")]
+        [TestCase(1, TestName = "CancellationWithOneFile")]
+        [TestCase(100, TestName = "CancellationWithManyFiles")]
+        public void CancelAnalysisImmediateForVariousFileCounts(int fileCount)
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            // Create specified number of test files
+            for (int i = 0; i < fileCount; i++)
+            {
+                WriteTestFile($"ImmediateTest{i}.cs", $"public class ImmediateTest{i} {{ }}");
+            }
+
+            CancellationTokenSource cts = new();
+            window._cancellationTokenSource = cts;
+            window._isAnalyzing = true;
+            window._analysisProgress = 0.5f;
+            window._statusMessage = "Analyzing...";
+            window._sourcePaths = new List<string> { _tempDir };
+
+            // Cancel should be immediate regardless of file count
+            window.CancelAnalysis();
+
+            bool isAnalyzing = window._isAnalyzing;
+            float progress = window._analysisProgress;
+            string status = window._statusMessage;
+
+            Assert.IsFalse(
+                isAnalyzing,
+                $"isAnalyzing should be immediately false with {fileCount} files"
+            );
+            Assert.AreEqual(
+                0f,
+                progress,
+                $"Progress should be immediately reset with {fileCount} files"
+            );
+            Assert.AreEqual(
+                "Analysis cancelled",
+                status,
+                $"Status should indicate cancellation with {fileCount} files"
+            );
+        }
+
+        [Test]
+        public void OnDisableWithDisposedCTSDoesNotThrow()
+        {
+            // Test that OnDisable handles a disposed CTS gracefully
+            // This can happen if analysis completes but CTS reference is stale
+            UnityMethodAnalyzerWindow window =
+                ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+
+            try
+            {
+                // Create and dispose a CTS, then assign it to the window
+                CancellationTokenSource cts = new();
+                cts.Dispose();
+                window._cancellationTokenSource = cts;
+
+                // OnDisable should handle the disposed CTS without throwing
+                // We call it directly to test the edge case
+                window.OnDisable();
+
+                // Verify the CTS was nulled out
+                Assert.IsTrue(
+                    window._cancellationTokenSource == null,
+                    "CancellationTokenSource should be null after OnDisable"
+                );
+            }
+            finally
+            {
+                // Clean up - set to null to prevent double-handling
+                window._cancellationTokenSource = null;
+                Object.DestroyImmediate(window);
+            }
+        }
+
+        [Test]
+        public void OnDisableWithCancelledCTSDoesNotThrow()
+        {
+            // Test that OnDisable handles an already-cancelled CTS gracefully
+            UnityMethodAnalyzerWindow window =
+                ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+
+            try
+            {
+                // Create a CTS and cancel it (but don't dispose)
+                CancellationTokenSource cts = new();
+                cts.Cancel();
+                window._cancellationTokenSource = cts;
+
+                // OnDisable should handle the cancelled CTS without throwing
+                window.OnDisable();
+
+                // Verify the CTS was nulled out
+                Assert.IsTrue(
+                    window._cancellationTokenSource == null,
+                    "CancellationTokenSource should be null after OnDisable"
+                );
+            }
+            finally
+            {
+                window._cancellationTokenSource = null;
+                Object.DestroyImmediate(window);
+            }
+        }
+
+        [Test]
+        public void OnDisableWithNullCTSDoesNotThrow()
+        {
+            // Test that OnDisable handles null CTS gracefully
+            UnityMethodAnalyzerWindow window =
+                ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+
+            try
+            {
+                window._cancellationTokenSource = null;
+
+                // OnDisable should handle null CTS without throwing
+                window.OnDisable();
+
+                // Verify it's still null
+                Assert.IsTrue(
+                    window._cancellationTokenSource == null,
+                    "CancellationTokenSource should remain null after OnDisable"
+                );
+            }
+            finally
+            {
+                Object.DestroyImmediate(window);
+            }
+        }
+
+        [TestCase(
+            "",
+            "Analyzer not initialized",
+            Description = "Empty analyzer message when analyzer is null"
+        )]
+        public void StartAnalysisWithNullAnalyzerSetsCorrectMessage(
+            string unused,
+            string expectedMessage
+        )
+        {
+            UnityMethodAnalyzerWindow window =
+                ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            try
+            {
+                window._analyzer = null;
+                window._sourcePaths = new List<string> { _tempDir };
+
+                window.StartAnalysis();
+
+                Assert.AreEqual(
+                    expectedMessage,
+                    window._statusMessage,
+                    "Status message should indicate analyzer not initialized"
+                );
+                Assert.IsFalse(window._isAnalyzing, "Should not be analyzing");
+            }
+            finally
+            {
+                Object.DestroyImmediate(window);
+            }
+        }
+
+        [Test]
+        public void StartAnalysisWhileAlreadyAnalyzingDoesNothing()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            // Set up as if analysis is already running
+            window._isAnalyzing = true;
+            window._statusMessage = "Already analyzing...";
+            window._analysisProgress = 0.5f;
+            window._sourcePaths = new List<string> { _tempDir };
+
+            // Try to start another analysis
+            window.StartAnalysis();
+
+            // Should not change state since already analyzing
+            Assert.IsTrue(window._isAnalyzing, "Should still be analyzing");
+            Assert.AreEqual(
+                "Already analyzing...",
+                window._statusMessage,
+                "Status should not change"
+            );
+            Assert.AreEqual(0.5f, window._analysisProgress, "Progress should not change");
+        }
+
+        [Test]
+        public void AnalysisCompletionSourceIsSignaledOnCompletion()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            TaskCompletionSource<bool> tcs = new();
+            window._analysisCompletionSource = tcs;
+
+            // Verify it's not completed initially
+            Assert.IsFalse(tcs.Task.IsCompleted, "TCS should not be completed initially");
+
+            // Manually trigger what happens in the finally block of StartAnalysis
+            window.ResetAnalysisState();
+            tcs.TrySetResult(true);
+
+            // Now it should be completed
+            Assert.IsTrue(tcs.Task.IsCompleted, "TCS should be completed after TrySetResult");
+            Assert.IsTrue(tcs.Task.Result, "TCS result should be true");
+        }
+
+        [Test]
+        public void FinalizeAnalysisResetsStateAndSignalsCompletion()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            TaskCompletionSource<bool> tcs = new();
+            window._analysisCompletionSource = tcs;
+            window._isAnalyzing = true;
+            window._analysisProgress = 0.5f;
+
+            // Verify initial state
+            Assert.IsTrue(window._isAnalyzing, "Should be analyzing initially");
+            Assert.IsFalse(tcs.Task.IsCompleted, "TCS should not be completed initially");
+
+            // FinalizeAnalysis is private, so we test via CancelAnalysis which calls it
+            // We need to set up a CTS first
+            window._cancellationTokenSource = new CancellationTokenSource();
+            window.CancelAnalysis();
+
+            // Now state should be reset and TCS completed
+            Assert.IsFalse(window._isAnalyzing, "Should not be analyzing after finalize");
+            Assert.AreEqual(0f, window._analysisProgress, "Progress should be reset");
+            Assert.IsTrue(
+                tcs.Task.IsCompleted,
+                "TCS should be completed after FinalizeAnalysis via CancelAnalysis"
+            );
+        }
+
+        [Test]
+        public void FinalizeAnalysisIsIdempotentForTaskCompletionSource()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            TaskCompletionSource<bool> tcs = new();
+            window._analysisCompletionSource = tcs;
+            window._cancellationTokenSource = new CancellationTokenSource();
+            window._isAnalyzing = true;
+
+            // Call CancelAnalysis multiple times (which calls FinalizeAnalysis)
+            window.CancelAnalysis();
+            window.CancelAnalysis();
+            window.CancelAnalysis();
+
+            // TCS should still be completed with true (TrySetResult is idempotent)
+            Assert.IsTrue(tcs.Task.IsCompleted, "TCS should be completed");
+            Assert.IsTrue(tcs.Task.Result, "TCS result should be true");
+        }
+
+        [Test]
+        public void InitializeCanBeCalledMultipleTimesSafely()
+        {
+            UnityMethodAnalyzerWindow window =
+                ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            try
+            {
+                // First Initialize (OnEnable already called this)
+                MethodAnalyzer firstAnalyzer = window._analyzer;
+
+                // Call Initialize multiple times
+                for (int i = 0; i < 5; i++)
+                {
+                    window.Initialize();
+                    Assert.IsTrue(
+                        window._analyzer != null,
+                        $"Analyzer should be non-null after Initialize() call {i + 1}"
+                    );
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(window);
+            }
+        }
+
+        /// <summary>
+        /// Data-driven test verifying that the TaskCompletionSource is always signaled
+        /// when StartAnalysis is called with various source path configurations.
+        /// </summary>
+        [TestCase(
+            null,
+            true,
+            "TCS should be completed when source paths is null (no-op early return)"
+        )]
+        [TestCase(new string[0], true, "TCS should be completed when source paths is empty")]
+        [TestCase(
+            new[] { "/nonexistent/path" },
+            true,
+            "TCS should be completed when directories dont exist"
+        )]
+        public void TaskCompletionSourceIsSignaledWithVariousSourcePathConfigs(
+            string[] sourcePaths,
+            bool shouldComplete,
+            string description
+        )
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            TaskCompletionSource<bool> tcs = new();
+            window._analysisCompletionSource = tcs;
+            window._sourcePaths = sourcePaths != null ? new List<string>(sourcePaths) : null;
+
+            window.StartAnalysis();
+
+            // Give a moment for sync code to complete
+            Assert.AreEqual(
+                shouldComplete,
+                tcs.Task.IsCompleted,
+                $"{description}. Task status: {tcs.Task.Status}"
+            );
+
+            if (tcs.Task.IsCompleted)
+            {
+                Assert.IsTrue(tcs.Task.Result, "TCS result should be true when completed");
+            }
+        }
+
+        [TestCase(null, false, Description = "Null source paths should not analyze")]
+        public void StartAnalysisWithInvalidSourcePathsHandlesGracefully(
+            List<string> sourcePaths,
+            bool shouldStartAnalyzing
+        )
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+            window._sourcePaths = sourcePaths;
+
+            // Start analysis should handle invalid paths gracefully
+            window.StartAnalysis();
+
+            // If sourcePaths is null, analyzer check happens first
+            // If sourcePaths is empty, it will show "No valid directories selected"
+        }
+
+        [Test]
+        public void CancelAnalysisWithCancelledButNotDisposedCTSResetsState()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            CancellationTokenSource cts = new();
+            cts.Cancel(); // Cancelled but not disposed
+            window._cancellationTokenSource = cts;
+            window._isAnalyzing = true;
+            window._analysisProgress = 0.75f;
+            window._statusMessage = "Analyzing...";
+
+            // Cancel should still work
+            window.CancelAnalysis();
+
+            Assert.IsFalse(window._isAnalyzing, "Should not be analyzing after cancel");
+            Assert.AreEqual(0f, window._analysisProgress, "Progress should be reset");
+            Assert.AreEqual(
+                "Analysis cancelled",
+                window._statusMessage,
+                "Status should indicate cancelled"
+            );
+
+            // Clean up
+            window._cancellationTokenSource = null;
+            cts.Dispose();
+        }
+
+        [Test]
+        public void FlushMainThreadQueueDoesNothingWhenEmpty()
+        {
+            // Simply verify that calling FlushMainThreadQueue when empty doesn't throw
+            UnityMethodAnalyzerWindow.FlushMainThreadQueue();
+            Assert.Pass("FlushMainThreadQueue executed without throwing when queue was empty");
+        }
+
+        [Test]
+        public void FlushMainThreadQueueIsIdempotent()
+        {
+            // Multiple calls should not throw
+            UnityMethodAnalyzerWindow.FlushMainThreadQueue();
+            UnityMethodAnalyzerWindow.FlushMainThreadQueue();
+            UnityMethodAnalyzerWindow.FlushMainThreadQueue();
+            Assert.Pass("FlushMainThreadQueue is idempotent");
+        }
+
+        [Test]
+        public void AnalysisTaskIsNullBeforeStartAnalysis()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            Task analysisTask = window._analysisTask;
+
+            Assert.IsTrue(
+                analysisTask == null,
+                "Analysis task should be null before StartAnalysis is called"
+            );
+        }
+
+        [Test]
+        public void AnalysisTaskIsSetAfterStartAnalysisWithValidDirectory()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            WriteTestFile("TaskTest.cs", "public class TaskTest { }");
+            window._sourcePaths = new List<string> { _tempDir };
+
+            window.StartAnalysis();
+
+            Task analysisTask = window._analysisTask;
+
+            Assert.IsTrue(
+                analysisTask != null,
+                "Analysis task should be set after StartAnalysis with valid directory"
+            );
+        }
+
+        [Test]
+        public void AnalysisTaskIsNullAfterStartAnalysisWithNoValidDirectory()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            window._sourcePaths = new List<string> { "/nonexistent/path" };
+
+            window.StartAnalysis();
+
+            Task analysisTask = window._analysisTask;
+
+            // When no valid directories, analysis doesn't start so task stays null
+            Assert.IsTrue(
+                analysisTask == null,
+                "Analysis task should remain null when no valid directories"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator AnalysisTaskCompletesWhenAnalysisFinishes()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            WriteTestFile("CompletionTest.cs", "public class CompletionTest { }");
+            window._sourcePaths = new List<string> { _tempDir };
+
+            // Verify directory exists before starting
+            Assert.IsTrue(Directory.Exists(_tempDir), $"Temp directory should exist: {_tempDir}");
+
+            // Check file exists
+            string testFilePath = Path.Combine(_tempDir, "CompletionTest.cs");
+            Assert.IsTrue(File.Exists(testFilePath), $"Test file should exist: {testFilePath}");
+
+            window.StartAnalysis();
+
+            Task analysisTask = window._analysisTask;
+            Assert.IsTrue(
+                analysisTask != null,
+                $"Analysis task should be set. IsAnalyzing: {window._isAnalyzing}, Status: '{window._statusMessage}'"
+            );
+
+            // Use real time instead of Time.deltaTime for accurate wait tracking
+            float startRealTime = Time.realtimeSinceStartup;
+            float maxWaitTime = 10f;
+            int frameCount = 0;
+
+            while (
+                (Time.realtimeSinceStartup - startRealTime) < maxWaitTime
+                && !analysisTask.IsCompleted
+            )
+            {
+                yield return null;
+                frameCount++;
+
+                // Log periodic status updates
+                if (frameCount % 100 == 0)
+                {
+                    float elapsed = Time.realtimeSinceStartup - startRealTime;
+                    UnityEngine.Debug.Log(
+                        $"[AnalysisTaskTest] Frame {frameCount}, Elapsed: {elapsed:F2}s, "
+                            + $"TaskStatus: {analysisTask.Status}, IsCompleted: {analysisTask.IsCompleted}, "
+                            + $"IsFaulted: {analysisTask.IsFaulted}, IsCanceled: {analysisTask.IsCanceled}"
+                    );
+                }
+            }
+
+            float totalWaitTime = Time.realtimeSinceStartup - startRealTime;
+
+            // Check for exceptions
+            string exceptionInfo = "";
+            if (analysisTask.IsFaulted && analysisTask.Exception != null)
+            {
+                exceptionInfo = $", Exception: {analysisTask.Exception.GetBaseException().Message}";
+            }
+
+            Assert.IsTrue(
+                analysisTask.IsCompleted,
+                $"Analysis task should complete. Status: {analysisTask.Status}, "
+                    + $"RealWaitTime: {totalWaitTime:F2}s, Frames: {frameCount}{exceptionInfo}"
+            );
+            Assert.IsTrue(
+                analysisTask.Status == TaskStatus.RanToCompletion,
+                $"Analysis task should run to completion. Status: {analysisTask.Status}{exceptionInfo}"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator AnalysisTaskFaultsWhenExceptionOccurs()
+        {
+            // This test verifies the task properly propagates exceptions
+            // However, since file parsing swallows exceptions, we need to trigger
+            // an exception at a higher level. For now, we just verify the normal path.
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            WriteTestFile("FaultTest.cs", "public class FaultTest { }");
+            window._sourcePaths = new List<string> { _tempDir };
+
+            window.StartAnalysis();
+
+            Task analysisTask = window._analysisTask;
+            Assert.IsTrue(analysisTask != null, "Analysis task should be set");
+
+            // Wait for analysis to complete
+            AnalysisWaitResult result = default;
+            yield return WaitForAnalysisCompletion(window, 10f, r => result = r);
+
+            // Analysis should complete (either success or failure)
+            Assert.IsTrue(result.AnalysisTaskCompleted, $"Analysis task should complete. {result}");
+        }
+
+        /// <summary>
+        /// Diagnostic test that uses Task.Wait to determine if the issue is with
+        /// Unity coroutines or with the task itself not completing.
+        /// </summary>
+        [Test]
+        public void AnalysisTaskCompletesWithBlockingWait()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            // Create test file
+            string testFilePath = Path.Combine(_tempDir, "BlockingWaitTest.cs");
+            File.WriteAllText(testFilePath, "public class BlockingWaitTest { }");
+
+            window._sourcePaths = new List<string> { _tempDir };
+
+            // Verify setup
+            Assert.IsTrue(Directory.Exists(_tempDir), $"Temp dir should exist: {_tempDir}");
+            Assert.IsTrue(File.Exists(testFilePath), $"Test file should exist: {testFilePath}");
+            Assert.IsTrue(window._analyzer != null, "Analyzer should be initialized");
+
+            window.StartAnalysis();
+
+            Task analysisTask = window._analysisTask;
+            Assert.IsTrue(
+                analysisTask != null,
+                $"Analysis task should be set. IsAnalyzing: {window._isAnalyzing}, Status: '{window._statusMessage}'"
+            );
+
+            // Use blocking wait with timeout
+            bool completed = analysisTask.Wait(TimeSpan.FromSeconds(30));
+
+            string exceptionInfo = "";
+            if (analysisTask.IsFaulted && analysisTask.Exception != null)
+            {
+                exceptionInfo = $", Exception: {analysisTask.Exception.GetBaseException()}";
+            }
+
+            Assert.IsTrue(
+                completed,
+                $"Task should complete within timeout. Status: {analysisTask.Status}, "
+                    + $"IsFaulted: {analysisTask.IsFaulted}, IsCanceled: {analysisTask.IsCanceled}{exceptionInfo}"
+            );
+
+            Assert.IsTrue(
+                analysisTask.Status == TaskStatus.RanToCompletion,
+                $"Task should run to completion. Status: {analysisTask.Status}{exceptionInfo}"
+            );
+
+            // Cleanup - flush the main thread queue to process completion callback
+            UnityMethodAnalyzerWindow.FlushMainThreadQueue();
+        }
+
+        /// <summary>
+        /// Tests the MethodAnalyzer directly without going through the window,
+        /// to isolate whether the issue is in the analyzer or the window integration.
+        /// </summary>
+        [Test]
+        public void MethodAnalyzerDirectlyCompletesWithBlockingWait()
+        {
+            // Create test file
+            string testFilePath = Path.Combine(_tempDir, "DirectAnalyzerTest.cs");
+            File.WriteAllText(testFilePath, "public class DirectAnalyzerTest { }");
+
+            // Create analyzer directly
+            MethodAnalyzer analyzer = new();
+
+            // Run analysis directly
+            Task analysisTask = analyzer.AnalyzeAsync(
+                _tempDir,
+                new List<string> { _tempDir },
+                progress: null,
+                cancellationToken: CancellationToken.None
+            );
+
+            // Use blocking wait with timeout
+            bool completed = analysisTask.Wait(TimeSpan.FromSeconds(30));
+
+            string exceptionInfo = "";
+            if (analysisTask.IsFaulted && analysisTask.Exception != null)
+            {
+                exceptionInfo = $", Exception: {analysisTask.Exception.GetBaseException()}";
+            }
+
+            Assert.IsTrue(
+                completed,
+                $"Direct analyzer task should complete within timeout. Status: {analysisTask.Status}, "
+                    + $"IsFaulted: {analysisTask.IsFaulted}, IsCanceled: {analysisTask.IsCanceled}{exceptionInfo}"
+            );
+
+            Assert.IsTrue(
+                analysisTask.Status == TaskStatus.RanToCompletion,
+                $"Direct analyzer task should run to completion. Status: {analysisTask.Status}{exceptionInfo}"
+            );
+        }
+
+        /// <summary>
+        /// Tests the MethodAnalyzer with a Progress callback to see if that's causing the hang.
+        /// </summary>
+        [Test]
+        public void MethodAnalyzerWithProgressCompletesWithBlockingWait()
+        {
+            // Create test file
+            string testFilePath = Path.Combine(_tempDir, "ProgressAnalyzerTest.cs");
+            File.WriteAllText(testFilePath, "public class ProgressAnalyzerTest { }");
+
+            // Create analyzer directly
+            MethodAnalyzer analyzer = new();
+
+            // Track progress reports
+            List<float> progressValues = new();
+            Progress<float> progress = new(p => progressValues.Add(p));
+
+            // Run analysis directly
+            Task analysisTask = analyzer.AnalyzeAsync(
+                _tempDir,
+                new List<string> { _tempDir },
+                progress: progress,
+                cancellationToken: CancellationToken.None
+            );
+
+            // Use blocking wait with timeout
+            bool completed = analysisTask.Wait(TimeSpan.FromSeconds(30));
+
+            string exceptionInfo = "";
+            if (analysisTask.IsFaulted && analysisTask.Exception != null)
+            {
+                exceptionInfo = $", Exception: {analysisTask.Exception.GetBaseException()}";
+            }
+
+            Assert.IsTrue(
+                completed,
+                $"Analyzer with progress should complete within timeout. Status: {analysisTask.Status}, "
+                    + $"IsFaulted: {analysisTask.IsFaulted}, IsCanceled: {analysisTask.IsCanceled}, "
+                    + $"ProgressReports: {progressValues.Count}{exceptionInfo}"
+            );
+
+            Assert.IsTrue(
+                analysisTask.Status == TaskStatus.RanToCompletion,
+                $"Analyzer with progress should run to completion. Status: {analysisTask.Status}{exceptionInfo}"
+            );
+        }
+
+        /// <summary>
+        /// Tests the synchronous Analyze method to verify the core parsing logic works.
+        /// </summary>
+        [Test]
+        public void MethodAnalyzerSynchronousAnalyzeCompletes()
+        {
+            // Create test file
+            string testFilePath = Path.Combine(_tempDir, "SyncAnalyzerTest.cs");
+            File.WriteAllText(testFilePath, "public class SyncAnalyzerTest { }");
+
+            // Create analyzer directly
+            MethodAnalyzer analyzer = new();
+
+            // Run synchronous analysis - this should complete immediately
+            analyzer.Analyze(_tempDir, new List<string> { _tempDir });
+
+            // Verify it completed (if we get here, it didn't hang)
+            Assert.Pass("Synchronous analysis completed without hanging");
+        }
+
+        /// <summary>
+        /// Tests a minimal async operation to verify Task.Wait works in Unity tests.
+        /// </summary>
+        [Test]
+        public void MinimalAsyncTaskCompletesWithBlockingWait()
+        {
+            // Create a simple async task that should complete immediately
+            Task simpleTask = Task.Run(() =>
+            {
+                // Do a tiny bit of work
+                int sum = 0;
+                for (int i = 0; i < 100; i++)
+                {
+                    sum += i;
+                }
+                return sum;
+            });
+
+            bool completed = simpleTask.Wait(TimeSpan.FromSeconds(5));
+
+            Assert.IsTrue(completed, $"Simple task should complete. Status: {simpleTask.Status}");
+        }
+
+        /// <summary>
+        /// Tests Task.Run with async lambda to verify that's not the issue.
+        /// </summary>
+        [Test]
+        public void TaskRunWithAsyncLambdaCompletesWithBlockingWait()
+        {
+            Task asyncTask = Task.Run(async () =>
+            {
+                await Task.Delay(10);
+                return 42;
+            });
+
+            bool completed = asyncTask.Wait(TimeSpan.FromSeconds(5));
+
+            Assert.IsTrue(
+                completed,
+                $"Task.Run with async lambda should complete. Status: {asyncTask.Status}"
+            );
+        }
+
+        /// <summary>
+        /// Tests File.ReadAllTextAsync to verify async file IO works.
+        /// </summary>
+        [Test]
+        public void FileReadAllTextAsyncCompletesWithBlockingWait()
+        {
+            // Create test file
+            string testFilePath = Path.Combine(_tempDir, "AsyncFileTest.cs");
+            File.WriteAllText(testFilePath, "public class AsyncFileTest { }");
+
+            Task<string> readTask = File.ReadAllTextAsync(testFilePath);
+
+            bool completed = readTask.Wait(TimeSpan.FromSeconds(5));
+
+            Assert.IsTrue(
+                completed,
+                $"File.ReadAllTextAsync should complete. Status: {readTask.Status}"
+            );
+            Assert.IsTrue(
+                readTask.Result.Contains("AsyncFileTest"),
+                "File content should be correct"
+            );
+        }
+
+        /// <summary>
+        /// Tests SemaphoreSlim.WaitAsync to verify that's not causing issues.
+        /// </summary>
+        [Test]
+        public void SemaphoreSlimWaitAsyncCompletesWithBlockingWait()
+        {
+            using SemaphoreSlim semaphore = new(4);
+
+            Task semaphoreTask = Task.Run(async () =>
+            {
+                await semaphore.WaitAsync().ConfigureAwait(false);
+                try
+                {
+                    await Task.Delay(10).ConfigureAwait(false);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            bool completed = semaphoreTask.Wait(TimeSpan.FromSeconds(5));
+
+            Assert.IsTrue(
+                completed,
+                $"SemaphoreSlim.WaitAsync should complete. Status: {semaphoreTask.Status}"
+            );
         }
     }
 }

@@ -9,7 +9,10 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
     /// Test MonoBehaviour handler for testing nested prefab component discovery.
     /// This handler can be placed on child objects within prefabs.
     /// </summary>
-    internal sealed class TestNestedPrefabHandler : MonoBehaviour
+    /// <remarks>
+    /// This class must be in a non-Editor folder so it can be attached to GameObjects.
+    /// </remarks>
+    public sealed class TestNestedPrefabHandler : MonoBehaviour
     {
         private static readonly List<AssetChangeContext> Recorded = new();
         private static readonly List<TestNestedPrefabHandler> InvokedInstances = new();

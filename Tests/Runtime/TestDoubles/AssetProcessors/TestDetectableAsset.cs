@@ -7,6 +7,6 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
     /// A ScriptableObject asset type used for testing asset change detection.
     /// Implements ITestDetectableContract to test interface-based matching.
     /// </summary>
-    internal sealed class TestDetectableAsset : ScriptableObject, ITestDetectableContract { }
+    public sealed class TestDetectableAsset : ScriptableObject, ITestDetectableContract { }
 }
 #endif

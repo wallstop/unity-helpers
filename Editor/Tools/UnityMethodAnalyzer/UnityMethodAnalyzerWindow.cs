@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
     using System.Linq;
     using System.Text.Json.Serialization;
     using System.Threading;
+    using System.Threading.Tasks;
     using UnityEditor;
     using UnityEditor.IMGUI.Controls;
     using UnityEngine;
@@ -57,7 +58,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
         }
 
         [SerializeField]
-        private List<string> _sourcePaths = new();
+        internal List<string> _sourcePaths = new();
 
         [SerializeField]
         private TreeViewState _treeViewState;
@@ -67,29 +68,44 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
         private Vector2 _sourcePathsScrollPosition;
 
-        private MethodAnalyzer _analyzer;
+        internal MethodAnalyzer _analyzer;
         private IssueTreeView _treeView;
         private Vector2 _detailScrollPosition;
 
         private AnalyzerIssue _selectedIssue;
-        private bool _isAnalyzing;
-        private float _analysisProgress;
-        private string _statusMessage = "Ready to analyze";
-        private CancellationTokenSource _cancellationTokenSource;
+        internal bool _isAnalyzing;
+        internal float _analysisProgress;
+        internal string _statusMessage = "Ready to analyze";
+        internal CancellationTokenSource _cancellationTokenSource;
 
-        private bool _groupByFile = true;
-        private bool _groupBySeverity;
-        private bool _groupByCategory;
+        /// <summary>
+        /// Internal TaskCompletionSource for tests to await analysis completion.
+        /// Set before StartAnalysis() to enable awaiting completion.
+        /// </summary>
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
+        internal TaskCompletionSource<bool> _analysisCompletionSource;
+#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
+
+        /// <summary>
+        /// Internal reference to the current analysis task for test synchronization.
+        /// Tests can await this task to know when the async analysis work is complete,
+        /// then call FlushMainThreadQueue() to process the completion callback.
+        /// </summary>
+        internal Task _analysisTask;
+
+        internal bool _groupByFile = true;
+        internal bool _groupBySeverity;
+        internal bool _groupByCategory;
         private IssueSeverity? _severityFilter;
         private IssueCategory? _categoryFilter;
         private string _searchFilter = string.Empty;
 
-        private int _criticalCount;
-        private int _highCount;
-        private int _mediumCount;
-        private int _lowCount;
-        private int _infoCount;
-        private int _totalCount;
+        internal int _criticalCount;
+        internal int _highCount;
+        internal int _mediumCount;
+        internal int _lowCount;
+        internal int _infoCount;
+        internal int _totalCount;
 
         private const float ToolbarHeight = 40f;
         private const float FilterHeight = 50f;
@@ -116,6 +132,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 
         private void OnEnable()
         {
+            Initialize();
+        }
+
+        /// <summary>
+        /// Initializes the window's analyzer and tree view. Called from OnEnable().
+        /// Also accessible for testing purposes.
+        /// </summary>
+        internal void Initialize()
+        {
             _analyzer = new MethodAnalyzer();
             _treeViewState ??= new TreeViewState();
             _treeView = new IssueTreeView(_treeViewState);
@@ -133,11 +158,35 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             }
         }
 
-        private void OnDisable()
+        internal void OnDisable()
         {
-            _cancellationTokenSource?.Cancel();
-            _cancellationTokenSource?.Dispose();
-            _cancellationTokenSource = null;
+            CancellationTokenSource cts = _cancellationTokenSource;
+            if (cts != null)
+            {
+                try
+                {
+                    // Both IsCancellationRequested and Cancel() can throw if disposed
+                    if (!cts.IsCancellationRequested)
+                    {
+                        cts.Cancel();
+                    }
+                }
+                catch (ObjectDisposedException)
+                {
+                    // CTS was already disposed, safe to ignore
+                }
+
+                try
+                {
+                    cts.Dispose();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Already disposed, safe to ignore
+                }
+
+                _cancellationTokenSource = null;
+            }
 
             if (_treeView != null)
             {
@@ -850,10 +899,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             };
         }
 
-        private async void StartAnalysis()
+        internal void StartAnalysis()
         {
             if (_isAnalyzing)
             {
+                return;
+            }
+
+            if (_analyzer == null)
+            {
+                _statusMessage = "Analyzer not initialized";
                 return;
             }
 
@@ -865,11 +920,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             _cancellationTokenSource?.Dispose();
             _cancellationTokenSource = new CancellationTokenSource();
 
-            try
-            {
-                List<string> directories = new();
-                string rootPath = GetProjectRoot();
+            List<string> directories = new();
+            string rootPath = GetProjectRoot();
 
+            if (_sourcePaths != null)
+            {
                 foreach (string sourcePath in _sourcePaths)
                 {
                     if (string.IsNullOrEmpty(sourcePath))
@@ -882,33 +937,65 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                         directories.Add(sourcePath);
                     }
                 }
+            }
 
-                if (directories.Count == 0)
-                {
-                    _statusMessage = "No valid directories selected";
-                    return;
-                }
+            if (directories.Count == 0)
+            {
+                _statusMessage = "No valid directories selected";
+                FinalizeAnalysis();
+                return;
+            }
 
-                Progress<float> progress = new(p =>
+            Progress<float> progress = new(p =>
+            {
+                // Guard against late progress updates after analysis has been reset.
+                // Progress<T> uses SynchronizationContext.Post() which can deliver callbacks
+                // after the analysis task completion callback has already run ResetAnalysisState().
+                if (_isAnalyzing)
                 {
                     _analysisProgress = p;
-                });
+                }
+            });
 
-                await _analyzer.AnalyzeAsync(
-                    rootPath,
-                    directories,
-                    progress,
-                    _cancellationTokenSource.Token
-                );
+            CancellationToken token = _cancellationTokenSource.Token;
 
-                UpdateIssueCounts();
-                _treeView.SetIssues(_analyzer.Issues, rootPath);
+            Task analysisTask = _analyzer.AnalyzeAsync(rootPath, directories, progress, token);
+            _analysisTask = analysisTask;
 
-                _statusMessage = $"Analysis complete: {_totalCount} issues found";
-            }
-            catch (OperationCanceledException)
+            analysisTask.ContinueWith(
+                task =>
+                {
+                    EnqueueOnMainThread(() => HandleAnalysisCompletion(task));
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.None,
+                TaskScheduler.Default
+            );
+        }
+
+        /// <summary>
+        /// Handles the completion of the analysis task on the main thread.
+        /// </summary>
+        private void HandleAnalysisCompletion(Task task)
+        {
+            try
             {
-                _statusMessage = "Analysis cancelled";
+                if (task.IsCanceled || _cancellationTokenSource.IsCancellationRequested)
+                {
+                    _statusMessage = "Analysis cancelled";
+                }
+                else if (task.IsFaulted)
+                {
+                    Exception ex = task.Exception?.GetBaseException() ?? task.Exception;
+                    _statusMessage = $"Analysis failed: {ex?.Message ?? "Unknown error"}";
+                }
+                else
+                {
+                    UpdateIssueCounts();
+                    string rootPath = GetProjectRoot();
+                    _treeView?.SetIssues(_analyzer.Issues, rootPath);
+                    _statusMessage = $"Analysis complete: {_totalCount} issues found";
+                }
             }
             catch (Exception ex)
             {
@@ -916,11 +1003,109 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             }
             finally
             {
-                ResetAnalysisState();
+                FinalizeAnalysis();
             }
         }
 
-        private void CancelAnalysis()
+        /// <summary>
+        /// Finalizes the analysis by resetting state and signaling completion.
+        /// Called after analysis completes, fails, or is cancelled.
+        /// </summary>
+        private void FinalizeAnalysis()
+        {
+            ResetAnalysisState();
+            // Signal completion for test synchronization
+            _analysisCompletionSource?.TrySetResult(true);
+        }
+
+        private static readonly object MainThreadQueueLock = new();
+        private static readonly Queue<Action> MainThreadQueue = new();
+        private static bool _isUpdateSubscribed;
+
+        /// <summary>
+        /// Enqueues an action to be executed on the main thread via EditorApplication.update.
+        /// This ensures async continuations are properly executed on the main thread in all scenarios,
+        /// including Unity Editor tests.
+        /// </summary>
+        private static void EnqueueOnMainThread(Action action)
+        {
+            if (action == null)
+            {
+                return;
+            }
+
+            lock (MainThreadQueueLock)
+            {
+                MainThreadQueue.Enqueue(action);
+                if (!_isUpdateSubscribed)
+                {
+                    EditorApplication.update += ProcessMainThreadQueue;
+                    _isUpdateSubscribed = true;
+                }
+            }
+        }
+
+        private static void ProcessMainThreadQueue()
+        {
+            Action[] actionsToProcess;
+            lock (MainThreadQueueLock)
+            {
+                if (MainThreadQueue.Count == 0)
+                {
+                    EditorApplication.update -= ProcessMainThreadQueue;
+                    _isUpdateSubscribed = false;
+                    return;
+                }
+
+                actionsToProcess = MainThreadQueue.ToArray();
+                MainThreadQueue.Clear();
+            }
+
+            foreach (Action action in actionsToProcess)
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogException(ex);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Forces processing of the main thread queue. This is useful in test scenarios
+        /// where EditorApplication.update may not be called reliably.
+        /// </summary>
+        internal static void FlushMainThreadQueue()
+        {
+            Action[] actionsToProcess;
+            lock (MainThreadQueueLock)
+            {
+                if (MainThreadQueue.Count == 0)
+                {
+                    return;
+                }
+
+                actionsToProcess = MainThreadQueue.ToArray();
+                MainThreadQueue.Clear();
+            }
+
+            foreach (Action action in actionsToProcess)
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogException(ex);
+                }
+            }
+        }
+
+        internal void CancelAnalysis()
         {
             CancellationTokenSource cts = _cancellationTokenSource;
             if (cts == null)
@@ -928,24 +1113,39 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 return;
             }
 
-            if (!cts.IsCancellationRequested)
+            try
             {
-                cts.Cancel();
+                if (!cts.IsCancellationRequested)
+                {
+                    cts.Cancel();
+                }
             }
+            catch (ObjectDisposedException)
+            {
+                // CTS was already disposed, which means the analysis has completed
+                // or was already cancelled. Safe to ignore.
+            }
+
+            // Immediately reset state since the ContinueWith callback may not execute
+            // promptly in certain scenarios. The HandleAnalysisCompletion will also
+            // call FinalizeAnalysis, but calling it here ensures immediate responsiveness.
+            // FinalizeAnalysis is idempotent via TrySetResult, so multiple calls are safe.
+            _statusMessage = "Analysis cancelled";
+            FinalizeAnalysis();
         }
 
         /// <summary>
         /// Resets the analysis state and UI to allow new analysis.
         /// Called after analysis completes, fails, or is cancelled.
         /// </summary>
-        private void ResetAnalysisState()
+        internal void ResetAnalysisState()
         {
             _isAnalyzing = false;
             _analysisProgress = 0f;
             Repaint();
         }
 
-        private void UpdateIssueCounts()
+        internal void UpdateIssueCounts()
         {
             IReadOnlyList<AnalyzerIssue> issues = _analyzer.Issues;
             _totalCount = issues.Count;

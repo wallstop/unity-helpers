@@ -33,7 +33,9 @@ namespace WallstopStudios.UnityHelpers.Utils
         public double tolerance;
 
         [SiblingComponent]
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
         private PolygonCollider2D _collider;
+#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
 
         [SerializeField]
         private List<Path> _originalPaths = new();

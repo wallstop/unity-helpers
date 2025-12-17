@@ -340,6 +340,7 @@ Unity -batchmode -projectPath <Project> -runTests -testPlatform PlayMode -testRe
 ## Unity/Mono/IL2CPP Compatibility
 
 **CRITICAL**: All code in this repository MUST be compatible with Unity's Mono and IL2CPP scripting backends. This package targets Unity 2021.3+ LTS and must work across all platforms including WebGL, iOS, Android, and consoles.
+**CRITICAL**: Ensure all `Object` access is specified via something like `using Object = UnityEngine.Object;`, or fully qualifying the `Object` reference, correctly.
 
 ### Forbidden C# Features
 

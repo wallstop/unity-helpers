@@ -6,16 +6,19 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
     /// <summary>
-    /// Test MonoBehaviour handler that uses SearchPrefabs option for asset change detection.
-    /// This handler should be found when attached to prefabs.
+    /// Test MonoBehaviour handler that uses both SearchPrefabs and SearchSceneObjects options.
+    /// This handler should be found when attached to either prefabs or scene objects.
     /// </summary>
-    internal sealed class TestPrefabAssetChangeHandler : MonoBehaviour
+    /// <remarks>
+    /// This class must be in a non-Editor folder so it can be attached to GameObjects.
+    /// </remarks>
+    public sealed class TestCombinedSearchHandler : MonoBehaviour
     {
         private static readonly List<AssetChangeContext> Recorded = new();
-        private static readonly List<TestPrefabAssetChangeHandler> InvokedInstances = new();
+        private static readonly List<TestCombinedSearchHandler> InvokedInstances = new();
 
         public static IReadOnlyList<AssetChangeContext> RecordedContexts => Recorded;
-        public static IReadOnlyList<TestPrefabAssetChangeHandler> RecordedInstances =>
+        public static IReadOnlyList<TestCombinedSearchHandler> RecordedInstances =>
             InvokedInstances;
 
         public static void Clear()
@@ -27,7 +30,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         [DetectAssetChanged(
             typeof(TestDetectableAsset),
             AssetChangeFlags.Created | AssetChangeFlags.Deleted,
-            DetectAssetChangedOptions.SearchPrefabs
+            DetectAssetChangedOptions.SearchPrefabs | DetectAssetChangedOptions.SearchSceneObjects
         )]
         private void OnTestAssetChanged(AssetChangeContext context)
         {
