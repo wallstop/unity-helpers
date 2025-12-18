@@ -56,7 +56,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             BaseField<string> selector = (BaseField<string>)element;
             DropdownField dropdown = selector.Q<DropdownField>();
-            Assert.IsNotNull(dropdown, "Dropdown field was not created.");
+            Assert.IsNotNull(dropdown, "DropDown field was not created.");
             Assert.That(dropdown.value, Is.EqualTo("Run"));
 
             InvokeApplySelection(selector, 2);
@@ -82,7 +82,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             AssignAttribute(drawer, new StringInListAttribute("Low", "Medium", "High"));
             VisualElement element = drawer.CreatePropertyGUI(property);
             DropdownField dropdown = element.Q<DropdownField>();
-            Assert.IsNotNull(dropdown, "Dropdown field was not created.");
+            Assert.IsNotNull(dropdown, "DropDown field was not created.");
 
             InvokeApplySelection((BaseField<string>)element, 2);
             serializedObject.Update();

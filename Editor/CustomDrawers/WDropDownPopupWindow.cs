@@ -12,7 +12,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     /// <summary>
     /// Data model for configuring the dropdown popup window.
     /// </summary>
-    public sealed class WDropdownPopupData
+    public sealed class WDropDownPopupData
     {
         /// <summary>
         /// Display labels shown to the user.
@@ -49,7 +49,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     /// A UI Toolkit-based dropdown popup window that supports search, pagination, and keyboard navigation.
     /// Uses <see cref="EditorWindow.ShowAsDropDown"/> for positioning relative to the triggering button.
     /// </summary>
-    public sealed class WDropdownPopupWindow : EditorWindow
+    public sealed class WDropDownPopupWindow : EditorWindow
     {
         private const float PopupWidth = 360f;
         private const float SearchRowHeight = 26f;
@@ -88,7 +88,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return cached;
         }
 
-        private WDropdownPopupData _data;
+        private WDropDownPopupData _data;
         private VisualElement _root;
         private TextField _searchField;
         private Button _clearButton;
@@ -114,14 +114,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         /// </summary>
         /// <param name="buttonRect">The screen-space rect of the triggering button.</param>
         /// <param name="data">Configuration data for the popup.</param>
-        public static void Show(Rect buttonRect, WDropdownPopupData data)
+        public static void Show(Rect buttonRect, WDropDownPopupData data)
         {
             if (data == null || data.DisplayLabels == null || data.DisplayLabels.Length == 0)
             {
                 return;
             }
 
-            WDropdownPopupWindow window = CreateInstance<WDropdownPopupWindow>();
+            WDropDownPopupWindow window = CreateInstance<WDropDownPopupWindow>();
             window._data = data;
             window.titleContent = new GUIContent(
                 string.IsNullOrEmpty(data.Title) ? "Select" : data.Title
@@ -164,7 +164,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool isStringProperty = property.propertyType == SerializedPropertyType.String;
             bool isIntegerProperty = property.propertyType == SerializedPropertyType.Integer;
 
-            WDropdownPopupData data = new()
+            WDropDownPopupData data = new()
             {
                 DisplayLabels = displayLabels ?? options,
                 Tooltips = tooltips,
@@ -237,7 +237,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             SerializedObject serializedObject = property.serializedObject;
             string propertyPath = property.propertyPath;
 
-            WDropdownPopupData data = new()
+            WDropDownPopupData data = new()
             {
                 DisplayLabels =
                     displayLabels ?? Array.ConvertAll(values, v => v?.ToString() ?? string.Empty),
@@ -297,7 +297,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             SerializedObject serializedObject = property.serializedObject;
             string propertyPath = property.propertyPath;
 
-            WDropdownPopupData data = new()
+            WDropDownPopupData data = new()
             {
                 DisplayLabels = displayLabels,
                 Tooltips = null,
@@ -319,7 +319,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                     Undo.RecordObjects(
                         serializedObject.targetObjects,
-                        "Change IntDropdown Selection"
+                        "Change IntDropDown Selection"
                     );
 
                     prop.intValue = options[selectedIndex];
@@ -430,9 +430,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private void CreateGUI()
         {
             _root = rootVisualElement;
-            WDropdownStyleLoader.ApplyStyles(_root);
+            WDropDownStyleLoader.ApplyStyles(_root);
 
-            _root.AddToClassList(WDropdownStyleLoader.ClassNames.Popup);
+            _root.AddToClassList(WDropDownStyleLoader.ClassNames.Popup);
 
             _root.style.paddingTop = VerticalPadding;
             _root.style.paddingBottom = VerticalPadding;
@@ -466,7 +466,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     flexShrink = 0f,
                 },
             };
-            searchRow.AddToClassList(WDropdownStyleLoader.ClassNames.SearchContainer);
+            searchRow.AddToClassList(WDropDownStyleLoader.ClassNames.SearchContainer);
 
             Label searchLabel = new("Search") { style = { width = 50f, marginRight = 4f } };
 
@@ -481,7 +481,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     overflow = Overflow.Hidden,
                 },
             };
-            _searchField.AddToClassList(WDropdownStyleLoader.ClassNames.Search);
+            _searchField.AddToClassList(WDropDownStyleLoader.ClassNames.Search);
             _searchField.RegisterValueChangedCallback(OnSearchChanged);
 
             _clearButton = new Button(OnClearClicked)
@@ -489,7 +489,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 text = "Clear",
                 style = { marginLeft = 4f, width = 50f },
             };
-            _clearButton.AddToClassList(WDropdownStyleLoader.ClassNames.ClearButton);
+            _clearButton.AddToClassList(WDropDownStyleLoader.ClassNames.ClearButton);
             _clearButton.SetEnabled(false);
 
             searchRow.Add(searchLabel);
@@ -514,7 +514,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 },
                 pickingMode = PickingMode.Ignore,
             };
-            _suggestionLabel.AddToClassList(WDropdownStyleLoader.ClassNames.Suggestion);
+            _suggestionLabel.AddToClassList(WDropDownStyleLoader.ClassNames.Suggestion);
             _root.Add(_suggestionLabel);
         }
 
@@ -532,27 +532,27 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     display = DisplayStyle.None,
                 },
             };
-            _paginationContainer.AddToClassList(WDropdownStyleLoader.ClassNames.Pagination);
+            _paginationContainer.AddToClassList(WDropDownStyleLoader.ClassNames.Pagination);
 
             _previousButton = new Button(OnPreviousPage)
             {
                 text = "‹",
                 style = { width = ButtonWidth, height = 20f },
             };
-            _previousButton.AddToClassList(WDropdownStyleLoader.ClassNames.PaginationButton);
+            _previousButton.AddToClassList(WDropDownStyleLoader.ClassNames.PaginationButton);
 
             _pageLabel = new Label
             {
                 style = { width = PageLabelWidth, unityTextAlign = TextAnchor.MiddleCenter },
             };
-            _pageLabel.AddToClassList(WDropdownStyleLoader.ClassNames.PaginationLabel);
+            _pageLabel.AddToClassList(WDropDownStyleLoader.ClassNames.PaginationLabel);
 
             _nextButton = new Button(OnNextPage)
             {
                 text = "›",
                 style = { width = ButtonWidth, height = 20f },
             };
-            _nextButton.AddToClassList(WDropdownStyleLoader.ClassNames.PaginationButton);
+            _nextButton.AddToClassList(WDropDownStyleLoader.ClassNames.PaginationButton);
 
             _paginationContainer.Add(_previousButton);
             _paginationContainer.Add(_pageLabel);
@@ -566,7 +566,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 style = { flexGrow = 1f, marginBottom = 4f },
             };
-            _optionsContainer.AddToClassList(WDropdownStyleLoader.ClassNames.OptionsContainer);
+            _optionsContainer.AddToClassList(WDropDownStyleLoader.ClassNames.OptionsContainer);
             _root.Add(_optionsContainer);
         }
 
@@ -583,7 +583,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     color = new Color(0.7f, 0.7f, 0.7f, 1f),
                 },
             };
-            _noResultsLabel.AddToClassList(WDropdownStyleLoader.ClassNames.NoResults);
+            _noResultsLabel.AddToClassList(WDropDownStyleLoader.ClassNames.NoResults);
             _root.Add(_noResultsLabel);
         }
 
@@ -709,11 +709,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 VisualElement child = _optionsContainer[i];
                 if (i == _focusedOptionIndex)
                 {
-                    child.AddToClassList(WDropdownStyleLoader.ClassNames.OptionFocused);
+                    child.AddToClassList(WDropDownStyleLoader.ClassNames.OptionFocused);
                 }
                 else
                 {
-                    child.RemoveFromClassList(WDropdownStyleLoader.ClassNames.OptionFocused);
+                    child.RemoveFromClassList(WDropDownStyleLoader.ClassNames.OptionFocused);
                 }
             }
         }
@@ -908,20 +908,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 },
             };
 
-            optionButton.AddToClassList(WDropdownStyleLoader.ClassNames.Option);
+            optionButton.AddToClassList(WDropDownStyleLoader.ClassNames.Option);
 
             if (isSelected)
             {
-                optionButton.AddToClassList(WDropdownStyleLoader.ClassNames.OptionSelected);
+                optionButton.AddToClassList(WDropDownStyleLoader.ClassNames.OptionSelected);
             }
 
             optionButton.RegisterCallback<MouseEnterEvent>(_ =>
             {
-                optionButton.AddToClassList(WDropdownStyleLoader.ClassNames.OptionHover);
+                optionButton.AddToClassList(WDropDownStyleLoader.ClassNames.OptionHover);
             });
             optionButton.RegisterCallback<MouseLeaveEvent>(_ =>
             {
-                optionButton.RemoveFromClassList(WDropdownStyleLoader.ClassNames.OptionHover);
+                optionButton.RemoveFromClassList(WDropDownStyleLoader.ClassNames.OptionHover);
             });
 
             return optionButton;

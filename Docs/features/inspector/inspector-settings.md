@@ -25,7 +25,7 @@ The `UnityHelpersSettings` asset provides project-wide configuration for paginat
 **Access in Unity:**
 
 1. Open Project Settings window (`Edit > Project Settings`)
-2. Scroll to "Unity Helpers" section (if available)
+2. Scroll to the "Unity Helpers" section (if available)
 3. Or navigate to `ProjectSettings/UnityHelpersSettings.asset` directly
 
 **Note:** The asset is created automatically on first use. If missing, any inspector feature will generate it.
@@ -129,7 +129,7 @@ public SerializableDictionary<string, GameObject> prefabs;  // Uses Serializable
 **Default:** On  
 **Applies to:** `SerializableSortedSet<T>`
 
-**Description:** Controls whether the manual entry foldout in SerializableSortedSet inspectors animates when expanding or collapsing.
+**Description:** Controls whether the manual entry foldout in SerializableSortedSet inspectors animate when expanding or collapsing.
 
 ---
 
@@ -347,7 +347,7 @@ private void Submit() { }
 
 **Applies to:** `[WGroup]` via the `colorKey` constructor argument  
 **Reserved keys:** `Default`, `Default-Light`, `Default-Dark`, `WDefault`  
-**Description:** Entries store background and header text colors for boxed groups. Reserved keys map to light/dark editor themes, while custom keys let you brand different sections (e.g., `Stats`, `Networking`, `Danger`). Unknown keys are created automatically but editing them here ensures consistent palettes across scenes.  
+**Description:** Entries store background and header text colors for boxed groups. Reserved keys map to light/dark editor themes, while custom keys let you brand different sections (e.g., `Stats`, `Networking`, `Danger`). Unknown keys are created automatically, but editing them here ensures consistent palettes across scenes.  
 **Usage:** Add a key under **WGroup Custom Colors** and reference it: `[WGroup("stats", colorKey: "StatsAccent")]`.
 
 ### WEnumToggleButtonsCustomColors
@@ -412,7 +412,7 @@ EnumToggleButtonsPageSize: 25
 WButtonPageSize: 12
 ```
 
-**Use case:** Large monitors, prefer scrolling over pagination
+**Use case:** Large monitors, scrolling preference over pagination
 
 ---
 
@@ -470,7 +470,7 @@ WButtonHistorySize: 10
 **Solution:**
 
 1. Use any inspector attribute in a script
-2. Select object in inspector
+2. Select an object in the inspector
 3. Asset is created automatically
 4. Check `ProjectSettings/UnityHelpersSettings.asset`
 
@@ -495,7 +495,7 @@ WButtonHistorySize: 10
 **Solution:**
 
 1. Check color key spelling (case-sensitive)
-2. Verify entry exists in appropriate dictionary (WButtonCustomColors, WGroupCustomColors, etc.)
+2. Verify entry exists in the appropriate dictionary (WButtonCustomColors, WGroupCustomColors, etc.)
 3. Ensure colors are set (not transparent/default)
 4. Save settings asset
 

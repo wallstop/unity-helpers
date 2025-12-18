@@ -118,7 +118,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (options.Length > pageSize)
             {
-                DrawPopupDropdown(position, property, label, options, pageSize, dropdownAttribute);
+                DrawPopupDropDown(position, property, label, options, pageSize, dropdownAttribute);
                 return;
             }
 
@@ -212,7 +212,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return Mathf.Min(pageSize, remaining);
         }
 
-        private static void DrawPopupDropdown(
+        private static void DrawPopupDropDown(
             Rect position,
             SerializedProperty property,
             GUIContent label,
@@ -242,7 +242,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 SerializedObject serializedObject = property.serializedObject;
                 string propertyPath = property.propertyPath;
 
-                WDropdownPopupData data = new()
+                WDropDownPopupData data = new()
                 {
                     DisplayLabels = displayLabels,
                     Tooltips = null,
@@ -272,7 +272,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 };
 
                 Rect screenRect = GUIUtility.GUIToScreenRect(fieldRect);
-                WDropdownPopupWindow.Show(screenRect, data);
+                WDropDownPopupWindow.Show(screenRect, data);
             }
 
             EditorGUI.showMixedValue = previousMixed;
@@ -990,7 +990,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 SerializedObject serializedObject = _serializedObject;
-                Undo.RecordObjects(serializedObject.targetObjects, "Change Value Dropdown");
+                Undo.RecordObjects(serializedObject.targetObjects, "Change Value DropDown");
                 serializedObject.Update();
 
                 SerializedProperty prop = serializedObject.FindProperty(_propertyPath);
@@ -1059,7 +1059,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 string propertyPath = property.propertyPath;
                 object[] options = _options;
 
-                WDropdownPopupData data = new()
+                WDropDownPopupData data = new()
                 {
                     DisplayLabels = displayLabels,
                     Tooltips = null,
@@ -1089,7 +1089,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 };
 
                 Rect screenRect = GUIUtility.GUIToScreenRect(controlRect);
-                WDropdownPopupWindow.Show(screenRect, data);
+                WDropDownPopupWindow.Show(screenRect, data);
             }
         }
 
@@ -1132,7 +1132,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             protected override string GetDefaultValue() => string.Empty;
 
-            protected override string UndoActionName => "Change Value Dropdown";
+            protected override string UndoActionName => "Change Value DropDown";
         }
 
         private static float CalculatePopupTargetHeight(int rowsOnPage, bool includePagination)

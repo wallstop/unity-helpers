@@ -115,55 +115,55 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
         /// <inheritdoc cref="WValueDropDownAttribute(Type, object[])" />
         public WValueDropDownAttribute(params bool[] options)
-            : this(typeof(bool), WrapStatic(DropdownValueProvider<bool>.FromList(options))) { }
+            : this(typeof(bool), WrapStatic(DropDownValueProvider<bool>.FromList(options))) { }
 
         /// <inheritdoc cref="WValueDropDownAttribute(Type, object[])" />
         public WValueDropDownAttribute(params char[] options)
-            : this(typeof(char), WrapStatic(DropdownValueProvider<char>.FromList(options))) { }
+            : this(typeof(char), WrapStatic(DropDownValueProvider<char>.FromList(options))) { }
 
         /// <inheritdoc cref="WValueDropDownAttribute(Type, object[])" />
         public WValueDropDownAttribute(params string[] options)
-            : this(typeof(string), WrapStatic(DropdownValueProvider<string>.FromList(options))) { }
+            : this(typeof(string), WrapStatic(DropDownValueProvider<string>.FromList(options))) { }
 
         /// <inheritdoc cref="WValueDropDownAttribute(Type, object[])" />
         public WValueDropDownAttribute(params sbyte[] options)
-            : this(typeof(sbyte), WrapStatic(DropdownValueProvider<sbyte>.FromList(options))) { }
+            : this(typeof(sbyte), WrapStatic(DropDownValueProvider<sbyte>.FromList(options))) { }
 
         /// <inheritdoc cref="WValueDropDownAttribute(Type, object[])" />
         public WValueDropDownAttribute(params byte[] options)
-            : this(typeof(byte), WrapStatic(DropdownValueProvider<byte>.FromList(options))) { }
+            : this(typeof(byte), WrapStatic(DropDownValueProvider<byte>.FromList(options))) { }
 
         /// <inheritdoc cref="WValueDropDownAttribute(Type, object[])" />
         public WValueDropDownAttribute(params short[] options)
-            : this(typeof(short), WrapStatic(DropdownValueProvider<short>.FromList(options))) { }
+            : this(typeof(short), WrapStatic(DropDownValueProvider<short>.FromList(options))) { }
 
         /// <inheritdoc cref="WValueDropDownAttribute(Type, object[])" />
         public WValueDropDownAttribute(params ushort[] options)
-            : this(typeof(ushort), WrapStatic(DropdownValueProvider<ushort>.FromList(options))) { }
+            : this(typeof(ushort), WrapStatic(DropDownValueProvider<ushort>.FromList(options))) { }
 
         /// <inheritdoc cref="WValueDropDownAttribute(Type, object[])" />
         public WValueDropDownAttribute(params int[] options)
-            : this(typeof(int), WrapStatic(DropdownValueProvider<int>.FromList(options))) { }
+            : this(typeof(int), WrapStatic(DropDownValueProvider<int>.FromList(options))) { }
 
         /// <inheritdoc cref="WValueDropDownAttribute(Type, object[])" />
         public WValueDropDownAttribute(params uint[] options)
-            : this(typeof(uint), WrapStatic(DropdownValueProvider<uint>.FromList(options))) { }
+            : this(typeof(uint), WrapStatic(DropDownValueProvider<uint>.FromList(options))) { }
 
         /// <inheritdoc cref="WValueDropDownAttribute(Type, object[])" />
         public WValueDropDownAttribute(params long[] options)
-            : this(typeof(long), WrapStatic(DropdownValueProvider<long>.FromList(options))) { }
+            : this(typeof(long), WrapStatic(DropDownValueProvider<long>.FromList(options))) { }
 
         /// <inheritdoc cref="WValueDropDownAttribute(Type, object[])" />
         public WValueDropDownAttribute(params ulong[] options)
-            : this(typeof(ulong), WrapStatic(DropdownValueProvider<ulong>.FromList(options))) { }
+            : this(typeof(ulong), WrapStatic(DropDownValueProvider<ulong>.FromList(options))) { }
 
         /// <inheritdoc cref="WValueDropDownAttribute(Type, object[])" />
         public WValueDropDownAttribute(params float[] options)
-            : this(typeof(float), WrapStatic(DropdownValueProvider<float>.FromList(options))) { }
+            : this(typeof(float), WrapStatic(DropDownValueProvider<float>.FromList(options))) { }
 
         /// <inheritdoc cref="WValueDropDownAttribute(Type, object[])" />
         public WValueDropDownAttribute(params double[] options)
-            : this(typeof(double), WrapStatic(DropdownValueProvider<double>.FromList(options))) { }
+            : this(typeof(double), WrapStatic(DropDownValueProvider<double>.FromList(options))) { }
 
         /// <summary>
         /// Initializes the attribute using a provider method and infers the option type from its return value.
@@ -197,7 +197,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             }
 
             // First, try to find a static method
-            Func<object[]> staticFactory = DropdownValueProvider.FromMethod(
+            Func<object[]> staticFactory = DropDownValueProvider.FromMethod(
                 providerType,
                 methodName,
                 AttributeName,
@@ -254,7 +254,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         public WValueDropDownAttribute(Type valueType, params object[] options)
             : this(
                 valueType ?? typeof(object),
-                WrapStaticFactory(DropdownValueProvider.FromList(valueType, options, AttributeName))
+                WrapStaticFactory(DropDownValueProvider.FromList(valueType, options, AttributeName))
             ) { }
 
         /// <summary>
@@ -289,7 +289,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             }
 
             // First, try to find a static method
-            Func<object[]> staticFactory = DropdownValueProvider.FromMethod(
+            Func<object[]> staticFactory = DropDownValueProvider.FromMethod(
                 providerType,
                 methodName,
                 valueType,

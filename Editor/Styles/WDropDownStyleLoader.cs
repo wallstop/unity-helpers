@@ -4,18 +4,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Styles
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.UIElements;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// Provides lazy loading and caching of USS stylesheets for dropdown components.
     /// Stylesheets are loaded on first access and cached for the editor session.
     /// </summary>
-    public static class WDropdownStyleLoader
+    public static class WDropDownStyleLoader
     {
-        private const string StylesPath =
-            "Packages/com.wallstop-studios.unity-helpers/Editor/Styles/Dropdowns/";
-        private const string VariablesFileName = "WDropdownVariables.uss";
-        private const string StylesFileName = "WDropdownStyles.uss";
-        private const string LightThemeFileName = "WDropdownLight.uss";
+        private const string StylesRelativePath = "Editor/Styles/DropDowns/";
+        private const string VariablesFileName = "WDropDownVariables.uss";
+        private const string StylesFileName = "WDropDownStyles.uss";
+        private const string LightThemeFileName = "WDropDownLight.uss";
 
         private static StyleSheet _variablesStyleSheet;
         private static StyleSheet _stylesStyleSheet;
@@ -158,21 +158,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Styles
 
         private static StyleSheet LoadStyleSheet(string fileName)
         {
-            string path = StylesPath + fileName;
-            StyleSheet styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(path);
+            // Use DirectoryHelper to resolve the path regardless of package installation location
+            string path = DirectoryHelper.ResolvePackageAssetPath(StylesRelativePath + fileName);
 
-            if (styleSheet == null)
+            StyleSheet styleSheet = null;
+            if (!string.IsNullOrEmpty(path))
             {
-                // Try alternative path formats
-                string altPath =
-                    "Assets/Plugins/WallstopStudios/UnityHelpers/Editor/Styles/Dropdowns/"
-                    + fileName;
-                styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(altPath);
+                styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(path);
             }
 
             if (styleSheet == null)
             {
-                Debug.LogWarning($"[WDropdownStyleLoader] Could not load stylesheet: {path}");
+                Debug.LogWarning(
+                    $"[WDropDownStyleLoader] Could not load stylesheet: '{StylesRelativePath + fileName}' (resolved path: '{path}')"
+                );
             }
 
             return styleSheet;

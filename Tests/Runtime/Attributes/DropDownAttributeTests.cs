@@ -167,10 +167,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
             object[] options = attribute.GetOptions(provider);
             Assert.AreEqual(2, options.Length);
-            Assert.IsInstanceOf<DropdownItem>(options[0]);
-            Assert.AreEqual("Item1_Test", ((DropdownItem)options[0]).Name);
-            Assert.IsInstanceOf<DropdownItem>(options[1]);
-            Assert.AreEqual("Item2_Test", ((DropdownItem)options[1]).Name);
+            Assert.IsInstanceOf<DropDownItem>(options[0]);
+            Assert.AreEqual("Item1_Test", ((DropDownItem)options[0]).Name);
+            Assert.IsInstanceOf<DropDownItem>(options[1]);
+            Assert.AreEqual("Item2_Test", ((DropDownItem)options[1]).Name);
         }
 
         [Test]
@@ -381,10 +381,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
             object[] options = attribute.GetOptions(provider);
             Assert.AreEqual(2, options.Length);
-            Assert.IsInstanceOf<DropdownItem>(options[0]);
-            Assert.AreEqual(expectedItem1, ((DropdownItem)options[0]).Name);
-            Assert.IsInstanceOf<DropdownItem>(options[1]);
-            Assert.AreEqual(expectedItem2, ((DropdownItem)options[1]).Name);
+            Assert.IsInstanceOf<DropDownItem>(options[0]);
+            Assert.AreEqual(expectedItem1, ((DropDownItem)options[0]).Name);
+            Assert.IsInstanceOf<DropDownItem>(options[1]);
+            Assert.AreEqual(expectedItem2, ((DropDownItem)options[1]).Name);
         }
 
         [Test]
@@ -744,13 +744,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 nameof(ValueProviders.GetDropdownItems)
             );
 
-            Assert.AreEqual(typeof(DropdownItem), attribute.ValueType);
+            Assert.AreEqual(typeof(DropDownItem), attribute.ValueType);
             object[] options = attribute.Options;
             Assert.AreEqual(2, options.Length);
-            Assert.IsInstanceOf<DropdownItem>(options[0]);
-            Assert.AreEqual("Alpha", ((DropdownItem)options[0]).Name);
-            Assert.IsInstanceOf<DropdownItem>(options[1]);
-            Assert.AreEqual("Beta", ((DropdownItem)options[1]).Name);
+            Assert.IsInstanceOf<DropDownItem>(options[0]);
+            Assert.AreEqual("Alpha", ((DropDownItem)options[0]).Name);
+            Assert.IsInstanceOf<DropDownItem>(options[1]);
+            Assert.AreEqual("Beta", ((DropDownItem)options[1]).Name);
         }
 
         [Test]
@@ -778,13 +778,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 nameof(ValueProviders.GetDropdownItemArray)
             );
 
-            Assert.AreEqual(typeof(DropdownItem), attribute.ValueType);
+            Assert.AreEqual(typeof(DropDownItem), attribute.ValueType);
             object[] options = attribute.Options;
             Assert.AreEqual(2, options.Length);
-            Assert.IsInstanceOf<DropdownItem>(options[0]);
-            Assert.AreEqual("ArrayAlpha", ((DropdownItem)options[0]).Name);
-            Assert.IsInstanceOf<DropdownItem>(options[1]);
-            Assert.AreEqual("ArrayBeta", ((DropdownItem)options[1]).Name);
+            Assert.IsInstanceOf<DropDownItem>(options[0]);
+            Assert.AreEqual("ArrayAlpha", ((DropDownItem)options[0]).Name);
+            Assert.IsInstanceOf<DropDownItem>(options[1]);
+            Assert.AreEqual("ArrayBeta", ((DropDownItem)options[1]).Name);
         }
 
         [Test]
@@ -840,8 +840,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             Assert.AreEqual(typeof(object), attribute.ValueType);
             object[] options = attribute.Options;
             Assert.AreEqual(2, options.Length);
-            Assert.IsInstanceOf<DropdownItem>(options[0]);
-            Assert.AreEqual("Gamma", ((DropdownItem)options[0]).Name);
+            Assert.IsInstanceOf<DropDownItem>(options[0]);
+            Assert.AreEqual("Gamma", ((DropDownItem)options[0]).Name);
             Assert.AreEqual("Literal", options[1]);
         }
 
@@ -889,7 +889,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
         [TestCase(typeof(ValueProviders), "CompletelyMissing")]
         [TestCase(typeof(ValueProviders), "NonExistentMethod")]
-        [TestCase(typeof(ValueProviders), "GetDropdownItems_Typo")]
+        [TestCase(typeof(ValueProviders), "GetDropDownItems.Typo")]
         public void WValueDropDownMissingMethodLogsErrorWithMethodName(
             Type providerType,
             string methodName
@@ -1011,14 +1011,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 return new[] { (short)1, (short)2, (short)3 };
             }
 
-            public static IEnumerable<DropdownItem> GetDropdownItems()
+            public static IEnumerable<DropDownItem> GetDropdownItems()
             {
-                return new List<DropdownItem> { new("Alpha"), new("Beta") };
+                return new List<DropDownItem> { new("Alpha"), new("Beta") };
             }
 
-            public static DropdownItem[] GetDropdownItemArray()
+            public static DropDownItem[] GetDropdownItemArray()
             {
-                return new[] { new DropdownItem("ArrayAlpha"), new DropdownItem("ArrayBeta") };
+                return new[] { new DropDownItem("ArrayAlpha"), new DropDownItem("ArrayBeta") };
             }
 
             public static List<CustomReference> GetCustomReferences()
@@ -1043,7 +1043,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             public static IEnumerable<object> GetObjectEnumerable()
             {
-                return new List<object> { new DropdownItem("Gamma"), "Literal" };
+                return new List<object> { new DropDownItem("Gamma"), "Literal" };
             }
 
             public static int GetInvalidProvider()
@@ -1058,9 +1058,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             Second,
         }
 
-        private readonly struct DropdownItem
+        private readonly struct DropDownItem
         {
-            public DropdownItem(string name)
+            public DropDownItem(string name)
             {
                 Name = name;
             }
@@ -1117,9 +1117,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         {
             public string Suffix { get; set; } = string.Empty;
 
-            public IEnumerable<DropdownItem> GetItems()
+            public IEnumerable<DropDownItem> GetItems()
             {
-                return new List<DropdownItem> { new($"Item1{Suffix}"), new($"Item2{Suffix}") };
+                return new List<DropDownItem> { new($"Item1{Suffix}"), new($"Item2{Suffix}") };
             }
 
             public float[] GetFloatValues()

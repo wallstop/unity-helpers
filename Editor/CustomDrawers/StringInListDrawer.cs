@@ -40,8 +40,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Dictionary<string, PopupState> PopupStates = new();
         private static readonly Dictionary<int, string> IntToStringCache = new();
         private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
-        private static readonly GUIContent ReusablePaginationLabelContent = new();
-        private static readonly GUIContent ReusableDropdownButtonContent = new();
+        private static readonly GUIContent ReusableDropDownButtonContent = new();
 
         private static string GetCachedIntString(int value)
         {
@@ -120,7 +119,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (options.Length > pageSize)
             {
-                DrawPopupDropdown(position, property, label, options, pageSize, stringInList);
+                DrawPopupDropDown(position, property, label, options, pageSize, stringInList);
                 return;
             }
 
@@ -242,7 +241,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return Mathf.Min(pageSize, remaining);
         }
 
-        private static void DrawPopupDropdown(
+        private static void DrawPopupDropDown(
             Rect position,
             SerializedProperty property,
             GUIContent label,
@@ -262,19 +261,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 attribute,
                 out string tooltip
             );
-            ReusableDropdownButtonContent.text = displayValue;
-            ReusableDropdownButtonContent.tooltip = tooltip;
+            ReusableDropDownButtonContent.text = displayValue;
+            ReusableDropDownButtonContent.tooltip = tooltip;
             if (
                 EditorGUI.DropdownButton(
                     fieldRect,
-                    ReusableDropdownButtonContent,
+                    ReusableDropDownButtonContent,
                     FocusType.Keyboard
                 )
             )
             {
                 string[] displayLabels = GetOptionDisplayArray(attribute, options);
                 string[] tooltips = BuildTooltipsArray(attribute, options);
-                WDropdownPopupWindow.ShowForStringInList(
+                WDropDownPopupWindow.ShowForStringInList(
                     fieldRect,
                     property,
                     options,
@@ -806,7 +805,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 string[] displayLabels = GetOptionDisplayArray(_attribute, _options);
                 string[] tooltips = BuildTooltipsArray(_attribute, _options);
-                WDropdownPopupWindow.ShowForStringInList(
+                WDropDownPopupWindow.ShowForStringInList(
                     controlRect,
                     property,
                     _options,

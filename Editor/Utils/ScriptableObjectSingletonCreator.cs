@@ -339,7 +339,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                 // Clean up empty folders AFTER StopAssetEditing and Refresh
                 // This ensures AssetDatabase operations from duplicate deletion are fully committed
-                if (emptyFolderCandidates != null && emptyFolderCandidates.Count > 0)
+                if (emptyFolderCandidates is { Count: > 0 })
                 {
                     CleanupEmptyFolders(emptyFolderCandidates);
                     AssetDatabase.SaveAssets();
@@ -623,7 +623,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
             // First, recursively clean up any empty subfolders
             string[] subfolders = AssetDatabase.GetSubFolders(normalized);
-            if (subfolders != null && subfolders.Length > 0)
+            if (subfolders is { Length: > 0 })
             {
                 foreach (string subfolder in subfolders)
                 {
@@ -659,7 +659,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 return;
             }
 
-            if (contents != null && contents.Length > 0)
+            if (contents is { Length: > 0 })
             {
                 // Folder has contents - check if they're all in subfolders (which would be non-empty subfolders)
                 bool hasDirectContents = false;
@@ -693,7 +693,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
             // Re-check for subfolders one more time - if any remain, don't delete
             subfolders = AssetDatabase.GetSubFolders(normalized);
-            if (subfolders != null && subfolders.Length > 0)
+            if (subfolders is { Length: > 0 })
             {
                 return;
             }
@@ -1582,7 +1582,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
             // Fallback: try AssetDatabase (may have stale data inside editing scope)
             string[] subFolders = AssetDatabase.GetSubFolders(parent);
-            if (subFolders != null && subFolders.Length > 0)
+            if (subFolders is { Length: > 0 })
             {
                 foreach (string sub in subFolders)
                 {
@@ -1659,7 +1659,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                 // Fallback: try AssetDatabase
                 string[] subs = AssetDatabase.GetSubFolders(current);
-                if (subs != null && subs.Length > 0)
+                if (subs is { Length: > 0 })
                 {
                     foreach (string sub in subs)
                     {

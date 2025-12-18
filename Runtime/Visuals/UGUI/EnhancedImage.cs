@@ -65,12 +65,22 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
     {
         private static readonly int ShapeMaskPropertyID = Shader.PropertyToID("_ShapeMask");
         private static readonly int ColorPropertyID = Shader.PropertyToID("_Color");
+        private static readonly int MainTex = Shader.PropertyToID("_MainTex");
 
         /// <summary>
         /// Stores the dedicated material instance produced by <see cref="UpdateMaterialInstance"/>.
+        /// This is a runtime-only object that doesn't survive domain reloads.
         /// </summary>
         private Material _cachedMaterialInstance;
         internal Material CachedMaterialInstanceForTests => _cachedMaterialInstance;
+
+        /// <summary>
+        /// Stores the original user-assigned material before we replace it with our instance.
+        /// Serialized so we can recreate the material instance after domain reload.
+        /// </summary>
+        [SerializeField]
+        [HideInInspector]
+        private Material _baseMaterial;
 
         /// <summary>
         /// HDR-capable tint applied to the instantiated material. Values above 1 keep their intensity instead of being clamped.
@@ -134,6 +144,15 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
             base.OnValidate();
             UpdateMaterialInstance();
         }
+
+        /// <summary>
+        /// Forces a refresh of the material instance. Used by the Editor to ensure
+        /// changes are immediately reflected when properties are modified.
+        /// </summary>
+        internal void ForceRefreshMaterialInstance()
+        {
+            UpdateMaterialInstance();
+        }
 #endif
 
         /// <summary>
@@ -141,26 +160,83 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
         /// </summary>
         private void UpdateMaterialInstance()
         {
-            Material localMaterial = material;
+            Material currentMaterial = material;
+
+#if UNITY_EDITOR
+            UnityEngine.Debug.Log(
+                $"[EnhancedImage] UpdateMaterialInstance START: material={(currentMaterial != null ? currentMaterial.name : "null")}, _baseMaterial={(_baseMaterial != null ? _baseMaterial.name : "null")}, _cachedMaterialInstance={(_cachedMaterialInstance != null ? _cachedMaterialInstance.name : "null")}"
+            );
+#endif
+
+            // Handle case where our cached instance was destroyed (e.g., domain reload)
+            // but _baseMaterial is still valid. Restore from base material.
+            // This can happen when:
+            // 1. currentMaterial is null (instance was destroyed)
+            // 2. currentMaterial is the default material (Unity reverted to default after instance was destroyed)
+            // In both cases, if we have a valid _baseMaterial, we should restore from it.
+            bool currentIsNullOrDefault =
+                currentMaterial == null || ReferenceEquals(currentMaterial, defaultGraphicMaterial);
+            bool hasValidBaseMaterial =
+                _baseMaterial != null && !ReferenceEquals(_baseMaterial, defaultGraphicMaterial);
+            bool cachedInstanceIsInvalid = _cachedMaterialInstance == null;
+
+            if (currentIsNullOrDefault && hasValidBaseMaterial && cachedInstanceIsInvalid)
+            {
+                currentMaterial = _baseMaterial;
+            }
+
             // Treat the built-in default UI material the same as "no material assigned"
             // so tests that explicitly set material = null do not cause an instance to be created.
-            if (localMaterial == null || ReferenceEquals(localMaterial, defaultGraphicMaterial))
+            // BUT only if we don't have a valid base material to restore from.
+            if (currentMaterial == null || ReferenceEquals(currentMaterial, defaultGraphicMaterial))
             {
                 return;
             }
 
-            // Cleanup old instance if it exists and is different from the base material
-            if (_cachedMaterialInstance != null && _cachedMaterialInstance != localMaterial)
+            // Determine the base material - either a new assignment or our stored reference
+            // If the current material is our cached instance, use the stored base
+            // If it's something else, that's the new base material
+            Material baseMaterial;
+            if (_cachedMaterialInstance != null && currentMaterial == _cachedMaterialInstance)
             {
-                // Destroy immediately to ensure tests and teardown observe a released instance
-                DestroyImmediate(_cachedMaterialInstance);
-                _cachedMaterialInstance = null;
+                // User hasn't changed the material, use stored base
+                baseMaterial = _baseMaterial;
+            }
+            else
+            {
+                // User assigned a new material (or first time setup)
+                baseMaterial = currentMaterial;
+                _baseMaterial = baseMaterial;
+
+                // Cleanup old instance since we have a new base
+                if (_cachedMaterialInstance != null)
+                {
+                    DestroyImmediate(_cachedMaterialInstance);
+                    _cachedMaterialInstance = null;
+                }
+            }
+
+            // Safety check - if base material is null or default, bail
+            if (baseMaterial == null || ReferenceEquals(baseMaterial, defaultGraphicMaterial))
+            {
+                return;
             }
 
             // Create new instance only if we don't have one
             if (_cachedMaterialInstance == null)
             {
-                _cachedMaterialInstance = new Material(localMaterial);
+                _cachedMaterialInstance = new Material(baseMaterial);
+                // Use HideFlags to prevent the instance from being saved to scene/prefab
+                // but allow it to survive within the current editor session.
+                _cachedMaterialInstance.hideFlags = HideFlags.HideAndDontSave;
+            }
+
+            // Copy the sprite's texture to the material's _MainTex.
+            // Unity's Image component provides mainTexture from its sprite.
+            Texture spriteTexture = mainTexture;
+            if (spriteTexture != null && _cachedMaterialInstance.HasProperty(MainTex))
+            {
+                _cachedMaterialInstance.SetTexture(MainTex, spriteTexture);
             }
 
             if (_shapeMask != null)
@@ -173,8 +249,8 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
                     if (fallback != null)
                     {
                         // Preserve commonly used properties when swapping shaders
-                        Texture mainTex = _cachedMaterialInstance.HasProperty("_MainTex")
-                            ? _cachedMaterialInstance.GetTexture("_MainTex")
+                        Texture mainTex = _cachedMaterialInstance.HasProperty(MainTex)
+                            ? _cachedMaterialInstance.GetTexture(MainTex)
                             : null;
                         Color currentColor = _cachedMaterialInstance.HasProperty(ColorPropertyID)
                             ? _cachedMaterialInstance.GetColor(ColorPropertyID)
@@ -184,7 +260,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
 
                         if (mainTex != null)
                         {
-                            _cachedMaterialInstance.SetTexture("_MainTex", mainTex);
+                            _cachedMaterialInstance.SetTexture(MainTex, mainTex);
                         }
                         _cachedMaterialInstance.SetColor(ColorPropertyID, currentColor);
                     }
@@ -196,11 +272,35 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
                 }
             }
 
-            _cachedMaterialInstance.SetColor(
-                ColorPropertyID,
-                _hdrColor.maxColorComponent > 1 ? _hdrColor : color
+            // Always use _hdrColor for the material's color. The "HDR" in the name means
+            // it supports values > 1, not that it should be ignored for standard range colors.
+            _cachedMaterialInstance.SetColor(ColorPropertyID, _hdrColor);
+
+#if UNITY_EDITOR
+            // Debug: Log what color we're setting
+            UnityEngine.Debug.Log(
+                $"[EnhancedImage] UpdateMaterialInstance: _hdrColor={_hdrColor}, color={color}, maxComponent={_hdrColor.maxColorComponent}, material={(_cachedMaterialInstance != null ? _cachedMaterialInstance.name : "null")}"
             );
-            material = _cachedMaterialInstance;
+#endif
+
+            // Assign the material if it changed. When the material reference is already
+            // our cached instance, the base setter exits early without calling SetMaterialDirty.
+            // We need to handle this case explicitly below.
+            bool materialChanged = material != _cachedMaterialInstance;
+            if (materialChanged)
+            {
+                material = _cachedMaterialInstance;
+            }
+
+            // Notify the canvas system that both the material and geometry need updating.
+            // SetAllDirty() triggers layout, geometry, and material rebuilds. This is more
+            // aggressive than SetMaterialDirty() + SetVerticesDirty() but ensures the Canvas
+            // system fully re-reads material properties and rebuilds the mesh.
+            // This is necessary because modifying material properties (via SetColor) doesn't
+            // automatically notify the Canvas system - only assigning a different material
+            // reference would trigger that. Since we're modifying an existing instance,
+            // we must explicitly request the full rebuild.
+            SetAllDirty();
         }
 
         /// <summary>
@@ -214,11 +314,14 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
                 DestroyImmediate(_cachedMaterialInstance);
                 _cachedMaterialInstance = null;
             }
+            _baseMaterial = null;
         }
 
         // Test helpers to avoid reflection
         internal void InvokeStartForTests() => Start();
 
         internal void InvokeOnDestroyForTests() => OnDestroy();
+
+        internal Material BaseMaterialForTests => _baseMaterial;
     }
 }

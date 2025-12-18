@@ -144,39 +144,134 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         public static bool IsRunningInBatchMode => Application.isBatchMode;
 
         /// <summary>
+        /// Environment variable names commonly set by CI systems.
+        /// Use these constants when checking for specific CI environments.
+        /// </summary>
+        public static class CiEnvironmentVariables
+        {
+            /// <summary>Generic CI indicator, set by many CI systems.</summary>
+            public const string Ci = "CI";
+
+            /// <summary>GitHub Actions environment indicator.</summary>
+            public const string GitHubActions = "GITHUB_ACTIONS";
+
+            /// <summary>GitLab CI environment indicator.</summary>
+            public const string GitLabCi = "GITLAB_CI";
+
+            /// <summary>Jenkins URL, set when running in Jenkins.</summary>
+            public const string JenkinsUrl = "JENKINS_URL";
+
+            /// <summary>Travis CI environment indicator.</summary>
+            public const string TravisCi = "TRAVIS";
+
+            /// <summary>CircleCI environment indicator.</summary>
+            public const string CircleCi = "CIRCLECI";
+
+            /// <summary>Azure Pipelines environment indicator.</summary>
+            public const string AzurePipelines = "TF_BUILD";
+
+            /// <summary>TeamCity environment indicator.</summary>
+            public const string TeamCity = "TEAMCITY_VERSION";
+
+            /// <summary>Buildkite environment indicator.</summary>
+            public const string Buildkite = "BUILDKITE";
+
+            /// <summary>AWS CodeBuild environment indicator.</summary>
+            public const string AwsCodeBuild = "CODEBUILD_BUILD_ID";
+
+            /// <summary>Bitbucket Pipelines environment indicator.</summary>
+            public const string BitbucketPipelines = "BITBUCKET_BUILD_NUMBER";
+
+            /// <summary>AppVeyor environment indicator.</summary>
+            public const string AppVeyor = "APPVEYOR";
+
+            /// <summary>Drone CI environment indicator.</summary>
+            public const string DroneCi = "DRONE";
+
+            /// <summary>Unity-specific CI environment indicator.</summary>
+            public const string UnityCi = "UNITY_CI";
+
+            /// <summary>Unity test runner environment indicator.</summary>
+            public const string UnityTests = "UNITY_TESTS";
+
+            /// <summary>
+            /// All environment variable names checked by <see cref="IsRunningInContinuousIntegration"/>.
+            /// </summary>
+            public static readonly string[] All =
+            {
+                Ci,
+                GitHubActions,
+                GitLabCi,
+                JenkinsUrl,
+                TravisCi,
+                CircleCi,
+                AzurePipelines,
+                TeamCity,
+                Buildkite,
+                AwsCodeBuild,
+                BitbucketPipelines,
+                AppVeyor,
+                DroneCi,
+                UnityCi,
+                UnityTests,
+            };
+        }
+
+        /// <summary>
         /// Indicates whether the process appears to be running under a CI system.
         /// </summary>
         /// <remarks>
-        /// Checks common CI environment variables including GITHUB_ACTIONS, CI, JENKINS_URL, and GITLAB_CI.
+        /// <para>
+        /// Checks common CI environment variables including:
+        /// <list type="bullet">
+        /// <item><description>CI (generic, set by many CI systems)</description></item>
+        /// <item><description>GITHUB_ACTIONS (GitHub Actions)</description></item>
+        /// <item><description>GITLAB_CI (GitLab CI)</description></item>
+        /// <item><description>JENKINS_URL (Jenkins)</description></item>
+        /// <item><description>TRAVIS (Travis CI)</description></item>
+        /// <item><description>CIRCLECI (CircleCI)</description></item>
+        /// <item><description>TF_BUILD (Azure Pipelines)</description></item>
+        /// <item><description>TEAMCITY_VERSION (TeamCity)</description></item>
+        /// <item><description>BUILDKITE (Buildkite)</description></item>
+        /// <item><description>CODEBUILD_BUILD_ID (AWS CodeBuild)</description></item>
+        /// <item><description>BITBUCKET_BUILD_NUMBER (Bitbucket Pipelines)</description></item>
+        /// <item><description>APPVEYOR (AppVeyor)</description></item>
+        /// <item><description>DRONE (Drone CI)</description></item>
+        /// <item><description>UNITY_CI (Unity-specific CI)</description></item>
+        /// <item><description>UNITY_TESTS (Unity test runner)</description></item>
+        /// </list>
+        /// </para>
+        /// <para>
+        /// Environment variables are checked on each access. While this involves system calls,
+        /// the overhead is negligible and ensures accurate detection if variables change.
+        /// </para>
         /// </remarks>
         public static bool IsRunningInContinuousIntegration
         {
             get
             {
-                if (
-                    !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"))
-                )
+                foreach (string envVar in CiEnvironmentVariables.All)
                 {
-                    return true;
-                }
-
-                if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CI")))
-                {
-                    return true;
-                }
-
-                if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JENKINS_URL")))
-                {
-                    return true;
-                }
-
-                if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GITLAB_CI")))
-                {
-                    return true;
+                    if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(envVar)))
+                    {
+                        return true;
+                    }
                 }
 
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Checks if a specific environment variable is set to a non-empty, non-whitespace value.
+        /// </summary>
+        /// <param name="environmentVariableName">The name of the environment variable to check.</param>
+        /// <returns>True if the environment variable is set to a non-empty, non-whitespace value; otherwise, false.</returns>
+        public static bool IsEnvironmentVariableSet(string environmentVariableName)
+        {
+            return !string.IsNullOrWhiteSpace(
+                Environment.GetEnvironmentVariable(environmentVariableName)
+            );
         }
 
         internal static string[] AllSpriteLabels { get; private set; } = Array.Empty<string>();

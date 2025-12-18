@@ -13,7 +13,7 @@ Drop-in MonoBehaviour components that solve common game development problems wit
 - [CollisionProxy](#collisionproxy) — Event-based collision detection
 - [CircleLineRenderer](#circlelinerenderer) — Visual circle debugging
 - [MatchTransform](#matchtransform) — Follow another transform
-- [SpriteRendererSync](#spriterenderersyncer) — Mirror sprite renderer state
+- [SpriteRendererSync](#spriterenderersync) — Mirror sprite renderer state
 - [SpriteRendererMetadata](#spriterenderermetadata) — Stacked visual modifications
 - [CenterPointOffset](#centerpointoffset) — Define logical center points
 - [AnimatorEnumStateMachine](#animatorenumstatemachine) — Type-safe animator control
@@ -95,7 +95,7 @@ height = 0
 ### Important Notes
 
 - Updates `transform.localPosition` in Update()
-- Motion is relative to original local position
+- Motion is relative to the original local position
 - Starts from current time offset (unique per instance)
 - Zero allocation per frame
 - Works in 2D and 3D (only affects X and Y)
@@ -168,8 +168,8 @@ Deduplication uses prefab asset path matching.
 ### Spawn Methods
 
 - **Awake**: Spawns before anything else (use for foundational systems)
-- **OnEnable**: Spawns when component enabled (use for dynamic spawning)
-- **Start**: Spawns after all Awake calls (use when dependencies needed)
+- **OnEnable**: Spawns when a component is enabled (use for dynamic spawning)
+- **Start**: Spawns after all Awake calls (use when dependencies are needed)
 
 ### DontDestroyOnLoad
 
@@ -201,7 +201,7 @@ Scene 2 loads: Same ChildSpawner detects existing AnalyticsManager, doesn't spaw
 ✅ **Use for:**
 
 - Composition over inheritance designs
-- Multiple systems reacting to same collision
+- Multiple systems reacting to the same collision
 - Decoupling collision logic from GameObject code
 - Testing collision responses
 - Dynamic behavior attachment/detachment
@@ -279,7 +279,7 @@ analytics.TrackCollision += proxy.OnCollisionEnter;
 
 ## CircleLineRenderer
 
-**What it does:** Visualizes CircleCollider2D with a dynamically-drawn circle using LineRenderer, with randomized appearance for visual variety.
+**What it does:** Visualizes CircleCollider2D with a dynamically drawn circle using LineRenderer, with randomized appearance for visual variety.
 
 **Problem it solves:** Seeing collision bounds at runtime for debugging, or creating dynamic range indicators (ability ranges, explosion radii) without pre-made sprites.
 
@@ -343,7 +343,7 @@ Lower values = more frequent randomization = more visual variety but higher CPU 
 
 **What it does:** Makes one transform follow another with configurable update timing and offset.
 
-**Problem it solves:** Following transforms (UI name plates, camera targets, position constraints) usually requires custom scripts. MatchTransform handles it declaratively.
+**Problem it solves:** Following transforms (UI name plates, camera targets, position constraints) usually require custom scripts. MatchTransform handles it declaratively.
 
 ### When to Use
 
@@ -595,8 +595,8 @@ Material currentMat = metadata.CurrentMaterial;
 - Automatically detects and stores original color/material in `Awake()`
 - Survives enable/disable cycles
 - Priority is determined by push order (last push wins)
-- Cleanup happens automatically when component destroyed
-- If non-owner tries to pop, operation is ignored (defensive)
+- Cleanup happens automatically when a component is destroyed
+- If a non-owner tries to pop, the operation is ignored (defensive)
 
 ---
 
@@ -692,7 +692,7 @@ if (center.spriteUsesOffset)
 
 ### How to Use
 
-**1. Define enum matching your Animator parameters:**
+**1. Define an enum matching your Animator parameters:**
 
 ```csharp
 public enum PlayerState
@@ -704,7 +704,7 @@ public enum PlayerState
 }
 ```
 
-**2. Create state machine:**
+**2. Create the state machine:**
 
 ```csharp
 using WallstopStudios.UnityHelpers.Utils;
@@ -785,7 +785,7 @@ Transitions:
 ❌ **Don't use for:**
 
 - MonoBehaviours (just use StartCoroutine)
-- Short-lived coroutines (might outlive object)
+- Short-lived coroutines (might outlive the object)
 - Frame-perfect timing (singleton has overhead)
 
 ### How to Use
@@ -823,7 +823,7 @@ CoroutineHandler.Instance.StopCoroutine(routine);
 
 **What it does:** Simple component that tracks whether `MonoBehaviour.Start()` has been called.
 
-**Problem it solves:** Sometimes you need to know if initialization (Start) has completed, especially in editor or during complex initialization orders.
+**Problem it solves:** Sometimes you need to know if initialization (Start) has completed, especially in the editor or during complex initialization orders.
 
 ### When to Use
 
@@ -883,13 +883,13 @@ Reduces PolygonCollider2D point count using Douglas-Peucker simplification.
 - **One utility per GameObject**: Don't stack unrelated utilities on the same GameObject
 - **Configure in Awake/Start**: Set properties before first Update
 - **Remove when done**: Disable/destroy utilities that are no longer needed
-- **Test in builds**: Some utilities behave differently in editor vs builds (ChildSpawner)
+- **Test in builds**: Some utilities behave differently in editor vs. builds (ChildSpawner)
 
 ### Performance
 
 - **CircleLineRenderer**: Use sparingly, each instance updates line vertices
 - **SpriteRendererSync**: Updates every LateUpdate, don't use for hundreds of sprites
-- **MatchTransform**: Choose appropriate update mode (FixedUpdate for physics, LateUpdate for camera)
+- **MatchTransform**: Choose an appropriate update mode (FixedUpdate for physics, LateUpdate for camera)
 
 ### Architecture
 

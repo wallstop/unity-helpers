@@ -126,7 +126,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 if (options.Length > pageSize)
                 {
-                    DrawPopupDropdown(
+                    DrawPopupDropDown(
                         position,
                         property,
                         label,
@@ -137,7 +137,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
                 else
                 {
-                    DrawNativeDropdown(position, property, label, options, displayedOptions);
+                    DrawNativeDropDown(position, property, label, options, displayedOptions);
                 }
             }
             finally
@@ -146,7 +146,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static void DrawNativeDropdown(
+        private static void DrawNativeDropDown(
             Rect position,
             SerializedProperty property,
             GUIContent label,
@@ -165,7 +165,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static void DrawPopupDropdown(
+        private static void DrawPopupDropDown(
             Rect position,
             SerializedProperty property,
             GUIContent label,
@@ -198,7 +198,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (GUI.Button(fieldRect, displayValue, EditorStyles.popup))
             {
-                WDropdownPopupWindow.ShowForIntDropDown(
+                WDropDownPopupWindow.ShowForIntDropDown(
                     fieldRect,
                     property,
                     options,
@@ -285,7 +285,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 int pageSize
             )
             {
-                WDropdownPopupWindow.ShowForIntDropDown(
+                WDropDownPopupWindow.ShowForIntDropDown(
                     controlRect,
                     property,
                     _options,

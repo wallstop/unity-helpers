@@ -427,7 +427,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         /// Internal counter to track StartAssetEditing calls.
         /// Unity's AssetDatabase doesn't expose this, so we track it ourselves.
         /// </summary>
-        private static int _assetEditingDepth = 0;
+        private static int _assetEditingDepth;
 
         /// <summary>
         /// Tries to stop asset editing if we're in a batch operation.

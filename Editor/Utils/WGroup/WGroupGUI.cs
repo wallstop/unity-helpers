@@ -370,11 +370,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             EditorGUI.DrawRect(rect, tinted);
         }
 
-        internal static Rect GetContentRect(Rect rect)
-        {
-            return GetContentRect(rect, 0f, 0f, false);
-        }
-
         internal static Rect GetContentRect(
             Rect rect,
             float additionalTopPadding,

@@ -60,19 +60,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Visuals
                 && GUILayout.Button("Incorrect Material Detected - Try Fix?", _impactButtonStyle)
             )
             {
-                string currentPath = DirectoryHelper.GetCallerScriptDirectory();
-                string packagePath = DirectoryHelper.FindPackageRootPath(currentPath);
-                string materialPathFullPath =
-                    $"{packagePath}/Shaders/Materials/BackgroundMask-Material.mat".SanitizePath();
-                string materialRelativePath = DirectoryHelper.AbsoluteToUnityRelativePath(
-                    materialPathFullPath
+                string materialRelativePath = DirectoryHelper.ResolvePackageAssetPath(
+                    "Shaders/Materials/BackgroundMask-Material.mat"
                 );
-                Material defaultMask = AssetDatabase.LoadAssetAtPath<Material>(
-                    materialRelativePath
-                );
+                Material defaultMask = null;
+                if (!string.IsNullOrEmpty(materialRelativePath))
+                {
+                    defaultMask = AssetDatabase.LoadAssetAtPath<Material>(materialRelativePath);
+                }
+
                 if (defaultMask != null)
                 {
+                    Undo.RecordObject(instance, "Fix EnhancedImage Material");
                     instance.material = defaultMask;
+                    // Force immediate material instance creation and color application
+                    instance.ForceRefreshMaterialInstance();
+                    EditorUtility.SetDirty(instance);
                 }
                 else
                 {
@@ -80,6 +83,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Visuals
                 }
             }
 
+            EditorGUI.BeginChangeCheck();
             EditorGUILayout.PropertyField(_hdrColorProperty, new GUIContent("HDR Color"));
             EditorGUILayout.PropertyField(
                 _shapeMaskProperty,
@@ -88,8 +92,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Visuals
                     "Material shader must have an exposed _ShapeMask texture2D property to function. Otherwise, this does nothing."
                 )
             );
+            bool extendedPropertiesChanged = EditorGUI.EndChangeCheck();
 
-            serializedObject.ApplyModifiedProperties();
+            if (extendedPropertiesChanged)
+            {
+                serializedObject.ApplyModifiedProperties();
+                // Force immediate update of the material instance for all targets.
+                // OnValidate() is called by Unity after ApplyModifiedProperties(), but
+                // we also need to ensure the material is refreshed in the Editor view.
+                foreach (Object targetObject in targets)
+                {
+                    if (targetObject is EnhancedImage enhancedImage)
+                    {
+                        enhancedImage.ForceRefreshMaterialInstance();
+                        EditorUtility.SetDirty(enhancedImage);
+                    }
+                }
+                // Repaint to immediately show updated material in Inspector
+                Repaint();
+            }
+
             EditorGUILayout.Space();
 
             serializedObject.Update();

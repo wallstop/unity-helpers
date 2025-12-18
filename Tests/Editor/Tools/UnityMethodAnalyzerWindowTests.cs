@@ -569,6 +569,79 @@ namespace TestNs
             yield return SuccessfulAnalysisResetsUIStateWithFileCount(10);
         }
 
+        [UnityTest]
+        public IEnumerator SuccessfulAnalysisResetsUIStateWithTwentyFiles()
+        {
+            yield return SuccessfulAnalysisResetsUIStateWithFileCount(20);
+        }
+
+        [UnityTest]
+        public IEnumerator SuccessfulAnalysisResetsUIStateWithThirtyFiles()
+        {
+            yield return SuccessfulAnalysisResetsUIStateWithFileCount(30);
+        }
+
+        /// <summary>
+        /// Test that specifically exercises the race condition between the analysis task
+        /// completing and the ContinueWith callback actually running and enqueuing work.
+        /// This validates that WaitForAnalysisCompletion properly waits for the completion
+        /// callback to be processed, not just for the raw task to complete.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CompletionCallbackRaceConditionIsHandled()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            // Create test files
+            WriteTestFile("RaceCallbackTest.cs", "public class RaceCallbackTest { }");
+
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { _tempDir };
+
+            // Set up completion source - this is signaled by FinalizeAnalysis
+            // AFTER HandleAnalysisCompletion runs
+            TaskCompletionSource<bool> tcs = new();
+            window._analysisCompletionSource = tcs;
+
+            // Start analysis
+            window.StartAnalysis();
+
+            // Capture the raw task
+            Task rawTask = window._analysisTask;
+            Assert.IsTrue(rawTask != null, "Analysis task should be set after StartAnalysis");
+
+            // Wait for the raw task to complete (but NOT for the continuation)
+            float startTime = Time.realtimeSinceStartup;
+            while (!rawTask.IsCompleted && (Time.realtimeSinceStartup - startTime) < 10f)
+            {
+                yield return null;
+            }
+
+            Assert.IsTrue(rawTask.IsCompleted, "Raw task should complete");
+
+            // At this point, the raw task is done, but the ContinueWith callback may not have run yet.
+            // The bug was that we'd call FlushMainThreadQueue immediately and find nothing to flush
+            // because the continuation hadn't enqueued its work yet.
+
+            // Verify that WITHOUT proper waiting, the state might not be reset yet
+            // (This is the race condition we're testing)
+            bool immediatelyReset = !window._isAnalyzing;
+
+            // Now use the proper waiting logic that handles the race
+            AnalysisWaitResult result = default;
+            yield return WaitForAnalysisCompletion(window, 10f, r => result = r);
+
+            // After proper waiting, state should definitely be reset
+            Assert.IsFalse(
+                result.IsAnalyzing,
+                $"isAnalyzing should be false after proper wait. ImmediatelyReset: {immediatelyReset}. {result}"
+            );
+            Assert.IsTrue(
+                result.CompletionSourceSignaled,
+                $"Completion source should be signaled after proper wait. {result}"
+            );
+        }
+
         private IEnumerator SuccessfulAnalysisResetsUIStateWithFileCount(int fileCount)
         {
             UnityMethodAnalyzerWindow window = CreateWindow();
@@ -658,6 +731,42 @@ namespace TestNs
                 0f,
                 finalProgress,
                 $"Progress should remain 0 after delayed callbacks. Status: '{finalStatus}', Result: {result}"
+            );
+        }
+
+        /// <summary>
+        /// Test that WaitForAnalysisCompletion works correctly even when _analysisCompletionSource
+        /// is not set. In this case, it should fall back to checking _isAnalyzing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator WaitForAnalysisCompletionWorksWithoutCompletionSource()
+        {
+            UnityMethodAnalyzerWindow window = CreateWindow();
+
+            // Create test file
+            WriteTestFile("NoTCSTest.cs", "public class NoTCSTest { }");
+
+            window._isAnalyzing = false;
+            window._sourcePaths = new List<string> { _tempDir };
+
+            // Explicitly do NOT set _analysisCompletionSource
+            window._analysisCompletionSource = null;
+
+            // Start analysis
+            window.StartAnalysis();
+
+            // Wait for completion - should still work by checking _isAnalyzing
+            AnalysisWaitResult result = default;
+            yield return WaitForAnalysisCompletion(window, 10f, r => result = r);
+
+            // Verify state is reset
+            Assert.IsFalse(
+                result.IsAnalyzing,
+                $"isAnalyzing should be false after completion without TCS. {result}"
+            );
+            Assert.IsFalse(
+                result.CompletionSourceSignaled,
+                $"Completion source should NOT be signaled when null. {result}"
             );
         }
 
@@ -1203,9 +1312,16 @@ namespace LargeTest
 
         /// <summary>
         /// Waits for the analysis to complete and captures diagnostic information.
-        /// First waits for the underlying analysis task, then flushes the main thread queue
-        /// to process the completion callback.
+        /// First waits for the underlying analysis task, then repeatedly flushes
+        /// the main thread queue until the completion callback has been processed.
         /// </summary>
+        /// <remarks>
+        /// The analysis task completion triggers a ContinueWith callback that runs on a
+        /// thread pool thread, which enqueues HandleAnalysisCompletion onto the main thread
+        /// queue. There's a race between the task completing and the ContinueWith callback
+        /// actually running, so we must loop until the completion source is signaled
+        /// (which happens at the end of HandleAnalysisCompletion via FinalizeAnalysis).
+        /// </remarks>
         private IEnumerator WaitForAnalysisCompletion(
             UnityMethodAnalyzerWindow window,
             float maxWaitTime,
@@ -1213,6 +1329,7 @@ namespace LargeTest
         )
         {
             Task analysisTask = window._analysisTask;
+            TaskCompletionSource<bool> tcs = window._analysisCompletionSource;
             float startRealTime = Time.realtimeSinceStartup;
             int frameCount = 0;
 
@@ -1225,7 +1342,7 @@ namespace LargeTest
                 );
             }
 
-            // First, wait for the async analysis task to complete
+            // Phase 1: Wait for the async analysis task to complete
             while (
                 (Time.realtimeSinceStartup - startRealTime) < maxWaitTime
                 && analysisTask != null
@@ -1248,21 +1365,39 @@ namespace LargeTest
                 }
             }
 
+            // Phase 2: Wait for the completion callback to be processed.
+            // The ContinueWith runs on a thread pool thread and enqueues work on the main thread.
+            // We need to repeatedly flush and yield until the completion source is signaled,
+            // which indicates HandleAnalysisCompletion has run and called FinalizeAnalysis.
+            while ((Time.realtimeSinceStartup - startRealTime) < maxWaitTime)
+            {
+                // Flush any pending main thread work
+                UnityMethodAnalyzerWindow.FlushMainThreadQueue();
+
+                // Check if we're done (completion source signaled OR no longer analyzing)
+                bool completionSignaled = tcs != null && tcs.Task.IsCompleted;
+                bool noLongerAnalyzing = !window._isAnalyzing;
+
+                if (completionSignaled || noLongerAnalyzing)
+                {
+                    // Give one more flush to ensure any final callbacks are processed
+                    yield return null;
+                    frameCount++;
+                    UnityMethodAnalyzerWindow.FlushMainThreadQueue();
+                    break;
+                }
+
+                // Yield a frame to allow the ContinueWith callback to execute
+                yield return null;
+                frameCount++;
+            }
+
             float realWaitTime = Time.realtimeSinceStartup - startRealTime;
 
-            // Flush the main thread queue to process the completion callback
-            UnityMethodAnalyzerWindow.FlushMainThreadQueue();
-
-            // Give one more frame for any remaining processing
-            yield return null;
-            frameCount++;
-            UnityMethodAnalyzerWindow.FlushMainThreadQueue();
-
             // Check for task exceptions
-            string taskExceptionMessage = null;
             if (analysisTask != null && analysisTask.IsFaulted && analysisTask.Exception != null)
             {
-                taskExceptionMessage = analysisTask.Exception.GetBaseException().Message;
+                string taskExceptionMessage = analysisTask.Exception.GetBaseException().Message;
                 UnityEngine.Debug.LogError(
                     $"[WaitForAnalysisCompletion] Task faulted with: {taskExceptionMessage}"
                 );
@@ -1275,10 +1410,8 @@ namespace LargeTest
                 FrameCount = frameCount,
                 AnalysisTaskCompleted = analysisTask != null && analysisTask.IsCompleted,
                 AnalysisTaskStatus = analysisTask?.Status ?? TaskStatus.Created,
-                CompletionSourceSignaled =
-                    window._analysisCompletionSource?.Task.IsCompleted ?? false,
-                CompletionSourceStatus =
-                    window._analysisCompletionSource?.Task.Status ?? TaskStatus.Created,
+                CompletionSourceSignaled = tcs?.Task.IsCompleted ?? false,
+                CompletionSourceStatus = tcs?.Task.Status ?? TaskStatus.Created,
                 IsAnalyzing = window._isAnalyzing,
                 Progress = window._analysisProgress,
                 StatusMessage = window._statusMessage,

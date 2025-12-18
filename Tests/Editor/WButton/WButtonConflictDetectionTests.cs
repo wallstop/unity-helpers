@@ -110,10 +110,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
 
             List<WButtonGroupKey> debugToolsGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "Debug Tools")
+                .Keys.Where(k => k._groupName == "Debug Tools")
                 .ToList();
             List<WButtonGroupKey> saveSystemGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "Save System")
+                .Keys.Where(k => k._groupName == "Save System")
                 .ToList();
 
             Assert.That(
@@ -122,7 +122,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 "Should have exactly one Debug Tools group"
             );
             Assert.That(
-                debugToolsGroups[0].GroupPlacement,
+                debugToolsGroups[0]._groupPlacement,
                 Is.EqualTo(WButtonGroupPlacement.Top),
                 "Debug Tools should use explicit Top placement"
             );
@@ -138,7 +138,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 "Should have exactly one Save System group"
             );
             Assert.That(
-                saveSystemGroups[0].GroupPlacement,
+                saveSystemGroups[0]._groupPlacement,
                 Is.EqualTo(WButtonGroupPlacement.Bottom),
                 "Save System should use explicit Bottom placement"
             );
@@ -238,18 +238,18 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 "Should have warning for ConflictGroup with multiple explicit placements"
             );
             Assert.That(
-                warnings["ConflictGroup"].AllGroupPlacements,
+                warnings["ConflictGroup"]._allGroupPlacements,
                 Contains.Item(WButtonGroupPlacement.Top),
                 "Warning should include Top placement"
             );
             Assert.That(
-                warnings["ConflictGroup"].AllGroupPlacements,
+                warnings["ConflictGroup"]._allGroupPlacements,
                 Contains.Item(WButtonGroupPlacement.Bottom),
                 "Warning should include Bottom placement"
             );
             Assert.That(
                 warnings["ConflictGroup"]
-                    .AllGroupPlacements.Contains(WButtonGroupPlacement.UseGlobalSetting),
+                    ._allGroupPlacements.Contains(WButtonGroupPlacement.UseGlobalSetting),
                 Is.False,
                 "Warning should NOT include UseGlobalSetting (it's filtered out)"
             );
@@ -278,7 +278,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
 
             List<WButtonGroupKey> conflictGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "ConflictGroup")
+                .Keys.Where(k => k._groupName == "ConflictGroup")
                 .ToList();
 
             Assert.That(
@@ -287,7 +287,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 "Should have exactly one ConflictGroup"
             );
             Assert.That(
-                conflictGroups[0].GroupPlacement,
+                conflictGroups[0]._groupPlacement,
                 Is.EqualTo(WButtonGroupPlacement.Top),
                 "Group should use first declared placement (Top)"
             );
@@ -385,15 +385,15 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
 
             List<WButtonGroupKey> setupGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "Setup")
+                .Keys.Where(k => k._groupName == "Setup")
                 .ToList();
             List<WButtonGroupKey> cleanupGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "Cleanup")
+                .Keys.Where(k => k._groupName == "Cleanup")
                 .ToList();
 
             Assert.That(setupGroups, Has.Count.EqualTo(1), "Should have exactly one Setup group");
             Assert.That(
-                setupGroups[0].GroupPriority,
+                setupGroups[0]._groupPriority,
                 Is.EqualTo(0),
                 "Setup should use explicit priority 0"
             );
@@ -405,7 +405,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 "Should have exactly one Cleanup group"
             );
             Assert.That(
-                cleanupGroups[0].GroupPriority,
+                cleanupGroups[0]._groupPriority,
                 Is.EqualTo(10),
                 "Cleanup should use explicit priority 10"
             );
@@ -505,18 +505,18 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 "Should have warning for ConflictGroup with multiple explicit priorities"
             );
             Assert.That(
-                warnings["ConflictGroup"].AllGroupPriorities,
+                warnings["ConflictGroup"]._allGroupPriorities,
                 Contains.Item(0),
                 "Warning should include priority 0"
             );
             Assert.That(
-                warnings["ConflictGroup"].AllGroupPriorities,
+                warnings["ConflictGroup"]._allGroupPriorities,
                 Contains.Item(10),
                 "Warning should include priority 10"
             );
             Assert.That(
                 warnings["ConflictGroup"]
-                    .AllGroupPriorities.Contains(WButtonAttribute.NoGroupPriority),
+                    ._allGroupPriorities.Contains(WButtonAttribute.NoGroupPriority),
                 Is.False,
                 "Warning should NOT include NoGroupPriority (it's filtered out)"
             );
@@ -545,7 +545,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
 
             List<WButtonGroupKey> conflictGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "ConflictGroup")
+                .Keys.Where(k => k._groupName == "ConflictGroup")
                 .ToList();
 
             Assert.That(
@@ -554,7 +554,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 "Should have exactly one ConflictGroup"
             );
             Assert.That(
-                conflictGroups[0].GroupPriority,
+                conflictGroups[0]._groupPriority,
                 Is.EqualTo(0),
                 "Group should use first declared priority (0)"
             );
@@ -838,13 +838,13 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Assert.That(warnings.ContainsKey("ConflictGroup"), Is.True);
             Assert.That(
-                warnings["ConflictGroup"].AllGroupPlacements.Count,
+                warnings["ConflictGroup"]._allGroupPlacements.Count,
                 Is.EqualTo(2),
                 "Should only have 2 explicit placements (Top and Bottom)"
             );
             Assert.That(
                 warnings["ConflictGroup"]
-                    .AllGroupPlacements.Contains(WButtonGroupPlacement.UseGlobalSetting),
+                    ._allGroupPlacements.Contains(WButtonGroupPlacement.UseGlobalSetting),
                 Is.False,
                 "UseGlobalSetting should never appear in conflict warnings"
             );
@@ -875,13 +875,13 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Assert.That(warnings.ContainsKey("ConflictGroup"), Is.True);
             Assert.That(
-                warnings["ConflictGroup"].AllGroupPriorities.Count,
+                warnings["ConflictGroup"]._allGroupPriorities.Count,
                 Is.EqualTo(2),
                 "Should only have 2 explicit priorities (0 and 10)"
             );
             Assert.That(
                 warnings["ConflictGroup"]
-                    .AllGroupPriorities.Contains(WButtonAttribute.NoGroupPriority),
+                    ._allGroupPriorities.Contains(WButtonAttribute.NoGroupPriority),
                 Is.False,
                 "NoGroupPriority should never appear in conflict warnings"
             );

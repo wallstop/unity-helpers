@@ -977,7 +977,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return toggleSet;
             }
 
-            ToggleOption[] dropdownOptions = BuildDropdownOptions(property, resolvedFieldInfo);
+            ToggleOption[] dropdownOptions = BuildDropDownOptions(property, resolvedFieldInfo);
             if (dropdownOptions.Length == 0)
             {
                 return ToggleSet.Empty;
@@ -1066,7 +1066,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     object enumValue = Enum.ToObject(toggleSet.ValueType, ReadEnumValue(property));
                     return Equals(enumValue, option.Value);
                 case ToggleSource.Dropdown:
-                    return DropdownValueEquals(property, option.Value);
+                    return DropDownValueEquals(property, option.Value);
                 default:
                     return false;
             }
@@ -1088,7 +1088,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     ApplyEnumOption(property, option);
                     break;
                 case ToggleSource.Dropdown:
-                    ApplyDropdownOption(property, option);
+                    ApplyDropDownOption(property, option);
                     break;
             }
         }
@@ -1222,7 +1222,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return options.ToArray();
         }
 
-        private static ToggleOption[] BuildDropdownOptions(
+        private static ToggleOption[] BuildDropDownOptions(
             SerializedProperty property,
             FieldInfo fieldInfo
         )
@@ -1315,7 +1315,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return columns;
         }
 
-        private static bool DropdownValueEquals(SerializedProperty property, object candidate)
+        private static bool DropDownValueEquals(SerializedProperty property, object candidate)
         {
             switch (property.propertyType)
             {
@@ -1385,7 +1385,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static void ApplyDropdownOption(SerializedProperty property, ToggleOption option)
+        private static void ApplyDropDownOption(SerializedProperty property, ToggleOption option)
         {
             switch (property.propertyType)
             {

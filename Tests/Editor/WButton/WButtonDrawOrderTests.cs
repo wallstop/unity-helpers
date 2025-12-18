@@ -173,18 +173,18 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             keys.Sort();
 
             // Should be sorted by draw order first, then by declaration order
-            Assert.That(keys[0].DrawOrder, Is.EqualTo(-10));
-            Assert.That(keys[1].DrawOrder, Is.EqualTo(-1));
-            Assert.That(keys[2].DrawOrder, Is.EqualTo(0));
-            Assert.That(keys[3].DrawOrder, Is.EqualTo(0));
-            Assert.That(keys[4].DrawOrder, Is.EqualTo(0));
-            Assert.That(keys[5].DrawOrder, Is.EqualTo(5));
+            Assert.That(keys[0]._drawOrder, Is.EqualTo(-10));
+            Assert.That(keys[1]._drawOrder, Is.EqualTo(-1));
+            Assert.That(keys[2]._drawOrder, Is.EqualTo(0));
+            Assert.That(keys[3]._drawOrder, Is.EqualTo(0));
+            Assert.That(keys[4]._drawOrder, Is.EqualTo(0));
+            Assert.That(keys[5]._drawOrder, Is.EqualTo(5));
 
             // Within draw order 0, should be sorted by declaration order
-            int firstZeroIndex = keys.FindIndex(k => k.DrawOrder == 0);
-            Assert.That(keys[firstZeroIndex].DeclarationOrder, Is.EqualTo(0));
-            Assert.That(keys[firstZeroIndex + 1].DeclarationOrder, Is.EqualTo(1));
-            Assert.That(keys[firstZeroIndex + 2].DeclarationOrder, Is.EqualTo(4));
+            int firstZeroIndex = keys.FindIndex(k => k._drawOrder == 0);
+            Assert.That(keys[firstZeroIndex]._declarationOrder, Is.EqualTo(0));
+            Assert.That(keys[firstZeroIndex + 1]._declarationOrder, Is.EqualTo(1));
+            Assert.That(keys[firstZeroIndex + 2]._declarationOrder, Is.EqualTo(4));
         }
 
         [Test]
@@ -564,7 +564,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             groups[xenonKey] = "Xenon content";
 
             // Iterate and verify order is Zebra, Yak, Xenon (not Xenon, Yak, Zebra alphabetically)
-            List<string> groupOrder = groups.Keys.Select(k => k.GroupName).ToList();
+            List<string> groupOrder = groups.Keys.Select(k => k._groupName).ToList();
 
             Assert.That(
                 groupOrder[0],

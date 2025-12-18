@@ -71,7 +71,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
             internal void RequestCancel()
             {
-                if (_cancellationSource != null && !_cancellationSource.IsCancellationRequested)
+                if (_cancellationSource is { IsCancellationRequested: false })
                 {
                     _cancellationSource.Cancel();
                 }
@@ -84,7 +84,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                     return;
                 }
 
-                if (_cancellationSource != null && _cancellationSource.IsCancellationRequested)
+                if (_cancellationSource is { IsCancellationRequested: true })
                 {
                     IsCompleted = true;
                     _onCancelled?.Invoke();

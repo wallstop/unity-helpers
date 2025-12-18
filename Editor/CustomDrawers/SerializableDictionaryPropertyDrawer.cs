@@ -91,10 +91,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             public override int GetHashCode()
             {
-                unchecked
-                {
-                    return ((listKey != null ? listKey.GetHashCode() : 0) * 397) ^ globalIndex;
-                }
+                return Objects.HashCode(listKey, globalIndex);
             }
         }
 

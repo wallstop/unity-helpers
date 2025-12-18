@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         // Manual suppression set by code/tests and automatic suppression inferred from environment/TestRunner
         private static bool _suppressManual;
         private static bool _suppressAuto;
+
         public static bool Suppress
         {
             // Only suppress when explicitly requested or when we know
@@ -28,7 +29,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             {
                 // Suppress only when actually running in non-interactive contexts
                 // such as batch mode, the Unity Test Runner, or CI environments.
-                _suppressAuto = Application.isBatchMode || IsInvokedByTestRunner() || IsCiEnv();
+                _suppressAuto =
+                    Application.isBatchMode
+                    || IsInvokedByTestRunner()
+                    || Helpers.IsRunningInContinuousIntegration;
             }
             catch
             {
@@ -37,14 +41,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
             // Note: We avoid taking a hard compile-time dependency on the TestRunner API here.
             // If you want tighter coupling, set EditorUi.Suppress = true in your test setup.
-        }
-
-        private static bool IsCiEnv()
-        {
-            // Common CI/test env hints
-            return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("UNITY_CI"))
-                || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI"))
-                || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("UNITY_TESTS"));
         }
 
         private static bool IsInvokedByTestRunner()

@@ -7,7 +7,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
 
-    internal static class DropdownValueProvider<T>
+    internal static class DropDownValueProvider<T>
     {
         private static readonly Func<T[]> EmptyFactory = () => Array.Empty<T>();
 
@@ -167,7 +167,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         }
     }
 
-    internal static class DropdownValueProvider
+    internal static class DropDownValueProvider
     {
         private static readonly Func<object[]> EmptyFactory = () => Array.Empty<object>();
 

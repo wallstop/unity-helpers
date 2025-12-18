@@ -99,7 +99,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             BaseField<string> selector = (BaseField<string>)element;
             DropdownField dropdown = selector.Q<DropdownField>();
-            Assert.IsNotNull(dropdown, "Dropdown field was not created.");
+            Assert.IsNotNull(dropdown, "DropDown field was not created.");
             Assert.That(dropdown.value, Is.EqualTo("10"));
 
             InvokeApplySelection(selector, 2);

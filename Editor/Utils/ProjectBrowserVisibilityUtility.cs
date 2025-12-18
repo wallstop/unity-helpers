@@ -30,20 +30,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
         );
 
-        private static bool? visibilityOverride;
-        private static bool cachedVisibility;
-        private static double nextPollTime;
+        private static bool? _visibilityOverride;
+        private static bool _cachedVisibility;
+        private static double _nextPollTime;
 
         static ProjectBrowserVisibilityUtility()
         {
-            cachedVisibility = EvaluateProjectBrowserVisibility();
-            nextPollTime = EditorApplication.timeSinceStartup + PollIntervalSeconds;
+            _cachedVisibility = EvaluateProjectBrowserVisibility();
+            _nextPollTime = EditorApplication.timeSinceStartup + PollIntervalSeconds;
             EditorApplication.update += HandleEditorApplicationUpdate;
         }
 
         internal static void SetProjectBrowserVisibilityForTesting(bool? visible)
         {
-            visibilityOverride = visible;
+            _visibilityOverride = visible;
             if (visible.HasValue)
             {
                 UpdateCachedVisibility(visible.Value);
@@ -56,46 +56,46 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
         internal static bool IsProjectBrowserVisible()
         {
-            if (visibilityOverride.HasValue)
+            if (_visibilityOverride.HasValue)
             {
-                return visibilityOverride.Value;
+                return _visibilityOverride.Value;
             }
 
-            return cachedVisibility;
+            return _cachedVisibility;
         }
 
         private static void HandleEditorApplicationUpdate()
         {
-            if (visibilityOverride.HasValue)
+            if (_visibilityOverride.HasValue)
             {
-                UpdateCachedVisibility(visibilityOverride.Value);
+                UpdateCachedVisibility(_visibilityOverride.Value);
                 return;
             }
 
             double time = EditorApplication.timeSinceStartup;
-            if (time < nextPollTime)
+            if (time < _nextPollTime)
             {
                 return;
             }
 
-            nextPollTime = time + PollIntervalSeconds;
+            _nextPollTime = time + PollIntervalSeconds;
             bool visibility = EvaluateProjectBrowserVisibility();
             UpdateCachedVisibility(visibility);
         }
 
         private static void ForceVisibilityPoll()
         {
-            nextPollTime = 0d;
+            _nextPollTime = 0d;
         }
 
         private static void UpdateCachedVisibility(bool newValue)
         {
-            if (cachedVisibility == newValue)
+            if (_cachedVisibility == newValue)
             {
                 return;
             }
 
-            cachedVisibility = newValue;
+            _cachedVisibility = newValue;
             InternalEditorUtility.RepaintAllViews();
         }
 

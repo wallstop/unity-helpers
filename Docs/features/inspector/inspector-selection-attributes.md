@@ -332,7 +332,7 @@ public int threadCount = 4;
 
 > **Visual Reference**
 >
-> ![IntDropDown with predefined values](../../images/inspector/selection/int-dropdown-basic.png)
+> ![IntDropDown with predefined values](../../images/inspector/selection/int-dropdown-basic.gif)
 >
 > _Integer dropdown showing predefined frame rate options_
 
@@ -365,7 +365,7 @@ public static class FrameRateLibrary
 public int value = 25;  // Not in list! Shows as standard IntField
 ```
 
-**Note:** If current value isn't in the list, falls back to standard IntField for editing.
+**Note:** If the current value isn't in the list, falls back to standard IntField for editing.
 
 ---
 
@@ -385,8 +385,9 @@ public string teamColor = "Red";
 
 > **Visual Reference**
 >
-> ![StringInList with search popup](../../images/inspector/selection/string-in-list-basic.png)
-> _String dropdown with inline popup showing search bar and results_
+> ![StringInList with search popup](../../images/inspector/selection/string-in-list-basic.gif)
+>
+> _String dropdown with an inline popup showing search bar and results_
 
 ---
 
@@ -460,7 +461,8 @@ When the menu contains more entries than the configured limit, clicking the fiel
 > **Visual Reference**
 >
 > ![StringInList search popup](../../images/inspector/selection/string-in-list-search.gif)
-> _Popup window with search box filtering results in real-time_
+>
+> _Popup window with a search box filtering results in real-time_
 
 **Features:**
 

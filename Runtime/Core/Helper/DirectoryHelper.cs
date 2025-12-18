@@ -28,8 +28,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return;
             }
 
+            // Normalize path separators to forward slashes for cross-platform consistency
+            relativeDirectoryPath = relativeDirectoryPath.SanitizePath();
+
 #if UNITY_EDITOR
-            if (!relativeDirectoryPath.StartsWith("Assets/"))
+            // Case-insensitive check for Assets/ prefix to handle Windows paths
+            if (!relativeDirectoryPath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
             {
                 if (relativeDirectoryPath.Equals("Assets", StringComparison.OrdinalIgnoreCase))
                 {
@@ -227,6 +231,174 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
 
             return string.Empty;
+        }
+
+        /// <summary>
+        /// Converts an absolute OS path to a Unity-loadable path that works for Assets, Packages, and Library/PackageCache.
+        /// This method handles:
+        /// <list type="bullet">
+        /// <item><description>Assets/ - Returns the relative path as-is</description></item>
+        /// <item><description>Packages/ - Returns the path prefixed with "Packages/"</description></item>
+        /// <item><description>Library/PackageCache/ - Converts to "Packages/{packageId}/" format</description></item>
+        /// </list>
+        /// </summary>
+        /// <param name="absolutePath">The absolute path to convert.</param>
+        /// <param name="packageId">The package identifier (e.g., "com.wallstop-studios.unity-helpers") used for Library/PackageCache resolution.</param>
+        /// <returns>A Unity-loadable path, or empty string if the path cannot be resolved.</returns>
+        public static string AbsoluteToUnityLoadablePath(string absolutePath, string packageId)
+        {
+            if (string.IsNullOrWhiteSpace(absolutePath))
+            {
+                return string.Empty;
+            }
+
+            absolutePath = absolutePath.SanitizePath();
+
+            // First try the standard Unity relative path (works for Assets/)
+            string relativePath = AbsoluteToUnityRelativePath(absolutePath);
+            if (!string.IsNullOrEmpty(relativePath))
+            {
+                return relativePath;
+            }
+
+            // Check if path is in Library/PackageCache
+            const string packageCacheMarker = "Library/PackageCache/";
+            int packageCacheIndex = absolutePath.IndexOf(
+                packageCacheMarker,
+                StringComparison.OrdinalIgnoreCase
+            );
+            if (packageCacheIndex >= 0)
+            {
+                // Extract the portion after "Library/PackageCache/{packageFolder}/"
+                string afterCache = absolutePath[(packageCacheIndex + packageCacheMarker.Length)..];
+
+                // The package folder may have version suffix like "com.package@1.0.0"
+                // Find the first separator after the package folder name
+                int firstSlash = afterCache.IndexOf('/');
+                if (firstSlash > 0)
+                {
+                    string pathInsidePackage = afterCache[(firstSlash + 1)..];
+                    if (!string.IsNullOrEmpty(packageId))
+                    {
+                        return $"Packages/{packageId}/{pathInsidePackage}";
+                    }
+                }
+
+                return string.Empty;
+            }
+
+            // Check if path already contains "Packages/" segment (embedded packages, local packages)
+            const string packagesMarker = "/Packages/";
+            int packagesIndex = absolutePath.IndexOf(
+                packagesMarker,
+                StringComparison.OrdinalIgnoreCase
+            );
+            if (packagesIndex >= 0)
+            {
+                return "Packages/" + absolutePath[(packagesIndex + packagesMarker.Length)..];
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Resolves a path relative to the package root (identified by package.json) to a Unity-loadable path.
+        /// This method works regardless of where the package is installed (Assets, Packages, or Library/PackageCache).
+        /// </summary>
+        /// <param name="relativePath">The path relative to the package root (e.g., "Editor/Styles/MyStyle.uss").</param>
+        /// <param name="sourceFilePath">Leave as default to use the calling script's path. This parameter is automatically filled by the compiler.</param>
+        /// <returns>A Unity-loadable path that can be used with <c>AssetDatabase.LoadAssetAtPath</c>.</returns>
+        public static string ResolvePackageAssetPath(
+            string relativePath,
+            [CallerFilePath] string sourceFilePath = ""
+        )
+        {
+            if (string.IsNullOrWhiteSpace(relativePath))
+            {
+                return string.Empty;
+            }
+
+            string scriptDirectory = string.IsNullOrWhiteSpace(sourceFilePath)
+                ? string.Empty
+                : Path.GetDirectoryName(sourceFilePath);
+
+            if (string.IsNullOrEmpty(scriptDirectory))
+            {
+                return string.Empty;
+            }
+
+            string packageRootAbsolute = FindPackageRootPath(scriptDirectory);
+            if (string.IsNullOrEmpty(packageRootAbsolute))
+            {
+                return string.Empty;
+            }
+
+            // Read package.json to get the package ID
+            string packageId = ReadPackageIdFromRoot(packageRootAbsolute);
+
+            string targetPathAbsolute = Path.Combine(
+                    packageRootAbsolute,
+                    relativePath.Replace('/', Path.DirectorySeparatorChar)
+                )
+                .SanitizePath();
+
+            return AbsoluteToUnityLoadablePath(targetPathAbsolute, packageId);
+        }
+
+        /// <summary>
+        /// Reads the package ID ("name" field) from a package.json file in the specified directory.
+        /// </summary>
+        /// <param name="packageRootPath">The absolute path to the package root containing package.json.</param>
+        /// <returns>The package ID, or empty string if not found or could not be read.</returns>
+        public static string ReadPackageIdFromRoot(string packageRootPath)
+        {
+            if (string.IsNullOrWhiteSpace(packageRootPath))
+            {
+                return string.Empty;
+            }
+
+            string packageJsonPath = Path.Combine(packageRootPath, "package.json");
+            if (!File.Exists(packageJsonPath))
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                string json = File.ReadAllText(packageJsonPath);
+                // Simple parsing - look for "name": "value"
+                // This avoids dependency on JSON libraries for runtime code
+                const string nameKey = "\"name\"";
+                int nameIndex = json.IndexOf(nameKey, StringComparison.Ordinal);
+                if (nameIndex < 0)
+                {
+                    return string.Empty;
+                }
+
+                int colonIndex = json.IndexOf(':', nameIndex + nameKey.Length);
+                if (colonIndex < 0)
+                {
+                    return string.Empty;
+                }
+
+                int firstQuote = json.IndexOf('"', colonIndex + 1);
+                if (firstQuote < 0)
+                {
+                    return string.Empty;
+                }
+
+                int secondQuote = json.IndexOf('"', firstQuote + 1);
+                if (secondQuote < 0)
+                {
+                    return string.Empty;
+                }
+
+                return json.Substring(firstQuote + 1, secondQuote - firstQuote - 1);
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
     }
 }

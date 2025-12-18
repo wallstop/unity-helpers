@@ -2,7 +2,7 @@
 
 ## Why It Exists
 
-Working with flag-based enums or small enumerated choice sets in Unity's inspector often involves the default dropdown or mask fields. These controls are serviceable but fall short when designers need to reason about combinations, visually scan state, or make rapid bulk changes. Inspired by Odin Inspector's `EnumToggleButtons`, the `WEnumToggleButtonsAttribute` serves as an in-house, dependency-free alternative that keeps the experience inside Unity's default tooling.
+Working with flag-based enums or small enumerated choice sets in Unity's inspector often involves the default dropdown or mask fields. These controls are serviceable but fall short when designers need to reason about combinations, visually scan the state, or make rapid bulk changes. Inspired by Odin Inspector's `EnumToggleButtons`, the `WEnumToggleButtonsAttribute` serves as an in-house, dependency-free alternative that keeps the experience inside Unity's default tooling.
 
 - **Clarity for composite selections:** Individual buttons communicate state far better than a numeric mask value or checked list inside a popup.
 - **Fewer clicks for repetitive workflows:** Quick action buttons enable "All" or "None" operations without diving into menus.

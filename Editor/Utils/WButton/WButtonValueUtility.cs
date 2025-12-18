@@ -14,22 +14,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 
         internal static object CloneValue(object value)
         {
-            if (value is Array array)
+            switch (value)
             {
-                return array.Clone();
-            }
-
-            if (value is AnimationCurve curve)
-            {
-                AnimationCurve clone = new(curve.keys)
+                case Array array:
+                    return array.Clone();
+                case AnimationCurve curve:
                 {
-                    preWrapMode = curve.preWrapMode,
-                    postWrapMode = curve.postWrapMode,
-                };
-                return clone;
+                    AnimationCurve clone = new(curve.keys)
+                    {
+                        preWrapMode = curve.preWrapMode,
+                        postWrapMode = curve.postWrapMode,
+                    };
+                    return clone;
+                }
+                default:
+                    return value;
             }
-
-            return value;
         }
 
         internal static bool ValuesEqual(object left, object right)

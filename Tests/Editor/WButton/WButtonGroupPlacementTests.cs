@@ -299,7 +299,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             List<WButtonGroupKey> conflictGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "ConflictGroup")
+                .Keys.Where(k => k._groupName == "ConflictGroup")
                 .ToList();
 
             Assert.That(
@@ -308,7 +308,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 "Should have exactly one 'ConflictGroup'"
             );
             Assert.That(
-                conflictGroups[0].GroupPlacement,
+                conflictGroups[0]._groupPlacement,
                 Is.EqualTo(WButtonGroupPlacement.Top),
                 "Group should use first declared placement (Top)"
             );
@@ -348,17 +348,17 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 "Should have warning for ConflictGroup"
             );
             Assert.That(
-                warnings["ConflictGroup"].CanonicalGroupPlacement,
+                warnings["ConflictGroup"]._canonicalGroupPlacement,
                 Is.EqualTo(WButtonGroupPlacement.Top),
                 "Warning should indicate canonical placement is Top"
             );
             Assert.That(
-                warnings["ConflictGroup"].AllGroupPlacements,
+                warnings["ConflictGroup"]._allGroupPlacements,
                 Contains.Item(WButtonGroupPlacement.Top),
                 "Warning should include Top placement"
             );
             Assert.That(
-                warnings["ConflictGroup"].AllGroupPlacements,
+                warnings["ConflictGroup"]._allGroupPlacements,
                 Contains.Item(WButtonGroupPlacement.Bottom),
                 "Warning should include Bottom placement"
             );
@@ -386,7 +386,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             List<WButtonGroupKey> conflictGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "ConflictGroup")
+                .Keys.Where(k => k._groupName == "ConflictGroup")
                 .ToList();
 
             Assert.That(
@@ -395,7 +395,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 "Should have exactly one 'ConflictGroup'"
             );
             Assert.That(
-                conflictGroups[0].GroupPlacement,
+                conflictGroups[0]._groupPlacement,
                 Is.EqualTo(WButtonGroupPlacement.Bottom),
                 "Group should use first declared placement (Bottom)"
             );
@@ -424,18 +424,18 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
 
             List<WButtonGroupKey> topGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "TopGroup")
+                .Keys.Where(k => k._groupName == "TopGroup")
                 .ToList();
             List<WButtonGroupKey> bottomGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "BottomGroup")
+                .Keys.Where(k => k._groupName == "BottomGroup")
                 .ToList();
             List<WButtonGroupKey> defaultGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "DefaultGroup")
+                .Keys.Where(k => k._groupName == "DefaultGroup")
                 .ToList();
 
             Assert.That(topGroups, Has.Count.EqualTo(1), "Should have TopGroup");
             Assert.That(
-                topGroups[0].GroupPlacement,
+                topGroups[0]._groupPlacement,
                 Is.EqualTo(WButtonGroupPlacement.Top),
                 "TopGroup should have Top placement"
             );
@@ -443,7 +443,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Assert.That(bottomGroups, Has.Count.EqualTo(1), "Should have BottomGroup");
             Assert.That(
-                bottomGroups[0].GroupPlacement,
+                bottomGroups[0]._groupPlacement,
                 Is.EqualTo(WButtonGroupPlacement.Bottom),
                 "BottomGroup should have Bottom placement"
             );
@@ -455,7 +455,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Assert.That(defaultGroups, Has.Count.EqualTo(1), "Should have DefaultGroup");
             Assert.That(
-                defaultGroups[0].GroupPlacement,
+                defaultGroups[0]._groupPlacement,
                 Is.EqualTo(WButtonGroupPlacement.UseGlobalSetting),
                 "DefaultGroup should have UseGlobalSetting placement"
             );
@@ -483,18 +483,18 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
 
-            WButtonGroupKey group0 = groupCounts.Keys.First(k => k.GroupName == "Group0");
-            WButtonGroupKey group5 = groupCounts.Keys.First(k => k.GroupName == "Group5");
-            WButtonGroupKey group10 = groupCounts.Keys.First(k => k.GroupName == "Group10");
+            WButtonGroupKey group0 = groupCounts.Keys.First(k => k._groupName == "Group0");
+            WButtonGroupKey group5 = groupCounts.Keys.First(k => k._groupName == "Group5");
+            WButtonGroupKey group10 = groupCounts.Keys.First(k => k._groupName == "Group10");
             WButtonGroupKey groupNoPriority = groupCounts.Keys.First(k =>
-                k.GroupName == "GroupNoPriority"
+                k._groupName == "GroupNoPriority"
             );
 
-            Assert.That(group0.GroupPriority, Is.EqualTo(0), "Group0 should have priority 0");
-            Assert.That(group5.GroupPriority, Is.EqualTo(5), "Group5 should have priority 5");
-            Assert.That(group10.GroupPriority, Is.EqualTo(10), "Group10 should have priority 10");
+            Assert.That(group0._groupPriority, Is.EqualTo(0), "Group0 should have priority 0");
+            Assert.That(group5._groupPriority, Is.EqualTo(5), "Group5 should have priority 5");
+            Assert.That(group10._groupPriority, Is.EqualTo(10), "Group10 should have priority 10");
             Assert.That(
-                groupNoPriority.GroupPriority,
+                groupNoPriority._groupPriority,
                 Is.EqualTo(WButtonAttribute.NoGroupPriority),
                 "GroupNoPriority should have NoGroupPriority"
             );
@@ -538,12 +538,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             List<WButtonGroupKey> conflictGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "ConflictGroup")
+                .Keys.Where(k => k._groupName == "ConflictGroup")
                 .ToList();
 
             Assert.That(conflictGroups, Has.Count.EqualTo(1), "Should have one ConflictGroup");
             Assert.That(
-                conflictGroups[0].GroupPriority,
+                conflictGroups[0]._groupPriority,
                 Is.EqualTo(0),
                 "Group should use first declared priority (0)"
             );
@@ -578,17 +578,17 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 "Should have warning for ConflictGroup"
             );
             Assert.That(
-                warnings["ConflictGroup"].CanonicalGroupPriority,
+                warnings["ConflictGroup"]._canonicalGroupPriority,
                 Is.EqualTo(0),
                 "Warning should indicate canonical priority is 0"
             );
             Assert.That(
-                warnings["ConflictGroup"].AllGroupPriorities,
+                warnings["ConflictGroup"]._allGroupPriorities,
                 Contains.Item(0),
                 "Warning should include priority 0"
             );
             Assert.That(
-                warnings["ConflictGroup"].AllGroupPriorities,
+                warnings["ConflictGroup"]._allGroupPriorities,
                 Contains.Item(10),
                 "Warning should include priority 10"
             );
@@ -616,7 +616,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             List<WButtonGroupKey> ungroupedKeys = groupCounts
-                .Keys.Where(k => string.IsNullOrEmpty(k.GroupName))
+                .Keys.Where(k => string.IsNullOrEmpty(k._groupName))
                 .ToList();
 
             Assert.That(
@@ -628,12 +628,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             foreach (WButtonGroupKey key in ungroupedKeys)
             {
                 Assert.That(
-                    key.GroupPlacement,
+                    key._groupPlacement,
                     Is.EqualTo(WButtonGroupPlacement.UseGlobalSetting),
                     "Ungrouped buttons should have UseGlobalSetting placement regardless of attribute value"
                 );
                 Assert.That(
-                    key.GroupPriority,
+                    key._groupPriority,
                     Is.EqualTo(WButtonAttribute.NoGroupPriority),
                     "Ungrouped buttons should have NoGroupPriority regardless of attribute value"
                 );
@@ -663,20 +663,22 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
 
             WButtonGroupKey highPriorityTop = groupCounts.Keys.First(k =>
-                k.GroupName == "HighPriorityTop"
+                k._groupName == "HighPriorityTop"
             );
             WButtonGroupKey lowPriorityTop = groupCounts.Keys.First(k =>
-                k.GroupName == "LowPriorityTop"
+                k._groupName == "LowPriorityTop"
             );
-            WButtonGroupKey bottomGroup = groupCounts.Keys.First(k => k.GroupName == "BottomGroup");
+            WButtonGroupKey bottomGroup = groupCounts.Keys.First(k =>
+                k._groupName == "BottomGroup"
+            );
 
             Assert.That(
-                highPriorityTop.GroupPriority,
+                highPriorityTop._groupPriority,
                 Is.EqualTo(0),
                 "HighPriorityTop should have priority 0"
             );
             Assert.That(
-                lowPriorityTop.GroupPriority,
+                lowPriorityTop._groupPriority,
                 Is.EqualTo(10),
                 "LowPriorityTop should have priority 10"
             );
@@ -687,12 +689,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             );
 
             Assert.That(
-                highPriorityTop.GroupPlacement,
+                highPriorityTop._groupPlacement,
                 Is.EqualTo(WButtonGroupPlacement.Top),
                 "HighPriorityTop should have Top placement"
             );
             Assert.That(
-                bottomGroup.GroupPlacement,
+                bottomGroup._groupPlacement,
                 Is.EqualTo(WButtonGroupPlacement.Bottom),
                 "BottomGroup should have Bottom placement"
             );

@@ -66,7 +66,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             // Assert: Should have exactly one group for "Setup"
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             List<WButtonGroupKey> setupGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "Setup")
+                .Keys.Where(k => k._groupName == "Setup")
                 .ToList();
 
             Assert.That(setupGroups, Has.Count.EqualTo(1), "Should have exactly one 'Setup' group");
@@ -99,10 +99,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             // Assert: The group should use draw order -21 (from Initialize, first declared)
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
-            WButtonGroupKey setupGroup = groupCounts.Keys.First(k => k.GroupName == "Setup");
+            WButtonGroupKey setupGroup = groupCounts.Keys.First(k => k._groupName == "Setup");
 
             Assert.That(
-                setupGroup.DrawOrder,
+                setupGroup._drawOrder,
                 Is.EqualTo(-21),
                 "Group should use draw order -21 from first declared button (Initialize)"
             );
@@ -134,10 +134,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Assert.That(warnings, Contains.Key("Setup"), "Should have warning for Setup group");
             WButtonGUI.DrawOrderConflictInfo conflict = warnings["Setup"];
-            Assert.That(conflict.CanonicalDrawOrder, Is.EqualTo(-21));
-            Assert.That(conflict.AllDrawOrders, Contains.Item(-21));
-            Assert.That(conflict.AllDrawOrders, Contains.Item(-2));
-            Assert.That(conflict.AllDrawOrders, Has.Count.EqualTo(2));
+            Assert.That(conflict._canonicalDrawOrder, Is.EqualTo(-21));
+            Assert.That(conflict._allDrawOrders, Contains.Item(-21));
+            Assert.That(conflict._allDrawOrders, Contains.Item(-2));
+            Assert.That(conflict._allDrawOrders, Has.Count.EqualTo(2));
         }
 
         [Test]
@@ -163,7 +163,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             // Assert
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             List<WButtonGroupKey> actionsGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "Actions")
+                .Keys.Where(k => k._groupName == "Actions")
                 .ToList();
 
             Assert.That(
@@ -200,9 +200,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             // Assert: Should use draw order 5 from FirstAction (first declared)
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
-            WButtonGroupKey actionsGroup = groupCounts.Keys.First(k => k.GroupName == "Actions");
+            WButtonGroupKey actionsGroup = groupCounts.Keys.First(k => k._groupName == "Actions");
 
-            Assert.That(actionsGroup.DrawOrder, Is.EqualTo(5));
+            Assert.That(actionsGroup._drawOrder, Is.EqualTo(5));
         }
 
         [Test]
@@ -231,10 +231,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Assert.That(warnings, Contains.Key("Actions"));
             WButtonGUI.DrawOrderConflictInfo conflict = warnings["Actions"];
-            Assert.That(conflict.AllDrawOrders, Contains.Item(5));
-            Assert.That(conflict.AllDrawOrders, Contains.Item(-10));
-            Assert.That(conflict.AllDrawOrders, Contains.Item(100));
-            Assert.That(conflict.AllDrawOrders, Has.Count.EqualTo(3));
+            Assert.That(conflict._allDrawOrders, Contains.Item(5));
+            Assert.That(conflict._allDrawOrders, Contains.Item(-10));
+            Assert.That(conflict._allDrawOrders, Contains.Item(100));
+            Assert.That(conflict._allDrawOrders, Has.Count.EqualTo(3));
         }
 
         [Test]
@@ -268,10 +268,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
 
             List<WButtonGroupKey> groupAKeys = groupCounts
-                .Keys.Where(k => k.GroupName == "GroupA")
+                .Keys.Where(k => k._groupName == "GroupA")
                 .ToList();
             List<WButtonGroupKey> groupBKeys = groupCounts
-                .Keys.Where(k => k.GroupName == "GroupB")
+                .Keys.Where(k => k._groupName == "GroupB")
                 .ToList();
 
             Assert.That(groupAKeys, Has.Count.EqualTo(1), "Should have exactly one GroupA");
@@ -312,16 +312,16 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             // Assert
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
 
-            WButtonGroupKey groupA = groupCounts.Keys.First(k => k.GroupName == "GroupA");
-            WButtonGroupKey groupB = groupCounts.Keys.First(k => k.GroupName == "GroupB");
+            WButtonGroupKey groupA = groupCounts.Keys.First(k => k._groupName == "GroupA");
+            WButtonGroupKey groupB = groupCounts.Keys.First(k => k._groupName == "GroupB");
 
             Assert.That(
-                groupA.DrawOrder,
+                groupA._drawOrder,
                 Is.EqualTo(0),
                 "GroupA should use draw order 0 from FirstA"
             );
             Assert.That(
-                groupB.DrawOrder,
+                groupB._drawOrder,
                 Is.EqualTo(-5),
                 "GroupB should use draw order -5 from FirstB"
             );
@@ -353,8 +353,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Assert.That(warnings, Contains.Key("GroupA"));
             Assert.That(warnings, Contains.Key("GroupB"));
-            Assert.That(warnings["GroupA"].AllDrawOrders, Has.Count.EqualTo(3)); // 0, 10, -3
-            Assert.That(warnings["GroupB"].AllDrawOrders, Has.Count.EqualTo(2)); // -5, -20
+            Assert.That(warnings["GroupA"]._allDrawOrders, Has.Count.EqualTo(3)); // 0, 10, -3
+            Assert.That(warnings["GroupB"]._allDrawOrders, Has.Count.EqualTo(2)); // -5, -20
         }
 
         [Test]
@@ -389,14 +389,14 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             // Setup group should have 2 buttons merged
             List<WButtonGroupKey> setupGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "Setup")
+                .Keys.Where(k => k._groupName == "Setup")
                 .ToList();
             Assert.That(setupGroups, Has.Count.EqualTo(1));
             Assert.That(groupCounts[setupGroups[0]], Is.EqualTo(2));
 
             // Ungrouped buttons should remain separate (empty group name)
             List<WButtonGroupKey> ungroupedGroups = groupCounts
-                .Keys.Where(k => string.IsNullOrEmpty(k.GroupName))
+                .Keys.Where(k => string.IsNullOrEmpty(k._groupName))
                 .ToList();
 
             // Should have 2 separate ungrouped groups (draw order 0 and -5)
@@ -433,7 +433,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             // Assert: Each ungrouped button should be in its own group
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             List<WButtonGroupKey> ungroupedGroups = groupCounts
-                .Keys.Where(k => string.IsNullOrEmpty(k.GroupName))
+                .Keys.Where(k => string.IsNullOrEmpty(k._groupName))
                 .ToList();
 
             Assert.That(
@@ -449,7 +449,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             }
 
             // Verify the draw orders are different
-            HashSet<int> drawOrders = new(ungroupedGroups.Select(k => k.DrawOrder));
+            HashSet<int> drawOrders = new(ungroupedGroups.Select(k => k._drawOrder));
             Assert.That(drawOrders, Has.Count.EqualTo(3));
         }
 
@@ -475,10 +475,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             // Assert: Should use draw order 10, not -10 (even though -10 is numerically lower)
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
-            WButtonGroupKey testGroup = groupCounts.Keys.First(k => k.GroupName == "Test");
+            WButtonGroupKey testGroup = groupCounts.Keys.First(k => k._groupName == "Test");
 
             Assert.That(
-                testGroup.DrawOrder,
+                testGroup._drawOrder,
                 Is.EqualTo(10),
                 "Should use draw order 10 from first declared button, not -10"
             );
@@ -507,12 +507,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             // Assert
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             List<WButtonGroupKey> extremeGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "Extreme")
+                .Keys.Where(k => k._groupName == "Extreme")
                 .ToList();
 
             Assert.That(extremeGroups, Has.Count.EqualTo(1));
             Assert.That(groupCounts[extremeGroups[0]], Is.EqualTo(3));
-            Assert.That(extremeGroups[0].DrawOrder, Is.EqualTo(int.MinValue));
+            Assert.That(extremeGroups[0]._drawOrder, Is.EqualTo(int.MinValue));
         }
 
         [Test]
@@ -540,9 +540,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 WButtonGUI.GetConflictingDrawOrderWarnings();
 
             Assert.That(warnings, Contains.Key("Extreme"));
-            Assert.That(warnings["Extreme"].AllDrawOrders, Contains.Item(int.MinValue));
-            Assert.That(warnings["Extreme"].AllDrawOrders, Contains.Item(int.MaxValue));
-            Assert.That(warnings["Extreme"].AllDrawOrders, Contains.Item(0));
+            Assert.That(warnings["Extreme"]._allDrawOrders, Contains.Item(int.MinValue));
+            Assert.That(warnings["Extreme"]._allDrawOrders, Contains.Item(int.MaxValue));
+            Assert.That(warnings["Extreme"]._allDrawOrders, Contains.Item(0));
         }
 
         [Test]
@@ -572,11 +572,11 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             WButtonGroupKey crossGroup = groupCounts.Keys.First(k =>
-                k.GroupName == "CrossPlacement"
+                k._groupName == "CrossPlacement"
             );
 
             Assert.That(
-                crossGroup.DrawOrder,
+                crossGroup._drawOrder,
                 Is.EqualTo(0),
                 "Should use draw order 0 (top placement)"
             );
@@ -616,21 +616,21 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             Assert.That(
                 drawnTop,
                 Is.True,
-                $"Group with UseGlobalSetting should render at Top when globalPlacementIsTop=true. Groups: {string.Join(", ", WButtonGUI.GetGroupCountsForTesting().Keys.Select(k => $"{k.GroupName}:{k.GroupPlacement}"))}"
+                $"Group with UseGlobalSetting should render at Top when globalPlacementIsTop=true. Groups: {string.Join(", ", WButtonGUI.GetGroupCountsForTesting().Keys.Select(k => $"{k._groupName}:{k._groupPlacement}"))}"
             );
 
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             WButtonGroupKey crossGroup = groupCounts.Keys.First(k =>
-                k.GroupName == "CrossPlacement"
+                k._groupName == "CrossPlacement"
             );
 
             Assert.That(
-                crossGroup.DrawOrder,
+                crossGroup._drawOrder,
                 Is.EqualTo(-5),
                 "Should use draw order -5 from first declared button"
             );
             Assert.That(
-                crossGroup.GroupPlacement,
+                crossGroup._groupPlacement,
                 Is.EqualTo(WButtonGroupPlacement.UseGlobalSetting),
                 "GroupPlacement should be UseGlobalSetting (default)"
             );
@@ -674,7 +674,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             // But group should still work correctly
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             List<WButtonGroupKey> noConflictGroups = groupCounts
-                .Keys.Where(k => k.GroupName == "NoConflict")
+                .Keys.Where(k => k._groupName == "NoConflict")
                 .ToList();
 
             Assert.That(noConflictGroups, Has.Count.EqualTo(1));
@@ -769,9 +769,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             // Assert
             Dictionary<WButtonGroupKey, string> groupNames = WButtonGUI.GetGroupNamesForTesting();
-            WButtonGroupKey setupKey = groupNames.Keys.FirstOrDefault(k => k.GroupName == "Setup");
+            WButtonGroupKey setupKey = groupNames.Keys.FirstOrDefault(k => k._groupName == "Setup");
 
-            Assert.That(setupKey.GroupName, Is.Not.Null);
+            Assert.That(setupKey._groupName, Is.Not.Null);
             Assert.That(groupNames[setupKey], Is.EqualTo("Setup"));
         }
 
@@ -807,7 +807,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             Assert.That(
                 anyDrawn,
                 Is.True,
-                $"Buttons must always be rendered. Groups found: {string.Join(", ", WButtonGUI.GetGroupCountsForTesting().Keys.Select(k => $"{k.GroupName}:{k.DrawOrder}:{k.GroupPlacement}"))}"
+                $"Buttons must always be rendered. Groups found: {string.Join(", ", WButtonGUI.GetGroupCountsForTesting().Keys.Select(k => $"{k._groupName}:{k._drawOrder}:{k._groupPlacement}"))}"
             );
 
             // Verify both buttons are accessible
@@ -963,19 +963,19 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             Assert.That(
                 drawnTop,
                 Is.True,
-                $"Group with UseGlobalSetting must render at Top when globalPlacementIsTop=true. Groups: {string.Join(", ", WButtonGUI.GetGroupCountsForTesting().Keys.Select(k => $"{k.GroupName}:{k.DrawOrder}:{k.GroupPlacement}"))}"
+                $"Group with UseGlobalSetting must render at Top when globalPlacementIsTop=true. Groups: {string.Join(", ", WButtonGUI.GetGroupCountsForTesting().Keys.Select(k => $"{k._groupName}:{k._drawOrder}:{k._groupPlacement}"))}"
             );
 
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
-            WButtonGroupKey setupGroup = groupCounts.Keys.First(k => k.GroupName == "Setup");
+            WButtonGroupKey setupGroup = groupCounts.Keys.First(k => k._groupName == "Setup");
 
             Assert.That(
-                setupGroup.DrawOrder,
+                setupGroup._drawOrder,
                 Is.EqualTo(-21),
                 "Canonical drawOrder should be -21 from first declared button"
             );
             Assert.That(
-                setupGroup.GroupPlacement,
+                setupGroup._groupPlacement,
                 Is.EqualTo(WButtonGroupPlacement.UseGlobalSetting),
                 "GroupPlacement should be UseGlobalSetting (default)"
             );
@@ -1014,9 +1014,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             WButtonGUI.DrawOrderConflictInfo conflict = warnings["Setup"];
 
             // Should contain both draw orders: -21 and -2
-            Assert.That(conflict.AllDrawOrders, Contains.Item(-21));
-            Assert.That(conflict.AllDrawOrders, Contains.Item(-2));
-            Assert.That(conflict.AllDrawOrders.Count, Is.EqualTo(2));
+            Assert.That(conflict._allDrawOrders, Contains.Item(-21));
+            Assert.That(conflict._allDrawOrders, Contains.Item(-2));
+            Assert.That(conflict._allDrawOrders.Count, Is.EqualTo(2));
         }
 
         [Test]
@@ -1046,7 +1046,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             WButtonGUI.DrawOrderConflictInfo conflict = warnings["Setup"];
 
             // Canonical draw order should be -21 (from Initialize, first declared)
-            Assert.That(conflict.CanonicalDrawOrder, Is.EqualTo(-21));
+            Assert.That(conflict._canonicalDrawOrder, Is.EqualTo(-21));
         }
 
         [Test]
@@ -1080,7 +1080,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             // Assert: Each ungrouped button should be in its own group
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             List<WButtonGroupKey> ungroupedKeys = groupCounts
-                .Keys.Where(k => string.IsNullOrEmpty(k.GroupName))
+                .Keys.Where(k => string.IsNullOrEmpty(k._groupName))
                 .ToList();
 
             // Should have 3 separate groups (one per button)
@@ -1179,10 +1179,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             );
 
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
-            WButtonGroupKey testGroup = groupCounts.Keys.First(k => k.GroupName == "Test");
+            WButtonGroupKey testGroup = groupCounts.Keys.First(k => k._groupName == "Test");
 
             Assert.That(
-                testGroup.DrawOrder,
+                testGroup._drawOrder,
                 Is.EqualTo(10),
                 "Should use first declared button's drawOrder (10), not lowest (-10)"
             );
@@ -1213,11 +1213,11 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
             WButtonGroupKey crossGroup = groupCounts.Keys.First(k =>
-                k.GroupName == "CrossPlacement"
+                k._groupName == "CrossPlacement"
             );
 
             Assert.That(
-                crossGroup.DrawOrder,
+                crossGroup._drawOrder,
                 Is.EqualTo(-5),
                 "Should use first declared button's drawOrder (-5), not highest (0)"
             );
@@ -1254,18 +1254,18 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             // Get the groups and verify they are sorted
             Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
-            List<WButtonGroupKey> sortedKeys = groupCounts.Keys.OrderBy(k => k.DrawOrder).ToList();
+            List<WButtonGroupKey> sortedKeys = groupCounts.Keys.OrderBy(k => k._drawOrder).ToList();
 
             // Verify that iteration order matches draw order sorting
             int previousDrawOrder = int.MinValue;
             foreach (WButtonGroupKey key in sortedKeys)
             {
                 Assert.That(
-                    key.DrawOrder,
+                    key._drawOrder,
                     Is.GreaterThanOrEqualTo(previousDrawOrder),
                     "Groups should be sorted by drawOrder in ascending order"
                 );
-                previousDrawOrder = key.DrawOrder;
+                previousDrawOrder = key._drawOrder;
             }
         }
 
@@ -1351,7 +1351,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 drawn,
                 Is.EqualTo(expectedDrawn),
                 $"With globalPlacementIsTop={globalPlacementIsTop} and placementToTry={placementToTry}, drawn should be {expectedDrawn}. "
-                    + $"Groups found: {string.Join(", ", WButtonGUI.GetGroupCountsForTesting().Keys.Select(k => $"{k.GroupName}:{k.DrawOrder}:{k.GroupPlacement}"))}"
+                    + $"Groups found: {string.Join(", ", WButtonGUI.GetGroupCountsForTesting().Keys.Select(k => $"{k._groupName}:{k._drawOrder}:{k._groupPlacement}"))}"
             );
         }
 

@@ -19,7 +19,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
     {
         private const float ButtonWidth = 24f;
         private const float PaginationButtonHeight = 20f;
-        private const float DropdownBottomPadding = 6f;
+        private const float DropDownBottomPadding = 6f;
         private const float NoResultsVerticalPadding = 6f;
         private const float NoResultsHorizontalPadding = 6f;
 
@@ -123,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
         /// <summary>
         /// Gets the undo action name for selection changes.
         /// </summary>
-        protected virtual string UndoActionName => "Change Dropdown Selection";
+        protected virtual string UndoActionName => "Change DropDown Selection";
 
         private static VisualElement CreateInputElement(out VisualElement element)
         {
@@ -141,7 +141,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
             _lastResolvedPageSize = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
             _suggestionOptionIndex = -1;
 
-            WDropdownStyleLoader.ApplyStyles(this);
+            WDropDownStyleLoader.ApplyStyles(this);
 
             AddToClassList("unity-base-field");
             AddToClassList("unity-base-field__aligned");
@@ -165,16 +165,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
                     paddingLeft = 0f,
                 },
             };
-            _searchRow.AddToClassList(WDropdownStyleLoader.ClassNames.SearchContainer);
+            _searchRow.AddToClassList(WDropDownStyleLoader.ClassNames.SearchContainer);
 
             VisualElement searchWrapper = new()
             {
                 style = { flexGrow = 1f, position = Position.Relative },
             };
-            searchWrapper.AddToClassList(WDropdownStyleLoader.ClassNames.SearchWrapper);
+            searchWrapper.AddToClassList(WDropDownStyleLoader.ClassNames.SearchWrapper);
 
-            _searchField = new TextField { name = "DropdownSearch", style = { flexGrow = 1f } };
-            _searchField.AddToClassList(WDropdownStyleLoader.ClassNames.Search);
+            _searchField = new TextField { name = "DropDownSearch", style = { flexGrow = 1f } };
+            _searchField.AddToClassList(WDropDownStyleLoader.ClassNames.Search);
             _searchField.RegisterValueChangedCallback(OnSearchChanged);
             _searchField.RegisterCallback<KeyDownEvent>(OnSearchKeyDown);
             searchWrapper.Add(_searchField);
@@ -184,7 +184,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
                 text = "Clear",
                 style = { marginLeft = 4f },
             };
-            _clearButton.AddToClassList(WDropdownStyleLoader.ClassNames.ClearButton);
+            _clearButton.AddToClassList(WDropDownStyleLoader.ClassNames.ClearButton);
             _clearButton.SetEnabled(false);
 
             _paginationContainer = new VisualElement
@@ -197,7 +197,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
                     display = DisplayStyle.None,
                 },
             };
-            _paginationContainer.AddToClassList(WDropdownStyleLoader.ClassNames.Pagination);
+            _paginationContainer.AddToClassList(WDropDownStyleLoader.ClassNames.Pagination);
 
             _previousButton = new Button(OnPreviousPage)
             {
@@ -212,7 +212,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
                 },
             };
             _previousButton.AddToClassList("unity-toolbar-button");
-            _previousButton.AddToClassList(WDropdownStyleLoader.ClassNames.PaginationButton);
+            _previousButton.AddToClassList(WDropDownStyleLoader.ClassNames.PaginationButton);
 
             _pageLabel = new Label
             {
@@ -227,7 +227,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
                     alignSelf = Align.Center,
                 },
             };
-            _pageLabel.AddToClassList(WDropdownStyleLoader.ClassNames.PaginationLabel);
+            _pageLabel.AddToClassList(WDropDownStyleLoader.ClassNames.PaginationLabel);
 
             _nextButton = new Button(OnNextPage)
             {
@@ -241,7 +241,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
                 },
             };
             _nextButton.AddToClassList("unity-toolbar-button");
-            _nextButton.AddToClassList(WDropdownStyleLoader.ClassNames.PaginationButton);
+            _nextButton.AddToClassList(WDropDownStyleLoader.ClassNames.PaginationButton);
 
             _paginationContainer.Add(_previousButton);
             _paginationContainer.Add(_pageLabel);
@@ -265,7 +265,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
                 },
                 pickingMode = PickingMode.Ignore,
             };
-            _suggestionHintLabel.AddToClassList(WDropdownStyleLoader.ClassNames.Suggestion);
+            _suggestionHintLabel.AddToClassList(WDropDownStyleLoader.ClassNames.Suggestion);
             baseInput.Add(_suggestionHintLabel);
 
             _dropdown = new DropdownField
@@ -276,12 +276,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
                     flexGrow = 1f,
                     marginLeft = 0f,
                     paddingLeft = 0f,
-                    marginBottom = DropdownBottomPadding,
+                    marginBottom = DropDownBottomPadding,
                 },
                 label = string.Empty,
             };
             _dropdown.labelElement.style.display = DisplayStyle.None;
-            _dropdown.RegisterValueChangedCallback(OnDropdownValueChanged);
+            _dropdown.RegisterValueChangedCallback(OnDropDownValueChanged);
             baseInput.Add(_dropdown);
 
             _noResultsLabel = new Label("No results match the current search.")
@@ -299,7 +299,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
                 },
             };
             _noResultsLabel.AddToClassList("unity-help-box");
-            _noResultsLabel.AddToClassList(WDropdownStyleLoader.ClassNames.NoResults);
+            _noResultsLabel.AddToClassList(WDropDownStyleLoader.ClassNames.NoResults);
             baseInput.Add(_noResultsLabel);
 
             // Note: Search visibility is initialized by derived classes calling InitializeSearchVisibility()
@@ -439,7 +439,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
             UpdateFromProperty();
         }
 
-        private void OnDropdownValueChanged(ChangeEvent<string> evt)
+        private void OnDropDownValueChanged(ChangeEvent<string> evt)
         {
             string newValue = evt.newValue;
             if (string.IsNullOrEmpty(newValue))
@@ -496,7 +496,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
             int filteredCount = hasSearch ? _filteredIndices.Count : OptionCount;
             if (filteredCount == 0)
             {
-                ToggleDropdownVisibility(false);
+                ToggleDropDownVisibility(false);
                 _pageChoices.Clear();
                 _dropdown.choices = _pageChoices;
                 _dropdown.SetValueWithoutNotify(string.Empty);
@@ -511,7 +511,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
             }
 
             _noResultsLabel.style.display = DisplayStyle.None;
-            ToggleDropdownVisibility(true);
+            ToggleDropDownVisibility(true);
 
             int pageCount = CalculatePageCount(pageSize, filteredCount);
             if (selectedOptionIndex >= 0)
@@ -726,7 +726,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
             }
         }
 
-        private void ToggleDropdownVisibility(bool hasResults)
+        private void ToggleDropDownVisibility(bool hasResults)
         {
             if (_dropdown == null)
             {

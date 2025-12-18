@@ -205,10 +205,12 @@ characterImage.Fps = 6f;  // Slow down animation
 
 > **LayeredImage in Action**
 >
-> ![GIF placeholder: LayeredImage showing multi-layer character animation with body, armor, and helmet layers compositing in real-time](../../images/inspector/layered-image-animation.gif)
-> _Character with dynamically composited equipment layers animating at runtime_
+> ![GIF placeholder: LayeredImage showing multi-layer character animation compositing in real-time](../../images/inspector/layered-image-animation.gif)
 >
-> ![GIF placeholder: LayeredImage layer swapping demo showing equipment being changed and animation updating instantly](../../images/inspector/layered-image-layer-swap.gif)
+> _Character with dynamically composited layers animating at runtime_
+>
+> ![GIF placeholder: LayeredImage layer swapping demo showing layers being changed and animation updating instantly](../../images/inspector/layered-image-layer-swap.gif)
+>
 > _Swapping equipment layers at runtime without pre-rendered sprite sheets_
 
 ### How Compositing Works

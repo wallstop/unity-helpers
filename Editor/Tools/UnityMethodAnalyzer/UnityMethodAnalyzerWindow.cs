@@ -1295,6 +1295,49 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 return "Packages" + normalizedPath.Substring(packagesPath.Length);
             }
 
+            // Check if path is in Library/PackageCache (UPM cached packages)
+            string packageCachePath = projectRoot + "/Library/PackageCache";
+            if (normalizedPath.StartsWith(packageCachePath, StringComparison.OrdinalIgnoreCase))
+            {
+                // Extract the portion after Library/PackageCache/
+                string afterCache = normalizedPath.Substring(packageCachePath.Length + 1);
+                // The package folder has version suffix like "com.package@1.0.0"
+                int firstSlash = afterCache.IndexOf('/');
+                if (firstSlash > 0)
+                {
+                    string packageFolderName = afterCache.Substring(0, firstSlash);
+                    string pathInsidePackage = afterCache.Substring(firstSlash + 1);
+                    // Extract package ID by removing version suffix (everything after @)
+                    int atIndex = packageFolderName.IndexOf('@');
+                    string packageId =
+                        atIndex > 0 ? packageFolderName.Substring(0, atIndex) : packageFolderName;
+                    return "Packages/" + packageId + "/" + pathInsidePackage;
+                }
+            }
+
+            // Check for Library/PackageCache marker anywhere in path (handles different root paths)
+            const string packageCacheMarker = "Library/PackageCache/";
+            int cacheIndex = normalizedPath.IndexOf(
+                packageCacheMarker,
+                StringComparison.OrdinalIgnoreCase
+            );
+            if (cacheIndex >= 0)
+            {
+                string afterCache = normalizedPath.Substring(
+                    cacheIndex + packageCacheMarker.Length
+                );
+                int firstSlash = afterCache.IndexOf('/');
+                if (firstSlash > 0)
+                {
+                    string packageFolderName = afterCache.Substring(0, firstSlash);
+                    string pathInsidePackage = afterCache.Substring(firstSlash + 1);
+                    int atIndex = packageFolderName.IndexOf('@');
+                    string packageId =
+                        atIndex > 0 ? packageFolderName.Substring(0, atIndex) : packageFolderName;
+                    return "Packages/" + packageId + "/" + pathInsidePackage;
+                }
+            }
+
             // Check if we can find a matching Packages/* path by looking for package folder markers
             int packagesIndex = normalizedPath.IndexOf(
                 "/Packages/",

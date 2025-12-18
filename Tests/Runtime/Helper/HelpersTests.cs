@@ -27,53 +27,73 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void IsRunningInContinuousIntegrationRespectsEnvironmentVariables()
         {
-            string originalGitHub = Environment.GetEnvironmentVariable("GITHUB_ACTIONS");
-            string originalCi = Environment.GetEnvironmentVariable("CI");
-            string originalJenkins = Environment.GetEnvironmentVariable("JENKINS_URL");
-            string originalGitlab = Environment.GetEnvironmentVariable("GITLAB_CI");
+            // Store original values for all CI environment variables
+            Dictionary<string, string> originalValues = new Dictionary<string, string>();
+            foreach (string envVar in Helpers.CiEnvironmentVariables.All)
+            {
+                originalValues[envVar] = Environment.GetEnvironmentVariable(envVar);
+            }
 
             try
             {
-                Environment.SetEnvironmentVariable("GITHUB_ACTIONS", null);
-                Environment.SetEnvironmentVariable("CI", null);
-                Environment.SetEnvironmentVariable("JENKINS_URL", null);
-                Environment.SetEnvironmentVariable("GITLAB_CI", null);
+                // Clear all CI environment variables
+                foreach (string envVar in Helpers.CiEnvironmentVariables.All)
+                {
+                    Environment.SetEnvironmentVariable(envVar, null);
+                }
 
                 Assert.IsFalse(Helpers.IsRunningInContinuousIntegration);
 
-                Environment.SetEnvironmentVariable("CI", "true");
+                // Test CI (generic)
+                Environment.SetEnvironmentVariable(Helpers.CiEnvironmentVariables.Ci, "true");
                 Assert.IsTrue(Helpers.IsRunningInContinuousIntegration);
+                Environment.SetEnvironmentVariable(Helpers.CiEnvironmentVariables.Ci, null);
 
-                Environment.SetEnvironmentVariable("CI", null);
-                Environment.SetEnvironmentVariable("GITHUB_ACTIONS", "1");
+                // Test GITHUB_ACTIONS
+                Environment.SetEnvironmentVariable(
+                    Helpers.CiEnvironmentVariables.GitHubActions,
+                    "1"
+                );
                 Assert.IsTrue(Helpers.IsRunningInContinuousIntegration);
+                Environment.SetEnvironmentVariable(
+                    Helpers.CiEnvironmentVariables.GitHubActions,
+                    null
+                );
 
-                Environment.SetEnvironmentVariable("GITHUB_ACTIONS", null);
-                Environment.SetEnvironmentVariable("JENKINS_URL", "http://localhost");
+                // Test JENKINS_URL
+                Environment.SetEnvironmentVariable(
+                    Helpers.CiEnvironmentVariables.JenkinsUrl,
+                    "http://localhost"
+                );
                 Assert.IsTrue(Helpers.IsRunningInContinuousIntegration);
+                Environment.SetEnvironmentVariable(Helpers.CiEnvironmentVariables.JenkinsUrl, null);
 
-                Environment.SetEnvironmentVariable("JENKINS_URL", null);
-                Environment.SetEnvironmentVariable("GITLAB_CI", "true");
+                // Test GITLAB_CI
+                Environment.SetEnvironmentVariable(Helpers.CiEnvironmentVariables.GitLabCi, "true");
                 Assert.IsTrue(Helpers.IsRunningInContinuousIntegration);
+                Environment.SetEnvironmentVariable(Helpers.CiEnvironmentVariables.GitLabCi, null);
             }
             finally
             {
-                Environment.SetEnvironmentVariable("GITHUB_ACTIONS", originalGitHub);
-                Environment.SetEnvironmentVariable("CI", originalCi);
-                Environment.SetEnvironmentVariable("JENKINS_URL", originalJenkins);
-                Environment.SetEnvironmentVariable("GITLAB_CI", originalGitlab);
+                // Restore all original values
+                foreach (KeyValuePair<string, string> kvp in originalValues)
+                {
+                    Environment.SetEnvironmentVariable(kvp.Key, kvp.Value);
+                }
             }
         }
 
         [Test]
         public void GetAllSpriteLabelNamesReturnsEmptyWhenBatchOrCi()
         {
-            string originalCi = Environment.GetEnvironmentVariable("CI");
+            string originalCi = Environment.GetEnvironmentVariable(
+                Helpers.CiEnvironmentVariables.Ci
+            );
             string[] cached = Helpers.AllSpriteLabels.ToArray();
 
             try
             {
-                Environment.SetEnvironmentVariable("CI", "true");
+                Environment.SetEnvironmentVariable(Helpers.CiEnvironmentVariables.Ci, "true");
                 Helpers.ResetSpriteLabelCache();
 
                 string[] labels = Helpers.GetAllSpriteLabelNames();
@@ -86,7 +106,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             }
             finally
             {
-                Environment.SetEnvironmentVariable("CI", originalCi);
+                Environment.SetEnvironmentVariable(Helpers.CiEnvironmentVariables.Ci, originalCi);
                 Helpers.SetSpriteLabelCache(cached, alreadySorted: false);
             }
         }

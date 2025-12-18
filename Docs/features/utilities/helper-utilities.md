@@ -16,6 +16,7 @@ Static helper classes and utilities that solve common programming problems witho
 - [Path & File Helpers](#path--file-helpers) — Path resolution, file operations
 - [Scene Helpers](#scene-helpers) — Scene queries and loading
 - [Advanced Utilities](#advanced-utilities) — Null checks, hashing, formatting
+- [Environment Detection](#environment-detection) — CI, batch mode, and runtime environment
 
 ---
 
@@ -910,6 +911,82 @@ var reversed = new ReverseComparer<int>(comparer);
 // Now sorts descending
 list.Sort(reversed);
 ```
+
+---
+
+<a id="environment-detection"></a>
+
+## Environment Detection
+
+### CI/CD Detection
+
+**Detect if running in a CI environment:**
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Helper;
+
+if (Helpers.IsRunningInContinuousIntegration)
+{
+    // Skip interactive dialogs, use defaults
+}
+
+if (Helpers.IsRunningInBatchMode)
+{
+    // Running headless (no graphics device)
+}
+```
+
+**Supported CI systems (checked via environment variables):**
+
+| CI System           | Environment Variable     |
+| ------------------- | ------------------------ |
+| Generic CI          | `CI`                     |
+| GitHub Actions      | `GITHUB_ACTIONS`         |
+| GitLab CI           | `GITLAB_CI`              |
+| Jenkins             | `JENKINS_URL`            |
+| Travis CI           | `TRAVIS`                 |
+| CircleCI            | `CIRCLECI`               |
+| Azure Pipelines     | `TF_BUILD`               |
+| TeamCity            | `TEAMCITY_VERSION`       |
+| Buildkite           | `BUILDKITE`              |
+| AWS CodeBuild       | `CODEBUILD_BUILD_ID`     |
+| Bitbucket Pipelines | `BITBUCKET_BUILD_NUMBER` |
+| AppVeyor            | `APPVEYOR`               |
+| Drone CI            | `DRONE`                  |
+| Unity CI            | `UNITY_CI`               |
+| Unity Tests         | `UNITY_TESTS`            |
+
+**Check specific environment variables:**
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Helper;
+
+// Check if a specific environment variable is set (non-empty, non-whitespace)
+bool onGitHub = Helpers.IsEnvironmentVariableSet(
+    Helpers.CiEnvironmentVariables.GitHubActions
+);
+
+bool onJenkins = Helpers.IsEnvironmentVariableSet(
+    Helpers.CiEnvironmentVariables.JenkinsUrl
+);
+
+// Access all known CI variable names
+foreach (string varName in Helpers.CiEnvironmentVariables.All)
+{
+    if (Helpers.IsEnvironmentVariableSet(varName))
+    {
+        Debug.Log($"CI detected via: {varName}");
+    }
+}
+```
+
+**Use for:**
+
+- Skipping interactive dialogs in CI
+- Disabling expensive editor visualizations
+- Conditional test behavior
+- Build automation scripts
+- Asset processors that shouldn't run headless
 
 ---
 

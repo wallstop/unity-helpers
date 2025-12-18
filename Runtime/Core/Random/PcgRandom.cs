@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
+    using Helper;
     using ProtoBuf;
 
     /// <summary>
@@ -233,7 +234,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override int GetHashCode()
         {
-            return _increment.GetHashCode();
+            return Objects.HashCode(_increment, _state, _cachedGaussian);
         }
 
         public override string ToString()

@@ -170,7 +170,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
-        public void IntDropdownOptionsRespectSelection()
+        public void IntDropDownOptionsRespectSelection()
         {
             ToggleTestAsset asset = CreateScriptableObject<ToggleTestAsset>();
             using SerializedObject serializedObject = new(asset);

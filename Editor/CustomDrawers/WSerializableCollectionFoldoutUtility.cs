@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using System.Reflection;
     using UnityEditor;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
 
     /// <summary>
@@ -120,7 +121,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             public override int GetHashCode()
             {
-                return HashCode.Combine(TargetId, PropertyPath);
+                return Objects.HashCode(TargetId, PropertyPath);
             }
         }
 
