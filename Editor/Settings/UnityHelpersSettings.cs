@@ -1785,6 +1785,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return instance._serializableDictionaryFoldoutTweenEnabled;
         }
 
+        internal static void SetSerializableDictionaryFoldoutTweenEnabled(bool value)
+        {
+            instance._serializableDictionaryFoldoutTweenEnabled = value;
+        }
+
         public static float GetSerializableDictionaryFoldoutSpeed()
         {
             return Mathf.Clamp(
@@ -1797,6 +1802,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public static bool ShouldTweenSerializableSortedDictionaryFoldouts()
         {
             return instance._serializableSortedDictionaryFoldoutTweenEnabled;
+        }
+
+        internal static void SetSerializableSortedDictionaryFoldoutTweenEnabled(bool value)
+        {
+            instance._serializableSortedDictionaryFoldoutTweenEnabled = value;
         }
 
         public static float GetSerializableSortedDictionaryFoldoutSpeed()
@@ -1813,6 +1823,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return instance._serializableSetFoldoutTweenEnabled;
         }
 
+        internal static void SetSerializableSetFoldoutTweenEnabled(bool value)
+        {
+            instance._serializableSetFoldoutTweenEnabled = value;
+        }
+
         public static float GetSerializableSetFoldoutSpeed()
         {
             return Mathf.Clamp(
@@ -1825,6 +1840,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public static bool ShouldTweenSerializableSortedSetFoldouts()
         {
             return instance._serializableSortedSetFoldoutTweenEnabled;
+        }
+
+        internal static void SetSerializableSortedSetFoldoutTweenEnabled(bool value)
+        {
+            instance._serializableSortedSetFoldoutTweenEnabled = value;
         }
 
         public static float GetSerializableSortedSetFoldoutSpeed()
@@ -1865,6 +1885,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public static InlineEditorFoldoutBehavior GetInlineEditorFoldoutBehavior()
         {
             return instance._inlineEditorFoldoutBehavior;
+        }
+
+        internal static void SetInlineEditorFoldoutBehavior(InlineEditorFoldoutBehavior value)
+        {
+            instance._inlineEditorFoldoutBehavior = value;
         }
 
         internal static void RegisterPaletteManualEdit(string propertyPath, string key)

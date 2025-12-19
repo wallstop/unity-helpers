@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 #if UNITY_EDITOR
     using System.Collections;
     using NUnit.Framework;
-    using System.Reflection;
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
@@ -13,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using PropertyAttribute = UnityEngine.PropertyAttribute;
 
     [TestFixture]
@@ -456,12 +456,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         private static void AssignAttribute(PropertyDrawer drawer, PropertyAttribute attribute)
         {
-            FieldInfo attributeField = typeof(PropertyDrawer).GetField(
-                "m_Attribute",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(attributeField, "Unable to locate PropertyDrawer.m_Attribute.");
-            attributeField.SetValue(drawer, attribute);
+            PropertyDrawerTestHelper.AssignAttribute(drawer, attribute);
         }
     }
 #endif

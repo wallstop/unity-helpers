@@ -467,7 +467,7 @@ If you import Zenject/VContainer/Reflex as source code, .unitypackage, or raw DL
 
 - **Install once per scene**
   - Reflex creates a `SceneScope` in each scene. Add `RelationalComponentsInstaller` to the same GameObject (or a child) to bind the relational assigner, run the initial scene scan, and optionally register the additive-scene listener.
-  - Toggles mirror the runtime helpers: include inactive objects, choose scan strategy, and enable additive listening.
+  - Toggles mirror the runtime helpers: include inactive objects, choose the scan strategy, and enable additive listening.
 
 - **Runtime helpers**
   - `_container.InjectWithRelations(existingComponent)` to inject DI fields and hydrate relational attributes on existing objects.
@@ -488,7 +488,7 @@ Notes
 ## Troubleshooting
 
 - Fields remain null in the Inspector
-  - Expected in Edit Mode. These attributes assign at runtime only and are not serialized. Check at runtime or log values.
+  - Expected in Edit Mode. These attributes are assigned at runtime only and are not serialized. They are checked at runtime and log errors if they fail to find a match.
 
 - Nothing assigned at runtime
   - Ensure you call `AssignRelationalComponents()` or the specific `Assign*Components()` in `Awake()` or `OnEnable()`.

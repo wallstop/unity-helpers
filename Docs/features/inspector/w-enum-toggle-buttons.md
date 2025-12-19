@@ -95,5 +95,5 @@ The accompanying test suite exercises:
 ## Tips
 
 - Keep option counts manageable. Toggle groups work best for short lists where a designer can see everything without scrolling.
-- Prefer naming enum members descriptively so the automatic nicified labels remain readable.
+- Prefer naming enum members descriptively so the automatic labels remain readable.
 - Combine with other inspectors (e.g., `WShowIf`) to build adaptive, context-aware authoring tools without sacrificing clarity.

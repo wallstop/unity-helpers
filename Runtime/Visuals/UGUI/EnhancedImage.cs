@@ -162,12 +162,6 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
         {
             Material currentMaterial = material;
 
-#if UNITY_EDITOR
-            UnityEngine.Debug.Log(
-                $"[EnhancedImage] UpdateMaterialInstance START: material={(currentMaterial != null ? currentMaterial.name : "null")}, _baseMaterial={(_baseMaterial != null ? _baseMaterial.name : "null")}, _cachedMaterialInstance={(_cachedMaterialInstance != null ? _cachedMaterialInstance.name : "null")}"
-            );
-#endif
-
             // Handle case where our cached instance was destroyed (e.g., domain reload)
             // but _baseMaterial is still valid. Restore from base material.
             // This can happen when:
@@ -275,13 +269,6 @@ namespace WallstopStudios.UnityHelpers.Visuals.UGUI
             // Always use _hdrColor for the material's color. The "HDR" in the name means
             // it supports values > 1, not that it should be ignored for standard range colors.
             _cachedMaterialInstance.SetColor(ColorPropertyID, _hdrColor);
-
-#if UNITY_EDITOR
-            // Debug: Log what color we're setting
-            UnityEngine.Debug.Log(
-                $"[EnhancedImage] UpdateMaterialInstance: _hdrColor={_hdrColor}, color={color}, maxComponent={_hdrColor.maxColorComponent}, material={(_cachedMaterialInstance != null ? _cachedMaterialInstance.name : "null")}"
-            );
-#endif
 
             // Assign the material if it changed. When the material reference is already
             // our cached instance, the base setter exits early without calling SetMaterialDirty.

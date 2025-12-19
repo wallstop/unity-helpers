@@ -228,6 +228,72 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public readonly Dictionary<List<int>, PooledResource<List<int>>> groupingLeases = new();
             public readonly List<int> animationKeysScratch = new();
             public readonly List<object> groupingKeysScratch = new();
+            private bool _lastHadDuplicates;
+            private int _lastArraySize = -1;
+            private bool _animationsCompleted;
+
+            public bool IsDirty => _lastArraySize < 0;
+
+            public bool IsAnimating => hasDuplicates && !_animationsCompleted;
+
+            public void MarkDirty()
+            {
+                _lastArraySize = -1;
+            }
+
+            public void UpdateArraySize(int newSize)
+            {
+                _lastArraySize = newSize;
+            }
+
+            public void UpdateLastHadDuplicates(bool hadDuplicates, bool forceReset = false)
+            {
+                bool changed = hasDuplicates != _lastHadDuplicates;
+                _lastHadDuplicates = hadDuplicates;
+                if ((changed || forceReset) && hasDuplicates)
+                {
+                    _animationsCompleted = false;
+                }
+            }
+
+            public bool ShouldSkipRefresh(int currentArraySize)
+            {
+                return currentArraySize == _lastArraySize && !_lastHadDuplicates && !hasDuplicates;
+            }
+
+            public void CheckAnimationCompletion(double currentTime, int cycleLimit)
+            {
+                if (_animationsCompleted || !hasDuplicates || cycleLimit <= 0)
+                {
+                    return;
+                }
+
+                double cycleDuration = (2d * Math.PI) / DuplicateShakeFrequency;
+                double maxDuration = cycleDuration * cycleLimit;
+
+                bool allComplete = true;
+                foreach (KeyValuePair<int, double> entry in animationStartTimes)
+                {
+                    double elapsed = currentTime - entry.Value;
+                    if (elapsed < maxDuration)
+                    {
+                        allComplete = false;
+                        break;
+                    }
+                }
+
+                if (allComplete)
+                {
+                    _animationsCompleted = true;
+                }
+            }
+
+            public void ClearAnimationTracking()
+            {
+                _lastHadDuplicates = false;
+                _lastArraySize = -1;
+                animationStartTimes.Clear();
+            }
         }
 
         internal sealed class NullEntryState
@@ -260,12 +326,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public object value;
         }
 
-        private sealed class SetListRenderContext
+        internal sealed class SetListRenderContext
         {
+            public SerializedProperty setProperty;
             public SerializedProperty itemsProperty;
             public DuplicateState duplicateState;
             public NullEntryState nullState;
             public Type elementType;
+            public bool needsDuplicateRefresh;
         }
 
         private readonly struct RowFoldoutKey : IEquatable<RowFoldoutKey>
@@ -399,7 +467,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 if (GUI.Button(clearRect, ClearAllContent, clearStyle) && canClear)
                 {
-                    if (TryClearSet(ref propertyRef, propertyPath, ref itemsPropertyRef))
+                    bool confirmed = EditorUtility.DisplayDialog(
+                        "Clear Set",
+                        "Remove all entries from this set?",
+                        "Clear",
+                        "Cancel"
+                    );
+                    if (
+                        confirmed
+                        && TryClearSet(ref propertyRef, propertyPath, ref itemsPropertyRef)
+                    )
                     {
                         pagination.page = 0;
                         pagination.selectedIndex = -1;
@@ -617,8 +694,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 hasItemsArray = itemsProperty is { isArray: true };
                 totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
                 EnsurePaginationBounds(pagination, totalCount);
-                DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
-                NullEntryState nullState = EvaluateNullEntryState(property, itemsProperty);
+
+                // Check if an element was modified and force duplicate refresh
+                SetListRenderContext renderContext = GetOrCreateListContext(listKey);
+                bool forceRefresh = renderContext.needsDuplicateRefresh;
+                if (forceRefresh)
+                {
+                    renderContext.needsDuplicateRefresh = false;
+                }
+
+                DuplicateState duplicateState = EvaluateDuplicateState(
+                    property,
+                    itemsProperty,
+                    forceRefresh
+                );
+                NullEntryState nullState = EvaluateNullEntryState(
+                    property,
+                    itemsProperty,
+                    forceRefresh
+                );
 
                 if (nullState.hasNullEntries && !string.IsNullOrEmpty(nullState.summary))
                 {
@@ -687,6 +781,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     UpdateListContext(
                         listKey,
+                        property,
                         itemsProperty,
                         duplicateState,
                         nullState,
@@ -938,7 +1033,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             propertyPath = property.propertyPath;
-            UpdateListContext(listKey, itemsProperty, duplicateState, nullState, elementType);
+            UpdateListContext(
+                listKey,
+                property,
+                itemsProperty,
+                duplicateState,
+                nullState,
+                elementType
+            );
             ReorderableList list = GetOrCreateList(
                 listKey,
                 property,
@@ -1050,7 +1152,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 elementType = inspector.ElementType;
             }
-            UpdateListContext(listKey, itemsProperty, duplicateState, nullState, elementType);
+            UpdateListContext(
+                listKey,
+                property,
+                itemsProperty,
+                duplicateState,
+                nullState,
+                elementType
+            );
 
             return GetOrCreateList(
                 listKey,
@@ -1062,7 +1171,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             );
         }
 
-        private SetListRenderContext GetOrCreateListContext(string key)
+        internal SetListRenderContext GetOrCreateListContext(string key)
         {
             if (_listContexts.TryGetValue(key, out SetListRenderContext context))
             {
@@ -1074,7 +1183,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return context;
         }
 
-        private string GetPropertyCacheKey(SerializedProperty property)
+        internal string GetPropertyCacheKey(SerializedProperty property)
         {
             string propertyPath = property?.propertyPath;
             if (
@@ -1290,6 +1399,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private void UpdateListContext(
             string listKey,
+            SerializedProperty setProperty,
             SerializedProperty itemsProperty,
             DuplicateState duplicateState,
             NullEntryState nullState,
@@ -1297,6 +1407,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             SetListRenderContext context = GetOrCreateListContext(listKey);
+            context.setProperty = setProperty;
             context.itemsProperty = itemsProperty;
             context.duplicateState = duplicateState;
             context.nullState = nullState;
@@ -1495,7 +1606,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 : ClearAllInactiveButtonStyle;
             if (GUI.Button(clearRect, ClearAllContent, clearStyle) && canClear)
             {
-                if (TryClearSet(ref propertyRef, propertyPath, ref itemsPropertyRef))
+                bool confirmed = EditorUtility.DisplayDialog(
+                    "Clear Set",
+                    "Remove all entries from this set?",
+                    "Clear",
+                    "Cancel"
+                );
+                if (confirmed && TryClearSet(ref propertyRef, propertyPath, ref itemsPropertyRef))
                 {
                     pagination.page = 0;
                     pagination.selectedIndex = -1;
@@ -2027,8 +2144,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     duplicateExists = inspector.ContainsElement(candidate);
                 }
 
+                // Determine if the value is valid or represents a "danger" state (null object, empty string)
+                string pendingValueString = pending.value as string;
+                bool valueValid = ValueIsValid(elementType, pending.value);
+                bool isBlankStringValue = IsBlankStringValue(elementType, pending.value);
+                bool isNullObjectValue = IsNullUnityObjectValue(elementType, pending.value);
+                bool isDangerValue = isBlankStringValue || isNullObjectValue;
                 bool canCommit =
-                    inspectorAvailable && typeSupported && valueProvided && !duplicateExists;
+                    inspectorAvailable
+                    && typeSupported
+                    && (valueValid || isDangerValue)
+                    && !duplicateExists;
 
                 Rect addRect = new(innerX, innerY, ManualEntryButtonWidth, rowHeight);
                 Rect resetRect = new(
@@ -2043,7 +2169,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 string infoMessage = GetManualEntryInfoMessage(
                     inspectorAvailable,
                     typeSupported,
-                    valueProvided,
+                    valueValid,
+                    isDangerValue,
+                    isBlankStringValue,
+                    isNullObjectValue,
+                    pendingValueString,
                     duplicateExists,
                     elementType
                 );
@@ -2051,7 +2181,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 bool addEnabled = canCommit;
                 using (new EditorGUI.DisabledScope(!addEnabled))
                 {
-                    GUIStyle addStyle = SolidButtonStyles.GetSolidButtonStyle("Add", addEnabled);
+                    // Use "AddEmpty" style for danger values (empty strings, null objects) to show warning
+                    string styleKey =
+                        isDangerValue && addEnabled ? "AddEmpty"
+                        : duplicateExists ? "Overwrite"
+                        : "Add";
+                    GUIStyle addStyle = SolidButtonStyles.GetSolidButtonStyle(styleKey, addEnabled);
                     if (
                         GUI.Button(addRect, ManualEntryAddContent, addStyle)
                         && TryCommitPendingEntry(
@@ -2065,6 +2200,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     )
                     {
                         duplicateExists = false;
+                        GUI.FocusControl(null);
                     }
                 }
 
@@ -2086,6 +2222,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     {
                         ResetPendingEntry(pending, collapseFoldout: false);
                         SyncPendingWrapperValue(pending);
+                        GUI.FocusControl(null);
                     }
                 }
 
@@ -2116,7 +2253,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static string GetManualEntryInfoMessage(
             bool inspectorAvailable,
             bool typeSupported,
-            bool valueProvided,
+            bool valueValid,
+            bool isDangerValue,
+            bool isBlankStringValue,
+            bool isNullObjectValue,
+            string pendingValueString,
             bool duplicateExists,
             Type elementType
         )
@@ -2144,7 +2285,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return builder.ToString();
             }
 
-            if (!valueProvided)
+            if (!valueValid && !isDangerValue)
             {
                 return "Value required.";
             }
@@ -2152,6 +2293,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (duplicateExists)
             {
                 return "Value already exists.";
+            }
+
+            // Show warning messages for danger values
+            if (isBlankStringValue)
+            {
+                string descriptor = string.IsNullOrEmpty(pendingValueString)
+                    ? "empty"
+                    : "whitespace-only";
+                return $"Adding {descriptor} string value.";
+            }
+
+            if (isNullObjectValue)
+            {
+                return "Adding null object reference.";
             }
 
             return string.Empty;
@@ -2475,6 +2630,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     pending.errorMessage
                 );
                 return false;
+            }
+
+            Object[] targets = serializedObject.targetObjects;
+            if (targets.Length > 0)
+            {
+                Undo.RecordObjects(targets, "Add Set Entry");
             }
 
             if (!inspector.TryAddElement(normalizedCandidate, out object normalizedValue))
@@ -3303,6 +3464,64 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return type != null && (!type.IsValueType || typeof(Object).IsAssignableFrom(type));
         }
 
+        /// <summary>
+        /// Determines whether a pending value is strictly valid for the given element type.
+        /// Returns false for null Unity objects, null reference types, and empty strings.
+        /// </summary>
+        internal static bool ValueIsValid(Type elementType, object value)
+        {
+            if (elementType == null)
+            {
+                return false;
+            }
+
+            if (elementType == typeof(string))
+            {
+                return !string.IsNullOrEmpty(value as string);
+            }
+
+            if (typeof(Object).IsAssignableFrom(elementType))
+            {
+                return value is Object obj && obj != null;
+            }
+
+            return value != null || elementType.IsValueType;
+        }
+
+        /// <summary>
+        /// Determines whether the pending value represents a blank (empty or whitespace-only) string.
+        /// Used to show warning-style UI when adding empty/whitespace string values.
+        /// </summary>
+        internal static bool IsBlankStringValue(Type elementType, object value)
+        {
+            if (elementType != typeof(string))
+            {
+                return false;
+            }
+
+            string stringValue = value as string;
+            return string.IsNullOrWhiteSpace(stringValue);
+        }
+
+        /// <summary>
+        /// Determines whether the pending value represents a null Unity object reference.
+        /// Used to show warning-style UI when adding null object references.
+        /// </summary>
+        internal static bool IsNullUnityObjectValue(Type elementType, object value)
+        {
+            if (elementType == null || !typeof(Object).IsAssignableFrom(elementType))
+            {
+                return false;
+            }
+
+            if (value == null)
+            {
+                return true;
+            }
+
+            return value is Object obj && obj == null;
+        }
+
         private static bool ElementSupportsManualSorting(Type elementType)
         {
             if (elementType == null)
@@ -3420,7 +3639,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         internal NullEntryState EvaluateNullEntryState(
             SerializedProperty property,
-            SerializedProperty itemsProperty
+            SerializedProperty itemsProperty,
+            bool force = false
         )
         {
             string key = GetPropertyCacheKey(property);
@@ -3428,16 +3648,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             int currentFrame = Time.frameCount;
             bool alreadyRefreshedThisFrame = _lastNullEntryRefreshFrame == currentFrame;
-            _lastNullEntryRefreshFrame = currentFrame;
 
-            if (alreadyRefreshedThisFrame)
+            if (!force)
             {
-                return state;
+                _lastNullEntryRefreshFrame = currentFrame;
+                if (alreadyRefreshedThisFrame)
+                {
+                    return state;
+                }
             }
 
             bool hasEvent = Event.current != null;
             EventType eventType = hasEvent ? Event.current.type : EventType.Repaint;
-            if (eventType != EventType.Repaint)
+            if (!force && eventType != EventType.Repaint)
             {
                 return state;
             }
@@ -3570,7 +3793,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (!force)
             {
                 _lastDuplicateRefreshFrame = currentFrame;
-                if (alreadyRefreshedThisFrame)
+                if (alreadyRefreshedThisFrame && !state.IsDirty)
                 {
                     return state;
                 }
@@ -3580,7 +3803,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             bool hasEvent = Event.current != null;
             EventType eventType = hasEvent ? Event.current.type : EventType.Repaint;
-            if (!force && eventType != EventType.Repaint)
+            bool shouldRefresh = eventType == EventType.Repaint || state.IsDirty || force;
+
+            if (!shouldRefresh)
             {
                 return state;
             }
@@ -3590,13 +3815,30 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             state.summary = string.Empty;
             state.hasDuplicates = false;
 
-            if (itemsProperty == null || !itemsProperty.isArray || itemsProperty.arraySize <= 1)
+            if (itemsProperty == null || !itemsProperty.isArray)
             {
-                state.animationStartTimes.Clear();
+                state.ClearAnimationTracking();
                 return state;
             }
 
-            int count = itemsProperty.arraySize;
+            int currentArraySize = itemsProperty.arraySize;
+            if (currentArraySize <= 1)
+            {
+                state.UpdateArraySize(currentArraySize);
+                state.animationStartTimes.Clear();
+                state.UpdateLastHadDuplicates(false);
+                return state;
+            }
+
+            if (!force && state.ShouldSkipRefresh(currentArraySize))
+            {
+                state.UpdateArraySize(currentArraySize);
+                return state;
+            }
+
+            state.UpdateArraySize(currentArraySize);
+
+            int count = currentArraySize;
             using PooledResource<StringBuilder> summaryBuilderLease = Buffers.GetStringBuilder(
                 Math.Max(count * 8, 64),
                 out StringBuilder summaryBuilder
@@ -3723,7 +3965,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 state.summary = string.Empty;
             }
 
+            state.UpdateLastHadDuplicates(state.hasDuplicates, forceReset: force);
             ReleaseAllGroupingLists(state);
+
+            if (state.hasDuplicates && animateDuplicates)
+            {
+                int tweenCycleLimit =
+                    UnityHelpersSettings.GetSerializableSetDuplicateTweenCycleLimit();
+                double currentTime = EditorApplication.timeSinceStartup;
+                state.CheckAnimationCompletion(currentTime, tweenCycleLimit);
+
+                if (state.IsAnimating)
+                {
+                    EditorWindow focusedWindow = EditorWindow.focusedWindow;
+                    if (focusedWindow != null)
+                    {
+                        focusedWindow.Repaint();
+                    }
+                }
+            }
 
             return state;
         }
@@ -4264,6 +4524,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
+            SerializedObject serializedObject = property.serializedObject;
+            Object[] targets = serializedObject.targetObjects;
+
             foreach (
                 object candidate in GenerateCandidateValues(elementType, inspector.UniqueCount)
             )
@@ -4273,12 +4536,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     continue;
                 }
 
+                if (targets.Length > 0)
+                {
+                    Undo.RecordObjects(targets, "Add Set Entry");
+                }
+
                 if (!inspector.TryAddElement(candidate, out object normalizedValue))
                 {
                     continue;
                 }
 
-                SerializedObject serializedObject = property.serializedObject;
                 existingValues.Add(normalizedValue);
 
                 Array updated = Array.CreateInstance(elementType, existingValues.Count);
@@ -4339,6 +4606,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             Type elementType = inspector.ElementType;
             SerializedObject serializedObject = property.serializedObject;
+
+            Object[] targets = serializedObject.targetObjects;
+            if (targets.Length > 0)
+            {
+                Undo.RecordObjects(targets, "Add Set Entry");
+            }
 
             Array snapshot = inspector.GetSerializedItemsSnapshot();
             int existingCount = snapshot?.Length ?? inspector.SerializedCount;
@@ -4859,16 +5132,28 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 contentRect.height = Mathf.Max(0f, maxContentBottom - contentRect.y);
             }
+            bool elementChanged = false;
             if (valueSupportsFoldout)
             {
-                DrawSetRowFoldoutValue(contentRect, element, out float renderedHeight);
+                elementChanged = DrawSetRowFoldoutValue(
+                    contentRect,
+                    element,
+                    out float renderedHeight
+                );
                 contentRect.height = renderedHeight;
             }
             else
             {
                 EditorGUI.BeginChangeCheck();
                 EditorGUI.PropertyField(contentRect, element, GUIContent.none, true);
-                EditorGUI.EndChangeCheck();
+                elementChanged = EditorGUI.EndChangeCheck();
+            }
+
+            if (elementChanged)
+            {
+                context.needsDuplicateRefresh = true;
+                MarkListCacheDirty(listKey);
+                RequestRepaint();
             }
 
             if (contentRect.yMax > maxContentBottom)
@@ -4991,6 +5276,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
+            SerializedObject serializedObject = property.serializedObject;
+            Object[] targets = serializedObject.targetObjects;
+            if (targets.Length > 0)
+            {
+                Undo.RecordObjects(targets, "Reorder Set Entries");
+            }
+
             using PooledResource<List<int>> orderedIndicesLease = Buffers<int>.GetList(
                 cache.entries.Count,
                 out List<int> orderedIndices
@@ -5010,7 +5302,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 pagination.selectedIndex = pageStart + relativeSelection;
             }
 
-            SerializedObject serializedObject = property.serializedObject;
             serializedObject.ApplyModifiedProperties();
             SyncRuntimeSet(property);
             serializedObject.Update();
@@ -5095,14 +5386,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return false;
             }
 
+            SerializedObject serializedObject = property.serializedObject;
+            Object[] targets = serializedObject.targetObjects;
+            if (targets.Length > 0)
+            {
+                Undo.RecordObjects(targets, "Clear Set Entries");
+            }
+
             inspector.ClearElements();
             inspector.SynchronizeSerializedState();
-            property.serializedObject.Update();
-            property = property.serializedObject.FindProperty(propertyPath);
+            serializedObject.Update();
+            property = serializedObject.FindProperty(propertyPath);
             itemsProperty = property?.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
             SyncRuntimeSet(property);
+            EvaluateDuplicateState(property, itemsProperty, force: true);
+            EvaluateNullEntryState(property, itemsProperty);
             MarkListCacheDirty(GetPropertyCacheKey(property));
             return true;
         }
@@ -5138,10 +5438,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
+            SerializedObject serializedObject = property.serializedObject;
+            Object[] targets = serializedObject.targetObjects;
+            if (targets.Length > 0)
+            {
+                Undo.RecordObjects(targets, "Move Set Entry");
+            }
+
             itemsProperty.MoveArrayElement(selectedIndex, targetIndex);
             pagination.selectedIndex = targetIndex;
 
-            SerializedObject serializedObject = property.serializedObject;
             serializedObject.ApplyModifiedProperties();
             SyncRuntimeSet(property);
             serializedObject.Update();
@@ -5174,14 +5480,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
+            SerializedObject serializedObject = property.serializedObject;
+            Object[] targets = serializedObject.targetObjects;
+            if (targets.Length > 0)
+            {
+                Undo.RecordObjects(targets, "Remove Set Entry");
+            }
+
             SerializedProperty element = itemsProperty.GetArrayElementAtIndex(targetIndex);
             SetElementData elementData = ReadElementData(element);
             RemoveEntry(itemsProperty, targetIndex);
             RemoveValueFromSet(property, propertyPath, elementData.value);
-            property.serializedObject.ApplyModifiedProperties();
+            serializedObject.ApplyModifiedProperties();
             SyncRuntimeSet(property);
-            property.serializedObject.Update();
-            property = property.serializedObject.FindProperty(propertyPath);
+            serializedObject.Update();
+            property = serializedObject.FindProperty(propertyPath);
             itemsProperty = property.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
@@ -5221,6 +5534,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (!allowSort)
             {
                 return false;
+            }
+
+            SerializedObject serializedObject = property.serializedObject;
+            Object[] targets = serializedObject.targetObjects;
+            if (targets.Length > 0)
+            {
+                Undo.RecordObjects(targets, "Sort Set Entries");
             }
 
             int count = itemsProperty.arraySize;
@@ -6055,6 +6375,51 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return result;
+        }
+
+        internal bool InvokeTryClearSet(
+            ref SerializedProperty property,
+            string propertyPath,
+            ref SerializedProperty itemsProperty
+        )
+        {
+            return TryClearSet(ref property, propertyPath, ref itemsProperty);
+        }
+
+        internal void InvokeTryMoveSelectedEntry(
+            ref SerializedProperty property,
+            string propertyPath,
+            ref SerializedProperty itemsProperty,
+            PaginationState pagination,
+            int direction
+        )
+        {
+            TryMoveSelectedEntry(
+                ref property,
+                propertyPath,
+                ref itemsProperty,
+                pagination,
+                direction
+            );
+        }
+
+        internal void InvokeTryRemoveSelectedEntry(
+            ref SerializedProperty property,
+            string propertyPath,
+            ref SerializedProperty itemsProperty,
+            PaginationState pagination
+        )
+        {
+            TryRemoveSelectedEntry(ref property, propertyPath, ref itemsProperty, pagination);
+        }
+
+        internal bool InvokeTrySortElements(
+            ref SerializedProperty property,
+            string propertyPath,
+            SerializedProperty itemsProperty
+        )
+        {
+            return TrySortElements(ref property, propertyPath, itemsProperty);
         }
     }
 

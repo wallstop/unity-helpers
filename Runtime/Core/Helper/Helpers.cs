@@ -130,7 +130,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #endif
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void CLearLayerNames()
+        internal static void CLearLayerNames()
         {
             ResetLayerCache();
         }

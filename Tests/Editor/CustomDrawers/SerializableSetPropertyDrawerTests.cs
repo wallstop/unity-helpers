@@ -220,6 +220,953 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        public void TryCommitPendingEntryResetsPendingValueToDefaultForStrings()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            pending.value = "TestString";
+
+            ISerializableSetInspector inspector = host.set;
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Commit should succeed.");
+            Assert.AreEqual(
+                string.Empty,
+                pending.value,
+                "Pending value should reset to empty string after successful Add."
+            );
+        }
+
+        [Test]
+        public void TryCommitPendingEntryResetsPendingValueToDefaultForInts()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(int),
+                isSortedSet: false
+            );
+            pending.value = 42;
+
+            ISerializableSetInspector inspector = host.set;
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Commit should succeed.");
+            Assert.AreEqual(
+                0,
+                pending.value,
+                "Pending value should reset to 0 after successful Add."
+            );
+        }
+
+        [Test]
+        public void TryCommitPendingEntryResetsPendingValueToDefaultForComplexTypes()
+        {
+            ComplexSetHost host = CreateScriptableObject<ComplexSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(ComplexSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(ComplexSetElement),
+                isSortedSet: false
+            );
+            ComplexSetElement customElement = new() { primary = Color.red };
+            pending.value = customElement;
+
+            ISerializableSetInspector inspector = host.set;
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Commit should succeed.");
+            Assert.IsNotNull(
+                pending.value,
+                "Pending value should be a new default instance, not null."
+            );
+            Assert.AreNotSame(
+                customElement,
+                pending.value,
+                "Pending value should be a different instance after reset."
+            );
+        }
+
+        [Test]
+        public void TryCommitPendingEntryAllowsMultipleConsecutiveAdds()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            ISerializableSetInspector inspector = host.set;
+
+            pending.value = "First";
+            bool firstCommit = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+            Assert.IsTrue(firstCommit, "First commit should succeed.");
+            Assert.AreEqual(
+                string.Empty,
+                pending.value,
+                "Pending value should reset after first Add."
+            );
+
+            pending.value = "Second";
+            bool secondCommit = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+            Assert.IsTrue(secondCommit, "Second commit should succeed.");
+            Assert.AreEqual(
+                string.Empty,
+                pending.value,
+                "Pending value should reset after second Add."
+            );
+
+            pending.value = "Third";
+            bool thirdCommit = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+            Assert.IsTrue(thirdCommit, "Third commit should succeed.");
+            Assert.AreEqual(
+                string.Empty,
+                pending.value,
+                "Pending value should reset after third Add."
+            );
+
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            Assert.AreEqual(3, itemsProperty.arraySize, "Set should contain all three entries.");
+        }
+
+        [Test]
+        public void TryCommitPendingEntryPreservesIsExpandedState()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            pending.value = "TestValue";
+            pending.isExpanded = true;
+
+            ISerializableSetInspector inspector = host.set;
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Commit should succeed.");
+            Assert.IsTrue(
+                pending.isExpanded,
+                "isExpanded should be preserved after successful commit."
+            );
+        }
+
+        [Test]
+        public void TryCommitPendingEntryDoesNotResetOnDuplicateFailure()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            host.set.Add("Existing");
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            pending.value = "Existing";
+
+            ISerializableSetInspector inspector = host.set;
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsFalse(committed, "Commit should fail for duplicate value.");
+            Assert.AreEqual(
+                "Existing",
+                pending.value,
+                "Pending value should NOT be reset when commit fails."
+            );
+            Assert.IsNotNull(pending.errorMessage, "Error message should be set on failure.");
+        }
+
+        [Test]
+        public void TryCommitPendingEntryDoesNotResetOnNullValueFailure()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(int),
+                isSortedSet: false
+            );
+            pending.value = null;
+            pending.elementType = typeof(int);
+
+            ISerializableSetInspector inspector = host.set;
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsFalse(committed, "Commit should fail for null value on non-nullable type.");
+            Assert.IsNull(
+                pending.value,
+                "Pending value should remain null when commit fails due to null check."
+            );
+        }
+
+        [Test]
+        public void TryCommitPendingEntryClearsErrorMessageOnSuccess()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            pending.value = "ValidEntry";
+            pending.errorMessage = "Previous error that should be cleared";
+
+            ISerializableSetInspector inspector = host.set;
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Commit should succeed.");
+            Assert.IsNull(
+                pending.errorMessage,
+                "Error message should be cleared after successful commit."
+            );
+        }
+
+        [Test]
+        public void TryCommitPendingEntryMarksValueWrapperDirty()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            pending.value = "TestValue";
+            pending.valueWrapperDirty = false;
+
+            ISerializableSetInspector inspector = host.set;
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Commit should succeed.");
+            Assert.IsTrue(
+                pending.valueWrapperDirty,
+                "valueWrapperDirty should be true after reset to force UI sync."
+            );
+        }
+
+        [Test]
+        public void TryCommitPendingEntryResetsPendingValueToDefaultForFloats()
+        {
+            FloatSetHost host = CreateScriptableObject<FloatSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(FloatSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(float),
+                isSortedSet: false
+            );
+            pending.value = 3.14f;
+
+            ISerializableSetInspector inspector = host.set;
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Commit should succeed.");
+            Assert.AreEqual(
+                0f,
+                pending.value,
+                "Pending value should reset to 0f after successful Add."
+            );
+        }
+
+        [Test]
+        public void TryCommitPendingEntryResetsPendingValueToDefaultForBools()
+        {
+            BoolSetHost host = CreateScriptableObject<BoolSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(BoolSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(bool),
+                isSortedSet: false
+            );
+            pending.value = true;
+
+            ISerializableSetInspector inspector = host.set;
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Commit should succeed.");
+            Assert.AreEqual(
+                false,
+                pending.value,
+                "Pending value should reset to false after successful Add."
+            );
+        }
+
+        [Test]
+        public void TryCommitPendingEntryResetsPendingValueForSortedSets()
+        {
+            SortedStringSetHost host = CreateScriptableObject<SortedStringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(SortedStringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: true
+            );
+            pending.value = "SortedEntry";
+
+            ISerializableSetInspector inspector = host.set;
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Commit should succeed for sorted set.");
+            Assert.AreEqual(
+                string.Empty,
+                pending.value,
+                "Pending value should reset to empty string for sorted sets too."
+            );
+        }
+
+        [Test]
+        public void TryCommitPendingEntryResetsPendingValueForSortedIntSets()
+        {
+            SortedSetHost host = CreateScriptableObject<SortedSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(SortedSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(int),
+                isSortedSet: true
+            );
+            pending.value = 999;
+
+            ISerializableSetInspector inspector = host.set;
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Commit should succeed for sorted int set.");
+            Assert.AreEqual(
+                0,
+                pending.value,
+                "Pending value should reset to 0 for sorted int sets."
+            );
+        }
+
+        [Test]
+        public void TryCommitPendingEntryAllowsAddingPreviousValueAfterReset()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            ISerializableSetInspector inspector = host.set;
+
+            pending.value = "TestValue";
+            bool firstCommit = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+            Assert.IsTrue(firstCommit, "First commit should succeed.");
+            Assert.AreEqual(string.Empty, pending.value, "Value should reset after first add.");
+
+            pending.value = "TestValue";
+            bool duplicateCommit = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+            Assert.IsFalse(duplicateCommit, "Adding the same value again should fail (duplicate).");
+            Assert.AreEqual(
+                "TestValue",
+                pending.value,
+                "Value should NOT reset on failed duplicate add."
+            );
+        }
+
+        [Test]
+        public void TryCommitPendingEntryHandlesEmptyStringCorrectly()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            ISerializableSetInspector inspector = host.set;
+
+            pending.value = string.Empty;
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Empty string should be a valid value to add.");
+            Assert.AreEqual(
+                string.Empty,
+                pending.value,
+                "Value should remain empty string (default) after add."
+            );
+        }
+
+        [Test]
+        public void TryCommitPendingEntryHandlesZeroCorrectly()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(int),
+                isSortedSet: false
+            );
+            ISerializableSetInspector inspector = host.set;
+
+            pending.value = 0;
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Zero should be a valid value to add.");
+            Assert.AreEqual(0, pending.value, "Value should remain 0 (default) after add.");
+        }
+
+        [Test]
+        public void TryCommitPendingEntryRejectsSecondZeroAsDuplicate()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(int),
+                isSortedSet: false
+            );
+            ISerializableSetInspector inspector = host.set;
+
+            pending.value = 0;
+            bool firstCommit = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+            Assert.IsTrue(firstCommit, "First zero commit should succeed.");
+
+            pending.value = 0;
+            bool secondCommit = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+            Assert.IsFalse(secondCommit, "Second zero commit should fail as duplicate.");
+            Assert.IsNotNull(pending.errorMessage, "Error message should be set for duplicate.");
+        }
+
+        [Test]
+        public void TryCommitPendingEntryRejectsSecondEmptyStringAsDuplicate()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            ISerializableSetInspector inspector = host.set;
+
+            pending.value = string.Empty;
+            bool firstCommit = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+            Assert.IsTrue(firstCommit, "First empty string commit should succeed.");
+
+            pending.value = string.Empty;
+            bool secondCommit = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+            Assert.IsFalse(secondCommit, "Second empty string commit should fail as duplicate.");
+            Assert.IsNotNull(pending.errorMessage, "Error message should be set for duplicate.");
+        }
+
+        [Test]
+        public void TryCommitPendingEntryHandlesNegativeNumbers()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(int),
+                isSortedSet: false
+            );
+            ISerializableSetInspector inspector = host.set;
+
+            pending.value = -42;
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Negative number should be valid.");
+            Assert.AreEqual(0, pending.value, "Value should reset to 0 after add.");
+
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            Assert.AreEqual(1, itemsProperty.arraySize);
+            Assert.AreEqual(-42, itemsProperty.GetArrayElementAtIndex(0).intValue);
+        }
+
+        [Test]
+        public void TryCommitPendingEntryHandlesWhitespaceStrings()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            ISerializableSetInspector inspector = host.set;
+
+            pending.value = "   ";
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Whitespace string should be valid.");
+            Assert.AreEqual(string.Empty, pending.value, "Value should reset to empty after add.");
+
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            Assert.AreEqual(1, itemsProperty.arraySize);
+            Assert.AreEqual("   ", itemsProperty.GetArrayElementAtIndex(0).stringValue);
+        }
+
+        [Test]
+        public void TryCommitPendingEntryHandlesUnicodeStrings()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            ISerializableSetInspector inspector = host.set;
+
+            pending.value = "こんにちは世界🌍";
+            bool committed = drawer.TryCommitPendingEntry(
+                pending,
+                setProperty,
+                setProperty.propertyPath,
+                ref itemsProperty,
+                pagination,
+                inspector
+            );
+
+            Assert.IsTrue(committed, "Unicode string should be valid.");
+            Assert.AreEqual(string.Empty, pending.value, "Value should reset to empty after add.");
+
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            Assert.AreEqual(1, itemsProperty.arraySize);
+            Assert.AreEqual(
+                "こんにちは世界🌍",
+                itemsProperty.GetArrayElementAtIndex(0).stringValue
+            );
+        }
+
+        [Test]
         public void ManualEntryDefaultsSupportPrivateConstructors()
         {
             PrivateCtorSetHost host = CreateScriptableObject<PrivateCtorSetHost>();
@@ -2743,32 +3690,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         private sealed class SetTweenDisabledScope : IDisposable
         {
             private readonly bool originalValue;
-            private readonly System.Reflection.FieldInfo fieldInfo;
-            private readonly UnityHelpersSettings settings;
             private bool disposed;
 
             public SetTweenDisabledScope()
             {
-                settings = UnityHelpersSettings.instance;
-
-                string fieldName = UnityHelpersSettings
-                    .SerializedPropertyNames
-                    .SerializableSetFoldoutTweenEnabled;
-                fieldInfo = typeof(UnityHelpersSettings).GetField(
-                    fieldName,
-                    System.Reflection.BindingFlags.Instance
-                        | System.Reflection.BindingFlags.NonPublic
-                );
-                if (fieldInfo == null)
-                {
-                    throw new InvalidOperationException(
-                        $"Could not locate '{fieldName}' field via reflection on {typeof(UnityHelpersSettings).FullName}. "
-                            + $"Available non-public instance fields: {string.Join(", ", typeof(UnityHelpersSettings).GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Select(f => f.Name))}"
-                    );
-                }
-
-                originalValue = (bool)fieldInfo.GetValue(settings);
-                fieldInfo.SetValue(settings, false);
+                originalValue = UnityHelpersSettings.ShouldTweenSerializableSetFoldouts();
+                UnityHelpersSettings.SetSerializableSetFoldoutTweenEnabled(false);
             }
 
             public void Dispose()
@@ -2779,39 +3706,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 }
 
                 disposed = true;
-                fieldInfo.SetValue(settings, originalValue);
+                UnityHelpersSettings.SetSerializableSetFoldoutTweenEnabled(originalValue);
             }
         }
 
         private sealed class SortedSetTweenDisabledScope : IDisposable
         {
             private readonly bool originalValue;
-            private readonly System.Reflection.FieldInfo fieldInfo;
-            private readonly UnityHelpersSettings settings;
             private bool disposed;
 
             public SortedSetTweenDisabledScope()
             {
-                settings = UnityHelpersSettings.instance;
-
-                string fieldName = UnityHelpersSettings
-                    .SerializedPropertyNames
-                    .SerializableSortedSetFoldoutTweenEnabled;
-                fieldInfo = typeof(UnityHelpersSettings).GetField(
-                    fieldName,
-                    System.Reflection.BindingFlags.Instance
-                        | System.Reflection.BindingFlags.NonPublic
-                );
-                if (fieldInfo == null)
-                {
-                    throw new InvalidOperationException(
-                        $"Could not locate '{fieldName}' field via reflection on {typeof(UnityHelpersSettings).FullName}. "
-                            + $"Available non-public instance fields: {string.Join(", ", typeof(UnityHelpersSettings).GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Select(f => f.Name))}"
-                    );
-                }
-
-                originalValue = (bool)fieldInfo.GetValue(settings);
-                fieldInfo.SetValue(settings, false);
+                originalValue = UnityHelpersSettings.ShouldTweenSerializableSortedSetFoldouts();
+                UnityHelpersSettings.SetSerializableSortedSetFoldoutTweenEnabled(false);
             }
 
             public void Dispose()
@@ -2822,7 +3729,1936 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 }
 
                 disposed = true;
-                fieldInfo.SetValue(settings, originalValue);
+                UnityHelpersSettings.SetSerializableSortedSetFoldoutTweenEnabled(originalValue);
+            }
+        }
+
+        [Test]
+        public void DuplicateDetectionTriggersImmediatelyWhenElementEditedToMatchAnother()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array initial = new string[] { "Alpha", "Beta" };
+            inspector.SetSerializedItemsSnapshot(initial, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+
+            SerializableSetPropertyDrawer.DuplicateState initialState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+            Assert.IsFalse(
+                initialState.hasDuplicates,
+                "Initial state should have no duplicates with distinct values."
+            );
+
+            SerializedProperty firstElement = itemsProperty.GetArrayElementAtIndex(0);
+            firstElement.stringValue = "Beta";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer.DuplicateState afterEditState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+            Assert.IsTrue(
+                afterEditState.hasDuplicates,
+                "Duplicate detection should trigger immediately after editing an element to match another."
+            );
+            CollectionAssert.AreEquivalent(
+                new[] { 0, 1 },
+                afterEditState.duplicateIndices,
+                "Both indices should be marked as duplicates."
+            );
+        }
+
+        [Test]
+        public void DuplicateDetectionClearsWhenDuplicateElementIsEditedToBeUnique()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array duplicated = new string[] { "Same", "Same" };
+            inspector.SetSerializedItemsSnapshot(duplicated, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+
+            SerializableSetPropertyDrawer.DuplicateState initialState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+            Assert.IsTrue(initialState.hasDuplicates, "Initial state should have duplicates.");
+
+            SerializedProperty secondElement = itemsProperty.GetArrayElementAtIndex(1);
+            secondElement.stringValue = "Different";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer.DuplicateState afterEditState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+            Assert.IsFalse(
+                afterEditState.hasDuplicates,
+                "Duplicate detection should clear when duplicate is edited to be unique."
+            );
+            Assert.AreEqual(
+                0,
+                afterEditState.duplicateIndices.Count,
+                "No indices should be marked as duplicates after fix."
+            );
+        }
+
+        [Test]
+        public void DuplicateDetectionHandlesMultipleEditCyclesWithoutStaleState()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array initial = new string[] { "A", "B", "C" };
+            inspector.SetSerializedItemsSnapshot(initial, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+
+            SerializableSetPropertyDrawer.DuplicateState state1 = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+            Assert.IsFalse(state1.hasDuplicates, "Cycle 1: No duplicates expected.");
+
+            itemsProperty.GetArrayElementAtIndex(0).stringValue = "B";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer.DuplicateState state2 = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+            Assert.IsTrue(state2.hasDuplicates, "Cycle 2: A and B should now be duplicates.");
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, state2.duplicateIndices);
+
+            itemsProperty.GetArrayElementAtIndex(2).stringValue = "B";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer.DuplicateState state3 = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+            Assert.IsTrue(state3.hasDuplicates, "Cycle 3: All three should be duplicates.");
+            CollectionAssert.AreEquivalent(new[] { 0, 1, 2 }, state3.duplicateIndices);
+
+            itemsProperty.GetArrayElementAtIndex(0).stringValue = "X";
+            itemsProperty.GetArrayElementAtIndex(1).stringValue = "Y";
+            itemsProperty.GetArrayElementAtIndex(2).stringValue = "Z";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer.DuplicateState state4 = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+            Assert.IsFalse(state4.hasDuplicates, "Cycle 4: All unique, no duplicates.");
+        }
+
+        [Test]
+        public void DuplicateDetectionWorksWithIntegerSets()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array initial = Array.CreateInstance(typeof(int), 3);
+            initial.SetValue(10, 0);
+            initial.SetValue(20, 1);
+            initial.SetValue(30, 2);
+            inspector.SetSerializedItemsSnapshot(initial, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+
+            SerializableSetPropertyDrawer.DuplicateState initialState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+            Assert.IsFalse(initialState.hasDuplicates);
+
+            itemsProperty.GetArrayElementAtIndex(2).intValue = 10;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer.DuplicateState afterEditState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+            Assert.IsTrue(
+                afterEditState.hasDuplicates,
+                "Integer duplicate should be detected after edit."
+            );
+            CollectionAssert.AreEquivalent(new[] { 0, 2 }, afterEditState.duplicateIndices);
+        }
+
+        [Test]
+        public void DuplicateDetectionHandlesEmptyStringsAsValidDuplicates()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array initial = new string[] { "", "NonEmpty" };
+            inspector.SetSerializedItemsSnapshot(initial, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+
+            SerializableSetPropertyDrawer.DuplicateState initialState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+            Assert.IsFalse(initialState.hasDuplicates);
+
+            itemsProperty.GetArrayElementAtIndex(1).stringValue = "";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer.DuplicateState afterEditState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+            Assert.IsTrue(
+                afterEditState.hasDuplicates,
+                "Empty string duplicates should be detected."
+            );
+        }
+
+        [Test]
+        public void DuplicateDetectionHandlesCaseSensitiveStrings()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array initial = new string[] { "test", "TEST" };
+            inspector.SetSerializedItemsSnapshot(initial, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+
+            SerializableSetPropertyDrawer.DuplicateState initialState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+            Assert.IsFalse(
+                initialState.hasDuplicates,
+                "Case-sensitive comparison should treat 'test' and 'TEST' as different."
+            );
+
+            itemsProperty.GetArrayElementAtIndex(1).stringValue = "test";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer.DuplicateState afterEditState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+            Assert.IsTrue(
+                afterEditState.hasDuplicates,
+                "Exact match after edit should be detected as duplicate."
+            );
+        }
+
+        [Test]
+        public void NullEntryRefreshTriggersWhenElementChangesToNull()
+        {
+            ObjectSetHost host = CreateScriptableObject<ObjectSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            TestData testData = CreateScriptableObject<TestData>();
+            Array initial = Array.CreateInstance(inspector.ElementType, 2);
+            initial.SetValue(testData, 0);
+            initial.SetValue(CreateScriptableObject<TestData>(), 1);
+            inspector.SetSerializedItemsSnapshot(initial, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(ObjectSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+
+            SerializableSetPropertyDrawer.NullEntryState initialState =
+                drawer.EvaluateNullEntryState(setProperty, itemsProperty, force: true);
+            Assert.IsFalse(
+                initialState.hasNullEntries,
+                "Initial state should have no null entries."
+            );
+
+            itemsProperty.GetArrayElementAtIndex(0).objectReferenceValue = null;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableSetPropertyDrawer.NullEntryState afterEditState =
+                drawer.EvaluateNullEntryState(setProperty, itemsProperty, force: true);
+            Assert.IsTrue(
+                afterEditState.hasNullEntries,
+                "Null entry should be detected after setting element to null."
+            );
+            Assert.IsTrue(afterEditState.nullIndices.Contains(0));
+        }
+
+        [Test]
+        public void DuplicateAndNullEntryDetectionWorkIndependently()
+        {
+            ObjectSetHost host = CreateScriptableObject<ObjectSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            TestData sharedData = CreateScriptableObject<TestData>();
+            Array initial = Array.CreateInstance(inspector.ElementType, 3);
+            initial.SetValue(sharedData, 0);
+            initial.SetValue(sharedData, 1);
+            initial.SetValue(null, 2);
+            inspector.SetSerializedItemsSnapshot(initial, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(ObjectSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+
+            SerializableSetPropertyDrawer.DuplicateState dupState = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+            SerializableSetPropertyDrawer.NullEntryState nullState = drawer.EvaluateNullEntryState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(
+                dupState.hasDuplicates,
+                "Duplicate detection should find the shared object."
+            );
+            Assert.IsTrue(nullState.hasNullEntries, "Null detection should find the null entry.");
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, dupState.duplicateIndices);
+            Assert.IsTrue(nullState.nullIndices.Contains(2));
+        }
+
+        [Test]
+        public void NeedsDuplicateRefreshFlagIsConsumedAfterEvaluation()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array initial = new string[] { "Alpha", "Beta" };
+            inspector.SetSerializedItemsSnapshot(initial, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            string listKey = drawer.GetPropertyCacheKey(setProperty);
+
+            SerializableSetPropertyDrawer.SetListRenderContext context =
+                drawer.GetOrCreateListContext(listKey);
+            Assert.IsNotNull(context, "Context should be created.");
+
+            context.needsDuplicateRefresh = true;
+            Assert.IsTrue(context.needsDuplicateRefresh, "Flag should be set to true.");
+        }
+
+        [Test]
+        public void ClearAllClearsDuplicateWarningsWhenSetHasDuplicates()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 3);
+            duplicates.SetValue(42, 0);
+            duplicates.SetValue(42, 1);
+            duplicates.SetValue(99, 2);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState duplicateState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            Assert.IsTrue(
+                duplicateState.hasDuplicates,
+                "Set with duplicate entries should report hasDuplicates=true."
+            );
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, duplicateState.duplicateIndices);
+            StringAssert.Contains("Duplicate entry 42", duplicateState.summary);
+
+            inspector.ClearElements();
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState clearedState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            Assert.IsFalse(
+                clearedState.hasDuplicates,
+                "After clearing, hasDuplicates should be false."
+            );
+            CollectionAssert.IsEmpty(
+                clearedState.duplicateIndices,
+                "After clearing, duplicateIndices should be empty."
+            );
+            Assert.IsTrue(
+                string.IsNullOrEmpty(clearedState.summary),
+                "After clearing, duplicate summary should be empty."
+            );
+            CollectionAssert.IsEmpty(
+                clearedState.animationStartTimes,
+                "After clearing, animation start times should be cleared."
+            );
+            CollectionAssert.IsEmpty(
+                clearedState.primaryFlags,
+                "After clearing, primary flags should be cleared."
+            );
+        }
+
+        [Test]
+        public void ClearAllClearsNullEntryWarningsWhenSetHasNullEntries()
+        {
+            ObjectSetHost host = CreateScriptableObject<ObjectSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array values = Array.CreateInstance(inspector.ElementType, 2);
+            values.SetValue(null, 0);
+            values.SetValue(CreateScriptableObject<TestData>(), 1);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(ObjectSetHost.set)
+            );
+            setProperty.isExpanded = true;
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.NullEntryState nullState = drawer.EvaluateNullEntryState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(
+                nullState.hasNullEntries,
+                "Set with null entry should report hasNullEntries=true."
+            );
+            Assert.IsTrue(
+                nullState.nullIndices.Contains(0),
+                "Null index 0 should be in nullIndices."
+            );
+            StringAssert.Contains("Null entry", nullState.summary);
+
+            inspector.ClearElements();
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(ObjectSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.NullEntryState clearedState =
+                drawer.EvaluateNullEntryState(setProperty, itemsProperty, force: true);
+
+            Assert.IsFalse(
+                clearedState.hasNullEntries,
+                "After clearing, hasNullEntries should be false."
+            );
+            CollectionAssert.IsEmpty(
+                clearedState.nullIndices,
+                "After clearing, nullIndices should be empty."
+            );
+            Assert.IsTrue(
+                string.IsNullOrEmpty(clearedState.summary),
+                "After clearing, null entry summary should be empty."
+            );
+            CollectionAssert.IsEmpty(
+                clearedState.tooltips,
+                "After clearing, tooltips should be cleared."
+            );
+        }
+
+        [Test]
+        public void ClearAllOnEmptySetDoesNotProduceDuplicateWarnings()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState initialState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            Assert.IsFalse(
+                initialState.hasDuplicates,
+                "Empty set should not have duplicates initially."
+            );
+
+            ISerializableSetInspector inspector = host.set;
+            inspector.ClearElements();
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState afterClearState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            Assert.IsFalse(
+                afterClearState.hasDuplicates,
+                "Empty set should not have duplicates after clear."
+            );
+            CollectionAssert.IsEmpty(afterClearState.duplicateIndices);
+            Assert.IsTrue(string.IsNullOrEmpty(afterClearState.summary));
+        }
+
+        [Test]
+        public void ClearAllClearsBothDuplicateAndNullEntryWarningsSimultaneously()
+        {
+            ObjectSetHost host = CreateScriptableObject<ObjectSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            TestData sharedObject = CreateScriptableObject<TestData>();
+            Array values = Array.CreateInstance(inspector.ElementType, 4);
+            values.SetValue(sharedObject, 0);
+            values.SetValue(sharedObject, 1);
+            values.SetValue(null, 2);
+            values.SetValue(CreateScriptableObject<TestData>(), 3);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(ObjectSetHost.set)
+            );
+            setProperty.isExpanded = true;
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState dupState = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+            SerializableSetPropertyDrawer.NullEntryState nullState = drawer.EvaluateNullEntryState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(dupState.hasDuplicates, "Set should have duplicates.");
+            Assert.IsTrue(nullState.hasNullEntries, "Set should have null entries.");
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, dupState.duplicateIndices);
+            Assert.IsTrue(nullState.nullIndices.Contains(2));
+
+            inspector.ClearElements();
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(ObjectSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState dupCleared = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+            SerializableSetPropertyDrawer.NullEntryState nullCleared =
+                drawer.EvaluateNullEntryState(setProperty, itemsProperty, force: true);
+
+            Assert.IsFalse(
+                dupCleared.hasDuplicates,
+                "Duplicates should be cleared after Clear All."
+            );
+            Assert.IsFalse(
+                nullCleared.hasNullEntries,
+                "Null entries should be cleared after Clear All."
+            );
+            CollectionAssert.IsEmpty(dupCleared.duplicateIndices);
+            CollectionAssert.IsEmpty(nullCleared.nullIndices);
+            Assert.IsTrue(string.IsNullOrEmpty(dupCleared.summary));
+            Assert.IsTrue(string.IsNullOrEmpty(nullCleared.summary));
+        }
+
+        [Test]
+        public void MultipleClearAllCallsDoNotCauseDuplicateWarnings()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 2);
+            duplicates.SetValue(7, 0);
+            duplicates.SetValue(7, 1);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+
+            for (int i = 0; i < 3; i++)
+            {
+                inspector.ClearElements();
+                inspector.SynchronizeSerializedState();
+                serializedObject.Update();
+                setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+                itemsProperty = setProperty.FindPropertyRelative(
+                    SerializableHashSetSerializedPropertyNames.Items
+                );
+
+                SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                    setProperty,
+                    itemsProperty,
+                    force: true
+                );
+
+                Assert.IsFalse(
+                    state.hasDuplicates,
+                    $"After clear iteration {i + 1}, hasDuplicates should be false."
+                );
+                CollectionAssert.IsEmpty(
+                    state.duplicateIndices,
+                    $"After clear iteration {i + 1}, duplicateIndices should be empty."
+                );
+            }
+        }
+
+        [Test]
+        public void ClearAllThenAddDuplicatesProperlyDetectsDuplicates()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array initialDuplicates = Array.CreateInstance(inspector.ElementType, 2);
+            initialDuplicates.SetValue(10, 0);
+            initialDuplicates.SetValue(10, 1);
+            inspector.SetSerializedItemsSnapshot(
+                initialDuplicates,
+                preserveSerializedEntries: true
+            );
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+
+            SerializableSetPropertyDrawer.DuplicateState initialState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+            Assert.IsTrue(initialState.hasDuplicates, "Initial duplicates should be detected.");
+
+            inspector.ClearElements();
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState afterClear = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+            Assert.IsFalse(afterClear.hasDuplicates, "After clear, no duplicates should exist.");
+
+            Array newDuplicates = Array.CreateInstance(inspector.ElementType, 3);
+            newDuplicates.SetValue(20, 0);
+            newDuplicates.SetValue(20, 1);
+            newDuplicates.SetValue(30, 2);
+            inspector.SetSerializedItemsSnapshot(newDuplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState afterNewDuplicates =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            Assert.IsTrue(
+                afterNewDuplicates.hasDuplicates,
+                "New duplicates should be properly detected after clear."
+            );
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, afterNewDuplicates.duplicateIndices);
+            StringAssert.Contains("Duplicate entry 20", afterNewDuplicates.summary);
+        }
+
+        [Test]
+        public void ClearAllAfterAddAndRemoveOperationsProperlyResetsState()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array initial = Array.CreateInstance(inspector.ElementType, 2);
+            initial.SetValue(100, 0);
+            initial.SetValue(200, 1);
+            inspector.SetSerializedItemsSnapshot(initial, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 3);
+            duplicates.SetValue(100, 0);
+            duplicates.SetValue(100, 1);
+            duplicates.SetValue(200, 2);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState withDuplicates =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+            Assert.IsTrue(withDuplicates.hasDuplicates, "Duplicates should be detected.");
+
+            inspector.RemoveElement(100);
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState afterRemove =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            inspector.ClearElements();
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState afterClear = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsFalse(
+                afterClear.hasDuplicates,
+                "After clear, no duplicates should be reported."
+            );
+            CollectionAssert.IsEmpty(afterClear.duplicateIndices);
+            Assert.IsTrue(string.IsNullOrEmpty(afterClear.summary));
+        }
+
+        [Test]
+        public void ClearAllWithSingleElementSetClearsDuplicateState()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array single = Array.CreateInstance(inspector.ElementType, 1);
+            single.SetValue(42, 0);
+            inspector.SetSerializedItemsSnapshot(single, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState beforeClear =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            Assert.IsFalse(
+                beforeClear.hasDuplicates,
+                "Single element set should not have duplicates."
+            );
+
+            inspector.ClearElements();
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState afterClear = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsFalse(afterClear.hasDuplicates, "Empty set should have no duplicates.");
+            CollectionAssert.IsEmpty(afterClear.duplicateIndices);
+        }
+
+        [Test]
+        public void ClearAllRemovesDuplicateAnimationStartTimes()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 2);
+            duplicates.SetValue(5, 0);
+            duplicates.SetValue(5, 1);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState initialState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            Assert.IsTrue(initialState.hasDuplicates);
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, initialState.duplicateIndices);
+
+            inspector.ClearElements();
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState clearedState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            Assert.IsFalse(clearedState.hasDuplicates);
+            CollectionAssert.IsEmpty(
+                clearedState.animationStartTimes,
+                "Animation start times should be cleared when set is cleared."
+            );
+            CollectionAssert.IsEmpty(
+                clearedState.primaryFlags,
+                "Primary flags should be cleared when set is cleared."
+            );
+        }
+
+        [Test]
+        public void ClearAllOnSortedSetClearsDuplicateWarnings()
+        {
+            SortedSetHost host = CreateScriptableObject<SortedSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 3);
+            duplicates.SetValue(15, 0);
+            duplicates.SetValue(15, 1);
+            duplicates.SetValue(25, 2);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(SortedSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState beforeClear =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            Assert.IsTrue(
+                beforeClear.hasDuplicates,
+                "Sorted set with duplicates should report hasDuplicates."
+            );
+
+            inspector.ClearElements();
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(SortedSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState afterClear = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsFalse(
+                afterClear.hasDuplicates,
+                "Cleared sorted set should have no duplicates."
+            );
+            CollectionAssert.IsEmpty(afterClear.duplicateIndices);
+            Assert.IsTrue(string.IsNullOrEmpty(afterClear.summary));
+        }
+
+        [Test]
+        public void ClearAllOnStringSetClearsDuplicateWarnings()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array duplicates = new string[] { "Alpha", "Alpha", "Beta" };
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState beforeClear =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            Assert.IsTrue(
+                beforeClear.hasDuplicates,
+                "String set with duplicates should report hasDuplicates."
+            );
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, beforeClear.duplicateIndices);
+            StringAssert.Contains("Alpha", beforeClear.summary);
+
+            inspector.ClearElements();
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(StringSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState afterClear = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsFalse(
+                afterClear.hasDuplicates,
+                "Cleared string set should have no duplicates."
+            );
+            CollectionAssert.IsEmpty(afterClear.duplicateIndices);
+            Assert.IsTrue(string.IsNullOrEmpty(afterClear.summary));
+        }
+
+        [Test]
+        public void DuplicateStateIsDirtyOnNewStateCreation()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                null,
+                force: false
+            );
+
+            Assert.IsTrue(state.IsDirty, "Newly created DuplicateState should be dirty.");
+        }
+
+        [Test]
+        public void DuplicateStateIsNotDirtyAfterRefresh()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array values = Array.CreateInstance(inspector.ElementType, 2);
+            values.SetValue(10, 0);
+            values.SetValue(20, 1);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsFalse(
+                state.IsDirty,
+                "DuplicateState should not be dirty after forced refresh."
+            );
+        }
+
+        [Test]
+        public void DuplicateStateMarkDirtySetsIsDirtyTrue()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array values = Array.CreateInstance(inspector.ElementType, 2);
+            values.SetValue(10, 0);
+            values.SetValue(20, 1);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+            Assert.IsFalse(state.IsDirty, "State should not be dirty after refresh.");
+
+            state.MarkDirty();
+
+            Assert.IsTrue(state.IsDirty, "State should be dirty after calling MarkDirty.");
+        }
+
+        [Test]
+        public void DuplicateStateIsAnimatingReturnsTrueWhenDuplicatesExistAndNotCompleted()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 2);
+            duplicates.SetValue(5, 0);
+            duplicates.SetValue(5, 1);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(state.hasDuplicates, "State should have duplicates.");
+            Assert.IsTrue(
+                state.IsAnimating,
+                "State should report IsAnimating when duplicates exist and animations not completed."
+            );
+        }
+
+        [Test]
+        public void DuplicateStateIsAnimatingReturnsFalseWhenNoDuplicates()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array values = Array.CreateInstance(inspector.ElementType, 2);
+            values.SetValue(10, 0);
+            values.SetValue(20, 1);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsFalse(state.hasDuplicates, "State should not have duplicates.");
+            Assert.IsFalse(
+                state.IsAnimating,
+                "State should not report IsAnimating when no duplicates."
+            );
+        }
+
+        [Test]
+        public void DuplicateStateCheckAnimationCompletionMarksAnimationsComplete()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 2);
+            duplicates.SetValue(5, 0);
+            duplicates.SetValue(5, 1);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(state.IsAnimating, "State should be animating before completion check.");
+
+            double farFutureTime = EditorApplication.timeSinceStartup + 60.0;
+            state.CheckAnimationCompletion(farFutureTime, cycleLimit: 3);
+
+            Assert.IsFalse(
+                state.IsAnimating,
+                "State should not be animating after completion with far future time."
+            );
+        }
+
+        [Test]
+        public void DuplicateStateCheckAnimationCompletionDoesNothingWithZeroCycleLimit()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 2);
+            duplicates.SetValue(5, 0);
+            duplicates.SetValue(5, 1);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(state.IsAnimating, "State should be animating.");
+
+            double farFutureTime = EditorApplication.timeSinceStartup + 60.0;
+            state.CheckAnimationCompletion(farFutureTime, cycleLimit: 0);
+
+            Assert.IsTrue(state.IsAnimating, "State should remain animating when cycleLimit is 0.");
+        }
+
+        [Test]
+        public void DuplicateStateClearAnimationTrackingResetsDirtyState()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 2);
+            duplicates.SetValue(5, 0);
+            duplicates.SetValue(5, 1);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsFalse(state.IsDirty, "State should not be dirty after refresh.");
+            Assert.Greater(
+                state.animationStartTimes.Count,
+                0,
+                "Animation start times should be populated."
+            );
+
+            state.ClearAnimationTracking();
+
+            Assert.IsTrue(state.IsDirty, "State should be dirty after ClearAnimationTracking.");
+            Assert.AreEqual(
+                0,
+                state.animationStartTimes.Count,
+                "Animation start times should be cleared."
+            );
+        }
+
+        [Test]
+        public void DuplicateStatePopulatesAnimationTimesOnInitialDetection()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 3);
+            duplicates.SetValue(7, 0);
+            duplicates.SetValue(7, 1);
+            duplicates.SetValue(9, 2);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(state.hasDuplicates, "State should have duplicates.");
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, state.duplicateIndices);
+            Assert.IsTrue(
+                state.animationStartTimes.ContainsKey(0),
+                "Animation time for index 0 should be set."
+            );
+            Assert.IsTrue(
+                state.animationStartTimes.ContainsKey(1),
+                "Animation time for index 1 should be set."
+            );
+            Assert.IsFalse(
+                state.animationStartTimes.ContainsKey(2),
+                "Animation time for non-duplicate index 2 should not be set."
+            );
+        }
+
+        [Test]
+        public void NewDrawerInstanceDetectsDuplicatesOnFirstEvaluation()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 2);
+            duplicates.SetValue(42, 0);
+            duplicates.SetValue(42, 1);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer1 = new();
+            SerializableSetPropertyDrawer.DuplicateState state1 = drawer1.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(state1.hasDuplicates, "First drawer should detect duplicates.");
+            Assert.Greater(
+                state1.animationStartTimes.Count,
+                0,
+                "First drawer should have animation start times."
+            );
+
+            SerializableSetPropertyDrawer drawer2 = new();
+            SerializableSetPropertyDrawer.DuplicateState state2 = drawer2.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(
+                state2.hasDuplicates,
+                "Second drawer instance should also detect duplicates."
+            );
+            Assert.Greater(
+                state2.animationStartTimes.Count,
+                0,
+                "Second drawer instance should also have animation start times."
+            );
+        }
+
+        [Test]
+        public void DuplicateStateIsDirtyAllowsEvaluationDuringNonRepaintEvents()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 2);
+            duplicates.SetValue(99, 0);
+            duplicates.SetValue(99, 1);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(
+                state.hasDuplicates,
+                "Duplicates should be detected even if called outside Repaint context."
+            );
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, state.duplicateIndices);
+            Assert.Greater(
+                state.animationStartTimes.Count,
+                0,
+                "Animation times should be populated."
+            );
+        }
+
+        [Test]
+        public void DuplicateStateShouldSkipRefreshReturnsTrueForUnchangedNonDuplicateSet()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array values = Array.CreateInstance(inspector.ElementType, 2);
+            values.SetValue(10, 0);
+            values.SetValue(20, 1);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsFalse(state.hasDuplicates);
+            Assert.IsTrue(
+                state.ShouldSkipRefresh(itemsProperty.arraySize),
+                "Should skip refresh for unchanged non-duplicate set."
+            );
+        }
+
+        [Test]
+        public void DuplicateStateShouldSkipRefreshReturnsFalseForDifferentArraySize()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array values = Array.CreateInstance(inspector.ElementType, 2);
+            values.SetValue(10, 0);
+            values.SetValue(20, 1);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsFalse(
+                state.ShouldSkipRefresh(5),
+                "Should not skip refresh when array size differs."
+            );
+        }
+
+        [Test]
+        public void DuplicateStateUpdateLastHadDuplicatesResetsAnimationCompletedOnTransition()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 2);
+            duplicates.SetValue(5, 0);
+            duplicates.SetValue(5, 1);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(
+                state.hasDuplicates,
+                "State should have duplicates with [5, 5] initial data."
+            );
+            Assert.IsTrue(
+                state.IsAnimating,
+                $"State should be animating initially. hasDuplicates={state.hasDuplicates}"
+            );
+
+            double farFutureTime = EditorApplication.timeSinceStartup + 60.0;
+            state.CheckAnimationCompletion(farFutureTime, cycleLimit: 3);
+            Assert.IsFalse(
+                state.IsAnimating,
+                $"State should not be animating after completion. hasDuplicates={state.hasDuplicates}"
+            );
+
+            inspector.ClearElements();
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Array newDuplicates = Array.CreateInstance(inspector.ElementType, 2);
+            newDuplicates.SetValue(99, 0);
+            newDuplicates.SetValue(99, 1);
+            inspector.SetSerializedItemsSnapshot(newDuplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState newState = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(
+                newState.hasDuplicates,
+                "New state should have duplicates with [99, 99] data."
+            );
+            Assert.IsTrue(
+                newState.IsAnimating,
+                $"New state should be animating after new duplicates detected. hasDuplicates={newState.hasDuplicates}"
+            );
+        }
+
+        [Test]
+        public void MultipleEvaluationsWithSameArraySizeAndNoDuplicatesSkipRefresh()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array values = Array.CreateInstance(inspector.ElementType, 3);
+            values.SetValue(1, 0);
+            values.SetValue(2, 1);
+            values.SetValue(3, 2);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state1 = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsFalse(state1.hasDuplicates);
+            Assert.IsFalse(state1.IsDirty);
+
+            Assert.IsTrue(
+                state1.ShouldSkipRefresh(3),
+                "Subsequent check with same size and no duplicates should skip."
+            );
+        }
+
+        [Test]
+        public void DuplicateStatePreservesAnimationTimesForExistingDuplicates()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 2);
+            duplicates.SetValue(5, 0);
+            duplicates.SetValue(5, 1);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state1 = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            double originalStartTime0 = state1.animationStartTimes[0];
+            double originalStartTime1 = state1.animationStartTimes[1];
+
+            SerializableSetPropertyDrawer.DuplicateState state2 = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: false
+            );
+
+            Assert.IsTrue(
+                state2.animationStartTimes.ContainsKey(0),
+                "Animation time for index 0 should be preserved."
+            );
+            Assert.IsTrue(
+                state2.animationStartTimes.ContainsKey(1),
+                "Animation time for index 1 should be preserved."
+            );
+            Assert.AreEqual(
+                originalStartTime0,
+                state2.animationStartTimes[0],
+                "Animation start time for index 0 should not change."
+            );
+            Assert.AreEqual(
+                originalStartTime1,
+                state2.animationStartTimes[1],
+                "Animation start time for index 1 should not change."
+            );
+        }
+
+        [Test]
+        public void DuplicateStateHandlesTransitionFromNoDuplicatesToDuplicates()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array noDuplicates = Array.CreateInstance(inspector.ElementType, 2);
+            noDuplicates.SetValue(1, 0);
+            noDuplicates.SetValue(2, 1);
+            inspector.SetSerializedItemsSnapshot(noDuplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState stateNoDuplicates =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            Assert.IsFalse(stateNoDuplicates.hasDuplicates);
+            Assert.AreEqual(0, stateNoDuplicates.animationStartTimes.Count);
+
+            Array withDuplicates = Array.CreateInstance(inspector.ElementType, 2);
+            withDuplicates.SetValue(1, 0);
+            withDuplicates.SetValue(1, 1);
+            inspector.SetSerializedItemsSnapshot(withDuplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState stateWithDuplicates =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            Assert.IsTrue(stateWithDuplicates.hasDuplicates);
+            Assert.Greater(
+                stateWithDuplicates.animationStartTimes.Count,
+                0,
+                "Animation times should be populated on transition to duplicates."
+            );
+            Assert.IsTrue(
+                stateWithDuplicates.IsAnimating,
+                "Should be animating after duplicates detected."
+            );
+        }
+
+        [Test]
+        public void DuplicateStateHandlesTransitionFromDuplicatesToNoDuplicates()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 2);
+            duplicates.SetValue(5, 0);
+            duplicates.SetValue(5, 1);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState stateWithDuplicates =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            Assert.IsTrue(stateWithDuplicates.hasDuplicates);
+
+            Array noDuplicates = Array.CreateInstance(inspector.ElementType, 2);
+            noDuplicates.SetValue(5, 0);
+            noDuplicates.SetValue(10, 1);
+            inspector.SetSerializedItemsSnapshot(noDuplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState stateNoDuplicates =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            Assert.IsFalse(stateNoDuplicates.hasDuplicates);
+            Assert.AreEqual(
+                0,
+                stateNoDuplicates.animationStartTimes.Count,
+                "Animation times should be cleared when no duplicates."
+            );
+        }
+
+        [Test]
+        public void DuplicateStateRemovesAnimationTimesForResolvedDuplicates()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array twoGroups = Array.CreateInstance(inspector.ElementType, 4);
+            twoGroups.SetValue(5, 0);
+            twoGroups.SetValue(5, 1);
+            twoGroups.SetValue(7, 2);
+            twoGroups.SetValue(7, 3);
+            inspector.SetSerializedItemsSnapshot(twoGroups, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState initialState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            CollectionAssert.AreEquivalent(new[] { 0, 1, 2, 3 }, initialState.duplicateIndices);
+            Assert.AreEqual(4, initialState.animationStartTimes.Count);
+
+            Array oneGroup = Array.CreateInstance(inspector.ElementType, 4);
+            oneGroup.SetValue(5, 0);
+            oneGroup.SetValue(5, 1);
+            oneGroup.SetValue(7, 2);
+            oneGroup.SetValue(8, 3);
+            inspector.SetSerializedItemsSnapshot(oneGroup, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+            serializedObject.Update();
+            setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer.DuplicateState updatedState =
+                drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
+
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, updatedState.duplicateIndices);
+            Assert.AreEqual(2, updatedState.animationStartTimes.Count);
+            Assert.IsTrue(updatedState.animationStartTimes.ContainsKey(0));
+            Assert.IsTrue(updatedState.animationStartTimes.ContainsKey(1));
+            Assert.IsFalse(updatedState.animationStartTimes.ContainsKey(2));
+            Assert.IsFalse(updatedState.animationStartTimes.ContainsKey(3));
+        }
+
+        [Test]
+        public void DuplicateStateHandlesNullItemsProperty()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                null,
+                force: true
+            );
+
+            Assert.IsFalse(state.hasDuplicates);
+            Assert.AreEqual(0, state.duplicateIndices.Count);
+            Assert.AreEqual(0, state.animationStartTimes.Count);
+        }
+
+        [Test]
+        public void DuplicateStateHandlesSingleItemArray()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array singleItem = Array.CreateInstance(inspector.ElementType, 1);
+            singleItem.SetValue(42, 0);
+            inspector.SetSerializedItemsSnapshot(singleItem, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsFalse(state.hasDuplicates, "Single item set cannot have duplicates.");
+            Assert.AreEqual(0, state.duplicateIndices.Count);
+            Assert.AreEqual(0, state.animationStartTimes.Count);
+        }
+
+        [Test]
+        public void DuplicateStateHandlesEmptyArray()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            inspector.ClearElements();
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsFalse(state.hasDuplicates, "Empty set cannot have duplicates.");
+            Assert.AreEqual(0, state.duplicateIndices.Count);
+            Assert.AreEqual(0, state.animationStartTimes.Count);
+        }
+
+        [Test]
+        public void DuplicateStateWithStringSetDetectsDuplicates()
+        {
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array duplicateStrings = new string[] { "hello", "world", "hello" };
+            inspector.SetSerializedItemsSnapshot(duplicateStrings, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(state.hasDuplicates);
+            CollectionAssert.AreEquivalent(new[] { 0, 2 }, state.duplicateIndices);
+            Assert.IsTrue(state.IsAnimating);
+            Assert.Greater(state.animationStartTimes.Count, 0);
+        }
+
+        [Test]
+        public void MultipleDuplicateGroupsAllGetAnimationTimes()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+            Array multipleGroups = Array.CreateInstance(inspector.ElementType, 6);
+            multipleGroups.SetValue(1, 0);
+            multipleGroups.SetValue(1, 1);
+            multipleGroups.SetValue(2, 2);
+            multipleGroups.SetValue(2, 3);
+            multipleGroups.SetValue(3, 4);
+            multipleGroups.SetValue(3, 5);
+            inspector.SetSerializedItemsSnapshot(multipleGroups, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(state.hasDuplicates);
+            CollectionAssert.AreEquivalent(new[] { 0, 1, 2, 3, 4, 5 }, state.duplicateIndices);
+            Assert.AreEqual(
+                6,
+                state.animationStartTimes.Count,
+                "All duplicate indices should have animation times."
+            );
+            for (int i = 0; i < 6; i++)
+            {
+                Assert.IsTrue(
+                    state.animationStartTimes.ContainsKey(i),
+                    $"Index {i} should have animation start time."
+                );
             }
         }
     }

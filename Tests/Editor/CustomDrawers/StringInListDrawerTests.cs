@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 #if UNITY_EDITOR
     using System;
     using NUnit.Framework;
-    using System.Reflection;
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.UIElements;
@@ -12,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base;
     using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using PropertyAttribute = UnityEngine.PropertyAttribute;
 
     [TestFixture]
@@ -414,28 +414,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         private static T GetAttributeFromProperty<T>(SerializedProperty property)
             where T : Attribute
         {
-            if (property == null)
-            {
-                return null;
-            }
-
-            Type targetType = property.serializedObject.targetObject.GetType();
-            FieldInfo field = targetType.GetField(
-                property.name,
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-            );
-
-            return field?.GetCustomAttribute<T>();
+            return PropertyDrawerTestHelper.GetAttributeFromProperty<T>(property);
         }
 
         private static void AssignAttribute(PropertyDrawer drawer, PropertyAttribute attribute)
         {
-            FieldInfo attributeField = typeof(PropertyDrawer).GetField(
-                "m_Attribute",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(attributeField, "Unable to locate PropertyDrawer.m_Attribute.");
-            attributeField.SetValue(drawer, attribute);
+            PropertyDrawerTestHelper.AssignAttribute(drawer, attribute);
         }
 
         private static void InvokeApplySelection(BaseField<string> selector, int optionIndex)

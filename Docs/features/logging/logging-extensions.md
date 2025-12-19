@@ -2,7 +2,7 @@
 
 Bring structured, color-coded logs to any Unity project without sprinkling `Debug.Log` everywhere. `WallstopStudiosLogger` adds extension methods (`this.Log`, `this.LogWarn`, `this.LogError`, `this.LogDebug`) that automatically capture component metadata, thread info, timestamps, and user-defined tags rendered by `UnityLogTagFormatter`.
 
-- **Thread-safe:** Logs are marshalled back to the Unity main thread when required (via `UnityMainThreadDispatcher` / `UnityMainThreadGuard`).
+- **Thread-safe:** Logs are marshaled back to the Unity main thread when required (via `UnityMainThreadDispatcher` / `UnityMainThreadGuard`).
 - **Readable output:** Pretty mode prefixes `time|GameObject[Component]` when logging on the main thread and inserts `|thread|` only when background workers emit messages, keeping logs deterministic without extra noise.
 - **Tag formatter:** Apply rich text decorations inline (`$"{name:b,color=cyan}"`) without string concatenation. Tags deduplicate automatically and can be stacked in any order.
 
@@ -130,8 +130,8 @@ Additional behavior:
 1. **Register tags once** — Use static constructors or `[RuntimeInitializeOnLoadMethod]` to register project-wide tags. Avoid allocating per-frame delegates.
 2. **Prefer interpolation** — `$"{health:json}"` keeps minimal formatting allocations compared to `string.Format`.
 3. **Use `pretty: false` for exporters** — When writing to files or parsing logs, disable prefixes to simplify downstream tooling.
-4. **Gate release builds** — If you plan to leave logging enabled in production, explicitly define `ENABLE_UBERLOGGING` (or `DEBUG_LOGGING` / `WARN_LOGGING` / `ERROR_LOGGING`) and make sure log volume is acceptable (or wrap noisy calls in your own defines).
-5. **Leverage tests** — `Tests/Runtime/Extensions/LoggingExtensionTests.cs` covers every default tag and stacking scenario. Copy those patterns when adding new decorations to ensure behaviour stays deterministic.
+4. **Gate release builds** — If you plan to leave logging enabled in production, explicitly define `ENABLE_UBERLOGGING` (or `DEBUG_LOGGING` / `WARN_LOGGING` / `ERROR_LOGGING`) and make sure log volume is acceptable (or wrap noisy calls in your own `#define`s).
+5. **Leverage tests** — `Tests/Runtime/Extensions/LoggingExtensionTests.cs` covers every default tag and stacking scenario. Copy those patterns when adding new decorations to ensure behavior stays deterministic.
 
 ---
 

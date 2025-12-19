@@ -1167,7 +1167,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private DuplicateKeyState RefreshDuplicateState(
+        internal DuplicateKeyState RefreshDuplicateState(
             string cacheKey,
             SerializedProperty keysProperty,
             Type keyType
@@ -1184,14 +1184,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             DuplicateKeyState state = _duplicateStates.GetOrAdd(cacheKey);
 
-            if (alreadyRefreshedThisFrame)
+            if (alreadyRefreshedThisFrame && !state.IsDirty)
             {
                 return state;
             }
 
             bool hasEvent = Event.current != null;
             EventType eventType = hasEvent ? Event.current.type : EventType.Repaint;
-            bool shouldRefresh = eventType == EventType.Repaint;
+            bool shouldRefresh = eventType == EventType.Repaint || state.IsDirty;
             bool changed = false;
 
             if (shouldRefresh)
@@ -1232,7 +1232,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return state;
         }
 
-        private NullKeyState RefreshNullKeyState(
+        internal NullKeyState RefreshNullKeyState(
             string cacheKey,
             SerializedProperty keysProperty,
             Type keyType
@@ -1246,17 +1246,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int currentFrame = Time.frameCount;
             bool alreadyRefreshedThisFrame = _lastNullKeyRefreshFrame == currentFrame;
             _lastNullKeyRefreshFrame = currentFrame;
+            NullKeyState existingState = _nullKeyStates.GetValueOrDefault(cacheKey);
 
-            if (alreadyRefreshedThisFrame)
+            if (alreadyRefreshedThisFrame && (existingState == null || !existingState.IsDirty))
             {
-                return _nullKeyStates.GetValueOrDefault(cacheKey);
+                return existingState;
             }
 
             bool hasEvent = Event.current != null;
             EventType eventType = hasEvent ? Event.current.type : EventType.Repaint;
-            if (eventType != EventType.Repaint)
+            bool stateIsDirty = existingState != null && existingState.IsDirty;
+            if (eventType != EventType.Repaint && !stateIsDirty)
             {
-                return _nullKeyStates.GetValueOrDefault(cacheKey);
+                return existingState;
             }
 
             if (!TypeSupportsNullReferences(keyType))
@@ -5140,7 +5142,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return cache.indices.GetValueOrDefault(lookupKey, -1);
         }
 
-        private static bool EntryMatchesExisting(
+        internal static bool EntryMatchesExisting(
             SerializedProperty keysProperty,
             SerializedProperty valuesProperty,
             int existingIndex,
@@ -5322,11 +5324,40 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private void InvalidateKeyCache(string cacheKey)
+        internal void InvalidateKeyCache(string cacheKey)
         {
             _keyIndexCaches.Remove(cacheKey);
             InvalidatePendingDuplicateCache(cacheKey);
             MarkListCacheDirty(cacheKey);
+            MarkDuplicateStateDirty(cacheKey);
+            MarkNullKeyStateDirty(cacheKey);
+        }
+
+        private void MarkDuplicateStateDirty(string cacheKey)
+        {
+            if (string.IsNullOrEmpty(cacheKey))
+            {
+                return;
+            }
+
+            if (_duplicateStates.TryGetValue(cacheKey, out DuplicateKeyState state))
+            {
+                state.MarkDirty();
+            }
+        }
+
+        private void MarkNullKeyStateDirty(string cacheKey)
+        {
+            if (string.IsNullOrEmpty(cacheKey))
+            {
+                return;
+            }
+
+            // Always create a state if one doesn't exist, so that the next RefreshNullKeyState
+            // call will see IsDirty=true and perform a full refresh. This matches the behavior
+            // of RefreshDuplicateState which always creates a state via GetOrAdd.
+            NullKeyState state = _nullKeyStates.GetOrAdd(cacheKey);
+            state.MarkDirty();
         }
 
         internal void InvalidatePendingDuplicateCache(string cacheKey)
@@ -6009,7 +6040,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return property != null && property.hasVisibleChildren;
         }
 
-        private static PendingWrapperContext EnsurePendingWrapper(
+        internal static PendingWrapperContext EnsurePendingWrapper(
             PendingEntry pending,
             Type type,
             bool isValueField
@@ -6595,7 +6626,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private readonly struct PendingWrapperContext
+        internal readonly struct PendingWrapperContext
         {
             public static readonly PendingWrapperContext Empty = new(null, null, null);
 
@@ -7390,7 +7421,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static bool ValuesEqual(object left, object right)
+        internal static bool ValuesEqual(object left, object right)
         {
             if (ReferenceEquals(left, right))
             {
@@ -7570,7 +7601,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public int valueWrapperSyncRevision;
         }
 
-        public sealed class NullKeyInfo
+        internal sealed class NullKeyInfo
         {
             public string tooltip = string.Empty;
         }
@@ -7584,6 +7615,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             public bool HasNullKeys { get; private set; }
             public string WarningMessage { get; private set; } = string.Empty;
+
+            public bool IsDirty => _lastArraySize < 0;
 
             public void MarkDirty()
             {
@@ -7713,6 +7746,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public bool IsEmpty => _duplicateLookup.Count == 0;
 
             public bool IsAnimating => HasDuplicates && !_animationsCompleted;
+
+            public bool IsDirty => _lastArraySize < 0;
 
             public void MarkDirty()
             {
@@ -8582,6 +8617,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return result;
+        }
+
+        internal void InvokeClearDictionary(
+            SerializedProperty dictionaryProperty,
+            SerializedProperty keysProperty,
+            SerializedProperty valuesProperty,
+            PaginationState pagination,
+            ReorderableList list
+        )
+        {
+            ClearDictionary(dictionaryProperty, keysProperty, valuesProperty, pagination, list);
         }
     }
 }

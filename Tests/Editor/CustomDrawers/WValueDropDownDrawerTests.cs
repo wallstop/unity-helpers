@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
 #if UNITY_EDITOR
     using System;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -12,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base;
     using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using PropertyAttribute = UnityEngine.PropertyAttribute;
 
     [TestFixture]
@@ -150,8 +150,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             Assert.IsNotNull(property, "Failed to locate instance method backed property.");
 
-            WValueDropDownAttribute attribute = (WValueDropDownAttribute)
-                property.GetCustomAttributeFromProperty<WValueDropDownAttribute>();
+            WValueDropDownAttribute attribute =
+                PropertyDrawerTestHelper.GetAttributeFromProperty<WValueDropDownAttribute>(
+                    property
+                );
             Assert.IsNotNull(attribute, "Failed to retrieve attribute.");
 
             object[] options = attribute.GetOptions(asset);
@@ -184,8 +186,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             Assert.IsNotNull(property, "Failed to locate float selection property.");
 
-            WValueDropDownAttribute attribute = (WValueDropDownAttribute)
-                property.GetCustomAttributeFromProperty<WValueDropDownAttribute>();
+            WValueDropDownAttribute attribute =
+                PropertyDrawerTestHelper.GetAttributeFromProperty<WValueDropDownAttribute>(
+                    property
+                );
             Assert.IsNotNull(attribute, "Failed to retrieve attribute.");
 
             object[] options = attribute.GetOptions(asset);
@@ -347,21 +351,21 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         // Data-driven test for CalculateRowsOnPage covering various scenarios
-        [TestCase(12, 5, 5, 2, TestName = "CalculateRowsOnPage_LastPage_Returns2")]
-        [TestCase(0, 5, 0, 1, TestName = "CalculateRowsOnPage_EmptyList_Returns1")]
-        [TestCase(6, 0, 0, 1, TestName = "CalculateRowsOnPage_ZeroPageSize_Returns1")]
-        [TestCase(3, 2, -2, 2, TestName = "CalculateRowsOnPage_NegativePage_ClampsToFirst")]
-        [TestCase(10, 5, 0, 5, TestName = "CalculateRowsOnPage_FirstFullPage_ReturnsPageSize")]
-        [TestCase(10, 5, 1, 5, TestName = "CalculateRowsOnPage_SecondFullPage_ReturnsPageSize")]
-        [TestCase(7, 5, 1, 2, TestName = "CalculateRowsOnPage_PartialLastPage_ReturnsRemaining")]
-        [TestCase(5, 5, 0, 5, TestName = "CalculateRowsOnPage_ExactlyOnePage_ReturnsPageSize")]
-        [TestCase(1, 10, 0, 1, TestName = "CalculateRowsOnPage_SingleItem_Returns1")]
+        [TestCase(12, 5, 5, 2, TestName = "CalculateRowsOnPage.LastPage.Returns2")]
+        [TestCase(0, 5, 0, 1, TestName = "CalculateRowsOnPage.EmptyList.Returns1")]
+        [TestCase(6, 0, 0, 1, TestName = "CalculateRowsOnPage.ZeroPageSize.Returns1")]
+        [TestCase(3, 2, -2, 2, TestName = "CalculateRowsOnPage.NegativePage.ClampsToFirst")]
+        [TestCase(10, 5, 0, 5, TestName = "CalculateRowsOnPage.FirstFullPage.ReturnsPageSize")]
+        [TestCase(10, 5, 1, 5, TestName = "CalculateRowsOnPage.SecondFullPage.ReturnsPageSize")]
+        [TestCase(7, 5, 1, 2, TestName = "CalculateRowsOnPage.PartialLastPage.ReturnsRemaining")]
+        [TestCase(5, 5, 0, 5, TestName = "CalculateRowsOnPage.ExactlyOnePage.ReturnsPageSize")]
+        [TestCase(1, 10, 0, 1, TestName = "CalculateRowsOnPage.SingleItem.Returns1")]
         [TestCase(
             100,
             10,
             9,
             10,
-            TestName = "CalculateRowsOnPage_LastPageExactFit_ReturnsPageSize"
+            TestName = "CalculateRowsOnPage.LastPageExactFit.ReturnsPageSize"
         )]
         public void CalculateRowsOnPageDataDrivenScenarios(
             int filteredCount,
@@ -458,12 +462,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         private static void AssignAttribute(PropertyDrawer drawer, PropertyAttribute attribute)
         {
-            FieldInfo attributeField = typeof(PropertyDrawer).GetField(
-                "m_Attribute",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            Assert.IsNotNull(attributeField, "Unable to locate PropertyDrawer.m_Attribute.");
-            attributeField.SetValue(drawer, attribute);
+            PropertyDrawerTestHelper.AssignAttribute(drawer, attribute);
         }
 
         private static void InvokeApplySelection(BaseField<string> selector, int optionIndex)
@@ -475,26 +474,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 $"Expected selector to derive from WDropDownSelectorBase<string>, but was {selector?.GetType().FullName ?? "null"}."
             );
             dropDownSelector.ApplySelection(optionIndex);
-        }
-    }
-
-    internal static class SerializedPropertyExtensions
-    {
-        public static T GetCustomAttributeFromProperty<T>(this SerializedProperty property)
-            where T : Attribute
-        {
-            if (property == null)
-            {
-                return null;
-            }
-
-            Type targetType = property.serializedObject.targetObject.GetType();
-            FieldInfo field = targetType.GetField(
-                property.name,
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-            );
-
-            return field?.GetCustomAttribute<T>();
         }
     }
 #endif

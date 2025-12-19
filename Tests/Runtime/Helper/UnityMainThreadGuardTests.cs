@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System;
     using System.Collections;
-    using System.Reflection;
     using System.Threading;
     using NUnit.Framework;
     using UnityEngine.TestTools;
@@ -58,14 +57,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void EditorInitializeDoesNotThrow()
         {
-            Assert.DoesNotThrow(() =>
-            {
-                MethodInfo method = typeof(UnityMainThreadGuard).GetMethod(
-                    "CaptureEditorThread",
-                    BindingFlags.NonPublic | BindingFlags.Static
-                );
-                method?.Invoke(null, null);
-            });
+            Assert.DoesNotThrow(() => UnityMainThreadGuard.CaptureEditorThread());
         }
 #endif
     }

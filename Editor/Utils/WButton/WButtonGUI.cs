@@ -1355,7 +1355,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             GUILayout.EndVertical();
         }
 
-        private static void GetInvocationStatus(
+        internal static void GetInvocationStatus(
             WButtonMethodState[] states,
             out int runningCount,
             out bool cancellable

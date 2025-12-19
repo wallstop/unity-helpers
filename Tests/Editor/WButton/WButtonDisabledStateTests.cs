@@ -652,18 +652,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             out bool cancellable
         )
         {
-            System.Reflection.MethodInfo method = typeof(WButtonGUI).GetMethod(
-                "GetInvocationStatus",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
-            );
-
-            Assert.That(method != null, "GetInvocationStatus method should exist");
-
-            object[] parameters = new object[] { states, 0, false };
-            method.Invoke(null, parameters);
-
-            runningCount = (int)parameters[1];
-            cancellable = (bool)parameters[2];
+            WButtonGUI.GetInvocationStatus(states, out runningCount, out cancellable);
         }
 
         private static IEnumerator WaitUntil(Func<bool> condition, float timeoutSeconds)

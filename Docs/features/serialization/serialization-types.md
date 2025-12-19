@@ -204,6 +204,7 @@ public class PrefabRegistry : MonoBehaviour
 > **Visual Reference**
 >
 > ![SerializableDictionary property drawer with add/remove controls](../../images/serialization/serializable-dictionary-inspector.png)
+>
 > _Dictionary inspector showing key-value pairs with pagination and inline editing_
 
 **Custom Drawer:**
@@ -305,15 +306,11 @@ public class UniqueItemTracker : MonoBehaviour
 {
     public SerializableHashSet<string> collectedItems;
 
-    private void CollectItem(string itemId)
+    private void Start()
     {
-        if (collectedItems.Add(itemId))
+        foreach (var item in collectedItems)
         {
-            Debug.Log($"Collected new item: {itemId}");
-        }
-        else
-        {
-            Debug.Log($"Already collected: {itemId}");
+            Debug.Log($"Found item: {item}");
         }
     }
 }
@@ -322,6 +319,7 @@ public class UniqueItemTracker : MonoBehaviour
 > **Visual Reference**
 >
 > ![SerializableHashSet property drawer with duplicate detection](../../images/serialization/serializable-hashset-inspector.png)
+>
 > _Set inspector with add/remove controls, duplicate highlighting, and pagination_
 
 ---
@@ -342,8 +340,9 @@ public class UniqueItemTracker : MonoBehaviour
 > **Visual Reference**
 >
 > ![SerializableHashSet duplicate and null highlighting](../../images/serialization/serializable-hashset-validation.png)
+>
 > _Visual feedback for duplicate entries (yellow shake) and null values (red background)_
-> ![GIF placeholder: Adding duplicate and seeing shake animation]
+> ![GIF placeholder: Adding duplicate and seeing shake animation](../../images/serialization/SOMETHING.gif)
 
 ---
 

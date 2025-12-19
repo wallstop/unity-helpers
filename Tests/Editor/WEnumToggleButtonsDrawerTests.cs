@@ -14,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     [TestFixture]
     public sealed class WEnumToggleButtonsDrawerTests : CommonTestBase
@@ -304,17 +305,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
             WEnumToggleButtonsAttribute toggleAttribute
         )
         {
-            FieldInfo attributeField = typeof(PropertyDrawer).GetField(
-                "m_Attribute",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            FieldInfo fieldInfoField = typeof(PropertyDrawer).GetField(
-                "m_FieldInfo",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-
-            attributeField?.SetValue(drawer, toggleAttribute);
-            fieldInfoField?.SetValue(drawer, fieldInfo);
+            PropertyDrawerTestHelper.ConfigureDrawer(drawer, fieldInfo, toggleAttribute);
         }
     }
 #endif

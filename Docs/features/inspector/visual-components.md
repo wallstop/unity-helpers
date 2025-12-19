@@ -282,6 +282,7 @@ All layers must have the same number of frames. Mixing 4-frame and 8-frame anima
 > **Visual Demo**
 >
 > ![GIF placeholder: EnhancedImage HDR color intensity slider being adjusted, showing bloom effect increasing](../../images/inspector/enhanced-image-hdr-bloom.gif)
+>
 > _HDR color values above 1.0 create bloom effects when post-processing is enabled_
 
 **Quick example:**

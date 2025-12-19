@@ -4,12 +4,7 @@
 
 ## UnityMainThreadDispatcher
 
-The `UnityMainThreadDispatcher` is the package-wide bridge for marshalling callbacks from worker threads back onto Unity's main thread. The dispatcher is implemented as a `RuntimeSingleton<UnityMainThreadDispatcher>`, is marked `[ExecuteAlways]`, and runs both in Edit Mode and Play Mode so background logging, importers, and build scripts can all enqueue work safely.
-
-> **Visual Reference**
->
-> ![Thread dispatcher marshalling workflow](../../images/utilities/threading/main-thread-dispatcher.png)
-> _Background thread callbacks queued and executed on Unity's main thread_
+The `UnityMainThreadDispatcher` is the package-wide bridge for marshaling callbacks from worker threads back onto Unity's main thread. The dispatcher is implemented as a `RuntimeSingleton<UnityMainThreadDispatcher>`, is marked `[ExecuteAlways]`, and runs both in Edit Mode and Play Mode so background logging, importers, and build scripts can all enqueue work safely.
 
 ## UnityMainThreadGuard
 
@@ -95,7 +90,7 @@ Task.Run(() => ComputeData())
 ## Default Bootstrapping Flow
 
 - A `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]` (`EnsureDispatcherBootstrap`) spins up the dispatcher before user assemblies receive their own `RuntimeInitializeOnLoadMethod` callbacks. This guarantees that worker threads can enqueue diagnostics as soon as your game loads.
-- Inside the editor, `[InitializeOnLoadMethod]` (`EnsureDispatcherBootstrapInEditor`) mirrors the same behavior for Edit Mode tools. The bootstrap politely skips when play mode is already running so it does not duplicate the instance scene-side.
+- Inside the editor, `[InitializeOnLoadMethod]` (`EnsureDispatcherBootstrapInEditor`) mirrors the same behavior for Edit Mode tools. The bootstrap politely skips when play mode is already running, so it does not duplicate the instance scene-side.
 - Both entry points run through `UnityMainThreadGuard.EnsureMainThread(...)` before touching Unity APIs, so the dispatcher is always created on the real main thread even when background code tries to force instantiation.
 
 With no configuration, the dispatcher therefore always exists, enforces the queue bound exposed via `PendingActionLimit`, and is hidden from the hierarchy during Edit Mode by `HideFlags.HideInHierarchy | HideFlags.HideInInspector | HideFlags.NotEditable`.
@@ -129,8 +124,8 @@ using UnityMainThreadDispatcher.AutoCreationScope scope =
 // Auto-creation is disabled inside the scope; manually enable or create instances as needed.
 ```
 
-- On enter the scope captures the previous `AutoCreationEnabled` value, switches to the desired state, and optionally destroys any existing dispatcher instances.
-- On dispose the scope restores the original toggle and (when requested) destroys any dispatcher that may have been created during the scoped work, ensuring follow-up tests inherit a clean slate.
+- On enter, the scope captures the previous `AutoCreationEnabled` value, switches to the desired state, and optionally destroys any existing dispatcher instances.
+- On dispose, the scope restores the original toggle and (when requested) destroys any dispatcher that may have been created during the scoped work, ensuring follow-up tests inherit a clean slate.
 
 ## Test Bootstrap Workflow
 
@@ -176,7 +171,7 @@ The runtime and editor `CommonTestBase` fixtures demonstrate the intended per-te
 
 1. At `[SetUp]` it grabs `UnityMainThreadDispatcher.CreateTestScope(destroyImmediate: true)` which internally disables auto-creation, destroys stragglers, and then re-enables auto-creation so the test can access `Instance` normally.
 2. Production code can create/destroy the dispatcher freely; the scope tracks everything automatically.
-3. During every teardown stage it disposes the scope, restoring the previous auto-creation flag and destroying any dispatcher created while the test ran—no manual try/finally blocks required.
+3. During every teardown stage it disposes the scope, restoring the previous auto-creation flag and destroying any dispatcher created while the test runs — no manual try/finally blocks required.
 
 Downstream packages can copy the exact pattern:
 

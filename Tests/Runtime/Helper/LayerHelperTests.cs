@@ -1,7 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System;
-    using System.Reflection;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Tests.Core;
@@ -103,11 +102,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
         private static void InvokeClearLayerNames()
         {
-            MethodInfo method = typeof(Helpers).GetMethod(
-                "CLearLayerNames",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            method?.Invoke(null, Array.Empty<object>());
+            Helpers.CLearLayerNames();
         }
     }
 }

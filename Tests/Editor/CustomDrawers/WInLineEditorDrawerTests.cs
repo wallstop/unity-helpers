@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 {
     using System;
     using System.Linq;
+    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -10,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     public sealed class WInLineEditorDrawerTests : CommonTestBase
     {
@@ -805,9 +807,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             );
 
             // Get the attribute via reflection
-            System.Reflection.FieldInfo targetField = typeof(InlineEditorHost).GetField(
-                nameof(InlineEditorHost.collapsedTarget),
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+            FieldInfo targetField = PropertyDrawerTestHelper.GetFieldInfoOrFail(
+                typeof(InlineEditorHost),
+                nameof(InlineEditorHost.collapsedTarget)
             );
             WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
                 Attribute.GetCustomAttribute(targetField, typeof(WInLineEditorAttribute));
@@ -815,11 +817,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             // Setup drawer
             GUIContent label = new("Target");
             WInLineEditorDrawer drawer = new();
-            System.Reflection.FieldInfo attributeFieldInfo = typeof(PropertyDrawer).GetField(
-                "m_Attribute",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
-            );
-            attributeFieldInfo.SetValue(drawer, inlineAttribute);
+            PropertyDrawerTestHelper.AssignAttribute(drawer, inlineAttribute);
 
             float height = drawer.GetPropertyHeight(property, label);
 
@@ -927,9 +925,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             serializedHost.Update();
             property = serializedHost.FindProperty(propertyName);
 
-            System.Reflection.FieldInfo targetField = typeof(ExplicitModeTestHost).GetField(
-                propertyName,
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+            FieldInfo targetField = PropertyDrawerTestHelper.GetFieldInfoOrFail(
+                typeof(ExplicitModeTestHost),
+                propertyName
             );
             WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
                 Attribute.GetCustomAttribute(targetField, typeof(WInLineEditorAttribute));
@@ -1203,9 +1201,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             serializedHost.Update();
             property = serializedHost.FindProperty(nameof(InlineEditorHost.collapsedTarget));
 
-            System.Reflection.FieldInfo targetField = typeof(InlineEditorHost).GetField(
-                nameof(InlineEditorHost.collapsedTarget),
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+            FieldInfo targetField = PropertyDrawerTestHelper.GetFieldInfoOrFail(
+                typeof(InlineEditorHost),
+                nameof(InlineEditorHost.collapsedTarget)
             );
             WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
                 Attribute.GetCustomAttribute(targetField, typeof(WInLineEditorAttribute));
@@ -1215,11 +1213,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 
             GUIContent label = new("Target");
             WInLineEditorDrawer drawer = new();
-            System.Reflection.FieldInfo attributeFieldInfo = typeof(PropertyDrawer).GetField(
-                "m_Attribute",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
-            );
-            attributeFieldInfo.SetValue(drawer, inlineAttribute);
+            PropertyDrawerTestHelper.AssignAttribute(drawer, inlineAttribute);
 
             float height = drawer.GetPropertyHeight(property, label);
 
@@ -1238,90 +1232,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         )
             where THost : ScriptableObject
         {
-            WInLineEditorDrawer.ClearCachedStateForTesting();
-            THost host = Track(ScriptableObject.CreateInstance<THost>());
-            host.hideFlags = HideFlags.HideAndDontSave;
+            (
+                WInLineEditorDrawer drawer,
+                SerializedProperty property,
+                WInLineEditorAttribute _,
+                ScriptableObject _,
+                SerializedObject serializedHost
+            ) = PrepareInlineEditorTestContext<THost>(propertyExpanded, setInlineExpanded);
 
-            // Find the first field with WInLineEditorAttribute to determine field name and target type
-            System.Reflection.FieldInfo[] fields = typeof(THost).GetFields(
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
-            );
-            System.Reflection.FieldInfo targetField = null;
-            WInLineEditorAttribute inlineAttribute = null;
-            foreach (System.Reflection.FieldInfo field in fields)
+            using (serializedHost)
             {
-                WInLineEditorAttribute attr = (WInLineEditorAttribute)
-                    Attribute.GetCustomAttribute(field, typeof(WInLineEditorAttribute));
-                if (attr != null)
-                {
-                    targetField = field;
-                    inlineAttribute = attr;
-                    break;
-                }
+                GUIContent label = new("Target");
+                return drawer.GetPropertyHeight(property, label);
             }
-
-            Assert.That(
-                targetField,
-                Is.Not.Null,
-                $"No field with WInLineEditorAttribute found on {typeof(THost).Name}."
-            );
-            Assert.That(
-                inlineAttribute,
-                Is.Not.Null,
-                $"Failed to extract WInLineEditorAttribute from {typeof(THost).Name}."
-            );
-
-            string propertyName = targetField.Name;
-            Type fieldType = targetField.FieldType;
-
-            // Create a target of the appropriate type
-            ScriptableObject target = Track(
-                ScriptableObject.CreateInstance(fieldType) as ScriptableObject
-            );
-            Assert.That(target, Is.Not.Null, $"Failed to create instance of {fieldType.Name}.");
-            target.hideFlags = HideFlags.HideAndDontSave;
-
-            using SerializedObject serializedHost = new(host);
-            serializedHost.Update();
-            SerializedProperty property = serializedHost.FindProperty(propertyName);
-            Assert.That(
-                property,
-                Is.Not.Null,
-                $"Failed to find property '{propertyName}' on {typeof(THost).Name}."
-            );
-            property.objectReferenceValue = target;
-            serializedHost.ApplyModifiedPropertiesWithoutUndo();
-            serializedHost.Update();
-            property = serializedHost.FindProperty(propertyName);
-            Assert.That(
-                property,
-                Is.Not.Null,
-                $"Failed to re-find property '{propertyName}' after assignment."
-            );
-            property.isExpanded = propertyExpanded;
-            if (setInlineExpanded.HasValue)
-            {
-                WInLineEditorDrawer.SetInlineFoldoutStateForTesting(
-                    property,
-                    setInlineExpanded.Value
-                );
-            }
-
-            // Assign the attribute to the drawer using reflection
-            GUIContent label = new("Target");
-            WInLineEditorDrawer drawer = new();
-            System.Reflection.FieldInfo attributeFieldInfo = typeof(PropertyDrawer).GetField(
-                "m_Attribute",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
-            );
-            Assert.That(
-                attributeFieldInfo,
-                Is.Not.Null,
-                "Failed to find PropertyDrawer.m_Attribute field."
-            );
-            attributeFieldInfo.SetValue(drawer, inlineAttribute);
-
-            return drawer.GetPropertyHeight(property, label);
         }
 
         /// <summary>
@@ -1378,38 +1301,71 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         )
             where THost : ScriptableObject
         {
+            (
+                WInLineEditorDrawer drawer,
+                SerializedProperty property,
+                WInLineEditorAttribute inlineAttribute,
+                ScriptableObject target,
+                SerializedObject serializedHost
+            ) = PrepareInlineEditorTestContext<THost>(propertyExpanded, setInlineExpanded);
+
+            using (serializedHost)
+            {
+                GUIContent label = new("Target");
+
+                float height = drawer.GetPropertyHeight(property, label);
+
+                // Get detailed calculation info for diagnostics
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) details = WInLineEditorDrawer.GetHeightCalculationDetailsForTesting(
+                    property,
+                    inlineAttribute,
+                    target,
+                    500f // Arbitrary available width for testing
+                );
+
+                // Get extensive diagnostics
+                string diagnostics = WInLineEditorDrawer.GetExtensiveDiagnosticsForTesting(
+                    property,
+                    inlineAttribute,
+                    target,
+                    500f
+                );
+
+                return (height, details, diagnostics);
+            }
+        }
+
+        /// <summary>
+        /// Prepares a test context for inline editor testing, creating all necessary objects.
+        /// </summary>
+        /// <typeparam name="THost">The host ScriptableObject type with a WInLineEditor attribute.</typeparam>
+        /// <param name="propertyExpanded">Whether the property should be expanded.</param>
+        /// <param name="setInlineExpanded">Optional inline foldout state.</param>
+        /// <returns>Tuple containing the drawer, property, attribute, target, and serialized object.</returns>
+        private (
+            WInLineEditorDrawer drawer,
+            SerializedProperty property,
+            WInLineEditorAttribute attribute,
+            ScriptableObject target,
+            SerializedObject serializedHost
+        ) PrepareInlineEditorTestContext<THost>(bool propertyExpanded, bool? setInlineExpanded)
+            where THost : ScriptableObject
+        {
             WInLineEditorDrawer.ClearCachedStateForTesting();
             THost host = Track(ScriptableObject.CreateInstance<THost>());
             host.hideFlags = HideFlags.HideAndDontSave;
 
-            // Find the first field with WInLineEditorAttribute to determine field name and target type
-            System.Reflection.FieldInfo[] fields = typeof(THost).GetFields(
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
-            );
-            System.Reflection.FieldInfo targetField = null;
-            WInLineEditorAttribute inlineAttribute = null;
-            foreach (System.Reflection.FieldInfo field in fields)
-            {
-                WInLineEditorAttribute attr = (WInLineEditorAttribute)
-                    Attribute.GetCustomAttribute(field, typeof(WInLineEditorAttribute));
-                if (attr != null)
-                {
-                    targetField = field;
-                    inlineAttribute = attr;
-                    break;
-                }
-            }
-
-            Assert.That(
-                targetField,
-                Is.Not.Null,
-                $"No field with WInLineEditorAttribute found on {typeof(THost).Name}."
-            );
-            Assert.That(
-                inlineAttribute,
-                Is.Not.Null,
-                $"Failed to extract WInLineEditorAttribute from {typeof(THost).Name}."
-            );
+            // Find the first field with WInLineEditorAttribute
+            (FieldInfo targetField, WInLineEditorAttribute inlineAttribute) =
+                PropertyDrawerTestHelper.FindFirstFieldWithAttributeOrFail<WInLineEditorAttribute>(
+                    typeof(THost)
+                );
 
             string propertyName = targetField.Name;
             Type fieldType = targetField.FieldType;
@@ -1421,7 +1377,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             Assert.That(target, Is.Not.Null, $"Failed to create instance of {fieldType.Name}.");
             target.hideFlags = HideFlags.HideAndDontSave;
 
-            using SerializedObject serializedHost = new(host);
+            SerializedObject serializedHost = new(host);
             serializedHost.Update();
             SerializedProperty property = serializedHost.FindProperty(propertyName);
             Assert.That(
@@ -1447,45 +1403,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 );
             }
 
-            // Assign the attribute to the drawer using reflection
-            GUIContent label = new("Target");
+            // Assign the attribute to the drawer
             WInLineEditorDrawer drawer = new();
-            System.Reflection.FieldInfo attributeFieldInfo = typeof(PropertyDrawer).GetField(
-                "m_Attribute",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
-            );
-            Assert.That(
-                attributeFieldInfo,
-                Is.Not.Null,
-                "Failed to find PropertyDrawer.m_Attribute field."
-            );
-            attributeFieldInfo.SetValue(drawer, inlineAttribute);
+            PropertyDrawerTestHelper.AssignAttribute(drawer, inlineAttribute);
 
-            float height = drawer.GetPropertyHeight(property, label);
-
-            // Get detailed calculation info for diagnostics
-            (
-                float baseHeight,
-                float inlineHeight,
-                bool showHeader,
-                bool showBody,
-                float displayHeight
-            ) details = WInLineEditorDrawer.GetHeightCalculationDetailsForTesting(
-                property,
-                inlineAttribute,
-                target,
-                500f // Arbitrary available width for testing
-            );
-
-            // Get extensive diagnostics
-            string diagnostics = WInLineEditorDrawer.GetExtensiveDiagnosticsForTesting(
-                property,
-                inlineAttribute,
-                target,
-                500f
-            );
-
-            return (height, details, diagnostics);
+            return (drawer, property, inlineAttribute, target, serializedHost);
         }
 
         private T CreateHiddenInstance<T>()
@@ -1502,36 +1424,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         private sealed class InlineEditorFoldoutBehaviorScope : IDisposable
         {
             private readonly UnityHelpersSettings.InlineEditorFoldoutBehavior originalValue;
-            private readonly System.Reflection.FieldInfo fieldInfo;
-            private readonly UnityHelpersSettings settings;
             private bool disposed;
 
             public InlineEditorFoldoutBehaviorScope(
                 UnityHelpersSettings.InlineEditorFoldoutBehavior behavior
             )
             {
-                settings = UnityHelpersSettings.instance;
-
-                // Use the SerializedPropertyNames constant to get the field name, avoiding magic strings
-                string fieldName = UnityHelpersSettings
-                    .SerializedPropertyNames
-                    .InlineEditorFoldoutBehavior;
-                fieldInfo = typeof(UnityHelpersSettings).GetField(
-                    fieldName,
-                    System.Reflection.BindingFlags.Instance
-                        | System.Reflection.BindingFlags.NonPublic
-                );
-                if (fieldInfo == null)
-                {
-                    throw new InvalidOperationException(
-                        $"Could not locate '{fieldName}' field via reflection on {typeof(UnityHelpersSettings).FullName}. "
-                            + $"Available non-public instance fields: {string.Join(", ", typeof(UnityHelpersSettings).GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Select(f => f.Name))}"
-                    );
-                }
-
-                originalValue = (UnityHelpersSettings.InlineEditorFoldoutBehavior)
-                    fieldInfo.GetValue(settings);
-                fieldInfo.SetValue(settings, behavior);
+                originalValue = UnityHelpersSettings.GetInlineEditorFoldoutBehavior();
+                UnityHelpersSettings.SetInlineEditorFoldoutBehavior(behavior);
             }
 
             public void Dispose()
@@ -1542,7 +1442,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 }
 
                 disposed = true;
-                fieldInfo.SetValue(settings, originalValue);
+                UnityHelpersSettings.SetInlineEditorFoldoutBehavior(originalValue);
             }
         }
     }

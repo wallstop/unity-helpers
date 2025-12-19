@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     [TestFixture]
     public sealed class WEnumToggleButtonsDrawerTests : CommonTestBase
@@ -530,12 +531,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         private static FieldInfo GetFieldInfo(string fieldName)
         {
-            FieldInfo fieldInfo = typeof(ToggleTestAsset).GetField(
-                fieldName,
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-            );
-            Assert.NotNull(fieldInfo, "Unable to resolve field: " + fieldName);
-            return fieldInfo;
+            return PropertyDrawerTestHelper.GetFieldInfoOrFail(typeof(ToggleTestAsset), fieldName);
         }
 
         private readonly struct SummaryResult

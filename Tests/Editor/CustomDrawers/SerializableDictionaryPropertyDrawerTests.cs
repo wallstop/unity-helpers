@@ -5,7 +5,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using System.Collections.Generic;
     using System.Globalization;
     using System.Linq;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEditorInternal;
@@ -19,6 +18,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
+    using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -1654,16 +1654,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             if (initializeWrapper)
             {
-                MethodInfo ensureWrapperMethod =
-                    typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                        "EnsurePendingWrapper",
-                        BindingFlags.NonPublic | BindingFlags.Static
-                    );
-                Assert.IsNotNull(
-                    ensureWrapperMethod,
-                    "EnsurePendingWrapper reflection lookup failed."
+                SerializableDictionaryPropertyDrawer.EnsurePendingWrapper(
+                    pending,
+                    typeof(ColorData),
+                    isValueField: true
                 );
-                ensureWrapperMethod.Invoke(null, new object[] { pending, typeof(ColorData), true });
                 Assert.IsNotNull(
                     pending.valueWrapperProperty,
                     "Pending wrapper should initialize when requested."
@@ -1677,23 +1672,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 }
             }
 
-            MethodInfo matchesMethod = typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                "EntryMatchesExisting",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            Assert.IsNotNull(matchesMethod, "EntryMatchesExisting reflection lookup failed.");
-
-            object[] args =
-            {
+            bool initialMatch = SerializableDictionaryPropertyDrawer.EntryMatchesExisting(
                 keysProperty,
                 valuesProperty,
                 storedIndex,
                 typeof(string),
                 typeof(ColorData),
-                pending,
-            };
-
-            bool initialMatch = (bool)matchesMethod.Invoke(null, args);
+                pending
+            );
             TestContext.WriteLine(
                 $"[DuplicateCache] Initial match (wrapper initialized: {initializeWrapper}) = {initialMatch}"
             );
@@ -1718,7 +1704,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 $"[DuplicateCache] Serialized value after mutation: {DescribeColorData(serializedAfterChange)}"
             );
 
-            bool cachedMatch = (bool)matchesMethod.Invoke(null, args);
+            bool cachedMatch = SerializableDictionaryPropertyDrawer.EntryMatchesExisting(
+                keysProperty,
+                valuesProperty,
+                storedIndex,
+                typeof(string),
+                typeof(ColorData),
+                pending
+            );
             TestContext.WriteLine(
                 $"[DuplicateCache] Cached match before invalidation = {cachedMatch}"
             );
@@ -1730,7 +1723,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             string cacheKey = drawer.GetListKey(dictionaryProperty);
             drawer.InvalidatePendingDuplicateCache(cacheKey);
 
-            bool refreshedMatch = (bool)matchesMethod.Invoke(null, args);
+            bool refreshedMatch = SerializableDictionaryPropertyDrawer.EntryMatchesExisting(
+                keysProperty,
+                valuesProperty,
+                storedIndex,
+                typeof(string),
+                typeof(ColorData),
+                pending
+            );
             TestContext.WriteLine(
                 $"[DuplicateCache] Refreshed match after invalidation = {refreshedMatch}"
             );
@@ -4176,25 +4176,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             string fieldName
         )
         {
-            if (drawer == null || hostType == null || string.IsNullOrEmpty(fieldName))
-            {
-                return;
-            }
-
-            FieldInfo hostField = hostType.GetField(
-                fieldName,
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-            );
-            if (hostField == null)
-            {
-                return;
-            }
-
-            FieldInfo drawerField = typeof(PropertyDrawer).GetField(
-                "m_FieldInfo",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            drawerField?.SetValue(drawer, hostField);
+            PropertyDrawerTestHelper.AssignFieldInfo(drawer, hostType, fieldName);
         }
 
         private static void ForcePopulateTestDictionarySerializedData(
@@ -4382,32 +4364,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             return pending;
         }
 
-        private static MethodInfo ValuesEqualMethod =>
-            _valuesEqualMethod ??= typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                "ValuesEqual",
-                BindingFlags.NonPublic | BindingFlags.Static,
-                binder: null,
-                types: new[] { typeof(object), typeof(object) },
-                modifiers: null
-            );
-
-        private static MethodInfo GetPropertyValueMethod =>
-            _getPropertyValueMethod ??= typeof(SerializableDictionaryPropertyDrawer).GetMethod(
-                "GetPropertyValue",
-                BindingFlags.NonPublic | BindingFlags.Static,
-                binder: null,
-                types: new[] { typeof(SerializedProperty), typeof(Type) },
-                modifiers: null
-            );
-
-        private static MethodInfo _valuesEqualMethod;
-        private static MethodInfo _getPropertyValueMethod;
-
         private static bool InvokeValuesEqual(object left, object right)
         {
-            MethodInfo method = ValuesEqualMethod;
-            Assert.IsNotNull(method, "ValuesEqual reflection lookup failed.");
-            return (bool)method.Invoke(null, new[] { left, right });
+            return SerializableDictionaryPropertyDrawer.ValuesEqual(left, right);
         }
 
         private static ColorData ReadColorData(SerializedProperty property)
@@ -4417,9 +4376,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 return default;
             }
 
-            MethodInfo method = GetPropertyValueMethod;
-            Assert.IsNotNull(method, "GetPropertyValue reflection lookup failed.");
-            object value = method.Invoke(null, new object[] { property, typeof(ColorData) });
+            object value = SerializableDictionaryPropertyDrawer.GetPropertyValue(
+                property,
+                typeof(ColorData)
+            );
             return value is ColorData data ? data : default;
         }
 
@@ -5044,31 +5004,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         private sealed class DictionaryTweenDisabledScope : IDisposable
         {
             private readonly bool originalValue;
-            private readonly FieldInfo fieldInfo;
-            private readonly UnityHelpersSettings settings;
             private bool disposed;
 
             public DictionaryTweenDisabledScope()
             {
-                settings = UnityHelpersSettings.instance;
-
-                string fieldName = UnityHelpersSettings
-                    .SerializedPropertyNames
-                    .SerializableDictionaryFoldoutTweenEnabled;
-                fieldInfo = typeof(UnityHelpersSettings).GetField(
-                    fieldName,
-                    BindingFlags.Instance | BindingFlags.NonPublic
-                );
-                if (fieldInfo == null)
-                {
-                    throw new InvalidOperationException(
-                        $"Could not locate '{fieldName}' field via reflection on {typeof(UnityHelpersSettings).FullName}. "
-                            + $"Available non-public instance fields: {string.Join(", ", typeof(UnityHelpersSettings).GetFields(BindingFlags.Instance | BindingFlags.NonPublic).Select(f => f.Name))}"
-                    );
-                }
-
-                originalValue = (bool)fieldInfo.GetValue(settings);
-                fieldInfo.SetValue(settings, false);
+                originalValue = UnityHelpersSettings.ShouldTweenSerializableDictionaryFoldouts();
+                UnityHelpersSettings.SetSerializableDictionaryFoldoutTweenEnabled(false);
             }
 
             public void Dispose()
@@ -5079,38 +5020,20 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 }
 
                 disposed = true;
-                fieldInfo.SetValue(settings, originalValue);
+                UnityHelpersSettings.SetSerializableDictionaryFoldoutTweenEnabled(originalValue);
             }
         }
 
         private sealed class SortedDictionaryTweenDisabledScope : IDisposable
         {
             private readonly bool originalValue;
-            private readonly FieldInfo fieldInfo;
-            private readonly UnityHelpersSettings settings;
             private bool disposed;
 
             public SortedDictionaryTweenDisabledScope()
             {
-                settings = UnityHelpersSettings.instance;
-
-                string fieldName = UnityHelpersSettings
-                    .SerializedPropertyNames
-                    .SerializableSortedDictionaryFoldoutTweenEnabled;
-                fieldInfo = typeof(UnityHelpersSettings).GetField(
-                    fieldName,
-                    BindingFlags.Instance | BindingFlags.NonPublic
-                );
-                if (fieldInfo == null)
-                {
-                    throw new InvalidOperationException(
-                        $"Could not locate '{fieldName}' field via reflection on {typeof(UnityHelpersSettings).FullName}. "
-                            + $"Available non-public instance fields: {string.Join(", ", typeof(UnityHelpersSettings).GetFields(BindingFlags.Instance | BindingFlags.NonPublic).Select(f => f.Name))}"
-                    );
-                }
-
-                originalValue = (bool)fieldInfo.GetValue(settings);
-                fieldInfo.SetValue(settings, false);
+                originalValue =
+                    UnityHelpersSettings.ShouldTweenSerializableSortedDictionaryFoldouts();
+                UnityHelpersSettings.SetSerializableSortedDictionaryFoldoutTweenEnabled(false);
             }
 
             public void Dispose()
@@ -5121,7 +5044,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 }
 
                 disposed = true;
-                fieldInfo.SetValue(settings, originalValue);
+                UnityHelpersSettings.SetSerializableSortedDictionaryFoldoutTweenEnabled(
+                    originalValue
+                );
             }
         }
 
@@ -5355,6 +5280,1808 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             Assert.That(retrievedValue.button, Is.EqualTo(expectedButtonColor));
             Assert.That(retrievedValue.text, Is.EqualTo(expectedTextColor));
+        }
+
+        [Test]
+        public void RefreshDuplicateStateReturnsNullForEmptyCacheKey()
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            host.dictionary[1] = "One";
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState nullResult =
+                drawer.RefreshDuplicateState(null, keysProperty, typeof(int));
+            Assert.IsNull(
+                nullResult,
+                "RefreshDuplicateState should return null for null cacheKey."
+            );
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState emptyResult =
+                drawer.RefreshDuplicateState(string.Empty, keysProperty, typeof(int));
+            Assert.IsNull(
+                emptyResult,
+                "RefreshDuplicateState should return null for empty cacheKey."
+            );
+        }
+
+        [Test]
+        public void RefreshDuplicateStateReturnsStateWithNoDuplicatesForUniqueKeys()
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            host.dictionary[1] = "One";
+            host.dictionary[2] = "Two";
+            host.dictionary[3] = "Three";
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(TestDictionaryHost),
+                nameof(TestDictionaryHost.dictionary)
+            );
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
+            // Note: RefreshDuplicateState always returns state (unlike RefreshNullKeyState)
+            Assert.IsNotNull(
+                state,
+                "RefreshDuplicateState returns a state object even with no duplicates."
+            );
+            Assert.IsFalse(
+                state.HasDuplicates,
+                "HasDuplicates should be false when all keys are unique."
+            );
+        }
+
+        [Test]
+        public void RefreshDuplicateStateDetectsMultipleDuplicateGroups()
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            // Create two groups of duplicates: [1, 1] and [2, 2]
+            keysProperty.arraySize = 4;
+            valuesProperty.arraySize = 4;
+            keysProperty.GetArrayElementAtIndex(0).intValue = 1;
+            keysProperty.GetArrayElementAtIndex(1).intValue = 1;
+            keysProperty.GetArrayElementAtIndex(2).intValue = 2;
+            keysProperty.GetArrayElementAtIndex(3).intValue = 2;
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Value2";
+            valuesProperty.GetArrayElementAtIndex(2).stringValue = "Value3";
+            valuesProperty.GetArrayElementAtIndex(3).stringValue = "Value4";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(TestDictionaryHost),
+                nameof(TestDictionaryHost.dictionary)
+            );
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
+            Assert.IsNotNull(state, "State should be returned.");
+            Assert.IsTrue(
+                state.HasDuplicates,
+                "HasDuplicates should be true with multiple duplicate groups."
+            );
+        }
+
+        [Test]
+        public void RefreshDuplicateStateTransitionsFromDuplicatesToUniqueKeys()
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            // Start with duplicate keys
+            keysProperty.arraySize = 2;
+            valuesProperty.arraySize = 2;
+            keysProperty.GetArrayElementAtIndex(0).intValue = 1;
+            keysProperty.GetArrayElementAtIndex(1).intValue = 1;
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Value2";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(TestDictionaryHost),
+                nameof(TestDictionaryHost.dictionary)
+            );
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            // Verify duplicates are detected
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState initialState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
+            Assert.IsNotNull(initialState, "Initial state should be returned.");
+            Assert.IsTrue(initialState.HasDuplicates, "HasDuplicates should be true initially.");
+
+            // Fix the duplicate by changing one key
+            keysProperty.GetArrayElementAtIndex(1).intValue = 2;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            // Invalidate and refresh
+            drawer.InvalidateKeyCache(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState afterFixState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
+            Assert.IsNotNull(afterFixState, "State should still be returned after fix.");
+            Assert.IsFalse(
+                afterFixState.HasDuplicates,
+                "HasDuplicates should be false after fixing duplicates."
+            );
+        }
+
+        [Test]
+        public void DuplicateKeyStateMarkDirtyForcesRefreshOnNextEvaluation()
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            host.dictionary[1] = "One";
+            host.dictionary[2] = "Two";
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(TestDictionaryHost),
+                nameof(TestDictionaryHost.dictionary)
+            );
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState initialState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
+            Assert.IsNotNull(initialState, "Initial state should be created.");
+            Assert.IsFalse(initialState.HasDuplicates, "Initial state should not have duplicates.");
+
+            keysProperty.GetArrayElementAtIndex(1).intValue = 1;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            drawer.InvalidateKeyCache(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState refreshedState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
+            Assert.IsNotNull(refreshedState, "Refreshed state should be returned.");
+            Assert.IsTrue(
+                refreshedState.HasDuplicates,
+                "After invalidation and edit, duplicates should be detected."
+            );
+        }
+
+        [Test]
+        public void InvalidateKeyCacheMarksNullKeyStateDirty()
+        {
+            UnityObjectDictionaryHost host = CreateScriptableObject<UnityObjectDictionaryHost>();
+            GameObject go1 = NewGameObject("Key1");
+            GameObject go2 = NewGameObject("Key2");
+            host.dictionary[go1] = "Value1";
+            host.dictionary[go2] = "Value2";
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(UnityObjectDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(UnityObjectDictionaryHost),
+                nameof(UnityObjectDictionaryHost.dictionary)
+            );
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+            Assert.IsFalse(string.IsNullOrEmpty(cacheKey), "Cache key should be valid.");
+
+            // RefreshNullKeyState returns null when there are no null keys (this is correct behavior)
+            SerializableDictionaryPropertyDrawer.NullKeyState initialState =
+                drawer.RefreshNullKeyState(cacheKey, keysProperty, typeof(GameObject));
+            Assert.IsNull(
+                initialState,
+                "Initial state should be null when no null keys exist (RefreshNullKeyState returns null for clean dictionaries)."
+            );
+
+            // Verify keys array has expected content before modification
+            Assert.AreEqual(
+                2,
+                keysProperty.arraySize,
+                $"Keys array should have 2 elements before modification."
+            );
+            Assert.IsTrue(
+                keysProperty.GetArrayElementAtIndex(0).objectReferenceValue != null,
+                "First key should not be null before modification."
+            );
+
+            // Now introduce a null key
+            keysProperty.GetArrayElementAtIndex(0).objectReferenceValue = null;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            // Verify the modification took effect
+            Assert.IsTrue(
+                keysProperty.GetArrayElementAtIndex(0).objectReferenceValue == null,
+                "First key should be null after modification."
+            );
+
+            // Invalidate the cache to force a refresh
+            drawer.InvalidateKeyCache(cacheKey);
+
+            // After invalidation with null key present, state should be returned and show null keys
+            SerializableDictionaryPropertyDrawer.NullKeyState refreshedState =
+                drawer.RefreshNullKeyState(cacheKey, keysProperty, typeof(GameObject));
+            Assert.IsNotNull(
+                refreshedState,
+                $"Refreshed state should be returned when null keys exist. "
+                    + $"CacheKey: '{cacheKey}', KeysArraySize: {keysProperty.arraySize}, "
+                    + $"Key0IsNull: {keysProperty.GetArrayElementAtIndex(0).objectReferenceValue == null}"
+            );
+            Assert.IsTrue(
+                refreshedState.HasNullKeys,
+                "After invalidation and setting key to null, null key should be detected."
+            );
+        }
+
+        [Test]
+        public void InvalidateKeyCacheMarksNullKeyStateDirtyMultipleConsecutiveCalls()
+        {
+            // Test that multiple consecutive InvalidateKeyCache calls work correctly
+            UnityObjectDictionaryHost host = CreateScriptableObject<UnityObjectDictionaryHost>();
+            GameObject go1 = NewGameObject("Key1");
+            host.dictionary[go1] = "Value1";
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(UnityObjectDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(UnityObjectDictionaryHost),
+                nameof(UnityObjectDictionaryHost.dictionary)
+            );
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            // First refresh - no null keys
+            SerializableDictionaryPropertyDrawer.NullKeyState state1 = drawer.RefreshNullKeyState(
+                cacheKey,
+                keysProperty,
+                typeof(GameObject)
+            );
+            Assert.IsNull(state1, "Initial state should be null (no null keys).");
+
+            // Multiple consecutive invalidations without changes
+            drawer.InvalidateKeyCache(cacheKey);
+            drawer.InvalidateKeyCache(cacheKey);
+            drawer.InvalidateKeyCache(cacheKey);
+
+            // Should still return null since no null keys were introduced
+            SerializableDictionaryPropertyDrawer.NullKeyState state2 = drawer.RefreshNullKeyState(
+                cacheKey,
+                keysProperty,
+                typeof(GameObject)
+            );
+            Assert.IsNull(
+                state2,
+                "State should be null after multiple invalidations with no null keys."
+            );
+
+            // Now introduce null key
+            keysProperty.GetArrayElementAtIndex(0).objectReferenceValue = null;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            // Multiple invalidations after change
+            drawer.InvalidateKeyCache(cacheKey);
+            drawer.InvalidateKeyCache(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.NullKeyState state3 = drawer.RefreshNullKeyState(
+                cacheKey,
+                keysProperty,
+                typeof(GameObject)
+            );
+            Assert.IsNotNull(state3, "State should be returned after invalidations with null key.");
+            Assert.IsTrue(state3.HasNullKeys, "Should detect null key.");
+        }
+
+        [Test]
+        public void InvalidateKeyCacheHandlesNullKeyStateTransitionsCyclically()
+        {
+            // Test transitioning between null and valid keys multiple times
+            UnityObjectDictionaryHost host = CreateScriptableObject<UnityObjectDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(UnityObjectDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            // Start with empty dictionary
+            keysProperty.arraySize = 1;
+            valuesProperty.arraySize = 1;
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(UnityObjectDictionaryHost),
+                nameof(UnityObjectDictionaryHost.dictionary)
+            );
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+            int cycles = 3;
+
+            for (int cycle = 0; cycle < cycles; cycle++)
+            {
+                // Set to null
+                keysProperty.GetArrayElementAtIndex(0).objectReferenceValue = null;
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                serializedObject.Update();
+                drawer.InvalidateKeyCache(cacheKey);
+
+                SerializableDictionaryPropertyDrawer.NullKeyState nullState =
+                    drawer.RefreshNullKeyState(cacheKey, keysProperty, typeof(GameObject));
+                Assert.IsNotNull(
+                    nullState,
+                    $"Cycle {cycle}: State should be returned when key is null."
+                );
+                Assert.IsTrue(nullState.HasNullKeys, $"Cycle {cycle}: HasNullKeys should be true.");
+
+                // Set to valid key
+                GameObject validKey = NewGameObject($"Key_Cycle{cycle}");
+                keysProperty.GetArrayElementAtIndex(0).objectReferenceValue = validKey;
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                serializedObject.Update();
+                drawer.InvalidateKeyCache(cacheKey);
+
+                SerializableDictionaryPropertyDrawer.NullKeyState validState =
+                    drawer.RefreshNullKeyState(cacheKey, keysProperty, typeof(GameObject));
+                Assert.IsNull(
+                    validState,
+                    $"Cycle {cycle}: State should be null when key is valid."
+                );
+            }
+        }
+
+        [Test]
+        public void InvalidateKeyCacheAndRefreshDuplicateStateComparisonWithNullKeyState()
+        {
+            // This test verifies that InvalidateKeyCache + RefreshDuplicateState and
+            // InvalidateKeyCache + RefreshNullKeyState behave consistently when
+            // transitioning from "no issues" to "issues detected"
+
+            // Test DuplicateKeyState first (reference behavior)
+            TestDictionaryHost hostDuplicate = CreateScriptableObject<TestDictionaryHost>();
+            hostDuplicate.dictionary[1] = "One";
+            hostDuplicate.dictionary[2] = "Two";
+
+            SerializedObject soDuplicate = TrackDisposable(new SerializedObject(hostDuplicate));
+            soDuplicate.Update();
+            SerializedProperty dictPropDuplicate = soDuplicate.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            SerializedProperty keysPropDuplicate = dictPropDuplicate.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+
+            SerializableDictionaryPropertyDrawer drawerDuplicate = new();
+            AssignDictionaryFieldInfo(
+                drawerDuplicate,
+                typeof(TestDictionaryHost),
+                nameof(TestDictionaryHost.dictionary)
+            );
+
+            string cacheKeyDuplicate = drawerDuplicate.GetListKey(dictPropDuplicate);
+
+            // Initial state - no duplicates
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState dupState1 =
+                drawerDuplicate.RefreshDuplicateState(
+                    cacheKeyDuplicate,
+                    keysPropDuplicate,
+                    typeof(int)
+                );
+            Assert.IsNotNull(dupState1, "DuplicateKeyState is always returned.");
+            Assert.IsFalse(dupState1.HasDuplicates, "Should not have duplicates initially.");
+
+            // Introduce duplicate
+            keysPropDuplicate.GetArrayElementAtIndex(1).intValue = 1; // Same as first key
+            soDuplicate.ApplyModifiedPropertiesWithoutUndo();
+            soDuplicate.Update();
+            drawerDuplicate.InvalidateKeyCache(cacheKeyDuplicate);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState dupState2 =
+                drawerDuplicate.RefreshDuplicateState(
+                    cacheKeyDuplicate,
+                    keysPropDuplicate,
+                    typeof(int)
+                );
+            Assert.IsNotNull(dupState2, "DuplicateKeyState should be returned after invalidation.");
+            Assert.IsTrue(dupState2.HasDuplicates, "Should detect duplicates after invalidation.");
+
+            // Now test NullKeyState (should behave the same way after fix)
+            UnityObjectDictionaryHost hostNull =
+                CreateScriptableObject<UnityObjectDictionaryHost>();
+            GameObject go1 = NewGameObject("Key1");
+            GameObject go2 = NewGameObject("Key2");
+            hostNull.dictionary[go1] = "Value1";
+            hostNull.dictionary[go2] = "Value2";
+
+            SerializedObject soNull = TrackDisposable(new SerializedObject(hostNull));
+            soNull.Update();
+            SerializedProperty dictPropNull = soNull.FindProperty(
+                nameof(UnityObjectDictionaryHost.dictionary)
+            );
+            SerializedProperty keysPropNull = dictPropNull.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+
+            SerializableDictionaryPropertyDrawer drawerNull = new();
+            AssignDictionaryFieldInfo(
+                drawerNull,
+                typeof(UnityObjectDictionaryHost),
+                nameof(UnityObjectDictionaryHost.dictionary)
+            );
+
+            string cacheKeyNull = drawerNull.GetListKey(dictPropNull);
+
+            // Initial state - no null keys (returns null, unlike DuplicateKeyState)
+            SerializableDictionaryPropertyDrawer.NullKeyState nullState1 =
+                drawerNull.RefreshNullKeyState(cacheKeyNull, keysPropNull, typeof(GameObject));
+            Assert.IsNull(nullState1, "NullKeyState returns null when no null keys exist.");
+
+            // Introduce null key
+            keysPropNull.GetArrayElementAtIndex(0).objectReferenceValue = null;
+            soNull.ApplyModifiedPropertiesWithoutUndo();
+            soNull.Update();
+            drawerNull.InvalidateKeyCache(cacheKeyNull);
+
+            SerializableDictionaryPropertyDrawer.NullKeyState nullState2 =
+                drawerNull.RefreshNullKeyState(cacheKeyNull, keysPropNull, typeof(GameObject));
+            Assert.IsNotNull(
+                nullState2,
+                "NullKeyState should be returned after invalidation when null keys exist "
+                    + "(parallel behavior to DuplicateKeyState)."
+            );
+            Assert.IsTrue(nullState2.HasNullKeys, "Should detect null keys after invalidation.");
+        }
+
+        [Test]
+        public void RefreshNullKeyStateReturnsNullForEmptyCacheKey()
+        {
+            UnityObjectDictionaryHost host = CreateScriptableObject<UnityObjectDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(UnityObjectDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+
+            SerializableDictionaryPropertyDrawer.NullKeyState nullResult =
+                drawer.RefreshNullKeyState(null, keysProperty, typeof(GameObject));
+            Assert.IsNull(nullResult, "RefreshNullKeyState should return null for null cacheKey.");
+
+            SerializableDictionaryPropertyDrawer.NullKeyState emptyResult =
+                drawer.RefreshNullKeyState(string.Empty, keysProperty, typeof(GameObject));
+            Assert.IsNull(
+                emptyResult,
+                "RefreshNullKeyState should return null for empty cacheKey."
+            );
+        }
+
+        [Test]
+        public void RefreshNullKeyStateReturnsNullForNonNullableKeyTypes(
+            [Values(typeof(int), typeof(float), typeof(bool), typeof(double), typeof(long))]
+                Type keyType
+        )
+        {
+            // Test that value types (which cannot be null) return null from RefreshNullKeyState
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            host.dictionary[1] = "One";
+            host.dictionary[2] = "Two";
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(TestDictionaryHost),
+                nameof(TestDictionaryHost.dictionary)
+            );
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            // Value types cannot have null keys, so should return null
+            SerializableDictionaryPropertyDrawer.NullKeyState result = drawer.RefreshNullKeyState(
+                cacheKey,
+                keysProperty,
+                keyType
+            );
+            Assert.IsNull(
+                result,
+                $"RefreshNullKeyState should return null for non-nullable key type {keyType.Name}."
+            );
+        }
+
+        [Test]
+        public void RefreshNullKeyStateDetectsAllNullKeysInDictionary()
+        {
+            UnityObjectDictionaryHost host = CreateScriptableObject<UnityObjectDictionaryHost>();
+            // Start with no keys, add them via serialized property to have null entries
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(UnityObjectDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            // Add three entries with null keys
+            keysProperty.arraySize = 3;
+            valuesProperty.arraySize = 3;
+            keysProperty.GetArrayElementAtIndex(0).objectReferenceValue = null;
+            keysProperty.GetArrayElementAtIndex(1).objectReferenceValue = null;
+            keysProperty.GetArrayElementAtIndex(2).objectReferenceValue = null;
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Value2";
+            valuesProperty.GetArrayElementAtIndex(2).stringValue = "Value3";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(UnityObjectDictionaryHost),
+                nameof(UnityObjectDictionaryHost.dictionary)
+            );
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            SerializableDictionaryPropertyDrawer.NullKeyState result = drawer.RefreshNullKeyState(
+                cacheKey,
+                keysProperty,
+                typeof(GameObject)
+            );
+            Assert.IsNotNull(result, "Should return state when null keys exist.");
+            Assert.IsTrue(
+                result.HasNullKeys,
+                "HasNullKeys should be true with multiple null keys."
+            );
+        }
+
+        [Test]
+        public void RefreshNullKeyStateTransitionsFromNullToValidKey()
+        {
+            UnityObjectDictionaryHost host = CreateScriptableObject<UnityObjectDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(UnityObjectDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            // Start with a null key
+            keysProperty.arraySize = 1;
+            valuesProperty.arraySize = 1;
+            keysProperty.GetArrayElementAtIndex(0).objectReferenceValue = null;
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(UnityObjectDictionaryHost),
+                nameof(UnityObjectDictionaryHost.dictionary)
+            );
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            // Verify null key is detected
+            SerializableDictionaryPropertyDrawer.NullKeyState initialState =
+                drawer.RefreshNullKeyState(cacheKey, keysProperty, typeof(GameObject));
+            Assert.IsNotNull(
+                initialState,
+                "Initial state should be returned when null key exists."
+            );
+            Assert.IsTrue(initialState.HasNullKeys, "HasNullKeys should be true initially.");
+
+            // Now set a valid key
+            GameObject validKey = NewGameObject("ValidKey");
+            keysProperty.GetArrayElementAtIndex(0).objectReferenceValue = validKey;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            // Invalidate and refresh
+            drawer.InvalidateKeyCache(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.NullKeyState afterFixState =
+                drawer.RefreshNullKeyState(cacheKey, keysProperty, typeof(GameObject));
+            // When there are no null keys, the method returns null
+            Assert.IsNull(
+                afterFixState,
+                "State should be null when no null keys exist (clean state returns null)."
+            );
+        }
+
+        [Test]
+        public void DuplicateDetectionTriggersImmediatelyWhenKeyEditedToMatchAnother()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(StringDictionaryHost),
+                nameof(StringDictionaryHost.dictionary)
+            );
+
+            drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(string),
+                "Alpha",
+                "Value1",
+                dictionaryProperty
+            );
+            drawer.CommitEntry(
+                keysProperty,
+                valuesProperty,
+                typeof(string),
+                typeof(string),
+                "Beta",
+                "Value2",
+                dictionaryProperty
+            );
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState initialState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsFalse(initialState.HasDuplicates, "Initial state should not have duplicates.");
+
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "Beta";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            drawer.InvalidateKeyCache(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState afterEditState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsTrue(
+                afterEditState.HasDuplicates,
+                "After editing key to match another, duplicates should be detected immediately."
+            );
+        }
+
+        [Test]
+        public void DuplicateDetectionClearsWhenKeyEditedToBeUnique()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(StringDictionaryHost),
+                nameof(StringDictionaryHost.dictionary)
+            );
+
+            keysProperty.InsertArrayElementAtIndex(0);
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "Same";
+            valuesProperty.InsertArrayElementAtIndex(0);
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Val1";
+
+            keysProperty.InsertArrayElementAtIndex(1);
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "Same";
+            valuesProperty.InsertArrayElementAtIndex(1);
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Val2";
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState initialState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsTrue(initialState.HasDuplicates, "Initial state should have duplicates.");
+
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "Different";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            drawer.InvalidateKeyCache(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState afterEditState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsFalse(
+                afterEditState.HasDuplicates,
+                "After editing key to be unique, duplicates should be cleared."
+            );
+        }
+
+        [Test]
+        public void MultipleKeyEditsInSuccessionMaintainCorrectDuplicateState()
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            host.dictionary[1] = "A";
+            host.dictionary[2] = "B";
+            host.dictionary[3] = "C";
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(TestDictionaryHost),
+                nameof(TestDictionaryHost.dictionary)
+            );
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state1 =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
+            Assert.IsFalse(state1.HasDuplicates, "Cycle 1: No duplicates.");
+
+            keysProperty.GetArrayElementAtIndex(0).intValue = 2;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+            drawer.InvalidateKeyCache(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state2 =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
+            Assert.IsTrue(state2.HasDuplicates, "Cycle 2: Keys 0 and 1 should be duplicates.");
+
+            keysProperty.GetArrayElementAtIndex(2).intValue = 2;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+            drawer.InvalidateKeyCache(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state3 =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
+            Assert.IsTrue(state3.HasDuplicates, "Cycle 3: All three should be duplicates.");
+
+            keysProperty.GetArrayElementAtIndex(0).intValue = 10;
+            keysProperty.GetArrayElementAtIndex(1).intValue = 20;
+            keysProperty.GetArrayElementAtIndex(2).intValue = 30;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+            drawer.InvalidateKeyCache(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state4 =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
+            Assert.IsFalse(state4.HasDuplicates, "Cycle 4: All unique, no duplicates.");
+        }
+
+        [Test]
+        public void DuplicateDetectionHandlesEmptyStringKeys()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(StringDictionaryHost),
+                nameof(StringDictionaryHost.dictionary)
+            );
+
+            keysProperty.InsertArrayElementAtIndex(0);
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "";
+            valuesProperty.InsertArrayElementAtIndex(0);
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Val1";
+
+            keysProperty.InsertArrayElementAtIndex(1);
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "NonEmpty";
+            valuesProperty.InsertArrayElementAtIndex(1);
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Val2";
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState initialState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsFalse(
+                initialState.HasDuplicates,
+                "Initial: No duplicates with empty and non-empty keys."
+            );
+
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState afterEditState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsTrue(
+                afterEditState.HasDuplicates,
+                "Empty string duplicates should be detected."
+            );
+        }
+
+        [Test]
+        public void DuplicateKeyStateIsDirtyPropertyIsTrueAfterMarkDirty()
+        {
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state = new();
+            Assert.IsNotNull(state, "Should be able to create DuplicateKeyState instance.");
+
+            bool initialDirty = state.IsDirty;
+            Assert.IsTrue(initialDirty, "IsDirty should be true initially (lastArraySize == -1).");
+
+            state.Refresh(null, null);
+
+            bool afterRefreshDirty = state.IsDirty;
+            Assert.IsTrue(
+                afterRefreshDirty,
+                "IsDirty should remain true after Refresh with null arguments."
+            );
+        }
+
+        [Test]
+        public void DuplicateKeyStateIsDirtyPropertyIsFalseAfterRefreshWithValidData()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            keysProperty.InsertArrayElementAtIndex(0);
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "TestKey";
+            valuesProperty.InsertArrayElementAtIndex(0);
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "TestValue";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state = new();
+
+            bool initialDirty = state.IsDirty;
+            Assert.IsTrue(initialDirty, "IsDirty should be true initially.");
+
+            state.Refresh(keysProperty, typeof(string));
+
+            bool afterRefreshDirty = state.IsDirty;
+            Assert.IsFalse(
+                afterRefreshDirty,
+                "IsDirty should be false after Refresh with valid data."
+            );
+        }
+
+        [Test]
+        public void DuplicateKeyStateMarkDirtyResetsIsDirtyToTrue()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            keysProperty.InsertArrayElementAtIndex(0);
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "TestKey";
+            valuesProperty.InsertArrayElementAtIndex(0);
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "TestValue";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state = new();
+
+            state.Refresh(keysProperty, typeof(string));
+            bool afterRefreshDirty = state.IsDirty;
+            Assert.IsFalse(afterRefreshDirty, "IsDirty should be false after Refresh.");
+
+            state.MarkDirty();
+            bool afterMarkDirty = state.IsDirty;
+            Assert.IsTrue(afterMarkDirty, "IsDirty should be true after MarkDirty is called.");
+        }
+
+        [Test]
+        public void NullKeyStateIsDirtyPropertyIsTrueAfterMarkDirty()
+        {
+            SerializableDictionaryPropertyDrawer.NullKeyState state = new();
+            Assert.IsNotNull(state, "Should be able to create NullKeyState instance.");
+
+            bool initialDirty = state.IsDirty;
+            Assert.IsTrue(initialDirty, "IsDirty should be true initially (lastArraySize == -1).");
+
+            state.MarkDirty();
+            bool afterMarkDirty = state.IsDirty;
+            Assert.IsTrue(afterMarkDirty, "IsDirty should remain true after MarkDirty.");
+        }
+
+        [Test]
+        public void DuplicateDetectionUpdatesImmediatelyAfterStringKeyEditWithSameFrameRefresh()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(StringDictionaryHost),
+                nameof(StringDictionaryHost.dictionary)
+            );
+
+            keysProperty.InsertArrayElementAtIndex(0);
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "KeyA";
+            valuesProperty.InsertArrayElementAtIndex(0);
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
+
+            keysProperty.InsertArrayElementAtIndex(1);
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "KeyB";
+            valuesProperty.InsertArrayElementAtIndex(1);
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Value2";
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState initialState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsFalse(initialState.HasDuplicates, "Initial: No duplicates.");
+            Assert.IsFalse(
+                initialState.IsDirty,
+                "Initial: State should not be dirty after refresh."
+            );
+
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "KeyA";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            drawer.InvalidateKeyCache(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState stateAfterEdit =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+
+            Assert.IsTrue(
+                stateAfterEdit.HasDuplicates,
+                "Duplicate should be detected immediately after editing string key to create duplicate."
+            );
+        }
+
+        [Test]
+        public void DuplicateDetectionHandlesWhitespaceOnlyStringKeys()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(StringDictionaryHost),
+                nameof(StringDictionaryHost.dictionary)
+            );
+
+            keysProperty.InsertArrayElementAtIndex(0);
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "   ";
+            valuesProperty.InsertArrayElementAtIndex(0);
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
+
+            keysProperty.InsertArrayElementAtIndex(1);
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "ValidKey";
+            valuesProperty.InsertArrayElementAtIndex(1);
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Value2";
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState initialState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsFalse(
+                initialState.HasDuplicates,
+                "No duplicates initially with whitespace-only and valid keys."
+            );
+
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "   ";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState afterEditState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsTrue(
+                afterEditState.HasDuplicates,
+                "Duplicate whitespace-only keys should be detected."
+            );
+        }
+
+        [Test]
+        public void DuplicateDetectionHandlesCaseSensitiveStringKeys()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(StringDictionaryHost),
+                nameof(StringDictionaryHost.dictionary)
+            );
+
+            keysProperty.InsertArrayElementAtIndex(0);
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "key";
+            valuesProperty.InsertArrayElementAtIndex(0);
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
+
+            keysProperty.InsertArrayElementAtIndex(1);
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "KEY";
+            valuesProperty.InsertArrayElementAtIndex(1);
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Value2";
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsFalse(
+                state.HasDuplicates,
+                "Keys with different case should not be duplicates (string comparison is case-sensitive)."
+            );
+
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "key";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState afterEditState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsTrue(
+                afterEditState.HasDuplicates,
+                "After changing KEY to key, duplicates should be detected."
+            );
+        }
+
+        [Test]
+        public void DuplicateDetectionHandlesMultipleDuplicateGroupsWithStringKeys()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(StringDictionaryHost),
+                nameof(StringDictionaryHost.dictionary)
+            );
+
+            string[] testKeys = { "Alpha", "Alpha", "Beta", "Beta", "Gamma" };
+            for (int i = 0; i < testKeys.Length; i++)
+            {
+                keysProperty.InsertArrayElementAtIndex(i);
+                keysProperty.GetArrayElementAtIndex(i).stringValue = testKeys[i];
+                valuesProperty.InsertArrayElementAtIndex(i);
+                valuesProperty.GetArrayElementAtIndex(i).stringValue = $"Value{i}";
+            }
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+
+            Assert.IsTrue(state.HasDuplicates, "Multiple duplicate groups should be detected.");
+            string summary = state.SummaryTooltip;
+            Assert.IsTrue(
+                summary.Contains("Alpha") && summary.Contains("Beta"),
+                $"Summary should mention both duplicate groups. Actual summary: {summary}"
+            );
+            Assert.IsFalse(
+                summary.Contains("Gamma"),
+                "Summary should not mention unique key Gamma."
+            );
+        }
+
+        [Test]
+        public void DuplicateDetectionHandlesSpecialCharactersInStringKeys()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(StringDictionaryHost),
+                nameof(StringDictionaryHost.dictionary)
+            );
+
+            keysProperty.InsertArrayElementAtIndex(0);
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "key!@#$%";
+            valuesProperty.InsertArrayElementAtIndex(0);
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
+
+            keysProperty.InsertArrayElementAtIndex(1);
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "key^&*()";
+            valuesProperty.InsertArrayElementAtIndex(1);
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Value2";
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsFalse(
+                state.HasDuplicates,
+                "Special character keys should not be duplicates when different."
+            );
+
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "key!@#$%";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState afterEditState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsTrue(
+                afterEditState.HasDuplicates,
+                "Duplicate special character keys should be detected."
+            );
+        }
+
+        [Test]
+        public void DuplicateDetectionHandlesUnicodeStringKeys()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(StringDictionaryHost),
+                nameof(StringDictionaryHost.dictionary)
+            );
+
+            keysProperty.InsertArrayElementAtIndex(0);
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "\u4e2d\u6587";
+            valuesProperty.InsertArrayElementAtIndex(0);
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Chinese";
+
+            keysProperty.InsertArrayElementAtIndex(1);
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "\u65e5\u672c\u8a9e";
+            valuesProperty.InsertArrayElementAtIndex(1);
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Japanese";
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsFalse(state.HasDuplicates, "Different Unicode keys should not be duplicates.");
+
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "\u4e2d\u6587";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState afterEditState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsTrue(
+                afterEditState.HasDuplicates,
+                "Duplicate Unicode keys should be detected."
+            );
+        }
+
+        [Test]
+        public void DuplicateDetectionWithStringKeyEditToUniqueAndBackToDuplicate()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(StringDictionaryHost),
+                nameof(StringDictionaryHost.dictionary)
+            );
+
+            keysProperty.InsertArrayElementAtIndex(0);
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "DuplicateKey";
+            valuesProperty.InsertArrayElementAtIndex(0);
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
+
+            keysProperty.InsertArrayElementAtIndex(1);
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "DuplicateKey";
+            valuesProperty.InsertArrayElementAtIndex(1);
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Value2";
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState initialState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsTrue(initialState.HasDuplicates, "Initial state should have duplicates.");
+
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "UniqueKey";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+            drawer.InvalidateKeyCache(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState afterUniqueState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsFalse(
+                afterUniqueState.HasDuplicates,
+                "After making key unique, duplicates should be cleared."
+            );
+
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "DuplicateKey";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+            drawer.InvalidateKeyCache(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState afterDuplicateAgainState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsTrue(
+                afterDuplicateAgainState.HasDuplicates,
+                "After changing key back to duplicate, duplicates should be detected again."
+            );
+        }
+
+        [Test]
+        public void DuplicateDetectionHandlesLongStringKeys()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(StringDictionaryHost),
+                nameof(StringDictionaryHost.dictionary)
+            );
+
+            string longKey = new string('A', 1000);
+            string differentLongKey = new string('B', 1000);
+
+            keysProperty.InsertArrayElementAtIndex(0);
+            keysProperty.GetArrayElementAtIndex(0).stringValue = longKey;
+            valuesProperty.InsertArrayElementAtIndex(0);
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
+
+            keysProperty.InsertArrayElementAtIndex(1);
+            keysProperty.GetArrayElementAtIndex(1).stringValue = differentLongKey;
+            valuesProperty.InsertArrayElementAtIndex(1);
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Value2";
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsFalse(state.HasDuplicates, "Different long keys should not be duplicates.");
+
+            keysProperty.GetArrayElementAtIndex(1).stringValue = longKey;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState afterEditState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsTrue(afterEditState.HasDuplicates, "Duplicate long keys should be detected.");
+        }
+
+        [Test]
+        public void DuplicateDetectionHandlesNewlineInStringKeys()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(StringDictionaryHost),
+                nameof(StringDictionaryHost.dictionary)
+            );
+
+            keysProperty.InsertArrayElementAtIndex(0);
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "line1\nline2";
+            valuesProperty.InsertArrayElementAtIndex(0);
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
+
+            keysProperty.InsertArrayElementAtIndex(1);
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "line1\rline2";
+            valuesProperty.InsertArrayElementAtIndex(1);
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Value2";
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsFalse(
+                state.HasDuplicates,
+                "Keys with different newline characters should not be duplicates."
+            );
+
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "line1\nline2";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState afterEditState =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsTrue(
+                afterEditState.HasDuplicates,
+                "Duplicate keys with newlines should be detected."
+            );
+        }
+
+        [Test]
+        public void DuplicateDetectionRemainsCorrectAfterMultipleConsecutiveEditsOnSameFrame()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(StringDictionaryHost),
+                nameof(StringDictionaryHost.dictionary)
+            );
+
+            keysProperty.InsertArrayElementAtIndex(0);
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "Key1";
+            valuesProperty.InsertArrayElementAtIndex(0);
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
+
+            keysProperty.InsertArrayElementAtIndex(1);
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "Key2";
+            valuesProperty.InsertArrayElementAtIndex(1);
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Value2";
+
+            keysProperty.InsertArrayElementAtIndex(2);
+            keysProperty.GetArrayElementAtIndex(2).stringValue = "Key3";
+            valuesProperty.InsertArrayElementAtIndex(2);
+            valuesProperty.GetArrayElementAtIndex(2).stringValue = "Value3";
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            string cacheKey = drawer.GetListKey(dictionaryProperty);
+
+            drawer.InvalidateKeyCache(cacheKey);
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state1 =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsFalse(state1.HasDuplicates, "Initial: All keys unique, no duplicates.");
+
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "Key1";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+            drawer.InvalidateKeyCache(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state2 =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsTrue(
+                state2.HasDuplicates,
+                "After edit 1: Key2 changed to Key1, should have duplicates."
+            );
+
+            keysProperty.GetArrayElementAtIndex(2).stringValue = "Key1";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+            drawer.InvalidateKeyCache(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state3 =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsTrue(
+                state3.HasDuplicates,
+                "After edit 2: Key3 also changed to Key1, should still have duplicates (3 of same key)."
+            );
+
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "UniqueKey";
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "AnotherUniqueKey";
+            keysProperty.GetArrayElementAtIndex(2).stringValue = "YetAnotherUniqueKey";
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+            drawer.InvalidateKeyCache(cacheKey);
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state4 =
+                drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(string));
+            Assert.IsFalse(
+                state4.HasDuplicates,
+                "After edit 3: All keys changed to unique, no duplicates."
+            );
+        }
+
+        [Test]
+        public void DuplicateKeyStateTryGetInfoReturnsTrueForDuplicateIndices()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            keysProperty.InsertArrayElementAtIndex(0);
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "Dup";
+            valuesProperty.InsertArrayElementAtIndex(0);
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
+
+            keysProperty.InsertArrayElementAtIndex(1);
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "Dup";
+            valuesProperty.InsertArrayElementAtIndex(1);
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Value2";
+
+            keysProperty.InsertArrayElementAtIndex(2);
+            keysProperty.GetArrayElementAtIndex(2).stringValue = "Unique";
+            valuesProperty.InsertArrayElementAtIndex(2);
+            valuesProperty.GetArrayElementAtIndex(2).stringValue = "Value3";
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state = new();
+            state.Refresh(keysProperty, typeof(string));
+
+            bool found0 = state.TryGetInfo(
+                0,
+                out SerializableDictionaryPropertyDrawer.DuplicateKeyInfo info0
+            );
+            Assert.IsTrue(found0, "TryGetInfo should return true for index 0 (duplicate key).");
+
+            bool found1 = state.TryGetInfo(
+                1,
+                out SerializableDictionaryPropertyDrawer.DuplicateKeyInfo info1
+            );
+            Assert.IsTrue(found1, "TryGetInfo should return true for index 1 (duplicate key).");
+
+            bool found2 = state.TryGetInfo(
+                2,
+                out SerializableDictionaryPropertyDrawer.DuplicateKeyInfo info2
+            );
+            Assert.IsFalse(found2, "TryGetInfo should return false for index 2 (unique key).");
+        }
+
+        [Test]
+        public void DuplicateKeyInfoIsPrimaryFlagIsSetCorrectly()
+        {
+            StringDictionaryHost host = CreateScriptableObject<StringDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(StringDictionaryHost.dictionary)
+            );
+            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            keysProperty.InsertArrayElementAtIndex(0);
+            keysProperty.GetArrayElementAtIndex(0).stringValue = "Dup";
+            valuesProperty.InsertArrayElementAtIndex(0);
+            valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
+
+            keysProperty.InsertArrayElementAtIndex(1);
+            keysProperty.GetArrayElementAtIndex(1).stringValue = "Dup";
+            valuesProperty.InsertArrayElementAtIndex(1);
+            valuesProperty.GetArrayElementAtIndex(1).stringValue = "Value2";
+
+            keysProperty.InsertArrayElementAtIndex(2);
+            keysProperty.GetArrayElementAtIndex(2).stringValue = "Dup";
+            valuesProperty.InsertArrayElementAtIndex(2);
+            valuesProperty.GetArrayElementAtIndex(2).stringValue = "Value3";
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            serializedObject.Update();
+
+            SerializableDictionaryPropertyDrawer.DuplicateKeyState state = new();
+            state.Refresh(keysProperty, typeof(string));
+
+            state.TryGetInfo(0, out SerializableDictionaryPropertyDrawer.DuplicateKeyInfo info0);
+            state.TryGetInfo(1, out SerializableDictionaryPropertyDrawer.DuplicateKeyInfo info1);
+            state.TryGetInfo(2, out SerializableDictionaryPropertyDrawer.DuplicateKeyInfo info2);
+
+            Assert.IsTrue(
+                info0.isPrimary,
+                "First occurrence (index 0) should be marked as primary."
+            );
+            Assert.IsFalse(
+                info1.isPrimary,
+                "Second occurrence (index 1) should NOT be marked as primary."
+            );
+            Assert.IsFalse(
+                info2.isPrimary,
+                "Third occurrence (index 2) should NOT be marked as primary."
+            );
         }
     }
 }

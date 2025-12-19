@@ -69,7 +69,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
 #if UNITY_EDITOR
         [InitializeOnLoadMethod]
-        private static void CaptureEditorThread()
+        internal static void CaptureEditorThread()
         {
             if (Application.isPlaying)
             {
