@@ -60,6 +60,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             public float height;
             public int arraySize;
+            public int pageIndex;
             public bool isExpanded;
             public bool hasNullKeys;
             public bool hasDuplicates;
@@ -515,6 +516,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int currentFrame = Time.frameCount;
             int arraySize = keysProperty.arraySize;
 
+            PaginationState pagination = GetOrCreatePaginationState(property);
+            ClampPaginationState(pagination, arraySize);
+            int pageIndex = pagination.pageIndex;
+
             DuplicateKeyState duplicateState = RefreshDuplicateState(
                 cacheKey,
                 keysProperty,
@@ -542,6 +547,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 if (
                     cached.frameNumber == currentFrame
                     && cached.arraySize == arraySize
+                    && cached.pageIndex == pageIndex
                     && cached.isExpanded == property.isExpanded
                     && cached.hasNullKeys == hasNullKeys
                     && cached.hasDuplicates == hasDuplicates
@@ -584,6 +590,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
             cached.height = height;
             cached.arraySize = arraySize;
+            cached.pageIndex = pageIndex;
             cached.isExpanded = property.isExpanded;
             cached.hasNullKeys = hasNullKeys;
             cached.hasDuplicates = hasDuplicates;

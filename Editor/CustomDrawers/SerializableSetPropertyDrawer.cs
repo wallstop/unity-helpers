@@ -154,6 +154,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             public float height;
             public int arraySize;
+            public int pageIndex;
             public bool isExpanded;
             public bool hasNullEntries;
             public bool hasDuplicates;
@@ -293,6 +294,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 _lastHadDuplicates = false;
                 _lastArraySize = -1;
                 animationStartTimes.Clear();
+            }
+
+            public float GetAnimationOffset(int arrayIndex, double currentTime, int cycleLimit)
+            {
+                if (!animationStartTimes.TryGetValue(arrayIndex, out double startTime))
+                {
+                    startTime = currentTime;
+                    animationStartTimes[arrayIndex] = startTime;
+                    _animationsCompleted = false;
+                }
+
+                return EvaluateDuplicateShakeOffset(arrayIndex, startTime, currentTime, cycleLimit);
             }
         }
 
@@ -930,6 +943,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string cacheKey = listKey;
             int currentFrame = Time.frameCount;
 
+            EnsurePaginationBounds(pagination, totalCount);
+            int pageIndex = pagination.page;
+
             DuplicateState duplicateState = EvaluateDuplicateState(property, itemsProperty);
             NullEntryState nullState = EvaluateNullEntryState(property, itemsProperty);
 
@@ -961,6 +977,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 if (
                     cached.frameNumber == currentFrame
                     && cached.arraySize == totalCount
+                    && cached.pageIndex == pageIndex
                     && cached.isExpanded == property.isExpanded
                     && cached.hasNullEntries == hasNullEntries
                     && cached.hasDuplicates == hasDuplicates
@@ -976,8 +993,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float height = baseHeight;
             float footerHeight = GetFooterHeight();
             height += SectionSpacing;
-
-            EnsurePaginationBounds(pagination, totalCount);
 
             if (hasNullEntries)
             {
@@ -1006,6 +1021,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         cacheKey,
                         emptyWithPendingHeight,
                         totalCount,
+                        pageIndex,
                         property.isExpanded,
                         hasNullEntries,
                         hasDuplicates,
@@ -1022,6 +1038,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     cacheKey,
                     emptyHeight,
                     totalCount,
+                    pageIndex,
                     property.isExpanded,
                     hasNullEntries,
                     hasDuplicates,
@@ -1068,6 +1085,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 cacheKey,
                 finalHeight,
                 totalCount,
+                pageIndex,
                 property.isExpanded,
                 hasNullEntries,
                 hasDuplicates,
@@ -1082,6 +1100,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string cacheKey,
             float height,
             int arraySize,
+            int pageIndex,
             bool isExpanded,
             bool hasNullEntries,
             bool hasDuplicates,
@@ -1097,6 +1116,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
             entry.height = height;
             entry.arraySize = arraySize;
+            entry.pageIndex = pageIndex;
             entry.isExpanded = isExpanded;
             entry.hasNullEntries = hasNullEntries;
             entry.hasDuplicates = hasDuplicates;
@@ -3371,28 +3391,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             pagination.selectedIndex = Mathf.Clamp(pageStart, 0, totalCount - 1);
         }
 
-        private static float GetDuplicateShakeOffset(
-            DuplicateState state,
-            int index,
+        internal static float EvaluateDuplicateShakeOffset(
+            int arrayIndex,
+            double startTime,
             double currentTime,
             int cycleLimit
         )
         {
-            if (state == null || cycleLimit == 0)
+            if (cycleLimit == 0)
             {
                 return 0f;
-            }
-
-            if (!state.animationStartTimes.TryGetValue(index, out double startTime))
-            {
-                startTime = currentTime;
-                state.animationStartTimes[index] = startTime;
             }
 
             if (currentTime < startTime)
             {
                 startTime = currentTime;
-                state.animationStartTimes[index] = startTime;
             }
 
             if (cycleLimit > 0)
@@ -3407,7 +3420,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             float phase = (float)(currentTime * DuplicateShakeFrequency);
-            float seed = index * 0.35f;
+            float seed = arrayIndex * 0.35f;
             return Mathf.Sin(phase + seed) * DuplicateShakeAmplitude;
         }
 
@@ -5075,8 +5088,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float shakeOffset = 0f;
             if (isDuplicate && animateDuplicates && context.duplicateState != null)
             {
-                shakeOffset = GetDuplicateShakeOffset(
-                    context.duplicateState,
+                shakeOffset = context.duplicateState.GetAnimationOffset(
                     arrayIndex,
                     currentTime,
                     tweenCycleLimit

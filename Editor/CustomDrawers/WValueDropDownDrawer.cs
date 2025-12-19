@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEngine;
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Utils;
@@ -180,7 +181,47 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return property.propertyType == SerializedPropertyType.Integer
                 || property.propertyType == SerializedPropertyType.Float
                 || property.propertyType == SerializedPropertyType.String
-                || property.propertyType == SerializedPropertyType.Enum;
+                || property.propertyType == SerializedPropertyType.Enum
+                || IsSerializableTypeProperty(property)
+                || IsGenericSerializedProperty(property);
+        }
+
+        private static bool IsSerializableTypeProperty(SerializedProperty property)
+        {
+            if (property.propertyType != SerializedPropertyType.Generic)
+            {
+                return false;
+            }
+
+            SerializedProperty assemblyQualifiedNameProperty = property.FindPropertyRelative(
+                SerializableType.SerializedPropertyNames.AssemblyQualifiedName
+            );
+            return assemblyQualifiedNameProperty != null
+                && assemblyQualifiedNameProperty.propertyType == SerializedPropertyType.String;
+        }
+
+        private static bool IsGenericSerializedProperty(SerializedProperty property)
+        {
+            // Support arbitrary generic/serialized properties that are value types or structs
+            // This allows WValueDropDown to work with any serializable type that has proper
+            // Equals/ToString implementations (like SerializableType or custom structs)
+            return property.propertyType == SerializedPropertyType.Generic
+                && !property.isArray
+                && property.hasVisibleChildren;
+        }
+
+        private static SerializedProperty GetSerializableTypeStringProperty(
+            SerializedProperty property
+        )
+        {
+            if (property.propertyType != SerializedPropertyType.Generic)
+            {
+                return null;
+            }
+
+            return property.FindPropertyRelative(
+                SerializableType.SerializedPropertyNames.AssemblyQualifiedName
+            );
         }
 
         private static int CalculatePageCount(int pageSize, int filteredCount)
@@ -340,9 +381,186 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return MatchesString(property, option);
                 case SerializedPropertyType.Enum:
                     return MatchesEnum(property, option);
+                case SerializedPropertyType.Generic:
+                    if (IsSerializableTypeProperty(property))
+                    {
+                        return MatchesSerializableType(property, option);
+                    }
+                    return MatchesGenericProperty(property, valueType, option);
                 default:
                     return false;
             }
+        }
+
+        private static bool MatchesSerializableType(SerializedProperty property, object option)
+        {
+            SerializedProperty assemblyQualifiedNameProperty = GetSerializableTypeStringProperty(
+                property
+            );
+            if (assemblyQualifiedNameProperty == null)
+            {
+                return false;
+            }
+
+            string currentValue = assemblyQualifiedNameProperty.stringValue ?? string.Empty;
+            string optionValue = GetAssemblyQualifiedNameFromOption(option);
+
+            return string.Equals(currentValue, optionValue, StringComparison.Ordinal);
+        }
+
+        private static bool MatchesGenericProperty(
+            SerializedProperty property,
+            Type valueType,
+            object option
+        )
+        {
+            if (option == null)
+            {
+                return false;
+            }
+
+            // Try to read the boxed value from the property and compare
+            object boxedValue = GetBoxedPropertyValue(property, valueType);
+            if (boxedValue == null)
+            {
+                return false;
+            }
+
+            // Use Equals for proper comparison (relies on IEquatable<T> or Equals override)
+            return boxedValue.Equals(option);
+        }
+
+        private static object GetBoxedPropertyValue(SerializedProperty property, Type valueType)
+        {
+            if (property == null || valueType == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                // Use reflection to get the actual value from the serialized object
+                UnityEngine.Object targetObject = property.serializedObject?.targetObject;
+                if (targetObject == null)
+                {
+                    return null;
+                }
+
+                // Navigate the property path to get the actual field value
+                return GetFieldValueFromPropertyPath(targetObject, property.propertyPath);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        private static object GetFieldValueFromPropertyPath(object target, string propertyPath)
+        {
+            if (target == null || string.IsNullOrEmpty(propertyPath))
+            {
+                return null;
+            }
+
+            object current = target;
+            string[] pathParts = propertyPath.Split('.');
+
+            for (int i = 0; i < pathParts.Length; i++)
+            {
+                if (current == null)
+                {
+                    return null;
+                }
+
+                string part = pathParts[i];
+
+                // Handle array access pattern: "Array.data[index]"
+                if (
+                    part == "Array"
+                    && i + 1 < pathParts.Length
+                    && pathParts[i + 1].StartsWith("data[", StringComparison.Ordinal)
+                )
+                {
+                    string indexPart = pathParts[i + 1];
+                    int startIndex = indexPart.IndexOf('[') + 1;
+                    int endIndex = indexPart.IndexOf(']');
+                    if (startIndex > 0 && endIndex > startIndex)
+                    {
+                        string indexStr = indexPart.Substring(startIndex, endIndex - startIndex);
+                        if (int.TryParse(indexStr, out int arrayIndex))
+                        {
+                            if (
+                                current is System.Collections.IList list
+                                && arrayIndex >= 0
+                                && arrayIndex < list.Count
+                            )
+                            {
+                                current = list[arrayIndex];
+                                i++; // Skip the "data[x]" part
+                                continue;
+                            }
+                        }
+                    }
+                    return null;
+                }
+
+                Type currentType = current.GetType();
+                System.Reflection.FieldInfo field = currentType.GetField(
+                    part,
+                    System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.Public
+                        | System.Reflection.BindingFlags.NonPublic
+                );
+
+                if (field == null)
+                {
+                    // Try property as fallback
+                    System.Reflection.PropertyInfo prop = currentType.GetProperty(
+                        part,
+                        System.Reflection.BindingFlags.Instance
+                            | System.Reflection.BindingFlags.Public
+                            | System.Reflection.BindingFlags.NonPublic
+                    );
+
+                    if (prop == null || !prop.CanRead)
+                    {
+                        return null;
+                    }
+
+                    current = prop.GetValue(current);
+                }
+                else
+                {
+                    current = field.GetValue(current);
+                }
+            }
+
+            return current;
+        }
+
+        private static string GetAssemblyQualifiedNameFromOption(object option)
+        {
+            if (option == null)
+            {
+                return string.Empty;
+            }
+
+            if (option is Type type)
+            {
+                return SerializableType.NormalizeTypeName(type);
+            }
+
+            if (option is SerializableType serializableType)
+            {
+                return serializableType.AssemblyQualifiedName;
+            }
+
+            if (option is string stringOption)
+            {
+                return stringOption;
+            }
+
+            return string.Empty;
         }
 
         private static bool MatchesInteger(
@@ -520,7 +738,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             string formatted;
-            if (option is IFormattable formattable)
+            if (option is Type type)
+            {
+                formatted = SerializableTypeCatalog.GetDisplayName(type);
+            }
+            else if (option is SerializableType serializableType)
+            {
+                formatted = serializableType.DisplayName;
+            }
+            else if (option is IFormattable formattable)
             {
                 formatted = formattable.ToString(null, CultureInfo.InvariantCulture);
             }
@@ -549,6 +775,174 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 case SerializedPropertyType.Enum:
                     ApplyEnum(property, selectedOption);
                     break;
+                case SerializedPropertyType.Generic:
+                    if (IsSerializableTypeProperty(property))
+                    {
+                        ApplySerializableType(property, selectedOption);
+                    }
+                    else
+                    {
+                        ApplyGenericProperty(property, selectedOption);
+                    }
+                    break;
+            }
+        }
+
+        private static void ApplySerializableType(
+            SerializedProperty property,
+            object selectedOption
+        )
+        {
+            SerializedProperty assemblyQualifiedNameProperty = GetSerializableTypeStringProperty(
+                property
+            );
+            if (assemblyQualifiedNameProperty == null)
+            {
+                return;
+            }
+
+            string assemblyQualifiedName = GetAssemblyQualifiedNameFromOption(selectedOption);
+            assemblyQualifiedNameProperty.stringValue = assemblyQualifiedName;
+        }
+
+        private static void ApplyGenericProperty(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption == null)
+            {
+                return;
+            }
+
+            try
+            {
+                // Set the field value via reflection on the target object
+                UnityEngine.Object targetObject = property.serializedObject?.targetObject;
+                if (targetObject == null)
+                {
+                    return;
+                }
+
+                SetFieldValueFromPropertyPath(targetObject, property.propertyPath, selectedOption);
+                EditorUtility.SetDirty(targetObject);
+            }
+            catch (Exception)
+            {
+                // Silently fail if we can't set the value
+            }
+        }
+
+        private static void SetFieldValueFromPropertyPath(
+            object target,
+            string propertyPath,
+            object value
+        )
+        {
+            if (target == null || string.IsNullOrEmpty(propertyPath))
+            {
+                return;
+            }
+
+            string[] pathParts = propertyPath.Split('.');
+            object current = target;
+
+            // Navigate to the parent of the final field
+            for (int i = 0; i < pathParts.Length - 1; i++)
+            {
+                if (current == null)
+                {
+                    return;
+                }
+
+                string part = pathParts[i];
+
+                // Handle array access pattern
+                if (
+                    part == "Array"
+                    && i + 1 < pathParts.Length - 1
+                    && pathParts[i + 1].StartsWith("data[", StringComparison.Ordinal)
+                )
+                {
+                    string indexPart = pathParts[i + 1];
+                    int startIndex = indexPart.IndexOf('[') + 1;
+                    int endIndex = indexPart.IndexOf(']');
+                    if (startIndex > 0 && endIndex > startIndex)
+                    {
+                        string indexStr = indexPart.Substring(startIndex, endIndex - startIndex);
+                        if (int.TryParse(indexStr, out int arrayIndex))
+                        {
+                            if (
+                                current is System.Collections.IList list
+                                && arrayIndex >= 0
+                                && arrayIndex < list.Count
+                            )
+                            {
+                                current = list[arrayIndex];
+                                i++;
+                                continue;
+                            }
+                        }
+                    }
+                    return;
+                }
+
+                Type currentType = current.GetType();
+                System.Reflection.FieldInfo field = currentType.GetField(
+                    part,
+                    System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.Public
+                        | System.Reflection.BindingFlags.NonPublic
+                );
+
+                if (field == null)
+                {
+                    return;
+                }
+
+                current = field.GetValue(current);
+            }
+
+            if (current == null)
+            {
+                return;
+            }
+
+            // Set the final field
+            string finalPart = pathParts[pathParts.Length - 1];
+
+            // Handle array element assignment
+            if (finalPart.StartsWith("data[", StringComparison.Ordinal))
+            {
+                int startIndex = finalPart.IndexOf('[') + 1;
+                int endIndex = finalPart.IndexOf(']');
+                if (startIndex > 0 && endIndex > startIndex)
+                {
+                    string indexStr = finalPart.Substring(startIndex, endIndex - startIndex);
+                    if (int.TryParse(indexStr, out int arrayIndex))
+                    {
+                        if (
+                            current is System.Collections.IList list
+                            && arrayIndex >= 0
+                            && arrayIndex < list.Count
+                        )
+                        {
+                            list[arrayIndex] = value;
+                            return;
+                        }
+                    }
+                }
+                return;
+            }
+
+            Type finalType = current.GetType();
+            System.Reflection.FieldInfo finalField = finalType.GetField(
+                finalPart,
+                System.Reflection.BindingFlags.Instance
+                    | System.Reflection.BindingFlags.Public
+                    | System.Reflection.BindingFlags.NonPublic
+            );
+
+            if (finalField != null && finalField.FieldType.IsAssignableFrom(value.GetType()))
+            {
+                finalField.SetValue(current, value);
             }
         }
 
@@ -1333,7 +1727,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string fieldName = property.displayName;
             string actualType = GetPropertyTypeName(property);
             string expectedType = GetExpectedTypeName(dropdownAttribute);
-            return $"[WValueDropDown] Type mismatch: '{fieldName}' is {actualType}, but the dropdown provides {expectedType} values. Supported field types: int, float, string, enum.";
+            return $"[WValueDropDown] Type mismatch: '{fieldName}' is {actualType}, but the dropdown provides {expectedType} values. Supported field types: int, float, string, enum, SerializableType, and serializable structs/classes.";
         }
 
         private static string GetExpectedTypeName(WValueDropDownAttribute dropdownAttribute)

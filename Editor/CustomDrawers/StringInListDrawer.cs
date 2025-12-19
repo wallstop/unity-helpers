@@ -153,6 +153,28 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     property.intValue = newIndex;
                 }
             }
+            else if (IsSerializableTypeProperty(property))
+            {
+                SerializedProperty assemblyQualifiedNameProperty =
+                    GetSerializableTypeStringProperty(property);
+                if (assemblyQualifiedNameProperty != null)
+                {
+                    int currentIndex = Array.IndexOf(
+                        options,
+                        assemblyQualifiedNameProperty.stringValue
+                    );
+                    int newIndex = EditorGUI.Popup(
+                        position,
+                        label.text,
+                        currentIndex,
+                        displayOptions
+                    );
+                    if (newIndex >= 0 && newIndex < options.Length)
+                    {
+                        assemblyQualifiedNameProperty.stringValue = options[newIndex];
+                    }
+                }
+            }
             EditorGUI.EndProperty();
         }
 
@@ -197,7 +219,36 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static bool IsSupportedSimpleProperty(SerializedProperty property)
         {
             return property.propertyType == SerializedPropertyType.String
-                || property.propertyType == SerializedPropertyType.Integer;
+                || property.propertyType == SerializedPropertyType.Integer
+                || IsSerializableTypeProperty(property);
+        }
+
+        private static bool IsSerializableTypeProperty(SerializedProperty property)
+        {
+            if (property.propertyType != SerializedPropertyType.Generic)
+            {
+                return false;
+            }
+
+            SerializedProperty assemblyQualifiedNameProperty = property.FindPropertyRelative(
+                SerializableType.SerializedPropertyNames.AssemblyQualifiedName
+            );
+            return assemblyQualifiedNameProperty != null
+                && assemblyQualifiedNameProperty.propertyType == SerializedPropertyType.String;
+        }
+
+        private static SerializedProperty GetSerializableTypeStringProperty(
+            SerializedProperty property
+        )
+        {
+            if (property.propertyType != SerializedPropertyType.Generic)
+            {
+                return null;
+            }
+
+            return property.FindPropertyRelative(
+                SerializableType.SerializedPropertyNames.AssemblyQualifiedName
+            );
         }
 
         private static bool IsSupportedArray(SerializedProperty property)
@@ -327,6 +378,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
+            if (IsSerializableTypeProperty(property))
+            {
+                SerializedProperty assemblyQualifiedNameProperty =
+                    GetSerializableTypeStringProperty(property);
+                if (assemblyQualifiedNameProperty != null)
+                {
+                    string selected = assemblyQualifiedNameProperty.stringValue ?? string.Empty;
+                    return Array.IndexOf(options, selected);
+                }
+            }
+
             return -1;
         }
 
@@ -365,6 +427,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return GetOptionLabel(attribute, property.intValue.ToString(), out tooltip);
             }
 
+            if (IsSerializableTypeProperty(property))
+            {
+                SerializedProperty assemblyQualifiedNameProperty =
+                    GetSerializableTypeStringProperty(property);
+                if (assemblyQualifiedNameProperty != null)
+                {
+                    string selected = assemblyQualifiedNameProperty.stringValue ?? string.Empty;
+                    return GetOptionLabel(attribute, selected, out tooltip);
+                }
+            }
+
             return string.Empty;
         }
 
@@ -386,6 +459,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             else if (property.propertyType == SerializedPropertyType.Integer)
             {
                 property.intValue = optionIndex;
+            }
+            else if (IsSerializableTypeProperty(property))
+            {
+                SerializedProperty assemblyQualifiedNameProperty =
+                    GetSerializableTypeStringProperty(property);
+                if (assemblyQualifiedNameProperty != null)
+                {
+                    assemblyQualifiedNameProperty.stringValue =
+                        options[optionIndex] ?? string.Empty;
+                }
             }
         }
 
@@ -822,6 +905,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             private readonly StringInListAttribute _attribute;
             private bool _isStringProperty;
             private bool _isIntegerProperty;
+            private bool _isSerializableTypeProperty;
 
             public StringInListSelector(string[] options, StringInListAttribute attribute)
             {
@@ -864,6 +948,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return index;
                 }
 
+                if (_isSerializableTypeProperty)
+                {
+                    SerializedProperty assemblyQualifiedNameProperty =
+                        GetSerializableTypeStringProperty(property);
+                    if (assemblyQualifiedNameProperty != null)
+                    {
+                        string selectionValue =
+                            assemblyQualifiedNameProperty.stringValue ?? string.Empty;
+                        return Array.IndexOf(_options, selectionValue);
+                    }
+                }
+
                 return -1;
             }
 
@@ -881,6 +977,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 else if (_isIntegerProperty)
                 {
                     property.intValue = optionIndex;
+                }
+                else if (_isSerializableTypeProperty)
+                {
+                    SerializedProperty assemblyQualifiedNameProperty =
+                        GetSerializableTypeStringProperty(property);
+                    if (assemblyQualifiedNameProperty != null)
+                    {
+                        assemblyQualifiedNameProperty.stringValue = selectedValue;
+                    }
                 }
             }
 
@@ -914,6 +1019,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 _isStringProperty = property.propertyType == SerializedPropertyType.String;
                 _isIntegerProperty = property.propertyType == SerializedPropertyType.Integer;
+                _isSerializableTypeProperty = IsSerializableTypeProperty(property);
                 base.BindProperty(property, labelText);
             }
         }
@@ -1396,7 +1502,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             string fieldName = property.displayName;
             string actualType = GetPropertyTypeName(property);
-            return $"[StringInList] Type mismatch: '{fieldName}' is {actualType}, but StringInList requires string, int, string[], or int[]. Change the field type.";
+            return $"[StringInList] Type mismatch: '{fieldName}' is {actualType}, but StringInList requires string, int, string[], int[], or SerializableType. Change the field type.";
         }
 
         private static string GetPropertyTypeName(SerializedProperty property)

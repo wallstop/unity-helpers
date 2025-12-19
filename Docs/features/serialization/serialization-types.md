@@ -216,7 +216,6 @@ public class PrefabRegistry : MonoBehaviour
 - Null value highlighting
 - Pagination for large dictionaries
 
-![Image placeholder: Dictionary with duplicate key warning (red highlight)]
 ![Image placeholder: Dictionary pagination controls]
 
 ---
@@ -342,7 +341,7 @@ public class UniqueItemTracker : MonoBehaviour
 > ![SerializableHashSet duplicate and null highlighting](../../images/serialization/serializable-hashset-validation.png)
 >
 > _Visual feedback for duplicate entries (yellow shake) and null values (red background)_
-> ![GIF placeholder: Adding duplicate and seeing shake animation](../../images/serialization/SOMETHING.gif)
+> ![Adding duplicate and seeing shake animation](../../images/serialization/set-duplicates.gif)
 
 ---
 
@@ -446,9 +445,20 @@ private void Start()
 
 Unity-friendly type reference that survives refactoring and namespace changes.
 
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+
+public class SerializableTypeExample : MonoBehaviour
+{
+    public SerializableType type;
+}
+```
+
 > **Visual Reference**
 >
-> ![SerializableType property drawer with searchable type dropdown](../../images/serialization/serializable-type-inspector.png)
+> ![SerializableType property drawer with searchable type dropdown](../../images/serialization/serializable-type-inspector.gif)
+>
 > _Type selection with searchable dropdown, namespace filtering, and validation_
 
 ### Why SerializableType?
@@ -461,12 +471,17 @@ Unity-friendly type reference that survives refactoring and namespace changes.
 ### Basic Usage
 
 ```csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
 using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+using WallstopStudios.UnityHelpers.Core.Helper;
 
 public class BehaviorSpawner : MonoBehaviour
 {
-    [StringInList(typeof(TypeHelper), nameof(TypeHelper.GetAllMonoBehaviours))]
+    [WValueDropDown(typeof(BehaviorSpawner), nameof(GetAllMonoBehaviourNames))]
     public SerializableType behaviorType;
 
     private void SpawnBehavior()
@@ -477,17 +492,24 @@ public class BehaviorSpawner : MonoBehaviour
             return;
         }
 
-        Type type = behaviorType.GetResolvedType();
+        Type type = behaviorType.Value;
         if (type != null)
         {
             GameObject go = new GameObject(type.Name);
             go.AddComponent(type);
         }
     }
+
+    private static IEnumerable<Type> GetAllMonoBehaviourNames()
+    {
+        return ReflectionHelpers
+            .GetAllLoadedTypes()
+            .Where(type => typeof(MonoBehaviour).IsAssignableFrom(type) && !type.IsAbstract);
+    }
 }
 ```
 
-![Image placeholder: SerializableType inspector with type browser and search]
+![SerializableType inspector with type browser and search](../../images/serialization/custom-type-filtering.gif)
 
 ---
 
@@ -500,9 +522,6 @@ public class BehaviorSpawner : MonoBehaviour
 - Clear button to unset type
 - Pagination for large type catalogs
 - Auto-complete suggestions
-
-![Image placeholder: SerializableType search showing filtered results]
-![Image placeholder: SerializableType popup with pagination]
 
 ---
 
@@ -542,8 +561,6 @@ bool equal = typeRef.Equals(new SerializableType(typeof(PlayerController)));
 2. On deserialization, tries exact match first
 3. If exact match fails, scans assemblies for best partial match
 4. Updates internal name if resolved to new type
-
-![Image placeholder: SerializableType preserving reference after class rename]
 
 ---
 
@@ -599,7 +616,7 @@ public class BonusConfig : MonoBehaviour
 }
 ```
 
-![Image placeholder: SerializableNullable inspector with toggle and value field]
+![SerializableNullable inspector with toggle and value field](../../images/serialization/serializable-nullable-type-and-clear.gif)
 
 ---
 
@@ -610,9 +627,6 @@ public class BonusConfig : MonoBehaviour
 - Checkbox for `HasValue` state
 - Inline value field (enabled when `HasValue == true`)
 - Height adapts based on nullable state
-
-![Image placeholder: Nullable unchecked (disabled field)]
-![Image placeholder: Nullable checked (enabled field with value)]
 
 ---
 
