@@ -20,7 +20,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     /// ]]></code>
     /// </example>
     [Serializable]
-    [ProtoContract]
     public class SerializableSortedSet<T> : SerializableSetBase<T, SortedSet<T>>
         where T : IComparable<T>
     {

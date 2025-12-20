@@ -347,12 +347,12 @@ namespace WallstopStudios.UnityHelpers.Tests
         public IEnumerator MergeSettingsCombinesToolHistories()
         {
             PersistentDirectorySettings target =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+                CreateScriptableObject<PersistentDirectorySettings>();
             target.RecordPath("ToolA", "Context1", "Assets/A1");
             target.RecordPath("ToolA", "Context1", "Assets/A1");
 
             PersistentDirectorySettings other =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+                CreateScriptableObject<PersistentDirectorySettings>();
             other.RecordPath("ToolB", "Context2", "Assets/B2");
             other.RecordPath("ToolA", "Context1", "Assets/A2");
             yield return null;
@@ -367,16 +367,13 @@ namespace WallstopStudios.UnityHelpers.Tests
             DirectoryUsageData[] pathsB = target.GetPaths("ToolB", "Context2");
             Assert.IsNotNull(pathsB);
             Assert.AreEqual(1, pathsB.Length, "Should have path from other for ToolB");
-
-            Object.DestroyImmediate(target);
-            Object.DestroyImmediate(other);
         }
 
         [UnityTest]
         public IEnumerator MergeSettingsHandlesNullInputs()
         {
             PersistentDirectorySettings target =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+                CreateScriptableObject<PersistentDirectorySettings>();
             target.RecordPath("Tool", "Ctx", "Assets/Path");
             yield return null;
 
@@ -388,20 +385,18 @@ namespace WallstopStudios.UnityHelpers.Tests
             DirectoryUsageData[] paths = target.GetPaths("Tool", "Ctx");
             Assert.IsNotNull(paths, "Data should be unchanged after null/self merge");
             Assert.AreEqual(1, paths.Length);
-
-            Object.DestroyImmediate(target);
         }
 
         [UnityTest]
         public IEnumerator MergeSettingsAddsCountsForSamePath()
         {
             PersistentDirectorySettings target =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+                CreateScriptableObject<PersistentDirectorySettings>();
             target.RecordPath("Tool", "Ctx", "Assets/Shared");
             target.RecordPath("Tool", "Ctx", "Assets/Shared");
 
             PersistentDirectorySettings other =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+                CreateScriptableObject<PersistentDirectorySettings>();
             other.RecordPath("Tool", "Ctx", "Assets/Shared");
             other.RecordPath("Tool", "Ctx", "Assets/Shared");
             other.RecordPath("Tool", "Ctx", "Assets/Shared");
@@ -414,9 +409,6 @@ namespace WallstopStudios.UnityHelpers.Tests
             Assert.IsNotNull(paths);
             Assert.AreEqual(1, paths.Length, "Should still be one unique path");
             Assert.AreEqual(5, paths[0].count, "Counts should be summed (2 + 3 = 5)");
-
-            Object.DestroyImmediate(target);
-            Object.DestroyImmediate(other);
         }
 
         [UnityTest]

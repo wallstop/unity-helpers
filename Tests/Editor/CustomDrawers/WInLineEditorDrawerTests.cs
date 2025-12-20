@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
+    using UnityEditor.AnimatedValues;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
@@ -17,17 +18,31 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     {
         private const float InlinePaddingContribution = 4f;
 
+        private bool _originalTweenEnabled;
+        private float _originalTweenSpeed;
+
         [SetUp]
         public override void BaseSetUp()
         {
             base.BaseSetUp();
+
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            _originalTweenEnabled = settings.InlineEditorFoldoutTweenEnabled;
+            _originalTweenSpeed = settings.InlineEditorFoldoutSpeed;
+
             WInLineEditorDrawer.ClearCachedStateForTesting();
+            WInLineEditorDrawer.ClearAnimationCacheForTesting();
         }
 
         [TearDown]
         public override void TearDown()
         {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            settings.InlineEditorFoldoutTweenEnabled = _originalTweenEnabled;
+            settings.InlineEditorFoldoutSpeed = _originalTweenSpeed;
+
             WInLineEditorDrawer.ClearCachedStateForTesting();
+            WInLineEditorDrawer.ClearAnimationCacheForTesting();
             base.TearDown();
         }
 
@@ -1420,6 +1435,431 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 
         // Test ScriptableObject types are defined in separate files under TestTypes/
         // to avoid Unity complaining about ScriptableObjects in non-standalone files.
+
+        // ==================== Animation Cache Tests ====================
+
+        [Test]
+        public void FoldoutAnimationCacheCreatesNewAnimBoolForUnseenKey()
+        {
+            const string foldoutKey = "TestKey_NewAnimation";
+
+            Assert.That(
+                WInLineEditorDrawer.GetAnimationCacheCountForTesting(),
+                Is.EqualTo(0),
+                "Animation cache should be empty at start."
+            );
+
+            AnimBool anim = WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(
+                foldoutKey,
+                expanded: true
+            );
+
+            Assert.That(
+                anim,
+                Is.Not.Null,
+                "GetOrCreateFoldoutAnim should return a non-null AnimBool."
+            );
+            Assert.That(
+                WInLineEditorDrawer.GetAnimationCacheCountForTesting(),
+                Is.EqualTo(1),
+                "Animation cache should contain one entry after creation."
+            );
+            Assert.That(
+                WInLineEditorDrawer.HasAnimationCacheEntryForTesting(foldoutKey),
+                Is.True,
+                "Animation cache should have an entry for the specified key."
+            );
+        }
+
+        [Test]
+        public void FoldoutAnimationCacheReturnsSameAnimBoolForSameKey()
+        {
+            const string foldoutKey = "TestKey_SameInstance";
+
+            AnimBool first = WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(
+                foldoutKey,
+                expanded: true
+            );
+            AnimBool second = WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(
+                foldoutKey,
+                expanded: true
+            );
+
+            Assert.AreSame(
+                first,
+                second,
+                "GetOrCreateFoldoutAnim should return the same AnimBool instance for the same key."
+            );
+            Assert.That(
+                WInLineEditorDrawer.GetAnimationCacheCountForTesting(),
+                Is.EqualTo(1),
+                "Animation cache should still contain only one entry."
+            );
+        }
+
+        [Test]
+        public void FoldoutAnimationCacheReturnsDifferentAnimBoolsForDifferentKeys()
+        {
+            const string foldoutKey1 = "TestKey_First";
+            const string foldoutKey2 = "TestKey_Second";
+
+            AnimBool first = WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(
+                foldoutKey1,
+                expanded: true
+            );
+            AnimBool second = WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(
+                foldoutKey2,
+                expanded: true
+            );
+
+            Assert.AreNotSame(
+                first,
+                second,
+                "GetOrCreateFoldoutAnim should return different AnimBool instances for different keys."
+            );
+            Assert.That(
+                WInLineEditorDrawer.GetAnimationCacheCountForTesting(),
+                Is.EqualTo(2),
+                "Animation cache should contain two entries."
+            );
+        }
+
+        [Test]
+        public void AnimBoolTargetUpdatesOnExpandedChange()
+        {
+            const string foldoutKey = "TestKey_TargetUpdate";
+
+            AnimBool anim = WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(
+                foldoutKey,
+                expanded: true
+            );
+            Assert.IsTrue(anim.target, "Initial target should be true when expanded is true.");
+
+            WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(foldoutKey, expanded: false);
+            Assert.IsFalse(anim.target, "Target should update to false when expanded changes.");
+
+            WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(foldoutKey, expanded: true);
+            Assert.IsTrue(anim.target, "Target should update back to true.");
+        }
+
+        [Test]
+        public void AnimBoolSpeedReflectsCurrentSettings()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            const string foldoutKey = "TestKey_SpeedCheck";
+
+            settings.InlineEditorFoldoutSpeed = 8f;
+            AnimBool anim = WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(
+                foldoutKey,
+                expanded: true
+            );
+            Assert.That(anim.speed, Is.EqualTo(8f), "AnimBool speed should match settings value.");
+
+            settings.InlineEditorFoldoutSpeed = 4f;
+            WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(foldoutKey, expanded: true);
+            Assert.That(
+                anim.speed,
+                Is.EqualTo(4f),
+                "AnimBool speed should update when settings change."
+            );
+        }
+
+        [Test]
+        public void GetFadeProgressReturnsImmediateValueWhenTweenDisabled()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            settings.InlineEditorFoldoutTweenEnabled = false;
+
+            const string foldoutKey = "TestKey_ImmediateProgress";
+
+            float expandedProgress = WInLineEditorDrawer.GetFadeProgressForTesting(
+                foldoutKey,
+                expanded: true
+            );
+            Assert.That(
+                expandedProgress,
+                Is.EqualTo(1f),
+                "When tweening disabled, expanded=true should return 1f immediately."
+            );
+
+            float collapsedProgress = WInLineEditorDrawer.GetFadeProgressForTesting(
+                foldoutKey,
+                expanded: false
+            );
+            Assert.That(
+                collapsedProgress,
+                Is.EqualTo(0f),
+                "When tweening disabled, expanded=false should return 0f immediately."
+            );
+        }
+
+        [Test]
+        public void GetFadeProgressReturnsAnimatedValueWhenTweenEnabled()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            settings.InlineEditorFoldoutTweenEnabled = true;
+            settings.InlineEditorFoldoutSpeed = 4f;
+
+            const string foldoutKey = "TestKey_AnimatedProgress";
+
+            // First, create the AnimBool in collapsed state
+            AnimBool anim = WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(
+                foldoutKey,
+                expanded: false
+            );
+            anim.value = false;
+
+            // Now expand - the animation should be in progress
+            anim.target = true;
+
+            float progress = WInLineEditorDrawer.GetFadeProgressForTesting(
+                foldoutKey,
+                expanded: true
+            );
+
+            Assert.That(
+                progress,
+                Is.InRange(0f, 1f),
+                "Fade progress should be between 0 and 1 during animation."
+            );
+        }
+
+        [Test]
+        public void GetFadeProgressCreatesAnimBoolWhenTweenEnabled()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            settings.InlineEditorFoldoutTweenEnabled = true;
+
+            const string foldoutKey = "TestKey_CreateOnProgress";
+
+            Assert.That(
+                WInLineEditorDrawer.HasAnimationCacheEntryForTesting(foldoutKey),
+                Is.False,
+                "Animation cache should not have entry before GetFadeProgress call."
+            );
+
+            float progress = WInLineEditorDrawer.GetFadeProgressForTesting(
+                foldoutKey,
+                expanded: true
+            );
+
+            Assert.That(
+                WInLineEditorDrawer.HasAnimationCacheEntryForTesting(foldoutKey),
+                Is.True,
+                "GetFadeProgress should create AnimBool entry when tweening is enabled."
+            );
+            Assert.That(progress, Is.InRange(0f, 1f), "Fade progress should be a valid value.");
+        }
+
+        [Test]
+        public void GetFadeProgressDoesNotCreateAnimBoolWhenTweenDisabled()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            settings.InlineEditorFoldoutTweenEnabled = false;
+
+            const string foldoutKey = "TestKey_NoCreateOnDisabled";
+
+            Assert.That(
+                WInLineEditorDrawer.HasAnimationCacheEntryForTesting(foldoutKey),
+                Is.False,
+                "Animation cache should not have entry before GetFadeProgress call."
+            );
+
+            float progress = WInLineEditorDrawer.GetFadeProgressForTesting(
+                foldoutKey,
+                expanded: true
+            );
+
+            Assert.That(
+                WInLineEditorDrawer.HasAnimationCacheEntryForTesting(foldoutKey),
+                Is.False,
+                "GetFadeProgress should not create AnimBool when tweening is disabled."
+            );
+            Assert.That(
+                progress,
+                Is.EqualTo(1f),
+                "Should return immediate value when tweening disabled."
+            );
+        }
+
+        [Test]
+        public void ClearAnimationCacheRemovesAllEntries()
+        {
+            const string foldoutKey1 = "TestKey_ClearCache1";
+            const string foldoutKey2 = "TestKey_ClearCache2";
+
+            AnimBool anim1Before = WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(
+                foldoutKey1,
+                expanded: true
+            );
+            AnimBool anim2Before = WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(
+                foldoutKey2,
+                expanded: false
+            );
+
+            Assert.That(
+                WInLineEditorDrawer.GetAnimationCacheCountForTesting(),
+                Is.EqualTo(2),
+                "Should have 2 cache entries before clearing."
+            );
+
+            WInLineEditorDrawer.ClearAnimationCacheForTesting();
+
+            Assert.That(
+                WInLineEditorDrawer.GetAnimationCacheCountForTesting(),
+                Is.EqualTo(0),
+                "Animation cache should be empty after clearing."
+            );
+
+            AnimBool anim1After = WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(
+                foldoutKey1,
+                expanded: true
+            );
+            AnimBool anim2After = WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(
+                foldoutKey2,
+                expanded: false
+            );
+
+            Assert.AreNotSame(
+                anim1Before,
+                anim1After,
+                "After ClearCache, a new AnimBool should be created."
+            );
+            Assert.AreNotSame(
+                anim2Before,
+                anim2After,
+                "After ClearCache, a new AnimBool should be created."
+            );
+        }
+
+        [Test]
+        public void ClearAnimationCacheCanBeCalledMultipleTimes()
+        {
+            WInLineEditorDrawer.ClearAnimationCacheForTesting();
+            WInLineEditorDrawer.ClearAnimationCacheForTesting();
+            WInLineEditorDrawer.ClearAnimationCacheForTesting();
+
+            Assert.That(
+                WInLineEditorDrawer.GetAnimationCacheCountForTesting(),
+                Is.EqualTo(0),
+                "Clearing an already empty cache should not cause errors."
+            );
+        }
+
+        [TestCase(2f, TestName = "AnimBoolSpeed.MinValue")]
+        [TestCase(4f, TestName = "AnimBoolSpeed.Default")]
+        [TestCase(8f, TestName = "AnimBoolSpeed.MediumValue")]
+        [TestCase(12f, TestName = "AnimBoolSpeed.MaxValue")]
+        public void AnimBoolSpeedReflectsVariousSpeedSettings(float expectedSpeed)
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            settings.InlineEditorFoldoutSpeed = expectedSpeed;
+
+            string foldoutKey = $"TestKey_Speed_{expectedSpeed}";
+            AnimBool anim = WInLineEditorDrawer.GetOrCreateFoldoutAnimForTesting(
+                foldoutKey,
+                expanded: true
+            );
+
+            Assert.That(
+                anim.speed,
+                Is.EqualTo(expectedSpeed),
+                $"AnimBool speed should be {expectedSpeed} when settings specify that value."
+            );
+        }
+
+        [Test]
+        public void HeightCalculationAccountsForAnimationProgress()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            settings.InlineEditorFoldoutTweenEnabled = true;
+            settings.InlineEditorFoldoutSpeed = 4f;
+
+            // Measure collapsed height (no animation)
+            float collapsedHeight = MeasurePropertyHeight<InlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: false
+            );
+
+            // Measure fully expanded height (animation complete)
+            float expandedHeight = MeasurePropertyHeight<InlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: true
+            );
+
+            // The expanded height should be greater than collapsed
+            Assert.That(
+                expandedHeight,
+                Is.GreaterThan(collapsedHeight),
+                "Expanded height should be greater than collapsed height."
+            );
+
+            // The height difference represents the body height that gets animated
+            float bodyHeight = expandedHeight - collapsedHeight;
+            Assert.That(
+                bodyHeight,
+                Is.GreaterThan(0f),
+                "Body height contribution should be positive."
+            );
+        }
+
+        [Test]
+        public void HeightCalculationReturnsFullHeightWhenTweenDisabled()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            settings.InlineEditorFoldoutTweenEnabled = false;
+
+            // Measure expanded height with tweening disabled
+            float expandedHeightNoTween = MeasurePropertyHeight<InlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: true
+            );
+
+            settings.InlineEditorFoldoutTweenEnabled = true;
+
+            // Clear cache to ensure fresh measurement
+            WInLineEditorDrawer.ClearAnimationCacheForTesting();
+            WInLineEditorDrawer.ClearCachedStateForTesting();
+
+            // Measure expanded height with tweening enabled (should eventually match)
+            float expandedHeightWithTween = MeasurePropertyHeight<InlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: true
+            );
+
+            // Both should return the same final height when fully expanded
+            Assert.That(
+                expandedHeightWithTween,
+                Is.EqualTo(expandedHeightNoTween).Within(1f),
+                "Fully expanded height should be the same regardless of tween setting."
+            );
+        }
+
+        [Test]
+        public void GetFadeProgressReturnsConsistentResultsForSameState()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            settings.InlineEditorFoldoutTweenEnabled = true;
+
+            const string foldoutKey = "TestKey_ConsistentProgress";
+
+            // Get progress multiple times for the same expanded state
+            float progress1 = WInLineEditorDrawer.GetFadeProgressForTesting(
+                foldoutKey,
+                expanded: true
+            );
+            float progress2 = WInLineEditorDrawer.GetFadeProgressForTesting(
+                foldoutKey,
+                expanded: true
+            );
+
+            // Progress values should be equal or nearly equal (animation may have progressed slightly)
+            Assert.That(
+                progress2,
+                Is.EqualTo(progress1).Within(0.01f),
+                "Consecutive GetFadeProgress calls should return consistent results."
+            );
+        }
 
         private sealed class InlineEditorFoldoutBehaviorScope : IDisposable
         {

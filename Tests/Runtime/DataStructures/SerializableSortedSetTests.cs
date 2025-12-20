@@ -151,6 +151,457 @@
         }
 
         [Test]
+        public void SortedSetMutationsClearPreserveFlagButKeepArraysForOrder()
+        {
+            SerializableSortedSet<int> set = new();
+
+            int[] serializedItems = { 3, 3 };
+            set._items = serializedItems;
+
+            set.OnAfterDeserialize();
+            Assert.IsTrue(
+                set.PreserveSerializedEntries,
+                "PreserveSerializedEntries should be true after OnAfterDeserialize."
+            );
+            Assert.IsTrue(
+                set.HasDuplicatesOrNulls,
+                "HasDuplicatesOrNulls should be true when duplicate items exist."
+            );
+            Assert.AreEqual(
+                1,
+                set.Count,
+                "Set should have only 1 unique item (duplicates ignored)."
+            );
+
+            set.Add(4);
+
+            bool preserveAfterAdd = set.PreserveSerializedEntries;
+            bool hasDuplicatesAfterAdd = set.HasDuplicatesOrNulls;
+            int[] storedItemsAfterAdd = set.SerializedItems;
+
+            Assert.IsFalse(preserveAfterAdd, "Preserve flag should clear after set mutation.");
+            Assert.IsFalse(
+                hasDuplicatesAfterAdd,
+                "HasDuplicatesOrNulls should be cleared after mutation (MarkSerializationCacheDirty)."
+            );
+            // Arrays are preserved for order maintenance, not nulled
+            Assert.IsNotNull(
+                storedItemsAfterAdd,
+                "Serialized items should be preserved for order maintenance after mutation."
+            );
+
+            // After OnBeforeSerialize, the new item should be added and duplicates handled
+            set.OnBeforeSerialize();
+
+            string diagnosticInfo =
+                $"After OnBeforeSerialize - Items: [{string.Join(", ", set.SerializedItems)}], "
+                + $"Set.Count: {set.Count}, "
+                + $"PreserveSerializedEntries: {set.PreserveSerializedEntries}, "
+                + $"HasDuplicatesOrNulls: {set.HasDuplicatesOrNulls}";
+
+            Assert.AreEqual(
+                2,
+                set.SerializedItems.Length,
+                $"Expected 2 serialized items. {diagnosticInfo}"
+            );
+            Assert.Contains(
+                3,
+                set.SerializedItems,
+                $"Serialized items should contain 3. {diagnosticInfo}"
+            );
+            Assert.Contains(
+                4,
+                set.SerializedItems,
+                $"Serialized items should contain 4. {diagnosticInfo}"
+            );
+        }
+
+        [Test]
+        public void SortedSetRemoveMutationClearsHasDuplicatesOrNullsFlag()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] serializedItems = { 1, 1, 2 }; // Has duplicates
+            set._items = serializedItems;
+            set.OnAfterDeserialize();
+
+            Assert.IsTrue(
+                set.HasDuplicatesOrNulls,
+                "HasDuplicatesOrNulls should be true after deserializing duplicates."
+            );
+            Assert.AreEqual(2, set.Count, "Set should have 2 unique items.");
+
+            bool removed = set.Remove(2);
+
+            string diagnosticInfo =
+                $"After Remove - Removed: {removed}, "
+                + $"Set.Count: {set.Count}, "
+                + $"HasDuplicatesOrNulls: {set.HasDuplicatesOrNulls}, "
+                + $"PreserveSerializedEntries: {set.PreserveSerializedEntries}";
+
+            Assert.IsTrue(removed, $"Remove should return true. {diagnosticInfo}");
+            Assert.IsFalse(
+                set.HasDuplicatesOrNulls,
+                $"HasDuplicatesOrNulls should be cleared after Remove mutation. {diagnosticInfo}"
+            );
+            Assert.IsFalse(
+                set.PreserveSerializedEntries,
+                $"PreserveSerializedEntries should be cleared after Remove mutation. {diagnosticInfo}"
+            );
+        }
+
+        [Test]
+        public void SortedSetClearMutationClearsHasDuplicatesOrNullsFlag()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] serializedItems = { 1, 1, 2 }; // Has duplicates
+            set._items = serializedItems;
+            set.OnAfterDeserialize();
+
+            Assert.IsTrue(
+                set.HasDuplicatesOrNulls,
+                "HasDuplicatesOrNulls should be true after deserializing duplicates."
+            );
+
+            set.Clear();
+
+            string diagnosticInfo =
+                $"After Clear - Set.Count: {set.Count}, "
+                + $"HasDuplicatesOrNulls: {set.HasDuplicatesOrNulls}, "
+                + $"PreserveSerializedEntries: {set.PreserveSerializedEntries}";
+
+            Assert.AreEqual(0, set.Count, $"Set should be empty after Clear. {diagnosticInfo}");
+            Assert.IsFalse(
+                set.HasDuplicatesOrNulls,
+                $"HasDuplicatesOrNulls should be cleared after Clear mutation. {diagnosticInfo}"
+            );
+            Assert.IsFalse(
+                set.PreserveSerializedEntries,
+                $"PreserveSerializedEntries should be cleared after Clear mutation. {diagnosticInfo}"
+            );
+        }
+
+        [Test]
+        public void SortedSetUnionWithMutationClearsHasDuplicatesOrNullsFlag()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] serializedItems = { 1, 1 }; // Has duplicates
+            set._items = serializedItems;
+            set.OnAfterDeserialize();
+
+            Assert.IsTrue(
+                set.HasDuplicatesOrNulls,
+                "HasDuplicatesOrNulls should be true after deserializing duplicates."
+            );
+
+            set.UnionWith(new[] { 3, 4 });
+
+            string diagnosticInfo =
+                $"After UnionWith - Set.Count: {set.Count}, "
+                + $"HasDuplicatesOrNulls: {set.HasDuplicatesOrNulls}, "
+                + $"PreserveSerializedEntries: {set.PreserveSerializedEntries}";
+
+            Assert.IsFalse(
+                set.HasDuplicatesOrNulls,
+                $"HasDuplicatesOrNulls should be cleared after UnionWith mutation. {diagnosticInfo}"
+            );
+            Assert.IsFalse(
+                set.PreserveSerializedEntries,
+                $"PreserveSerializedEntries should be cleared after UnionWith mutation. {diagnosticInfo}"
+            );
+        }
+
+        [Test]
+        public void SortedSetExceptWithMutationClearsHasDuplicatesOrNullsFlag()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] serializedItems = { 1, 1, 2 }; // Has duplicates
+            set._items = serializedItems;
+            set.OnAfterDeserialize();
+
+            Assert.IsTrue(
+                set.HasDuplicatesOrNulls,
+                "HasDuplicatesOrNulls should be true after deserializing duplicates."
+            );
+
+            set.ExceptWith(new[] { 2 });
+
+            string diagnosticInfo =
+                $"After ExceptWith - Set.Count: {set.Count}, "
+                + $"HasDuplicatesOrNulls: {set.HasDuplicatesOrNulls}, "
+                + $"PreserveSerializedEntries: {set.PreserveSerializedEntries}";
+
+            Assert.IsFalse(
+                set.HasDuplicatesOrNulls,
+                $"HasDuplicatesOrNulls should be cleared after ExceptWith mutation. {diagnosticInfo}"
+            );
+            Assert.IsFalse(
+                set.PreserveSerializedEntries,
+                $"PreserveSerializedEntries should be cleared after ExceptWith mutation. {diagnosticInfo}"
+            );
+        }
+
+        [Test]
+        public void SortedSetIntersectWithMutationClearsHasDuplicatesOrNullsFlag()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] serializedItems = { 1, 1, 2 }; // Has duplicates
+            set._items = serializedItems;
+            set.OnAfterDeserialize();
+
+            Assert.IsTrue(
+                set.HasDuplicatesOrNulls,
+                "HasDuplicatesOrNulls should be true after deserializing duplicates."
+            );
+
+            set.IntersectWith(new[] { 1, 3 });
+
+            string diagnosticInfo =
+                $"After IntersectWith - Set.Count: {set.Count}, "
+                + $"HasDuplicatesOrNulls: {set.HasDuplicatesOrNulls}, "
+                + $"PreserveSerializedEntries: {set.PreserveSerializedEntries}";
+
+            Assert.IsFalse(
+                set.HasDuplicatesOrNulls,
+                $"HasDuplicatesOrNulls should be cleared after IntersectWith mutation. {diagnosticInfo}"
+            );
+            Assert.IsFalse(
+                set.PreserveSerializedEntries,
+                $"PreserveSerializedEntries should be cleared after IntersectWith mutation. {diagnosticInfo}"
+            );
+        }
+
+        [Test]
+        public void SortedSetSymmetricExceptWithMutationClearsHasDuplicatesOrNullsFlag()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] serializedItems = { 1, 1, 2 }; // Has duplicates
+            set._items = serializedItems;
+            set.OnAfterDeserialize();
+
+            Assert.IsTrue(
+                set.HasDuplicatesOrNulls,
+                "HasDuplicatesOrNulls should be true after deserializing duplicates."
+            );
+
+            set.SymmetricExceptWith(new[] { 2, 3 });
+
+            string diagnosticInfo =
+                $"After SymmetricExceptWith - Set.Count: {set.Count}, "
+                + $"HasDuplicatesOrNulls: {set.HasDuplicatesOrNulls}, "
+                + $"PreserveSerializedEntries: {set.PreserveSerializedEntries}";
+
+            Assert.IsFalse(
+                set.HasDuplicatesOrNulls,
+                $"HasDuplicatesOrNulls should be cleared after SymmetricExceptWith mutation. {diagnosticInfo}"
+            );
+            Assert.IsFalse(
+                set.PreserveSerializedEntries,
+                $"PreserveSerializedEntries should be cleared after SymmetricExceptWith mutation. {diagnosticInfo}"
+            );
+        }
+
+        [TestCase("Add", Description = "Add operation clears flag")]
+        [TestCase("Remove", Description = "Remove operation clears flag")]
+        [TestCase("Clear", Description = "Clear operation clears flag")]
+        [TestCase("UnionWith", Description = "UnionWith operation clears flag")]
+        [TestCase("ExceptWith", Description = "ExceptWith operation clears flag")]
+        [TestCase("IntersectWith", Description = "IntersectWith operation clears flag")]
+        [TestCase("SymmetricExceptWith", Description = "SymmetricExceptWith operation clears flag")]
+        public void SortedSetAllMutationOperationsClearHasDuplicatesOrNullsFlag(string operation)
+        {
+            SerializableSortedSet<int> set = new();
+            int[] serializedItems = { 1, 1, 2 }; // Has duplicates
+            set._items = (int[])serializedItems.Clone();
+            set.OnAfterDeserialize();
+
+            bool hadDuplicatesBefore = set.HasDuplicatesOrNulls;
+            Assert.IsTrue(
+                hadDuplicatesBefore,
+                $"HasDuplicatesOrNulls should be true before {operation}."
+            );
+
+            // Perform the mutation
+            switch (operation)
+            {
+                case "Add":
+                    set.Add(100);
+                    break;
+                case "Remove":
+                    set.Remove(2);
+                    break;
+                case "Clear":
+                    set.Clear();
+                    break;
+                case "UnionWith":
+                    set.UnionWith(new[] { 3 });
+                    break;
+                case "ExceptWith":
+                    set.ExceptWith(new[] { 2 });
+                    break;
+                case "IntersectWith":
+                    set.IntersectWith(new[] { 1 });
+                    break;
+                case "SymmetricExceptWith":
+                    set.SymmetricExceptWith(new[] { 2, 3 });
+                    break;
+            }
+
+            string diagnosticInfo =
+                $"Operation: {operation}, "
+                + $"Had duplicates before: {hadDuplicatesBefore}, "
+                + $"Has duplicates after: {set.HasDuplicatesOrNulls}, "
+                + $"Set.Count: {set.Count}, "
+                + $"PreserveSerializedEntries: {set.PreserveSerializedEntries}";
+
+            Assert.IsFalse(
+                set.HasDuplicatesOrNulls,
+                $"HasDuplicatesOrNulls should be cleared after {operation} mutation. {diagnosticInfo}"
+            );
+            Assert.IsFalse(
+                set.PreserveSerializedEntries,
+                $"PreserveSerializedEntries should be cleared after {operation} mutation. {diagnosticInfo}"
+            );
+        }
+
+        [TestCase(new[] { 1, 1 }, 2, new[] { 1, 2 }, Description = "Duplicate items with add")]
+        [TestCase(new[] { 1, 2 }, 3, new[] { 1, 2, 3 }, Description = "No duplicates with add")]
+        [TestCase(new[] { 5, 5, 5 }, 6, new[] { 5, 6 }, Description = "Triple duplicates with add")]
+        public void SortedSetDuplicateItemHandlingAfterMutationAndSerialization(
+            int[] initialItems,
+            int itemToAdd,
+            int[] expectedItems
+        )
+        {
+            SerializableSortedSet<int> set = new();
+            set._items = (int[])initialItems.Clone();
+            set.OnAfterDeserialize();
+
+            int uniqueCountBefore = set.Count;
+            bool hasDuplicates = set.HasDuplicatesOrNulls;
+
+            set.Add(itemToAdd);
+
+            set.OnBeforeSerialize();
+
+            string diagnosticInfo =
+                $"Initial items: [{string.Join(", ", initialItems)}], "
+                + $"Unique count before add: {uniqueCountBefore}, "
+                + $"Had duplicates: {hasDuplicates}, "
+                + $"Added item: {itemToAdd}, "
+                + $"Result items: [{string.Join(", ", set.SerializedItems)}], "
+                + $"Expected items: [{string.Join(", ", expectedItems)}]";
+
+            Assert.AreEqual(
+                expectedItems.Length,
+                set.SerializedItems.Length,
+                $"Item array length mismatch. {diagnosticInfo}"
+            );
+
+            for (int i = 0; i < expectedItems.Length; i++)
+            {
+                Assert.Contains(
+                    expectedItems[i],
+                    set.SerializedItems,
+                    $"Missing expected item {expectedItems[i]}. {diagnosticInfo}"
+                );
+            }
+        }
+
+        [TestCase(new[] { 1, 1 }, Description = "Duplicate int items")]
+        [TestCase(new[] { 1, 2, 1 }, Description = "Non-adjacent duplicates")]
+        [TestCase(new[] { 1, 1, 1 }, Description = "Triple duplicates")]
+        public void SortedSetFastPathSkipsWhenDuplicateItemsExist(int[] items)
+        {
+            SerializableSortedSet<int> set = new();
+            set._items = (int[])items.Clone();
+            set.OnAfterDeserialize();
+
+            // Count unique items
+            HashSet<int> uniqueItems = new(items);
+
+            // Add a new item to make counts potentially match (for the edge case)
+            int newItem = 1000;
+            while (uniqueItems.Contains(newItem))
+            {
+                newItem++;
+            }
+            set.Add(newItem);
+
+            set.OnBeforeSerialize();
+
+            string diagnosticInfo =
+                $"Initial items: [{string.Join(", ", items)}], "
+                + $"Added item: {newItem}, "
+                + $"Result items: [{string.Join(", ", set.SerializedItems)}], "
+                + $"Set.Count: {set.Count}";
+
+            // After serialization, duplicates should be resolved
+            Assert.AreEqual(
+                set.Count,
+                set.SerializedItems.Length,
+                $"Serialized array length should match set count after sync. {diagnosticInfo}"
+            );
+
+            // Verify no duplicates in result
+            HashSet<int> resultItems = new(set.SerializedItems);
+            Assert.AreEqual(
+                set.SerializedItems.Length,
+                resultItems.Count,
+                $"Result should have no duplicate items. {diagnosticInfo}"
+            );
+
+            // Verify the new item is present
+            Assert.Contains(
+                newItem,
+                set.SerializedItems,
+                $"New item should be in result. {diagnosticInfo}"
+            );
+        }
+
+        [Test]
+        public void SortedSetSyncSerializedItemsHandlesDuplicatesWhenCountMatchesByCoincidence()
+        {
+            // This is the specific edge case: array has {3, 3} (length 2),
+            // set has {3, 4} (count 2), so counts match but items differ
+            SerializableSortedSet<int> set = new();
+            int[] duplicateItems = { 3, 3 };
+            set._items = (int[])duplicateItems.Clone();
+            set.OnAfterDeserialize();
+
+            Assert.AreEqual(1, set.Count, "Set should have 1 unique item initially.");
+            Assert.IsTrue(set.HasDuplicatesOrNulls, "Should detect duplicate items.");
+
+            set.Add(4);
+
+            Assert.AreEqual(2, set.Count, "Set should have 2 items after add.");
+
+            // Now: array length = 2 (duplicates), set count = 2 (unique)
+            // The fast path in SyncSerializedItemsPreservingOrder should NOT be taken
+            // because the arrays have duplicates
+
+            set.OnBeforeSerialize();
+
+            string diagnosticInfo =
+                $"Result items: [{string.Join(", ", set.SerializedItems)}], "
+                + $"Set.Count: {set.Count}";
+
+            Assert.AreEqual(
+                2,
+                set.SerializedItems.Length,
+                $"Should have 2 unique items after sync. {diagnosticInfo}"
+            );
+            Assert.Contains(3, set.SerializedItems, $"Should contain item 3. {diagnosticInfo}");
+            Assert.Contains(4, set.SerializedItems, $"Should contain item 4. {diagnosticInfo}");
+
+            // Verify no duplicates
+            Assert.AreNotEqual(
+                set.SerializedItems[0],
+                set.SerializedItems[1],
+                $"Items should be distinct. {diagnosticInfo}"
+            );
+        }
+
+        [Test]
         public void NullSerializedItemsResetStateDuringDeserialization()
         {
             SerializableHashSet<string> set = new() { "alpha" };
@@ -190,8 +641,10 @@
         [Test]
         public void EditorAfterDeserializeSuppressesNullWarnings()
         {
-            SerializableSortedSet<ScriptableSample> set = new();
-            set._items = new ScriptableSample[] { null };
+            SerializableSortedSet<ScriptableSample> set = new()
+            {
+                _items = new ScriptableSample[] { null },
+            };
 
             ISerializableSetEditorSync editorSync = set;
             editorSync.EditorAfterDeserialize();
@@ -211,17 +664,41 @@
 
             set.OnAfterDeserialize();
 
-            string[] enumeration = set.ToArray();
+            // Direct enumeration via GetEnumerator should follow comparer (sorted) order
+            List<string> directEnumeration = new();
+            foreach (string item in set)
+            {
+                directEnumeration.Add(item);
+            }
+
             CollectionAssert.AreEqual(
                 new[] { "alpha", "charlie", "delta" },
-                enumeration,
-                "SortedSet enumeration should follow comparer order after deserialization."
+                directEnumeration,
+                "SortedSet direct enumeration should follow comparer order after deserialization."
             );
 
-            Assert.IsNull(
-                set._items,
-                "Serialized cache should be released when no null entries or duplicates remain."
+            // ToArray() now returns sorted order for sorted collections (matching standard collection behavior)
+            string[] toArrayResult = set.ToArray();
+            CollectionAssert.AreEqual(
+                new[] { "alpha", "charlie", "delta" },
+                toArrayResult,
+                "ToArray() should return sorted order for SerializableSortedSet."
             );
+
+            // ToPersistedOrderArray() preserves user-defined (serialized) order for inspector consistency
+            string[] persistedOrderResult = set.ToPersistedOrderArray();
+            CollectionAssert.AreEqual(
+                unsorted,
+                persistedOrderResult,
+                "ToPersistedOrderArray() should preserve user-defined serialization order."
+            );
+
+            // Arrays are preserved to maintain user-defined order
+            Assert.IsNotNull(
+                set._items,
+                "Serialized cache should be preserved to maintain user-defined order."
+            );
+            Assert.IsTrue(set.PreserveSerializedEntries);
         }
 
         [Test]
@@ -242,7 +719,7 @@
         }
 
         [Test]
-        public void InspectorSnapshotWithoutPreserveClearsCache()
+        public void InspectorSnapshotWithoutPreserveMaintainsUserOrder()
         {
             SerializableSortedSet<int> set = new();
             ISerializableSetInspector inspector = set;
@@ -252,9 +729,11 @@
             set.OnAfterDeserialize();
 
             Assert.AreEqual(2, set.Count);
-            Assert.IsFalse(set.PreserveSerializedEntries);
-            Assert.IsNull(set.SerializedItems);
-            CollectionAssert.AreEquivalent(snapshot, set.ToArray());
+            // After deserialization, arrays are always preserved to maintain order
+            Assert.IsTrue(set.PreserveSerializedEntries);
+            Assert.IsNotNull(set.SerializedItems);
+            // ToArray() returns sorted order
+            CollectionAssert.AreEqual(new[] { 4, 5 }, set.ToArray());
         }
 
         [Test]
@@ -267,11 +746,12 @@
 
             Array snapshot = inspector.GetSerializedItemsSnapshot();
             CollectionAssert.AreEqual(new[] { 1, 3, 5 }, snapshot);
-            Assert.IsFalse(set.PreserveSerializedEntries);
+            // After sync, preserve flag is set since arrays now exist
+            Assert.IsTrue(set.PreserveSerializedEntries);
         }
 
         [Test]
-        public void UnitySerializationRebuildsSortedSetCacheAfterDeserialization()
+        public void UnitySerializationPreservesUserDefinedOrderAfterDeserialization()
         {
             SerializableSortedSet<string> set = new();
             string[] serializedItems = { "delta", "alpha", "charlie" };
@@ -279,20 +759,23 @@
 
             set.OnAfterDeserialize();
 
-            Assert.IsNull(
+            // Arrays are preserved to maintain user-defined order
+            Assert.IsNotNull(
                 set._items,
-                "Deserialization should release serialized cache when entries can be reconstructed."
+                "Deserialization should preserve serialized cache to maintain user-defined order."
             );
+            Assert.IsTrue(set.PreserveSerializedEntries);
 
             set.OnBeforeSerialize();
 
             string[] rebuiltItems = set._items;
 
             Assert.IsNotNull(rebuiltItems);
+            // Order should be preserved, not sorted
             CollectionAssert.AreEqual(
-                new[] { "alpha", "charlie", "delta" },
+                new[] { "delta", "alpha", "charlie" },
                 rebuiltItems,
-                "Serialization should rebuild sorted cache after cache was cleared."
+                "Serialization should preserve user-defined order, not rebuild in sorted order."
             );
         }
 
@@ -306,7 +789,7 @@
         }
 
         [Test]
-        public void JsonRoundTripClearsCacheAndRebuildsSortedSetSnapshot()
+        public void JsonRoundTripPreservesUserDefinedOrder()
         {
             SerializableSortedSet<int> original = new(new[] { 5, 1, 3 });
 
@@ -316,11 +799,13 @@
             >(json);
 
             Assert.AreEqual(3, roundTrip.Count);
-            Assert.IsNull(roundTrip.SerializedItems);
-            Assert.IsFalse(roundTrip.PreserveSerializedEntries);
+            // After JSON deserialization, arrays are preserved for order
+            Assert.IsNotNull(roundTrip.SerializedItems);
+            Assert.IsTrue(roundTrip.PreserveSerializedEntries);
 
             roundTrip.OnBeforeSerialize();
 
+            // Order from JSON is preserved (JSON serialization uses sorted order from OnBeforeSerialize)
             CollectionAssert.AreEqual(new[] { 1, 3, 5 }, roundTrip.SerializedItems);
         }
 
@@ -574,6 +1059,684 @@
             {
                 return Value ?? string.Empty;
             }
+        }
+
+        [Test]
+        public void ToArrayReturnsEmptyArrayForEmptySet()
+        {
+            SerializableSortedSet<string> set = new();
+
+            string[] result = set.ToArray();
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(0, result.Length);
+            Assert.AreSame(Array.Empty<string>(), result);
+        }
+
+        [Test]
+        public void ToArrayReturnsDefensiveCopyNotInternalArray()
+        {
+            SerializableSortedSet<int> set = new() { 1, 2, 3 };
+            set.OnBeforeSerialize();
+
+            int[] firstCopy = set.ToArray();
+            int[] secondCopy = set.ToArray();
+
+            Assert.AreNotSame(firstCopy, secondCopy);
+            Assert.AreNotSame(firstCopy, set._items);
+
+            firstCopy[0] = 999;
+            Assert.AreNotEqual(999, set.ToArray()[0]);
+        }
+
+        [Test]
+        public void ToArrayReturnsSortedOrderFromDeserialization()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] userOrder = { 5, 3, 8, 1, 9 };
+            set._items = userOrder;
+            set.OnAfterDeserialize();
+
+            int[] result = set.ToArray();
+
+            // ToArray should return sorted order for SerializableSortedSet
+            CollectionAssert.AreEqual(new[] { 1, 3, 5, 8, 9 }, result);
+        }
+
+        [Test]
+        public void ToPersistedOrderArrayPreservesUserDefinedOrderFromDeserialization()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] userOrder = { 5, 3, 8, 1, 9 };
+            set._items = userOrder;
+            set.OnAfterDeserialize();
+
+            int[] result = set.ToPersistedOrderArray();
+
+            // ToPersistedOrderArray should return user-defined order
+            CollectionAssert.AreEqual(userOrder, result);
+        }
+
+        [Test]
+        public void ToArrayReflectsCurrentStateAfterMutations()
+        {
+            SerializableSortedSet<string> set = new() { "alpha", "beta" };
+            set.OnBeforeSerialize();
+
+            bool removedAlpha = set.Remove("alpha");
+            Assert.IsTrue(removedAlpha);
+            bool addedGamma = set.Add("gamma");
+            Assert.IsTrue(addedGamma);
+
+            string[] result = set.ToArray();
+
+            Assert.AreEqual(2, result.Length);
+            Assert.IsFalse(((IList<string>)result).Contains("alpha"));
+            Assert.IsTrue(((IList<string>)result).Contains("beta"));
+            Assert.IsTrue(((IList<string>)result).Contains("gamma"));
+        }
+
+        [Test]
+        public void ToArrayReturnsSortedOrderAfterMultipleSerializationCycles()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] userOrder = { 100, 50, 75, 25 };
+            set._items = userOrder;
+            set.OnAfterDeserialize();
+
+            for (int i = 0; i < 3; i++)
+            {
+                set.OnBeforeSerialize();
+                set.OnAfterDeserialize();
+            }
+
+            int[] result = set.ToArray();
+
+            // ToArray should return sorted order
+            CollectionAssert.AreEqual(new[] { 25, 50, 75, 100 }, result);
+        }
+
+        [Test]
+        public void ToPersistedOrderArraySurvivesMultipleSerializationCycles()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] userOrder = { 100, 50, 75, 25 };
+            set._items = userOrder;
+            set.OnAfterDeserialize();
+
+            for (int i = 0; i < 3; i++)
+            {
+                set.OnBeforeSerialize();
+                set.OnAfterDeserialize();
+            }
+
+            int[] result = set.ToPersistedOrderArray();
+
+            // ToPersistedOrderArray should preserve user-defined order
+            CollectionAssert.AreEqual(userOrder, result);
+        }
+
+        [Test]
+        public void ToArrayWithDuplicatesInSerializedDataReturnsUniqueElements()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] duplicateData = { 1, 1, 2, 2, 3 };
+            set._items = duplicateData;
+            set.OnAfterDeserialize();
+
+            int[] result = set.ToArray();
+
+            Assert.AreEqual(3, result.Length);
+            CollectionAssert.AllItemsAreUnique(result);
+            Assert.IsTrue(((IList<int>)result).Contains(1));
+            Assert.IsTrue(((IList<int>)result).Contains(2));
+            Assert.IsTrue(((IList<int>)result).Contains(3));
+        }
+
+        [Test]
+        public void ToArrayAfterClearReturnsEmptyArray()
+        {
+            SerializableSortedSet<string> set = new() { "one", "two", "three" };
+            set.OnBeforeSerialize();
+
+            set.Clear();
+
+            string[] result = set.ToArray();
+
+            Assert.AreEqual(0, result.Length);
+            Assert.AreSame(Array.Empty<string>(), result);
+        }
+
+        [Test]
+        public void ToArrayContainsAllElementsFromSet()
+        {
+            SerializableSortedSet<int> set = new() { 10, 20, 30, 40, 50 };
+
+            int[] result = set.ToArray();
+
+            Assert.AreEqual(set.Count, result.Length);
+            foreach (int item in set)
+            {
+                Assert.IsTrue(((IList<int>)result).Contains(item));
+            }
+        }
+
+        [Test]
+        public void ToArrayLengthMatchesCount()
+        {
+            SerializableSortedSet<string> set = new();
+
+            for (int i = 0; i < 100; i++)
+            {
+                bool added = set.Add($"item_{i:D3}");
+                Assert.IsTrue(added);
+                string[] result = set.ToArray();
+                Assert.AreEqual(set.Count, result.Length);
+            }
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(10)]
+        [TestCase(100)]
+        public void ToArrayLengthMatchesCountForVariousSizes(int size)
+        {
+            SerializableSortedSet<int> set = new();
+            for (int i = 0; i < size; i++)
+            {
+                bool added = set.Add(i);
+                Assert.IsTrue(added);
+            }
+
+            int[] result = set.ToArray();
+
+            Assert.AreEqual(size, result.Length);
+            Assert.AreEqual(set.Count, result.Length);
+        }
+
+        [TestCase("Add")]
+        [TestCase("Remove")]
+        [TestCase("Clear")]
+        public void ToArrayReflectsStateAfterMutation(string operation)
+        {
+            SerializableSortedSet<int> set = new() { 1, 2, 3 };
+            set.OnBeforeSerialize();
+
+            switch (operation)
+            {
+                case "Add":
+                    bool added = set.Add(4);
+                    Assert.IsTrue(added);
+                    Assert.AreEqual(4, set.ToArray().Length);
+                    Assert.IsTrue(((IList<int>)set.ToArray()).Contains(4));
+                    break;
+                case "Remove":
+                    bool removed = set.Remove(2);
+                    Assert.IsTrue(removed);
+                    Assert.AreEqual(2, set.ToArray().Length);
+                    Assert.IsFalse(((IList<int>)set.ToArray()).Contains(2));
+                    break;
+                case "Clear":
+                    set.Clear();
+                    Assert.AreEqual(0, set.ToArray().Length);
+                    break;
+            }
+        }
+
+        [Test]
+        public void ToArrayReturnsSortedOrderAfterAddingNewItems()
+        {
+            int[] existingOrder = { 3, 1, 5 };
+            SerializableSortedSet<int> set = new();
+            set._items = existingOrder;
+            set.OnAfterDeserialize();
+
+            bool addedTwo = set.Add(2);
+            bool addedFour = set.Add(4);
+            Assert.IsTrue(addedTwo);
+            Assert.IsTrue(addedFour);
+
+            int[] result = set.ToArray();
+
+            // ToArray should return sorted order
+            Assert.AreEqual(5, result.Length);
+            CollectionAssert.AreEqual(new[] { 1, 2, 3, 4, 5 }, result);
+        }
+
+        [Test]
+        public void ToPersistedOrderArrayPreservesInsertionOrderForNewItems()
+        {
+            int[] existingOrder = { 1, 2, 3 };
+            SerializableSortedSet<int> set = new();
+            set._items = existingOrder;
+            set.OnAfterDeserialize();
+
+            bool addedFour = set.Add(4);
+            bool addedFive = set.Add(5);
+            Assert.IsTrue(addedFour);
+            Assert.IsTrue(addedFive);
+
+            int[] result = set.ToPersistedOrderArray();
+
+            Assert.AreEqual(5, result.Length);
+            for (int i = 0; i < existingOrder.Length; i++)
+            {
+                Assert.AreEqual(existingOrder[i], result[i]);
+            }
+
+            Assert.AreEqual(4, result[3]);
+            Assert.AreEqual(5, result[4]);
+        }
+
+        [Test]
+        public void DirectEnumerationAndToArrayBothReturnSortedOrder()
+        {
+            SerializableSortedSet<string> set = new();
+            string[] unsortedItems = { "charlie", "alpha", "bravo" };
+            set._items = unsortedItems;
+            set.OnAfterDeserialize();
+
+            List<string> directEnumeration = new();
+            foreach (string item in set)
+            {
+                directEnumeration.Add(item);
+            }
+
+            string[] toArrayResult = set.ToArray();
+
+            CollectionAssert.AreEqual(
+                new[] { "alpha", "bravo", "charlie" },
+                directEnumeration,
+                "Direct enumeration should be in sorted order"
+            );
+
+            // ToArray now also returns sorted order for SerializableSortedSet
+            CollectionAssert.AreEqual(
+                new[] { "alpha", "bravo", "charlie" },
+                toArrayResult,
+                "ToArray() should return sorted order for SerializableSortedSet"
+            );
+        }
+
+        [Test]
+        public void ToPersistedOrderArrayReturnsUserDefinedOrder()
+        {
+            SerializableSortedSet<string> set = new();
+            string[] unsortedItems = { "charlie", "alpha", "bravo" };
+            set._items = unsortedItems;
+            set.OnAfterDeserialize();
+
+            string[] persistedOrderResult = set.ToPersistedOrderArray();
+
+            // ToPersistedOrderArray should preserve user-defined serialization order
+            CollectionAssert.AreEqual(
+                unsortedItems,
+                persistedOrderResult,
+                "ToPersistedOrderArray() should preserve user-defined serialization order"
+            );
+        }
+
+        [TestCase("Add", Description = "Adding via Add method")]
+        [TestCase("Remove", Description = "Removing via Remove method")]
+        [TestCase("Clear", Description = "Clearing the set")]
+        public void PreserveSerializedEntriesFlagBehaviorAfterMutation(string mutationType)
+        {
+            SerializableSortedSet<int> set = new() { 1, 2, 3 };
+            set.OnBeforeSerialize();
+
+            bool preserveFlagBefore = set.PreserveSerializedEntries;
+            Assert.IsTrue(
+                preserveFlagBefore,
+                $"PreserveSerializedEntries should be true after OnBeforeSerialize, before {mutationType}"
+            );
+
+            switch (mutationType)
+            {
+                case "Add":
+                    set.Add(4);
+                    break;
+                case "Remove":
+                    set.Remove(1);
+                    break;
+                case "Clear":
+                    set.Clear();
+                    break;
+            }
+
+            bool preserveFlagAfter = set.PreserveSerializedEntries;
+            Assert.IsFalse(
+                preserveFlagAfter,
+                $"PreserveSerializedEntries should be false after {mutationType} mutation"
+            );
+        }
+
+        [Test]
+        public void ToArrayReflectsAdditionAfterMutation()
+        {
+            SerializableSortedSet<int> set = new() { 1, 2, 3 };
+            set.OnBeforeSerialize();
+
+            set.Add(4);
+
+            int[] result = set.ToArray();
+            Assert.AreEqual(4, result.Length, "ToArray() length should reflect the addition");
+            Assert.IsTrue(
+                ((IList<int>)result).Contains(4),
+                "ToArray() should contain the newly added item"
+            );
+        }
+
+        [Test]
+        public void ToArrayReflectsRemovalAfterMutation()
+        {
+            SerializableSortedSet<int> set = new() { 1, 2, 3 };
+            set.OnBeforeSerialize();
+
+            set.Remove(2);
+
+            int[] result = set.ToArray();
+            Assert.AreEqual(2, result.Length, "ToArray() length should reflect the removal");
+            Assert.IsFalse(
+                ((IList<int>)result).Contains(2),
+                "ToArray() should not contain the removed item"
+            );
+        }
+
+        [Test]
+        public void DuplicateItemsInSerializedArrayArePreservedWhenPreserveFlagSet()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] itemsWithDuplicates = { 1, 1, 2, 3 };
+            set._items = itemsWithDuplicates;
+
+            set.OnAfterDeserialize();
+
+            Assert.IsTrue(
+                set.PreserveSerializedEntries,
+                "PreserveSerializedEntries should be true after deserialization"
+            );
+            Assert.IsTrue(
+                set.HasDuplicatesOrNulls,
+                "HasDuplicatesOrNulls should be true when duplicate items exist"
+            );
+
+            set.OnBeforeSerialize();
+
+            CollectionAssert.AreEqual(
+                itemsWithDuplicates,
+                set.SerializedItems,
+                "Serialized items with duplicates should be preserved exactly when preserve flag is set"
+            );
+        }
+
+        [Test]
+        public void ToArrayReturnsEmptyForEmptySet()
+        {
+            SerializableSortedSet<int> set = new();
+
+            int[] result = set.ToArray();
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(0, result.Length);
+        }
+
+        [Test]
+        public void ToPersistedOrderArrayReturnsEmptyForEmptySet()
+        {
+            SerializableSortedSet<string> set = new();
+
+            string[] result = set.ToPersistedOrderArray();
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(0, result.Length);
+        }
+
+        [Test]
+        public void ToArrayReturnsSortedOrderForFreshlyCreatedSet()
+        {
+            SerializableSortedSet<int> set = new() { 5, 1, 3, 4, 2 };
+
+            int[] result = set.ToArray();
+
+            CollectionAssert.AreEqual(new[] { 1, 2, 3, 4, 5 }, result);
+        }
+
+        [Test]
+        public void ToArrayReturnsSortedOrderForStringSet()
+        {
+            SerializableSortedSet<string> set = new() { "zebra", "apple", "mango", "banana" };
+
+            string[] result = set.ToArray();
+
+            CollectionAssert.AreEqual(new[] { "apple", "banana", "mango", "zebra" }, result);
+        }
+
+        [Test]
+        public void ToPersistedOrderArrayReturnsDefensiveCopy()
+        {
+            SerializableSortedSet<int> set = new() { 1, 2, 3 };
+            set.OnBeforeSerialize();
+
+            int[] firstCopy = set.ToPersistedOrderArray();
+            int[] secondCopy = set.ToPersistedOrderArray();
+
+            Assert.AreNotSame(firstCopy, secondCopy);
+
+            firstCopy[0] = 999;
+            Assert.AreNotEqual(999, set.ToPersistedOrderArray()[0]);
+        }
+
+        [Test]
+        public void ToArrayAndToPersistedOrderArrayAreDifferentAfterDeserialization()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] unsortedItems = { 5, 1, 4, 2, 3 };
+            set._items = (int[])unsortedItems.Clone();
+            set.OnAfterDeserialize();
+
+            int[] sortedResult = set.ToArray();
+            int[] persistedResult = set.ToPersistedOrderArray();
+
+            // ToArray should be sorted
+            CollectionAssert.AreEqual(new[] { 1, 2, 3, 4, 5 }, sortedResult);
+
+            // ToPersistedOrderArray should preserve original order
+            CollectionAssert.AreEqual(unsortedItems, persistedResult);
+        }
+
+        [TestCase(1)]
+        [TestCase(10)]
+        [TestCase(100)]
+        public void ToArrayConsistentWithEnumerationForVariousSizes(int size)
+        {
+            SerializableSortedSet<int> set = new();
+            for (int i = size - 1; i >= 0; i--)
+            {
+                set.Add(i);
+            }
+
+            int[] toArrayResult = set.ToArray();
+            List<int> enumerationResult = new();
+            foreach (int item in set)
+            {
+                enumerationResult.Add(item);
+            }
+
+            Assert.AreEqual(size, toArrayResult.Length);
+            Assert.AreEqual(size, enumerationResult.Count);
+            CollectionAssert.AreEqual(enumerationResult, toArrayResult);
+        }
+
+        [Test]
+        public void ToPersistedOrderArrayReflectsRuntimeMutations()
+        {
+            SerializableSortedSet<string> set = new();
+            string[] initialItems = { "zebra", "alpha" };
+            set._items = (string[])initialItems.Clone();
+            set.OnAfterDeserialize();
+
+            set.Add("mango");
+
+            string[] result = set.ToPersistedOrderArray();
+
+            Assert.AreEqual(3, result.Length);
+            // Original entries should preserve their order
+            Assert.AreEqual("zebra", result[0]);
+            Assert.AreEqual("alpha", result[1]);
+            // New entry should be appended
+            Assert.AreEqual("mango", result[2]);
+        }
+
+        [Test]
+        public void ToArrayAlwaysSortedEvenAfterMutations()
+        {
+            SerializableSortedSet<string> set = new();
+            string[] initialItems = { "zebra", "alpha" };
+            set._items = (string[])initialItems.Clone();
+            set.OnAfterDeserialize();
+
+            set.Add("mango");
+
+            string[] result = set.ToArray();
+
+            // Should always be sorted regardless of mutations
+            CollectionAssert.AreEqual(new[] { "alpha", "mango", "zebra" }, result);
+        }
+
+        [Test]
+        public void ProtoRoundTripPreservesSortedOrderInToArray()
+        {
+            SerializableSortedSet<int> original = new() { 5, 1, 3, 4, 2 };
+
+            byte[] payload = Serializer.ProtoSerialize(original);
+            SerializableSortedSet<int> roundTrip = Serializer.ProtoDeserialize<
+                SerializableSortedSet<int>
+            >(payload);
+
+            int[] result = roundTrip.ToArray();
+
+            CollectionAssert.AreEqual(new[] { 1, 2, 3, 4, 5 }, result);
+        }
+
+        [Test]
+        public void JsonRoundTripPreservesSortedOrderInToArray()
+        {
+            SerializableSortedSet<int> original = new() { 5, 1, 3, 4, 2 };
+
+            string json = Serializer.JsonStringify(original);
+            SerializableSortedSet<int> roundTrip = Serializer.JsonDeserialize<
+                SerializableSortedSet<int>
+            >(json);
+
+            int[] result = roundTrip.ToArray();
+
+            CollectionAssert.AreEqual(new[] { 1, 2, 3, 4, 5 }, result);
+        }
+
+        [Test]
+        public void SingleElementSetToArrayReturnsSingleElement()
+        {
+            SerializableSortedSet<string> set = new() { "only" };
+
+            string[] result = set.ToArray();
+
+            Assert.AreEqual(1, result.Length);
+            Assert.AreEqual("only", result[0]);
+        }
+
+        [Test]
+        public void SingleElementSetToPersistedOrderArrayReturnsSingleElement()
+        {
+            SerializableSortedSet<string> set = new() { "only" };
+            set.OnBeforeSerialize();
+
+            string[] result = set.ToPersistedOrderArray();
+
+            Assert.AreEqual(1, result.Length);
+            Assert.AreEqual("only", result[0]);
+        }
+
+        [Test]
+        public void ToArrayWithNegativeNumbers()
+        {
+            SerializableSortedSet<int> set = new() { 5, -3, 0, -10, 7 };
+
+            int[] result = set.ToArray();
+
+            CollectionAssert.AreEqual(new[] { -10, -3, 0, 5, 7 }, result);
+        }
+
+        [Test]
+        public void ToPersistedOrderArrayPreservesInsertionOrderWithNegativeNumbers()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] items = { 5, -3, 0, -10, 7 };
+            set._items = (int[])items.Clone();
+            set.OnAfterDeserialize();
+
+            int[] result = set.ToPersistedOrderArray();
+
+            CollectionAssert.AreEqual(items, result);
+        }
+
+        [Test]
+        public void ToArrayAfterRemovalStillReturnsSortedOrder()
+        {
+            SerializableSortedSet<int> set = new() { 5, 1, 3, 4, 2 };
+            set.Remove(3);
+
+            int[] result = set.ToArray();
+
+            CollectionAssert.AreEqual(new[] { 1, 2, 4, 5 }, result);
+        }
+
+        [Test]
+        public void ToPersistedOrderArrayAfterRemovalReflectsChange()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] items = { 5, 1, 3, 4, 2 };
+            set._items = (int[])items.Clone();
+            set.OnAfterDeserialize();
+
+            set.Remove(3);
+
+            int[] result = set.ToPersistedOrderArray();
+
+            // 3 was at index 2, removal should compact the array
+            CollectionAssert.AreEqual(new[] { 5, 1, 4, 2 }, result);
+        }
+
+        [Test]
+        public void MultipleMutationsToArrayRemainsConsistentlySorted()
+        {
+            SerializableSortedSet<int> set = new();
+            int[] items = { 100, 50, 75 };
+            set._items = (int[])items.Clone();
+            set.OnAfterDeserialize();
+
+            set.Add(60);
+            set.Add(25);
+            set.Remove(50);
+            set.Add(90);
+
+            int[] result = set.ToArray();
+
+            // Final set should be {25, 60, 75, 90, 100}, all sorted
+            CollectionAssert.AreEqual(new[] { 25, 60, 75, 90, 100 }, result);
+        }
+
+        [Test]
+        public void ToArrayReturnsNewArrayEachTime()
+        {
+            SerializableSortedSet<int> set = new() { 1, 2, 3 };
+
+            int[] first = set.ToArray();
+            int[] second = set.ToArray();
+
+            Assert.AreNotSame(first, second);
+
+            first[0] = 999;
+            Assert.AreEqual(1, set.ToArray()[0]);
         }
     }
 }

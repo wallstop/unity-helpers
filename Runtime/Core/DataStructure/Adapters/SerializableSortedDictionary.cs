@@ -7,6 +7,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using System.Text.Json.Serialization;
     using ProtoBuf;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Serialization;
+    using WallstopStudios.UnityHelpers.Utils;
 #if UNITY_EDITOR
     using UnityEditor;
 #endif
@@ -50,7 +53,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     /// ]]></code>
     /// </example>
     [Serializable]
-    [ProtoContract]
+    [ProtoContract(IgnoreListHandling = true)]
     public abstract class SerializableSortedDictionaryBase<TKey, TValue, TValueCache>
         : IDictionary<TKey, TValue>,
             IDictionary,
@@ -63,23 +66,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         private const string KeysSerializationName = "Keys";
         private const string ValuesSerializationName = "Values";
 
-        [SerializeField]
-        [ProtoMember(1, OverwriteList = true)]
-        internal TKey[] _keys;
-
-        [SerializeField]
-        [ProtoMember(2, OverwriteList = true)]
-        internal TValueCache[] _values;
-
-        [ProtoIgnore]
-        [JsonIgnore]
-        private SortedDictionary<TKey, TValue> _dictionary;
-
-        [NonSerialized]
-        private bool _preserveSerializedEntries;
-
-        [NonSerialized]
-        private bool _arraysDirty = true;
+        internal bool HasDuplicatesOrNulls => _hasDuplicatesOrNulls;
 
         internal bool PreserveSerializedEntries => _preserveSerializedEntries;
 
@@ -88,6 +75,29 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         internal TValueCache[] SerializedValues => _values;
 
         internal bool SerializationArraysDirty => _arraysDirty;
+
+        [SerializeField]
+        [ProtoMember(1, OverwriteList = true)]
+        [JsonInclude]
+        protected internal TKey[] _keys;
+
+        [SerializeField]
+        [ProtoMember(2, OverwriteList = true)]
+        [JsonInclude]
+        protected internal TValueCache[] _values;
+
+        [ProtoIgnore]
+        [JsonIgnore]
+        protected internal SortedDictionary<TKey, TValue> _dictionary;
+
+        [NonSerialized]
+        protected internal bool _preserveSerializedEntries;
+
+        [NonSerialized]
+        protected internal bool _arraysDirty = true;
+
+        [NonSerialized]
+        protected internal bool _hasDuplicatesOrNulls;
 
         protected SerializableSortedDictionaryBase()
         {
@@ -322,6 +332,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 _dictionary[pair.Key] = pair.Value;
             }
 
+            // Clear cached arrays since we're replacing all content
+            _keys = null;
+            _values = null;
             MarkSerializationCacheDirty();
         }
 
@@ -336,8 +349,318 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         }
 
         /// <summary>
+        /// Creates a new array containing all keys in sorted order.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Returns keys in the natural sorted order determined by the key's <see cref="IComparable{T}"/> implementation.
+        /// This matches the behavior of <see cref="SortedDictionary{TKey, TValue}.Keys"/> and standard sorted collection semantics.
+        /// </para>
+        /// <para>
+        /// The returned array is always a defensive copy - modifications to it do not affect the dictionary.
+        /// For empty dictionaries, <see cref="Array.Empty{TKey}()"/> is returned.
+        /// </para>
+        /// <para>
+        /// To retrieve keys in their user-defined serialization order (as shown in the Unity inspector),
+        /// use <see cref="ToPersistedOrderKeysArray"/> instead.
+        /// </para>
+        /// </remarks>
+        /// <returns>A new array containing all keys in sorted order.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scores = new SerializableSortedDictionary<string, int>();
+        /// scores["Charlie"] = 75;
+        /// scores["Alice"] = 100;
+        /// scores["Bob"] = 85;
+        /// string[] keyArray = scores.ToKeysArray(); // Returns ["Alice", "Bob", "Charlie"]
+        /// ]]></code>
+        /// </example>
+        public TKey[] ToKeysArray()
+        {
+            int count = _dictionary.Count;
+            if (count == 0)
+            {
+                return Array.Empty<TKey>();
+            }
+
+            // Return keys in sorted order (from the underlying SortedDictionary)
+            TKey[] result = new TKey[count];
+            _dictionary.Keys.CopyTo(result, 0);
+            return result;
+        }
+
+        /// <summary>
+        /// Creates a new array containing all keys in their user-defined serialization order.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Returns keys in the order they appear in the serialized backing array, which reflects
+        /// the user-defined order from the Unity inspector. This order is preserved across domain
+        /// reloads and serialization cycles.
+        /// </para>
+        /// <para>
+        /// The returned array is always a defensive copy - modifications to it do not affect the dictionary.
+        /// For empty dictionaries, <see cref="Array.Empty{TKey}()"/> is returned.
+        /// </para>
+        /// <para>
+        /// To retrieve keys in their natural sorted order, use <see cref="ToKeysArray"/> instead.
+        /// </para>
+        /// </remarks>
+        /// <returns>A new array containing all keys in serialization order.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scores = new SerializableSortedDictionary<string, int>();
+        /// // After inspector reordering, keys might be in a custom order
+        /// string[] keyArray = scores.ToPersistedOrderKeysArray(); // Returns keys in inspector order
+        /// ]]></code>
+        /// </example>
+        public TKey[] ToPersistedOrderKeysArray()
+        {
+            int count = _dictionary.Count;
+            if (count == 0)
+            {
+                return Array.Empty<TKey>();
+            }
+
+            // Ensure serialized state is current before reading from _keys.
+            // Check both array structure validity AND that no mutations have occurred since last serialize.
+            bool arraysValid =
+                _preserveSerializedEntries
+                && !_arraysDirty
+                && _keys != null
+                && _values != null
+                && _keys.Length == count;
+            if (!arraysValid)
+            {
+                OnBeforeSerialize();
+            }
+
+            // Return a defensive copy preserving user-defined order
+            TKey[] result = new TKey[count];
+            Array.Copy(_keys, result, count);
+            return result;
+        }
+
+        /// <summary>
+        /// Creates a new array containing all values in sorted key order.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Returns values in the order determined by the sorted key order. The value at index <c>i</c>
+        /// corresponds to the key at index <c>i</c> from <see cref="ToKeysArray"/>.
+        /// This matches the behavior of <see cref="SortedDictionary{TKey, TValue}.Values"/> and standard sorted collection semantics.
+        /// </para>
+        /// <para>
+        /// The returned array is always a defensive copy - modifications to it do not affect the dictionary.
+        /// For empty dictionaries, <see cref="Array.Empty{TValue}()"/> is returned.
+        /// </para>
+        /// <para>
+        /// To retrieve values in their user-defined serialization order (as shown in the Unity inspector),
+        /// use <see cref="ToPersistedOrderValuesArray"/> instead.
+        /// </para>
+        /// </remarks>
+        /// <returns>A new array containing all values in sorted key order.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scores = new SerializableSortedDictionary<string, int>();
+        /// scores["Charlie"] = 75;
+        /// scores["Alice"] = 100;
+        /// scores["Bob"] = 85;
+        /// int[] valueArray = scores.ToValuesArray(); // Returns [100, 85, 75] (sorted by key)
+        /// ]]></code>
+        /// </example>
+        public TValue[] ToValuesArray()
+        {
+            int count = _dictionary.Count;
+            if (count == 0)
+            {
+                return Array.Empty<TValue>();
+            }
+
+            // Return values in sorted key order (from the underlying SortedDictionary)
+            TValue[] result = new TValue[count];
+            _dictionary.Values.CopyTo(result, 0);
+            return result;
+        }
+
+        /// <summary>
+        /// Creates a new array containing all values in their user-defined serialization order.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Returns values in the order they appear in the serialized backing array, which reflects
+        /// the user-defined order from the Unity inspector. Values are aligned with keys - the value
+        /// at index <c>i</c> corresponds to the key at index <c>i</c> from <see cref="ToPersistedOrderKeysArray"/>.
+        /// </para>
+        /// <para>
+        /// The returned array is always a defensive copy - modifications to it do not affect the dictionary.
+        /// For empty dictionaries, <see cref="Array.Empty{TValue}()"/> is returned.
+        /// </para>
+        /// <para>
+        /// To retrieve values in their natural sorted key order, use <see cref="ToValuesArray"/> instead.
+        /// </para>
+        /// </remarks>
+        /// <returns>A new array containing all values in serialization order.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scores = new SerializableSortedDictionary<string, int>();
+        /// // After inspector reordering, values are aligned with their persisted key order
+        /// int[] valueArray = scores.ToPersistedOrderValuesArray(); // Returns values in inspector order
+        /// ]]></code>
+        /// </example>
+        public TValue[] ToPersistedOrderValuesArray()
+        {
+            int count = _dictionary.Count;
+            if (count == 0)
+            {
+                return Array.Empty<TValue>();
+            }
+
+            // Ensure serialized state is current before reading from _values.
+            // Check both array structure validity AND that no mutations have occurred since last serialize.
+            bool arraysValid =
+                _preserveSerializedEntries
+                && !_arraysDirty
+                && _keys != null
+                && _values != null
+                && _values.Length == count;
+            if (!arraysValid)
+            {
+                OnBeforeSerialize();
+            }
+
+            // Return a defensive copy preserving user-defined order
+            TValue[] result = new TValue[count];
+            for (int i = 0; i < count; i++)
+            {
+                result[i] = GetValue(_values, i);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Creates a new array containing all key-value pairs in sorted key order.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Returns pairs in the natural sorted order determined by the key's <see cref="IComparable{T}"/> implementation.
+        /// This matches the behavior of enumerating a <see cref="SortedDictionary{TKey, TValue}"/> and standard sorted collection semantics.
+        /// </para>
+        /// <para>
+        /// The returned array is always a defensive copy - modifications to it do not affect the dictionary.
+        /// For empty dictionaries, <see cref="Array.Empty{KeyValuePair{TKey,TValue}}()"/> is returned.
+        /// </para>
+        /// <para>
+        /// To retrieve key-value pairs in their user-defined serialization order (as shown in the Unity inspector),
+        /// use <see cref="ToPersistedOrderArray"/> instead.
+        /// </para>
+        /// </remarks>
+        /// <returns>A new array containing all key-value pairs in sorted key order.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scores = new SerializableSortedDictionary<string, int>();
+        /// scores["Charlie"] = 75;
+        /// scores["Alice"] = 100;
+        /// scores["Bob"] = 85;
+        /// KeyValuePair<string, int>[] pairArray = scores.ToArray();
+        /// // Returns [("Alice", 100), ("Bob", 85), ("Charlie", 75)] in sorted key order
+        /// ]]></code>
+        /// </example>
+        public KeyValuePair<TKey, TValue>[] ToArray()
+        {
+            int count = _dictionary.Count;
+            if (count == 0)
+            {
+                return Array.Empty<KeyValuePair<TKey, TValue>>();
+            }
+
+            // Return pairs in sorted key order (from the underlying SortedDictionary)
+            KeyValuePair<TKey, TValue>[] result = new KeyValuePair<TKey, TValue>[count];
+            int index = 0;
+            foreach (KeyValuePair<TKey, TValue> pair in _dictionary)
+            {
+                result[index++] = pair;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Creates a new array containing all key-value pairs in their user-defined serialization order.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Returns pairs in the order they appear in the serialized backing arrays, which reflects
+        /// the user-defined order from the Unity inspector. This order is preserved across domain
+        /// reloads and serialization cycles.
+        /// </para>
+        /// <para>
+        /// The returned array is always a defensive copy - modifications to it do not affect the dictionary.
+        /// For empty dictionaries, <see cref="Array.Empty{KeyValuePair{TKey,TValue}}()"/> is returned.
+        /// </para>
+        /// <para>
+        /// To retrieve key-value pairs in their natural sorted key order, use <see cref="ToArray"/> instead.
+        /// </para>
+        /// </remarks>
+        /// <returns>A new array containing all key-value pairs in serialization order.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableSortedDictionary<string, int> scores = new SerializableSortedDictionary<string, int>();
+        /// // After inspector reordering, pairs are in a custom order
+        /// KeyValuePair<string, int>[] pairArray = scores.ToPersistedOrderArray(); // Returns pairs in inspector order
+        /// ]]></code>
+        /// </example>
+        public KeyValuePair<TKey, TValue>[] ToPersistedOrderArray()
+        {
+            int count = _dictionary.Count;
+            if (count == 0)
+            {
+                return Array.Empty<KeyValuePair<TKey, TValue>>();
+            }
+
+            // Ensure serialized state is current before reading from arrays.
+            // Check both array structure validity AND that no mutations have occurred since last serialize.
+            bool arraysValid =
+                _preserveSerializedEntries
+                && !_arraysDirty
+                && _keys != null
+                && _values != null
+                && _keys.Length == count
+                && _values.Length == count;
+            if (!arraysValid)
+            {
+                OnBeforeSerialize();
+            }
+
+            // Return a defensive copy preserving user-defined order
+            KeyValuePair<TKey, TValue>[] result = new KeyValuePair<TKey, TValue>[count];
+            for (int i = 0; i < count; i++)
+            {
+                result[i] = new KeyValuePair<TKey, TValue>(_keys[i], GetValue(_values, i));
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Flushes the in-memory dictionary into the serialized key/value arrays prior to Unity or ProtoBuf serialization.
         /// </summary>
+        /// <remarks>
+        /// <para>
+        /// When serialized arrays already exist from a previous deserialization, this method preserves their
+        /// order while synchronizing values. This ensures that the user-defined order of entries as shown
+        /// in the Unity inspector is maintained across domain reloads and serialization cycles.
+        /// </para>
+        /// <para>
+        /// The synchronization process:
+        /// <list type="bullet">
+        /// <item><description>Existing keys: Values are updated in-place to reflect runtime changes</description></item>
+        /// <item><description>Removed keys: Entries are filtered out from the arrays</description></item>
+        /// <item><description>New keys: Appended to the end of the arrays</description></item>
+        /// </list>
+        /// </para>
+        /// </remarks>
         /// <example>
         /// <code>
         /// sortedDictionary.OnBeforeSerialize();
@@ -348,11 +671,35 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         {
             bool arraysIntact = _keys != null && _values != null && _keys.Length == _values.Length;
 
-            if ((_preserveSerializedEntries || !_arraysDirty) && arraysIntact)
+            // If we have valid arrays with duplicates/nulls and should preserve them,
+            // skip sync entirely to maintain the inspector's view of problematic data.
+            if (
+                arraysIntact
+                && _preserveSerializedEntries
+                && !_arraysDirty
+                && _hasDuplicatesOrNulls
+            )
             {
                 return;
             }
 
+            // If we have valid arrays and should preserve order, sync values while maintaining key order
+            if (arraysIntact && _preserveSerializedEntries && !_arraysDirty)
+            {
+                SyncSerializedArraysPreservingOrder();
+                return;
+            }
+
+            // If arrays exist but are dirty, try to preserve order while applying changes
+            if (arraysIntact && _arraysDirty)
+            {
+                SyncSerializedArraysPreservingOrder();
+                _arraysDirty = false;
+                _preserveSerializedEntries = true;
+                return;
+            }
+
+            // No existing arrays or they're inconsistent - build from scratch (sorted order)
             int count = _dictionary.Count;
             _keys = new TKey[count];
             _values = new TValueCache[count];
@@ -365,13 +712,104 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 index++;
             }
 
-            _preserveSerializedEntries = false;
+            _preserveSerializedEntries = true;
             _arraysDirty = false;
+        }
+
+        /// <summary>
+        /// Synchronizes the serialized arrays with the dictionary while preserving the existing key order.
+        /// New keys are appended, removed keys are filtered out, and existing keys have their values updated.
+        /// </summary>
+        private void SyncSerializedArraysPreservingOrder()
+        {
+            int dictionaryCount = _dictionary.Count;
+            int arrayLength = _keys.Length;
+
+            // Fast path: if counts match and all keys exist, just update values in place
+            if (dictionaryCount == arrayLength)
+            {
+                bool allKeysMatch = true;
+                for (int i = 0; i < arrayLength; i++)
+                {
+                    TKey key = _keys[i];
+                    if (key == null || !_dictionary.ContainsKey(key))
+                    {
+                        allKeysMatch = false;
+                        break;
+                    }
+                }
+
+                if (allKeysMatch)
+                {
+                    // Just update values in place, preserving key order
+                    for (int i = 0; i < arrayLength; i++)
+                    {
+                        TKey key = _keys[i];
+                        TValue value = _dictionary[key];
+                        SetValue(_values, i, value);
+                    }
+                    return;
+                }
+            }
+
+            // Need to rebuild arrays while preserving order of existing keys
+            using PooledResource<List<TKey>> keysResource = Buffers<TKey>.List.Get(
+                out List<TKey> newKeys
+            );
+            using PooledResource<List<TValue>> valuesResource = Buffers<TValue>.List.Get(
+                out List<TValue> newValues
+            );
+            using PooledResource<HashSet<TKey>> seenResource = Buffers<TKey>.HashSet.Get(
+                out HashSet<TKey> seenKeys
+            );
+
+            // First pass: keep existing keys that still exist in the dictionary, in their original order
+            for (int i = 0; i < arrayLength; i++)
+            {
+                TKey key = _keys[i];
+                if (key != null && _dictionary.TryGetValue(key, out TValue value))
+                {
+                    if (seenKeys.Add(key))
+                    {
+                        newKeys.Add(key);
+                        newValues.Add(value);
+                    }
+                }
+            }
+
+            // Second pass: append new keys that weren't in the original arrays
+            foreach (KeyValuePair<TKey, TValue> pair in _dictionary)
+            {
+                if (seenKeys.Add(pair.Key))
+                {
+                    newKeys.Add(pair.Key);
+                    newValues.Add(pair.Value);
+                }
+            }
+
+            // Rebuild arrays
+            int newCount = newKeys.Count;
+            _keys = new TKey[newCount];
+            _values = new TValueCache[newCount];
+
+            for (int i = 0; i < newCount; i++)
+            {
+                _keys[i] = newKeys[i];
+                SetValue(_values, i, newValues[i]);
+            }
         }
 
         /// <summary>
         /// Rehydrates the sorted dictionary from the serialized key/value arrays after Unity or ProtoBuf deserialization.
         /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The serialized arrays represent the user-defined order of entries as they appear in the Unity inspector.
+        /// This order is preserved across domain reloads and serialization cycles. The internal
+        /// <see cref="SortedDictionary{TKey,TValue}"/> maintains sorted iteration order for efficient lookups,
+        /// but the serialized arrays always reflect the user's intended order.
+        /// </para>
+        /// </remarks>
         /// <example>
         /// <code>
         /// sortedDictionary.OnAfterDeserialize();
@@ -380,17 +818,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// </example>
         public void OnAfterDeserialize()
         {
-            bool preserveExistingOrder = _preserveSerializedEntries;
             bool keysAndValuesPresent =
                 _keys != null && _values != null && _keys.Length == _values.Length;
-
-            _preserveSerializedEntries = false;
-            _arraysDirty = false;
 
             if (!keysAndValuesPresent)
             {
                 _keys = null;
                 _values = null;
+                _preserveSerializedEntries = false;
                 _arraysDirty = true;
                 return;
             }
@@ -420,18 +855,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 _dictionary[key] = value;
             }
 
-            _preserveSerializedEntries =
-                preserveExistingOrder || hasDuplicateKeys || encounteredNullReference;
-            if (!_preserveSerializedEntries)
-            {
-                _keys = null;
-                _values = null;
-                _arraysDirty = true;
-            }
-            else
-            {
-                _arraysDirty = false;
-            }
+            // Always preserve the serialized arrays after deserialization to maintain user-defined order.
+            // The arrays represent the order as it appears in the Unity inspector, which should not
+            // change due to domain reloads. Only runtime modifications via Add/Remove/Clear should
+            // trigger array rebuilding (handled by MarkSerializationCacheDirty).
+            _preserveSerializedEntries = true;
+            _arraysDirty = false;
+
+            // Track if we have duplicates/nulls that require special handling in the editor
+            _hasDuplicatesOrNulls = hasDuplicateKeys || encounteredNullReference;
         }
 
         private static bool TypeSupportsNullReferences(Type type)
@@ -468,13 +900,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 #endif
 
         [ProtoBeforeSerialization]
-        private void OnProtoBeforeSerialization()
+        protected internal void OnProtoBeforeSerialization()
         {
             OnBeforeSerialize();
         }
 
         [ProtoAfterSerialization]
-        private void OnProtoAfterSerialization()
+        protected internal void OnProtoAfterSerialization()
         {
             if (_preserveSerializedEntries)
             {
@@ -486,7 +918,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         }
 
         [ProtoAfterDeserialization]
-        private void OnProtoAfterDeserialization()
+        protected internal void OnProtoAfterDeserialization()
         {
             OnAfterDeserialize();
         }
@@ -521,9 +953,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         private void MarkSerializationCacheDirty()
         {
             _preserveSerializedEntries = false;
-            _keys = null;
-            _values = null;
             _arraysDirty = true;
+            // Note: We intentionally do NOT null out _keys and _values here to preserve order information
+            // for SyncSerializedArraysPreservingOrder() during the next OnBeforeSerialize() call.
         }
 
         /// <summary>
@@ -784,7 +1216,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     /// ]]></code>
     /// </example>
     [Serializable]
-    [ProtoContract]
     public class SerializableSortedDictionary<TKey, TValue>
         : SerializableSortedDictionaryBase<TKey, TValue, TValue>
         where TKey : IComparable<TKey>
@@ -842,7 +1273,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     /// ]]></code>
     /// </example>
     [Serializable]
-    [ProtoContract]
     public class SerializableSortedDictionary<TKey, TValue, TValueCache>
         : SerializableSortedDictionaryBase<TKey, TValue, TValueCache>
         where TKey : IComparable<TKey>

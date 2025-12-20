@@ -192,6 +192,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 "WInLineEditor Foldout Behavior",
                 "Default foldout state for inline object editors when a field does not specify a mode."
             );
+        private static readonly GUIContent InlineEditorFoldoutTweenEnabledContent =
+            EditorGUIUtility.TrTextContent(
+                "Tween InlineEditor Foldouts",
+                "Enable animated transitions when expanding or collapsing WInLineEditor foldouts."
+            );
+        private static readonly GUIContent InlineEditorFoldoutSpeedContent =
+            EditorGUIUtility.TrTextContent(
+                "InlineEditor Foldout Speed",
+                "Animation speed used when expanding or collapsing WInLineEditor foldouts."
+            );
         private static readonly GUIContent DictionaryFoldoutTweenEnabledContent =
             EditorGUIUtility.TrTextContent(
                 "Tween Dictionary Foldouts",
@@ -296,6 +306,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             EditorGUIUtility.TrTextContent(
                 "Start WGroups Collapsed",
                 "Default foldout state used when collapsible WGroups do not specify startCollapsed explicitly."
+            );
+        private static readonly GUIContent WGroupFoldoutTweenEnabledContent =
+            EditorGUIUtility.TrTextContent(
+                "Tween WGroup Foldouts",
+                "Enable animated transitions when expanding or collapsing WGroup foldouts."
+            );
+        private static readonly GUIContent WGroupFoldoutSpeedContent =
+            EditorGUIUtility.TrTextContent(
+                "WGroup Foldout Speed",
+                "Animation speed used when expanding or collapsing WGroup foldouts."
             );
 
         public enum WButtonActionsPlacement
@@ -731,7 +751,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [WGroup(
             "WGroup Defaults",
             displayName: "WGroup Defaults",
-            autoIncludeCount: 2,
+            autoIncludeCount: 4,
             collapsible: true
         )]
         private WGroupAutoIncludeMode _wgroupAutoIncludeMode = WGroupAutoIncludeMode.Infinite;
@@ -754,6 +774,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             "When enabled, collapsible WGroup headers start closed unless the attribute overrides startCollapsed."
         )]
         private bool _wgroupFoldoutsStartCollapsed = true;
+
+        [SerializeField]
+        [Tooltip("Enable animated transitions when expanding or collapsing WGroup foldouts.")]
+        private bool _wgroupFoldoutTweenEnabled = true;
+
+        [SerializeField]
+        [Tooltip("Animation speed used when expanding or collapsing WGroup foldouts.")]
+        [WShowIf(nameof(_wgroupFoldoutTweenEnabled))]
+        [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
+        private float _wgroupFoldoutSpeed = DefaultFoldoutSpeed;
 
         [FormerlySerializedAs("wbuttonCustomColors")]
         [SerializeField]
@@ -804,11 +834,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [WGroup(
             "InlineEditors",
             displayName: "Inline Editors",
-            autoIncludeCount: 1,
+            autoIncludeCount: 3,
             collapsible: true
         )]
         private InlineEditorFoldoutBehavior _inlineEditorFoldoutBehavior =
             InlineEditorFoldoutBehavior.StartCollapsed;
+
+        [SerializeField]
+        [Tooltip(
+            "Enable animated transitions when expanding or collapsing WInLineEditor foldouts."
+        )]
+        private bool _inlineEditorFoldoutTweenEnabled = true;
+
+        [SerializeField]
+        [Tooltip("Animation speed used when expanding or collapsing WInLineEditor foldouts.")]
+        [WShowIf(nameof(_inlineEditorFoldoutTweenEnabled))]
+        [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
+        private float _inlineEditorFoldoutSpeed = DefaultFoldoutSpeed;
 
         internal HashSet<string> WButtonCustomColorSkipAutoSuggest
         {
@@ -1343,6 +1385,80 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         }
 
         /// <summary>
+        /// Configures whether WGroup foldouts animate when expanding or collapsing.
+        /// </summary>
+        public bool WGroupFoldoutTweenEnabled
+        {
+            get => _wgroupFoldoutTweenEnabled;
+            set
+            {
+                if (_wgroupFoldoutTweenEnabled == value)
+                {
+                    return;
+                }
+
+                _wgroupFoldoutTweenEnabled = value;
+                SaveSettings();
+            }
+        }
+
+        /// <summary>
+        /// Configures the animation speed for WGroup foldout transitions.
+        /// </summary>
+        public float WGroupFoldoutSpeed
+        {
+            get => Mathf.Clamp(_wgroupFoldoutSpeed, MinFoldoutSpeed, MaxFoldoutSpeed);
+            set
+            {
+                float clamped = Mathf.Clamp(value, MinFoldoutSpeed, MaxFoldoutSpeed);
+                if (Mathf.Approximately(clamped, _wgroupFoldoutSpeed))
+                {
+                    return;
+                }
+
+                _wgroupFoldoutSpeed = clamped;
+                SaveSettings();
+            }
+        }
+
+        /// <summary>
+        /// Configures whether WInLineEditor foldouts animate when expanding or collapsing.
+        /// </summary>
+        public bool InlineEditorFoldoutTweenEnabled
+        {
+            get => _inlineEditorFoldoutTweenEnabled;
+            set
+            {
+                if (_inlineEditorFoldoutTweenEnabled == value)
+                {
+                    return;
+                }
+
+                _inlineEditorFoldoutTweenEnabled = value;
+                SaveSettings();
+            }
+        }
+
+        /// <summary>
+        /// Configures the animation speed for WInLineEditor foldout transitions.
+        /// </summary>
+        public float InlineEditorFoldoutSpeed
+        {
+            get => Mathf.Clamp(_inlineEditorFoldoutSpeed, MinFoldoutSpeed, MaxFoldoutSpeed);
+            set
+            {
+                float clamped = Mathf.Clamp(value, MinFoldoutSpeed, MaxFoldoutSpeed);
+                if (Mathf.Approximately(clamped, _inlineEditorFoldoutSpeed))
+                {
+                    return;
+                }
+
+                _inlineEditorFoldoutSpeed = clamped;
+                SaveSettings();
+            }
+        }
+
+        /// <summary>
         /// Gets the configured page size for WEnumToggleButtons groups.
         /// </summary>
         public int EnumToggleButtonsPageSize
@@ -1643,6 +1759,27 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return settings == null || settings._wgroupFoldoutsStartCollapsed;
         }
 
+        /// <summary>
+        /// Determines whether WGroup foldouts should animate when expanding or collapsing.
+        /// </summary>
+        public static bool ShouldTweenWGroupFoldouts()
+        {
+            return instance._wgroupFoldoutTweenEnabled;
+        }
+
+        internal static void SetWGroupFoldoutTweenEnabled(bool value)
+        {
+            instance._wgroupFoldoutTweenEnabled = value;
+        }
+
+        /// <summary>
+        /// Gets the animation speed for WGroup foldout transitions.
+        /// </summary>
+        public static float GetWGroupFoldoutSpeed()
+        {
+            return Mathf.Clamp(instance._wgroupFoldoutSpeed, MinFoldoutSpeed, MaxFoldoutSpeed);
+        }
+
         public static int GetEnumToggleButtonsPageSize()
         {
             return Mathf.Clamp(instance.EnumToggleButtonsPageSize, MinPageSize, MaxPageSize);
@@ -1892,6 +2029,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             instance._inlineEditorFoldoutBehavior = value;
         }
 
+        /// <summary>
+        /// Determines whether WInLineEditor foldouts should animate when expanding or collapsing.
+        /// </summary>
+        public static bool ShouldTweenInlineEditorFoldouts()
+        {
+            return instance._inlineEditorFoldoutTweenEnabled;
+        }
+
+        /// <summary>
+        /// Gets the animation speed for WInLineEditor foldout transitions.
+        /// </summary>
+        public static float GetInlineEditorFoldoutSpeed()
+        {
+            return Mathf.Clamp(
+                instance._inlineEditorFoldoutSpeed,
+                MinFoldoutSpeed,
+                MaxFoldoutSpeed
+            );
+        }
+
         internal static void RegisterPaletteManualEdit(string propertyPath, string key)
         {
             if (string.IsNullOrWhiteSpace(propertyPath) || string.IsNullOrWhiteSpace(key))
@@ -1921,12 +2078,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             internal const string WGroupFoldoutsStartCollapsed = nameof(
                 _wgroupFoldoutsStartCollapsed
             );
+            internal const string WGroupFoldoutTweenEnabled = nameof(_wgroupFoldoutTweenEnabled);
+            internal const string WGroupFoldoutSpeed = nameof(_wgroupFoldoutSpeed);
             internal const string WEnumToggleButtonsCustomColors = nameof(
                 _wenumToggleButtonsCustomColors
             );
             internal const string InlineEditorFoldoutBehavior = nameof(
                 _inlineEditorFoldoutBehavior
             );
+            internal const string InlineEditorFoldoutTweenEnabled = nameof(
+                _inlineEditorFoldoutTweenEnabled
+            );
+            internal const string InlineEditorFoldoutSpeed = nameof(_inlineEditorFoldoutSpeed);
             internal const string WButtonFoldoutTweenEnabled = nameof(_wbuttonFoldoutTweenEnabled);
             internal const string SerializableDictionaryFoldoutTweenEnabled = nameof(
                 _serializableDictionaryFoldoutTweenEnabled
@@ -2077,6 +2240,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 _wgroupAutoIncludeRowCount,
                 MinWGroupAutoIncludeRowCount,
                 MaxWGroupAutoIncludeRowCount
+            );
+            _wgroupFoldoutSpeed = Mathf.Clamp(
+                _wgroupFoldoutSpeed <= 0f ? DefaultFoldoutSpeed : _wgroupFoldoutSpeed,
+                MinFoldoutSpeed,
+                MaxFoldoutSpeed
+            );
+            _inlineEditorFoldoutSpeed = Mathf.Clamp(
+                _inlineEditorFoldoutSpeed <= 0f ? DefaultFoldoutSpeed : _inlineEditorFoldoutSpeed,
+                MinFoldoutSpeed,
+                MaxFoldoutSpeed
             );
             _wbuttonFoldoutSpeed = Mathf.Clamp(
                 _wbuttonFoldoutSpeed <= 0f ? DefaultFoldoutSpeed : _wbuttonFoldoutSpeed,
@@ -3821,6 +3994,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     bool dataChanged = false;
                     bool palettePropertyChanged = false;
 
+                    using (new WGroupHeaderVisualUtility.SettingsContextScope())
                     using (
                         PooledResource<HashSet<string>> waitInstructionPropertiesLease =
                             SetBuffers<string>
@@ -4066,6 +4240,48 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                     InlineEditorFoldoutBehaviorContent,
                                     settings._inlineEditorFoldoutBehavior,
                                     value => settings._inlineEditorFoldoutBehavior = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_inlineEditorFoldoutTweenEnabled),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawToggleField(
+                                    InlineEditorFoldoutTweenEnabledContent,
+                                    settings._inlineEditorFoldoutTweenEnabled,
+                                    value => settings._inlineEditorFoldoutTweenEnabled = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_inlineEditorFoldoutSpeed),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (!settings._inlineEditorFoldoutTweenEnabled)
+                                {
+                                    return true;
+                                }
+
+                                bool changed = DrawFloatSliderField(
+                                    InlineEditorFoldoutSpeedContent,
+                                    settings._inlineEditorFoldoutSpeed,
+                                    MinFoldoutSpeed,
+                                    MaxFoldoutSpeed,
+                                    value => settings._inlineEditorFoldoutSpeed = value,
+                                    true
                                 );
                                 dataChanged |= changed;
                                 return true;
@@ -4680,6 +4896,48 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                     WGroupStartCollapsedContent,
                                     settings._wgroupFoldoutsStartCollapsed,
                                     value => settings._wgroupFoldoutsStartCollapsed = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_wgroupFoldoutTweenEnabled),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawToggleField(
+                                    WGroupFoldoutTweenEnabledContent,
+                                    settings._wgroupFoldoutTweenEnabled,
+                                    value => settings._wgroupFoldoutTweenEnabled = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_wgroupFoldoutSpeed),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (!settings._wgroupFoldoutTweenEnabled)
+                                {
+                                    return true;
+                                }
+
+                                bool changed = DrawFloatSliderField(
+                                    WGroupFoldoutSpeedContent,
+                                    settings._wgroupFoldoutSpeed,
+                                    MinFoldoutSpeed,
+                                    MaxFoldoutSpeed,
+                                    value => settings._wgroupFoldoutSpeed = value,
+                                    true
                                 );
                                 dataChanged |= changed;
                                 return true;

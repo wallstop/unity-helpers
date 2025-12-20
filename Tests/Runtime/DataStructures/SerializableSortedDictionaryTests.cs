@@ -113,7 +113,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void InspectorSnapshotWithoutPreserveClearsSerializedArrays()
+        public void InspectorSnapshotWithoutDuplicatesPreservesArraysForOrder()
         {
             SerializableSortedDictionary<string, string> dictionary = new();
             string[] serializedKeys = { "alpha", "bravo" };
@@ -124,13 +124,23 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             dictionary.OnAfterDeserialize();
 
             Assert.AreEqual(2, dictionary.Count);
-            Assert.IsFalse(dictionary.PreserveSerializedEntries);
-            Assert.IsNull(dictionary.SerializedKeys);
-            Assert.IsNull(dictionary.SerializedValues);
+            // Arrays are now always preserved after deserialization to maintain user-defined order
+            Assert.IsTrue(
+                dictionary.PreserveSerializedEntries,
+                "Preserve flag should be true after deserialization."
+            );
+            Assert.IsNotNull(
+                dictionary.SerializedKeys,
+                "Serialized keys should be preserved for order maintenance."
+            );
+            Assert.IsNotNull(
+                dictionary.SerializedValues,
+                "Serialized values should be preserved for order maintenance."
+            );
         }
 
         [Test]
-        public void OnBeforeSerializeSkipsRebuildWhenPreservingSerializedEntries()
+        public void OnBeforeSerializePreservesOriginalArraysWhenPreserveFlagSet()
         {
             SerializableSortedDictionary<string, string> dictionary = new();
             string[] serializedKeys = { "dup", "dup" };
@@ -140,9 +150,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             dictionary.OnAfterDeserialize();
             Assert.IsTrue(dictionary.PreserveSerializedEntries);
+            Assert.IsTrue(
+                dictionary.HasDuplicatesOrNulls,
+                "HasDuplicatesOrNulls should be true for duplicate keys."
+            );
 
             dictionary.OnBeforeSerialize();
 
+            // With duplicates, the original arrays should be preserved exactly
             Assert.AreSame(serializedKeys, dictionary.SerializedKeys);
             Assert.AreSame(serializedValues, dictionary.SerializedValues);
             Assert.IsTrue(dictionary.PreserveSerializedEntries);
@@ -219,7 +234,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void IndexerUpdateClearsSerializationArrays()
+        public void IndexerUpdateMarksDirtyButPreservesArraysForOrder()
         {
             SerializableSortedDictionary<int, string> dictionary = new() { { 7, "seven" } };
 
@@ -231,16 +246,24 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             dictionary[7] = "updated";
 
-            Assert.IsNull(dictionary.SerializedKeys, "Indexer mutations must clear cached keys.");
-            Assert.IsNull(
+            // Arrays are preserved for order maintenance, but dirty flag is set
+            Assert.IsNotNull(
+                dictionary.SerializedKeys,
+                "Indexer mutations preserve arrays for order maintenance."
+            );
+            Assert.IsNotNull(
                 dictionary.SerializedValues,
-                "Indexer mutations must clear cached values."
+                "Indexer mutations preserve arrays for order maintenance."
             );
             Assert.IsTrue(
                 dictionary.SerializationArraysDirty,
                 "Indexer mutations must mark arrays dirty."
             );
             Assert.AreEqual("updated", dictionary[7]);
+
+            // After OnBeforeSerialize, the new value should be reflected
+            dictionary.OnBeforeSerialize();
+            Assert.AreEqual("updated", dictionary.SerializedValues[0]);
         }
 
         [Test]
@@ -435,9 +458,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             string[] storedValues = dictionary._values;
             bool preserveFlag = dictionary.PreserveSerializedEntries;
 
-            Assert.IsNull(storedKeys);
-            Assert.IsNull(storedValues);
-            Assert.IsFalse(preserveFlag);
+            // Arrays are always preserved to maintain user-defined order
+            Assert.IsNotNull(storedKeys);
+            Assert.IsNotNull(storedValues);
+            CollectionAssert.AreEqual(serializedKeys, storedKeys);
+            CollectionAssert.AreEqual(serializedValues, storedValues);
+            Assert.IsTrue(preserveFlag);
         }
 
         [Test]
@@ -494,7 +520,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
-        public void UnitySerializationRebuildsSortedDictionaryCacheAfterDeserialization()
+        public void UnitySerializationPreservesUserDefinedOrderAfterDeserialization()
         {
             SerializableSortedDictionary<string, int> dictionary = new();
 
@@ -505,14 +531,16 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             dictionary.OnAfterDeserialize();
 
-            Assert.IsNull(
+            // After deserialization, arrays are preserved to maintain user-defined order
+            Assert.IsNotNull(
                 dictionary._keys,
-                "Deserialization should drop serialized keys when entries can be restored without loss."
+                "Deserialization should preserve serialized keys to maintain user-defined order."
             );
-            Assert.IsNull(
+            Assert.IsNotNull(
                 dictionary._values,
-                "Deserialization should drop serialized values when entries can be restored without loss."
+                "Deserialization should preserve serialized values to maintain user-defined order."
             );
+            Assert.IsTrue(dictionary.PreserveSerializedEntries);
 
             dictionary.OnBeforeSerialize();
 
@@ -521,20 +549,21 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.IsNotNull(rebuiltKeys);
             Assert.IsNotNull(rebuiltValues);
+            // Order should be preserved from deserialization, NOT sorted
             CollectionAssert.AreEqual(
-                new[] { "alpha", "charlie", "delta" },
+                new[] { "delta", "alpha", "charlie" },
                 rebuiltKeys,
-                "Serialized keys should be rewritten in sorted order."
+                "Serialized keys should preserve user-defined order, not sorted order."
             );
             CollectionAssert.AreEqual(
-                new[] { 1, 2, 3 },
+                new[] { 3, 1, 2 },
                 rebuiltValues,
-                "Serialized values should stay aligned with sorted keys."
+                "Serialized values should stay aligned with their original key positions."
             );
         }
 
         [Test]
-        public void JsonRoundTripClearsCacheAndRebuildsSortedSnapshot()
+        public void JsonRoundTripPreservesArraysAndOrderAfterDeserialization()
         {
             SerializableSortedDictionary<int, string> original = new()
             {
@@ -549,12 +578,23 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(json);
 
             Assert.AreEqual(3, roundTrip.Count);
-            Assert.IsNull(roundTrip.SerializedKeys);
-            Assert.IsNull(roundTrip.SerializedValues);
-            Assert.IsFalse(roundTrip.PreserveSerializedEntries);
+            // After JSON deserialization, arrays are preserved to maintain user-defined order
+            Assert.IsNotNull(
+                roundTrip.SerializedKeys,
+                "Serialized keys should be preserved after JSON deserialization."
+            );
+            Assert.IsNotNull(
+                roundTrip.SerializedValues,
+                "Serialized values should be preserved after JSON deserialization."
+            );
+            Assert.IsTrue(
+                roundTrip.PreserveSerializedEntries,
+                "Preserve flag should be true after JSON deserialization."
+            );
 
             roundTrip.OnBeforeSerialize();
 
+            // Order should be preserved from the JSON (which came from sorted order originally)
             CollectionAssert.AreEqual(new[] { 1, 2, 3 }, roundTrip.SerializedKeys);
             CollectionAssert.AreEqual(new[] { "one", "two", "three" }, roundTrip.SerializedValues);
         }
@@ -604,6 +644,149 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             Assert.AreEqual(expectedKeys.Length, index);
+        }
+
+        [Test]
+        public void ProtoSerializationRoundTripRestoresInternalArrays()
+        {
+            // Arrange: Create dictionary with specific entries
+            SerializableSortedDictionary<int, string> original = new()
+            {
+                { 4, "four" },
+                { 2, "two" },
+                { 9, "nine" },
+            };
+            original.OnBeforeSerialize();
+
+            // Diagnostic: Verify original state
+            Assert.IsNotNull(original._keys, "Original _keys should not be null");
+            Assert.IsNotNull(original._values, "Original _values should not be null");
+            string originalKeysStr = string.Join(", ", original._keys);
+            string originalValuesStr = string.Join(", ", original._values);
+
+            // Act: Protobuf round-trip
+            byte[] data = Serializer.ProtoSerialize(original);
+
+            Assert.IsNotNull(data, "Serialized data should not be null");
+            Assert.Greater(
+                data.Length,
+                0,
+                $"Serialized data should not be empty. Keys: [{originalKeysStr}], Values: [{originalValuesStr}]"
+            );
+
+            string hexDump = string.Join(" ", data.Take(30).Select(b => b.ToString("X2")));
+
+            SerializableSortedDictionary<int, string> deserialized = Serializer.ProtoDeserialize<
+                SerializableSortedDictionary<int, string>
+            >(data);
+
+            // Assert: Internal arrays should be restored
+            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.IsNotNull(
+                deserialized._keys,
+                $"Deserialized _keys should not be null. "
+                    + $"Original keys: [{originalKeysStr}], Bytes: {data.Length}, Hex: {hexDump}"
+            );
+            Assert.IsNotNull(
+                deserialized._values,
+                $"Deserialized _values should not be null. "
+                    + $"Original values: [{originalValuesStr}], Bytes: {data.Length}, Hex: {hexDump}"
+            );
+            Assert.AreEqual(
+                original._keys.Length,
+                deserialized._keys.Length,
+                "Keys array length should match"
+            );
+            Assert.AreEqual(
+                original._values.Length,
+                deserialized._values.Length,
+                "Values array length should match"
+            );
+
+            // Verify contents
+            CollectionAssert.AreEquivalent(
+                original._keys,
+                deserialized._keys,
+                "Keys should contain the same elements"
+            );
+            CollectionAssert.AreEquivalent(
+                original._values,
+                deserialized._values,
+                "Values should contain the same elements"
+            );
+        }
+
+        private static IEnumerable<TestCaseData> SortedDictionaryProtoArraysTestCases()
+        {
+            yield return new TestCaseData(new[] { 1 }, new[] { "one" }).SetName("SingleEntry");
+            yield return new TestCaseData(
+                new[] { 4, 2, 9, 1 },
+                new[] { "four", "two", "nine", "one" }
+            ).SetName("MultipleEntries");
+            yield return new TestCaseData(new[] { -5 }, new[] { "negative" }).SetName(
+                "NegativeKey"
+            );
+            yield return new TestCaseData(
+                new[] { int.MaxValue, int.MinValue, 0 },
+                new[] { "max", "min", "zero" }
+            ).SetName("ExtremeBoundaryKeys");
+        }
+
+        [TestCaseSource(nameof(SortedDictionaryProtoArraysTestCases))]
+        public void ProtoSerializationRoundTripRestoresArraysDataDriven(int[] keys, string[] values)
+        {
+            // Arrange
+            SerializableSortedDictionary<int, string> original = new();
+            for (int i = 0; i < keys.Length; i++)
+            {
+                original.Add(keys[i], values[i]);
+            }
+            original.OnBeforeSerialize();
+
+            // Diagnostic
+            Assert.IsNotNull(original._keys, "Original _keys should not be null");
+            Assert.IsNotNull(original._values, "Original _values should not be null");
+            Assert.AreEqual(keys.Length, original._keys.Length, "Original _keys length mismatch");
+            Assert.AreEqual(
+                values.Length,
+                original._values.Length,
+                "Original _values length mismatch"
+            );
+
+            // Act
+            byte[] data = Serializer.ProtoSerialize(original);
+            Assert.Greater(data.Length, 0, "Serialized data should not be empty");
+
+            string hexDump = string.Join(" ", data.Take(30).Select(b => b.ToString("X2")));
+
+            SerializableSortedDictionary<int, string> deserialized = Serializer.ProtoDeserialize<
+                SerializableSortedDictionary<int, string>
+            >(data);
+
+            // Assert
+            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.IsNotNull(
+                deserialized._keys,
+                $"Deserialized _keys should not be null. "
+                    + $"Input keys: [{string.Join(", ", keys)}], Bytes: {data.Length}, Hex: {hexDump}"
+            );
+            Assert.IsNotNull(
+                deserialized._values,
+                $"Deserialized _values should not be null. "
+                    + $"Input values: [{string.Join(", ", values)}], Bytes: {data.Length}, Hex: {hexDump}"
+            );
+            Assert.AreEqual(keys.Length, deserialized._keys.Length, "Keys length should match");
+            Assert.AreEqual(
+                values.Length,
+                deserialized._values.Length,
+                "Values length should match"
+            );
+            CollectionAssert.AreEquivalent(keys, deserialized._keys, "Keys content should match");
+            CollectionAssert.AreEquivalent(
+                values,
+                deserialized._values,
+                "Values content should match"
+            );
         }
 
         private sealed class CaseInsensitiveKey : IComparable<CaseInsensitiveKey>, IComparable
@@ -661,6 +844,1004 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             {
                 return Token ?? string.Empty;
             }
+        }
+
+        [Test]
+        public void ToKeysArrayReturnsEmptyArrayForEmptyDictionary()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+
+            string[] result = dictionary.ToKeysArray();
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(0, result.Length);
+            Assert.AreSame(Array.Empty<string>(), result);
+        }
+
+        [Test]
+        public void ToValuesArrayReturnsEmptyArrayForEmptyDictionary()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+
+            int[] result = dictionary.ToValuesArray();
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(0, result.Length);
+            Assert.AreSame(Array.Empty<int>(), result);
+        }
+
+        [Test]
+        public void ToArrayReturnsEmptyArrayForEmptyDictionary()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+
+            KeyValuePair<string, int>[] result = dictionary.ToArray();
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(0, result.Length);
+            Assert.AreSame(Array.Empty<KeyValuePair<string, int>>(), result);
+        }
+
+        [Test]
+        public void ToKeysArrayReturnsDefensiveCopy()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new() { { "a", 1 }, { "b", 2 } };
+            dictionary.OnBeforeSerialize();
+
+            string[] firstCopy = dictionary.ToKeysArray();
+            string[] secondCopy = dictionary.ToKeysArray();
+
+            Assert.AreNotSame(firstCopy, secondCopy);
+            Assert.AreNotSame(firstCopy, dictionary._keys);
+
+            firstCopy[0] = "modified";
+            Assert.AreNotEqual("modified", dictionary.ToKeysArray()[0]);
+        }
+
+        [Test]
+        public void ToValuesArrayReturnsDefensiveCopy()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new() { { "a", 1 }, { "b", 2 } };
+            dictionary.OnBeforeSerialize();
+
+            int[] firstCopy = dictionary.ToValuesArray();
+            int[] secondCopy = dictionary.ToValuesArray();
+
+            Assert.AreNotSame(firstCopy, secondCopy);
+
+            firstCopy[0] = 999;
+            Assert.AreNotEqual(999, dictionary.ToValuesArray()[0]);
+        }
+
+        [Test]
+        public void ToArrayReturnsDefensiveCopy()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new() { { "a", 1 }, { "b", 2 } };
+            dictionary.OnBeforeSerialize();
+
+            KeyValuePair<string, int>[] firstCopy = dictionary.ToArray();
+            KeyValuePair<string, int>[] secondCopy = dictionary.ToArray();
+
+            Assert.AreNotSame(firstCopy, secondCopy);
+        }
+
+        [Test]
+        public void ToKeysArrayReturnsSortedOrder()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+            string[] userOrder = { "zebra", "alpha", "mango" };
+            int[] values = { 1, 2, 3 };
+            dictionary._keys = (string[])userOrder.Clone();
+            dictionary._values = (int[])values.Clone();
+            dictionary.OnAfterDeserialize();
+
+            string[] result = dictionary.ToKeysArray();
+
+            // ToKeysArray should return sorted order, not user-defined order
+            CollectionAssert.AreEqual(new[] { "alpha", "mango", "zebra" }, result);
+        }
+
+        [Test]
+        public void ToPersistedOrderKeysArrayPreservesUserDefinedOrder()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+            string[] userOrder = { "zebra", "alpha", "mango" };
+            int[] values = { 1, 2, 3 };
+            dictionary._keys = (string[])userOrder.Clone();
+            dictionary._values = (int[])values.Clone();
+            dictionary.OnAfterDeserialize();
+
+            string[] result = dictionary.ToPersistedOrderKeysArray();
+
+            // ToPersistedOrderKeysArray should return user-defined order
+            CollectionAssert.AreEqual(userOrder, result);
+        }
+
+        [Test]
+        public void ToValuesArrayReturnsSortedKeyOrder()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+            string[] keys = { "zebra", "alpha", "mango" };
+            int[] userOrder = { 100, 200, 300 };
+            dictionary._keys = (string[])keys.Clone();
+            dictionary._values = (int[])userOrder.Clone();
+            dictionary.OnAfterDeserialize();
+
+            int[] result = dictionary.ToValuesArray();
+
+            // ToValuesArray should return values in sorted key order: alpha=200, mango=300, zebra=100
+            CollectionAssert.AreEqual(new[] { 200, 300, 100 }, result);
+        }
+
+        [Test]
+        public void ToPersistedOrderValuesArrayPreservesUserDefinedOrder()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+            string[] keys = { "zebra", "alpha", "mango" };
+            int[] userOrder = { 100, 200, 300 };
+            dictionary._keys = (string[])keys.Clone();
+            dictionary._values = (int[])userOrder.Clone();
+            dictionary.OnAfterDeserialize();
+
+            int[] result = dictionary.ToPersistedOrderValuesArray();
+
+            // ToPersistedOrderValuesArray should return user-defined order
+            CollectionAssert.AreEqual(userOrder, result);
+        }
+
+        [Test]
+        public void ToArrayReturnsSortedOrder()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+            string[] keys = { "zebra", "alpha", "mango" };
+            int[] values = { 1, 2, 3 };
+            dictionary._keys = (string[])keys.Clone();
+            dictionary._values = (int[])values.Clone();
+            dictionary.OnAfterDeserialize();
+
+            KeyValuePair<string, int>[] result = dictionary.ToArray();
+
+            // ToArray should return sorted key order: alpha, mango, zebra
+            Assert.AreEqual(3, result.Length);
+            Assert.AreEqual("alpha", result[0].Key);
+            Assert.AreEqual(2, result[0].Value);
+            Assert.AreEqual("mango", result[1].Key);
+            Assert.AreEqual(3, result[1].Value);
+            Assert.AreEqual("zebra", result[2].Key);
+            Assert.AreEqual(1, result[2].Value);
+        }
+
+        [Test]
+        public void ToPersistedOrderArrayPreservesUserDefinedOrder()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+            string[] keys = { "zebra", "alpha", "mango" };
+            int[] values = { 1, 2, 3 };
+            dictionary._keys = (string[])keys.Clone();
+            dictionary._values = (int[])values.Clone();
+            dictionary.OnAfterDeserialize();
+
+            KeyValuePair<string, int>[] result = dictionary.ToPersistedOrderArray();
+
+            // ToPersistedOrderArray should return user-defined order
+            Assert.AreEqual(3, result.Length);
+            Assert.AreEqual("zebra", result[0].Key);
+            Assert.AreEqual(1, result[0].Value);
+            Assert.AreEqual("alpha", result[1].Key);
+            Assert.AreEqual(2, result[1].Value);
+            Assert.AreEqual("mango", result[2].Key);
+            Assert.AreEqual(3, result[2].Value);
+        }
+
+        [Test]
+        public void ToArrayKeysAndValuesAreAligned()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new()
+            {
+                { "first", 10 },
+                { "second", 20 },
+                { "third", 30 },
+            };
+            dictionary.OnBeforeSerialize();
+
+            string[] keys = dictionary.ToKeysArray();
+            int[] values = dictionary.ToValuesArray();
+            KeyValuePair<string, int>[] pairs = dictionary.ToArray();
+
+            Assert.AreEqual(keys.Length, values.Length);
+            Assert.AreEqual(keys.Length, pairs.Length);
+
+            for (int i = 0; i < keys.Length; i++)
+            {
+                Assert.AreEqual(keys[i], pairs[i].Key);
+                Assert.AreEqual(values[i], pairs[i].Value);
+                Assert.AreEqual(dictionary[keys[i]], values[i]);
+            }
+        }
+
+        [Test]
+        public void ToArrayReflectsCurrentStateAfterMutations()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new()
+            {
+                { "alpha", 1 },
+                { "beta", 2 },
+            };
+            dictionary.OnBeforeSerialize();
+
+            bool removed = dictionary.Remove("alpha");
+            Assert.IsTrue(removed);
+            dictionary["gamma"] = 3;
+
+            string[] keys = dictionary.ToKeysArray();
+            int[] values = dictionary.ToValuesArray();
+
+            Assert.AreEqual(2, keys.Length);
+            Assert.IsFalse(((IList<string>)keys).Contains("alpha"));
+            Assert.IsTrue(((IList<string>)keys).Contains("beta"));
+            Assert.IsTrue(((IList<string>)keys).Contains("gamma"));
+
+            Assert.AreEqual(2, values.Length);
+        }
+
+        [Test]
+        public void ToPersistedOrderArrayOrderSurvivesMultipleSerializationCycles()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+            string[] userOrder = { "zebra", "alpha", "mango" };
+            int[] values = { 100, 200, 300 };
+            dictionary._keys = (string[])userOrder.Clone();
+            dictionary._values = (int[])values.Clone();
+            dictionary.OnAfterDeserialize();
+
+            for (int i = 0; i < 3; i++)
+            {
+                dictionary.OnBeforeSerialize();
+                dictionary.OnAfterDeserialize();
+            }
+
+            string[] resultKeys = dictionary.ToPersistedOrderKeysArray();
+            int[] resultValues = dictionary.ToPersistedOrderValuesArray();
+
+            CollectionAssert.AreEqual(userOrder, resultKeys);
+            CollectionAssert.AreEqual(values, resultValues);
+        }
+
+        [Test]
+        public void ToArrayReturnsSortedOrderAfterMultipleSerializationCycles()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+            string[] userOrder = { "zebra", "alpha", "mango" };
+            int[] values = { 100, 200, 300 };
+            dictionary._keys = (string[])userOrder.Clone();
+            dictionary._values = (int[])values.Clone();
+            dictionary.OnAfterDeserialize();
+
+            for (int i = 0; i < 3; i++)
+            {
+                dictionary.OnBeforeSerialize();
+                dictionary.OnAfterDeserialize();
+            }
+
+            string[] resultKeys = dictionary.ToKeysArray();
+            int[] resultValues = dictionary.ToValuesArray();
+
+            // ToKeysArray/ToValuesArray should return sorted order
+            CollectionAssert.AreEqual(new[] { "alpha", "mango", "zebra" }, resultKeys);
+            CollectionAssert.AreEqual(new[] { 200, 300, 100 }, resultValues);
+        }
+
+        [Test]
+        public void ToArrayWithDuplicateKeysInSerializedDataHandlesGracefully()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+            string[] duplicateKeys = { "a", "a", "b" };
+            int[] values = { 1, 2, 3 };
+            dictionary._keys = (string[])duplicateKeys.Clone();
+            dictionary._values = (int[])values.Clone();
+            dictionary.OnAfterDeserialize();
+
+            string[] resultKeys = dictionary.ToKeysArray();
+            KeyValuePair<string, int>[] pairs = dictionary.ToArray();
+
+            Assert.AreEqual(2, resultKeys.Length);
+            Assert.AreEqual(2, pairs.Length);
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(10)]
+        [TestCase(100)]
+        public void ToArrayLengthMatchesCountForVariousSizes(int size)
+        {
+            SerializableSortedDictionary<int, string> dictionary = new();
+            for (int i = 0; i < size; i++)
+            {
+                dictionary[i] = $"value_{i}";
+            }
+
+            int[] keys = dictionary.ToKeysArray();
+            string[] values = dictionary.ToValuesArray();
+            KeyValuePair<int, string>[] pairs = dictionary.ToArray();
+
+            Assert.AreEqual(size, keys.Length);
+            Assert.AreEqual(size, values.Length);
+            Assert.AreEqual(size, pairs.Length);
+            Assert.AreEqual(dictionary.Count, keys.Length);
+        }
+
+        [TestCase("Add")]
+        [TestCase("Remove")]
+        [TestCase("Clear")]
+        [TestCase("Indexer")]
+        public void ToArrayReflectsStateAfterMutation(string operation)
+        {
+            SerializableSortedDictionary<int, string> dictionary = new()
+            {
+                { 1, "one" },
+                { 2, "two" },
+                { 3, "three" },
+            };
+            dictionary.OnBeforeSerialize();
+
+            switch (operation)
+            {
+                case "Add":
+                    dictionary.Add(4, "four");
+                    Assert.AreEqual(4, dictionary.ToKeysArray().Length);
+                    Assert.IsTrue(((IList<int>)dictionary.ToKeysArray()).Contains(4));
+                    break;
+                case "Remove":
+                    bool removed = dictionary.Remove(2);
+                    Assert.IsTrue(removed);
+                    Assert.AreEqual(2, dictionary.ToKeysArray().Length);
+                    Assert.IsFalse(((IList<int>)dictionary.ToKeysArray()).Contains(2));
+                    break;
+                case "Clear":
+                    dictionary.Clear();
+                    Assert.AreEqual(0, dictionary.ToKeysArray().Length);
+                    Assert.AreEqual(0, dictionary.ToValuesArray().Length);
+                    Assert.AreEqual(0, dictionary.ToArray().Length);
+                    break;
+                case "Indexer":
+                    dictionary[1] = "modified";
+                    string[] valuesArray = dictionary.ToValuesArray();
+                    int keyIndex = Array.IndexOf(dictionary.ToKeysArray(), 1);
+                    Assert.AreEqual("modified", valuesArray[keyIndex]);
+                    break;
+            }
+        }
+
+        [Test]
+        public void ToPersistedOrderArrayPreservesInsertionOrderForNewKeys()
+        {
+            SerializableSortedDictionary<int, string> dictionary = new();
+            int[] existingKeys = { 1, 2, 3 };
+            string[] existingValues = { "one", "two", "three" };
+            dictionary._keys = (int[])existingKeys.Clone();
+            dictionary._values = (string[])existingValues.Clone();
+            dictionary.OnAfterDeserialize();
+
+            dictionary[4] = "four";
+            dictionary[5] = "five";
+
+            int[] resultKeys = dictionary.ToPersistedOrderKeysArray();
+
+            Assert.AreEqual(5, resultKeys.Length);
+            for (int i = 0; i < existingKeys.Length; i++)
+            {
+                Assert.AreEqual(existingKeys[i], resultKeys[i]);
+            }
+
+            Assert.AreEqual(4, resultKeys[3]);
+            Assert.AreEqual(5, resultKeys[4]);
+        }
+
+        [Test]
+        public void ToKeysArrayReturnsSortedOrderAfterAddingNewKeys()
+        {
+            SerializableSortedDictionary<int, string> dictionary = new();
+            int[] existingKeys = { 3, 1, 5 };
+            string[] existingValues = { "three", "one", "five" };
+            dictionary._keys = (int[])existingKeys.Clone();
+            dictionary._values = (string[])existingValues.Clone();
+            dictionary.OnAfterDeserialize();
+
+            dictionary[2] = "two";
+            dictionary[4] = "four";
+
+            int[] resultKeys = dictionary.ToKeysArray();
+
+            // ToKeysArray should always return sorted order
+            CollectionAssert.AreEqual(new[] { 1, 2, 3, 4, 5 }, resultKeys);
+        }
+
+        [TestCase("IndexerUpdateExisting", Description = "Updating existing key value via indexer")]
+        [TestCase("IndexerAddNew", Description = "Adding new key via indexer")]
+        [TestCase("AddMethod", Description = "Adding via Add method")]
+        [TestCase("TryAddMethod", Description = "Adding via TryAdd method")]
+        [TestCase("RemoveMethod", Description = "Removing via Remove method")]
+        [TestCase("ClearMethod", Description = "Clearing the dictionary")]
+        public void PreserveSerializedEntriesFlagBehaviorAfterMutation(string mutationType)
+        {
+            SerializableSortedDictionary<int, string> dictionary = new()
+            {
+                { 1, "one" },
+                { 2, "two" },
+            };
+            dictionary.OnBeforeSerialize();
+
+            bool preserveFlagBefore = dictionary.PreserveSerializedEntries;
+            Assert.IsTrue(
+                preserveFlagBefore,
+                $"PreserveSerializedEntries should be true after OnBeforeSerialize, before {mutationType}"
+            );
+
+            switch (mutationType)
+            {
+                case "IndexerUpdateExisting":
+                    dictionary[1] = "updated";
+                    break;
+                case "IndexerAddNew":
+                    dictionary[3] = "three";
+                    break;
+                case "AddMethod":
+                    dictionary.Add(4, "four");
+                    break;
+                case "TryAddMethod":
+                    dictionary.TryAdd(5, "five");
+                    break;
+                case "RemoveMethod":
+                    dictionary.Remove(1);
+                    break;
+                case "ClearMethod":
+                    dictionary.Clear();
+                    break;
+            }
+
+            bool preserveFlagAfter = dictionary.PreserveSerializedEntries;
+            Assert.IsFalse(
+                preserveFlagAfter,
+                $"PreserveSerializedEntries should be false after {mutationType} mutation"
+            );
+
+            bool arraysDirtyAfter = dictionary.SerializationArraysDirty;
+            Assert.IsTrue(
+                arraysDirtyAfter,
+                $"SerializationArraysDirty should be true after {mutationType} mutation"
+            );
+        }
+
+        [TestCase(
+            "IndexerUpdateExisting",
+            1,
+            "updated",
+            Description = "Updating existing key value"
+        )]
+        [TestCase("IndexerAddNew", 3, "three", Description = "Adding new key via indexer")]
+        public void ToValuesArrayReflectsValueChangesAfterIndexerMutation(
+            string mutationType,
+            int key,
+            string expectedValue
+        )
+        {
+            SerializableSortedDictionary<int, string> dictionary = new()
+            {
+                { 1, "one" },
+                { 2, "two" },
+            };
+            dictionary.OnBeforeSerialize();
+
+            dictionary[key] = expectedValue;
+
+            string[] values = dictionary.ToValuesArray();
+            int[] keys = dictionary.ToKeysArray();
+            int keyIndex = Array.IndexOf(keys, key);
+
+            Assert.GreaterOrEqual(
+                keyIndex,
+                0,
+                $"Key {key} should exist in ToKeysArray() after {mutationType}"
+            );
+            Assert.AreEqual(
+                expectedValue,
+                values[keyIndex],
+                $"ToValuesArray() should reflect updated value after {mutationType}. Keys: [{string.Join(", ", keys)}], Values: [{string.Join(", ", values)}]"
+            );
+        }
+
+        [Test]
+        public void ToArrayMethodsDiagnosticsForMutationTracking()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new()
+            {
+                { "a", 1 },
+                { "b", 2 },
+                { "c", 3 },
+            };
+
+            dictionary.OnBeforeSerialize();
+            string[] keysBeforeMutation = dictionary.ToKeysArray();
+            int[] valuesBeforeMutation = dictionary.ToValuesArray();
+
+            dictionary["b"] = 200;
+
+            string[] keysAfterMutation = dictionary.ToKeysArray();
+            int[] valuesAfterMutation = dictionary.ToValuesArray();
+
+            string diagnosticInfo =
+                $"Before mutation - Keys: [{string.Join(", ", keysBeforeMutation)}], Values: [{string.Join(", ", valuesBeforeMutation)}]. "
+                + $"After mutation - Keys: [{string.Join(", ", keysAfterMutation)}], Values: [{string.Join(", ", valuesAfterMutation)}]. "
+                + $"PreserveSerializedEntries: {dictionary.PreserveSerializedEntries}, ArraysDirty: {dictionary.SerializationArraysDirty}";
+
+            int bIndexAfter = Array.IndexOf(keysAfterMutation, "b");
+            Assert.AreEqual(
+                200,
+                valuesAfterMutation[bIndexAfter],
+                $"Value for 'b' should be 200 after mutation. {diagnosticInfo}"
+            );
+        }
+
+        [Test]
+        public void DuplicateKeysInSerializedArraysArePreservedWhenPreserveFlagSet()
+        {
+            SerializableSortedDictionary<string, string> dictionary = new();
+            string[] keysWithDuplicates = { "dup", "dup", "unique" };
+            string[] values = { "first", "second", "third" };
+            dictionary._keys = keysWithDuplicates;
+            dictionary._values = values;
+
+            dictionary.OnAfterDeserialize();
+
+            Assert.IsTrue(
+                dictionary.PreserveSerializedEntries,
+                "PreserveSerializedEntries should be true after deserialization"
+            );
+            Assert.IsTrue(
+                dictionary.HasDuplicatesOrNulls,
+                "HasDuplicatesOrNulls should be true when duplicate keys exist"
+            );
+
+            dictionary.OnBeforeSerialize();
+
+            CollectionAssert.AreEqual(
+                keysWithDuplicates,
+                dictionary.SerializedKeys,
+                "Serialized keys with duplicates should be preserved exactly when preserve flag is set"
+            );
+            CollectionAssert.AreEqual(
+                values,
+                dictionary.SerializedValues,
+                "Serialized values should be preserved exactly when preserve flag is set"
+            );
+        }
+
+        [Test]
+        public void ToArrayReturnsEmptyForEmptyDictionary()
+        {
+            SerializableSortedDictionary<int, string> dictionary = new();
+
+            KeyValuePair<int, string>[] result = dictionary.ToArray();
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(0, result.Length);
+        }
+
+        [Test]
+        public void ToPersistedOrderArrayReturnsEmptyForEmptyDictionary()
+        {
+            SerializableSortedDictionary<int, string> dictionary = new();
+
+            KeyValuePair<int, string>[] result = dictionary.ToPersistedOrderArray();
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(0, result.Length);
+        }
+
+        [Test]
+        public void ToPersistedOrderKeysArrayReturnsEmptyForEmptyDictionary()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+
+            string[] result = dictionary.ToPersistedOrderKeysArray();
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(0, result.Length);
+        }
+
+        [Test]
+        public void ToPersistedOrderValuesArrayReturnsEmptyForEmptyDictionary()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+
+            int[] result = dictionary.ToPersistedOrderValuesArray();
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(0, result.Length);
+        }
+
+        [Test]
+        public void ToArrayReturnsSortedOrderForFreshlyCreatedDictionary()
+        {
+            SerializableSortedDictionary<int, string> dictionary = new()
+            {
+                { 5, "five" },
+                { 1, "one" },
+                { 3, "three" },
+            };
+
+            KeyValuePair<int, string>[] result = dictionary.ToArray();
+
+            Assert.AreEqual(3, result.Length);
+            Assert.AreEqual(1, result[0].Key);
+            Assert.AreEqual("one", result[0].Value);
+            Assert.AreEqual(3, result[1].Key);
+            Assert.AreEqual("three", result[1].Value);
+            Assert.AreEqual(5, result[2].Key);
+            Assert.AreEqual("five", result[2].Value);
+        }
+
+        [Test]
+        public void ToKeysArrayReturnsSortedOrderForFreshlyCreatedDictionary()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new()
+            {
+                { "zebra", 1 },
+                { "apple", 2 },
+                { "mango", 3 },
+            };
+
+            string[] result = dictionary.ToKeysArray();
+
+            CollectionAssert.AreEqual(new[] { "apple", "mango", "zebra" }, result);
+        }
+
+        [Test]
+        public void ToValuesArrayReturnsSortedKeyOrderForFreshlyCreatedDictionary()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new()
+            {
+                { "zebra", 1 },
+                { "apple", 2 },
+                { "mango", 3 },
+            };
+
+            int[] result = dictionary.ToValuesArray();
+
+            // Values in sorted key order: apple=2, mango=3, zebra=1
+            CollectionAssert.AreEqual(new[] { 2, 3, 1 }, result);
+        }
+
+        [Test]
+        public void ToPersistedOrderArrayReturnsDefensiveCopy()
+        {
+            SerializableSortedDictionary<int, string> dictionary = new()
+            {
+                { 1, "one" },
+                { 2, "two" },
+            };
+            dictionary.OnBeforeSerialize();
+
+            KeyValuePair<int, string>[] firstCopy = dictionary.ToPersistedOrderArray();
+            KeyValuePair<int, string>[] secondCopy = dictionary.ToPersistedOrderArray();
+
+            Assert.AreNotSame(firstCopy, secondCopy);
+        }
+
+        [Test]
+        public void ToPersistedOrderKeysArrayReturnsDefensiveCopy()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new() { { "a", 1 }, { "b", 2 } };
+            dictionary.OnBeforeSerialize();
+
+            string[] firstCopy = dictionary.ToPersistedOrderKeysArray();
+            string[] secondCopy = dictionary.ToPersistedOrderKeysArray();
+
+            Assert.AreNotSame(firstCopy, secondCopy);
+            Assert.AreNotSame(firstCopy, dictionary._keys);
+
+            firstCopy[0] = "modified";
+            Assert.AreNotEqual("modified", dictionary.ToPersistedOrderKeysArray()[0]);
+        }
+
+        [Test]
+        public void ToPersistedOrderValuesArrayReturnsDefensiveCopy()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new() { { "a", 1 }, { "b", 2 } };
+            dictionary.OnBeforeSerialize();
+
+            int[] firstCopy = dictionary.ToPersistedOrderValuesArray();
+            int[] secondCopy = dictionary.ToPersistedOrderValuesArray();
+
+            Assert.AreNotSame(firstCopy, secondCopy);
+
+            firstCopy[0] = 999;
+            Assert.AreNotEqual(999, dictionary.ToPersistedOrderValuesArray()[0]);
+        }
+
+        [Test]
+        public void ToArrayAndToPersistedOrderArrayAreDifferentAfterDeserialization()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+            string[] unsortedKeys = { "charlie", "alpha", "bravo" };
+            int[] values = { 1, 2, 3 };
+            dictionary._keys = (string[])unsortedKeys.Clone();
+            dictionary._values = (int[])values.Clone();
+            dictionary.OnAfterDeserialize();
+
+            KeyValuePair<string, int>[] sortedResult = dictionary.ToArray();
+            KeyValuePair<string, int>[] persistedResult = dictionary.ToPersistedOrderArray();
+
+            // ToArray should be sorted
+            Assert.AreEqual("alpha", sortedResult[0].Key);
+            Assert.AreEqual("bravo", sortedResult[1].Key);
+            Assert.AreEqual("charlie", sortedResult[2].Key);
+
+            // ToPersistedOrderArray should preserve original order
+            Assert.AreEqual("charlie", persistedResult[0].Key);
+            Assert.AreEqual("alpha", persistedResult[1].Key);
+            Assert.AreEqual("bravo", persistedResult[2].Key);
+        }
+
+        [Test]
+        public void ToKeysArrayAndToPersistedOrderKeysArrayAreDifferentAfterDeserialization()
+        {
+            SerializableSortedDictionary<int, string> dictionary = new();
+            int[] unsortedKeys = { 5, 1, 3 };
+            string[] values = { "five", "one", "three" };
+            dictionary._keys = (int[])unsortedKeys.Clone();
+            dictionary._values = (string[])values.Clone();
+            dictionary.OnAfterDeserialize();
+
+            int[] sortedResult = dictionary.ToKeysArray();
+            int[] persistedResult = dictionary.ToPersistedOrderKeysArray();
+
+            // ToKeysArray should be sorted
+            CollectionAssert.AreEqual(new[] { 1, 3, 5 }, sortedResult);
+
+            // ToPersistedOrderKeysArray should preserve original order
+            CollectionAssert.AreEqual(unsortedKeys, persistedResult);
+        }
+
+        [Test]
+        public void ToValuesArrayAndToPersistedOrderValuesArrayAreDifferentAfterDeserialization()
+        {
+            SerializableSortedDictionary<int, string> dictionary = new();
+            int[] unsortedKeys = { 5, 1, 3 };
+            string[] values = { "five", "one", "three" };
+            dictionary._keys = (int[])unsortedKeys.Clone();
+            dictionary._values = (string[])values.Clone();
+            dictionary.OnAfterDeserialize();
+
+            string[] sortedResult = dictionary.ToValuesArray();
+            string[] persistedResult = dictionary.ToPersistedOrderValuesArray();
+
+            // ToValuesArray should return values in sorted key order: 1="one", 3="three", 5="five"
+            CollectionAssert.AreEqual(new[] { "one", "three", "five" }, sortedResult);
+
+            // ToPersistedOrderValuesArray should preserve original order
+            CollectionAssert.AreEqual(values, persistedResult);
+        }
+
+        [TestCase(1)]
+        [TestCase(10)]
+        [TestCase(100)]
+        public void ToArrayConsistentWithEnumerationForVariousSizes(int size)
+        {
+            SerializableSortedDictionary<int, string> dictionary = new();
+            for (int i = size - 1; i >= 0; i--)
+            {
+                dictionary[i] = $"value_{i}";
+            }
+
+            KeyValuePair<int, string>[] toArrayResult = dictionary.ToArray();
+            List<KeyValuePair<int, string>> enumerationResult = new();
+            foreach (KeyValuePair<int, string> pair in dictionary)
+            {
+                enumerationResult.Add(pair);
+            }
+
+            Assert.AreEqual(size, toArrayResult.Length);
+            Assert.AreEqual(size, enumerationResult.Count);
+            for (int i = 0; i < size; i++)
+            {
+                Assert.AreEqual(enumerationResult[i].Key, toArrayResult[i].Key);
+                Assert.AreEqual(enumerationResult[i].Value, toArrayResult[i].Value);
+            }
+        }
+
+        [Test]
+        public void ToArrayMatchesKeysPropertyOrder()
+        {
+            SerializableSortedDictionary<int, string> dictionary = new()
+            {
+                { 10, "ten" },
+                { 1, "one" },
+                { 5, "five" },
+            };
+
+            int[] toKeysResult = dictionary.ToKeysArray();
+            int[] keysPropertyResult = dictionary.Keys.ToArray();
+
+            CollectionAssert.AreEqual(keysPropertyResult, toKeysResult);
+        }
+
+        [Test]
+        public void ToArrayMatchesValuesPropertyOrder()
+        {
+            SerializableSortedDictionary<int, string> dictionary = new()
+            {
+                { 10, "ten" },
+                { 1, "one" },
+                { 5, "five" },
+            };
+
+            string[] toValuesResult = dictionary.ToValuesArray();
+            string[] valuesPropertyResult = dictionary.Values.ToArray();
+
+            CollectionAssert.AreEqual(valuesPropertyResult, toValuesResult);
+        }
+
+        [Test]
+        public void ToPersistedOrderArrayReflectsRuntimeMutations()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+            string[] initialKeys = { "zebra", "alpha" };
+            int[] initialValues = { 1, 2 };
+            dictionary._keys = (string[])initialKeys.Clone();
+            dictionary._values = (int[])initialValues.Clone();
+            dictionary.OnAfterDeserialize();
+
+            dictionary["mango"] = 3;
+
+            KeyValuePair<string, int>[] result = dictionary.ToPersistedOrderArray();
+
+            Assert.AreEqual(3, result.Length);
+            // Original entries should preserve their order
+            Assert.AreEqual("zebra", result[0].Key);
+            Assert.AreEqual("alpha", result[1].Key);
+            // New entry should be appended
+            Assert.AreEqual("mango", result[2].Key);
+        }
+
+        [Test]
+        public void ToArrayAlwaysSortedEvenAfterMutations()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+            string[] initialKeys = { "zebra", "alpha" };
+            int[] initialValues = { 1, 2 };
+            dictionary._keys = (string[])initialKeys.Clone();
+            dictionary._values = (int[])initialValues.Clone();
+            dictionary.OnAfterDeserialize();
+
+            dictionary["mango"] = 3;
+
+            KeyValuePair<string, int>[] result = dictionary.ToArray();
+
+            // Should always be sorted regardless of mutations
+            Assert.AreEqual(3, result.Length);
+            Assert.AreEqual("alpha", result[0].Key);
+            Assert.AreEqual("mango", result[1].Key);
+            Assert.AreEqual("zebra", result[2].Key);
+        }
+
+        [Test]
+        public void ToPersistedOrderArrayAlignedWithToPersistedOrderKeysAndValuesArrays()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new();
+            string[] keys = { "delta", "alpha", "charlie" };
+            int[] values = { 1, 2, 3 };
+            dictionary._keys = (string[])keys.Clone();
+            dictionary._values = (int[])values.Clone();
+            dictionary.OnAfterDeserialize();
+
+            KeyValuePair<string, int>[] pairs = dictionary.ToPersistedOrderArray();
+            string[] keysArray = dictionary.ToPersistedOrderKeysArray();
+            int[] valuesArray = dictionary.ToPersistedOrderValuesArray();
+
+            Assert.AreEqual(pairs.Length, keysArray.Length);
+            Assert.AreEqual(pairs.Length, valuesArray.Length);
+
+            for (int i = 0; i < pairs.Length; i++)
+            {
+                Assert.AreEqual(keysArray[i], pairs[i].Key);
+                Assert.AreEqual(valuesArray[i], pairs[i].Value);
+            }
+        }
+
+        [Test]
+        public void ToArrayAlignedWithToKeysAndValuesArrays()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new()
+            {
+                { "delta", 1 },
+                { "alpha", 2 },
+                { "charlie", 3 },
+            };
+
+            KeyValuePair<string, int>[] pairs = dictionary.ToArray();
+            string[] keysArray = dictionary.ToKeysArray();
+            int[] valuesArray = dictionary.ToValuesArray();
+
+            Assert.AreEqual(pairs.Length, keysArray.Length);
+            Assert.AreEqual(pairs.Length, valuesArray.Length);
+
+            for (int i = 0; i < pairs.Length; i++)
+            {
+                Assert.AreEqual(keysArray[i], pairs[i].Key);
+                Assert.AreEqual(valuesArray[i], pairs[i].Value);
+            }
+        }
+
+        [Test]
+        public void ProtoRoundTripPreservesSortedOrderInToArray()
+        {
+            SerializableSortedDictionary<int, string> original = new()
+            {
+                { 5, "five" },
+                { 1, "one" },
+                { 3, "three" },
+            };
+
+            byte[] payload = Serializer.ProtoSerialize(original);
+            SerializableSortedDictionary<int, string> roundTrip = Serializer.ProtoDeserialize<
+                SerializableSortedDictionary<int, string>
+            >(payload);
+
+            KeyValuePair<int, string>[] result = roundTrip.ToArray();
+
+            Assert.AreEqual(3, result.Length);
+            Assert.AreEqual(1, result[0].Key);
+            Assert.AreEqual(3, result[1].Key);
+            Assert.AreEqual(5, result[2].Key);
+        }
+
+        [Test]
+        public void JsonRoundTripPreservesSortedOrderInToArray()
+        {
+            SerializableSortedDictionary<int, string> original = new()
+            {
+                { 5, "five" },
+                { 1, "one" },
+                { 3, "three" },
+            };
+
+            string json = Serializer.JsonStringify(original);
+            SerializableSortedDictionary<int, string> roundTrip = Serializer.JsonDeserialize<
+                SerializableSortedDictionary<int, string>
+            >(json);
+
+            KeyValuePair<int, string>[] result = roundTrip.ToArray();
+
+            Assert.AreEqual(3, result.Length);
+            Assert.AreEqual(1, result[0].Key);
+            Assert.AreEqual(3, result[1].Key);
+            Assert.AreEqual(5, result[2].Key);
+        }
+
+        [Test]
+        public void SingleElementDictionaryToArrayReturnsSingleElement()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new() { { "only", 42 } };
+
+            KeyValuePair<string, int>[] result = dictionary.ToArray();
+
+            Assert.AreEqual(1, result.Length);
+            Assert.AreEqual("only", result[0].Key);
+            Assert.AreEqual(42, result[0].Value);
+        }
+
+        [Test]
+        public void SingleElementDictionaryToPersistedOrderArrayReturnsSingleElement()
+        {
+            SerializableSortedDictionary<string, int> dictionary = new() { { "only", 42 } };
+            dictionary.OnBeforeSerialize();
+
+            KeyValuePair<string, int>[] result = dictionary.ToPersistedOrderArray();
+
+            Assert.AreEqual(1, result.Length);
+            Assert.AreEqual("only", result[0].Key);
+            Assert.AreEqual(42, result[0].Value);
         }
     }
 }

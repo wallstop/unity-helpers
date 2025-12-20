@@ -1,0 +1,282 @@
+namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Reflection;
+    using System.Text.Json;
+    using System.Text.Json.Serialization;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+
+    /// <summary>
+    /// JSON converter factory for SerializableHashSet and SerializableSortedSet types.
+    /// Ensures serialization produces an object with "_items" field rather than a JSON array,
+    /// which is necessary for proper order preservation across serialization cycles.
+    /// </summary>
+    public sealed class SerializableSetConverterFactory : JsonConverterFactory
+    {
+        public static readonly SerializableSetConverterFactory Instance = new();
+
+        private SerializableSetConverterFactory() { }
+
+        public override bool CanConvert(Type typeToConvert)
+        {
+            if (!typeToConvert.IsGenericType)
+            {
+                return false;
+            }
+
+            Type genericDef = typeToConvert.GetGenericTypeDefinition();
+            return genericDef == typeof(SerializableHashSet<>)
+                || genericDef == typeof(SerializableSortedSet<>);
+        }
+
+        public override JsonConverter CreateConverter(
+            Type typeToConvert,
+            JsonSerializerOptions options
+        )
+        {
+            Type elementType = typeToConvert.GetGenericArguments()[0];
+            Type genericDef = typeToConvert.GetGenericTypeDefinition();
+
+            Type converterType;
+            if (genericDef == typeof(SerializableHashSet<>))
+            {
+                converterType = typeof(SerializableHashSetConverter<>).MakeGenericType(elementType);
+            }
+            else
+            {
+                converterType = typeof(SerializableSortedSetConverter<>).MakeGenericType(
+                    elementType
+                );
+            }
+
+            return (JsonConverter)Activator.CreateInstance(converterType);
+        }
+
+        private sealed class SerializableHashSetConverter<T> : JsonConverter<SerializableHashSet<T>>
+        {
+            private const string ItemsPropertyName = "_items";
+
+            public override SerializableHashSet<T> Read(
+                ref Utf8JsonReader reader,
+                Type typeToConvert,
+                JsonSerializerOptions options
+            )
+            {
+                if (reader.TokenType == JsonTokenType.Null)
+                {
+                    return null;
+                }
+
+                // Handle array format (legacy/fallback)
+                if (reader.TokenType == JsonTokenType.StartArray)
+                {
+                    T[] items = JsonSerializer.Deserialize<T[]>(ref reader, options);
+                    SerializableHashSet<T> set = new();
+                    if (items != null)
+                    {
+                        SetItemsField(set, items);
+                        set.OnAfterDeserialize();
+                    }
+                    return set;
+                }
+
+                // Handle object format with _items property
+                if (reader.TokenType != JsonTokenType.StartObject)
+                {
+                    throw new JsonException(
+                        $"Expected StartObject or StartArray for SerializableHashSet<{typeof(T).Name}>, got {reader.TokenType}"
+                    );
+                }
+
+                T[] itemsArray = null;
+
+                while (reader.Read())
+                {
+                    if (reader.TokenType == JsonTokenType.EndObject)
+                    {
+                        break;
+                    }
+
+                    if (reader.TokenType != JsonTokenType.PropertyName)
+                    {
+                        continue;
+                    }
+
+                    string propertyName = reader.GetString();
+                    reader.Read();
+
+                    if (
+                        string.Equals(
+                            propertyName,
+                            ItemsPropertyName,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                    {
+                        itemsArray = JsonSerializer.Deserialize<T[]>(ref reader, options);
+                    }
+                    else
+                    {
+                        reader.Skip();
+                    }
+                }
+
+                SerializableHashSet<T> result = new();
+                if (itemsArray != null)
+                {
+                    SetItemsField(result, itemsArray);
+                    result.OnAfterDeserialize();
+                }
+
+                return result;
+            }
+
+            public override void Write(
+                Utf8JsonWriter writer,
+                SerializableHashSet<T> value,
+                JsonSerializerOptions options
+            )
+            {
+                if (value == null)
+                {
+                    writer.WriteNullValue();
+                    return;
+                }
+
+                // Ensure serialized arrays are up to date
+                value.OnBeforeSerialize();
+
+                writer.WriteStartObject();
+                writer.WritePropertyName(ItemsPropertyName);
+                JsonSerializer.Serialize(writer, value.SerializedItems, options);
+                writer.WriteEndObject();
+            }
+
+            private static void SetItemsField(SerializableHashSet<T> set, T[] items)
+            {
+                // Use reflection to set the internal _items field
+                Type type = typeof(SerializableSetBase<T, HashSet<T>>);
+                FieldInfo field = type.GetField(
+                    "_items",
+                    BindingFlags.Instance | BindingFlags.NonPublic
+                );
+                field?.SetValue(set, items);
+            }
+        }
+
+        private sealed class SerializableSortedSetConverter<T>
+            : JsonConverter<SerializableSortedSet<T>>
+            where T : IComparable<T>
+        {
+            private const string ItemsPropertyName = "_items";
+
+            public override SerializableSortedSet<T> Read(
+                ref Utf8JsonReader reader,
+                Type typeToConvert,
+                JsonSerializerOptions options
+            )
+            {
+                if (reader.TokenType == JsonTokenType.Null)
+                {
+                    return null;
+                }
+
+                // Handle array format (legacy/fallback)
+                if (reader.TokenType == JsonTokenType.StartArray)
+                {
+                    T[] items = JsonSerializer.Deserialize<T[]>(ref reader, options);
+                    SerializableSortedSet<T> set = new();
+                    if (items != null)
+                    {
+                        SetItemsField(set, items);
+                        set.OnAfterDeserialize();
+                    }
+                    return set;
+                }
+
+                // Handle object format with _items property
+                if (reader.TokenType != JsonTokenType.StartObject)
+                {
+                    throw new JsonException(
+                        $"Expected StartObject or StartArray for SerializableSortedSet<{typeof(T).Name}>, got {reader.TokenType}"
+                    );
+                }
+
+                T[] itemsArray = null;
+
+                while (reader.Read())
+                {
+                    if (reader.TokenType == JsonTokenType.EndObject)
+                    {
+                        break;
+                    }
+
+                    if (reader.TokenType != JsonTokenType.PropertyName)
+                    {
+                        continue;
+                    }
+
+                    string propertyName = reader.GetString();
+                    reader.Read();
+
+                    if (
+                        string.Equals(
+                            propertyName,
+                            ItemsPropertyName,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                    {
+                        itemsArray = JsonSerializer.Deserialize<T[]>(ref reader, options);
+                    }
+                    else
+                    {
+                        reader.Skip();
+                    }
+                }
+
+                SerializableSortedSet<T> result = new();
+                if (itemsArray != null)
+                {
+                    SetItemsField(result, itemsArray);
+                    result.OnAfterDeserialize();
+                }
+
+                return result;
+            }
+
+            public override void Write(
+                Utf8JsonWriter writer,
+                SerializableSortedSet<T> value,
+                JsonSerializerOptions options
+            )
+            {
+                if (value == null)
+                {
+                    writer.WriteNullValue();
+                    return;
+                }
+
+                // Ensure serialized arrays are up to date
+                value.OnBeforeSerialize();
+
+                writer.WriteStartObject();
+                writer.WritePropertyName(ItemsPropertyName);
+                JsonSerializer.Serialize(writer, value.SerializedItems, options);
+                writer.WriteEndObject();
+            }
+
+            private static void SetItemsField(SerializableSortedSet<T> set, T[] items)
+            {
+                // Use reflection to set the internal _items field
+                Type type = typeof(SerializableSetBase<T, SortedSet<T>>);
+                FieldInfo field = type.GetField(
+                    "_items",
+                    BindingFlags.Instance | BindingFlags.NonPublic
+                );
+                field?.SetValue(set, items);
+            }
+        }
+    }
+}

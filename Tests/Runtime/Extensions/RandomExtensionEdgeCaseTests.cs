@@ -72,13 +72,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
         private static IEnumerable<TestCaseData> QuaternionSampleData()
         {
-            yield return new TestCaseData(new[] { 1f, 1f, 1f }).SetName("Quaternion_AllOnes");
-            yield return new TestCaseData(new[] { 0f, 1f, 0f }).SetName("Quaternion_ZeroAndOne");
+            yield return new TestCaseData(new[] { 1f, 1f, 1f }).SetName("Quaternion AllOnes");
+            yield return new TestCaseData(new[] { 0f, 1f, 0f }).SetName("Quaternion ZeroAndOne");
             yield return new TestCaseData(new[] { float.NaN, float.NaN, float.NaN }).SetName(
-                "Quaternion_AllNaN"
+                "Quaternion AllNaN"
             );
             yield return new TestCaseData(new[] { -5f, 2f, 0.25f }).SetName(
-                "Quaternion_OutOfRangeValues"
+                "Quaternion OutOfRangeValues"
             );
         }
     }

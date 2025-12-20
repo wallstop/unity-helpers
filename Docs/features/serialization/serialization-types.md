@@ -216,7 +216,7 @@ public class PrefabRegistry : MonoBehaviour
 - Null value highlighting
 - Pagination for large dictionaries
 
-![Image placeholder: Dictionary pagination controls]
+![Dictionary pagination controls](../../images/serialization/serialized-dictionary-pagination.gif)
 
 ---
 
@@ -404,25 +404,27 @@ The attribute applies to both `SerializableHashSet<T>`/`SerializableSortedSet<T>
 ### Sorted Sets
 
 ```csharp
-// Maintains sorted order automatically
-public SerializableSortedSet<int> scoreThresholds;
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 
-private void Start()
+public class ThresholdLogger : MonoBehaviour
 {
-    scoreThresholds.Add(100);
-    scoreThresholds.Add(500);
-    scoreThresholds.Add(1000);
-    scoreThresholds.Add(250);  // Inserted in correct position
+    public SerializableSortedSet<int> scoreThresholds = new();
 
-    // Iteration is always sorted: 100, 250, 500, 1000
-    foreach (int threshold in scoreThresholds)
+    [WButton]
+    private string LogThresholds()
     {
-        Debug.Log(threshold);
+        re
+        foreach (int threshold in scoreThresholds)
+        {
+            Debug.Log(threshold);
+        }
     }
 }
 ```
 
-![Image placeholder: SerializableSortedSet showing sorted numeric values]
+![SerializableSortedSet showing sorted numeric values](../../images/serialization/serialized-sorted-set-inspector.gif)
 
 ---
 
@@ -582,11 +584,6 @@ bool equal = typeRef.Equals(new SerializableType(typeof(PlayerController)));
 ## SerializableNullable
 
 Unity-friendly nullable value type wrapper.
-
-> **Visual Reference**
->
-> ![SerializableNullable property drawer with HasValue checkbox](../../images/serialization/serializable-nullable-inspector.png)
-> _Nullable value type with HasValue checkbox and conditional value field_
 
 ### Why SerializableNullable?
 

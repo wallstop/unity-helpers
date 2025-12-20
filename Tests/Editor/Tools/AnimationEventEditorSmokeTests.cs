@@ -12,29 +12,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
         [Test]
         public void AnimationEventEditorOpensAndClosesWithoutAnimator()
         {
-            AnimationEventEditor first = EditorWindow.CreateWindow<AnimationEventEditor>();
-            try
-            {
-                first.Show();
-                first.Repaint();
-            }
-            finally
-            {
-                first.Close();
-                Object.DestroyImmediate(first);
-            }
+            AnimationEventEditor first = Track(EditorWindow.CreateWindow<AnimationEventEditor>());
+            first.Show();
+            first.Repaint();
+            first.Close();
 
-            AnimationEventEditor second = EditorWindow.CreateWindow<AnimationEventEditor>();
-            try
-            {
-                second.Show();
-                second.Repaint();
-            }
-            finally
-            {
-                second.Close();
-                Object.DestroyImmediate(second);
-            }
+            AnimationEventEditor second = Track(EditorWindow.CreateWindow<AnimationEventEditor>());
+            second.Show();
+            second.Repaint();
+            second.Close();
         }
     }
 }

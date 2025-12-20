@@ -2170,38 +2170,31 @@ namespace LargeTest
             // Note: ScriptableObject.CreateInstance<EditorWindow> triggers OnEnable(),
             // which calls Initialize(), so _analyzer is already non-null after CreateInstance.
             // This test verifies that Initialize() properly creates the analyzer.
-            UnityMethodAnalyzerWindow window =
-                ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
-            try
-            {
-                // After CreateInstance, OnEnable has been called, so analyzer should exist
-                Assert.IsTrue(
-                    window._analyzer != null,
-                    "Analyzer should be non-null after CreateInstance (OnEnable calls Initialize)"
-                );
+            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
 
-                // Store reference to original analyzer
-                MethodAnalyzer originalAnalyzer = window._analyzer;
+            // After CreateInstance, OnEnable has been called, so analyzer should exist
+            Assert.IsTrue(
+                _window._analyzer != null,
+                "Analyzer should be non-null after CreateInstance (OnEnable calls Initialize)"
+            );
 
-                // Call Initialize() again - should create a new analyzer
-                window.Initialize();
+            // Store reference to original analyzer
+            MethodAnalyzer originalAnalyzer = _window._analyzer;
 
-                Assert.IsTrue(
-                    window._analyzer != null,
-                    "Analyzer should be non-null after explicit Initialize()"
-                );
+            // Call Initialize() again - should create a new analyzer
+            _window.Initialize();
 
-                // Verify a new analyzer was created (not reusing old one)
-                Assert.AreNotSame(
-                    originalAnalyzer,
-                    window._analyzer,
-                    "Initialize() should create a new analyzer instance"
-                );
-            }
-            finally
-            {
-                Object.DestroyImmediate(window);
-            }
+            Assert.IsTrue(
+                _window._analyzer != null,
+                "Analyzer should be non-null after explicit Initialize()"
+            );
+
+            // Verify a new analyzer was created (not reusing old one)
+            Assert.AreNotSame(
+                originalAnalyzer,
+                _window._analyzer,
+                "Initialize() should create a new analyzer instance"
+            );
         }
 
         [Test]
@@ -2225,31 +2218,24 @@ namespace LargeTest
         [Test]
         public void StartAnalysisWithUninitializedWindowSetsErrorMessage()
         {
-            UnityMethodAnalyzerWindow window =
-                ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
-            try
-            {
-                // ScriptableObject.CreateInstance triggers OnEnable which calls Initialize(),
-                // so we must explicitly set _analyzer to null to test uninitialized state
-                window._analyzer = null;
-                window._sourcePaths = new List<string> { _tempDir };
+            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
 
-                window.StartAnalysis();
+            // ScriptableObject.CreateInstance triggers OnEnable which calls Initialize(),
+            // so we must explicitly set _analyzer to null to test uninitialized state
+            _window._analyzer = null;
+            _window._sourcePaths = new List<string> { _tempDir };
 
-                string statusMessage = window._statusMessage;
-                bool isAnalyzing = window._isAnalyzing;
+            _window.StartAnalysis();
 
-                Assert.AreEqual(
-                    "Analyzer not initialized",
-                    statusMessage,
-                    "Should indicate analyzer not initialized"
-                );
-                Assert.IsFalse(isAnalyzing, "Should not be analyzing when analyzer is null");
-            }
-            finally
-            {
-                Object.DestroyImmediate(window);
-            }
+            string statusMessage = _window._statusMessage;
+            bool isAnalyzing = _window._isAnalyzing;
+
+            Assert.AreEqual(
+                "Analyzer not initialized",
+                statusMessage,
+                "Should indicate analyzer not initialized"
+            );
+            Assert.IsFalse(isAnalyzing, "Should not be analyzing when analyzer is null");
         }
 
         [UnityTest]
@@ -2530,88 +2516,67 @@ namespace LargeTest
         {
             // Test that OnDisable handles a disposed CTS gracefully
             // This can happen if analysis completes but CTS reference is stale
-            UnityMethodAnalyzerWindow window =
-                ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
 
-            try
-            {
-                // Create and dispose a CTS, then assign it to the window
-                CancellationTokenSource cts = new();
-                cts.Dispose();
-                window._cancellationTokenSource = cts;
+            // Create and dispose a CTS, then assign it to the window
+            CancellationTokenSource cts = new();
+            cts.Dispose();
+            _window._cancellationTokenSource = cts;
 
-                // OnDisable should handle the disposed CTS without throwing
-                // We call it directly to test the edge case
-                window.OnDisable();
+            // OnDisable should handle the disposed CTS without throwing
+            // We call it directly to test the edge case
+            _window.OnDisable();
 
-                // Verify the CTS was nulled out
-                Assert.IsTrue(
-                    window._cancellationTokenSource == null,
-                    "CancellationTokenSource should be null after OnDisable"
-                );
-            }
-            finally
-            {
-                // Clean up - set to null to prevent double-handling
-                window._cancellationTokenSource = null;
-                Object.DestroyImmediate(window);
-            }
+            // Verify the CTS was nulled out
+            Assert.IsTrue(
+                _window._cancellationTokenSource == null,
+                "CancellationTokenSource should be null after OnDisable"
+            );
+
+            // Clean up - set to null to prevent double-handling in TearDown
+            _window._cancellationTokenSource = null;
         }
 
         [Test]
         public void OnDisableWithCancelledCTSDoesNotThrow()
         {
             // Test that OnDisable handles an already-cancelled CTS gracefully
-            UnityMethodAnalyzerWindow window =
-                ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
 
-            try
-            {
-                // Create a CTS and cancel it (but don't dispose)
-                CancellationTokenSource cts = new();
-                cts.Cancel();
-                window._cancellationTokenSource = cts;
+            // Create a CTS and cancel it (but don't dispose)
+            CancellationTokenSource cts = new();
+            cts.Cancel();
+            _window._cancellationTokenSource = cts;
 
-                // OnDisable should handle the cancelled CTS without throwing
-                window.OnDisable();
+            // OnDisable should handle the cancelled CTS without throwing
+            _window.OnDisable();
 
-                // Verify the CTS was nulled out
-                Assert.IsTrue(
-                    window._cancellationTokenSource == null,
-                    "CancellationTokenSource should be null after OnDisable"
-                );
-            }
-            finally
-            {
-                window._cancellationTokenSource = null;
-                Object.DestroyImmediate(window);
-            }
+            // Verify the CTS was nulled out
+            Assert.IsTrue(
+                _window._cancellationTokenSource == null,
+                "CancellationTokenSource should be null after OnDisable"
+            );
+
+            // Clean up - set to null to prevent double-handling in TearDown
+            _window._cancellationTokenSource = null;
         }
 
         [Test]
         public void OnDisableWithNullCTSDoesNotThrow()
         {
             // Test that OnDisable handles null CTS gracefully
-            UnityMethodAnalyzerWindow window =
-                ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
 
-            try
-            {
-                window._cancellationTokenSource = null;
+            _window._cancellationTokenSource = null;
 
-                // OnDisable should handle null CTS without throwing
-                window.OnDisable();
+            // OnDisable should handle null CTS without throwing
+            _window.OnDisable();
 
-                // Verify it's still null
-                Assert.IsTrue(
-                    window._cancellationTokenSource == null,
-                    "CancellationTokenSource should remain null after OnDisable"
-                );
-            }
-            finally
-            {
-                Object.DestroyImmediate(window);
-            }
+            // Verify it's still null
+            Assert.IsTrue(
+                _window._cancellationTokenSource == null,
+                "CancellationTokenSource should remain null after OnDisable"
+            );
         }
 
         [TestCase(
@@ -2624,26 +2589,19 @@ namespace LargeTest
             string expectedMessage
         )
         {
-            UnityMethodAnalyzerWindow window =
-                ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
-            try
-            {
-                window._analyzer = null;
-                window._sourcePaths = new List<string> { _tempDir };
+            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
 
-                window.StartAnalysis();
+            _window._analyzer = null;
+            _window._sourcePaths = new List<string> { _tempDir };
 
-                Assert.AreEqual(
-                    expectedMessage,
-                    window._statusMessage,
-                    "Status message should indicate analyzer not initialized"
-                );
-                Assert.IsFalse(window._isAnalyzing, "Should not be analyzing");
-            }
-            finally
-            {
-                Object.DestroyImmediate(window);
-            }
+            _window.StartAnalysis();
+
+            Assert.AreEqual(
+                expectedMessage,
+                _window._statusMessage,
+                "Status message should indicate analyzer not initialized"
+            );
+            Assert.IsFalse(_window._isAnalyzing, "Should not be analyzing");
         }
 
         [Test]
@@ -2741,26 +2699,19 @@ namespace LargeTest
         [Test]
         public void InitializeCanBeCalledMultipleTimesSafely()
         {
-            UnityMethodAnalyzerWindow window =
-                ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
-            try
-            {
-                // First Initialize (OnEnable already called this)
-                MethodAnalyzer firstAnalyzer = window._analyzer;
+            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
 
-                // Call Initialize multiple times
-                for (int i = 0; i < 5; i++)
-                {
-                    window.Initialize();
-                    Assert.IsTrue(
-                        window._analyzer != null,
-                        $"Analyzer should be non-null after Initialize() call {i + 1}"
-                    );
-                }
-            }
-            finally
+            // First Initialize (OnEnable already called this)
+            MethodAnalyzer firstAnalyzer = _window._analyzer;
+
+            // Call Initialize multiple times
+            for (int i = 0; i < 5; i++)
             {
-                Object.DestroyImmediate(window);
+                _window.Initialize();
+                Assert.IsTrue(
+                    _window._analyzer != null,
+                    $"Analyzer should be non-null after Initialize() call {i + 1}"
+                );
             }
         }
 

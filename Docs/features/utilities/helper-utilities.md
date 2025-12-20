@@ -36,7 +36,20 @@ Unity allocates a new `WaitForSeconds`/`WaitForSecondsRealtime` every time you y
 | `Buffers.TryGetWaitForSecondsPooled(float seconds)` / `TryGetWaitForSecondsRealtimePooled` | n/a       | Returns the cached instruction or `null` if the request would exceed the cap. Use this when you want to detect “unsafe” usages and allocate manually instead.                                   |
 | `Buffers.WaitForSecondsCacheDiagnostics` / `.WaitForSecondsRealtimeCacheDiagnostics`       | snapshot  | Exposes `DistinctEntries`, `MaxDistinctEntries`, `LimitRefusals`, and whether quantization is active so you can surface metrics in your own tooling.                                            |
 
-> ⚙️ **Project-wide defaults:** Open the **Coroutine Wait Instruction Buffers** foldout under **Project Settings ▸ Wallstop Studios ▸ Unity Helpers** to edit these knobs. The settings asset lives at `Resources/WallstopStudios/UnityHelpers/UnityHelpersBufferSettings.asset`, ships with your build, and automatically applies on script/domain reload or when a player starts (unless your code overrides the values at runtime). Use **Apply Defaults Now** to push the current sliders into the active domain or **Capture Current Values** to snapshot whatever `Buffers` is using in play mode.
+> ⚙️ **Project-wide defaults:** Open the **Coroutine Wait Instruction Buffers** foldout under **Project Settings ▸ Wallstop Studios ▸ Unity Helpers** to edit these knobs. The settings asset lives at `Resources/Wallstop Studios/Unity Helpers/UnityHelpersBufferSettings.asset`, ships with your build, and automatically applies on script/domain reload or when a player starts (unless your code overrides the values at runtime). Use **Apply Defaults Now** to push the current sliders into the active domain or **Capture Current Values** to snapshot whatever `Buffers` is using in play mode.
+>
+> 🔒 **Persistence Behavior:** When you click **Apply Defaults Now**, the settings are immediately:
+>
+> 1. **Saved to disk** — The asset is marked dirty and saved via `AssetDatabase.SaveAssets()`
+> 2. **Applied to the runtime** — `Buffers.WaitInstruction*` properties are updated immediately
+>
+> This ensures settings persist across:
+>
+> - **Domain reloads** (script recompilation, entering/exiting play mode) — Via `[InitializeOnLoadMethod]`
+> - **Editor restarts** — The asset is saved to disk and reloads automatically
+> - **Standalone builds** — The asset ships under `Resources/` and auto-applies via `[RuntimeInitializeOnLoadMethod]`
+>
+> Toggle **Apply On Load** to control whether the saved defaults auto-apply when the domain loads. If disabled, the asset serves as a reference and you must call `asset.ApplyToBuffers()` manually.
 
 ```csharp
 // Clamp the cache to 128 distinct waits, quantize to milliseconds, and reuse LRU entries.

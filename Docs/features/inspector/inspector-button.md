@@ -193,7 +193,7 @@ private void SuccessAction() { }
 private void WarningAction() { }
 ```
 
-![Image placeholder: inspector-button-color-themes.png - Buttons with different color themes]
+![Buttons with different color themes](../../images/inspector/buttons/button-color-themes.png)
 
 **Setting up custom colors:**
 

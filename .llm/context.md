@@ -599,6 +599,7 @@ When using `[TestCase]`, `[Values]`, or other data-driven attributes with string
 - **Strictly follow `.editorconfig` formatting rules** — All code must adhere to the repository's `.editorconfig`; this includes naming conventions, indentation, and all other settings
 - Respect folder boundaries (Runtime vs Editor)
 - Update docs and tests alongside code changes
+- **NEVER pipe output to `/dev/null`** — Do not use `>/dev/null`, `2>/dev/null`, `&>/dev/null`, or any similar redirection to discard output. Command output (including errors) should be visible for debugging and transparency. If a command produces unwanted output, find a proper flag to suppress it or accept the output. The only exception is when a tool absolutely requires it and there is no alternative.
 
 ### Command-Line Tools
 

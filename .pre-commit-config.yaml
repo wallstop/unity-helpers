@@ -49,9 +49,6 @@ repos:
         pass_filenames: false
         require_serial: true
         description: Ensure MonoBehaviour/ScriptableObject classes are in correctly named files.
-
-  - repo: local
-    hooks:
       - id: prettier
         name: Prettier (Markdown, JSON, asmdef, asmref, YAML)
         entry: pwsh -NoProfile -File scripts/format-staged-prettier.ps1
@@ -59,18 +56,12 @@ repos:
         files: '(?i)\.(md|markdown|json|asmdef|asmref|ya?ml)$'
         description: Use the repo's Prettier version from package.json.
         require_serial: true
-
-  - repo: local
-    hooks:
       - id: markdownlint
         name: markdownlint (respect repo config)
         entry: pwsh -NoProfile -File scripts/lint-staged-markdown.ps1
         language: system
         files: '(?i)\.(md|markdown)$'
         require_serial: true
-
-  - repo: local
-    hooks:
       - id: yamllint
         name: yamllint (if available)
         entry: bash -c 'if command -v yamllint >/dev/null 2>&1; then yamllint -c .yamllint.yaml "$@"; else echo "yamllint not installed; skipping"; fi' --

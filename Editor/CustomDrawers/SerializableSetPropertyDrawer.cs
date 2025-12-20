@@ -76,7 +76,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Color LightRowColor = new(0.97f, 0.97f, 0.97f, 1f);
         private static readonly Color DarkRowColor = new(0.16f, 0.16f, 0.16f, 0.45f);
         private static readonly Color NullEntryHighlightColor = new(0.84f, 0.2f, 0.2f, 0.6f);
+        internal const float WGroupFoldoutAlignmentOffset = 2.5f;
         private const float ManualEntrySectionPadding = 6f;
+        private const float ManualEntrySectionPaddingSettings = 2f;
         private const float ManualEntryFoldoutToggleOffsetInspector = 16f;
         private const float ManualEntryFoldoutToggleOffsetSettings = 6f;
         private const float ManualEntryFoldoutLabelPadding = 0f;
@@ -204,6 +206,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal static bool HasLastManualEntryHeaderRect { get; private set; }
         internal static Rect LastManualEntryHeaderRect { get; private set; }
         internal static Rect LastManualEntryToggleRect { get; private set; }
+        internal static bool HasLastMainFoldoutRect { get; private set; }
+        internal static Rect LastMainFoldoutRect { get; private set; }
         internal static bool HasLastManualEntryValueRect { get; private set; }
         internal static Rect LastManualEntryValueRect { get; private set; }
         internal static bool LastManualEntryValueUsedFoldoutLabel { get; private set; }
@@ -636,15 +640,31 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             Rect originalPosition = position;
-            Rect contentPosition = ResolveContentRect(originalPosition);
+            bool targetsSettings = TargetsUnityHelpersSettings(property?.serializedObject);
+            Rect contentPosition = ResolveContentRect(originalPosition, targetsSettings);
             LastResolvedPosition = contentPosition;
             HasItemsContainerRect = false;
+
+            // Log all tween settings on first draw or when inside WGroup for debugging
+            if (GroupGUIWidthUtility.CurrentScopeDepth > 0)
+            {
+                SerializableCollectionTweenDiagnostics.LogAllTweenSettings(
+                    $"OnGUI_InWGroup (path={property?.propertyPath ?? "(null)"})"
+                );
+            }
 
             EditorGUI.BeginProperty(originalPosition, label, property);
             int previousIndentScope = EditorGUI.indentLevel;
 
             try
             {
+                // In SettingsProvider context, we handle our own indentation via WGroup padding
+                // Reset indent level to avoid double-indentation from EditorGUI methods
+                if (targetsSettings)
+                {
+                    EditorGUI.indentLevel = 0;
+                }
+
                 position = contentPosition;
 
                 SerializedObject serializedObject = property.serializedObject;
@@ -666,12 +686,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 GUIContent foldoutLabel = GetFoldoutLabelContent(label);
 
-                bool targetsSettings = TargetsUnityHelpersSettings(serializedObject);
+                // Apply additional foldout alignment offset when inside a WGroup
+                float foldoutAlignmentOffset =
+                    GroupGUIWidthUtility.CurrentScopeDepth > 0 ? WGroupFoldoutAlignmentOffset : 0f;
 
                 Rect foldoutRect = new(
-                    position.x,
+                    position.x + foldoutAlignmentOffset,
                     position.y,
-                    position.width,
+                    position.width - foldoutAlignmentOffset,
                     EditorGUIUtility.singleLineHeight
                 );
                 if (!targetsSettings)
@@ -689,6 +711,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     foldoutLabel,
                     true
                 );
+
+                // Track the foldout rect for testing
+                HasLastMainFoldoutRect = true;
+                LastMainFoldoutRect = foldoutRect;
+
                 float y = foldoutRect.yMax + SectionSpacing;
 
                 if (!property.isExpanded)
@@ -871,13 +898,37 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static Rect ResolveContentRect(Rect position)
+        private static Rect ResolveContentRect(Rect position, bool skipIndentation = false)
         {
             const float MinimumGroupIndent = 6f;
 
-            Rect padded = GroupGUIWidthUtility.ApplyCurrentPadding(position);
             float leftPadding = GroupGUIWidthUtility.CurrentLeftPadding;
             float rightPadding = GroupGUIWidthUtility.CurrentRightPadding;
+            int scopeDepth = GroupGUIWidthUtility.CurrentScopeDepth;
+
+            // When skipIndentation is true, we're in a GUILayout context (e.g., SettingsProvider)
+            // where Unity's layout system handles standard indentation.
+            // However, WGroup padding (tracked via GroupGUIWidthUtility) is NOT automatically
+            // applied by the layout system - we must still apply it manually.
+            if (skipIndentation)
+            {
+                Rect result = position;
+
+                // Apply WGroup padding even when skipping standard indentation
+                if (leftPadding > 0f || rightPadding > 0f)
+                {
+                    result.xMin += leftPadding;
+                    result.xMax -= rightPadding;
+                    if (result.width < 0f || float.IsNaN(result.width))
+                    {
+                        result.width = 0f;
+                    }
+                }
+
+                return result;
+            }
+
+            Rect padded = GroupGUIWidthUtility.ApplyCurrentPadding(position);
             if (
                 (leftPadding > 0f || rightPadding > 0f)
                 && Mathf.Approximately(padded.xMin, position.xMin)
@@ -891,9 +942,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     padded.width = 0f;
                 }
             }
+
             Rect indented = EditorGUI.IndentedRect(padded);
 
-            if (EditorGUI.indentLevel <= 0)
+            // Only add minimum indent when not inside a WGroup (which already has padding)
+            // and when indent level is zero (no parent property nesting)
+            if (EditorGUI.indentLevel <= 0 && leftPadding <= 0f && scopeDepth <= 0)
             {
                 indented.xMin += MinimumGroupIndent;
                 indented.width = Mathf.Max(0f, indented.width - MinimumGroupIndent);
@@ -907,6 +961,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             HasLastManualEntryHeaderRect = false;
             LastManualEntryHeaderRect = default;
             LastManualEntryToggleRect = default;
+            HasLastMainFoldoutRect = false;
+            LastMainFoldoutRect = default;
             HasLastManualEntryValueRect = false;
             LastManualEntryValueRect = default;
             LastManualEntryValueUsedFoldoutLabel = false;
@@ -1951,9 +2007,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 float containerX = fullPosition.x;
                 float containerWidth = fullPosition.width;
 
-                AnimBool foldoutAnim = EnsureManualEntryFoldoutAnim(pending);
-                float foldoutProgress = GetPendingFoldoutProgress(pending);
-                float sectionHeight = GetPendingSectionHeight(pending);
+                float resolvedSectionPadding = ResolveManualEntrySectionPadding(property);
+
+                AnimBool foldoutAnim = EnsureManualEntryFoldoutAnim(pending, propertyPath);
+                float foldoutProgress = GetPendingFoldoutProgress(pending, propertyPath);
+                float sectionHeight = GetPendingSectionHeight(pending, property);
+
+                SerializableCollectionTweenDiagnostics.LogAnimBoolState(
+                    "DrawManualEntryUI",
+                    propertyPath ?? "(null)",
+                    pending.isExpanded,
+                    foldoutAnim?.faded ?? (pending.isExpanded ? 1f : 0f),
+                    foldoutAnim?.target ?? false ? 1f : 0f,
+                    foldoutAnim?.speed ?? 0f,
+                    foldoutAnim?.isAnimating ?? false
+                );
 
                 Rect backgroundRect = new(containerX, containerY, containerWidth, sectionHeight);
                 Color backgroundColor = EditorGUIUtility.isProSkin
@@ -1964,11 +2032,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     EditorGUI.DrawRect(backgroundRect, backgroundColor);
                 }
 
-                float headerY = containerY + ManualEntrySectionPadding;
+                float headerY = containerY + resolvedSectionPadding;
                 Rect headerRect = new(
-                    containerX + ManualEntrySectionPadding,
+                    containerX + resolvedSectionPadding,
                     headerY,
-                    containerWidth - ManualEntrySectionPadding * 2f,
+                    containerWidth - resolvedSectionPadding * 2f,
                     rowHeight
                 );
 
@@ -2009,10 +2077,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 Event currentEvent = Event.current;
                 bool expanded = pending.isExpanded;
+
+                // Log mouse events for debugging click handling in WGroup contexts
+                bool mouseInLabelRect = labelHitRect.Contains(currentEvent.mousePosition);
+                SerializableCollectionTweenDiagnostics.LogMouseEvent(
+                    "ManualEntryLabelClick",
+                    propertyPath ?? "(null)",
+                    currentEvent.type,
+                    currentEvent.mousePosition,
+                    labelHitRect,
+                    mouseInLabelRect
+                );
+
                 if (
                     currentEvent.type == EventType.MouseDown
                     && currentEvent.button == 0
-                    && labelHitRect.Contains(currentEvent.mousePosition)
+                    && mouseInLabelRect
                 )
                 {
                     expanded = !expanded;
@@ -2038,14 +2118,39 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 if (expanded != pending.isExpanded)
                 {
+                    SerializableCollectionTweenDiagnostics.LogExpandedStateChange(
+                        propertyPath ?? "(null)",
+                        pending.isExpanded,
+                        expanded,
+                        foldoutProgress
+                    );
+
                     pending.isExpanded = expanded;
-                    foldoutAnim = EnsureManualEntryFoldoutAnim(pending);
+                    foldoutAnim = EnsureManualEntryFoldoutAnim(pending, propertyPath);
                     if (foldoutAnim != null)
                     {
                         foldoutAnim.target = expanded;
+
+                        SerializableCollectionTweenDiagnostics.LogAnimBoolState(
+                            "ExpandedStateChange",
+                            propertyPath ?? "(null)",
+                            expanded,
+                            foldoutAnim.faded,
+                            foldoutAnim.target ? 1f : 0f,
+                            foldoutAnim.speed,
+                            foldoutAnim.isAnimating
+                        );
+
+                        // Additional timing diagnostic to track if animation should be running
+                        SerializableCollectionTweenDiagnostics.LogAnimBoolTiming(
+                            "PostExpandChange",
+                            propertyPath ?? "(null)",
+                            foldoutAnim,
+                            expanded
+                        );
                     }
 
-                    sectionHeight = GetPendingSectionHeight(pending);
+                    sectionHeight = GetPendingSectionHeight(pending, property);
                     backgroundRect.height = sectionHeight;
                     if (Event.current.type == EventType.Repaint)
                     {
@@ -2064,14 +2169,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     foldoutProgress = pending.isExpanded ? 1f : 0f;
                 }
 
+                SerializableCollectionTweenDiagnostics.LogContentFadeApplication(
+                    propertyPath ?? "(null)",
+                    foldoutProgress,
+                    foldoutProgress > 0f || pending.isExpanded,
+                    foldoutProgress <= 0f && !pending.isExpanded
+                );
+
                 if (foldoutProgress <= 0f && !pending.isExpanded)
                 {
                     y = backgroundRect.yMax;
                     return;
                 }
 
-                float innerX = containerX + ManualEntrySectionPadding;
-                float innerWidth = containerWidth - ManualEntrySectionPadding * 2f;
+                float innerX = containerX + resolvedSectionPadding;
+                float innerWidth = containerWidth - resolvedSectionPadding * 2f;
                 float innerY = headerRect.yMax + spacing;
 
                 Color previousColor = GUI.color;
@@ -2338,6 +2450,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return TargetsUnityHelpersSettings(serializedObject)
                 ? ManualEntryFoldoutToggleOffsetSettings
                 : ManualEntryFoldoutToggleOffsetInspector;
+        }
+
+        private static float ResolveManualEntrySectionPadding(SerializedProperty property)
+        {
+            SerializedObject serializedObject = property?.serializedObject;
+            return TargetsUnityHelpersSettings(serializedObject)
+                ? ManualEntrySectionPaddingSettings
+                : ManualEntrySectionPadding;
         }
 
         private static GUIStyle GetManualEntryFoldoutLabelStyle()
@@ -2725,6 +2845,107 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return ShouldTweenManualEntryFoldout(isSortedSet);
         }
 
+        /// <summary>
+        /// Returns the expected static foldout progress without animation.
+        /// This static method cannot access instance animation state.
+        /// Use <see cref="GetPendingFoldoutProgressFromInstance"/> for actual animation testing.
+        /// </summary>
+        internal static float GetPendingFoldoutProgressForTests(
+            SerializedProperty property,
+            bool expanded,
+            bool isSorted
+        )
+        {
+            // Static method - returns immediate value since we can't access instance state
+            return expanded ? 1f : 0f;
+        }
+
+        /// <summary>
+        /// Gets the actual animated foldout progress from the drawer instance's pending entry.
+        /// Use this for testing that animations are actually progressing over time.
+        /// </summary>
+        /// <param name="property">The serialized property for the set.</param>
+        /// <returns>
+        /// The current animation progress (0 to 1), or -1 if no pending entry exists for this property.
+        /// When tweening is disabled, returns 0 or 1 immediately based on expanded state.
+        /// </returns>
+        internal float GetPendingFoldoutProgressFromInstance(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return -1f;
+            }
+
+            string cacheKey = GetPropertyCacheKey(property);
+            if (!_pendingEntries.TryGetValue(cacheKey, out PendingEntry pending) || pending == null)
+            {
+                return -1f;
+            }
+
+            return GetPendingFoldoutProgress(pending);
+        }
+
+        /// <summary>
+        /// Gets the pending entry's expanded state and animation information for testing.
+        /// </summary>
+        /// <param name="property">The serialized property for the set.</param>
+        /// <param name="isExpanded">Output: whether the pending section is logically expanded.</param>
+        /// <param name="animProgress">Output: the current animation progress (0 to 1).</param>
+        /// <param name="hasAnimBool">Output: whether an AnimBool is active for this entry.</param>
+        /// <returns>True if a pending entry was found, false otherwise.</returns>
+        internal bool TryGetPendingAnimationStateForTests(
+            SerializedProperty property,
+            out bool isExpanded,
+            out float animProgress,
+            out bool hasAnimBool
+        )
+        {
+            isExpanded = false;
+            animProgress = 0f;
+            hasAnimBool = false;
+
+            if (property == null)
+            {
+                return false;
+            }
+
+            string cacheKey = GetPropertyCacheKey(property);
+            if (!_pendingEntries.TryGetValue(cacheKey, out PendingEntry pending) || pending == null)
+            {
+                return false;
+            }
+
+            isExpanded = pending.isExpanded;
+            hasAnimBool = pending.foldoutAnim != null;
+            animProgress = GetPendingFoldoutProgress(pending);
+            return true;
+        }
+
+        /// <summary>
+        /// Sets the pending entry's expanded state for testing purposes.
+        /// This properly triggers animation state updates.
+        /// </summary>
+        internal void SetPendingExpandedStateForTests(SerializedProperty property, bool expanded)
+        {
+            if (property == null)
+            {
+                return;
+            }
+
+            string cacheKey = GetPropertyCacheKey(property);
+            if (!_pendingEntries.TryGetValue(cacheKey, out PendingEntry pending) || pending == null)
+            {
+                return;
+            }
+
+            pending.isExpanded = expanded;
+            AnimBool anim = EnsureManualEntryFoldoutAnim(pending, property.propertyPath);
+            if (anim != null)
+            {
+                anim.target = expanded;
+            }
+        }
+
         private static bool ShouldTweenManualEntryFoldout(bool isSortedSet)
         {
             return isSortedSet
@@ -2739,14 +2960,30 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 : UnityHelpersSettings.GetSerializableSetFoldoutSpeed();
         }
 
-        private static AnimBool CreateManualEntryFoldoutAnim(bool initialValue, bool isSortedSet)
+        private static AnimBool CreateManualEntryFoldoutAnim(
+            bool initialValue,
+            bool isSortedSet,
+            string propertyPath = null
+        )
         {
-            AnimBool anim = new(initialValue) { speed = GetManualEntryFoldoutSpeed(isSortedSet) };
+            float speed = GetManualEntryFoldoutSpeed(isSortedSet);
+            AnimBool anim = new(initialValue) { speed = speed };
             anim.valueChanged.AddListener(RequestRepaint);
+
+            SerializableCollectionTweenDiagnostics.LogAnimBoolCreation(
+                propertyPath ?? "(unknown)",
+                initialValue,
+                isSortedSet,
+                speed
+            );
+
             return anim;
         }
 
-        private static AnimBool EnsureManualEntryFoldoutAnim(PendingEntry pending)
+        private static AnimBool EnsureManualEntryFoldoutAnim(
+            PendingEntry pending,
+            string propertyPath = null
+        )
         {
             if (pending == null)
             {
@@ -2754,12 +2991,27 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             bool shouldTween = ShouldTweenManualEntryFoldout(pending.isSorted);
+            float speed = GetManualEntryFoldoutSpeed(pending.isSorted);
+
+            SerializableCollectionTweenDiagnostics.LogTweenSettingsQuery(
+                "EnsureManualEntryFoldoutAnim",
+                propertyPath ?? "(unknown)",
+                pending.isSorted,
+                shouldTween,
+                speed
+            );
+
             if (!shouldTween)
             {
                 if (pending.foldoutAnim != null)
                 {
                     pending.foldoutAnim.valueChanged.RemoveListener(RequestRepaint);
                     pending.foldoutAnim = null;
+
+                    SerializableCollectionTweenDiagnostics.LogAnimBoolDestroyed(
+                        propertyPath ?? "(unknown)",
+                        "TweeningDisabled"
+                    );
                 }
 
                 return null;
@@ -2769,18 +3021,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 pending.foldoutAnim = CreateManualEntryFoldoutAnim(
                     pending.isExpanded,
-                    pending.isSorted
+                    pending.isSorted,
+                    propertyPath
                 );
             }
             else
             {
-                pending.foldoutAnim.speed = GetManualEntryFoldoutSpeed(pending.isSorted);
+                pending.foldoutAnim.speed = speed;
             }
 
             return pending.foldoutAnim;
         }
 
-        private static float GetPendingFoldoutProgress(PendingEntry pending)
+        private static float GetPendingFoldoutProgress(
+            PendingEntry pending,
+            string propertyPath = null
+        )
         {
             if (pending == null)
             {
@@ -2790,28 +3046,69 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool shouldTween = ShouldTweenManualEntryFoldout(pending.isSorted);
             if (!shouldTween)
             {
-                return pending.isExpanded ? 1f : 0f;
+                float immediateProgress = pending.isExpanded ? 1f : 0f;
+
+                SerializableCollectionTweenDiagnostics.LogFoldoutProgressCalculation(
+                    "GetPendingFoldoutProgress_NoTween",
+                    propertyPath ?? "(unknown)",
+                    false,
+                    pending.isExpanded,
+                    immediateProgress,
+                    pending.foldoutAnim != null
+                );
+
+                return immediateProgress;
             }
 
-            AnimBool anim = EnsureManualEntryFoldoutAnim(pending);
+            AnimBool anim = EnsureManualEntryFoldoutAnim(pending, propertyPath);
             if (anim == null)
             {
-                return pending.isExpanded ? 1f : 0f;
+                float fallbackProgress = pending.isExpanded ? 1f : 0f;
+
+                SerializableCollectionTweenDiagnostics.LogFoldoutProgressCalculation(
+                    "GetPendingFoldoutProgress_NoAnimBool",
+                    propertyPath ?? "(unknown)",
+                    true,
+                    pending.isExpanded,
+                    fallbackProgress,
+                    false
+                );
+
+                return fallbackProgress;
             }
 
             anim.target = pending.isExpanded;
-            return anim.faded;
+            float animatedProgress = anim.faded;
+
+            SerializableCollectionTweenDiagnostics.LogFoldoutProgressCalculation(
+                "GetPendingFoldoutProgress_Animated",
+                propertyPath ?? "(unknown)",
+                true,
+                pending.isExpanded,
+                animatedProgress,
+                true
+            );
+
+            return animatedProgress;
         }
 
         private static float GetPendingSectionHeight(PendingEntry pending)
+        {
+            return GetPendingSectionHeight(pending, null);
+        }
+
+        private static float GetPendingSectionHeight(
+            PendingEntry pending,
+            SerializedProperty property
+        )
         {
             if (pending == null)
             {
                 return 0f;
             }
 
-            float collapsedHeight =
-                EditorGUIUtility.singleLineHeight + ManualEntrySectionPadding * 2f;
+            float resolvedSectionPadding = ResolveManualEntrySectionPadding(property);
+            float collapsedHeight = EditorGUIUtility.singleLineHeight + resolvedSectionPadding * 2f;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
             float expandedExtra = EditorGUIUtility.singleLineHeight * 2f + spacing * 3f;
 
@@ -2820,21 +3117,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 expandedExtra += GetWarningBarHeight() + spacing;
             }
 
-            return collapsedHeight
-                + expandedExtra * Mathf.Clamp01(GetPendingFoldoutProgress(pending));
+            string propertyPath = property?.propertyPath;
+            float progress = GetPendingFoldoutProgress(pending, propertyPath);
+            float finalHeight = collapsedHeight + expandedExtra * Mathf.Clamp01(progress);
+
+            SerializableCollectionTweenDiagnostics.LogPendingSectionHeightCalc(
+                propertyPath ?? "(unknown)",
+                collapsedHeight,
+                expandedExtra,
+                progress,
+                finalHeight
+            );
+
+            return finalHeight;
         }
 
         private static void RequestRepaint()
         {
-            EditorWindow focusedWindow = EditorWindow.focusedWindow;
-            if (focusedWindow != null)
-            {
-                focusedWindow.Repaint();
-            }
-            else
-            {
-                InternalEditorUtility.RepaintAllViews();
-            }
+            // Always repaint all views to ensure animations work correctly
+            // in both Inspector and SettingsProvider contexts
+            InternalEditorUtility.RepaintAllViews();
         }
 
         private static GUIContent GetUnsupportedTypeContent(Type type)

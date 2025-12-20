@@ -429,7 +429,7 @@ public class Weapon : MonoBehaviour
 }
 ```
 
-![GIF placeholder: Switching weapon types and seeing different fields]
+![Switching weapon types and seeing different fields](../../images/inspector/conditional/weapon-switching.gif)
 
 ---
 

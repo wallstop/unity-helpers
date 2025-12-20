@@ -26,7 +26,7 @@ Creates boxed inspector sections with optional collapsible headers and automatic
 using UnityEngine;
 using WallstopStudios.UnityHelpers.Core.Attributes;
 
-public class CharacterStats : MonoBehaviour
+public class CharacterStatsWGroup : MonoBehaviour
 {
     // Simple box with 4 fields
     [WGroup("combat", "Combat Stats")]
@@ -40,7 +40,7 @@ public class CharacterStats : MonoBehaviour
 }
 ```
 
-![Image placeholder: WGroup showing boxed combat stats with header]
+![WGroup showing boxed combat stats with header](../../images/inspector/wgroup-simple.png)
 
 ### Parameters
 
@@ -116,19 +116,30 @@ public int luck;
 ### Collapsible Groups
 
 ```csharp
-[WGroup("advanced", "Advanced Options", collapsible: true, startCollapsed: true)]
-public float raycastDistance = 100f;
-public LayerMask collisionMask;
-public bool debugDraw = false;
-[WGroupEnd("advanced")]
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public class WGroupEndExample : MonoBehaviour
+{
+    [WGroup("advanced", "Advanced Options", collapsible: true, startCollapsed: true)]
+    public float raycastDistance = 100f;
+    public LayerMask collisionMask;
+
+    [WGroupEnd("advanced")]
+    public bool debugDraw;
+
+    public bool someOtherField;
+}
 ```
 
 ![GIF placeholder: WGroup being collapsed and expanded with smooth animation]
 
 **Animation Settings:**
 
-- Speed controlled by `UnityHelpersSettings.WGroupTweenSpeed` (default: 2.0)
-- Enable/disable via `UnityHelpersSettings.WGroupTweenEnabled`
+- Speed controlled by `UnityHelpersSettings.WGroupFoldoutSpeed` (default: 2.0, range: 2.0-12.0)
+- Enable/disable via `UnityHelpersSettings.WGroupFoldoutTweenEnabled` (default: enabled)
+
+Configure in **Project Settings → Unity Helpers** or see [Inspector Settings](inspector-settings.md#wgroup-settings) for details.
 
 ---
 
@@ -270,9 +281,10 @@ All grouping attributes respect project-wide settings defined in `UnityHelpersSe
 **Settings:**
 
 - `WGroupAutoIncludeRowCount` (default: 4) - Default fields to auto-include
+- `WGroupStartCollapsed` (default: true) - Whether collapsible groups start collapsed
+- `WGroupFoldoutTweenEnabled` (default: true) - Enable expand/collapse animations
+- `WGroupFoldoutSpeed` (default: 2.0, range: 2-12) - Animation speed
 - `WGroupCustomColors` - Custom color palette dictionary
-- `WGroupTweenEnabled` - Enable animations
-- `WGroupTweenSpeed` - Animation speed (2-12)
 
 ![Image placeholder: UnityHelpersSettings asset showing WGroup configuration section]
 
@@ -539,9 +551,10 @@ public int intelligence;
 
 **Solutions:**
 
-1. Check `UnityHelpersSettings.WGroupTweenEnabled`
+1. Check `UnityHelpersSettings.WGroupFoldoutTweenEnabled` is `true`
 2. Ensure `collapsible: true` is set for WGroup
-3. Verify animation speed isn't set too low in settings
+3. Verify `WGroupFoldoutSpeed` isn't set too low (minimum is 2.0)
+4. Open **Project Settings → Unity Helpers** to review settings
 
 ---
 

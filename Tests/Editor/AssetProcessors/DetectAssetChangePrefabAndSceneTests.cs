@@ -770,22 +770,14 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         {
             // This test verifies that TestPrefabAssetChangeHandler is NOT in an Editor folder
             // and can be properly added to GameObjects (a prerequisite for all prefab tests)
-            GameObject go = new("TestAddComponent");
-            try
-            {
-                TestPrefabAssetChangeHandler handler =
-                    go.AddComponent<TestPrefabAssetChangeHandler>();
-                Assert.IsTrue(
-                    handler != null,
-                    "TestPrefabAssetChangeHandler must NOT be in an Editor folder. "
-                        + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
-                        + "Move TestPrefabAssetChangeHandler to a non-Editor folder (e.g., Tests/Runtime/)."
-                );
-            }
-            finally
-            {
-                Object.DestroyImmediate(go);
-            }
+            GameObject go = Track(new GameObject("TestAddComponent"));
+            TestPrefabAssetChangeHandler handler = go.AddComponent<TestPrefabAssetChangeHandler>();
+            Assert.IsTrue(
+                handler != null,
+                "TestPrefabAssetChangeHandler must NOT be in an Editor folder. "
+                    + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
+                    + "Move TestPrefabAssetChangeHandler to a non-Editor folder (e.g., Tests/Runtime/)."
+            );
         }
 
         [Test]
@@ -793,22 +785,14 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         {
             // This test verifies that TestSceneAssetChangeHandler is NOT in an Editor folder
             // and can be properly added to GameObjects (a prerequisite for all scene handler tests)
-            GameObject go = new("TestAddComponent");
-            try
-            {
-                TestSceneAssetChangeHandler handler =
-                    go.AddComponent<TestSceneAssetChangeHandler>();
-                Assert.IsTrue(
-                    handler != null,
-                    "TestSceneAssetChangeHandler must NOT be in an Editor folder. "
-                        + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
-                        + "Move TestSceneAssetChangeHandler to a non-Editor folder (e.g., Tests/Runtime/)."
-                );
-            }
-            finally
-            {
-                Object.DestroyImmediate(go);
-            }
+            GameObject go = Track(new GameObject("TestAddComponent"));
+            TestSceneAssetChangeHandler handler = go.AddComponent<TestSceneAssetChangeHandler>();
+            Assert.IsTrue(
+                handler != null,
+                "TestSceneAssetChangeHandler must NOT be in an Editor folder. "
+                    + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
+                    + "Move TestSceneAssetChangeHandler to a non-Editor folder (e.g., Tests/Runtime/)."
+            );
         }
 
         [Test]
@@ -816,21 +800,14 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         {
             // This test verifies that TestCombinedSearchHandler is NOT in an Editor folder
             // and can be properly added to GameObjects (a prerequisite for all combined handler tests)
-            GameObject go = new("TestAddComponent");
-            try
-            {
-                TestCombinedSearchHandler handler = go.AddComponent<TestCombinedSearchHandler>();
-                Assert.IsTrue(
-                    handler != null,
-                    "TestCombinedSearchHandler must NOT be in an Editor folder. "
-                        + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
-                        + "Move TestCombinedSearchHandler to a non-Editor folder (e.g., Tests/Runtime/)."
-                );
-            }
-            finally
-            {
-                Object.DestroyImmediate(go);
-            }
+            GameObject go = Track(new GameObject("TestAddComponent"));
+            TestCombinedSearchHandler handler = go.AddComponent<TestCombinedSearchHandler>();
+            Assert.IsTrue(
+                handler != null,
+                "TestCombinedSearchHandler must NOT be in an Editor folder. "
+                    + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
+                    + "Move TestCombinedSearchHandler to a non-Editor folder (e.g., Tests/Runtime/)."
+            );
         }
 
         [Test]
@@ -838,21 +815,14 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         {
             // This test verifies that TestNestedPrefabHandler is NOT in an Editor folder
             // and can be properly added to GameObjects (a prerequisite for all nested handler tests)
-            GameObject go = new("TestAddComponent");
-            try
-            {
-                TestNestedPrefabHandler handler = go.AddComponent<TestNestedPrefabHandler>();
-                Assert.IsTrue(
-                    handler != null,
-                    "TestNestedPrefabHandler must NOT be in an Editor folder. "
-                        + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
-                        + "Move TestNestedPrefabHandler to a non-Editor folder (e.g., Tests/Runtime/)."
-                );
-            }
-            finally
-            {
-                Object.DestroyImmediate(go);
-            }
+            GameObject go = Track(new GameObject("TestAddComponent"));
+            TestNestedPrefabHandler handler = go.AddComponent<TestNestedPrefabHandler>();
+            Assert.IsTrue(
+                handler != null,
+                "TestNestedPrefabHandler must NOT be in an Editor folder. "
+                    + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
+                    + "Move TestNestedPrefabHandler to a non-Editor folder (e.g., Tests/Runtime/)."
+            );
         }
 
         [Test]

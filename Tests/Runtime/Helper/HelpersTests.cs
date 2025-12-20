@@ -1014,13 +1014,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         private static IEnumerable<TestCaseData> RandomCircleSampleData()
         {
             yield return new TestCaseData(new[] { double.NaN, double.NaN }).SetName(
-                "Circle_NaNSamples"
+                "Circle NaNSamples"
             );
             yield return new TestCaseData(new[] { 1d + double.Epsilon, 0.25d }).SetName(
-                "Circle_GreaterThanOne"
+                "Circle GreaterThanOne"
             );
             yield return new TestCaseData(new[] { -10d, 1d + 1e-6 }).SetName(
-                "Circle_NegativeAndTooLarge"
+                "Circle NegativeAndTooLarge"
             );
         }
 
@@ -1028,12 +1028,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             yield return new TestCaseData(
                 new[] { 1d + double.Epsilon, 1d + double.Epsilon, 0d }
-            ).SetName("Sphere_ClampPhiAndTheta");
+            ).SetName("Sphere ClampPhiAndTheta");
             yield return new TestCaseData(new[] { double.NaN, double.NaN, double.NaN }).SetName(
-                "Sphere_AllNaN"
+                "Sphere AllNaN"
             );
             yield return new TestCaseData(new[] { -5d, 0.75d, 1d + double.Epsilon }).SetName(
-                "Sphere_NegativeRadiusSample"
+                "Sphere NegativeRadiusSample"
             );
         }
 

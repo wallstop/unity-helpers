@@ -12,6 +12,7 @@ The `UnityHelpersSettings` asset provides project-wide configuration for paginat
 - [Pagination Settings](#pagination-settings)
 - [WButton Settings](#wbutton-settings)
 - [WGroup Settings](#wgroup-settings)
+- [Inline Editor Settings](#inline-editor-settings)
 - [Color Palettes](#color-palettes)
 - [WEnumToggleButtons Settings](#wenumtogglebuttons-settings)
 - [Creating the Settings Asset](#creating-the-settings-asset)
@@ -323,6 +324,62 @@ public float mana;
 
 ---
 
+## Inline Editor Settings
+
+Controls behavior for the `[WInLineEditor]` attribute that embeds nested inspectors inline.
+
+### InlineEditorFoldoutBehavior
+
+**Default:** StartCollapsed
+**Options:** AlwaysExpanded, StartExpanded, StartCollapsed
+**Applies to:** `[WInLineEditor]` without explicit mode
+
+**Description:** Default foldout behavior for inline editors.
+
+- **AlwaysExpanded:** Always draws the inline inspector (no foldout)
+- **StartExpanded:** Shows a foldout that starts expanded
+- **StartCollapsed:** Shows a foldout that starts collapsed
+
+**Note:** Use the `mode` parameter on individual attributes to override this setting:
+
+```csharp
+// Uses global setting
+[WInLineEditor]
+public AbilityConfig config;
+
+// Always shows inline inspector
+[WInLineEditor(WInLineEditorMode.AlwaysExpanded)]
+public AbilityConfig alwaysVisible;
+
+// Starts collapsed regardless of global setting
+[WInLineEditor(WInLineEditorMode.FoldoutCollapsed)]
+public AbilityConfig collapsedByDefault;
+```
+
+---
+
+### InlineEditorFoldoutTweenEnabled
+
+**Default:** true
+**Applies to:** `[WInLineEditor]` with foldout modes
+
+**Description:** Enable smooth animation when expanding/collapsing inline editors.
+
+---
+
+### InlineEditorFoldoutSpeed
+
+**Default:** 2.0
+**Range:** 2.0 - 12.0
+**Applies to:** `[WInLineEditor]` with foldout modes (when tween enabled)
+
+**Description:** Animation speed for inline editor fold/unfold.
+
+- Lower values = slower animation
+- Higher values = faster animation
+
+---
+
 ## Color Palettes
 
 Palette keys keep WButton, WGroup, and WEnumToggleButtons visuals consistent across the project. Open the **Color Palettes** foldout inside `UnityHelpersSettings` to add or edit entries. Each key is matched at draw time against the `ColorKey`/`priority` parameter on the corresponding attribute; unknown keys fall back to theme-aware defaults.
@@ -434,6 +491,7 @@ WButtonPageSize: 4
 ```text
 WButtonFoldoutTweenEnabled: false
 WGroupTweenEnabled: false
+InlineEditorFoldoutTweenEnabled: false
 ```
 
 **Use case:** Slower machines, prefer instant feedback
@@ -445,6 +503,7 @@ WGroupTweenEnabled: false
 ```text
 WButtonFoldoutSpeed: 8.0
 WGroupTweenSpeed: 8.0
+InlineEditorFoldoutSpeed: 8.0
 ```
 
 **Use case:** Snappy UI feel

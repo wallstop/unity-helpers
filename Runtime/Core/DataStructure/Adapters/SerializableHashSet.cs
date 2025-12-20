@@ -9,6 +9,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using ProtoBuf;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Serialization;
     using WallstopStudios.UnityHelpers.Utils;
 #if UNITY_EDITOR
     using UnityEditor;
@@ -77,7 +79,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     /// ]]></code>
     /// </example>
     [Serializable]
-    [ProtoContract]
+    [ProtoContract(IgnoreListHandling = true)]
     public abstract class SerializableSetBase<T, TSet>
         : ISet<T>,
             IReadOnlyCollection<T>,
@@ -86,24 +88,56 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             ISerializable,
             ISerializableSetInspector,
             ISerializableSetEditorSync
-        where TSet : class, ISet<T>
+        where TSet : class, ISet<T>, new()
     {
-        [SerializeField]
-        [ProtoMember(1, OverwriteList = true)]
-        internal T[] _items;
+        static SerializableSetBase()
+        {
+            ProtobufUnityModel.EnsureInitialized();
+        }
 
-        [ProtoIgnore]
-        [JsonIgnore]
-        private readonly TSet _set;
-
-        [NonSerialized]
-        private bool _preserveSerializedEntries;
+        protected internal bool HasDuplicatesOrNulls => _hasDuplicatesOrNulls;
 
         internal bool PreserveSerializedEntries => _preserveSerializedEntries;
+        public int Count => _set.Count;
 
-        internal T[] SerializedItems => _items;
+        bool ICollection<T>.IsReadOnly => _set.IsReadOnly;
+        protected TSet Set => _set;
+
+        protected internal T[] SerializedItems => _items;
 
         protected virtual bool SupportsSorting => false;
+
+        [SerializeField]
+        [ProtoMember(1, OverwriteList = true)]
+        [JsonInclude]
+        protected internal T[] _items;
+
+        [ProtoIgnore]
+        protected internal TSet _set;
+
+        [NonSerialized]
+        protected internal bool _preserveSerializedEntries;
+
+        [NonSerialized]
+        protected internal bool _itemsDirty;
+
+        /// <summary>
+        /// Tracks items added since the last serialization cycle, in insertion order.
+        /// This is used to preserve the order in which items were added during the next serialization.
+        /// </summary>
+        [NonSerialized]
+        protected internal List<T> _newItemsOrder;
+
+        [NonSerialized]
+        protected internal bool _hasDuplicatesOrNulls;
+
+        /// <summary>
+        /// Initializes an empty set. Required for protobuf deserialization.
+        /// </summary>
+        protected SerializableSetBase()
+        {
+            _set = new TSet();
+        }
 
         protected SerializableSetBase(TSet set)
         {
@@ -129,8 +163,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             _set = factory(serializationInfo, streamingContext);
         }
 
-        protected TSet Set => _set;
-
         /// <summary>
         /// Unity inspector helper for identifying serialized array property names.
         /// </summary>
@@ -143,10 +175,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
             internal const string ItemsNameInternal = NameHolder.ItemsName;
         }
-
-        public int Count => _set.Count;
-
-        bool ICollection<T>.IsReadOnly => _set.IsReadOnly;
 
         /// <summary>
         /// Adds an element to the set and updates the serialized cache when the value was not already present.
@@ -164,10 +192,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             bool added = _set.Add(item);
             if (added)
             {
+                TrackNewItem(item);
                 MarkSerializationCacheDirty();
             }
 
             return added;
+        }
+
+        /// <summary>
+        /// Tracks a newly added item for order preservation during serialization.
+        /// </summary>
+        private void TrackNewItem(T item)
+        {
+            _newItemsOrder ??= new List<T>();
+            _newItemsOrder.Add(item);
         }
 
         void ICollection<T>.Add(T item)
@@ -193,7 +231,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 throw new ArgumentNullException(nameof(other));
             }
 
-            _set.UnionWith(other);
+            // Track items that will be added for order preservation
+            foreach (T item in other)
+            {
+                if (_set.Add(item))
+                {
+                    TrackNewItem(item);
+                }
+            }
             MarkSerializationCacheDirty();
         }
 
@@ -216,6 +261,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
 
             _set.IntersectWith(other);
+            // Items may have been removed, so clear tracked new items
+            // (they may no longer be in the set)
+            _newItemsOrder?.Clear();
             MarkSerializationCacheDirty();
         }
 
@@ -238,6 +286,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
 
             _set.ExceptWith(other);
+            // Items may have been removed, so clear tracked new items
+            _newItemsOrder?.Clear();
             MarkSerializationCacheDirty();
         }
 
@@ -261,6 +311,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
 
             _set.SymmetricExceptWith(other);
+            // Items may have been added or removed, so clear tracked new items
+            _newItemsOrder?.Clear();
             MarkSerializationCacheDirty();
         }
 
@@ -377,6 +429,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             }
 
             _set.Clear();
+            _newItemsOrder?.Clear();
             MarkSerializationCacheDirty();
         }
 
@@ -461,6 +514,91 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         }
 
         /// <summary>
+        /// Creates a new array containing all elements in the set's natural iteration order.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Returns elements in the order determined by the underlying <see cref="HashSet{T}"/>'s iteration order.
+        /// This matches the behavior of enumerating a <see cref="HashSet{T}"/> and standard set semantics.
+        /// </para>
+        /// <para>
+        /// The returned array is always a defensive copy - modifications to it do not affect the set.
+        /// For empty sets, <see cref="Array.Empty{T}()"/> is returned.
+        /// </para>
+        /// <para>
+        /// To retrieve elements in their user-defined serialization order (as shown in the Unity inspector),
+        /// use <see cref="ToPersistedOrderArray"/> instead.
+        /// </para>
+        /// </remarks>
+        /// <returns>A new array containing all elements in set iteration order.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> abilities = new SerializableHashSet<string>();
+        /// abilities.Add("Dash");
+        /// abilities.Add("Jump");
+        /// string[] abilityArray = abilities.ToArray();
+        /// ]]></code>
+        /// </example>
+        public virtual T[] ToArray()
+        {
+            int count = _set.Count;
+            if (count == 0)
+            {
+                return Array.Empty<T>();
+            }
+
+            // Return elements in set iteration order (from the underlying set)
+            T[] result = new T[count];
+            _set.CopyTo(result, 0);
+            return result;
+        }
+
+        /// <summary>
+        /// Creates a new array containing all elements in their user-defined serialization order.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Returns elements in the order they appear in the serialized backing array, which reflects
+        /// the user-defined order from the Unity inspector. This order is preserved across domain
+        /// reloads and serialization cycles.
+        /// </para>
+        /// <para>
+        /// The returned array is always a defensive copy - modifications to it do not affect the set.
+        /// For empty sets, <see cref="Array.Empty{T}()"/> is returned.
+        /// </para>
+        /// <para>
+        /// To retrieve elements in the set's natural iteration order, use <see cref="ToArray"/> instead.
+        /// </para>
+        /// </remarks>
+        /// <returns>A new array containing all elements in serialization order.</returns>
+        /// <example>
+        /// <code><![CDATA[
+        /// SerializableHashSet<string> abilities = new SerializableHashSet<string>();
+        /// // After inspector reordering, elements might be in a custom order
+        /// string[] abilityArray = abilities.ToPersistedOrderArray(); // Returns elements in inspector order
+        /// ]]></code>
+        /// </example>
+        public virtual T[] ToPersistedOrderArray()
+        {
+            int count = _set.Count;
+            if (count == 0)
+            {
+                return Array.Empty<T>();
+            }
+
+            // Ensure serialized state is current before reading from _items
+            if (_items == null || _itemsDirty || _items.Length != count)
+            {
+                OnBeforeSerialize();
+            }
+
+            // Return a defensive copy preserving user-defined order
+            T[] result = new T[count];
+            Array.Copy(_items, result, count);
+            return result;
+        }
+
+        /// <summary>
         /// Copies the elements into the provided array starting at index zero.
         /// </summary>
         /// <param name="array">Destination array.</param>
@@ -509,6 +647,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             bool removed = _set.Remove(item);
             if (removed)
             {
+                // Remove from tracked new items if present
+                _newItemsOrder?.Remove(item);
                 MarkSerializationCacheDirty();
             }
 
@@ -536,6 +676,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             int removed = RemoveWhereInternal(match);
             if (removed > 0)
             {
+                // Remove matching items from tracked new items
+                _newItemsOrder?.RemoveAll(match);
                 MarkSerializationCacheDirty();
             }
 
@@ -581,6 +723,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// <summary>
         /// Copies the live set contents into the serialized backing array before Unity or ProtoBuf serialization.
         /// </summary>
+        /// <remarks>
+        /// <para>
+        /// When a serialized array already exists from a previous deserialization, this method preserves its
+        /// order while synchronizing with the runtime set. This ensures that the user-defined order of elements
+        /// as shown in the Unity inspector is maintained across domain reloads and serialization cycles.
+        /// </para>
+        /// <para>
+        /// The synchronization process:
+        /// <list type="bullet">
+        /// <item><description>Existing elements: Kept in their original order if still in the set</description></item>
+        /// <item><description>Removed elements: Filtered out from the array</description></item>
+        /// <item><description>New elements: Appended to the end of the array</description></item>
+        /// </list>
+        /// </para>
+        /// </remarks>
         /// <example>
         /// <code>
         /// hashSet.OnBeforeSerialize();
@@ -589,20 +746,138 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         /// </example>
         public void OnBeforeSerialize()
         {
-            if (_preserveSerializedEntries && _items != null)
+            // If we have valid items with duplicates/nulls and should preserve them,
+            // skip sync entirely to maintain the inspector's view of problematic data.
+            if (
+                _preserveSerializedEntries
+                && _items != null
+                && !_itemsDirty
+                && _hasDuplicatesOrNulls
+            )
             {
                 return;
             }
 
+            // If we have valid items and should preserve order, sync while maintaining order
+            if (_preserveSerializedEntries && _items != null && !_itemsDirty)
+            {
+                SyncSerializedItemsPreservingOrder();
+                return;
+            }
+
+            // If items exist but are dirty, try to preserve order while applying changes
+            if (_items != null && _itemsDirty)
+            {
+                SyncSerializedItemsPreservingOrder();
+                _itemsDirty = false;
+                _preserveSerializedEntries = true;
+                return;
+            }
+
+            // No existing items - build from scratch (set's natural order)
             int count = _set.Count;
             _items = new T[count];
             _set.CopyTo(_items, 0);
-            _preserveSerializedEntries = false;
+            _preserveSerializedEntries = true;
+            _itemsDirty = false;
+        }
+
+        /// <summary>
+        /// Synchronizes the serialized items array with the set while preserving the existing order.
+        /// New items are appended, removed items are filtered out.
+        /// </summary>
+        private void SyncSerializedItemsPreservingOrder()
+        {
+            int setCount = _set.Count;
+            int arrayLength = _items.Length;
+
+            // Fast path: if counts match, all array items are unique, and all items still exist in the set, no changes needed.
+            // We must check for uniqueness because duplicate items in the array can make counts match by coincidence
+            // (e.g., array has {3, 3} with setCount=2 after adding item 4, but the array should become {3, 4}).
+            if (setCount == arrayLength)
+            {
+                using PooledResource<HashSet<T>> fastPathSeenResource = Buffers<T>.HashSet.Get(
+                    out HashSet<T> fastPathSeenItems
+                );
+
+                bool allItemsMatchAndUnique = true;
+                for (int i = 0; i < arrayLength; i++)
+                {
+                    T item = _items[i];
+                    // Check both that the item exists in the set AND that it's not a duplicate in the array
+                    if (!_set.Contains(item) || !fastPathSeenItems.Add(item))
+                    {
+                        allItemsMatchAndUnique = false;
+                        break;
+                    }
+                }
+
+                if (allItemsMatchAndUnique)
+                {
+                    // Clear any tracked new items since no changes needed
+                    _newItemsOrder?.Clear();
+                    return;
+                }
+            }
+
+            // Need to rebuild array while preserving order of existing items
+            using PooledResource<List<T>> itemsResource = Buffers<T>.List.Get(out List<T> newItems);
+            using PooledResource<HashSet<T>> seenResource = Buffers<T>.HashSet.Get(
+                out HashSet<T> seenItems
+            );
+
+            // First pass: keep existing items that still exist in the set, in their original order
+            for (int i = 0; i < arrayLength; i++)
+            {
+                T item = _items[i];
+                if (_set.Contains(item) && seenItems.Add(item))
+                {
+                    newItems.Add(item);
+                }
+            }
+
+            // Second pass: append new items in the order they were added (if tracked)
+            if (_newItemsOrder is { Count: > 0 })
+            {
+                foreach (T item in _newItemsOrder)
+                {
+                    // Only add if it still exists in the set and wasn't already seen
+                    if (_set.Contains(item) && seenItems.Add(item))
+                    {
+                        newItems.Add(item);
+                    }
+                }
+            }
+            else
+            {
+                // Fallback: iterate over the set for items not in the original array
+                // (order may not match insertion order)
+                foreach (T item in _set)
+                {
+                    if (seenItems.Add(item))
+                    {
+                        newItems.Add(item);
+                    }
+                }
+            }
+
+            // Rebuild array
+            _items = newItems.ToArray();
+
+            // Clear the tracked new items since they're now in the serialized array
+            _newItemsOrder?.Clear();
         }
 
         /// <summary>
         /// Reconstructs the live set from the serialized array after Unity or ProtoBuf deserialization.
         /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The serialized array represents the user-defined order of elements as they appear in the Unity inspector.
+        /// This order is preserved across domain reloads and serialization cycles. The internal set maintains its
+        /// natural ordering for efficient operations, but the serialized array always reflects the user's intended order.
+        /// </para>
+        /// </remarks>
         /// <example>
         /// <code>
         /// hashSet.OnAfterDeserialize();
@@ -624,11 +899,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             if (_items == null)
             {
                 _preserveSerializedEntries = false;
+                _itemsDirty = true;
                 _set.Clear();
                 return;
             }
 
-            bool preserveExistingOrder = _preserveSerializedEntries;
             _set.Clear();
             bool hasDuplicates = false;
             bool encounteredNullReference = false;
@@ -652,13 +927,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 }
             }
 
-            _preserveSerializedEntries =
-                preserveExistingOrder || hasDuplicates || encounteredNullReference;
+            // Always preserve the serialized array after deserialization to maintain user-defined order.
+            // The array represents the order as it appears in the Unity inspector, which should not
+            // change due to domain reloads. Only runtime modifications via Add/Remove/Clear should
+            // trigger array rebuilding (handled by MarkSerializationCacheDirty).
+            _preserveSerializedEntries = true;
+            _itemsDirty = false;
 
-            if (!_preserveSerializedEntries)
-            {
-                _items = null;
-            }
+            // Clear tracked new items since we're starting fresh after deserialization
+            _newItemsOrder?.Clear();
+
+            // Track if we have duplicates/nulls that require special handling in the editor
+            _hasDuplicatesOrNulls = hasDuplicates || encounteredNullReference;
         }
 
         private static bool TypeSupportsNullReferences(Type type)
@@ -695,13 +975,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 #endif
 
         [ProtoBeforeSerialization]
-        private void OnProtoBeforeSerialization()
+        protected internal void OnProtoBeforeSerialization()
         {
             OnBeforeSerialize();
         }
 
         [ProtoAfterSerialization]
-        private void OnProtoAfterSerialization()
+        protected internal void OnProtoAfterSerialization()
         {
             if (_preserveSerializedEntries)
             {
@@ -712,8 +992,22 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         }
 
         [ProtoAfterDeserialization]
-        private void OnProtoAfterDeserialization()
+        protected internal void OnProtoAfterDeserialization()
         {
+            if (_set == null)
+            {
+                _set = new TSet();
+            }
+
+            if (_items == null)
+            {
+                T[] rebuiltItems = new T[_set.Count];
+                _set.CopyTo(rebuiltItems, 0);
+                _items = rebuiltItems;
+                _preserveSerializedEntries = true;
+                _itemsDirty = false;
+            }
+
             OnAfterDeserialize();
         }
 
@@ -745,7 +1039,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
         protected void MarkSerializationCacheDirty()
         {
             _preserveSerializedEntries = false;
-            _items = null;
+            _itemsDirty = true;
+            // Clear the duplicates/nulls flag since we're invalidating the serialization cache.
+            // After a mutation, the set's internal state becomes the source of truth, and a Set
+            // data structure cannot contain duplicates by definition. The flag will be recalculated
+            // during the next OnAfterDeserialize if needed.
+            _hasDuplicatesOrNulls = false;
+            // Note: We intentionally do NOT null out _items here to preserve order information
+            // for SyncSerializedItemsPreservingOrder() during the next OnBeforeSerialize() call.
         }
 
         /// <summary>
@@ -969,7 +1270,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     /// ]]></code>
     /// </example>
     [Serializable]
-    [ProtoContract]
     public class SerializableHashSet<T> : SerializableSetBase<T, HashSet<T>>
     {
         private sealed class StorageSet : HashSet<T>
@@ -1099,7 +1399,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
     internal static class SerializableHashSetSerializedPropertyNames
     {
-        internal static readonly string Items = SerializableHashSet<int>
+        internal const string Items = SerializableHashSet<int>
             .SerializedPropertyNames
             .ItemsNameInternal;
     }

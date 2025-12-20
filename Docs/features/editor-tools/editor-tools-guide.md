@@ -117,7 +117,7 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 
 > **Visual Demo**
 >
-> ![GIF placeholder: Image Blur Tool showing before/after comparison as blur radius slider is adjusted](../../images/editor-tools/image-blur-before-after.gif)
+> ![Image Blur Tool showing before/after comparison as blur radius slider is adjusted](../../images/editor-tools/image-blur-before-after.gif)
 >
 > _Adjusting blur radius from 0 to 200 pixels on a UI background texture_
 
@@ -163,7 +163,7 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 
 > **Visual Demo**
 >
-> ![GIF placeholder: Sprite Cropper showing original sprite with padding, then cropped result side-by-side](../../images/editor-tools/sprite-cropper-comparison.gif)
+> ![Sprite Cropper showing original sprite with padding, then cropped result side-by-side](../../images/editor-tools/sprite-cropper-comparison.gif)
 >
 > _Before and after: transparent padding removed while preserving sprite content and pivot_
 
@@ -531,11 +531,11 @@ Result: Max Size → 64 (matches source)
 
 > **Visual Demo**
 >
-> ![GIF placeholder: Sprite Animation Editor showing animation preview playing while frames are dragged to reorder](../../images/editor-tools/sprite-animation-editor-reorder.gif)
+> ![Sprite Animation Editor showing animation preview playing while frames are dragged to reorder](../../images/editor-tools/sprite-animation-editor-reorder.gif)
 >
 > _Drag-and-drop frame reordering with real-time preview updates_
 >
-> ![GIF placeholder: Sprite Animation Editor FPS adjustment showing animation speed changing live](../../images/editor-tools/sprite-animation-editor-fps.gif)
+> ![Sprite Animation Editor FPS adjustment showing animation speed changing live](../../images/editor-tools/sprite-animation-editor-fps.gif)
 >
 > _Adjusting FPS slider and seeing immediate preview speed change_
 
@@ -615,7 +615,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 
 > **Visual Demo**
 >
-> ![GIF placeholder: Animation Creator auto-parse workflow showing sprites being grouped and clips generated](../../images/editor-tools/animation-creator-auto-parse.gif)
+> ![Animation Creator auto-parse workflow showing sprites being grouped and clips generated](../../images/editor-tools/animation-creator-auto-parse.gif)
 >
 > _One-click auto-parse: sprites grouped by naming pattern, clips generated instantly_
 
@@ -705,7 +705,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 
 > **Visual Demo**
 >
-> ![GIF placeholder: Sprite Sheet Animation Creator showing drag-select across sprite thumbnails with live preview](../../images/editor-tools/sprite-sheet-creator-select.gif)
+> ![Sprite Sheet Animation Creator showing drag-select across sprite thumbnails with live preview](../../images/editor-tools/sprite-sheet-creator-select.gif)
 >
 > _Drag-select frame ranges on sprite sheet thumbnails with instant preview playback_
 
@@ -1317,6 +1317,25 @@ public class AbilityDatabase : ScriptableObject
 - Optional scroll view that keeps large inspectors usable without stealing space from the parent inspector.
 - Preview support for assets that implement `HasPreviewGUI`.
 - Header includes a quick “Ping” button so you can jump to the asset whenever the Project window is visible.
+- Smooth expand/collapse animations with configurable speed.
+
+**Animation Settings:**
+
+Foldout animations are controlled via Unity Helpers Settings (`Edit > Project Settings > Unity Helpers`):
+
+- `InlineEditorFoldoutTweenEnabled` — Enable/disable smooth expand/collapse animations (default: `true`)
+- `InlineEditorFoldoutSpeed` — Animation speed from 2.0 to 12.0 (default: `2.0`)
+
+```csharp
+// Animation applies to foldout modes only
+[WInLineEditor(WInLineEditorMode.FoldoutCollapsed)]  // Animated
+public AbilityConfig animatedFoldout;
+
+[WInLineEditor(WInLineEditorMode.AlwaysExpanded)]    // No animation (always visible)
+public AbilityConfig alwaysVisible;
+```
+
+**See also:** [Inspector Settings Reference](../inspector/inspector-settings.md#inline-editor-settings) for complete settings documentation.
 
 ---
 

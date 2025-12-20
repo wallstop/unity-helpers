@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             private readonly float _padding;
             private readonly float _leftPadding;
             private readonly float _rightPadding;
+            private readonly bool _trackScopeDepth;
             private bool _disposed;
 
             internal WidthPaddingScope(float horizontalPadding)
@@ -20,6 +21,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 _padding = resolved;
                 _leftPadding = split;
                 _rightPadding = resolved - split;
+                _trackScopeDepth = true;
+
+                _scopeDepth++;
 
                 if (_padding <= 0f)
                 {
@@ -40,6 +44,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 _leftPadding = Mathf.Max(0f, leftPadding);
                 _rightPadding = Mathf.Max(0f, rightPadding);
                 float combined = Mathf.Max(0f, horizontalPadding);
+                _trackScopeDepth = true;
                 if (combined <= 0f)
                 {
                     combined = _leftPadding + _rightPadding;
@@ -50,6 +55,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     _padding = 0f;
                     _leftPadding = 0f;
                     _rightPadding = 0f;
+                    _scopeDepth++;
                     return;
                 }
 
@@ -66,6 +72,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 _leftPadding = resolvedLeft;
                 _rightPadding = resolvedRight;
 
+                _scopeDepth++;
                 _totalPadding += _padding;
                 _totalLeftPadding += _leftPadding;
                 _totalRightPadding += _rightPadding;
@@ -73,25 +80,33 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
             public void Dispose()
             {
-                if (_disposed || _padding <= 0f)
+                if (_disposed || !_trackScopeDepth)
                 {
                     return;
                 }
 
                 _disposed = true;
-                _totalPadding = Mathf.Max(0f, _totalPadding - _padding);
-                _totalLeftPadding = Mathf.Max(0f, _totalLeftPadding - _leftPadding);
-                _totalRightPadding = Mathf.Max(0f, _totalRightPadding - _rightPadding);
+
+                if (_padding > 0f || _leftPadding > 0f || _rightPadding > 0f)
+                {
+                    _totalPadding = Mathf.Max(0f, _totalPadding - _padding);
+                    _totalLeftPadding = Mathf.Max(0f, _totalLeftPadding - _leftPadding);
+                    _totalRightPadding = Mathf.Max(0f, _totalRightPadding - _rightPadding);
+                }
+
+                _scopeDepth = Mathf.Max(0, _scopeDepth - 1);
             }
         }
 
         private static float _totalPadding;
         private static float _totalLeftPadding;
         private static float _totalRightPadding;
+        private static int _scopeDepth;
 
         internal static float CurrentHorizontalPadding => _totalPadding;
         internal static float CurrentLeftPadding => _totalLeftPadding;
         internal static float CurrentRightPadding => _totalRightPadding;
+        internal static int CurrentScopeDepth => _scopeDepth;
 
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
         internal static void ResetForTests()
@@ -99,6 +114,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             _totalPadding = 0f;
             _totalLeftPadding = 0f;
             _totalRightPadding = 0f;
+            _scopeDepth = 0;
         }
 
         internal static IDisposable PushContentPadding(float horizontalPadding)
@@ -131,6 +147,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             {
                 adjusted.width = 0f;
             }
+
             return adjusted;
         }
 

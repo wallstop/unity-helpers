@@ -6,6 +6,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
     using System.Collections.Generic;
     using UnityEditor;
+    using UnityEditor.AnimatedValues;
+    using UnityEditorInternal;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
@@ -71,6 +73,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             InspectorHeightInfoCacheEntry
         > InspectorHeightCache = new Dictionary<(int, float), InspectorHeightInfoCacheEntry>();
         private static int _lastInspectorHeightCacheFrame = -1;
+
+        // Animation cache for smooth foldout transitions
+        private static readonly Dictionary<string, AnimBool> FoldoutAnimations = new Dictionary<
+            string,
+            AnimBool
+        >(System.StringComparer.Ordinal);
 
         private sealed class InspectorHeightInfoCacheEntry
         {
@@ -313,7 +321,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 useStandaloneHeader
                 && (inlineAttribute.DrawHeader || mode != WInLineEditorMode.AlwaysExpanded);
             bool foldoutState = GetFoldoutState(property, inlineAttribute, mode);
-            bool showBody = mode == WInLineEditorMode.AlwaysExpanded || foldoutState;
+            bool isAlwaysExpanded = mode == WInLineEditorMode.AlwaysExpanded;
+            bool showBody = isAlwaysExpanded || foldoutState;
 
             float height = 0f;
             if (showHeader)
@@ -321,20 +330,38 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 height += HeaderHeight + Spacing;
             }
 
-            if (!showBody)
+            // Calculate body height - when tweening, we need the full height for animation
+            bool shouldTween = UnityHelpersSettings.ShouldTweenInlineEditorFoldouts();
+            bool canAnimate = !isAlwaysExpanded && shouldTween;
+
+            // If not showing body and not animating, return header-only height
+            if (!showBody && !canAnimate)
             {
                 return height;
             }
 
+            // Calculate the full body height
             InspectorHeightInfo inspectorHeight = ResolveInspectorHeightInfo(
                 value,
                 inlineAttribute,
                 availableWidth
             );
-            height += inspectorHeight.DisplayHeight;
+            float bodyHeight = inspectorHeight.DisplayHeight;
             if (inlineAttribute.DrawPreview)
             {
-                height += Spacing + inlineAttribute.PreviewHeight;
+                bodyHeight += Spacing + inlineAttribute.PreviewHeight;
+            }
+
+            // Apply animation fade to body height
+            if (canAnimate)
+            {
+                string foldoutKey = BuildFoldoutKey(property);
+                float fade = GetFadeProgress(foldoutKey, foldoutState);
+                height += bodyHeight * fade;
+            }
+            else
+            {
+                height += bodyHeight;
             }
 
             return height;
@@ -477,11 +504,44 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 rect.height -= HeaderHeight + Spacing;
             }
 
-            if (!(mode == WInLineEditorMode.AlwaysExpanded || foldoutState))
-            {
-                return;
-            }
+            bool isAlwaysExpanded = mode == WInLineEditorMode.AlwaysExpanded;
+            bool shouldTween = UnityHelpersSettings.ShouldTweenInlineEditorFoldouts();
+            bool canAnimate = !isAlwaysExpanded && shouldTween;
 
+            // Determine if we should show the body content
+            bool showBody = isAlwaysExpanded || foldoutState;
+
+            // When animating, use fade group for smooth transitions
+            if (canAnimate)
+            {
+                float fade = GetFadeProgress(foldoutKey, foldoutState);
+                bool visible = EditorGUILayout.BeginFadeGroup(fade);
+                if (visible)
+                {
+                    DrawInlineInspectorBody(
+                        rect,
+                        property,
+                        inlineAttribute,
+                        value,
+                        inspectorHeight
+                    );
+                }
+                EditorGUILayout.EndFadeGroup();
+            }
+            else if (showBody)
+            {
+                DrawInlineInspectorBody(rect, property, inlineAttribute, value, inspectorHeight);
+            }
+        }
+
+        private static void DrawInlineInspectorBody(
+            Rect rect,
+            SerializedProperty property,
+            WInLineEditorAttribute inlineAttribute,
+            Object value,
+            InspectorHeightInfo inspectorHeight
+        )
+        {
             Editor editor = GetOrCreateEditor(value);
             if (editor == null)
             {
@@ -1362,6 +1422,91 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static void SetFoldoutState(string key, bool value)
         {
             FoldoutStates[key] = value;
+        }
+
+        private static AnimBool GetOrCreateFoldoutAnim(string foldoutKey, bool expanded)
+        {
+            float speed = UnityHelpersSettings.GetInlineEditorFoldoutSpeed();
+
+            if (!FoldoutAnimations.TryGetValue(foldoutKey, out AnimBool anim) || anim == null)
+            {
+                anim = new AnimBool(expanded) { speed = speed };
+                anim.valueChanged.AddListener(RequestRepaint);
+                FoldoutAnimations[foldoutKey] = anim;
+            }
+
+            anim.speed = speed;
+            anim.target = expanded;
+            return anim;
+        }
+
+        private static float GetFadeProgress(string foldoutKey, bool expanded)
+        {
+            if (!UnityHelpersSettings.ShouldTweenInlineEditorFoldouts())
+            {
+                return expanded ? 1f : 0f;
+            }
+
+            AnimBool anim = GetOrCreateFoldoutAnim(foldoutKey, expanded);
+            return anim.faded;
+        }
+
+        private static void RequestRepaint()
+        {
+            InternalEditorUtility.RepaintAllViews();
+        }
+
+        internal static void ClearAnimationCacheForTesting()
+        {
+            foreach (KeyValuePair<string, AnimBool> kvp in FoldoutAnimations)
+            {
+                AnimBool anim = kvp.Value;
+                if (anim != null)
+                {
+                    anim.valueChanged.RemoveListener(RequestRepaint);
+                }
+            }
+            FoldoutAnimations.Clear();
+        }
+
+        /// <summary>
+        /// Test hook to get the number of cached animation entries.
+        /// </summary>
+        internal static int GetAnimationCacheCountForTesting()
+        {
+            return FoldoutAnimations.Count;
+        }
+
+        /// <summary>
+        /// Test hook to check if an animation entry exists for a specific key.
+        /// </summary>
+        internal static bool HasAnimationCacheEntryForTesting(string foldoutKey)
+        {
+            return FoldoutAnimations.ContainsKey(foldoutKey);
+        }
+
+        /// <summary>
+        /// Test hook to get or create a foldout animation for testing purposes.
+        /// </summary>
+        internal static AnimBool GetOrCreateFoldoutAnimForTesting(string foldoutKey, bool expanded)
+        {
+            return GetOrCreateFoldoutAnim(foldoutKey, expanded);
+        }
+
+        /// <summary>
+        /// Test hook to get the fade progress for a foldout.
+        /// </summary>
+        internal static float GetFadeProgressForTesting(string foldoutKey, bool expanded)
+        {
+            return GetFadeProgress(foldoutKey, expanded);
+        }
+
+        /// <summary>
+        /// Test hook to build a foldout key from a serialized property.
+        /// </summary>
+        internal static string BuildFoldoutKeyForTesting(SerializedProperty property)
+        {
+            return BuildFoldoutKey(property);
         }
 
         private static Vector2 GetScrollPosition(string key)

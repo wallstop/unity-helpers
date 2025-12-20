@@ -13,6 +13,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
     using WallstopStudios.UnityHelpers.Editor.Extensions;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
+    using WallstopStudios.UnityHelpers.Settings;
+    using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class UnityHelpersSettingsTests
     {
@@ -529,6 +531,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 UnityHelpersSettings.GetSerializableSortedSetFoldoutSpeed(),
                 Is.EqualTo(UnityHelpersSettings.DefaultFoldoutSpeed)
             );
+            Assert.That(
+                UnityHelpersSettings.GetWGroupFoldoutSpeed(),
+                Is.EqualTo(UnityHelpersSettings.DefaultFoldoutSpeed)
+            );
+            Assert.That(
+                UnityHelpersSettings.GetInlineEditorFoldoutSpeed(),
+                Is.EqualTo(UnityHelpersSettings.DefaultFoldoutSpeed)
+            );
         }
 
         [Test]
@@ -539,6 +549,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableSortedDictionaryFoldouts());
             Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableSetFoldouts());
             Assert.IsTrue(UnityHelpersSettings.ShouldTweenSerializableSortedSetFoldouts());
+            Assert.IsTrue(UnityHelpersSettings.ShouldTweenWGroupFoldouts());
+            Assert.IsTrue(UnityHelpersSettings.ShouldTweenInlineEditorFoldouts());
         }
 
         [Test]
@@ -684,12 +696,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     .SerializedPropertyNames
                     .SerializableSortedSetFoldoutTweenEnabled
             );
+            SerializedProperty wgroupTweenProperty = serialized.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WGroupFoldoutTweenEnabled
+            );
+            SerializedProperty inlineEditorTweenProperty = serialized.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.InlineEditorFoldoutTweenEnabled
+            );
 
             bool originalWButtonValue = wbuttonTweenProperty.boolValue;
             bool originalDictionaryValue = dictionaryTweenProperty.boolValue;
             bool originalSortedValue = sortedDictionaryTweenProperty.boolValue;
             bool originalSetValue = setTweenProperty.boolValue;
             bool originalSortedSetValue = sortedSetTweenProperty.boolValue;
+            bool originalWGroupValue = wgroupTweenProperty.boolValue;
+            bool originalInlineEditorValue = inlineEditorTweenProperty.boolValue;
 
             try
             {
@@ -698,6 +718,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 sortedDictionaryTweenProperty.boolValue = false;
                 setTweenProperty.boolValue = false;
                 sortedSetTweenProperty.boolValue = false;
+                wgroupTweenProperty.boolValue = false;
+                inlineEditorTweenProperty.boolValue = false;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
                 Assert.IsFalse(UnityHelpersSettings.ShouldTweenWButtonFoldouts());
@@ -707,6 +729,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 );
                 Assert.IsFalse(UnityHelpersSettings.ShouldTweenSerializableSetFoldouts());
                 Assert.IsFalse(UnityHelpersSettings.ShouldTweenSerializableSortedSetFoldouts());
+                Assert.IsFalse(UnityHelpersSettings.ShouldTweenWGroupFoldouts());
+                Assert.IsFalse(UnityHelpersSettings.ShouldTweenInlineEditorFoldouts());
             }
             finally
             {
@@ -744,8 +768,128 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                             .SerializableSortedSetFoldoutTweenEnabled
                     )
                     .boolValue = originalSortedSetValue;
+                restore
+                    .FindProperty(
+                        UnityHelpersSettings.SerializedPropertyNames.WGroupFoldoutTweenEnabled
+                    )
+                    .boolValue = originalWGroupValue;
+                restore
+                    .FindProperty(
+                        UnityHelpersSettings.SerializedPropertyNames.InlineEditorFoldoutTweenEnabled
+                    )
+                    .boolValue = originalInlineEditorValue;
                 restore.ApplyModifiedPropertiesWithoutUndo();
                 settings.SaveSettings();
+            }
+        }
+
+        [Test]
+        public void WGroupFoldoutSpeedClampsToBounds()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            float originalSpeed = settings.WGroupFoldoutSpeed;
+
+            try
+            {
+                settings.WGroupFoldoutSpeed = UnityHelpersSettings.MinFoldoutSpeed - 1f;
+                Assert.That(
+                    UnityHelpersSettings.GetWGroupFoldoutSpeed(),
+                    Is.EqualTo(UnityHelpersSettings.MinFoldoutSpeed)
+                );
+
+                settings.WGroupFoldoutSpeed = UnityHelpersSettings.MaxFoldoutSpeed + 10f;
+                Assert.That(
+                    UnityHelpersSettings.GetWGroupFoldoutSpeed(),
+                    Is.EqualTo(UnityHelpersSettings.MaxFoldoutSpeed)
+                );
+
+                float midValue =
+                    (UnityHelpersSettings.MinFoldoutSpeed + UnityHelpersSettings.MaxFoldoutSpeed)
+                    / 2f;
+                settings.WGroupFoldoutSpeed = midValue;
+                Assert.That(
+                    UnityHelpersSettings.GetWGroupFoldoutSpeed(),
+                    Is.EqualTo(midValue).Within(0.001f)
+                );
+            }
+            finally
+            {
+                settings.WGroupFoldoutSpeed = originalSpeed;
+            }
+        }
+
+        [Test]
+        public void InlineEditorFoldoutSpeedClampsToBounds()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            float originalSpeed = settings.InlineEditorFoldoutSpeed;
+
+            try
+            {
+                settings.InlineEditorFoldoutSpeed = UnityHelpersSettings.MinFoldoutSpeed - 1f;
+                Assert.That(
+                    UnityHelpersSettings.GetInlineEditorFoldoutSpeed(),
+                    Is.EqualTo(UnityHelpersSettings.MinFoldoutSpeed)
+                );
+
+                settings.InlineEditorFoldoutSpeed = UnityHelpersSettings.MaxFoldoutSpeed + 10f;
+                Assert.That(
+                    UnityHelpersSettings.GetInlineEditorFoldoutSpeed(),
+                    Is.EqualTo(UnityHelpersSettings.MaxFoldoutSpeed)
+                );
+
+                float midValue =
+                    (UnityHelpersSettings.MinFoldoutSpeed + UnityHelpersSettings.MaxFoldoutSpeed)
+                    / 2f;
+                settings.InlineEditorFoldoutSpeed = midValue;
+                Assert.That(
+                    UnityHelpersSettings.GetInlineEditorFoldoutSpeed(),
+                    Is.EqualTo(midValue).Within(0.001f)
+                );
+            }
+            finally
+            {
+                settings.InlineEditorFoldoutSpeed = originalSpeed;
+            }
+        }
+
+        [Test]
+        public void WGroupFoldoutTweenEnabledPropertyAccessorWorks()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            bool original = settings.WGroupFoldoutTweenEnabled;
+
+            try
+            {
+                settings.WGroupFoldoutTweenEnabled = true;
+                Assert.IsTrue(UnityHelpersSettings.ShouldTweenWGroupFoldouts());
+
+                settings.WGroupFoldoutTweenEnabled = false;
+                Assert.IsFalse(UnityHelpersSettings.ShouldTweenWGroupFoldouts());
+            }
+            finally
+            {
+                settings.WGroupFoldoutTweenEnabled = original;
+            }
+        }
+
+        [Test]
+        public void InlineEditorFoldoutTweenEnabledPropertyAccessorWorks()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            bool original = settings.InlineEditorFoldoutTweenEnabled;
+
+            try
+            {
+                settings.InlineEditorFoldoutTweenEnabled = true;
+                Assert.IsTrue(UnityHelpersSettings.ShouldTweenInlineEditorFoldouts());
+
+                settings.InlineEditorFoldoutTweenEnabled = false;
+                Assert.IsFalse(UnityHelpersSettings.ShouldTweenInlineEditorFoldouts());
+            }
+            finally
+            {
+                settings.InlineEditorFoldoutTweenEnabled = original;
             }
         }
 
@@ -1902,12 +2046,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             "WGroupFoldoutsStartCollapsed"
         )]
         [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.WGroupFoldoutTweenEnabled),
+            "WGroupFoldoutTweenEnabled"
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.WGroupFoldoutSpeed),
+            "WGroupFoldoutSpeed"
+        )]
+        [TestCase(
             nameof(UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsCustomColors),
             "WEnumToggleButtonsCustomColors"
         )]
         [TestCase(
             nameof(UnityHelpersSettings.SerializedPropertyNames.InlineEditorFoldoutBehavior),
             "InlineEditorFoldoutBehavior"
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.InlineEditorFoldoutTweenEnabled),
+            "InlineEditorFoldoutTweenEnabled"
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.InlineEditorFoldoutSpeed),
+            "InlineEditorFoldoutSpeed"
         )]
         [TestCase(
             nameof(UnityHelpersSettings.SerializedPropertyNames.WButtonFoldoutTweenEnabled),
@@ -2040,6 +2200,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     .SerializableSortedSetFoldoutTweenEnabled
             )
         )]
+        [TestCase(nameof(UnityHelpersSettings.SerializedPropertyNames.WGroupFoldoutTweenEnabled))]
+        [TestCase(nameof(UnityHelpersSettings.SerializedPropertyNames.WGroupFoldoutSpeed))]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.InlineEditorFoldoutTweenEnabled)
+        )]
+        [TestCase(nameof(UnityHelpersSettings.SerializedPropertyNames.InlineEditorFoldoutSpeed))]
         public void SerializedPropertyNamesResolvesToSerializedProperty(string constantName)
         {
             Type propertyNamesType = typeof(UnityHelpersSettings.SerializedPropertyNames);
@@ -2097,6 +2263,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     .SerializableSortedSetFoldoutTweenEnabled
             ),
             typeof(bool)
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.WGroupFoldoutTweenEnabled),
+            typeof(bool)
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.WGroupFoldoutSpeed),
+            typeof(float)
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.InlineEditorFoldoutTweenEnabled),
+            typeof(bool)
+        )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.InlineEditorFoldoutSpeed),
+            typeof(float)
         )]
         public void TweenFieldsAreAccessibleViaReflectionWithCorrectType(
             string constantName,
@@ -2341,6 +2523,726 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 $"WEnumToggleButtonsCustomColor should have property '{inactiveTextFieldName}'. "
                     + $"This typically indicates the field was renamed. "
                     + $"Available properties: {GetAvailableRelativeProperties(firstValue)}"
+            );
+        }
+
+        /// <summary>
+        /// Validates that applying buffer settings to the asset persists the values correctly.
+        /// This test ensures that the "Apply To Buffers" operation saves the asset with the configured values.
+        /// </summary>
+        [Test]
+        public void ApplyBufferSettingsSavesAssetWithCorrectValues()
+        {
+            UnityHelpersBufferSettingsAsset asset = Resources.Load<UnityHelpersBufferSettingsAsset>(
+                UnityHelpersBufferSettingsAsset.ResourcePath
+            );
+            if (asset == null)
+            {
+                Assert.Inconclusive(
+                    "UnityHelpersBufferSettingsAsset not found in Resources. "
+                        + "Run the settings UI to create the asset first."
+                );
+                return;
+            }
+
+            float originalQuantization = asset.QuantizationStepSeconds;
+            int originalMaxEntries = asset.MaxDistinctEntries;
+            bool originalUseLru = asset.UseLruEviction;
+            bool originalApplyOnLoad = asset.ApplyOnLoad;
+
+            try
+            {
+                float testQuantization = 0.25f;
+                int testMaxEntries = 128;
+                bool testUseLru = !originalUseLru;
+                bool testApplyOnLoad = !originalApplyOnLoad;
+
+                using (SerializedObject assetSerialized = new(asset))
+                {
+                    SerializedProperty quantizationProperty = assetSerialized.FindProperty(
+                        UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName
+                    );
+                    SerializedProperty maxEntriesProperty = assetSerialized.FindProperty(
+                        UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName
+                    );
+                    SerializedProperty useLruProperty = assetSerialized.FindProperty(
+                        UnityHelpersBufferSettingsAsset.UseLruEvictionPropertyName
+                    );
+                    SerializedProperty applyOnLoadProperty = assetSerialized.FindProperty(
+                        UnityHelpersBufferSettingsAsset.ApplyOnLoadPropertyName
+                    );
+
+                    Assert.IsNotNull(quantizationProperty, "Should find quantization property.");
+                    Assert.IsNotNull(maxEntriesProperty, "Should find max entries property.");
+                    Assert.IsNotNull(useLruProperty, "Should find use LRU property.");
+                    Assert.IsNotNull(applyOnLoadProperty, "Should find apply on load property.");
+
+                    quantizationProperty.floatValue = testQuantization;
+                    maxEntriesProperty.intValue = testMaxEntries;
+                    useLruProperty.boolValue = testUseLru;
+                    applyOnLoadProperty.boolValue = testApplyOnLoad;
+                    assetSerialized.ApplyModifiedPropertiesWithoutUndo();
+                    EditorUtility.SetDirty(asset);
+                    AssetDatabase.SaveAssets();
+                }
+
+                UnityHelpersBufferSettingsAsset reloadedAsset =
+                    AssetDatabase.LoadAssetAtPath<UnityHelpersBufferSettingsAsset>(
+                        UnityHelpersBufferSettingsAsset.AssetPath
+                    );
+                Assert.IsTrue(
+                    reloadedAsset != null,
+                    "Should be able to reload the asset from disk."
+                );
+                Assert.That(
+                    reloadedAsset.QuantizationStepSeconds,
+                    Is.EqualTo(testQuantization),
+                    "Quantization step should be persisted."
+                );
+                Assert.That(
+                    reloadedAsset.MaxDistinctEntries,
+                    Is.EqualTo(testMaxEntries),
+                    "Max distinct entries should be persisted."
+                );
+                Assert.That(
+                    reloadedAsset.UseLruEviction,
+                    Is.EqualTo(testUseLru),
+                    "Use LRU eviction should be persisted."
+                );
+                Assert.That(
+                    reloadedAsset.ApplyOnLoad,
+                    Is.EqualTo(testApplyOnLoad),
+                    "Apply on load should be persisted."
+                );
+            }
+            finally
+            {
+                using SerializedObject restoreSerialized = new(asset);
+                SerializedProperty quantizationProperty = restoreSerialized.FindProperty(
+                    UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName
+                );
+                SerializedProperty maxEntriesProperty = restoreSerialized.FindProperty(
+                    UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName
+                );
+                SerializedProperty useLruProperty = restoreSerialized.FindProperty(
+                    UnityHelpersBufferSettingsAsset.UseLruEvictionPropertyName
+                );
+                SerializedProperty applyOnLoadProperty = restoreSerialized.FindProperty(
+                    UnityHelpersBufferSettingsAsset.ApplyOnLoadPropertyName
+                );
+                quantizationProperty.floatValue = originalQuantization;
+                maxEntriesProperty.intValue = originalMaxEntries;
+                useLruProperty.boolValue = originalUseLru;
+                applyOnLoadProperty.boolValue = originalApplyOnLoad;
+                restoreSerialized.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(asset);
+                AssetDatabase.SaveAssets();
+            }
+        }
+
+        /// <summary>
+        /// Validates that the buffer settings asset correctly applies values to the Buffers runtime class.
+        /// </summary>
+        [Test]
+        public void BufferSettingsAssetAppliesValuesToRuntime()
+        {
+            UnityHelpersBufferSettingsAsset asset = Resources.Load<UnityHelpersBufferSettingsAsset>(
+                UnityHelpersBufferSettingsAsset.ResourcePath
+            );
+            if (asset == null)
+            {
+                Assert.Inconclusive(
+                    "UnityHelpersBufferSettingsAsset not found in Resources. "
+                        + "Run the settings UI to create the asset first."
+                );
+                return;
+            }
+
+            float originalRuntimeQuantization = Buffers.WaitInstructionQuantizationStepSeconds;
+            int originalRuntimeMaxEntries = Buffers.WaitInstructionMaxDistinctEntries;
+            bool originalRuntimeUseLru = Buffers.WaitInstructionUseLruEviction;
+
+            float originalAssetQuantization = asset.QuantizationStepSeconds;
+            int originalAssetMaxEntries = asset.MaxDistinctEntries;
+            bool originalAssetUseLru = asset.UseLruEviction;
+
+            try
+            {
+                float testQuantization = 0.5f;
+                int testMaxEntries = 256;
+                bool testUseLru = true;
+
+                using (SerializedObject assetSerialized = new(asset))
+                {
+                    assetSerialized
+                        .FindProperty(
+                            UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName
+                        )
+                        .floatValue = testQuantization;
+                    assetSerialized
+                        .FindProperty(
+                            UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName
+                        )
+                        .intValue = testMaxEntries;
+                    assetSerialized
+                        .FindProperty(UnityHelpersBufferSettingsAsset.UseLruEvictionPropertyName)
+                        .boolValue = testUseLru;
+                    assetSerialized.ApplyModifiedPropertiesWithoutUndo();
+                }
+
+                asset.ApplyToBuffers();
+
+                Assert.That(
+                    Buffers.WaitInstructionQuantizationStepSeconds,
+                    Is.EqualTo(testQuantization),
+                    "Runtime quantization should match asset value after ApplyToBuffers."
+                );
+                Assert.That(
+                    Buffers.WaitInstructionMaxDistinctEntries,
+                    Is.EqualTo(testMaxEntries),
+                    "Runtime max entries should match asset value after ApplyToBuffers."
+                );
+                Assert.That(
+                    Buffers.WaitInstructionUseLruEviction,
+                    Is.EqualTo(testUseLru),
+                    "Runtime use LRU should match asset value after ApplyToBuffers."
+                );
+            }
+            finally
+            {
+                Buffers.WaitInstructionQuantizationStepSeconds = originalRuntimeQuantization;
+                Buffers.WaitInstructionMaxDistinctEntries = originalRuntimeMaxEntries;
+                Buffers.WaitInstructionUseLruEviction = originalRuntimeUseLru;
+
+                using SerializedObject restoreSerialized = new(asset);
+                restoreSerialized
+                    .FindProperty(
+                        UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName
+                    )
+                    .floatValue = originalAssetQuantization;
+                restoreSerialized
+                    .FindProperty(UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName)
+                    .intValue = originalAssetMaxEntries;
+                restoreSerialized
+                    .FindProperty(UnityHelpersBufferSettingsAsset.UseLruEvictionPropertyName)
+                    .boolValue = originalAssetUseLru;
+                restoreSerialized.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        /// <summary>
+        /// Validates that the buffer settings asset correctly syncs values from the Buffers runtime class.
+        /// </summary>
+        [Test]
+        public void BufferSettingsAssetSyncsFromRuntime()
+        {
+            UnityHelpersBufferSettingsAsset asset = Resources.Load<UnityHelpersBufferSettingsAsset>(
+                UnityHelpersBufferSettingsAsset.ResourcePath
+            );
+            if (asset == null)
+            {
+                Assert.Inconclusive(
+                    "UnityHelpersBufferSettingsAsset not found in Resources. "
+                        + "Run the settings UI to create the asset first."
+                );
+                return;
+            }
+
+            float originalRuntimeQuantization = Buffers.WaitInstructionQuantizationStepSeconds;
+            int originalRuntimeMaxEntries = Buffers.WaitInstructionMaxDistinctEntries;
+            bool originalRuntimeUseLru = Buffers.WaitInstructionUseLruEviction;
+
+            float originalAssetQuantization = asset.QuantizationStepSeconds;
+            int originalAssetMaxEntries = asset.MaxDistinctEntries;
+            bool originalAssetUseLru = asset.UseLruEviction;
+
+            try
+            {
+                float testQuantization = 0.75f;
+                int testMaxEntries = 1024;
+                bool testUseLru = true;
+
+                Buffers.WaitInstructionQuantizationStepSeconds = testQuantization;
+                Buffers.WaitInstructionMaxDistinctEntries = testMaxEntries;
+                Buffers.WaitInstructionUseLruEviction = testUseLru;
+
+                asset.SyncFromRuntime();
+
+                Assert.That(
+                    asset.QuantizationStepSeconds,
+                    Is.EqualTo(testQuantization),
+                    "Asset quantization should match runtime value after SyncFromRuntime."
+                );
+                Assert.That(
+                    asset.MaxDistinctEntries,
+                    Is.EqualTo(testMaxEntries),
+                    "Asset max entries should match runtime value after SyncFromRuntime."
+                );
+                Assert.That(
+                    asset.UseLruEviction,
+                    Is.EqualTo(testUseLru),
+                    "Asset use LRU should match runtime value after SyncFromRuntime."
+                );
+            }
+            finally
+            {
+                Buffers.WaitInstructionQuantizationStepSeconds = originalRuntimeQuantization;
+                Buffers.WaitInstructionMaxDistinctEntries = originalRuntimeMaxEntries;
+                Buffers.WaitInstructionUseLruEviction = originalRuntimeUseLru;
+
+                using SerializedObject restoreSerialized = new(asset);
+                restoreSerialized
+                    .FindProperty(
+                        UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName
+                    )
+                    .floatValue = originalAssetQuantization;
+                restoreSerialized
+                    .FindProperty(UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName)
+                    .intValue = originalAssetMaxEntries;
+                restoreSerialized
+                    .FindProperty(UnityHelpersBufferSettingsAsset.UseLruEvictionPropertyName)
+                    .boolValue = originalAssetUseLru;
+                restoreSerialized.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        /// <summary>
+        /// Validates that buffer settings quantization sanitization handles edge cases correctly.
+        /// </summary>
+        [TestCase(0f, 0f, Description = "Zero should remain zero (disabled).")]
+        [TestCase(-1f, 0f, Description = "Negative values should be sanitized to zero.")]
+        [TestCase(float.NaN, 0f, Description = "NaN should be sanitized to zero.")]
+        [TestCase(
+            float.PositiveInfinity,
+            0f,
+            Description = "Positive infinity should be sanitized to zero."
+        )]
+        [TestCase(
+            float.NegativeInfinity,
+            0f,
+            Description = "Negative infinity should be sanitized to zero."
+        )]
+        [TestCase(0.001f, 0.001f, Description = "Small positive values should be preserved.")]
+        [TestCase(1.5f, 1.5f, Description = "Normal positive values should be preserved.")]
+        public void BufferSettingsQuantizationSanitizesEdgeCases(float input, float expectedOutput)
+        {
+            UnityHelpersBufferSettingsAsset asset = Resources.Load<UnityHelpersBufferSettingsAsset>(
+                UnityHelpersBufferSettingsAsset.ResourcePath
+            );
+            if (asset == null)
+            {
+                Assert.Inconclusive(
+                    "UnityHelpersBufferSettingsAsset not found in Resources. "
+                        + "Run the settings UI to create the asset first."
+                );
+                return;
+            }
+
+            float originalQuantization = asset.QuantizationStepSeconds;
+
+            try
+            {
+                using SerializedObject assetSerialized = new(asset);
+                assetSerialized
+                    .FindProperty(
+                        UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName
+                    )
+                    .floatValue = input;
+                assetSerialized.ApplyModifiedPropertiesWithoutUndo();
+
+                float sanitizedValue = asset.QuantizationStepSeconds;
+
+                Assert.That(
+                    sanitizedValue,
+                    Is.EqualTo(expectedOutput),
+                    $"Input {input} should be sanitized to {expectedOutput}."
+                );
+            }
+            finally
+            {
+                using SerializedObject restoreSerialized = new(asset);
+                restoreSerialized
+                    .FindProperty(
+                        UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName
+                    )
+                    .floatValue = originalQuantization;
+                restoreSerialized.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        /// <summary>
+        /// Validates that buffer settings max distinct entries sanitization handles edge cases correctly.
+        /// </summary>
+        [TestCase(0, 0, Description = "Zero should remain zero (unbounded).")]
+        [TestCase(-1, 0, Description = "Negative values should be sanitized to zero.")]
+        [TestCase(-100, 0, Description = "Large negative values should be sanitized to zero.")]
+        [TestCase(1, 1, Description = "Minimum positive values should be preserved.")]
+        [TestCase(512, 512, Description = "Default value should be preserved.")]
+        [TestCase(10000, 10000, Description = "Large positive values should be preserved.")]
+        public void BufferSettingsMaxDistinctEntriesSanitizesEdgeCases(
+            int input,
+            int expectedOutput
+        )
+        {
+            UnityHelpersBufferSettingsAsset asset = Resources.Load<UnityHelpersBufferSettingsAsset>(
+                UnityHelpersBufferSettingsAsset.ResourcePath
+            );
+            if (asset == null)
+            {
+                Assert.Inconclusive(
+                    "UnityHelpersBufferSettingsAsset not found in Resources. "
+                        + "Run the settings UI to create the asset first."
+                );
+                return;
+            }
+
+            int originalMaxEntries = asset.MaxDistinctEntries;
+
+            try
+            {
+                using SerializedObject assetSerialized = new(asset);
+                assetSerialized
+                    .FindProperty(UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName)
+                    .intValue = input;
+                assetSerialized.ApplyModifiedPropertiesWithoutUndo();
+
+                int sanitizedValue = asset.MaxDistinctEntries;
+
+                Assert.That(
+                    sanitizedValue,
+                    Is.EqualTo(expectedOutput),
+                    $"Input {input} should be sanitized to {expectedOutput}."
+                );
+            }
+            finally
+            {
+                using SerializedObject restoreSerialized = new(asset);
+                restoreSerialized
+                    .FindProperty(UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName)
+                    .intValue = originalMaxEntries;
+                restoreSerialized.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        /// <summary>
+        /// Validates that the bootstrap initialization applies settings when ApplyOnLoad is true.
+        /// This test simulates the bootstrap behavior without actually triggering domain reload.
+        /// </summary>
+        [Test]
+        public void BufferSettingsBootstrapAppliesSettingsWhenApplyOnLoadIsTrue()
+        {
+            UnityHelpersBufferSettingsAsset asset = Resources.Load<UnityHelpersBufferSettingsAsset>(
+                UnityHelpersBufferSettingsAsset.ResourcePath
+            );
+            if (asset == null)
+            {
+                Assert.Inconclusive(
+                    "UnityHelpersBufferSettingsAsset not found in Resources. "
+                        + "Run the settings UI to create the asset first."
+                );
+                return;
+            }
+
+            float originalRuntimeQuantization = Buffers.WaitInstructionQuantizationStepSeconds;
+            int originalRuntimeMaxEntries = Buffers.WaitInstructionMaxDistinctEntries;
+            bool originalRuntimeUseLru = Buffers.WaitInstructionUseLruEviction;
+
+            float originalAssetQuantization = asset.QuantizationStepSeconds;
+            int originalAssetMaxEntries = asset.MaxDistinctEntries;
+            bool originalAssetUseLru = asset.UseLruEviction;
+            bool originalApplyOnLoad = asset.ApplyOnLoad;
+
+            try
+            {
+                float testQuantization = 0.33f;
+                int testMaxEntries = 64;
+                bool testUseLru = true;
+
+                using (SerializedObject assetSerialized = new(asset))
+                {
+                    assetSerialized
+                        .FindProperty(
+                            UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName
+                        )
+                        .floatValue = testQuantization;
+                    assetSerialized
+                        .FindProperty(
+                            UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName
+                        )
+                        .intValue = testMaxEntries;
+                    assetSerialized
+                        .FindProperty(UnityHelpersBufferSettingsAsset.UseLruEvictionPropertyName)
+                        .boolValue = testUseLru;
+                    assetSerialized
+                        .FindProperty(UnityHelpersBufferSettingsAsset.ApplyOnLoadPropertyName)
+                        .boolValue = true;
+                    assetSerialized.ApplyModifiedPropertiesWithoutUndo();
+                }
+
+                Buffers.WaitInstructionQuantizationStepSeconds = 0f;
+                Buffers.WaitInstructionMaxDistinctEntries = 999;
+                Buffers.WaitInstructionUseLruEviction = false;
+
+                UnityHelpersBufferSettingsAsset loadedAsset =
+                    Resources.Load<UnityHelpersBufferSettingsAsset>(
+                        UnityHelpersBufferSettingsAsset.ResourcePath
+                    );
+                Assert.IsTrue(loadedAsset != null, "Should be able to load asset from Resources.");
+
+                if (loadedAsset.ApplyOnLoad)
+                {
+                    loadedAsset.ApplyToBuffers();
+                }
+
+                Assert.That(
+                    Buffers.WaitInstructionQuantizationStepSeconds,
+                    Is.EqualTo(testQuantization),
+                    "Runtime quantization should be applied from asset when ApplyOnLoad is true."
+                );
+                Assert.That(
+                    Buffers.WaitInstructionMaxDistinctEntries,
+                    Is.EqualTo(testMaxEntries),
+                    "Runtime max entries should be applied from asset when ApplyOnLoad is true."
+                );
+                Assert.That(
+                    Buffers.WaitInstructionUseLruEviction,
+                    Is.EqualTo(testUseLru),
+                    "Runtime use LRU should be applied from asset when ApplyOnLoad is true."
+                );
+            }
+            finally
+            {
+                Buffers.WaitInstructionQuantizationStepSeconds = originalRuntimeQuantization;
+                Buffers.WaitInstructionMaxDistinctEntries = originalRuntimeMaxEntries;
+                Buffers.WaitInstructionUseLruEviction = originalRuntimeUseLru;
+
+                using SerializedObject restoreSerialized = new(asset);
+                restoreSerialized
+                    .FindProperty(
+                        UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName
+                    )
+                    .floatValue = originalAssetQuantization;
+                restoreSerialized
+                    .FindProperty(UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName)
+                    .intValue = originalAssetMaxEntries;
+                restoreSerialized
+                    .FindProperty(UnityHelpersBufferSettingsAsset.UseLruEvictionPropertyName)
+                    .boolValue = originalAssetUseLru;
+                restoreSerialized
+                    .FindProperty(UnityHelpersBufferSettingsAsset.ApplyOnLoadPropertyName)
+                    .boolValue = originalApplyOnLoad;
+                restoreSerialized.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        /// <summary>
+        /// Validates that the bootstrap initialization does NOT apply settings when ApplyOnLoad is false.
+        /// </summary>
+        [Test]
+        public void BufferSettingsBootstrapSkipsApplicationWhenApplyOnLoadIsFalse()
+        {
+            UnityHelpersBufferSettingsAsset asset = Resources.Load<UnityHelpersBufferSettingsAsset>(
+                UnityHelpersBufferSettingsAsset.ResourcePath
+            );
+            if (asset == null)
+            {
+                Assert.Inconclusive(
+                    "UnityHelpersBufferSettingsAsset not found in Resources. "
+                        + "Run the settings UI to create the asset first."
+                );
+                return;
+            }
+
+            float originalRuntimeQuantization = Buffers.WaitInstructionQuantizationStepSeconds;
+            int originalRuntimeMaxEntries = Buffers.WaitInstructionMaxDistinctEntries;
+            bool originalRuntimeUseLru = Buffers.WaitInstructionUseLruEviction;
+
+            float originalAssetQuantization = asset.QuantizationStepSeconds;
+            int originalAssetMaxEntries = asset.MaxDistinctEntries;
+            bool originalAssetUseLru = asset.UseLruEviction;
+            bool originalApplyOnLoad = asset.ApplyOnLoad;
+
+            try
+            {
+                float assetQuantization = 0.99f;
+                int assetMaxEntries = 77;
+                bool assetUseLru = true;
+
+                float runtimeQuantization = 0.11f;
+                int runtimeMaxEntries = 222;
+                bool runtimeUseLru = false;
+
+                using (SerializedObject assetSerialized = new(asset))
+                {
+                    assetSerialized
+                        .FindProperty(
+                            UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName
+                        )
+                        .floatValue = assetQuantization;
+                    assetSerialized
+                        .FindProperty(
+                            UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName
+                        )
+                        .intValue = assetMaxEntries;
+                    assetSerialized
+                        .FindProperty(UnityHelpersBufferSettingsAsset.UseLruEvictionPropertyName)
+                        .boolValue = assetUseLru;
+                    assetSerialized
+                        .FindProperty(UnityHelpersBufferSettingsAsset.ApplyOnLoadPropertyName)
+                        .boolValue = false;
+                    assetSerialized.ApplyModifiedPropertiesWithoutUndo();
+                }
+
+                Buffers.WaitInstructionQuantizationStepSeconds = runtimeQuantization;
+                Buffers.WaitInstructionMaxDistinctEntries = runtimeMaxEntries;
+                Buffers.WaitInstructionUseLruEviction = runtimeUseLru;
+
+                UnityHelpersBufferSettingsAsset loadedAsset =
+                    Resources.Load<UnityHelpersBufferSettingsAsset>(
+                        UnityHelpersBufferSettingsAsset.ResourcePath
+                    );
+                Assert.IsTrue(loadedAsset != null, "Should be able to load asset from Resources.");
+
+                if (loadedAsset.ApplyOnLoad)
+                {
+                    loadedAsset.ApplyToBuffers();
+                }
+
+                Assert.That(
+                    Buffers.WaitInstructionQuantizationStepSeconds,
+                    Is.EqualTo(runtimeQuantization),
+                    "Runtime quantization should remain unchanged when ApplyOnLoad is false."
+                );
+                Assert.That(
+                    Buffers.WaitInstructionMaxDistinctEntries,
+                    Is.EqualTo(runtimeMaxEntries),
+                    "Runtime max entries should remain unchanged when ApplyOnLoad is false."
+                );
+                Assert.That(
+                    Buffers.WaitInstructionUseLruEviction,
+                    Is.EqualTo(runtimeUseLru),
+                    "Runtime use LRU should remain unchanged when ApplyOnLoad is false."
+                );
+            }
+            finally
+            {
+                Buffers.WaitInstructionQuantizationStepSeconds = originalRuntimeQuantization;
+                Buffers.WaitInstructionMaxDistinctEntries = originalRuntimeMaxEntries;
+                Buffers.WaitInstructionUseLruEviction = originalRuntimeUseLru;
+
+                using SerializedObject restoreSerialized = new(asset);
+                restoreSerialized
+                    .FindProperty(
+                        UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName
+                    )
+                    .floatValue = originalAssetQuantization;
+                restoreSerialized
+                    .FindProperty(UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName)
+                    .intValue = originalAssetMaxEntries;
+                restoreSerialized
+                    .FindProperty(UnityHelpersBufferSettingsAsset.UseLruEvictionPropertyName)
+                    .boolValue = originalAssetUseLru;
+                restoreSerialized
+                    .FindProperty(UnityHelpersBufferSettingsAsset.ApplyOnLoadPropertyName)
+                    .boolValue = originalApplyOnLoad;
+                restoreSerialized.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        /// <summary>
+        /// Validates that the buffer settings asset resource path constant matches expected structure.
+        /// </summary>
+        [Test]
+        public void BufferSettingsAssetResourcePathIsValid()
+        {
+            Assert.IsFalse(
+                string.IsNullOrEmpty(UnityHelpersBufferSettingsAsset.ResourcePath),
+                "Resource path should not be null or empty."
+            );
+            Assert.IsFalse(
+                UnityHelpersBufferSettingsAsset.ResourcePath.EndsWith(".asset"),
+                "Resource path should not include the .asset extension for Resources.Load."
+            );
+            Assert.IsTrue(
+                UnityHelpersBufferSettingsAsset.ResourcePath.Contains("Wallstop Studios"),
+                "Resource path should be organized under Wallstop Studios folder."
+            );
+        }
+
+        /// <summary>
+        /// Validates that the buffer settings asset asset path constant is properly formed for AssetDatabase.
+        /// </summary>
+        [Test]
+        public void BufferSettingsAssetAssetPathIsValid()
+        {
+            Assert.IsFalse(
+                string.IsNullOrEmpty(UnityHelpersBufferSettingsAsset.AssetPath),
+                "Asset path should not be null or empty."
+            );
+            Assert.IsTrue(
+                UnityHelpersBufferSettingsAsset.AssetPath.StartsWith("Assets/"),
+                "Asset path should start with Assets/ for AssetDatabase operations."
+            );
+            Assert.IsTrue(
+                UnityHelpersBufferSettingsAsset.AssetPath.EndsWith(".asset"),
+                "Asset path should end with .asset extension."
+            );
+            Assert.IsTrue(
+                UnityHelpersBufferSettingsAsset.AssetPath.Contains("Resources/"),
+                "Asset path should be under Resources folder for runtime loading."
+            );
+        }
+
+        /// <summary>
+        /// Validates that the buffer settings property name constants match actual field names.
+        /// </summary>
+        [Test]
+        public void BufferSettingsPropertyNameConstantsMatchFields()
+        {
+            UnityHelpersBufferSettingsAsset asset = Resources.Load<UnityHelpersBufferSettingsAsset>(
+                UnityHelpersBufferSettingsAsset.ResourcePath
+            );
+            if (asset == null)
+            {
+                Assert.Inconclusive(
+                    "UnityHelpersBufferSettingsAsset not found in Resources. "
+                        + "Run the settings UI to create the asset first."
+                );
+                return;
+            }
+
+            using SerializedObject serialized = new(asset);
+
+            SerializedProperty applyOnLoadProperty = serialized.FindProperty(
+                UnityHelpersBufferSettingsAsset.ApplyOnLoadPropertyName
+            );
+            Assert.IsNotNull(
+                applyOnLoadProperty,
+                $"Property '{UnityHelpersBufferSettingsAsset.ApplyOnLoadPropertyName}' should exist on the asset."
+            );
+
+            SerializedProperty quantizationProperty = serialized.FindProperty(
+                UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName
+            );
+            Assert.IsNotNull(
+                quantizationProperty,
+                $"Property '{UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName}' should exist on the asset."
+            );
+
+            SerializedProperty maxEntriesProperty = serialized.FindProperty(
+                UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName
+            );
+            Assert.IsNotNull(
+                maxEntriesProperty,
+                $"Property '{UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName}' should exist on the asset."
+            );
+
+            SerializedProperty useLruProperty = serialized.FindProperty(
+                UnityHelpersBufferSettingsAsset.UseLruEvictionPropertyName
+            );
+            Assert.IsNotNull(
+                useLruProperty,
+                $"Property '{UnityHelpersBufferSettingsAsset.UseLruEvictionPropertyName}' should exist on the asset."
             );
         }
 

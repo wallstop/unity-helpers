@@ -26,6 +26,26 @@ function Get-GitRepositoryInfo {
     }
 }
 
+function Wait-ForGitIndexLock {
+    param(
+        [string]$IndexLockPath,
+        [int]$MaxWaitMilliseconds = 30000,
+        [int]$PollIntervalMilliseconds = 100
+    )
+
+    if (-not $IndexLockPath) {
+        return $true
+    }
+
+    $elapsed = 0
+    while ((Test-Path -LiteralPath $IndexLockPath) -and $elapsed -lt $MaxWaitMilliseconds) {
+        Start-Sleep -Milliseconds $PollIntervalMilliseconds
+        $elapsed += $PollIntervalMilliseconds
+    }
+
+    return -not (Test-Path -LiteralPath $IndexLockPath)
+}
+
 function Get-StagedPathsForGlobs {
     param(
         [string[]]$DefaultPaths,
@@ -71,8 +91,9 @@ function Invoke-GitAddWithRetry {
     param(
         [string[]]$Items,
         [string]$IndexLockPath,
-        [int]$MaxAttempts = 10,
-        [int]$InitialDelayMilliseconds = 200
+        [int]$MaxAttempts = 20,
+        [int]$InitialDelayMilliseconds = 100,
+        [int]$MaxDelayMilliseconds = 2000
     )
 
     if (-not $Items -or $Items.Count -eq 0) {
@@ -83,14 +104,28 @@ function Invoke-GitAddWithRetry {
     $gitArgs += $Items
 
     for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        # Wait for any existing lock to be released before attempting
+        if ($IndexLockPath -and (Test-Path -LiteralPath $IndexLockPath)) {
+            $lockCleared = Wait-ForGitIndexLock -IndexLockPath $IndexLockPath -MaxWaitMilliseconds 5000
+            if (-not $lockCleared) {
+                # Lock still exists after waiting, but try anyway
+                Write-Warning "git index.lock still exists after waiting; attempting git add anyway (attempt $attempt/$MaxAttempts)"
+            }
+        }
+
         & git @gitArgs
         if ($LASTEXITCODE -eq 0) {
             return 0
         }
 
         $lockExists = $IndexLockPath -and (Test-Path -LiteralPath $IndexLockPath)
-        if ($LASTEXITCODE -eq 128 -and $lockExists -and $attempt -lt $MaxAttempts) {
-            Start-Sleep -Milliseconds ($InitialDelayMilliseconds * $attempt)
+        if ($LASTEXITCODE -eq 128 -and $attempt -lt $MaxAttempts) {
+            # Exponential backoff with jitter, capped at MaxDelayMilliseconds
+            $baseDelay = [Math]::Min($InitialDelayMilliseconds * [Math]::Pow(1.5, $attempt - 1), $MaxDelayMilliseconds)
+            $jitter = Get-Random -Minimum 0 -Maximum ([int]($baseDelay * 0.3))
+            $delay = [int]$baseDelay + $jitter
+            Write-Warning "git add failed (exit code 128), retrying in ${delay}ms (attempt $attempt/$MaxAttempts)..."
+            Start-Sleep -Milliseconds $delay
             continue
         }
 
@@ -99,3 +134,4 @@ function Invoke-GitAddWithRetry {
 
     return 128
 }
+
