@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEditor;
     using UnityEditor.AnimatedValues;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;

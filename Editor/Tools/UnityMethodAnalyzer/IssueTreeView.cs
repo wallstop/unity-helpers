@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
 #if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using UnityEditor;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using UnityEditor.IMGUI.Controls;

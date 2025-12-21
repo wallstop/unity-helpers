@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
     using System;
     using System.Collections.Generic;
     using System.IO;
-    using System.Linq;
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.Serialization;
@@ -57,9 +56,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const float MinDetectAssetChangeLoopWindowSeconds = 1f;
         public const float MaxDetectAssetChangeLoopWindowSeconds = 120f;
         private static readonly Color DefaultLightThemeGroupBackground = new(
-            0.90f,
-            0.90f,
-            0.90f,
+            0.82f,
+            0.82f,
+            0.82f,
             1f
         );
         private static readonly Color DefaultDarkThemeGroupBackground = new(

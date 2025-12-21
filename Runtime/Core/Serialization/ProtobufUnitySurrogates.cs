@@ -1,11 +1,9 @@
 namespace WallstopStudios.UnityHelpers.Core.Serialization
 {
     using System;
-    using System.Collections.Generic;
     using ProtoBuf;
     using ProtoBuf.Meta;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 
     // Surrogates allow protobuf-net to serialize Unity structs we cannot annotate directly.
     [ProtoContract]

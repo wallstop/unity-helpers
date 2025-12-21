@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 {
 #if UNITY_EDITOR
     using System.Collections.Generic;
-    using UnityEditor;
     using UnityEditor.AnimatedValues;
     using UnityEditorInternal;
     using WallstopStudios.UnityHelpers.Core.Helper;

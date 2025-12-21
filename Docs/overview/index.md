@@ -217,7 +217,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Math & Extensions](../features/utilities/math-and-extensions.md#geometry) | [README](../../README.md#core-math--extensions)
 
 **llms.txt** - LLM-friendly documentation for AI assistants
-→ [llms.txt](../../llms.txt): Structured documentation following the llmstxt.org specification for AI/LLM consumption
+→ [llms.txt](../../llms.txt)
 
 **LZMA Compression** - Compression utilities
 → [README - Serialization](../../README.md#serialization)
@@ -319,10 +319,10 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 ## R
 
 **Random Extensions** - Random vectors, colors, weighted selection, subset sampling
-→ [Math & Extensions](../features/utilities/math-and-extensions.md#random-generators)
+→ [Random Generators Guide](../features/utilities/random-generators.md)
 
 **Random Generators** - 15 high-performance PRNG implementations
-→ [README - Random Generators](../../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
+→ [Random Generators Guide](../features/utilities/random-generators.md) | [Random Performance](../performance/random-performance.md)
 
 **Range<T>** - Inclusive/exclusive range helper
 → [Math & Extensions](../features/utilities/math-and-extensions.md#geometry)
@@ -334,11 +334,10 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Math & Extensions](../features/utilities/math-and-extensions.md#unity-extensions)
 
 **Reflection Helpers** - High-performance cached reflection
-→ [README - API Index](../../README.md#api-index) | [Reflection Helpers](../features/utilities/reflection-helpers.md)
+→ [Reflection Helpers](../features/utilities/reflection-helpers.md)
 
 **Relational Components** - Auto-wire hierarchy components
-→ [Relational Components Guide](../features/relational-components/relational-components.md) | [README](../../README.md#component-attributes)
-→ [Relational Component Performance Benchmarks](../performance/relational-components-performance.md)
+→ [Relational Components Guide](../features/relational-components/relational-components.md) | [Relational Component Performance Benchmarks](../performance/relational-components-performance.md)
 
 **RTree2D** - 2D R-tree for bounding boxes
 → [2D Spatial Trees](../features/spatial/spatial-trees-2d-guide.md) | [2D Performance](../performance/spatial-tree-2d-performance.md)
@@ -387,7 +386,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Data Structures](../features/utilities/data-structures.md#sparse-set) | [README](../../README.md#data-structures)
 
 **Spatial Hash 2D/3D** - Grid-based spatial structure
-→ [README - Choosing Spatial Structures](../../README.md#choosing-spatial-structures)
+→ [2D Spatial Trees](../features/spatial/spatial-trees-2d-guide.md) | [3D Spatial Trees](../features/spatial/spatial-trees-3d-guide.md)
 
 **Spatial Trees** - Fast spatial queries (QuadTree, KdTree, RTree, OctTree)
 → [2D Guide](../features/spatial/spatial-trees-2d-guide.md) | [3D Guide](../features/spatial/spatial-trees-3d-guide.md)
@@ -452,7 +451,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 ## U
 
 **Unity Extensions** - Rect/Bounds, Camera, Rigidbody2D, Grid helpers
-→ [Math & Extensions](../features/utilities/math-and-extensions.md#unity-extensions) | [README - API Index](../../README.md#api-index)
+→ [Math & Extensions](../features/utilities/math-and-extensions.md#unity-extensions)
 
 **UnityMainThreadDispatcher** - Execute work on main thread from background threads
 → [Helper Utilities](../features/utilities/helper-utilities.md#threading)
@@ -462,17 +461,17 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 ## V
 
 **ValidateAssignment** - Inspector validation attribute
-→ [README - Component Attributes](../../README.md#component-attributes)
+→ [Relational Components](../features/relational-components/relational-components.md)
 
 **Vector Extensions** - Random vectors, noise detection
-→ [README - API Index](../../README.md#api-index)
+→ [Math & Extensions](../features/utilities/math-and-extensions.md#random-generators)
 
 ---
 
 ## W
 
 **WallMath** - Positive modulo, wrapped arithmetic
-→ [Math & Extensions](../features/utilities/math-and-extensions.md#numeric-helpers) | [README - API Index](../../README.md#api-index)
+→ [Math & Extensions](../features/utilities/math-and-extensions.md#numeric-helpers)
 
 **WallstopArrayPool<T>** - Pooled array rental
 → [README - Buffering Pattern](../../README.md#buffering-pattern)

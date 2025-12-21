@@ -10,7 +10,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
-    using Object = UnityEngine.Object;
 
     public sealed class SerializableSetPropertyDrawerUndoTests : CommonTestBase
     {

@@ -30,7 +30,7 @@ var points = new List<VfxPoint>(/* fill with positions */);
 
 // Build trees from points
 var oct = new OctTree3D<VfxPoint>(points, p => p.pos);
-var kd  = new KDTree3D<VfxPoint>(points, p => p.pos); // balanced by default
+var kd  = new KdTree3D<VfxPoint>(points, p => p.pos); // balanced by default
 
 // Range query (sphere)
 var inRange = new List<VfxPoint>();

@@ -215,7 +215,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                             serializedObject,
                             propertyLookup,
                             overrideDrawer,
-                            allowHeader
+                            allowHeader,
+                            palette
                         );
                     }
                     EditorGUILayout.EndFadeGroup();
@@ -227,7 +228,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                         serializedObject,
                         propertyLookup,
                         overrideDrawer,
-                        allowHeader
+                        allowHeader,
+                        palette
                     );
                 }
             }
@@ -328,7 +330,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             SerializedObject serializedObject,
             IReadOnlyDictionary<string, SerializedProperty> propertyLookup,
             PropertyOverride overrideDrawer,
-            bool allowHeader
+            bool allowHeader,
+            UnityHelpersSettings.WGroupPaletteEntry palette
         )
         {
             if (allowHeader)
@@ -367,34 +370,41 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 {
                     AddContentPadding();
                 }
-                for (int index = 0; index < propertyCount; index++)
+
+                // Apply comprehensive color overrides for cross-theme palette support
+                using (var colorScope = new WGroupColorScope(palette))
                 {
-                    string propertyPath = propertyPaths[index];
-                    SerializedProperty property = ResolveProperty(
-                        serializedObject,
-                        propertyPath,
-                        propertyLookup
-                    );
-                    if (property == null)
+                    for (int index = 0; index < propertyCount; index++)
                     {
-                        continue;
+                        string propertyPath = propertyPaths[index];
+                        SerializedProperty property = ResolveProperty(
+                            serializedObject,
+                            propertyPath,
+                            propertyLookup
+                        );
+                        if (property == null)
+                        {
+                            continue;
+                        }
+
+                        WGroupIndentDiagnostics.LogDrawProperty(
+                            definition?.Name,
+                            propertyPath,
+                            EditorGUI.indentLevel
+                        );
+
+                        if (overrideDrawer != null && overrideDrawer(serializedObject, property))
+                        {
+                            continue;
+                        }
+
+                        // Use the color scope's method for proper cross-theme background rendering
+                        GroupGUIIndentUtility.ExecuteWithIndentCompensation(() =>
+                            colorScope.DrawPropertyFieldWithBackground(property, true)
+                        );
                     }
-
-                    WGroupIndentDiagnostics.LogDrawProperty(
-                        definition?.Name,
-                        propertyPath,
-                        EditorGUI.indentLevel
-                    );
-
-                    if (overrideDrawer != null && overrideDrawer(serializedObject, property))
-                    {
-                        continue;
-                    }
-
-                    GroupGUIIndentUtility.ExecuteWithIndentCompensation(() =>
-                        EditorGUILayout.PropertyField(property, true)
-                    );
                 }
+
                 if (propertyCount > 0)
                 {
                     AddContentPadding();
@@ -516,6 +526,250 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         internal static void DrawHeaderBorder(Rect rect, Color baseColor)
         {
             WGroupHeaderVisualUtility.DrawHeaderBorder(rect, baseColor);
+        }
+    }
+
+    /// <summary>
+    /// Disposable scope that applies comprehensive GUI color overrides for cross-theme palette support.
+    /// </summary>
+    /// <remarks>
+    /// When a WGroup uses a palette that conflicts with the editor theme (e.g., light palette on dark editor),
+    /// this scope overrides GUI.contentColor and temporarily modifies EditorStyles during property drawing
+    /// to achieve true cross-theme rendering. Style modifications are scoped to individual property draws
+    /// to avoid affecting other inspector elements.
+    /// </remarks>
+    internal sealed class WGroupColorScope : IDisposable
+    {
+        // Cached textures for cross-theme rendering (created once, reused)
+        private static Texture2D _lightFieldTexture;
+        private static Texture2D _darkFieldTexture;
+
+        private readonly Color _previousContentColor;
+        private readonly Color _previousColor;
+        private readonly bool _isActive;
+        private readonly Color _fieldBackgroundColor;
+        private readonly bool _useLightStyles;
+        private readonly Texture2D _fieldTexture;
+        private readonly Color _fieldTextColor;
+        private bool _disposed;
+
+        private struct StyleState
+        {
+            public Texture2D NormalBackground;
+            public Texture2D FocusedBackground;
+            public Texture2D ActiveBackground;
+            public Color NormalTextColor;
+            public Color FocusedTextColor;
+            public Color ActiveTextColor;
+        }
+
+        /// <summary>
+        /// Gets whether this scope is actively overriding colors (cross-theme scenario detected).
+        /// </summary>
+        public bool IsActive => _isActive;
+
+        /// <summary>
+        /// Gets the background color to use for input fields when in cross-theme mode.
+        /// </summary>
+        public Color FieldBackgroundColor => _fieldBackgroundColor;
+
+        /// <summary>
+        /// Creates a new color scope that applies palette-appropriate colors when cross-theme rendering is detected.
+        /// </summary>
+        /// <param name="palette">The WGroup palette entry containing background and text colors.</param>
+        public WGroupColorScope(UnityHelpersSettings.WGroupPaletteEntry palette)
+        {
+            _previousContentColor = GUI.contentColor;
+            _previousColor = GUI.color;
+
+            _isActive = IsCrossThemePalette(palette.BackgroundColor);
+            _fieldBackgroundColor = CalculateFieldBackgroundColor(palette.BackgroundColor);
+
+            float bgLuminance =
+                0.299f * palette.BackgroundColor.r
+                + 0.587f * palette.BackgroundColor.g
+                + 0.114f * palette.BackgroundColor.b;
+            _useLightStyles = bgLuminance > 0.5f;
+
+            if (_isActive)
+            {
+                // Override content color for labels (this is safe to keep for the scope duration)
+                GUI.contentColor = palette.TextColor;
+
+                // Adjust overall GUI color for icon tinting
+                GUI.color = CalculateGuiColor(palette.BackgroundColor, palette.TextColor);
+
+                // Create textures if needed and cache references for per-property use
+                EnsureTexturesCreated();
+                _fieldTexture = _useLightStyles ? _lightFieldTexture : _darkFieldTexture;
+                _fieldTextColor = _useLightStyles
+                    ? new Color(0.1f, 0.1f, 0.1f, 1f)
+                    : new Color(0.9f, 0.9f, 0.9f, 1f);
+            }
+        }
+
+        private static StyleState SaveStyleState(GUIStyle style)
+        {
+            return new StyleState
+            {
+                NormalBackground = style.normal.background,
+                FocusedBackground = style.focused.background,
+                ActiveBackground = style.active.background,
+                NormalTextColor = style.normal.textColor,
+                FocusedTextColor = style.focused.textColor,
+                ActiveTextColor = style.active.textColor,
+            };
+        }
+
+        private static void ApplyStyleOverrides(
+            GUIStyle style,
+            Texture2D background,
+            Color textColor
+        )
+        {
+            style.normal.background = background;
+            style.focused.background = background;
+            style.active.background = background;
+            style.normal.textColor = textColor;
+            style.focused.textColor = textColor;
+            style.active.textColor = textColor;
+        }
+
+        private static void RestoreStyleState(GUIStyle style, StyleState saved)
+        {
+            style.normal.background = saved.NormalBackground;
+            style.focused.background = saved.FocusedBackground;
+            style.active.background = saved.ActiveBackground;
+            style.normal.textColor = saved.NormalTextColor;
+            style.focused.textColor = saved.FocusedTextColor;
+            style.active.textColor = saved.ActiveTextColor;
+        }
+
+        private static void EnsureTexturesCreated()
+        {
+            if (_lightFieldTexture == null)
+            {
+                _lightFieldTexture = CreateFieldTexture(
+                    new Color(0.92f, 0.92f, 0.92f, 1f),
+                    new Color(0.7f, 0.7f, 0.7f, 1f)
+                );
+            }
+            if (_darkFieldTexture == null)
+            {
+                _darkFieldTexture = CreateFieldTexture(
+                    new Color(0.165f, 0.165f, 0.165f, 1f),
+                    new Color(0.1f, 0.1f, 0.1f, 1f)
+                );
+            }
+        }
+
+        private static Texture2D CreateFieldTexture(Color fillColor, Color borderColor)
+        {
+            var texture = new Texture2D(8, 8, TextureFormat.RGBA32, false)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+
+            for (int y = 0; y < 8; y++)
+            {
+                for (int x = 0; x < 8; x++)
+                {
+                    bool isBorder = x == 0 || x == 7 || y == 0 || y == 7;
+                    texture.SetPixel(x, y, isBorder ? borderColor : fillColor);
+                }
+            }
+
+            texture.Apply();
+            return texture;
+        }
+
+        /// <summary>
+        /// Determines if the palette represents a cross-theme scenario requiring color overrides.
+        /// </summary>
+        internal static bool IsCrossThemePalette(Color backgroundColor)
+        {
+            float bgLuminance =
+                0.299f * backgroundColor.r
+                + 0.587f * backgroundColor.g
+                + 0.114f * backgroundColor.b;
+            bool isLightBackground = bgLuminance > 0.5f;
+
+            // Cross-theme: light background on dark editor, or dark background on light editor
+            return isLightBackground == EditorGUIUtility.isProSkin;
+        }
+
+        /// <summary>
+        /// Calculates an appropriate background color for input fields.
+        /// </summary>
+        internal static Color CalculateFieldBackgroundColor(Color paletteBackground)
+        {
+            float bgLuminance =
+                0.299f * paletteBackground.r
+                + 0.587f * paletteBackground.g
+                + 0.114f * paletteBackground.b;
+
+            return bgLuminance > 0.5f
+                ? new Color(0.92f, 0.92f, 0.92f, 1f)
+                : new Color(0.165f, 0.165f, 0.165f, 1f);
+        }
+
+        private static Color CalculateGuiColor(Color backgroundColor, Color textColor)
+        {
+            return Color.Lerp(Color.white, textColor, 0.15f);
+        }
+
+        /// <summary>
+        /// Draws a property field with cross-theme style overrides applied only during the draw call.
+        /// </summary>
+        public void DrawPropertyFieldWithBackground(
+            SerializedProperty property,
+            bool includeChildren
+        )
+        {
+            if (!_isActive)
+            {
+                EditorGUILayout.PropertyField(property, includeChildren);
+                return;
+            }
+
+            // Save current styles
+            StyleState savedTextField = SaveStyleState(EditorStyles.textField);
+            StyleState savedNumberField = SaveStyleState(EditorStyles.numberField);
+
+            try
+            {
+                // Apply cross-theme overrides for this property only
+                ApplyStyleOverrides(EditorStyles.textField, _fieldTexture, _fieldTextColor);
+                ApplyStyleOverrides(EditorStyles.numberField, _fieldTexture, _fieldTextColor);
+
+                // Draw the property
+                EditorGUILayout.PropertyField(property, includeChildren);
+            }
+            finally
+            {
+                // Immediately restore styles
+                RestoreStyleState(EditorStyles.textField, savedTextField);
+                RestoreStyleState(EditorStyles.numberField, savedNumberField);
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+
+            if (_isActive)
+            {
+                // Restore GUI colors
+                GUI.contentColor = _previousContentColor;
+                GUI.color = _previousColor;
+            }
         }
     }
 
@@ -671,7 +925,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
         private static Color GetHeaderTint(Color baseColor)
         {
-            float alpha = EditorGUIUtility.isProSkin ? 0.62f : 0.28f;
+            // Use background luminance to determine appropriate alpha
+            // Cross-theme palettes (e.g., light palette on dark editor) need sufficient opacity
+            float bgLuminance = 0.299f * baseColor.r + 0.587f * baseColor.g + 0.114f * baseColor.b;
+            bool isLightBackground = bgLuminance > 0.5f;
+
+            // Light backgrounds need higher alpha on dark editors to stand out
+            // Dark backgrounds need higher alpha on light editors to stand out
+            bool isCrossTheme = isLightBackground == EditorGUIUtility.isProSkin;
+            float alpha = isCrossTheme ? 0.85f : (EditorGUIUtility.isProSkin ? 0.62f : 0.55f);
+
             return new Color(baseColor.r, baseColor.g, baseColor.b, alpha);
         }
 
@@ -717,10 +980,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
         private static Color GetHeaderBorderColor(Color baseColor)
         {
-            Color emphasisTarget = EditorGUIUtility.isProSkin ? Color.white : Color.black;
-            float emphasisWeight = EditorGUIUtility.isProSkin ? 0.15f : 0.4f;
+            // Determine border color based on background luminance, not editor skin
+            // This ensures light backgrounds get dark borders even in dark-mode editors
+            float bgLuminance = 0.299f * baseColor.r + 0.587f * baseColor.g + 0.114f * baseColor.b;
+            bool isLightBackground = bgLuminance > 0.5f;
+
+            Color emphasisTarget = isLightBackground ? Color.black : Color.white;
+            float emphasisWeight = isLightBackground ? 0.7f : 0.15f;
             Color emphasized = Color.Lerp(baseColor, emphasisTarget, emphasisWeight);
-            float alpha = EditorGUIUtility.isProSkin ? 0.9f : 0.8f;
+            float alpha = 0.9f;
             return new Color(emphasized.r, emphasized.g, emphasized.b, alpha);
         }
     }

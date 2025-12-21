@@ -11,7 +11,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
-    using Object = UnityEngine.Object;
 
     public sealed class SerializableCollectionPendingFoldoutInteractionTests : CommonTestBase
     {

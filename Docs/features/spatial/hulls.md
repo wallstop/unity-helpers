@@ -42,7 +42,7 @@ Illustration:
 
 - Preprocess: remove duplicate points and optionally simplify clusters.
 - Postprocess: enforce clockwise/CCW winding and run self-intersection checks for concave hulls.
-- Numerical stability: add small epsilons for colinear checks; include or exclude boundary points consistently.
+- Numerical stability: add small epsilons for collinear checks; include or exclude boundary points consistently.
 
 ## API Reference (Grid vs Gridless)
 
@@ -107,9 +107,9 @@ See `Samples~/Spatial Structures - 2D and 3D/Scripts/HullUsageDemo.cs` for a run
 
 ## Colinear Points & includeColinearPoints
 
-- Convex hull helpers prune colinear points by default so only the true corners remain, even after grid-to-world projections introduce float skew.
+- Convex hull helpers prune collinear points by default so only the true corners remain, even after grid-to-world projections introduce float skew.
 - Opt into boundary retention by passing `includeColinearPoints: true` to `BuildConvexHull` (gridless) or its grid-aware overloads.
-- Concave hulls inherit the pruned convex frontier; enabling colinear inclusion widens the seed set and can improve fidelity for dense edge sampling.
+- Concave hulls inherit the pruned convex frontier; enabling collinear inclusion widens the seed set and can improve fidelity for dense edge sampling.
 - The comprehensive tests `UnityExtensionsComprehensiveTests.ConvexHullDenseSamplesOnAllEdgesCollapseToCorners` (grid) and `.Vector2ConvexHullDenseSamplesCollapseToCorners` (gridless) cover both paths so you can trust the deterministic behavior.
 
 ```csharp

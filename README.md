@@ -274,21 +274,6 @@ void ProcessEnemies(QuadTree2D<Enemy> enemyTree) {
 
 Unity Helpers includes 200+ extension methods that handle the tedious stuff you're tired of writing:
 
-### Hierarchy Traversal (Optimized)
-
-```csharp
-// Get all ancestors without allocating
-transform.GetAncestors(buffer);  // 10x faster than recursive GetComponentInParent loops
-
-// Find specific ancestor
-Canvas canvas = transform.GetAncestor<Canvas>();  // Stops at first match
-
-// Breadth-first child search with depth control
-transform.GetDescendants(buffer, maxDepth: 2);  // Avoid traversing entire tree
-```
-
-**Why this matters:** The naive way allocates arrays on every call. These methods use buffering and early-exit for hot paths.
-
 ### Unity Type Extensions
 
 ```csharp
@@ -298,8 +283,8 @@ Color teamColor = sprite.GetAverageColor(ColorAveragingMethod.LAB);  // Perceptu
 // Collider auto-fitting
 polygonCollider.UpdateShapeToSprite();  // Instant sprite → collider sync
 
-// Smooth rotation in one line
-transform.rotation = transform.GetAngleWithSpeed(target, rotationSpeed, Time.deltaTime);
+// Smooth direction rotation (returns rotated direction vector)
+Vector2 facing = Helpers.GetAngleWithSpeed(targetDirection, currentFacing, rotationSpeed);
 
 // Safe destruction (works in editor AND runtime)
 gameObject.SmartDestroy();  // No more #if UNITY_EDITOR everywhere
@@ -927,11 +912,13 @@ damageHistory.Add(25f);
 damageHistory.Add(30f);
 float avgDamage = damageHistory.Average();
 
-// Priority queue for event scheduling
-PriorityQueue<GameEvent> eventQueue = new();
-eventQueue.Enqueue(spawnEvent, priority: 1);
-eventQueue.Enqueue(bossEvent, priority: 10);
-GameEvent next = eventQueue.Dequeue(); // Highest priority
+// Priority queue for event scheduling (priority determined by comparer)
+PriorityQueue<GameEvent> eventQueue = new(
+    Comparer<GameEvent>.Create((a, b) => b.Priority.CompareTo(a.Priority)) // Higher first
+);
+eventQueue.Enqueue(spawnEvent);
+eventQueue.Enqueue(bossEvent);
+if (eventQueue.TryDequeue(out GameEvent next)) { /* process event */ }
 
 // Trie for autocomplete
 Trie commandTrie = new();
@@ -1243,7 +1230,7 @@ Unity Helpers is built with performance as a top priority:
 
 **Project Info:**
 
-- Changelog — [Changelog](docs/project/changelog.md)
+- Changelog — [Changelog](CHANGELOG.md)
 - License — [License](docs/project/license.md)
 - Third‑Party Notices — [Third‑Party Notices](docs/project/third-party-notices.md)
 - Contributing — [Contributing](docs/project/contributing.md)

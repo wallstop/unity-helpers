@@ -1,6 +1,5 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
-    using System;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;

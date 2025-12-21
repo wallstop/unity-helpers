@@ -32,7 +32,6 @@ Unity Helpers includes a powerful suite of inspector attributes and serializatio
 Control how fields are grouped and organized in the inspector:
 
 - **[WGroup & WGroupEnd](inspector-grouping-attributes.md#wgroup--wgroupend)** - Boxed sections with optional collapse, color themes, auto-inclusion
-- **[WGroup & WGroupEnd](inspector-grouping-attributes.md#wgroup--wgroupend)** - Collapsible or boxed sections for long forms
 
 ![Image placeholder: WGroup example showing boxed fields with colored header]
 ![Image placeholder: WGroup collapsed and expanded states]

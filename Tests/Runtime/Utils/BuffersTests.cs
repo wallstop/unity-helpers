@@ -7,7 +7,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using System.Runtime.CompilerServices;
     using NUnit.Framework;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Utils;
 #if !SINGLE_THREADED

@@ -8,7 +8,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Tests.Core;
-    using Object = UnityEngine.Object;
 
     public sealed class SerializableDictionaryPropertyDrawerUndoTests : CommonTestBase
     {

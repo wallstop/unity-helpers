@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
     using System.IO;
     using NUnit.Framework;
     using UnityEditor;
-    using UnityEditor.SceneManagement;
     using UnityEngine;
     using UnityEngine.SceneManagement;
     using WallstopStudios.UnityHelpers.Core.Attributes;

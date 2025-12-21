@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using System;
     using System.Collections.Generic;
     using System.Runtime.Serialization;
-    using ProtoBuf;
 
     /// <summary>
     /// Sorted set wrapper that keeps ordering intact across Unity, ProtoBuf, and JSON serialization.

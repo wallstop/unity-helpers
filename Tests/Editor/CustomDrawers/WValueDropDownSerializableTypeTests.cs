@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
 #if UNITY_EDITOR
     using System;
-    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -10,11 +9,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
-    using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base;
     using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
-    using PropertyAttribute = UnityEngine.PropertyAttribute;
 
     /// <summary>
     /// Tests for WValueDropDown support with SerializableType and arbitrary generic types.

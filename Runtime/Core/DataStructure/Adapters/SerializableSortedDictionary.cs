@@ -7,8 +7,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
     using System.Text.Json.Serialization;
     using ProtoBuf;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Core.Serialization;
     using WallstopStudios.UnityHelpers.Utils;
 #if UNITY_EDITOR
     using UnityEditor;

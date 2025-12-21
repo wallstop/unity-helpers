@@ -253,7 +253,7 @@ START: Do your objects move frequently?
 
 - Points vs Bounds: QuadTree2D and KDTree2D are point-based; RTree2D is bounds-based.
 - Boundary inclusion: normalize half-open vs closed intervals. Add epsilons for edge cases.
-- Numeric stability: prefer consistent ordering for colinear and boundary points.
+- Numeric stability: prefer consistent ordering for collinear and boundary points.
 
 For deeper details, performance data, and diagrams, see:
 

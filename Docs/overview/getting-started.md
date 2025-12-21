@@ -100,7 +100,7 @@ Comprehensive deep-dive (best for team leads and senior developers):
 See it working first, understand the theory later:
 
 1. Follow the [3 Quick Wins](#three-quick-wins-5-minutes) below
-2. Clone relevant examples from [Use Cases](../../README.md#use-cases--examples)
+2. Explore the [Samples~ folder](../../Samples~/) for DI integration examples
 3. Modify examples for your specific needs
 4. Read the detailed guides when you need to go deeper
 

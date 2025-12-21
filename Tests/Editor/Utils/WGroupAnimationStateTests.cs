@@ -3,9 +3,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
 {
     using System.Collections.Generic;
     using NUnit.Framework;
-    using UnityEditor;
     using UnityEditor.AnimatedValues;
-    using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
 

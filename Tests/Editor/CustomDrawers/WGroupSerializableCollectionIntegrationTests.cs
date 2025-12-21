@@ -12,7 +12,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
-    using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
@@ -93,7 +92,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 collapsible: true,
                 autoIncludeCount: 3
             )]
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
             public int outerField;
+#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
 
             [WGroup(
                 "InnerGroup",
@@ -107,7 +108,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             public TestIntSet nestedSet = new();
 
             [WGroupEnd("OuterGroup")]
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
             public int outerEndField;
+#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
         }
 
         private sealed class NonCollapsibleWGroupHost : ScriptableObject
@@ -270,7 +273,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         else
                         {
                             typeResolutionError =
-                                $"OnGUI completed but HasLastMainFoldoutRect={hasFoldoutRect}. Property path: {dictionaryProperty?.propertyPath}";
+                                $"OnGUI completed but HasLastMainFoldoutRect={hasFoldoutRect}. Property path: {dictionaryProperty.propertyPath}";
                         }
                     }
                 }

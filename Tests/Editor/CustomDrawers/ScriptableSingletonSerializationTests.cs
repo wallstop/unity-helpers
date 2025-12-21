@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
     using System;
     using System.Collections.Generic;
-    using System.IO;
     using System.Linq;
     using System.Reflection;
     using NUnit.Framework;

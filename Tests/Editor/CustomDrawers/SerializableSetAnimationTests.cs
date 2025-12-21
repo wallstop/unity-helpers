@@ -1,16 +1,13 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
     using System;
-    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
-    using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
-    using Object = UnityEngine.Object;
 
     /// <summary>
     /// Comprehensive tests for duplicate/warning animation behavior in SerializableSetPropertyDrawer.

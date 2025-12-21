@@ -33,7 +33,7 @@ public class SpriteCache : MonoBehaviour
 
     [DetectAssetChanged(
         typeof(Sprite),
-        AssetChangeFlags.Created | AssetChangeFlags.Created,
+        AssetChangeFlags.Created | AssetChangeFlags.Deleted,
         DetectAssetChangedOptions.SearchPrefabs
     )]
     private void OnSpriteChanged(Sprite[] createdSprites, string[] deletedSprites)

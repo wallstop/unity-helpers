@@ -170,7 +170,7 @@ public class PrefabRegistry : MonoBehaviour
     public SerializableDictionary<string, GameObject> prefabs;
 
     private void Start()
-
+    {
         // Access entries
         if (prefabs.TryGetValue("Enemy", out GameObject prefab))
         {
@@ -415,11 +415,11 @@ public class ThresholdLogger : MonoBehaviour
     [WButton]
     private string LogThresholds()
     {
-        re
         foreach (int threshold in scoreThresholds)
         {
             Debug.Log(threshold);
         }
+        return $"Logged {scoreThresholds.Count} thresholds";
     }
 }
 ```

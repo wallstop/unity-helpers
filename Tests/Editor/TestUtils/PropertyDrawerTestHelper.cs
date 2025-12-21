@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
     using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
-    using UnityEngine;
     using PropertyAttribute = UnityEngine.PropertyAttribute;
 
     /// <summary>

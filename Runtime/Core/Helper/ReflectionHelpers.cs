@@ -13,7 +13,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System.Reflection;
     using System.Runtime.CompilerServices;
 #if UNITY_EDITOR
-    using UnityEditor;
 #endif
 #if EMIT_DYNAMIC_IL
     using System.Reflection.Emit;

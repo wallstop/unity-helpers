@@ -1,10 +1,8 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
-    using System;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Tests.Core;

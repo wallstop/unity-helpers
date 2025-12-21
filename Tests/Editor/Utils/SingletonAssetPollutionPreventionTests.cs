@@ -16,7 +16,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
-    using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     public sealed class SingletonAssetPollutionPreventionTests : CommonTestBase

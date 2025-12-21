@@ -2,7 +2,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
 {
     using NUnit.Framework;
     using UnityEditor;
-    using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
