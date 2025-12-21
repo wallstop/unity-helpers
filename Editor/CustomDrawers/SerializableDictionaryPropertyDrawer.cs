@@ -910,9 +910,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
                 NullKeyState nullKeyState = RefreshNullKeyState(cacheKey, keysProperty, keyType);
 
-                // Apply additional foldout alignment offset when inside a WGroup
+                // Apply additional foldout alignment offset when inside a WGroup property context
                 float foldoutAlignmentOffset =
-                    GroupGUIWidthUtility.CurrentScopeDepth > 0 && !targetsSettings
+                    GroupGUIWidthUtility.IsInsideWGroupPropertyDraw && !targetsSettings
                         ? WGroupFoldoutAlignmentOffset
                         : 0f;
 
@@ -1115,7 +1115,27 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float rightPadding = GroupGUIWidthUtility.CurrentRightPadding;
             int scopeDepth = GroupGUIWidthUtility.CurrentScopeDepth;
             int indentLevel = EditorGUI.indentLevel;
+            bool isInsideWGroupProperty = GroupGUIWidthUtility.IsInsideWGroupPropertyDraw;
             Rect original = position;
+
+            // When inside WGroup property context, WGroup uses EditorGUILayout.PropertyField
+            // which means Unity's layout system has ALREADY:
+            // 1. Positioned the rect based on the current layout group (with WGroup padding)
+            // 2. Applied indentation based on EditorGUI.indentLevel
+            // We should NOT apply any additional transformations - just return position as-is.
+            if (isInsideWGroupProperty)
+            {
+                SerializableDictionaryIndentDiagnostics.LogResolveContentRect(
+                    original,
+                    position,
+                    skipIndentation,
+                    leftPadding,
+                    rightPadding,
+                    scopeDepth,
+                    indentLevel
+                );
+                return position;
+            }
 
             // When skipIndentation is true, we're in a GUILayout context (e.g., SettingsProvider)
             // where Unity's layout system handles standard indentation.
@@ -1148,32 +1168,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return result;
             }
 
-            Rect padded = GroupGUIWidthUtility.ApplyCurrentPadding(position);
+            // Normal context (outside WGroup): apply WGroup padding ourselves
+            Rect padded2 = GroupGUIWidthUtility.ApplyCurrentPadding(position);
             if (
                 (leftPadding > 0f || rightPadding > 0f)
-                && Mathf.Approximately(padded.xMin, position.xMin)
-                && Mathf.Approximately(padded.width, position.width)
+                && Mathf.Approximately(padded2.xMin, position.xMin)
+                && Mathf.Approximately(padded2.width, position.width)
             )
             {
-                padded.xMin += leftPadding;
-                padded.xMax -= rightPadding;
-                if (padded.width < 0f || float.IsNaN(padded.width))
+                padded2.xMin += leftPadding;
+                padded2.xMax -= rightPadding;
+                if (padded2.width < 0f || float.IsNaN(padded2.width))
                 {
-                    padded.width = 0f;
+                    padded2.width = 0f;
                 }
             }
 
-            Rect indented = EditorGUI.IndentedRect(padded);
+            Rect indentedResult = EditorGUI.IndentedRect(padded2);
 
             // Clamp width to non-negative after IndentedRect (high indent levels can cause negative width)
-            if (indented.width < 0f || float.IsNaN(indented.width))
+            if (indentedResult.width < 0f || float.IsNaN(indentedResult.width))
             {
-                indented.width = 0f;
+                indentedResult.width = 0f;
             }
 
             // Only add minimum indent when not inside a WGroup (which already has padding)
             // and when indent level is zero (no parent property nesting)
-            Rect final = indented;
+            Rect final = indentedResult;
             if (indentLevel <= 0 && leftPadding <= 0f && scopeDepth <= 0)
             {
                 final.xMin += MinimumGroupIndent;
@@ -1182,8 +1203,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             SerializableDictionaryIndentDiagnostics.LogResolveContentRectSteps(
                 original,
-                padded,
-                indented,
+                padded2,
+                indentedResult,
                 final,
                 skipIndentation,
                 leftPadding,
@@ -1474,7 +1495,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 Rect backgroundRect = new(rect.x, rect.y, rect.width, rowData.rowHeight);
-                Color rowColor = EditorGUIUtility.isProSkin ? DarkRowColor : LightRowColor;
+                Color rowColor = GroupGUIWidthUtility.GetThemedRowColor(
+                    LightRowColor,
+                    DarkRowColor
+                );
                 EditorGUI.DrawRect(backgroundRect, rowColor);
 
                 bool hasDuplicate = TryGetDuplicateInfo(
@@ -1542,9 +1566,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     Rect selectionRect = highlightRect;
                     selectionRect.x += shakeOffset;
-                    Color selectionColor = EditorGUIUtility.isProSkin
-                        ? DarkSelectionColor
-                        : LightSelectionColor;
+                    Color selectionColor = GroupGUIWidthUtility.GetThemedSelectionColor(
+                        LightSelectionColor,
+                        DarkSelectionColor
+                    );
                     EditorGUI.DrawRect(selectionRect, selectionColor);
                 }
             };
@@ -3811,9 +3836,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
 
                 Rect containerRect = new(fullPosition.x, y, fullPosition.width, sectionHeight);
-                Color backgroundColor = EditorGUIUtility.isProSkin
-                    ? new Color(0.18f, 0.18f, 0.18f, 1f)
-                    : new Color(0.92f, 0.92f, 0.92f, 1f);
+                Color backgroundColor = GroupGUIWidthUtility.GetThemedPendingBackgroundColor(
+                    new Color(0.92f, 0.92f, 0.92f, 1f),
+                    new Color(0.18f, 0.18f, 0.18f, 1f)
+                );
                 if (Event.current.type == EventType.Repaint)
                 {
                     EditorGUI.DrawRect(containerRect, backgroundColor);

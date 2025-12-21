@@ -1,17 +1,16 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
-    using System;
     using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEditor.AnimatedValues;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
 
     /// <summary>
     /// Tests for foldout tween animation behavior in SerializableDictionary, SerializableSet,
@@ -95,39 +94,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             WGroupAnimationState.ClearCache();
             GroupGUIWidthUtility.ResetForTests();
             base.TearDown();
-        }
-
-        [Serializable]
-        private sealed class TestStringIntDictionary : SerializableDictionary<string, int> { }
-
-        [Serializable]
-        private sealed class TestSortedStringIntDictionary
-            : SerializableSortedDictionary<string, int> { }
-
-        [Serializable]
-        private sealed class TestIntSet : SerializableHashSet<int> { }
-
-        [Serializable]
-        private sealed class TestSortedIntSet : SerializableSortedSet<int> { }
-
-        private sealed class SimpleDictionaryHost : ScriptableObject
-        {
-            public TestStringIntDictionary dictionary = new();
-        }
-
-        private sealed class SimpleSortedDictionaryHost : ScriptableObject
-        {
-            public TestSortedStringIntDictionary sortedDictionary = new();
-        }
-
-        private sealed class SimpleSetHost : ScriptableObject
-        {
-            public TestIntSet set = new();
-        }
-
-        private sealed class SimpleSortedSetHost : ScriptableObject
-        {
-            public TestSortedIntSet sortedSet = new();
         }
 
         [Test]
@@ -577,12 +543,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             UnityHelpersSettings.SetSerializableDictionaryFoldoutTweenEnabled(false);
 
-            SimpleDictionaryHost host = CreateScriptableObject<SimpleDictionaryHost>();
+            TweenAnimationSimpleDictionaryHost host =
+                CreateScriptableObject<TweenAnimationSimpleDictionaryHost>();
             host.dictionary["key"] = 1;
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(SimpleDictionaryHost.dictionary)
+                nameof(TweenAnimationSimpleDictionaryHost.dictionary)
             );
 
             // When tween is disabled, the foldout progress should be immediate (0 or 1)
@@ -618,12 +585,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             UnityHelpersSettings.SetSerializableSetFoldoutTweenEnabled(false);
 
-            SimpleSetHost host = CreateScriptableObject<SimpleSetHost>();
+            TweenAnimationSimpleSetHost host =
+                CreateScriptableObject<TweenAnimationSimpleSetHost>();
             host.set.Add(1);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(SimpleSetHost.set)
+                nameof(TweenAnimationSimpleSetHost.set)
             );
 
             // When tween is disabled, the foldout progress should be immediate (0 or 1)
@@ -660,17 +628,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializableDictionaryPropertyDrawer drawer =
                 new SerializableDictionaryPropertyDrawer();
 
-            SimpleDictionaryHost hostA = CreateScriptableObject<SimpleDictionaryHost>();
-            SimpleDictionaryHost hostB = CreateScriptableObject<SimpleDictionaryHost>();
+            TweenAnimationSimpleDictionaryHost hostA =
+                CreateScriptableObject<TweenAnimationSimpleDictionaryHost>();
+            TweenAnimationSimpleDictionaryHost hostB =
+                CreateScriptableObject<TweenAnimationSimpleDictionaryHost>();
 
             SerializedObject serializedObjectA = TrackDisposable(new SerializedObject(hostA));
             SerializedObject serializedObjectB = TrackDisposable(new SerializedObject(hostB));
 
             SerializedProperty propertyA = serializedObjectA.FindProperty(
-                nameof(SimpleDictionaryHost.dictionary)
+                nameof(TweenAnimationSimpleDictionaryHost.dictionary)
             );
             SerializedProperty propertyB = serializedObjectB.FindProperty(
-                nameof(SimpleDictionaryHost.dictionary)
+                nameof(TweenAnimationSimpleDictionaryHost.dictionary)
             );
 
             string keyA = drawer.GetListKey(propertyA);
@@ -690,17 +660,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializableDictionaryPropertyDrawer drawer =
                 new SerializableDictionaryPropertyDrawer();
 
-            SimpleDictionaryHost hostA = CreateScriptableObject<SimpleDictionaryHost>();
-            SimpleDictionaryHost hostB = CreateScriptableObject<SimpleDictionaryHost>();
+            TweenAnimationSimpleDictionaryHost hostA =
+                CreateScriptableObject<TweenAnimationSimpleDictionaryHost>();
+            TweenAnimationSimpleDictionaryHost hostB =
+                CreateScriptableObject<TweenAnimationSimpleDictionaryHost>();
 
             SerializedObject serializedObjectA = TrackDisposable(new SerializedObject(hostA));
             SerializedObject serializedObjectB = TrackDisposable(new SerializedObject(hostB));
 
             SerializedProperty propertyA = serializedObjectA.FindProperty(
-                nameof(SimpleDictionaryHost.dictionary)
+                nameof(TweenAnimationSimpleDictionaryHost.dictionary)
             );
             SerializedProperty propertyB = serializedObjectB.FindProperty(
-                nameof(SimpleDictionaryHost.dictionary)
+                nameof(TweenAnimationSimpleDictionaryHost.dictionary)
             );
 
             drawer.GetOrCreatePendingEntry(

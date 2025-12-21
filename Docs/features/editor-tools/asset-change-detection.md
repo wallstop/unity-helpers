@@ -26,30 +26,26 @@ using UnityEngine;
 using WallstopStudios.UnityHelpers.Core.Attributes;
 using WallstopStudios.UnityHelpers.Core.Extension;
 
-public class SpriteCache : MonoBehaviour
+public class SpriteCache : ScriptableObject
 {
-    [SerializeField]
-    private List<Sprite> _allSprites = new();
+    private static readonly HashSet<string> TrackedSpritePaths = new();
 
     [DetectAssetChanged(
         typeof(Sprite),
-        AssetChangeFlags.Created | AssetChangeFlags.Deleted,
-        DetectAssetChangedOptions.SearchPrefabs
+        AssetChangeFlags.Created | AssetChangeFlags.Deleted
     )]
-    private void OnSpriteChanged(Sprite[] createdSprites, string[] deletedSprites)
+    private static void OnSpriteChanged(AssetChangeContext context)
     {
-        foreach (var sprite in createdSprites)
+        foreach (string path in context.CreatedAssetPaths)
         {
-            if (!_allSprites.Contains(sprite))
-            {
-                this.Log($"Found new sprite: {sprite.name}");
-                _allSprites.Add(sprite);
-            }
+            TrackedSpritePaths.Add(path);
+            Debug.Log($"New sprite added: {path}");
         }
 
-        foreach (var sprite in deletedSprites)
+        foreach (string path in context.DeletedAssetPaths)
         {
-            this.Log($"Sprite deleted: {sprite}");
+            TrackedSpritePaths.Remove(path);
+            Debug.Log($"Sprite removed: {path}");
         }
     }
 }
@@ -103,7 +99,7 @@ public enum DetectAssetChangedOptions
 
 ## Method Signatures
 
-The attribute supports four method signatures:
+The attribute supports three method signatures:
 
 ### 1. No Parameters (Fire-and-Forget)
 
@@ -111,62 +107,59 @@ The attribute supports four method signatures:
 [DetectAssetChanged(typeof(ScriptableObject), AssetChangeFlags.Created)]
 private static void OnScriptableObjectCreated()
 {
-    Debug.Log("A ScriptableObject was created");
+    Debug.Log("A ScriptableObject was created - invalidate cache");
 }
 ```
 
-**When to use:** Simple notifications that don't need asset details
+**When to use:** Simple cache invalidation that doesn't need asset details
 
 ---
 
-### 2. Asset Parameter (Most Common)
-
-```csharp
-[DetectAssetChanged(typeof(Material), AssetChangeFlags.Deleted)]
-private void OnMaterialDeleted(Material material)
-{
-    Debug.Log($"Material deleted: {material?.name ?? "null"}");
-    RemoveFromCache(material);
-}
-```
-
-**When to use:** Need the asset reference to perform updates
-
-**Note:** Asset parameter will be `null` for deletion events (asset no longer exists)
-
----
-
-### 3. Asset Path Parameter
-
-```csharp
-[DetectAssetChanged(typeof(Texture2D), AssetChangeFlags.Created)]
-private static void OnTextureCreated(string assetPath)
-{
-    Debug.Log($"New texture at: {assetPath}");
-    ValidateTextureSettings(assetPath);
-}
-```
-
-**When to use:** Need the file path for AssetDatabase operations
-
----
-
-### 4. Full Context (Advanced)
+### 2. Full Context (Recommended)
 
 ```csharp
 [DetectAssetChanged(typeof(AudioClip), AssetChangeFlags.Created | AssetChangeFlags.Deleted)]
-private void OnAudioClipChanged(AssetChangeContext context)
+private static void OnAudioClipChanged(AssetChangeContext context)
 {
-    Debug.Log($"AudioClip {context.AssetPath}: {context.Flags}");
+    Debug.Log($"AudioClip change: {context.Flags}");
 
-    if (context.Asset != null)
+    foreach (string path in context.CreatedAssetPaths)
     {
-        ProcessAudioClip((AudioClip)context.Asset);
+        AudioClip clip = AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+        ProcessAudioClip(clip);
+    }
+
+    foreach (string path in context.DeletedAssetPaths)
+    {
+        Debug.Log($"AudioClip deleted: {path}");
     }
 }
 ```
 
-**When to use:** Need both the asset reference and path, or want to handle multiple flags in one method
+**When to use:** Need to handle both creation and deletion, or need access to all changed paths
+
+---
+
+### 3. Typed Arrays (Advanced)
+
+```csharp
+[DetectAssetChanged(typeof(Material), AssetChangeFlags.Created | AssetChangeFlags.Deleted)]
+private static void OnMaterialChanged(Material[] createdMaterials, string[] deletedPaths)
+{
+    foreach (Material mat in createdMaterials)
+    {
+        Debug.Log($"Material created: {mat.name}");
+        ValidateMaterial(mat);
+    }
+
+    foreach (string path in deletedPaths)
+    {
+        Debug.Log($"Material deleted: {path}");
+    }
+}
+```
+
+**When to use:** Need strongly-typed access to created assets; deleted assets are always paths since the asset no longer exists
 
 ---
 
@@ -198,14 +191,17 @@ private static void OnExactMaterialCreated(Material mat)
 
 ## Asset Change Context
 
-The `AssetChangeContext` struct provides complete information about the change:
+The `AssetChangeContext` class provides complete information about the change:
 
 ```csharp
-public readonly struct AssetChangeContext
+public sealed class AssetChangeContext
 {
-    public readonly Object Asset;           // The asset (null for deletions)
-    public readonly string AssetPath;       // Full asset path
-    public readonly AssetChangeFlags Flags; // Created or Deleted
+    public Type AssetType { get; }                      // The type being watched
+    public AssetChangeFlags Flags { get; }              // Created, Deleted, or both
+    public IReadOnlyList<string> CreatedAssetPaths { get; }  // Paths of created assets
+    public IReadOnlyList<string> DeletedAssetPaths { get; }  // Paths of deleted assets
+    public bool HasCreatedAssets { get; }               // True if any created
+    public bool HasDeletedAssets { get; }               // True if any deleted
 }
 ```
 
@@ -287,17 +283,20 @@ public class TextureAtlas : ScriptableObject
 ### Auto-Configuration
 
 ```csharp
-public class MaterialValidator : MonoBehaviour
+public class MaterialValidator : ScriptableObject
 {
     [DetectAssetChanged(typeof(Material), AssetChangeFlags.Created)]
-    private static void ValidateNewMaterial(Material material, string assetPath)
+    private static void ValidateNewMaterials(Material[] createdMaterials, string[] deletedPaths)
     {
-        if (material.shader.name == "Standard")
+        foreach (Material material in createdMaterials)
         {
-            // Apply project-wide defaults
-            material.SetFloat("_Metallic", 0.0f);
-            material.SetFloat("_Glossiness", 0.5f);
-            EditorUtility.SetDirty(material);
+            if (material.shader.name == "Standard")
+            {
+                // Apply project-wide defaults
+                material.SetFloat("_Metallic", 0.0f);
+                material.SetFloat("_Glossiness", 0.5f);
+                EditorUtility.SetDirty(material);
+            }
         }
     }
 }
@@ -308,30 +307,29 @@ public class MaterialValidator : MonoBehaviour
 ```csharp
 public abstract class GameData : ScriptableObject { }
 
-public class DataRegistry : MonoBehaviour
+public class DataRegistry : ScriptableObject
 {
-    private static HashSet<GameData> _allData = new();
+    private static readonly HashSet<string> RegisteredPaths = new();
 
     [DetectAssetChanged(
         typeof(GameData),
-        AssetChangeFlags.Created,
+        AssetChangeFlags.Created | AssetChangeFlags.Deleted,
         DetectAssetChangedOptions.IncludeAssignableTypes
     )]
-    private static void RegisterGameData(GameData data)
+    private static void OnGameDataChanged(GameData[] created, string[] deletedPaths)
     {
-        _allData.Add(data);
-        Debug.Log($"Registered: {data.GetType().Name}");
-    }
+        foreach (GameData data in created)
+        {
+            string path = AssetDatabase.GetAssetPath(data);
+            RegisteredPaths.Add(path);
+            Debug.Log($"Registered: {data.GetType().Name} at {path}");
+        }
 
-    [DetectAssetChanged(
-        typeof(GameData),
-        AssetChangeFlags.Deleted,
-        DetectAssetChangedOptions.IncludeAssignableTypes
-    )]
-    private static void UnregisterGameData(string assetPath)
-    {
-        // Asset is already deleted, use path for cleanup
-        Debug.Log($"Unregistered: {assetPath}");
+        foreach (string path in deletedPaths)
+        {
+            RegisteredPaths.Remove(path);
+            Debug.Log($"Unregistered: {path}");
+        }
     }
 }
 ```

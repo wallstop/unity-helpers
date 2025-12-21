@@ -10,24 +10,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     public sealed class SerializableCollectionDrawerVisualRegressionTests : CommonTestBase
     {
-        private sealed class DictionaryHost : ScriptableObject
-        {
-            public SerializableDictionary<
-                DrawerVisualRegressionKey,
-                DrawerVisualRegressionDictionaryValue
-            > dictionary = new();
-        }
-
-        private sealed class SetHost : ScriptableObject
-        {
-            public SerializableHashSet<DrawerVisualRegressionSetValue> set = new();
-        }
-
         private static Rect GetControlRect()
         {
             return new Rect(0f, 0f, 420f, 600f);
@@ -36,7 +24,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator DictionaryKeyAndValueRowsShareAlignment()
         {
-            DictionaryHost host = CreateScriptableObject<DictionaryHost>();
+            VisualRegressionDictionaryHost host =
+                CreateScriptableObject<VisualRegressionDictionaryHost>();
             for (int i = 0; i < 3; i++)
             {
                 host.dictionary.Add(
@@ -49,15 +38,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             dictionaryObject.Update();
             PopulateDictionarySerializedState(host, dictionaryObject);
             SerializedProperty dictionaryProperty = dictionaryObject.FindProperty(
-                nameof(DictionaryHost.dictionary)
+                nameof(VisualRegressionDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
 
             SerializableDictionaryPropertyDrawer drawer = new();
             SerializableDictionaryPropertyDrawerTests.AssignDictionaryFieldInfo(
                 drawer,
-                typeof(DictionaryHost),
-                nameof(DictionaryHost.dictionary)
+                typeof(VisualRegressionDictionaryHost),
+                nameof(VisualRegressionDictionaryHost.dictionary)
             );
             Rect controlRect = GetControlRect();
             GUIContent label = new("Dictionary");
@@ -115,8 +104,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator SetElementsMatchDictionaryValueAlignment()
         {
-            DictionaryHost dictionaryHost = CreateScriptableObject<DictionaryHost>();
-            SetHost setHost = CreateScriptableObject<SetHost>();
+            VisualRegressionDictionaryHost dictionaryHost =
+                CreateScriptableObject<VisualRegressionDictionaryHost>();
+            VisualRegressionSetHost setHost = CreateScriptableObject<VisualRegressionSetHost>();
 
             for (int i = 0; i < 3; i++)
             {
@@ -134,21 +124,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             dictionaryObject.Update();
             PopulateDictionarySerializedState(dictionaryHost, dictionaryObject);
             SerializedProperty dictionaryProperty = dictionaryObject.FindProperty(
-                nameof(DictionaryHost.dictionary)
+                nameof(VisualRegressionDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
 
             SerializedObject setObject = TrackDisposable(new SerializedObject(setHost));
             setObject.Update();
             PopulateSetSerializedState(setHost, setObject);
-            SerializedProperty setProperty = setObject.FindProperty(nameof(SetHost.set));
+            SerializedProperty setProperty = setObject.FindProperty(
+                nameof(VisualRegressionSetHost.set)
+            );
             setProperty.isExpanded = true;
 
             SerializableDictionaryPropertyDrawer dictionaryDrawer = new();
             SerializableDictionaryPropertyDrawerTests.AssignDictionaryFieldInfo(
                 dictionaryDrawer,
-                typeof(DictionaryHost),
-                nameof(DictionaryHost.dictionary)
+                typeof(VisualRegressionDictionaryHost),
+                nameof(VisualRegressionDictionaryHost.dictionary)
             );
             SerializableSetPropertyDrawer setDrawer = new();
             Rect controlRect = GetControlRect();
@@ -266,7 +258,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         private static void PopulateDictionarySerializedState(
-            DictionaryHost host,
+            VisualRegressionDictionaryHost host,
             SerializedObject dictionaryObject
         )
         {
@@ -276,7 +268,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
 
             SerializedProperty dictionaryProperty = dictionaryObject.FindProperty(
-                nameof(DictionaryHost.dictionary)
+                nameof(VisualRegressionDictionaryHost.dictionary)
             );
             if (dictionaryProperty == null)
             {
@@ -318,14 +310,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             dictionaryObject.UpdateIfRequiredOrScript();
         }
 
-        private static void PopulateSetSerializedState(SetHost host, SerializedObject setObject)
+        private static void PopulateSetSerializedState(
+            VisualRegressionSetHost host,
+            SerializedObject setObject
+        )
         {
             if (host == null || setObject == null)
             {
                 return;
             }
 
-            SerializedProperty setProperty = setObject.FindProperty(nameof(SetHost.set));
+            SerializedProperty setProperty = setObject.FindProperty(
+                nameof(VisualRegressionSetHost.set)
+            );
             if (setProperty == null)
             {
                 return;

@@ -881,6 +881,195 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 );
             }
         }
+
+        [Test]
+        public void StyleOverridesAppliedForEntireScopeDurationInCrossTheme()
+        {
+            // This test verifies that styles are overridden for the entire scope duration
+            // We can only test this on one editor theme, so we check if we're in cross-theme scenario
+            UnityHelpersSettings.WGroupPaletteEntry testPalette = EditorGUIUtility.isProSkin
+                ? LightPalette
+                : DarkPalette;
+
+            Color originalLabelColor = EditorStyles.label.normal.textColor;
+            Color originalFoldoutColor = EditorStyles.foldout.normal.textColor;
+
+            using (var scope = new WGroupColorScope(testPalette))
+            {
+                if (scope.IsActive)
+                {
+                    // Label and foldout text colors should be overridden
+                    Assert.That(
+                        EditorStyles.label.normal.textColor,
+                        Is.Not.EqualTo(originalLabelColor),
+                        "Label text color should be overridden in cross-theme scope."
+                    );
+                    Assert.That(
+                        EditorStyles.foldout.normal.textColor,
+                        Is.Not.EqualTo(originalFoldoutColor),
+                        "Foldout text color should be overridden in cross-theme scope."
+                    );
+                }
+            }
+
+            // After scope, colors should be restored
+            Assert.That(
+                EditorStyles.label.normal.textColor,
+                Is.EqualTo(originalLabelColor),
+                "Label text color should be restored after scope disposal."
+            );
+            Assert.That(
+                EditorStyles.foldout.normal.textColor,
+                Is.EqualTo(originalFoldoutColor),
+                "Foldout text color should be restored after scope disposal."
+            );
+        }
+
+        [Test]
+        public void BackgroundColorOverriddenInCrossThemeScope()
+        {
+            UnityHelpersSettings.WGroupPaletteEntry testPalette = EditorGUIUtility.isProSkin
+                ? LightPalette
+                : DarkPalette;
+
+            Color originalBackgroundColor = GUI.backgroundColor;
+
+            using (var scope = new WGroupColorScope(testPalette))
+            {
+                if (scope.IsActive)
+                {
+                    Assert.That(
+                        GUI.backgroundColor,
+                        Is.Not.EqualTo(originalBackgroundColor),
+                        "GUI.backgroundColor should be overridden in cross-theme scope."
+                    );
+                }
+            }
+
+            Assert.That(
+                GUI.backgroundColor,
+                Is.EqualTo(originalBackgroundColor),
+                "GUI.backgroundColor should be restored after scope disposal."
+            );
+        }
+
+        [Test]
+        public void TextFieldStyleOverriddenInCrossThemeScope()
+        {
+            UnityHelpersSettings.WGroupPaletteEntry testPalette = EditorGUIUtility.isProSkin
+                ? LightPalette
+                : DarkPalette;
+
+            Texture2D originalBackground = EditorStyles.textField.normal.background;
+            Color originalTextColor = EditorStyles.textField.normal.textColor;
+
+            using (var scope = new WGroupColorScope(testPalette))
+            {
+                if (scope.IsActive)
+                {
+                    // Background might be overridden if custom textures are created
+                    Assert.That(
+                        EditorStyles.textField.normal.textColor,
+                        Is.Not.EqualTo(originalTextColor),
+                        "TextField text color should be overridden in cross-theme scope."
+                    );
+                }
+            }
+
+            Assert.That(
+                EditorStyles.textField.normal.background,
+                Is.EqualTo(originalBackground),
+                "TextField background should be restored after scope disposal."
+            );
+            Assert.That(
+                EditorStyles.textField.normal.textColor,
+                Is.EqualTo(originalTextColor),
+                "TextField text color should be restored after scope disposal."
+            );
+        }
+
+        [Test]
+        public void HelpBoxStyleOverriddenInCrossThemeScope()
+        {
+            UnityHelpersSettings.WGroupPaletteEntry testPalette = EditorGUIUtility.isProSkin
+                ? LightPalette
+                : DarkPalette;
+
+            Texture2D originalBackground = EditorStyles.helpBox.normal.background;
+            Color originalTextColor = EditorStyles.helpBox.normal.textColor;
+
+            using (var scope = new WGroupColorScope(testPalette))
+            {
+                if (scope.IsActive)
+                {
+                    // HelpBox is used for list/array containers
+                    Assert.That(
+                        EditorStyles.helpBox.normal.textColor,
+                        Is.Not.EqualTo(originalTextColor),
+                        "HelpBox text color should be overridden in cross-theme scope."
+                    );
+                }
+            }
+
+            Assert.That(
+                EditorStyles.helpBox.normal.background,
+                Is.EqualTo(originalBackground),
+                "HelpBox background should be restored after scope disposal."
+            );
+            Assert.That(
+                EditorStyles.helpBox.normal.textColor,
+                Is.EqualTo(originalTextColor),
+                "HelpBox text color should be restored after scope disposal."
+            );
+        }
+
+        [Test]
+        public void NestedScopesRestoreCorrectlyOuterInnerPalettes()
+        {
+            UnityHelpersSettings.WGroupPaletteEntry outerPalette = LightPalette;
+            UnityHelpersSettings.WGroupPaletteEntry innerPalette = DarkPalette;
+
+            Color originalContentColor = GUI.contentColor;
+            Color originalBackgroundColor = GUI.backgroundColor;
+
+            using (var outerScope = new WGroupColorScope(outerPalette))
+            {
+                Color afterOuterContentColor = GUI.contentColor;
+                Color afterOuterBackgroundColor = GUI.backgroundColor;
+
+                using (var innerScope = new WGroupColorScope(innerPalette))
+                {
+                    // Inner scope should override outer
+                    if (innerScope.IsActive)
+                    {
+                        Assert.That(
+                            GUI.contentColor,
+                            Is.EqualTo(innerPalette.TextColor),
+                            "Inner scope should set its own content color."
+                        );
+                    }
+                }
+
+                // After inner scope, should restore to outer scope values
+                Assert.That(
+                    GUI.contentColor,
+                    Is.EqualTo(afterOuterContentColor),
+                    "After inner scope disposal, content color should return to outer scope value."
+                );
+            }
+
+            // After all scopes, should restore to original
+            Assert.That(
+                GUI.contentColor,
+                Is.EqualTo(originalContentColor),
+                "After all scopes disposed, content color should return to original."
+            );
+            Assert.That(
+                GUI.backgroundColor,
+                Is.EqualTo(originalBackgroundColor),
+                "After all scopes disposed, background color should return to original."
+            );
+        }
     }
 #endif
 }

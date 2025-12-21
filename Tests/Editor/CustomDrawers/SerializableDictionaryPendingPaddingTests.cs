@@ -6,11 +6,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
 
     /// <summary>
@@ -26,14 +26,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GroupGUIWidthUtility.ResetForTests();
             SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
             SerializableDictionaryPropertyDrawer.ClearMainFoldoutAnimCacheForTests();
-        }
-
-        [Serializable]
-        private sealed class TestIntStringDictionary : SerializableDictionary<int, string> { }
-
-        private sealed class TestDictionaryHost : ScriptableObject
-        {
-            public TestIntStringDictionary dictionary = new();
         }
 
         [Test]

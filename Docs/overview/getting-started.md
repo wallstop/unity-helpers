@@ -106,33 +106,15 @@ See it working first, understand the theory later:
 
 ---
 
-## Installation (60 Seconds)
+## Installation
 
-### Unity Package Manager (Recommended)
+See the [Installation section in README.md](../../README.md#installation) for detailed installation instructions using:
 
-Add to your `Packages/manifest.json`:
+- Unity Package Manager (recommended)
+- Git URL
+- Local package folder
 
-```json
-{
-  "dependencies": {
-    "com.wallstop-studios.unity-helpers": "https://github.com/wallstop/unity-helpers.git"
-  }
-}
-```
-
-Or in Unity:
-
-1. Open **Window > Package Manager**
-2. Click **+** → **Add package from git URL...**
-3. Enter: `https://github.com/wallstop/unity-helpers.git`
-
-### Verify Installation
-
-Check that the package appears in Package Manager under "Custom". You should see:
-
-- **Name:** Unity Helpers
-- **Version:** (current version)
-- **Author:** Wallstop Studios
+After installation, verify the package appears in **Window > Package Manager** under "Custom".
 
 ---
 

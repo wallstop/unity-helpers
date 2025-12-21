@@ -128,126 +128,49 @@ Centralized configuration for all inspector features:
 
 ---
 
-## Quick Start Examples
+## Quick Start Example
 
-### Example 1: Organized Inspector with Groups
+Here's a complete example showcasing multiple inspector features together:
 
 ```csharp
 using UnityEngine;
 using WallstopStudios.UnityHelpers.Core.Attributes;
+using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 
 public class CharacterStats : MonoBehaviour
 {
+    // Grouped fields with collapsible sections
     [WGroup("Combat", "Combat Stats", colorKey: "Default-Dark", collapsible: true)]
     public float maxHealth = 100f;
     public float defense = 10f;
-    public float attackPower = 25f;
     [WGroupEnd("Combat")]
+    public float attackPower = 25f;
 
-    [WGroup("Visual", "Visual Settings", collapsible: true, startCollapsed: true)]
-    public Color primaryColor = Color.white;
-    public Material skinMaterial;
-    public Sprite portrait;
-    [WGroupEnd("Visual")]
-
-    [WButton("Test Damage", colorKey: "Default-Dark")]
-    private void TestTakeDamage()
-    {
-        Debug.Log($"Took 10 damage! Health: {maxHealth - 10}");
-    }
-}
-```
-
-![Image placeholder: Result of above code showing grouped inspector]
-
----
-
-### Example 2: Dynamic UI with Conditional Fields
-
-```csharp
-using UnityEngine;
-using WallstopStudios.UnityHelpers.Core.Attributes;
-
-public class WeaponConfig : MonoBehaviour
-{
+    // Conditional visibility based on enum
     public enum WeaponType { Melee, Ranged, Magic }
-
     public WeaponType weaponType;
-
-    [WShowIf(nameof(weaponType), WShowIfComparison.Equal, WeaponType.Melee)]
-    public float meleeRange = 2f;
 
     [WShowIf(nameof(weaponType), WShowIfComparison.Equal, WeaponType.Ranged)]
     public int ammoCapacity = 30;
 
-    [WShowIf(nameof(weaponType), WShowIfComparison.Equal, WeaponType.Magic)]
-    public float manaCost = 15f;
-}
-```
-
-![GIF placeholder: Changing weapon type and fields appearing/disappearing]
-
----
-
-### Example 3: Flag Enum as Toggle Buttons
-
-```csharp
-using UnityEngine;
-using WallstopStudios.UnityHelpers.Core.Attributes;
-
-public class EntityPermissions : MonoBehaviour
-{
+    // Flag enum as toggle buttons
     [System.Flags]
-    public enum Permissions
-    {
-        None = 0,
-        Move = 1 << 0,
-        Attack = 1 << 1,
-        UseItems = 1 << 2,
-        CastSpells = 1 << 3,
-        Interact = 1 << 4,
-    }
+    public enum Abilities { None = 0, Jump = 1, Dash = 2, Block = 4 }
 
-    [WEnumToggleButtons(showSelectAll: true, showSelectNone: true, buttonsPerRow: 3)]
-    public Permissions currentPermissions = Permissions.Move | Permissions.Attack;
-}
-```
+    [WEnumToggleButtons(showSelectAll: true)]
+    public Abilities unlockedAbilities;
 
-![Image placeholder: Permission flags as toggle button grid]
-
----
-
-### Example 4: Serializable Collections
-
-```csharp
-using UnityEngine;
-using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
-
-public class GameDatabase : MonoBehaviour
-{
-    // Dictionary with custom drawer
-    public SerializableDictionary<string, GameObject> prefabRegistry;
-
-    // HashSet with duplicate detection
-    public SerializableHashSet<string> uniqueItemIds;
-
-    // SortedSet with automatic ordering
-    public SerializableSortedSet<int> scoreThresholds;
-
-    // Type reference that survives refactoring
-    [StringInList(typeof(TypeHelper), nameof(TypeHelper.GetAllMonoBehaviours))]
-    public SerializableType behaviorType;
-
-    // Nullable primitive
-    public SerializableNullable<float> optionalBonus;
-
-    // GUID generation
+    // Serializable collections
+    public SerializableDictionary<string, int> stats;
     public WGuid entityId = WGuid.NewGuid();
+
+    // Inspector button
+    [WButton("Reset Stats")]
+    private void ResetStats() => maxHealth = defense = attackPower = 100f;
 }
 ```
 
-![Image placeholder: SerializableDictionary editor with add/remove buttons]
-![Image placeholder: SerializableSet with pagination]
+For individual feature examples, see the detailed guides linked above.
 
 ---
 

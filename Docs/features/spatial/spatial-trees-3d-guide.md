@@ -78,23 +78,7 @@ Notes
 
 ## ⭐ Zero-Allocation Queries: The Performance Killer Feature
 
-**The Problem - GC Spikes Every Frame:**
-
-```csharp
-void Update()
-{
-    // 🔴 BAD: Allocates new List every frame
-    List<VfxPoint> nearby = tree.GetElementsInRange(playerPos, 15f);
-
-    foreach (VfxPoint p in nearby)
-    {
-        p.UpdateEffect();
-    }
-    // Result: GC runs frequently = frame drops
-}
-```
-
-**The Solution - Buffering Pattern:**
+All 3D spatial trees support the same zero-allocation query pattern as their 2D counterparts. Pass a reusable buffer to avoid GC allocations:
 
 ```csharp
 // Reusable buffer (declare once)
@@ -111,63 +95,19 @@ void Update()
     {
         p.UpdateEffect();
     }
-    // Result: No GC, stable 60fps
 }
 ```
 
-**Impact:**
-
-- **Before:** GC spikes every 2-3 seconds, frame drops to 40fps
-- **After:** Zero GC from queries, stable 60fps even with 1000s of queries/second
-
-**All spatial trees support this pattern:**
+**All 3D spatial trees support buffered queries:**
 
 - `OctTree3D.GetElementsInRange(pos, radius, buffer)`
 - `KdTree3D.GetElementsInBounds(bounds, buffer)`
 - `RTree3D.GetElementsInRange(pos, radius, buffer)`
 
-> 💡 **Pro Tip:** Pre-size your buffers based on expected max results.
-> `new List<VfxPoint>(128)` avoids internal resizing for results up to 128 items.
-
-**Maximum Ergonomics:**
-
-These APIs return the buffer you pass in, so you can use them directly in `foreach` loops:
-
-```csharp
-private List<VfxPoint> nearbyBuffer = new(128);
-
-void Update()
-{
-    // Returns the same buffer - use it directly in foreach!
-    foreach (VfxPoint p in tree.GetElementsInRange(playerPos, 15f, nearbyBuffer))
-    {
-        p.UpdateEffect();
-    }
-}
-```
-
-**Using Pooled Buffers:**
-
-Don't want to manage buffers yourself? Use the built-in pooling utilities:
-
-```csharp
-using WallstopStudios.UnityHelpers.Utils;
-
-void Update()
-{
-    // Get pooled buffer - automatically returned when scope exits
-    using var lease = Buffers<VfxPoint>.List.Get(out List<VfxPoint> buffer);
-
-    // Use it directly in foreach - combines zero-alloc query + pooled buffer!
-    foreach (VfxPoint p in tree.GetElementsInRange(playerPos, 15f, buffer))
-    {
-        p.UpdateEffect();
-    }
-    // buffer automatically returned to pool here
-}
-```
-
-See [Buffering Pattern](../../../README.md#buffering-pattern) for the complete guide and [Pooling Utilities](../../../README.md#pooling-utilities) for more pooling options.
+> 📖 For the complete buffering guide including pooled buffers and GC impact analysis, see:
+>
+> - [Zero-Allocation Queries (2D Guide)](spatial-trees-2d-guide.md#-zero-allocation-queries-the-performance-killer-feature) — detailed examples
+> - [Buffering Pattern](../../../README.md#buffering-pattern) — project-wide pooling utilities
 
 ## Structures
 

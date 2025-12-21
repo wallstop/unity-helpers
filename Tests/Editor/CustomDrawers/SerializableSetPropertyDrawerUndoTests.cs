@@ -5,7 +5,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using System.Linq;
     using NUnit.Framework;
     using UnityEditor;
-    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Tests.Core;
@@ -13,14 +12,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
     public sealed class SerializableSetPropertyDrawerUndoTests : CommonTestBase
     {
-        [Serializable]
-        private sealed class IntHashSetDictionary : SerializableHashSet<int> { }
-
-        private sealed class TestSetHost : ScriptableObject
-        {
-            public IntHashSetDictionary set = new();
-        }
-
         private static string FormatSetContents<T>(IEnumerable<T> set)
         {
             return string.Join(", ", set.Select(item => item?.ToString() ?? "null"));

@@ -4,21 +4,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using NUnit.Framework;
     using UnityEditor;
     using UnityEditorInternal;
-    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
 
     public sealed class SerializableDictionaryPropertyDrawerUndoTests : CommonTestBase
     {
-        [Serializable]
-        private sealed class IntStringDictionary : SerializableDictionary<int, string> { }
-
-        private sealed class TestDictionaryHost : ScriptableObject
-        {
-            public IntStringDictionary dictionary = new();
-        }
-
         [SetUp]
         public override void BaseSetUp()
         {

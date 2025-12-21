@@ -69,24 +69,24 @@ Samples~/                  # Sample projects (imported via Package Manager)
 
 Invoke these skills for specific tasks:
 
-| Skill                                                        | When to Use                           |
-| ------------------------------------------------------------ | ------------------------------------- |
-| [high-performance-csharp](skills/high-performance-csharp.md) | **ALL code** (features, bugs, editor) |
-| [create-csharp-file](skills/create-csharp-file.md)           | Creating any new `.cs` file           |
-| [create-unity-meta](skills/create-unity-meta.md)             | After creating any new file or folder |
-| [create-test](skills/create-test.md)                         | Writing or modifying test files       |
-| [create-enum](skills/create-enum.md)                         | Creating a new `enum` type            |
-| [format-code](skills/format-code.md)                         | After any C# file changes             |
-| [search-codebase](skills/search-codebase.md)                 | Finding code, files, or patterns      |
-| [performance-audit](skills/performance-audit.md)             | Reviewing performance-sensitive code  |
-| [use-array-pool](skills/use-array-pool.md)                   | Working with temporary arrays         |
-| [use-pooling](skills/use-pooling.md)                         | Working with temporary collections    |
-| [use-prng](skills/use-prng.md)                               | Implementing randomization            |
-| [use-spatial-structure](skills/use-spatial-structure.md)     | Spatial queries or proximity logic    |
-| [use-serialization](skills/use-serialization.md)             | Save files, network, persistence      |
-| [use-effects-system](skills/use-effects-system.md)           | Buffs, debuffs, stat modifications    |
-| [add-inspector-attribute](skills/add-inspector-attribute.md) | Improving editor UX with attributes   |
-| [debug-il2cpp](skills/debug-il2cpp.md)                       | IL2CPP build issues or AOT errors     |
+| Skill                                                        | When to Use                                         |
+| ------------------------------------------------------------ | --------------------------------------------------- |
+| [high-performance-csharp](skills/high-performance-csharp.md) | **ALL code** (features, bugs, editor)               |
+| [create-csharp-file](skills/create-csharp-file.md)           | Creating any new `.cs` file                         |
+| [create-unity-meta](skills/create-unity-meta.md)             | **MANDATORY** after creating ANY new file or folder |
+| [create-test](skills/create-test.md)                         | Writing or modifying test files                     |
+| [create-enum](skills/create-enum.md)                         | Creating a new `enum` type                          |
+| [format-code](skills/format-code.md)                         | After any C# file changes                           |
+| [search-codebase](skills/search-codebase.md)                 | Finding code, files, or patterns                    |
+| [performance-audit](skills/performance-audit.md)             | Reviewing performance-sensitive code                |
+| [use-array-pool](skills/use-array-pool.md)                   | Working with temporary arrays                       |
+| [use-pooling](skills/use-pooling.md)                         | Working with temporary collections                  |
+| [use-prng](skills/use-prng.md)                               | Implementing randomization                          |
+| [use-spatial-structure](skills/use-spatial-structure.md)     | Spatial queries or proximity logic                  |
+| [use-serialization](skills/use-serialization.md)             | Save files, network, persistence                    |
+| [use-effects-system](skills/use-effects-system.md)           | Buffs, debuffs, stat modifications                  |
+| [add-inspector-attribute](skills/add-inspector-attribute.md) | Improving editor UX with attributes                 |
+| [debug-il2cpp](skills/debug-il2cpp.md)                       | IL2CPP build issues or AOT errors                   |
 
 ---
 
@@ -146,9 +146,45 @@ See [create-csharp-file](skills/create-csharp-file.md) for detailed rules. Key p
 3. Explicit types over `var`
 4. NEVER use `#region`
 5. NEVER use nullable reference types (`string?`)
-6. One file per MonoBehaviour/ScriptableObject
+6. One file per MonoBehaviour/ScriptableObject (production AND tests)
 7. NEVER use `?.`, `??`, `??=` on UnityEngine.Object types
 8. Minimal comments (self-documenting code)
+9. **ALWAYS generate `.meta` files** after creating ANY file or folder (see below)
+
+---
+
+## Unity Meta Files (MANDATORY)
+
+**Every file and folder in this Unity package MUST have a corresponding `.meta` file.** Missing meta files break Unity asset references.
+
+### When to Generate
+
+Generate a `.meta` file **immediately** after creating:
+
+- Any `.cs` file (scripts)
+- Any folder/directory
+- Any config file (`.json`, `.md`, `.txt`, `.asmdef`, `.asmref`)
+- Any asset file (`.shader`, `.uss`, `.uxml`, `.mat`, `.prefab`, etc.)
+
+### How to Generate
+
+```bash
+# For a file
+./scripts/generate-meta.sh Runtime/Core/NewClass.cs
+
+# For a folder (create parent folder meta files first)
+./scripts/generate-meta.sh Runtime/Core/NewFolder
+```
+
+### Order of Operations
+
+1. Create parent folder (if new)
+2. Generate meta for parent folder
+3. Create the file
+4. Generate meta for the file
+5. Format code (if `.cs`)
+
+See [create-unity-meta](skills/create-unity-meta.md) for full details.
 
 ---
 
@@ -198,6 +234,7 @@ public int GetHashCode() => _cachedHash;
 - Strictly follow `.editorconfig` formatting rules
 - Respect folder boundaries (Runtime vs Editor)
 - Update docs and tests alongside code changes
+- **ALWAYS generate `.meta` files** after creating ANY file or folder via `./scripts/generate-meta.sh <path>`
 - **NEVER pipe output to `/dev/null`**
 
 ### Git Operations

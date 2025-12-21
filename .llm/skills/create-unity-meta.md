@@ -1,6 +1,8 @@
 # Skill: Create Unity Meta File
 
-**Trigger**: After creating ANY new file or folder in the Unity package.
+**Trigger**: **MANDATORY** — After creating ANY new file or folder in the Unity package.
+
+> ⚠️ **CRITICAL**: This skill is NOT optional. Every file and folder you create MUST have a corresponding `.meta` file generated immediately. Failure to generate meta files breaks Unity asset references and causes build failures.
 
 ---
 
@@ -8,9 +10,12 @@
 
 Unity requires a corresponding `.meta` file for every asset. Missing `.meta` files cause:
 
-- Unity generating new ones with different GUIDs
-- Broken asset references
-- Lost inspector settings
+- Unity generating new ones with different GUIDs (breaks all references)
+- Broken prefab, scene, and script references
+- Lost inspector settings and serialized data
+- Build failures and runtime errors
+
+**This is a blocking requirement** — do not proceed with other tasks until meta files are generated.
 
 ---
 
@@ -75,11 +80,12 @@ Generate a `.meta` file whenever you create:
 
 ## Important Rules
 
-1. **Never skip meta file generation** — Every file and folder needs one
-2. **Generate in creation order** — Parent folders before children
-3. **Use the script** — Don't manually create meta files (proper GUIDs and importer settings)
-4. **Don't modify existing meta files** — Changing GUIDs breaks references
-5. **Generate after file creation** — The file must exist before generating its meta file
+1. **Never skip meta file generation** — Every file and folder needs one. This is mandatory, not optional.
+2. **Generate immediately** — Run the script right after creating the file/folder, before any other tasks
+3. **Generate in creation order** — Parent folders before children
+4. **Use the script** — Don't manually create meta files (proper GUIDs and importer settings)
+5. **Don't modify existing meta files** — Changing GUIDs breaks references
+6. **Verify generation** — Confirm the `.meta` file was created successfully
 
 ---
 
@@ -89,14 +95,24 @@ Generate a `.meta` file whenever you create:
 # 1. Create folder structure
 mkdir -p Runtime/Core/NewFeature
 
-# 2. Generate meta for folder
+# 2. Generate meta for folder IMMEDIATELY
 ./scripts/generate-meta.sh Runtime/Core/NewFeature
 
 # 3. Create the file (via create_file tool or editor)
 
-# 4. Generate meta for file
+# 4. Generate meta for file IMMEDIATELY
 ./scripts/generate-meta.sh Runtime/Core/NewFeature/MyClass.cs
 
 # 5. Format code
 dotnet tool run csharpier format .
 ```
+
+---
+
+## Checklist Before Proceeding
+
+After creating any file or folder, verify:
+
+- [ ] Meta file exists: `ls -la <path>.meta`
+- [ ] Meta file is not empty and contains valid GUID
+- [ ] Parent folder meta files also exist

@@ -6,10 +6,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     public sealed class SerializableCollectionPendingFoldoutInteractionTests : CommonTestBase
@@ -17,22 +17,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         private const float TestLeftPadding = 12f;
         private const float TestRightPadding = 12f;
         private const float TestHorizontalPadding = 24f;
-
-        private sealed class DictionaryHost : ScriptableObject
-        {
-            public TestDictionary dictionary = new();
-        }
-
-        private sealed class SetHost : ScriptableObject
-        {
-            public TestSet set = new();
-        }
-
-        [Serializable]
-        private sealed class TestDictionary : SerializableDictionary<string, int> { }
-
-        [Serializable]
-        private sealed class TestSet : SerializableHashSet<int> { }
 
         private sealed class PropertyDrawerClickWindow : EditorWindow
         {
@@ -58,20 +42,21 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GroupGUIWidthUtility.ResetForTests();
             SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
 
-            DictionaryHost host = CreateScriptableObject<DictionaryHost>();
+            FoldoutInteractionDictionaryHost host =
+                CreateScriptableObject<FoldoutInteractionDictionaryHost>();
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(DictionaryHost.dictionary)
+                nameof(FoldoutInteractionDictionaryHost.dictionary)
             );
             property.isExpanded = true;
 
             SerializableDictionaryPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(DictionaryHost),
-                nameof(DictionaryHost.dictionary)
+                typeof(FoldoutInteractionDictionaryHost),
+                nameof(FoldoutInteractionDictionaryHost.dictionary)
             );
 
             Rect controlRect = new(40f, 60f, 500f, 240f);
@@ -150,15 +135,21 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GroupGUIWidthUtility.ResetForTests();
             SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
 
-            SetHost host = CreateScriptableObject<SetHost>();
+            FoldoutInteractionSetHost host = CreateScriptableObject<FoldoutInteractionSetHost>();
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty property = serializedObject.FindProperty(nameof(SetHost.set));
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(FoldoutInteractionSetHost.set)
+            );
             property.isExpanded = true;
 
             SerializableSetPropertyDrawer drawer = new();
-            PropertyDrawerTestHelper.AssignFieldInfo(drawer, typeof(SetHost), nameof(SetHost.set));
+            PropertyDrawerTestHelper.AssignFieldInfo(
+                drawer,
+                typeof(FoldoutInteractionSetHost),
+                nameof(FoldoutInteractionSetHost.set)
+            );
 
             Rect controlRect = new(35f, 55f, 480f, 220f);
             PropertyDrawerClickWindow window = Track(
@@ -236,20 +227,21 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GroupGUIWidthUtility.ResetForTests();
             SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
 
-            DictionaryHost host = CreateScriptableObject<DictionaryHost>();
+            FoldoutInteractionDictionaryHost host =
+                CreateScriptableObject<FoldoutInteractionDictionaryHost>();
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(DictionaryHost.dictionary)
+                nameof(FoldoutInteractionDictionaryHost.dictionary)
             );
             property.isExpanded = true;
 
             SerializableDictionaryPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(DictionaryHost),
-                nameof(DictionaryHost.dictionary)
+                typeof(FoldoutInteractionDictionaryHost),
+                nameof(FoldoutInteractionDictionaryHost.dictionary)
             );
 
             Rect controlRect = new(40f, 60f, 500f, 240f);
@@ -328,15 +320,21 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GroupGUIWidthUtility.ResetForTests();
             SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
 
-            SetHost host = CreateScriptableObject<SetHost>();
+            FoldoutInteractionSetHost host = CreateScriptableObject<FoldoutInteractionSetHost>();
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty property = serializedObject.FindProperty(nameof(SetHost.set));
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(FoldoutInteractionSetHost.set)
+            );
             property.isExpanded = true;
 
             SerializableSetPropertyDrawer drawer = new();
-            PropertyDrawerTestHelper.AssignFieldInfo(drawer, typeof(SetHost), nameof(SetHost.set));
+            PropertyDrawerTestHelper.AssignFieldInfo(
+                drawer,
+                typeof(FoldoutInteractionSetHost),
+                nameof(FoldoutInteractionSetHost.set)
+            );
 
             Rect controlRect = new(35f, 55f, 480f, 220f);
             PropertyDrawerClickWindow window = Track(

@@ -207,6 +207,18 @@ public int frameRate = 60;  // Shows as toggle buttons instead of dropdown
 
 ---
 
+### Composite Flags Behavior
+
+The drawer intentionally filters out composite flag values (e.g., `ReadWrite = Read | Write`). This keeps the UI focused on atomic toggles and avoids ambiguous interactions. Use the "Select All" and "Select None" buttons for bulk operations.
+
+### Best Practices for WEnumToggleButtons
+
+- Keep option counts manageable — toggle groups work best for short lists where designers can see everything without scrolling
+- Name enum members descriptively so automatic labels remain readable
+- Combine with conditional attributes like `WShowIf` to build adaptive, context-aware authoring tools
+
+---
+
 ## WValueDropDown
 
 Generic dropdown for any type with fixed values or provider methods.

@@ -276,9 +276,43 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 }
                 else
                 {
+                    // Add to explicit contexts
                     foreach (GroupContext context in explicitContexts)
                     {
                         context.AddProperty(descriptor.PropertyPath, index);
+                    }
+
+                    // Add anchor property to the direct parent group (if any)
+                    // This ensures nested group anchors are included in their parent groups
+                    foreach (WGroupAttribute attribute in descriptor.GroupAttributes)
+                    {
+                        if (string.IsNullOrEmpty(attribute.ParentGroup))
+                        {
+                            continue;
+                        }
+
+                        string normalizedParentName = NormalizeGroupName(attribute.ParentGroup);
+                        if (
+                            !contextsByName.TryGetValue(
+                                normalizedParentName,
+                                out GroupContext parentContext
+                            )
+                        )
+                        {
+                            continue;
+                        }
+
+                        // Don't add if already in explicit contexts
+                        if (explicitContexts.Contains(parentContext))
+                        {
+                            continue;
+                        }
+
+                        bool added = parentContext.AddProperty(descriptor.PropertyPath, index);
+                        if (added && parentContext.HasAutoIncludeBudget)
+                        {
+                            parentContext.ConsumeAutoInclude();
+                        }
                     }
                 }
 
@@ -342,6 +376,74 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 anchorList.Add(definition);
             }
 
+            // Build parent-child relationships for nested groups
+            HashSet<string> circularRefs = null;
+            foreach (WGroupDefinition definition in definitions)
+            {
+                if (string.IsNullOrEmpty(definition.ParentGroupName))
+                {
+                    continue;
+                }
+
+                string normalizedParentName = NormalizeGroupName(definition.ParentGroupName);
+                if (
+                    !groupsByName.TryGetValue(
+                        normalizedParentName,
+                        out WGroupDefinition parentDefinition
+                    )
+                )
+                {
+                    // Parent not found - treat as top-level (already handled by null ParentGroupName check)
+                    continue;
+                }
+
+                // Check for circular reference
+                if (HasCircularReference(definition, groupsByName))
+                {
+                    circularRefs ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    if (circularRefs.Add(definition.Name))
+                    {
+                        Debug.LogWarning(
+                            $"[WGroup] Circular reference detected for group '{definition.Name}' with parent '{definition.ParentGroupName}'. Treating as top-level group."
+                        );
+                    }
+                    continue;
+                }
+
+                parentDefinition.AddChildGroup(definition);
+            }
+
+            // Sort child groups by declaration order and calculate direct property paths
+            foreach (WGroupDefinition definition in definitions)
+            {
+                definition.SortChildGroups();
+
+                // Calculate direct property paths (excluding child group anchor paths)
+                if (definition.ChildGroups.Count > 0)
+                {
+                    HashSet<string> childAnchorPaths = new(StringComparer.Ordinal);
+                    foreach (WGroupDefinition child in definition.ChildGroups)
+                    {
+                        childAnchorPaths.Add(child.AnchorPropertyPath);
+                    }
+
+                    List<string> directPaths = new(definition.PropertyPaths.Count);
+                    foreach (string path in definition.PropertyPaths)
+                    {
+                        if (!childAnchorPaths.Contains(path))
+                        {
+                            directPaths.Add(path);
+                        }
+                    }
+                    definition.SetDirectPropertyPaths(directPaths);
+                }
+                else
+                {
+                    // No child groups, all paths are direct
+                    definition.SetDirectPropertyPaths(definition.PropertyPaths);
+                }
+            }
+
             Dictionary<string, IReadOnlyList<WGroupDefinition>> anchorToGroups = new(
                 anchorToGroupsTemp.Count,
                 StringComparer.Ordinal
@@ -354,7 +456,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 anchorToGroups[kvp.Key] = kvp.Value;
             }
 
-            List<WGroupDrawOperation> operations = BuildDrawOperations(descriptors, groupsByAnchor);
+            List<WGroupDrawOperation> operations = BuildDrawOperations(
+                descriptors,
+                groupsByAnchor,
+                groupsByName
+            );
             return new WGroupLayout(
                 operations,
                 definitions,
@@ -515,7 +621,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
         private static List<WGroupDrawOperation> BuildDrawOperations(
             List<PropertyDescriptor> descriptors,
-            Dictionary<string, List<WGroupDefinition>> groupsByAnchor
+            Dictionary<string, List<WGroupDefinition>> groupsByAnchor,
+            Dictionary<string, WGroupDefinition> groupsByName
         )
         {
             List<WGroupDrawOperation> operations = new(descriptors.Count);
@@ -545,6 +652,33 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                         );
                         foreach (WGroupDefinition definition in anchoredGroups)
                         {
+                            // Skip child groups - they will be rendered by their parent in WGroupGUI
+                            if (definition.HasParent)
+                            {
+                                // Verify parent exists and this is actually a child
+                                string normalizedParentName = NormalizeGroupName(
+                                    definition.ParentGroupName
+                                );
+                                if (
+                                    groupsByName.TryGetValue(
+                                        normalizedParentName,
+                                        out WGroupDefinition parentDef
+                                    ) && parentDef.ChildGroups.Contains(definition)
+                                )
+                                {
+                                    // Mark all properties as consumed but don't add operation
+                                    for (
+                                        int memberIndex = 0;
+                                        memberIndex < definition.PropertyPaths.Count;
+                                        memberIndex++
+                                    )
+                                    {
+                                        consumed.Add(definition.PropertyPaths[memberIndex]);
+                                    }
+                                    continue;
+                                }
+                            }
+
                             operations.Add(new WGroupDrawOperation(definition));
                             for (
                                 int memberIndex = 0;
@@ -572,6 +706,38 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             }
 
             return operations;
+        }
+
+        /// <summary>
+        /// Checks if a group definition has a circular reference in its parent chain.
+        /// </summary>
+        private static bool HasCircularReference(
+            WGroupDefinition definition,
+            Dictionary<string, WGroupDefinition> groupsByName
+        )
+        {
+            HashSet<string> visited = new(StringComparer.OrdinalIgnoreCase) { definition.Name };
+            string currentParentName = definition.ParentGroupName;
+
+            while (!string.IsNullOrEmpty(currentParentName))
+            {
+                string normalizedName = NormalizeGroupName(currentParentName);
+                if (!visited.Add(normalizedName))
+                {
+                    // Already visited this group - circular reference detected
+                    return true;
+                }
+
+                if (!groupsByName.TryGetValue(normalizedName, out WGroupDefinition parentDef))
+                {
+                    // Parent not found, no circular reference possible
+                    break;
+                }
+
+                currentParentName = parentDef.ParentGroupName;
+            }
+
+            return false;
         }
 
         private sealed class GroupContext
@@ -612,6 +778,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
             internal int RemainingAutoInclude { get; private set; }
 
+            internal string ParentGroupName { get; private set; }
+
             internal int PropertyCount
             {
                 get { return _entries.Count; }
@@ -635,6 +803,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 )
                 {
                     DisplayName = attribute.DisplayName;
+                }
+
+                // Capture parent group name if specified
+                if (!string.IsNullOrWhiteSpace(attribute.ParentGroup))
+                {
+                    ParentGroupName = attribute.ParentGroup.Trim();
                 }
 
                 if (!string.IsNullOrWhiteSpace(attribute.ColorKey))
@@ -765,7 +939,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                     orderedPaths,
                     anchorPath,
                     anchorIndex,
-                    DeclarationOrder
+                    DeclarationOrder,
+                    ParentGroupName
                 );
             }
 
@@ -848,6 +1023,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
     internal sealed class WGroupDefinition
     {
+        private static readonly List<WGroupDefinition> EmptyChildGroups = new(0);
+        private static readonly IReadOnlyList<string> EmptyDirectPropertyPaths =
+            Array.Empty<string>();
+
+        private List<WGroupDefinition> _childGroups;
+        private IReadOnlyList<string> _directPropertyPaths;
+
         internal WGroupDefinition(
             string name,
             string displayName,
@@ -858,7 +1040,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             IReadOnlyList<string> propertyPaths,
             string anchorPropertyPath,
             int anchorIndex,
-            int declarationOrder
+            int declarationOrder,
+            string parentGroupName = null
         )
         {
             Name = name;
@@ -871,6 +1054,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             AnchorPropertyPath = anchorPropertyPath;
             AnchorIndex = anchorIndex;
             DeclarationOrder = declarationOrder;
+            ParentGroupName = parentGroupName;
+            _childGroups = null;
+            _directPropertyPaths = null;
         }
 
         internal string Name { get; }
@@ -892,6 +1078,59 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         internal int AnchorIndex { get; }
 
         internal int DeclarationOrder { get; }
+
+        /// <summary>
+        /// The name of the parent group, or null for top-level groups.
+        /// </summary>
+        internal string ParentGroupName { get; }
+
+        /// <summary>
+        /// Child groups to be rendered inside this group. Populated after construction.
+        /// </summary>
+        internal List<WGroupDefinition> ChildGroups
+        {
+            get => _childGroups ?? EmptyChildGroups;
+        }
+
+        /// <summary>
+        /// Property paths excluding child group anchor paths.
+        /// </summary>
+        internal IReadOnlyList<string> DirectPropertyPaths
+        {
+            get => _directPropertyPaths ?? EmptyDirectPropertyPaths;
+        }
+
+        /// <summary>
+        /// Returns true if this group has a parent group.
+        /// </summary>
+        internal bool HasParent => !string.IsNullOrEmpty(ParentGroupName);
+
+        /// <summary>
+        /// Adds a child group to this group's ChildGroups list.
+        /// </summary>
+        internal void AddChildGroup(WGroupDefinition child)
+        {
+            _childGroups ??= new List<WGroupDefinition>();
+            _childGroups.Add(child);
+        }
+
+        /// <summary>
+        /// Sorts child groups by their declaration order.
+        /// </summary>
+        internal void SortChildGroups()
+        {
+            _childGroups?.Sort(
+                (left, right) => left.DeclarationOrder.CompareTo(right.DeclarationOrder)
+            );
+        }
+
+        /// <summary>
+        /// Sets the direct property paths (excluding child anchor paths).
+        /// </summary>
+        internal void SetDirectPropertyPaths(IReadOnlyList<string> paths)
+        {
+            _directPropertyPaths = paths ?? EmptyDirectPropertyPaths;
+        }
     }
 
     internal sealed class WGroupLayout

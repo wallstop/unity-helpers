@@ -12,9 +12,12 @@
    - Tests → `Tests/Runtime/` or `Tests/Editor/` (mirror source structure)
 
 2. **One file per MonoBehaviour/ScriptableObject**:
-   - Each `MonoBehaviour` or `ScriptableObject` MUST have its own dedicated `.cs` file
-   - ❌ Multiple MonoBehaviours in the same file
-   - ❌ Test helper MonoBehaviours defined inside test class files
+   - Each class deriving from `MonoBehaviour` or `ScriptableObject` MUST have its own dedicated `.cs` file
+   - This applies to **ALL code**: production (`Runtime/`, `Editor/`) AND tests (`Tests/`)
+   - ❌ Multiple MonoBehaviours/ScriptableObjects in the same file
+   - ❌ Test helper MonoBehaviours/ScriptableObjects defined inside test class files
+   - ❌ Nested classes deriving from MonoBehaviour/ScriptableObject
+   - ✅ Create separate `MyTestComponent.cs`, `TestHelperScriptableObject.cs` files
    - Enforced by pre-commit hook and CI/CD analyzer
 
 ---
@@ -136,13 +139,15 @@ UnityEngine.Object obj = ...;
 
 ---
 
-## Post-Creation Steps
+## Post-Creation Steps (MANDATORY)
 
-1. **Generate meta file**:
+1. **Generate meta file** (required — do not skip):
 
    ```bash
    ./scripts/generate-meta.sh <path-to-file.cs>
    ```
+
+   > ⚠️ See [create-unity-meta](create-unity-meta.md) for full details. This step is **mandatory** — every `.cs` file MUST have a corresponding `.meta` file.
 
 2. **Format code**:
 

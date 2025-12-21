@@ -6,11 +6,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
 
     /// <summary>
@@ -28,14 +28,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             base.BaseSetUp();
             GroupGUIWidthUtility.ResetForTests();
             SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
-        }
-
-        [Serializable]
-        private sealed class TestIntHashSet : SerializableHashSet<int> { }
-
-        private sealed class TestSetHost : ScriptableObject
-        {
-            public TestIntHashSet set = new();
         }
 
         [Test]
@@ -111,14 +103,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator OnGUINormalContextRespectsIndentLevel()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            IndentationTestSetHost host = CreateScriptableObject<IndentationTestSetHost>();
             host.set.Add(1);
             host.set.Add(2);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(IndentationTestSetHost.set)
+            );
             setProperty.isExpanded = true;
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
 
@@ -231,7 +225,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void TargetsUnityHelpersSettingsReturnsFalseForRegularScriptableObject()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            IndentationTestSetHost host = CreateScriptableObject<IndentationTestSetHost>();
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
 
             bool targetsSettings =
@@ -260,12 +254,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void DrawerDoesNotThrowWhenSetIsEmpty()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            IndentationTestSetHost host = CreateScriptableObject<IndentationTestSetHost>();
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(IndentationTestSetHost.set)
+            );
             setProperty.isExpanded = true;
 
             SerializableSetPropertyDrawer drawer = new();
@@ -298,13 +294,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void DrawerHandlesVeryLargeIndentLevel()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            IndentationTestSetHost host = CreateScriptableObject<IndentationTestSetHost>();
             host.set.Add(42);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(IndentationTestSetHost.set)
+            );
             setProperty.isExpanded = true;
 
             SerializableSetPropertyDrawer drawer = new();
@@ -598,14 +596,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator OnGUIInWGroupContextSkipsMinimumIndentAtZeroLevel()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            IndentationTestSetHost host = CreateScriptableObject<IndentationTestSetHost>();
             host.set.Add(1);
             host.set.Add(2);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(IndentationTestSetHost.set)
+            );
             setProperty.isExpanded = true;
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
 

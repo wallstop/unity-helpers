@@ -1097,7 +1097,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 #endif
 
         [Serializable]
-        internal sealed class WGroupCustomColor
+        public sealed class WGroupCustomColor
         {
             [FormerlySerializedAs("backgroundColor")]
             [SerializeField]

@@ -6,11 +6,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
 
     /// <summary>
@@ -27,14 +27,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             base.BaseSetUp();
             GroupGUIWidthUtility.ResetForTests();
             SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
-        }
-
-        [Serializable]
-        private sealed class TestIntHashSet : SerializableHashSet<int> { }
-
-        private sealed class TestSetHost : ScriptableObject
-        {
-            public TestIntHashSet set = new();
         }
 
         [Test]
@@ -61,13 +53,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void NormalContextUsesFullManualEntrySectionPadding()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            PaddingTestSetHost host = CreateScriptableObject<PaddingTestSetHost>();
             host.set.Add(1);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(PaddingTestSetHost.set)
+            );
             setProperty.isExpanded = true;
 
             SerializableSetPropertyDrawer drawer = new();
@@ -109,13 +103,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator OnGUINormalContextDrawsManualEntryWithFullPadding()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            PaddingTestSetHost host = CreateScriptableObject<PaddingTestSetHost>();
             host.set.Add(1);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(PaddingTestSetHost.set)
+            );
             setProperty.isExpanded = true;
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
 
@@ -138,7 +134,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void NullPropertyDoesNotCrashPaddingResolution()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            PaddingTestSetHost host = CreateScriptableObject<PaddingTestSetHost>();
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
 
@@ -169,11 +165,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void PropertyWithNullSerializedObjectDoesNotCrash()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            PaddingTestSetHost host = CreateScriptableObject<PaddingTestSetHost>();
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(PaddingTestSetHost.set)
+            );
 
             // Dispose the serialized object to make its properties invalid
             serializedObject.Dispose();
@@ -204,10 +202,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void MultipleDrawerInstancesOperateIndependently()
         {
-            TestSetHost host1 = CreateScriptableObject<TestSetHost>();
+            PaddingTestSetHost host1 = CreateScriptableObject<PaddingTestSetHost>();
             host1.set.Add(1);
 
-            TestSetHost host2 = CreateScriptableObject<TestSetHost>();
+            PaddingTestSetHost host2 = CreateScriptableObject<PaddingTestSetHost>();
             host2.set.Add(2);
             host2.set.Add(3);
 
@@ -216,8 +214,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             serializedObject1.Update();
             serializedObject2.Update();
 
-            SerializedProperty property1 = serializedObject1.FindProperty(nameof(TestSetHost.set));
-            SerializedProperty property2 = serializedObject2.FindProperty(nameof(TestSetHost.set));
+            SerializedProperty property1 = serializedObject1.FindProperty(
+                nameof(PaddingTestSetHost.set)
+            );
+            SerializedProperty property2 = serializedObject2.FindProperty(
+                nameof(PaddingTestSetHost.set)
+            );
             property1.isExpanded = true;
             property2.isExpanded = true;
 
@@ -237,13 +239,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void EmptySetHandledGracefully()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            PaddingTestSetHost host = CreateScriptableObject<PaddingTestSetHost>();
             // Set is empty by default
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(PaddingTestSetHost.set)
+            );
             setProperty.isExpanded = true;
 
             SerializableSetPropertyDrawer drawer = new();
@@ -257,7 +261,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void ExpandedSetTallerThanCollapsed()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            PaddingTestSetHost host = CreateScriptableObject<PaddingTestSetHost>();
             host.set.Add(1);
             host.set.Add(2);
             host.set.Add(3);
@@ -265,7 +269,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(PaddingTestSetHost.set)
+            );
 
             SerializableSetPropertyDrawer drawer = new();
             GUIContent label = new("Set");
@@ -286,13 +292,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator DrawerMaintainsConsistentPaddingAcrossMultipleRepaints()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            PaddingTestSetHost host = CreateScriptableObject<PaddingTestSetHost>();
             host.set.Add(1);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(PaddingTestSetHost.set)
+            );
             setProperty.isExpanded = true;
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
 
@@ -336,7 +344,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void SetWithManyElementsHandledCorrectly()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            PaddingTestSetHost host = CreateScriptableObject<PaddingTestSetHost>();
             for (int i = 0; i < 20; i++)
             {
                 host.set.Add(i);
@@ -345,7 +353,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(PaddingTestSetHost.set)
+            );
             setProperty.isExpanded = true;
 
             SerializableSetPropertyDrawer drawer = new();
@@ -363,13 +373,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void VeryLargeIndentLevelHandledGracefully()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            PaddingTestSetHost host = CreateScriptableObject<PaddingTestSetHost>();
             host.set.Add(42);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(PaddingTestSetHost.set)
+            );
             setProperty.isExpanded = true;
 
             SerializableSetPropertyDrawer drawer = new();
@@ -402,13 +414,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void ZeroIndentLevelAppliesMinimumPadding()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            PaddingTestSetHost host = CreateScriptableObject<PaddingTestSetHost>();
             host.set.Add(1);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(PaddingTestSetHost.set)
+            );
             setProperty.isExpanded = true;
 
             GUIContent label = new("Set");
@@ -441,13 +455,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void HigherIndentLevelReducesWidth()
         {
-            TestSetHost host = CreateScriptableObject<TestSetHost>();
+            PaddingTestSetHost host = CreateScriptableObject<PaddingTestSetHost>();
             host.set.Add(1);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(PaddingTestSetHost.set)
+            );
             setProperty.isExpanded = true;
 
             GUIContent label = new("Set");

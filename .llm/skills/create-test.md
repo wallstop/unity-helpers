@@ -58,10 +58,15 @@ namespace WallstopStudios.UnityHelpers.Tests.{Subsystem}
 
 ### 3. One File Per MonoBehaviour/ScriptableObject
 
-Test helper components must be in their own dedicated files:
+Any class deriving from `MonoBehaviour` or `ScriptableObject` MUST be in its own dedicated `.cs` file—even in tests:
 
 - ✅ `TestHelperComponent.cs` containing only `class TestHelperComponent : MonoBehaviour`
+- ✅ `TestScriptableObject.cs` containing only `class TestScriptableObject : ScriptableObject`
 - ❌ Test helper MonoBehaviours defined inside test class files
+- ❌ Test helper ScriptableObjects defined inside test class files
+- ❌ Nested classes deriving from MonoBehaviour/ScriptableObject within test classes
+
+**Why**: Unity's serialization and asset system requires these types to be in files matching their class name. Embedded definitions cause editor errors and serialization failures.
 
 ### 4. No `async Task` Test Methods
 

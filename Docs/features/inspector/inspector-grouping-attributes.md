@@ -33,8 +33,8 @@ public class CharacterStatsWGroup : MonoBehaviour
     public float maxHealth = 100f;
     public float defense = 10f;
     public float attackPower = 25f;
-    public float criticalChance = 0.15f;
     [WGroupEnd("combat")]
+    public float criticalChance = 0.15f;
 
     public string characterName; // Not in group
 }
@@ -52,7 +52,8 @@ public class CharacterStatsWGroup : MonoBehaviour
     bool collapsible = false,            // Enable foldout behavior
     bool startCollapsed = false,         // Initial collapsed state
     string colorKey = "Default",         // Color palette key
-    bool hideHeader = false              // Draw body without header bar
+    bool hideHeader = false,             // Draw body without header bar
+    string parentGroup = null            // Optional: Nest inside another group
 )]
 ```
 
@@ -82,8 +83,8 @@ public class CharacterStatsWGroup : MonoBehaviour
 [WGroup("items", "Inventory", autoIncludeCount: 3)]
 public GameObject weapon;
 public GameObject armor;
-public GameObject accessory;
 [WGroupEnd("items")]  // Terminates auto-inclusion
+public GameObject accessory;
 
 public int gold;  // Not included
 ```
@@ -96,7 +97,8 @@ public bool enableSound;
 public bool enableMusic;
 public float volume;
 // ... 20 more fields ...
-[WGroupEnd("settings")]  // Required to terminate
+[WGroupEnd("settings")]  // Required to terminate, place on top of LAST FIELD TO INCLUDE
+public bool lastField;
 ```
 
 #### 3. Global Default
@@ -107,8 +109,8 @@ public float volume;
 public int strength;
 public int intelligence;
 public int agility;
-public int luck;
 [WGroupEnd("stats")]  // Optional if count matches setting
+public int luck;
 ```
 
 ---
@@ -132,7 +134,7 @@ public class WGroupEndExample : MonoBehaviour
 }
 ```
 
-![GIF placeholder: WGroup being collapsed and expanded with smooth animation]
+![WGroup being collapsed and expanded with smooth animation](../../images/inspector/wgroup-collapsible.gif)
 
 **Animation Settings:**
 
@@ -146,18 +148,26 @@ Configure in **Project Settings → Unity Helpers** or see [Inspector Settings](
 ### Color Theming
 
 ```csharp
-[WGroup("health", "Health", colorKey: "Default-Dark")]
-public float currentHealth;
-public float maxHealth;
-[WGroupEnd("health")]
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
 
-[WGroup("mana", "Mana", colorKey: "Default-Light")]
-public float currentMana;
-public float maxMana;
-[WGroupEnd("mana")]
+public class ColorThemingExample : MonoBehaviour
+{
+    [WGroup("health", "Health", colorKey: "Default-Dark")]
+    public float currentHealth;
+
+    [WGroupEnd("health")]
+    public float maxHealth;
+
+    [WGroup("mana", "Mana", colorKey: "Default-Light")]
+    public float currentMana;
+
+    [WGroupEnd("mana")]
+    public float maxMana;
+}
 ```
 
-![Image placeholder: Two groups with different color themes (dark blue and light blue)]
+![Two groups with different color themes (dark blue and light blue)](../../images/inspector/wgroup-light-dark.png)
 
 **Built-in Color Keys:**
 
@@ -173,20 +183,27 @@ public float maxMana;
 2. Add entry to `WGroupCustomColors` dictionary
 3. Set `Header Background`, `Border Color`, `Body Background`
 
-![Image placeholder: UnityHelpersSettings showing custom color palette configuration]
+![UnityHelpersSettings showing custom color palette configuration](../../images/inspector/wgroup-color-settings.png)
 
 ---
 
 ### Hiding Headers
 
 ```csharp
-[WGroup("stealth", "", hideHeader: true, colorKey: "Default-Light")]
-public float opacity = 1f;
-public bool isVisible = true;
-[WGroupEnd("stealth")]
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public class HealthExample : MonoBehaviour
+{
+    [WGroup("stealth", "", hideHeader: true, colorKey: "Default-Light")]
+    public float opacity = 1f;
+
+    [WGroupEnd("stealth")]
+    public bool isVisible = true;
+}
 ```
 
-![Image placeholder: WGroup with just border and body, no header]
+![WGroup with just border and body, no header](../../images/inspector/wgroup-no-header.png)
 
 **Use Cases:**
 
@@ -198,20 +215,77 @@ public bool isVisible = true;
 
 ### Nested Groups
 
-```csharp
-[WGroup("outer", "Character")]
-public string characterName;
+Use the `parentGroup` parameter to nest one group inside another. Nested groups render visually inside their parent's box, with accumulated indentation and padding.
 
-    [WGroup("inner", "Stats", colorKey: "Default-Light")]
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public class NestedGroupExample : MonoBehaviour
+{
+    [WGroup("outer", "Character")]
+    public string characterName;
+
+    [WGroup("inner", "Stats", parentGroup: "outer", colorKey: "Default-Light")]
     public int level;
     public int experience;
-    [WGroupEnd("inner")]
 
-public string faction;
-[WGroupEnd("outer")]
+    [WGroupEnd("inner")]
+    [WGroupEnd("outer")]
+    public string faction;
+}
 ```
 
-![Image placeholder: Nested WGroup showing outer and inner boxes with different colors]
+![Nested WGroup showing inner Stats box rendered inside outer Character box](../../images/inspector/wgroup-nested.png)
+
+**How Nesting Works:**
+
+1. Declare the parent group first with `[WGroup("outer", ...)]`
+2. Declare child group with `parentGroup: "outer"` parameter
+3. Child groups are rendered recursively inside parent content areas
+4. Indentation and padding accumulate for each nesting level
+5. Each group maintains its own foldout state when collapsible
+
+**Multiple Nesting Levels:**
+
+```csharp
+[WGroup("level1", "Level 1")]
+public string field1;
+
+[WGroup("level2", "Level 2", parentGroup: "level1")]
+public string field2;
+
+[WGroup("level3", "Level 3", parentGroup: "level2")]
+public string field3;
+[WGroupEnd("level3")]
+[WGroupEnd("level2")]
+[WGroupEnd("level1")]
+public string field4;
+```
+
+**Sibling Nested Groups:**
+
+```csharp
+[WGroup("parent", "Parent")]
+public string parentField;
+
+[WGroup("child1", "Child 1", parentGroup: "parent")]
+public string child1Field;
+
+[WGroupEnd("child1")]
+[WGroup("child2", "Child 2", parentGroup: "parent")]
+public string child2Field;
+
+[WGroupEnd("child2")]
+[WGroupEnd("parent")]
+public string afterParent;
+```
+
+**Important Notes:**
+
+- Parent group must be declared before or on the same property as the child
+- Circular references are detected and logged as warnings; affected groups are treated as top-level
+- If `parentGroup` references a non-existent group, the child is rendered as a top-level group
 
 ---
 
@@ -221,6 +295,7 @@ public string faction;
 
 ```csharp
 [WGroupEnd("combat")]  // Closes only the "combat" group
+public int wGroupMustBeAttachedToAField;
 ```
 
 #### 2. Include Element in Group
@@ -234,6 +309,7 @@ public int totalPoints;  // Included in "stats" group, then closes it
 
 ```csharp
 [WGroupEnd]  // Closes all active groups (no group name specified)
+public int wGroupMustBeAttachedToAField;
 ```
 
 ---
@@ -253,20 +329,29 @@ public class WGroupAttribute
 ### Shared Group Names
 
 ```csharp
-[WGroup("settings", "Game Settings", autoIncludeCount: 2)]
-public float masterVolume;
-public float musicVolume;
-[WGroupEnd("settings")]
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
 
-// Later in the same script...
-[WGroup("settings", autoIncludeCount: 1)]  // Reuses "Game Settings" header
-public float sfxVolume;
-[WGroupEnd("settings")]
+public class WGroupOutOfOrderExample : MonoBehaviour
+{
+    [WGroup("settings", "Game Settings", autoIncludeCount: 1)]
+    public float masterVolume;
+    public float musicVolume;
+
+    public int numChannels;
+
+    // Later in the same script...
+    [WGroup("settings", autoIncludeCount: 1)] // Reuses "Game Settings" header, included in original group
+    public float sfxVolume;
+
+    [WGroupEnd("settings")]
+    public bool enableSound;
+}
 ```
 
-![Image placeholder: Two separate WGroup sections with same header styling]
+![Two separate WGroup sections with same header styling](../../images/inspector/wgroup-out-of-order.png)
 
-**Note:** Shared groups are visually separate but use the same display name and color settings.
+**Note:** Multiple `[WGroup]` attributes with the same `groupName` merge into a single group instance. This allows for logical grouping of related fields that may not be contiguous in code.
 
 ---
 
@@ -286,7 +371,7 @@ All grouping attributes respect project-wide settings defined in `UnityHelpersSe
 - `WGroupFoldoutSpeed` (default: 2.0, range: 2-12) - Animation speed
 - `WGroupCustomColors` - Custom color palette dictionary
 
-![Image placeholder: UnityHelpersSettings asset showing WGroup configuration section]
+![UnityHelpersSettings asset showing WGroup configuration section](../../images/inspector/wgroup-settings.png)
 
 ---
 
@@ -312,8 +397,8 @@ All grouping attributes respect project-wide settings defined in `UnityHelpersSe
 [WGroup("position", "Position", autoIncludeCount: 3)]
 public Vector3 position;
 public Quaternion rotation;
-public Vector3 scale;
 [WGroupEnd("position")]
+public Vector3 scale;
 
 // ✅ GOOD: Infinite for dynamic/long lists
 [WGroup("inventory", "Items", autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
@@ -321,6 +406,7 @@ public List<GameObject> weapons;
 public List<GameObject> consumables;
 // ... many more fields ...
 [WGroupEnd("inventory")]
+public int lastFieldToIncludeInInventory;
 
 // ❌ BAD: Infinite without WGroupEnd (includes everything below!)
 [WGroup("bad", autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
@@ -350,19 +436,18 @@ public string unrelatedField;  // Also included!
 // ✅ GOOD: Always-visible for frequently accessed data
 [WGroup("core", "Core Stats", collapsible: false)]
 public float health;
-public float energy;
 [WGroupEnd("core")]
+public float energy;
 
 // ✅ GOOD: Collapsible for optional/advanced features
 [WGroup("advanced", "Advanced", collapsible: true, startCollapsed: true)]
 public float debugParameter;
-public bool experimentalFeature;
 [WGroupEnd("advanced")]
+public bool experimentalFeature;
 
 // ❌ BAD: Everything collapsible (hides important data)
-[WGroup("important", "Critical Settings", collapsible: true, startCollapsed: true)]
+[WGroup("important", "Critical Settings", collapsible: true, startCollapsed: true, autoIncludeCount: 0)]
 public float maxHealth;  // Why hide this?
-[WGroupEnd("important")]
 ```
 
 ---
@@ -372,6 +457,7 @@ public float maxHealth;  // Why hide this?
 ### Example 1: RPG Character Stats
 
 ```csharp
+using System.Collections.Generic;
 using UnityEngine;
 using WallstopStudios.UnityHelpers.Core.Attributes;
 
@@ -381,29 +467,30 @@ public class RPGCharacter : MonoBehaviour
     public string characterName;
     public Sprite portrait;
     public string className;
-    [WGroupEnd("identity")]
 
+    [WGroupEnd("identity")]
     [WGroup("attributes", "Base Attributes", collapsible: true)]
     public int strength = 10;
     public int agility = 10;
     public int intelligence = 10;
     public int vitality = 10;
-    [WGroupEnd("attributes")]
 
+    [WGroupEnd("attributes")]
     [WGroup("combat", "Combat Stats", colorKey: "Default-Light")]
     public float maxHealth = 100f;
     public float attackPower = 25f;
     public float defense = 15f;
-    [WGroupEnd("combat")]
 
+    [WGroupEnd("combat")]
     [WGroup("skills", "Skills", collapsible: true, startCollapsed: true)]
-    public List<string> learnedSkills;
-    public int skillPoints = 0;
+    public List<string> learnedSkills = new();
+
     [WGroupEnd("skills")]
+    public int skillPoints = 0;
 }
 ```
 
-![Image placeholder: RPGCharacter inspector showing all groups with different colors]
+![RPGCharacter inspector showing all groups with different colors](../../images/inspector/rpg-character.png)
 
 ---
 
@@ -413,34 +500,44 @@ public class RPGCharacter : MonoBehaviour
 using UnityEngine;
 using WallstopStudios.UnityHelpers.Core.Attributes;
 
-public class WeaponConfig : MonoBehaviour
+public enum DamageType
+{
+    Physical,
+    Magic,
+}
+
+public class WeaponConfig2 : MonoBehaviour
 {
     [WGroup("basic", "Basic Info", autoIncludeCount: 2)]
     public string weaponName;
-    public Sprite icon;
+
     [WGroupEnd("basic")]
+    public Sprite icon;
 
     [WGroup("damage", "Damage", collapsible: true, colorKey: "Default-Dark")]
     public float baseDamage = 10f;
     public float criticalMultiplier = 2f;
-    public DamageType damageType;
+
     [WGroupEnd("damage")]
+    public DamageType damageType;
 
     [WGroup("effects", "Special Effects", collapsible: true, startCollapsed: true)]
     public ParticleSystem hitEffect;
     public AudioClip hitSound;
-    public float effectDuration = 1f;
+
     [WGroupEnd("effects")]
+    public float effectDuration = 1f;
 
     [WGroup("advanced", "Advanced Settings", collapsible: true, startCollapsed: true)]
     public float projectileSpeed = 20f;
     public LayerMask targetLayers;
-    public bool debugMode = false;
+
     [WGroupEnd("advanced")]
+    public bool debugMode = false;
 }
 ```
 
-![Image placeholder: WeaponConfig inspector with mixed open/closed groups]
+![WeaponConfig inspector with mixed open/closed groups](../../images/inspector/wgroup-weapon-config-2.png)
 
 ---
 
@@ -455,35 +552,44 @@ public class LevelSettings : MonoBehaviour
     [WGroup("general", "General", autoIncludeCount: 3)]
     public string levelName;
     public Sprite thumbnail;
-    public string description;
-    [WGroupEnd("general")]
 
-    [WGroup("environment", "Environment", collapsible: true, startCollapsed: true,
-            autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
+    [WGroupEnd("general")]
+    public string description;
+
+    [WGroup(
+        "environment",
+        "Environment",
+        collapsible: true,
+        startCollapsed: true,
+        autoIncludeCount: WGroupAttribute.InfiniteAutoInclude
+    )]
     public Color skyColor;
     public Color fogColor;
     public float fogDensity;
     public Light directionalLight;
     public Cubemap skybox;
     public float ambientIntensity;
-    public float sunIntensity;
+
     [WGroupEnd("environment")]
+    public float sunIntensity;
 
     [WGroup("gameplay", "Gameplay Rules", collapsible: true, startCollapsed: false)]
     public int enemyCount = 10;
     public float difficultyMultiplier = 1f;
-    public bool allowRespawns = true;
+
     [WGroupEnd("gameplay")]
+    public bool allowRespawns = true;
 
     [WGroup("debug", "Debug Options", collapsible: true, startCollapsed: true)]
     public bool godMode = false;
     public bool unlimitedAmmo = false;
-    public bool showHitboxes = false;
+
     [WGroupEnd("debug")]
+    public bool showHitboxes = false;
 }
 ```
 
-![GIF placeholder: LevelSettings with multiple collapsible groups being toggled]
+![LevelSettings with multiple collapsible groups being toggled](../../images/inspector/wgroup-collapsing.gif)
 
 ---
 
@@ -496,22 +602,22 @@ using WallstopStudios.UnityHelpers.Core.Attributes;
 public class AIController : MonoBehaviour
 {
     [WGroup("outer", "AI Configuration")]
+    [WGroup("detection", "Detection", colorKey: "Default-Light", parentGroup: "outer")]
+    public float sightRange = 10f;
 
-        [WGroup("detection", "Detection", colorKey: "Default-Light")]
-        public float sightRange = 10f;
-        public float hearingRange = 5f;
-        [WGroupEnd("detection")]
+    [WGroupEnd("detection")]
+    public float hearingRange = 5f;
 
-        [WGroup("behavior", "Behavior", colorKey: "Default-Dark")]
-        public float aggressionLevel = 0.5f;
-        public float retreatThreshold = 0.2f;
-        [WGroupEnd("behavior")]
+    [WGroup("behavior", "Behavior", colorKey: "Default-Dark", parentGroup: "outer")]
+    public float aggressionLevel = 0.5f;
 
+    [WGroupEnd("behavior")]
     [WGroupEnd("outer")]
+    public float retreatThreshold = 0.2f;
 }
 ```
 
-![Image placeholder: Nested groups showing visual hierarchy]
+![Nested groups showing visual hierarchy](../../images/inspector/wgroup-nested-2.png)
 
 ---
 
@@ -532,15 +638,16 @@ public class AIController : MonoBehaviour
 [WGroup("stats", autoIncludeCount: 2)]
 public int strength;
 public int agility;
-public int intelligence;  // Not included! (count is 2)
 [WGroupEnd("stats")]
+public int intelligence;  // Not included! (count is 2)
+
 
 // ✅ CORRECT: Increase count
 [WGroup("stats", autoIncludeCount: 3)]
 public int strength;
 public int agility;
-public int intelligence;
 [WGroupEnd("stats")]
+public int intelligence;
 ```
 
 ---
@@ -567,6 +674,12 @@ public int intelligence;
 1. Verify the color key exists in `UnityHelpersSettings.WGroupCustomColors`
 2. Check spelling - color keys are case-sensitive
 3. Ensure the settings asset is saved
+
+---
+
+## Compatibility
+
+WGroup operates at the inspector level, so existing property drawers and custom inspectors continue to work. Groups appear in the order of their first declaration, and multi-object editing remains fully supported.
 
 ---
 

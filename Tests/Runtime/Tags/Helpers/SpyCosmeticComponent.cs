@@ -1,0 +1,28 @@
+namespace WallstopStudios.UnityHelpers.Tests.Tags.Helpers
+{
+    using UnityEngine;
+    using WallstopStudios.UnityHelpers.Tags;
+
+    internal sealed class SpyCosmeticComponent : CosmeticEffectComponent
+    {
+        public static int RemoveInvocationCount { get; private set; }
+
+        public static void ResetForTests()
+        {
+            RemoveInvocationCount = 0;
+        }
+
+        public int AppliedCount => _appliedTargets.Count;
+
+        public override void OnApplyEffect(GameObject target)
+        {
+            base.OnApplyEffect(target);
+        }
+
+        public override void OnRemoveEffect(GameObject target)
+        {
+            base.OnRemoveEffect(target);
+            ++RemoveInvocationCount;
+        }
+    }
+}

@@ -14,20 +14,36 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// <para>
     /// Groups can be toggled collapsible, assigned theme colors via palette keys, and rendered without headers for lightweight inline layouts.
     /// </para>
+    /// <para>
+    /// Groups can be nested inside other groups by specifying a <c>parentGroup</c> parameter. The parent group must be declared
+    /// before or on the same property as the child group. Nested groups are rendered indented within their parent's visual container.
+    /// </para>
     /// </remarks>
     /// <example>
     /// Collapsible box group with auto inclusion:
     /// <code>
     /// public sealed class WeaponStats : MonoBehaviour
     /// {
-    ///     [WGroup(\"Damage\", displayName: \"Damage Settings\", autoIncludeCount: 2, collapsible: true)]
+    ///     [WGroup("Damage", displayName: "Damage Settings", autoIncludeCount: 2, collapsible: true)]
     ///     public int lightAttackDamage;
     ///
     ///     public int heavyAttackDamage;
     ///     public float critMultiplier;
     ///
-    ///     [WGroup(\"Damage\"), WGroupEnd]
+    ///     [WGroup("Damage"), WGroupEnd]
     ///     public AnimationCurve falloff;
+    /// }
+    /// </code>
+    /// Nested groups example:
+    /// <code>
+    /// public sealed class CharacterData : MonoBehaviour
+    /// {
+    ///     [WGroup("outer", "Character")]
+    ///     public string characterName;
+    ///
+    ///     [WGroup("inner", "Stats", parentGroup: "outer")]  // Nested inside "outer"
+    ///     public int level;
+    ///     public int experience;
     /// }
     /// </code>
     /// </example>
@@ -84,6 +100,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// Optional palette identifier consumed by <c>UnityHelpersSettings</c> to style the group background/border.
         /// </param>
         /// <param name="hideHeader">Set to <see langword="true"/> to draw the group body without the title bar.</param>
+        /// <param name="parentGroup">
+        /// Optional name of another group that this group should be nested inside.
+        /// The parent group must be declared before or on the same property as this group.
+        /// </param>
         /// <exception cref="ArgumentException">Thrown when <paramref name="groupName"/> is null or whitespace.</exception>
         public WGroupAttribute(
             string groupName,
@@ -92,7 +112,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             bool collapsible = false,
             bool startCollapsed = false,
             string colorKey = null,
-            bool hideHeader = false
+            bool hideHeader = false,
+            string parentGroup = null
         )
         {
             if (string.IsNullOrWhiteSpace(groupName))
@@ -113,6 +134,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             }
             ColorKey = string.IsNullOrWhiteSpace(colorKey) ? null : colorKey.Trim();
             HideHeader = hideHeader;
+            ParentGroup = string.IsNullOrWhiteSpace(parentGroup) ? null : parentGroup.Trim();
         }
 
         /// <summary>
@@ -158,6 +180,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// Set to <see langword="true"/> to hide the header while still wrapping the grouped fields inside the styled container.
         /// </summary>
         public bool HideHeader { get; }
+
+        /// <summary>
+        /// Gets the name of the parent group that this group should be nested inside, or <see langword="null"/> if this is a top-level group.
+        /// </summary>
+        public string ParentGroup { get; }
 
         private static int NormalizeAutoIncludeCount(int autoIncludeCount)
         {

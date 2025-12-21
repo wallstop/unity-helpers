@@ -1,18 +1,16 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
-    using System;
     using System.Collections;
     using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
@@ -64,64 +62,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             GroupGUIWidthUtility.ResetForTests();
             base.TearDown();
-        }
-
-        [Serializable]
-        private sealed class TestStringIntDictionary : SerializableDictionary<string, int> { }
-
-        [Serializable]
-        private sealed class TestIntSet : SerializableHashSet<int> { }
-
-        private sealed class WGroupDictionaryHost : ScriptableObject
-        {
-            [WGroup("TestGroup", displayName: "Test Group", collapsible: true, autoIncludeCount: 1)]
-            public TestStringIntDictionary dictionary = new();
-        }
-
-        private sealed class WGroupSetHost : ScriptableObject
-        {
-            [WGroup("TestGroup", displayName: "Test Group", collapsible: true, autoIncludeCount: 1)]
-            public TestIntSet set = new();
-        }
-
-        private sealed class MultiWGroupHost : ScriptableObject
-        {
-            [WGroup(
-                "OuterGroup",
-                displayName: "Outer Group",
-                collapsible: true,
-                autoIncludeCount: 3
-            )]
-#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
-            public int outerField;
-#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
-
-            [WGroup(
-                "InnerGroup",
-                displayName: "Inner Group",
-                collapsible: true,
-                autoIncludeCount: 1
-            )]
-            public TestStringIntDictionary nestedDictionary = new();
-
-            [WGroupEnd("InnerGroup")]
-            public TestIntSet nestedSet = new();
-
-            [WGroupEnd("OuterGroup")]
-#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
-            public int outerEndField;
-#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
-        }
-
-        private sealed class NonCollapsibleWGroupHost : ScriptableObject
-        {
-            [WGroup(
-                "StaticGroup",
-                displayName: "Static Group",
-                collapsible: false,
-                autoIncludeCount: 1
-            )]
-            public TestStringIntDictionary dictionary = new();
         }
 
         [Test]
@@ -220,14 +160,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator DictionaryFoldoutHasAlignmentOffsetWhenInsideWGroup()
         {
-            WGroupDictionaryHost host = CreateScriptableObject<WGroupDictionaryHost>();
+            IntegrationTestWGroupDictionaryHost host =
+                CreateScriptableObject<IntegrationTestWGroupDictionaryHost>();
             host.dictionary["key1"] = 100;
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(WGroupDictionaryHost.dictionary)
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = false;
 
@@ -315,14 +256,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator SetFoldoutHasAlignmentOffsetWhenInsideWGroup()
         {
-            WGroupSetHost host = CreateScriptableObject<WGroupSetHost>();
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
             host.set.Add(42);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(WGroupSetHost.set)
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             setProperty.isExpanded = false;
 
@@ -399,14 +341,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator DictionaryFoldoutHasNoOffsetWhenPaddingIsZero()
         {
-            WGroupDictionaryHost host = CreateScriptableObject<WGroupDictionaryHost>();
+            IntegrationTestWGroupDictionaryHost host =
+                CreateScriptableObject<IntegrationTestWGroupDictionaryHost>();
             host.dictionary["key1"] = 100;
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(WGroupDictionaryHost.dictionary)
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = false;
 
@@ -489,14 +432,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator SetFoldoutHasNoOffsetWhenPaddingIsZero()
         {
-            WGroupSetHost host = CreateScriptableObject<WGroupSetHost>();
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
             host.set.Add(42);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(WGroupSetHost.set)
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             setProperty.isExpanded = false;
 
@@ -568,14 +512,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator DictionaryFoldoutHasNoAlignmentOffsetWhenNotInsideWGroup()
         {
-            WGroupDictionaryHost host = CreateScriptableObject<WGroupDictionaryHost>();
+            IntegrationTestWGroupDictionaryHost host =
+                CreateScriptableObject<IntegrationTestWGroupDictionaryHost>();
             host.dictionary["key1"] = 100;
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(WGroupDictionaryHost.dictionary)
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = false;
 
@@ -637,14 +582,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator SetFoldoutHasNoAlignmentOffsetWhenNotInsideWGroup()
         {
-            WGroupSetHost host = CreateScriptableObject<WGroupSetHost>();
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
             host.set.Add(42);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(WGroupSetHost.set)
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             setProperty.isExpanded = false;
 
@@ -770,14 +716,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator DictionaryFoldoutAlignmentOffsetConsistentAcrossDrawerInstances()
         {
-            WGroupDictionaryHost host = CreateScriptableObject<WGroupDictionaryHost>();
+            IntegrationTestWGroupDictionaryHost host =
+                CreateScriptableObject<IntegrationTestWGroupDictionaryHost>();
             host.dictionary["key1"] = 100;
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(WGroupDictionaryHost.dictionary)
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = false;
 
@@ -960,7 +907,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void WGroupContextDoesNotAffectDictionaryTweeningSetting()
         {
-            WGroupDictionaryHost host = CreateScriptableObject<WGroupDictionaryHost>();
+            IntegrationTestWGroupDictionaryHost host =
+                CreateScriptableObject<IntegrationTestWGroupDictionaryHost>();
             host.dictionary["key1"] = 100;
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
@@ -983,7 +931,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator DictionaryInWGroupRendersWithCorrectPaddingDuringOnGUI()
         {
-            WGroupDictionaryHost host = CreateScriptableObject<WGroupDictionaryHost>();
+            IntegrationTestWGroupDictionaryHost host =
+                CreateScriptableObject<IntegrationTestWGroupDictionaryHost>();
             host.dictionary["key1"] = 100;
             host.dictionary["key2"] = 200;
 
@@ -991,7 +940,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             serializedObject.Update();
 
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(WGroupDictionaryHost.dictionary)
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
@@ -1053,7 +1002,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator SetInWGroupRendersWithCorrectPaddingDuringOnGUI()
         {
-            WGroupSetHost host = CreateScriptableObject<WGroupSetHost>();
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
             host.set.Add(1);
             host.set.Add(2);
 
@@ -1061,7 +1011,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             serializedObject.Update();
 
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(WGroupSetHost.set)
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             setProperty.isExpanded = true;
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
@@ -1751,14 +1701,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator SetInSettingsContextRestoresOriginalIndentLevelAfterDraw()
         {
-            WGroupSetHost host = CreateScriptableObject<WGroupSetHost>();
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
             host.set.Add(42);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(WGroupSetHost.set)
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             setProperty.isExpanded = false; // Keep collapsed
 
@@ -1803,22 +1754,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             UnityHelpersSettings.SetSerializableDictionaryFoldoutTweenEnabled(true);
 
-            WGroupDictionaryHost host = CreateScriptableObject<WGroupDictionaryHost>();
+            IntegrationTestWGroupDictionaryHost host =
+                CreateScriptableObject<IntegrationTestWGroupDictionaryHost>();
             host.dictionary["key1"] = 100;
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(WGroupDictionaryHost.dictionary)
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
 
             SerializableDictionaryPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(WGroupDictionaryHost),
-                nameof(WGroupDictionaryHost.dictionary)
+                typeof(IntegrationTestWGroupDictionaryHost),
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             GUIContent label = new("Dictionary");
 
@@ -1859,22 +1811,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             UnityHelpersSettings.SetSerializableDictionaryFoldoutTweenEnabled(false);
 
-            WGroupDictionaryHost host = CreateScriptableObject<WGroupDictionaryHost>();
+            IntegrationTestWGroupDictionaryHost host =
+                CreateScriptableObject<IntegrationTestWGroupDictionaryHost>();
             host.dictionary["key1"] = 100;
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(WGroupDictionaryHost.dictionary)
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
 
             SerializableDictionaryPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(WGroupDictionaryHost),
-                nameof(WGroupDictionaryHost.dictionary)
+                typeof(IntegrationTestWGroupDictionaryHost),
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             GUIContent label = new("Dictionary");
 
@@ -1913,22 +1866,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             UnityHelpersSettings.SetSerializableSetFoldoutTweenEnabled(true);
 
-            WGroupSetHost host = CreateScriptableObject<WGroupSetHost>();
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
             host.set.Add(42);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(WGroupSetHost.set)
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             setProperty.isExpanded = true;
 
             SerializableSetPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(WGroupSetHost),
-                nameof(WGroupSetHost.set)
+                typeof(IntegrationTestWGroupSetHost),
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             GUIContent label = new("Set");
 
@@ -1967,22 +1921,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             UnityHelpersSettings.SetSerializableSetFoldoutTweenEnabled(false);
 
-            WGroupSetHost host = CreateScriptableObject<WGroupSetHost>();
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
             host.set.Add(42);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(WGroupSetHost.set)
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             setProperty.isExpanded = true;
 
             SerializableSetPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(WGroupSetHost),
-                nameof(WGroupSetHost.set)
+                typeof(IntegrationTestWGroupSetHost),
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             GUIContent label = new("Set");
 
@@ -2021,22 +1976,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             UnityHelpersSettings.SetSerializableDictionaryFoldoutTweenEnabled(true);
 
-            WGroupDictionaryHost host = CreateScriptableObject<WGroupDictionaryHost>();
+            IntegrationTestWGroupDictionaryHost host =
+                CreateScriptableObject<IntegrationTestWGroupDictionaryHost>();
             host.dictionary["key1"] = 100;
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(WGroupDictionaryHost.dictionary)
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
 
             SerializableDictionaryPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(WGroupDictionaryHost),
-                nameof(WGroupDictionaryHost.dictionary)
+                typeof(IntegrationTestWGroupDictionaryHost),
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             GUIContent label = new("Dictionary");
 
@@ -2074,22 +2030,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             UnityHelpersSettings.SetSerializableSetFoldoutTweenEnabled(true);
 
-            WGroupSetHost host = CreateScriptableObject<WGroupSetHost>();
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
             host.set.Add(42);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(WGroupSetHost.set)
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             setProperty.isExpanded = true;
 
             SerializableSetPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(WGroupSetHost),
-                nameof(WGroupSetHost.set)
+                typeof(IntegrationTestWGroupSetHost),
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             GUIContent label = new("Set");
 
@@ -2122,22 +2079,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             UnityHelpersSettings.SetSerializableDictionaryFoldoutTweenEnabled(false);
 
-            WGroupDictionaryHost host = CreateScriptableObject<WGroupDictionaryHost>();
+            IntegrationTestWGroupDictionaryHost host =
+                CreateScriptableObject<IntegrationTestWGroupDictionaryHost>();
             host.dictionary["key1"] = 100;
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(WGroupDictionaryHost.dictionary)
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
 
             SerializableDictionaryPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(WGroupDictionaryHost),
-                nameof(WGroupDictionaryHost.dictionary)
+                typeof(IntegrationTestWGroupDictionaryHost),
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             GUIContent label = new("Dictionary");
 
@@ -2187,22 +2145,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             UnityHelpersSettings.SetSerializableSetFoldoutTweenEnabled(false);
 
-            WGroupSetHost host = CreateScriptableObject<WGroupSetHost>();
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
             host.set.Add(42);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(WGroupSetHost.set)
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             setProperty.isExpanded = true;
 
             SerializableSetPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(WGroupSetHost),
-                nameof(WGroupSetHost.set)
+                typeof(IntegrationTestWGroupSetHost),
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             GUIContent label = new("Set");
 
@@ -2250,22 +2209,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void DictionaryTweenSettingsRespectedInWGroupContext()
         {
-            WGroupDictionaryHost host = CreateScriptableObject<WGroupDictionaryHost>();
+            IntegrationTestWGroupDictionaryHost host =
+                CreateScriptableObject<IntegrationTestWGroupDictionaryHost>();
             host.dictionary["key1"] = 100;
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(WGroupDictionaryHost.dictionary)
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
 
             SerializableDictionaryPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(WGroupDictionaryHost),
-                nameof(WGroupDictionaryHost.dictionary)
+                typeof(IntegrationTestWGroupDictionaryHost),
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             GUIContent label = new("Dictionary");
 
@@ -2317,22 +2277,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void SetTweenSettingsRespectedInWGroupContext()
         {
-            WGroupSetHost host = CreateScriptableObject<WGroupSetHost>();
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
             host.set.Add(42);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(WGroupSetHost.set)
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             setProperty.isExpanded = true;
 
             SerializableSetPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(WGroupSetHost),
-                nameof(WGroupSetHost.set)
+                typeof(IntegrationTestWGroupSetHost),
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             GUIContent label = new("Set");
 
@@ -2508,7 +2469,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             UnityHelpersSettings.SetSerializableDictionaryFoldoutTweenEnabled(true);
             UnityHelpersSettings.SetSerializableSetFoldoutTweenEnabled(true);
 
-            MultiWGroupHost host = CreateScriptableObject<MultiWGroupHost>();
+            IntegrationTestMultiWGroupHost host =
+                CreateScriptableObject<IntegrationTestMultiWGroupHost>();
             host.nestedDictionary["innerKey"] = 50;
             host.nestedSet.Add(99);
 
@@ -2516,10 +2478,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             serializedObject.Update();
 
             SerializedProperty dictProperty = serializedObject.FindProperty(
-                nameof(MultiWGroupHost.nestedDictionary)
+                nameof(IntegrationTestMultiWGroupHost.nestedDictionary)
             );
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(MultiWGroupHost.nestedSet)
+                nameof(IntegrationTestMultiWGroupHost.nestedSet)
             );
             dictProperty.isExpanded = true;
             setProperty.isExpanded = true;
@@ -2527,14 +2489,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializableDictionaryPropertyDrawer dictDrawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 dictDrawer,
-                typeof(MultiWGroupHost),
-                nameof(MultiWGroupHost.nestedDictionary)
+                typeof(IntegrationTestMultiWGroupHost),
+                nameof(IntegrationTestMultiWGroupHost.nestedDictionary)
             );
             SerializableSetPropertyDrawer setDrawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 setDrawer,
-                typeof(MultiWGroupHost),
-                nameof(MultiWGroupHost.nestedSet)
+                typeof(IntegrationTestMultiWGroupHost),
+                nameof(IntegrationTestMultiWGroupHost.nestedSet)
             );
             GUIContent dictLabel = new("Dict");
             GUIContent setLabel = new("Set");
@@ -2629,22 +2591,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             UnityHelpersSettings.SetSerializableSortedDictionaryFoldoutTweenEnabled(true);
 
-            WGroupSortedDictionaryHost host = CreateScriptableObject<WGroupSortedDictionaryHost>();
+            IntegrationTestWGroupSortedDictionaryHost host =
+                CreateScriptableObject<IntegrationTestWGroupSortedDictionaryHost>();
             host.sortedDictionary["key1"] = 100;
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty dictProperty = serializedObject.FindProperty(
-                nameof(WGroupSortedDictionaryHost.sortedDictionary)
+                nameof(IntegrationTestWGroupSortedDictionaryHost.sortedDictionary)
             );
             dictProperty.isExpanded = true;
 
             SerializableDictionaryPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(WGroupSortedDictionaryHost),
-                nameof(WGroupSortedDictionaryHost.sortedDictionary)
+                typeof(IntegrationTestWGroupSortedDictionaryHost),
+                nameof(IntegrationTestWGroupSortedDictionaryHost.sortedDictionary)
             );
             GUIContent label = new("SortedDict");
 
@@ -2683,22 +2646,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             UnityHelpersSettings.SetSerializableSortedSetFoldoutTweenEnabled(true);
 
-            WGroupSortedSetHost host = CreateScriptableObject<WGroupSortedSetHost>();
+            IntegrationTestWGroupSortedSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSortedSetHost>();
             host.sortedSet.Add(42);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(WGroupSortedSetHost.sortedSet)
+                nameof(IntegrationTestWGroupSortedSetHost.sortedSet)
             );
             setProperty.isExpanded = true;
 
             SerializableSetPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(WGroupSortedSetHost),
-                nameof(WGroupSortedSetHost.sortedSet)
+                typeof(IntegrationTestWGroupSortedSetHost),
+                nameof(IntegrationTestWGroupSortedSetHost.sortedSet)
             );
             GUIContent label = new("SortedSet");
 
@@ -2732,35 +2696,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
         }
 
-        [Serializable]
-        private sealed class TestSortedStringIntDictionary
-            : SerializableSortedDictionary<string, int> { }
-
-        [Serializable]
-        private sealed class TestSortedIntSet : SerializableSortedSet<int> { }
-
-        private sealed class WGroupSortedDictionaryHost : ScriptableObject
-        {
-            [WGroup(
-                "SortedGroup",
-                displayName: "Sorted Group",
-                collapsible: true,
-                autoIncludeCount: 1
-            )]
-            public TestSortedStringIntDictionary sortedDictionary = new();
-        }
-
-        private sealed class WGroupSortedSetHost : ScriptableObject
-        {
-            [WGroup(
-                "SortedGroup",
-                displayName: "Sorted Group",
-                collapsible: true,
-                autoIncludeCount: 1
-            )]
-            public TestSortedIntSet sortedSet = new();
-        }
-
         [Test]
         [TestCase(
             true,
@@ -2770,22 +2705,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [TestCase(false, true, TestName = "DictionaryAnimBoolNotCreatedWhenTweenAlwaysDisabled")]
         public void DictionaryAnimBoolLifecycleWithTweenToggle(bool enableFirst, bool disableAfter)
         {
-            WGroupDictionaryHost host = CreateScriptableObject<WGroupDictionaryHost>();
+            IntegrationTestWGroupDictionaryHost host =
+                CreateScriptableObject<IntegrationTestWGroupDictionaryHost>();
             host.dictionary["key1"] = 100;
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(WGroupDictionaryHost.dictionary)
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
 
             SerializableDictionaryPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(WGroupDictionaryHost),
-                nameof(WGroupDictionaryHost.dictionary)
+                typeof(IntegrationTestWGroupDictionaryHost),
+                nameof(IntegrationTestWGroupDictionaryHost.dictionary)
             );
             GUIContent label = new("Dictionary");
 
@@ -2860,22 +2796,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [TestCase(false, true, TestName = "SetAnimBoolNotCreatedWhenTweenAlwaysDisabled")]
         public void SetAnimBoolLifecycleWithTweenToggle(bool enableFirst, bool disableAfter)
         {
-            WGroupSetHost host = CreateScriptableObject<WGroupSetHost>();
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
             host.set.Add(42);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(WGroupSetHost.set)
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             setProperty.isExpanded = true;
 
             SerializableSetPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignFieldInfo(
                 drawer,
-                typeof(WGroupSetHost),
-                nameof(WGroupSetHost.set)
+                typeof(IntegrationTestWGroupSetHost),
+                nameof(IntegrationTestWGroupSetHost.set)
             );
             GUIContent label = new("Set");
 
@@ -2955,23 +2892,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
                 if (isSortedDictionary)
                 {
-                    WGroupSortedDictionaryHost host =
-                        CreateScriptableObject<WGroupSortedDictionaryHost>();
+                    IntegrationTestWGroupSortedDictionaryHost host =
+                        CreateScriptableObject<IntegrationTestWGroupSortedDictionaryHost>();
                     host.sortedDictionary["key1"] = 100;
 
                     SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
                     serializedObject.Update();
 
                     SerializedProperty sortedDictProperty = serializedObject.FindProperty(
-                        nameof(WGroupSortedDictionaryHost.sortedDictionary)
+                        nameof(IntegrationTestWGroupSortedDictionaryHost.sortedDictionary)
                     );
                     sortedDictProperty.isExpanded = true;
 
                     SerializableDictionaryPropertyDrawer drawer = new();
                     PropertyDrawerTestHelper.AssignFieldInfo(
                         drawer,
-                        typeof(WGroupSortedDictionaryHost),
-                        nameof(WGroupSortedDictionaryHost.sortedDictionary)
+                        typeof(IntegrationTestWGroupSortedDictionaryHost),
+                        nameof(IntegrationTestWGroupSortedDictionaryHost.sortedDictionary)
                     );
                     GUIContent label = new("SortedDictionary");
 
@@ -3013,22 +2950,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 }
                 else
                 {
-                    WGroupSortedSetHost host = CreateScriptableObject<WGroupSortedSetHost>();
+                    IntegrationTestWGroupSortedSetHost host =
+                        CreateScriptableObject<IntegrationTestWGroupSortedSetHost>();
                     host.sortedSet.Add(42);
 
                     SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
                     serializedObject.Update();
 
                     SerializedProperty sortedSetProperty = serializedObject.FindProperty(
-                        nameof(WGroupSortedSetHost.sortedSet)
+                        nameof(IntegrationTestWGroupSortedSetHost.sortedSet)
                     );
                     sortedSetProperty.isExpanded = true;
 
                     SerializableSetPropertyDrawer drawer = new();
                     PropertyDrawerTestHelper.AssignFieldInfo(
                         drawer,
-                        typeof(WGroupSortedSetHost),
-                        nameof(WGroupSortedSetHost.sortedSet)
+                        typeof(IntegrationTestWGroupSortedSetHost),
+                        nameof(IntegrationTestWGroupSortedSetHost.sortedSet)
                     );
                     GUIContent label = new("SortedSet");
 

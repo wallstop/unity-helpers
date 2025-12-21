@@ -1,60 +1,11 @@
 namespace WallstopStudios.UnityHelpers.Tests.Tags
 {
     using System.Collections;
-    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Tags;
     using WallstopStudios.UnityHelpers.Tests.Tags.Helpers;
-
-    internal sealed class ProbeCosmeticComponent : CosmeticEffectComponent
-    {
-        public bool requiresInstance;
-        public bool cleansSelf;
-        public readonly List<GameObject> appliedTargets = new();
-        public readonly List<GameObject> removedTargets = new();
-
-        public override bool RequiresInstance => requiresInstance;
-        public override bool CleansUpSelf => cleansSelf;
-
-        public override void OnApplyEffect(GameObject target)
-        {
-            base.OnApplyEffect(target);
-            appliedTargets.Add(target);
-        }
-
-        public override void OnRemoveEffect(GameObject target)
-        {
-            base.OnRemoveEffect(target);
-            removedTargets.Add(target);
-        }
-    }
-
-    internal sealed class SecondaryProbeCosmeticComponent : CosmeticEffectComponent { }
-
-    internal sealed class SpyCosmeticComponent : CosmeticEffectComponent
-    {
-        public static int RemoveInvocationCount { get; private set; }
-
-        public static void ResetForTests()
-        {
-            RemoveInvocationCount = 0;
-        }
-
-        public int AppliedCount => _appliedTargets.Count;
-
-        public override void OnApplyEffect(GameObject target)
-        {
-            base.OnApplyEffect(target);
-        }
-
-        public override void OnRemoveEffect(GameObject target)
-        {
-            base.OnRemoveEffect(target);
-            ++RemoveInvocationCount;
-        }
-    }
 
     [TestFixture]
     public sealed class CosmeticEffectComponentTests : TagsTestBase

@@ -5,7 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
     using UnityEngine;
 
     [Serializable]
-    internal sealed class DrawerVisualRegressionKey : IEquatable<DrawerVisualRegressionKey>
+    public sealed class DrawerVisualRegressionKey : IEquatable<DrawerVisualRegressionKey>
     {
         public int id;
 
@@ -43,7 +43,7 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
     }
 
     [Serializable]
-    internal sealed class DrawerVisualRegressionDictionaryValue
+    public sealed class DrawerVisualRegressionDictionaryValue
         : IEquatable<DrawerVisualRegressionDictionaryValue>
     {
         public int data;
@@ -82,8 +82,7 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
     }
 
     [Serializable]
-    internal sealed class DrawerVisualRegressionSetValue
-        : IEquatable<DrawerVisualRegressionSetValue>
+    public sealed class DrawerVisualRegressionSetValue : IEquatable<DrawerVisualRegressionSetValue>
     {
         public int data;
 

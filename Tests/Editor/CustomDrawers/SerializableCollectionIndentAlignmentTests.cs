@@ -1,17 +1,15 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
-    using System;
     using System.Collections;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
 
     /// <summary>
@@ -37,34 +35,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             GroupGUIWidthUtility.ResetForTests();
             base.TearDown();
-        }
-
-        [Serializable]
-        private sealed class TestStringIntDictionary : SerializableDictionary<string, int> { }
-
-        [Serializable]
-        private sealed class TestIntSet : SerializableHashSet<int> { }
-
-        private sealed class SimpleDictionaryHost : ScriptableObject
-        {
-            public TestStringIntDictionary dictionary = new();
-        }
-
-        private sealed class SimpleSetHost : ScriptableObject
-        {
-            public TestIntSet set = new();
-        }
-
-        private sealed class WGroupDictionaryHost : ScriptableObject
-        {
-            [WGroup("TestGroup", displayName: "Test Group", collapsible: true, autoIncludeCount: 1)]
-            public TestStringIntDictionary dictionary = new();
-        }
-
-        private sealed class WGroupSetHost : ScriptableObject
-        {
-            [WGroup("TestGroup", displayName: "Test Group", collapsible: true, autoIncludeCount: 1)]
-            public TestIntSet set = new();
         }
 
         [Test]
@@ -836,14 +806,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator DictionaryIndentRestoredAfterOnGUI()
         {
-            SimpleDictionaryHost host = CreateScriptableObject<SimpleDictionaryHost>();
+            IndentAlignmentSimpleDictionaryHost host =
+                CreateScriptableObject<IndentAlignmentSimpleDictionaryHost>();
             host.dictionary["key1"] = 100;
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(SimpleDictionaryHost.dictionary)
+                nameof(IndentAlignmentSimpleDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
 
@@ -880,14 +851,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator SetIndentRestoredAfterOnGUI()
         {
-            SimpleSetHost host = CreateScriptableObject<SimpleSetHost>();
+            IndentAlignmentSimpleSetHost host =
+                CreateScriptableObject<IndentAlignmentSimpleSetHost>();
             host.set.Add(42);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
 
             SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(SimpleSetHost.set)
+                nameof(IndentAlignmentSimpleSetHost.set)
             );
             setProperty.isExpanded = true;
 
