@@ -456,7 +456,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void CrossTheme_GuiColorBlendedTowardsTextColor()
+        public void CrossThemeGuiColorBlendedTowardsTextColor()
         {
             // When cross-theme, GUI.color should be blended slightly towards text color
             // to ensure icons/textures are visible
