@@ -22,6 +22,19 @@ function Test-IsCI {
   return $false
 }
 
+function Invoke-CSharpier([string[]]$filePaths) {
+  if ($filePaths.Count -eq 0) { return }
+
+  $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
+  if (-not $dotnet) {
+    Write-Info "dotnet not found; skipping CSharpier formatting."
+    return
+  }
+
+  & dotnet tool restore > $null 2>&1
+  & dotnet tool run csharpier format $filePaths > $null 2>&1
+}
+
 # Directories to scan
 $sourceRoots = @('Runtime', 'Editor', 'Tests')
 
@@ -163,6 +176,20 @@ if ($violations.Count -gt 0) {
         # Re-stage the file if we're in staged-only mode
         if ($StagedOnly) {
           & git add $filePath 2>$null
+        }
+      }
+    }
+
+    # Run CSharpier on all fixed files
+    if ($fixedFiles.Count -gt 0) {
+      $fullPaths = $fileGroups | ForEach-Object { $_.Group[0].FullPath }
+      Write-Host "Running CSharpier on modified files..." -ForegroundColor Cyan
+      Invoke-CSharpier $fullPaths
+
+      # Re-stage after CSharpier formatting
+      if ($StagedOnly) {
+        foreach ($fp in $fullPaths) {
+          & git add $fp 2>$null
         }
       }
     }
