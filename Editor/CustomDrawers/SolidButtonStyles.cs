@@ -15,8 +15,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Color ThemeResetColor = new(0.7f, 0.7f, 0.7f, 1f);
         private static readonly Color ThemeSortColor = new(0.24f, 0.52f, 0.88f, 1f);
         private static readonly Color ThemeDisabledColor = new(0.6f, 0.6f, 0.6f, 1f);
-        private static readonly Dictionary<string, GUIStyle> ButtonStyleCache = new();
+        private static readonly Dictionary<
+            (string action, bool enabled),
+            GUIStyle
+        > ButtonStyleCache = new();
         private static readonly Dictionary<Color, Texture2D> ColorTextureCache = new();
+        private static readonly RectOffset ZeroMargin = new(0, 0, 0, 0);
+        private static readonly RectOffset StandardPadding = new(8, 8, 3, 3);
 
         internal static Color DisabledColor => ThemeDisabledColor;
 
@@ -27,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 action = "Default";
             }
 
-            string cacheKey = $"{action}_{(enabled ? "Enabled" : "Disabled")}";
+            (string, bool) cacheKey = (action, enabled);
             if (ButtonStyleCache.TryGetValue(cacheKey, out GUIStyle cached))
             {
                 return cached;
@@ -36,8 +41,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             GUIStyle baseStyle = new(GUI.skin.button)
             {
                 alignment = TextAnchor.MiddleCenter,
-                margin = new RectOffset(0, 0, 0, 0),
-                padding = new RectOffset(8, 8, 3, 3),
+                margin = ZeroMargin,
+                padding = StandardPadding,
             };
 
             Color baseColor = enabled ? GetActionColor(action) : ThemeDisabledColor;

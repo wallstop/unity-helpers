@@ -179,7 +179,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string displayValue =
                 selectedIndex >= 0 && selectedIndex < displayedOptions.Length
                     ? displayedOptions[selectedIndex]
-                    : currentValue.ToString();
+                    : GetCachedIntString(currentValue);
 
             Rect labelRect = new(
                 position.x,
@@ -271,7 +271,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 int selectedIndex = Array.IndexOf(_options, currentValue);
                 return selectedIndex >= 0 && selectedIndex < _displayedOptions.Length
                     ? _displayedOptions[selectedIndex]
-                    : currentValue.ToString();
+                    : GetCachedIntString(currentValue);
             }
 
             protected override int GetFieldValue(SerializedProperty property)
@@ -317,7 +317,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 return optionIndex >= 0 && optionIndex < _displayedOptions.Length
                     ? _displayedOptions[optionIndex]
-                    : _options[optionIndex].ToString();
+                    : GetCachedIntString(_options[optionIndex]);
             }
 
             protected override int GetCurrentSelectionIndex(SerializedProperty property)

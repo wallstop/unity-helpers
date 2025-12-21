@@ -51,6 +51,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             StringComparer.Ordinal
         );
         private static readonly Dictionary<object, string> FormattedOptionCache = new();
+        private static readonly GUIContent ReusableDropDownButtonContent = new();
 
         private static string GetCachedIntString(int value)
         {
@@ -273,8 +274,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 attribute,
                 out string tooltip
             );
-            GUIContent buttonContent = new(displayValue, tooltip);
-            if (EditorGUI.DropdownButton(fieldRect, buttonContent, FocusType.Keyboard))
+            ReusableDropDownButtonContent.text = displayValue;
+            ReusableDropDownButtonContent.tooltip = tooltip;
+            if (
+                EditorGUI.DropdownButton(
+                    fieldRect,
+                    ReusableDropDownButtonContent,
+                    FocusType.Keyboard
+                )
+            )
             {
                 string cacheKey = property.propertyPath + "::popup";
                 string[] displayLabels = GetOrCreateDisplayLabels(cacheKey, options);

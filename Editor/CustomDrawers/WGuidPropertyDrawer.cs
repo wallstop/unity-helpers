@@ -21,6 +21,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public SerializedProperty cachedLowProperty;
             public SerializedProperty cachedHighProperty;
             public int lastCacheFrame = -1;
+            public readonly GUIContent warningContent = new();
         }
 
         private const float ButtonWidth = 24f;
@@ -70,8 +71,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             float spacing = EditorGUIUtility.standardVerticalSpacing;
             float warningWidth = GetWarningWidth();
-            GUIContent warningContent = new(state.warningMessage);
-            float warningHeight = EditorStyles.helpBox.CalcHeight(warningContent, warningWidth);
+            state.warningContent.text = state.warningMessage;
+            float warningHeight = EditorStyles.helpBox.CalcHeight(
+                state.warningContent,
+                warningWidth
+            );
             return lineHeight + spacing + warningHeight;
         }
 
@@ -152,14 +156,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (state.hasPendingInvalid && !string.IsNullOrEmpty(state.warningMessage))
             {
+                state.warningContent.text = state.warningMessage;
                 Rect helpRect = new(
                     position.x,
                     position.y + lineHeight + spacing,
                     position.width,
-                    EditorStyles.helpBox.CalcHeight(
-                        new GUIContent(state.warningMessage),
-                        position.width
-                    )
+                    EditorStyles.helpBox.CalcHeight(state.warningContent, position.width)
                 );
                 EditorGUI.HelpBox(helpRect, state.warningMessage, MessageType.Warning);
             }

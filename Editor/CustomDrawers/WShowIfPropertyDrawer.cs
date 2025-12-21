@@ -25,6 +25,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             (int serializedObjectHash, int instanceId, string propertyPath, string conditionField),
             SerializedProperty
         > ConditionPropertyCache = new();
+        private static readonly Dictionary<Type, MethodInfo> CompareToMethodCache = new();
+
+        [ThreadStatic]
+        private static object[] _singleIndexArgs;
+
         private static int _lastConditionCacheFrame = -1;
         private WShowIfAttribute _overrideAttribute;
 
@@ -452,7 +457,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                         try
                         {
-                            return indexer.GetValue(value, new object[] { index });
+                            _singleIndexArgs ??= new object[1];
+                            _singleIndexArgs[0] = index;
+                            return indexer.GetValue(value, _singleIndexArgs);
                         }
                         catch
                         {
@@ -752,7 +759,47 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             Type lhsType = lhs.GetType();
-            Type[] interfaces = lhsType.GetInterfaces();
+
+            if (!CompareToMethodCache.TryGetValue(lhsType, out MethodInfo compareTo))
+            {
+                compareTo = FindCompareToMethod(lhsType);
+                CompareToMethodCache[lhsType] = compareTo;
+            }
+
+            if (compareTo == null)
+            {
+                return false;
+            }
+
+            Type genericArgument = compareTo.GetParameters()[0].ParameterType;
+            object converted = ConvertValue(genericArgument, rhs, out bool success);
+            if (!success)
+            {
+                return false;
+            }
+
+            try
+            {
+                _singleIndexArgs ??= new object[1];
+                _singleIndexArgs[0] = converted;
+                object compareResult = compareTo.Invoke(lhs, _singleIndexArgs);
+                comparisonResult = Convert.ToInt32(compareResult);
+                if (invert)
+                {
+                    comparisonResult = -comparisonResult;
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static MethodInfo FindCompareToMethod(Type type)
+        {
+            Type[] interfaces = type.GetInterfaces();
             for (int index = 0; index < interfaces.Length; index += 1)
             {
                 Type iface = interfaces[index];
@@ -765,33 +812,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 Type genericArgument = iface.GetGenericArguments()[0];
-                object converted = ConvertValue(genericArgument, rhs, out bool success);
-                if (!success)
+                MethodInfo method = iface.GetMethod("CompareTo", new[] { genericArgument });
+                if (method != null)
                 {
-                    continue;
+                    return method;
                 }
-
-                MethodInfo compareTo = iface.GetMethod("CompareTo", new[] { genericArgument });
-                if (compareTo == null)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    object compareResult = compareTo.Invoke(lhs, new[] { converted });
-                    comparisonResult = Convert.ToInt32(compareResult);
-                    if (invert)
-                    {
-                        comparisonResult = -comparisonResult;
-                    }
-
-                    return true;
-                }
-                catch { }
             }
 
-            return false;
+            return null;
         }
 
         private static bool IsNull(object value)

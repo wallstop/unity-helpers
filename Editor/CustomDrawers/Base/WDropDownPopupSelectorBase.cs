@@ -16,6 +16,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
         private SerializedObject _serializedObject;
         private string _propertyPath = string.Empty;
         private GUIContent _labelContent = GUIContent.none;
+        private readonly GUIContent _buttonContent = new();
         private int _pageSize;
 
         /// <summary>
@@ -119,8 +120,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
                 _pageSize = resolvedPageSize;
             }
 
-            GUIContent buttonContent = new(displayValue);
-            if (EditorGUI.DropdownButton(controlRect, buttonContent, FocusType.Keyboard))
+            _buttonContent.text = displayValue;
+            if (EditorGUI.DropdownButton(controlRect, _buttonContent, FocusType.Keyboard))
             {
                 ShowPopup(controlRect, property, _pageSize);
             }

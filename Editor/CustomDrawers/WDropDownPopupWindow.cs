@@ -65,6 +65,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static readonly Dictionary<int, string> IntToStringCache = new();
         private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
+        private static readonly Dictionary<string, string> TabCompleteTextCache = new(
+            StringComparer.Ordinal
+        );
 
         private static string GetCachedIntString(int value)
         {
@@ -776,11 +779,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
             else
             {
-                string searchLower = _searchText;
                 for (int i = 0; i < _data.DisplayLabels.Length; i++)
                 {
                     string label = _data.DisplayLabels[i] ?? string.Empty;
-                    if (label.IndexOf(searchLower, StringComparison.OrdinalIgnoreCase) >= 0)
+                    if (label.IndexOf(_searchText, StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         _filteredIndices.Add(i);
                     }
@@ -813,7 +815,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            string searchLower = _searchText.ToLowerInvariant();
             for (int i = 0; i < _filteredIndices.Count; i++)
             {
                 int index = _filteredIndices[i];
@@ -828,7 +829,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (!string.IsNullOrEmpty(_suggestion))
             {
-                _suggestionLabel.text = $"Tab to complete: {_suggestion}";
+                if (!TabCompleteTextCache.TryGetValue(_suggestion, out string tabCompleteText))
+                {
+                    tabCompleteText = "Tab to complete: " + _suggestion;
+                    TabCompleteTextCache[_suggestion] = tabCompleteText;
+                }
+                _suggestionLabel.text = tabCompleteText;
                 _suggestionLabel.style.display = DisplayStyle.Flex;
             }
             else
@@ -893,7 +899,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             bool isSelected = optionIndex == _data.SelectedIndex;
 
-            Button optionButton = new(() => SelectOption(optionIndex))
+            Button optionButton = new()
             {
                 text = label,
                 tooltip = tooltip,
@@ -915,16 +921,35 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 optionButton.AddToClassList(WDropDownStyleLoader.ClassNames.OptionSelected);
             }
 
-            optionButton.RegisterCallback<MouseEnterEvent>(_ =>
-            {
-                optionButton.AddToClassList(WDropDownStyleLoader.ClassNames.OptionHover);
-            });
-            optionButton.RegisterCallback<MouseLeaveEvent>(_ =>
-            {
-                optionButton.RemoveFromClassList(WDropDownStyleLoader.ClassNames.OptionHover);
-            });
+            optionButton.RegisterCallback<ClickEvent>(OnOptionButtonClick);
+            optionButton.RegisterCallback<MouseEnterEvent, Button>(
+                OnOptionMouseEnter,
+                optionButton
+            );
+            optionButton.RegisterCallback<MouseLeaveEvent, Button>(
+                OnOptionMouseLeave,
+                optionButton
+            );
 
             return optionButton;
+        }
+
+        private void OnOptionButtonClick(ClickEvent evt)
+        {
+            if (evt.target is Button button && button.userData is int optionIndex)
+            {
+                SelectOption(optionIndex);
+            }
+        }
+
+        private static void OnOptionMouseEnter(MouseEnterEvent evt, Button button)
+        {
+            button.AddToClassList(WDropDownStyleLoader.ClassNames.OptionHover);
+        }
+
+        private static void OnOptionMouseLeave(MouseLeaveEvent evt, Button button)
+        {
+            button.RemoveFromClassList(WDropDownStyleLoader.ClassNames.OptionHover);
         }
 
         private void UpdateNoResults()
