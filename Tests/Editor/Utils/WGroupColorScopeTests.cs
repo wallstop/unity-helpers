@@ -74,7 +74,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void LightPaletteOnDarkEditor_IsCrossTheme()
+        public void LightPaletteOnDarkEditorIsCrossTheme()
         {
             if (!EditorGUIUtility.isProSkin)
             {
@@ -99,7 +99,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void DarkPaletteOnLightEditor_IsCrossTheme()
+        public void DarkPaletteOnLightEditorIsCrossTheme()
         {
             if (EditorGUIUtility.isProSkin)
             {
@@ -123,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void LightPaletteOnLightEditor_IsNotCrossTheme()
+        public void LightPaletteOnLightEditorIsNotCrossTheme()
         {
             if (EditorGUIUtility.isProSkin)
             {
@@ -149,7 +149,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void DarkPaletteOnDarkEditor_IsNotCrossTheme()
+        public void DarkPaletteOnDarkEditorIsNotCrossTheme()
         {
             if (!EditorGUIUtility.isProSkin)
             {
@@ -175,7 +175,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void IsCrossThemePalette_StaticMethod_MatchesInstanceBehavior()
+        public void IsCrossThemePaletteStaticMethodMatchesInstanceBehavior()
         {
             bool staticResult = WGroupColorScope.IsCrossThemePalette(LightPalette.BackgroundColor);
 
@@ -190,7 +190,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void MidGrayPalette_LuminanceAt0Point5_TreatedAsDark()
+        public void MidGrayPaletteLuminanceAt0Point5TreatedAsDark()
         {
             // Luminance = 0.5 exactly should be treated as dark (< 0.5 check is false for 0.5)
             // Actually the check is > 0.5, so 0.5 is NOT light
@@ -210,7 +210,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void VeryLightPalette_HighLuminance_TreatedAsLight()
+        public void VeryLightPaletteHighLuminanceTreatedAsLight()
         {
             float luminance =
                 0.299f * VeryLightPalette.BackgroundColor.r
@@ -230,7 +230,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void VeryDarkPalette_LowLuminance_TreatedAsDark()
+        public void VeryDarkPaletteLowLuminanceTreatedAsDark()
         {
             float luminance =
                 0.299f * VeryDarkPalette.BackgroundColor.r
@@ -250,7 +250,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void ColoredLightPalette_PerceivedLuminance_TreatedAsLight()
+        public void ColoredLightPalettePerceivedLuminanceTreatedAsLight()
         {
             // Uses proper luminance formula that accounts for human perception
             float luminance =
@@ -266,7 +266,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void ColoredDarkPalette_PerceivedLuminance_TreatedAsDark()
+        public void ColoredDarkPalettePerceivedLuminanceTreatedAsDark()
         {
             float luminance =
                 0.299f * ColoredDarkPalette.BackgroundColor.r
@@ -377,7 +377,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void LightBackground_FieldColorIsLight()
+        public void LightBackgroundFieldColorIsLight()
         {
             using (var scope = new WGroupColorScope(LightPalette))
             {
@@ -396,7 +396,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void DarkBackground_FieldColorIsDark()
+        public void DarkBackgroundFieldColorIsDark()
         {
             using (var scope = new WGroupColorScope(DarkPalette))
             {
@@ -415,7 +415,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void CalculateFieldBackgroundColor_StaticMethod_MatchesInstanceProperty()
+        public void CalculateFieldBackgroundColorStaticMethodMatchesInstanceProperty()
         {
             Color staticResult = WGroupColorScope.CalculateFieldBackgroundColor(
                 LightPalette.BackgroundColor
@@ -432,7 +432,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void FieldBackgroundColor_LightPalette_IsNearWhite()
+        public void FieldBackgroundColorLightPaletteIsNearWhite()
         {
             Color fieldBg = WGroupColorScope.CalculateFieldBackgroundColor(
                 LightPalette.BackgroundColor
@@ -444,7 +444,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void FieldBackgroundColor_DarkPalette_IsDarkGray()
+        public void FieldBackgroundColorDarkPaletteIsDarkGray()
         {
             Color fieldBg = WGroupColorScope.CalculateFieldBackgroundColor(
                 DarkPalette.BackgroundColor
@@ -489,7 +489,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void SameTheme_GuiColorUnchanged()
+        public void SameThemeGuiColorUnchanged()
         {
             Color original = GUI.color;
 
@@ -514,7 +514,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void ZeroAlphaPalette_HandledGracefully()
+        public void ZeroAlphaPaletteHandledGracefully()
         {
             var zeroAlphaPalette = new UnityHelpersSettings.WGroupPaletteEntry(
                 new Color(0.5f, 0.5f, 0.5f, 0f),
@@ -534,7 +534,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void FullBrightWhitePalette_HandledCorrectly()
+        public void FullBrightWhitePaletteHandledCorrectly()
         {
             var whitePalette = new UnityHelpersSettings.WGroupPaletteEntry(
                 Color.white,
@@ -554,7 +554,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void FullBlackPalette_HandledCorrectly()
+        public void FullBlackPaletteHandledCorrectly()
         {
             var blackPalette = new UnityHelpersSettings.WGroupPaletteEntry(
                 Color.black,
@@ -574,7 +574,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void NegativeColorValues_ClampedToValidRange()
+        public void NegativeColorValuesClampedToValidRange()
         {
             // While Unity shouldn't produce negative colors, test defensive handling
             var edgePalette = new UnityHelpersSettings.WGroupPaletteEntry(
@@ -598,7 +598,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void DefaultLightPalette_ResolvedCorrectly()
+        public void DefaultLightPaletteResolvedCorrectly()
         {
             var palette = UnityHelpersSettings.ResolveWGroupPalette(
                 UnityHelpersSettings.WGroupLightThemeColorKey
@@ -628,7 +628,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void DefaultDarkPalette_ResolvedCorrectly()
+        public void DefaultDarkPaletteResolvedCorrectly()
         {
             var palette = UnityHelpersSettings.ResolveWGroupPalette(
                 UnityHelpersSettings.WGroupDarkThemeColorKey
@@ -658,7 +658,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void DefaultLightOnDarkEditor_AppliesCorrectContentColor()
+        public void DefaultLightOnDarkEditorAppliesCorrectContentColor()
         {
             if (!EditorGUIUtility.isProSkin)
             {
@@ -680,7 +680,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void DefaultDarkOnLightEditor_AppliesCorrectContentColor()
+        public void DefaultDarkOnLightEditorAppliesCorrectContentColor()
         {
             if (EditorGUIUtility.isProSkin)
             {
@@ -702,7 +702,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void DefaultPalette_MatchesCurrentEditorTheme()
+        public void DefaultPaletteMatchesCurrentEditorTheme()
         {
             var palette = UnityHelpersSettings.ResolveWGroupPalette(
                 UnityHelpersSettings.DefaultWGroupColorKey
@@ -732,7 +732,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void LightPalette_TextHasSufficientContrast()
+        public void LightPaletteTextHasSufficientContrast()
         {
             float bgLuminance =
                 0.299f * LightPalette.BackgroundColor.r
@@ -754,7 +754,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void DarkPalette_TextHasSufficientContrast()
+        public void DarkPaletteTextHasSufficientContrast()
         {
             float bgLuminance =
                 0.299f * DarkPalette.BackgroundColor.r
@@ -776,7 +776,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void LightBackground_BorderColorIsDark()
+        public void LightBackgroundBorderColorIsDark()
         {
             // Using reflection or public API to test border color calculation
             // The border should be dark (towards black) for light backgrounds
@@ -812,7 +812,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void DarkBackground_BorderColorIsLight()
+        public void DarkBackgroundBorderColorIsLight()
         {
             Color darkBg = new(0.215f, 0.215f, 0.215f, 1f);
 
@@ -841,7 +841,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void CrossThemePalette_HasHigherAlpha()
+        public void CrossThemePaletteHasHigherAlpha()
         {
             // Cross-theme palettes should use 0.85 alpha for better visibility
             // Same-theme palettes use 0.62 (dark) or 0.55 (light)

@@ -113,12 +113,6 @@ foreach ($file in $files) {
   # Skip .meta files
   if ($filePath -like '*.meta') { continue }
 
-  # Allow underscores in test files (common naming convention: Method_Scenario_Expected)
-  if ($rel -match '[\\/]Tests[\\/]' -or $rel -match '^Tests[\\/]') {
-    Write-Info "Skipping test file: $rel"
-    continue
-  }
-
   $content = Get-Content $filePath -Raw
   if ([string]::IsNullOrWhiteSpace($content)) { continue }
 
