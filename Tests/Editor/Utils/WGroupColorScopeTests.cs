@@ -73,7 +73,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             GUI.color = _originalGuiColor;
         }
 
-
         [Test]
         public void LightPaletteOnDarkEditor_IsCrossTheme()
         {
@@ -190,8 +189,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
         }
 
-
-
         [Test]
         public void MidGrayPalette_LuminanceAt0Point5_TreatedAsDark()
         {
@@ -282,8 +279,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 "Blue-tinted dark palette should be treated as dark based on perceived luminance."
             );
         }
-
-
 
         [Test]
         public void ScopeRestoresContentColorOnDispose()
@@ -381,8 +376,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             );
         }
 
-
-
         [Test]
         public void LightBackground_FieldColorIsLight()
         {
@@ -462,8 +455,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.That(fieldBg.b, Is.LessThan(0.25f), "Dark palette field B should be < 0.25.");
         }
 
-
-
         [Test]
         public void CrossTheme_GuiColorBlendedTowardsTextColor()
         {
@@ -521,8 +512,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 );
             }
         }
-
-
 
         [Test]
         public void ZeroAlphaPalette_HandledGracefully()
@@ -607,8 +596,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 "Edge case colors should be handled gracefully."
             );
         }
-
-
 
         [Test]
         public void DefaultLightPalette_ResolvedCorrectly()
@@ -744,8 +731,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
         }
 
-
-
         [Test]
         public void LightPalette_TextHasSufficientContrast()
         {
@@ -789,8 +774,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 "Dark palette should have sufficient contrast between background and text."
             );
         }
-
-
 
         [Test]
         public void LightBackground_BorderColorIsDark()
@@ -857,8 +840,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             );
         }
 
-
-
         [Test]
         public void CrossThemePalette_HasHigherAlpha()
         {
@@ -900,7 +881,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 );
             }
         }
-
     }
 #endif
 }
