@@ -945,6 +945,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             Rect indented = EditorGUI.IndentedRect(padded);
 
+            // Clamp width to non-negative after IndentedRect (high indent levels can cause negative width)
+            if (indented.width < 0f || float.IsNaN(indented.width))
+            {
+                indented.width = 0f;
+            }
+
             // Only add minimum indent when not inside a WGroup (which already has padding)
             // and when indent level is zero (no parent property nesting)
             if (EditorGUI.indentLevel <= 0 && leftPadding <= 0f && scopeDepth <= 0)
@@ -954,6 +960,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return indented;
+        }
+
+        /// <summary>
+        /// Resolves the content rect for testing purposes, applying WGroup padding and indentation
+        /// without requiring a full OnGUI context.
+        /// </summary>
+        /// <param name="position">The original position rect.</param>
+        /// <param name="skipIndentation">Whether to skip standard Unity indentation.</param>
+        /// <returns>The resolved content rect.</returns>
+        internal static Rect ResolveContentRectForTests(Rect position, bool skipIndentation = false)
+        {
+            return ResolveContentRect(position, skipIndentation);
         }
 
         internal static void ResetLayoutTrackingForTests()
@@ -3044,6 +3062,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             bool shouldTween = ShouldTweenManualEntryFoldout(pending.isSorted);
+
+            // Always call EnsureManualEntryFoldoutAnim to properly clean up the AnimBool when
+            // tweening is disabled. This ensures the foldoutAnim is set to null when shouldTween
+            // is false, which is important for consistent state management.
+            AnimBool anim = EnsureManualEntryFoldoutAnim(pending, propertyPath);
+
             if (!shouldTween)
             {
                 float immediateProgress = pending.isExpanded ? 1f : 0f;
@@ -3060,7 +3084,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return immediateProgress;
             }
 
-            AnimBool anim = EnsureManualEntryFoldoutAnim(pending, propertyPath);
+            // anim should not be null here since shouldTween is true, but handle defensively
             if (anim == null)
             {
                 float fallbackProgress = pending.isExpanded ? 1f : 0f;

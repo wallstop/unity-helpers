@@ -1,6 +1,7 @@
 Param(
   [switch]$VerboseOutput,
-  [switch]$StagedOnly
+  [switch]$StagedOnly,
+  [switch]$Fix
 )
 
 Set-StrictMode -Version Latest
@@ -8,6 +9,17 @@ $ErrorActionPreference = 'Stop'
 
 function Write-Info($msg) {
   if ($VerboseOutput) { Write-Host "[lint-no-regions] $msg" -ForegroundColor Cyan }
+}
+
+function Test-IsCI {
+  # Check for common CI environment variables
+  $ciVars = @('CI', 'GITHUB_ACTIONS', 'GITLAB_CI', 'JENKINS_URL', 'TRAVIS', 'CIRCLECI', 'AZURE_PIPELINES', 'TF_BUILD', 'BUILDKITE', 'CODEBUILD_BUILD_ID')
+  foreach ($var in $ciVars) {
+    if ([Environment]::GetEnvironmentVariable($var)) {
+      return $true
+    }
+  }
+  return $false
 }
 
 # Directories to scan
@@ -63,6 +75,30 @@ function Get-RelativePath([string]$path) {
   return $path
 }
 
+function Remove-RegionsFromFile([string]$filePath) {
+  # Read file line by line, preserving original line endings
+  $lines = [System.IO.File]::ReadAllLines($filePath)
+  $newLines = @()
+  $removedCount = 0
+
+  foreach ($line in $lines) {
+    # Check if line is a #region or #endregion directive
+    if ($line -match '^\s*#\s*(region|endregion)\b') {
+      $removedCount++
+      # Skip this line (don't add to output)
+    } else {
+      $newLines += $line
+    }
+  }
+
+  if ($removedCount -gt 0) {
+    # Write back without region lines
+    [System.IO.File]::WriteAllLines($filePath, $newLines)
+  }
+
+  return $removedCount
+}
+
 $violations = @()
 
 Write-Info "Scanning for #region directives in C# files..."
@@ -92,6 +128,7 @@ foreach ($file in $files) {
 
     $violations += @{
       Path      = $rel
+      FullPath  = $filePath
       Line      = $lineNo
       Directive = $fullMatch
       Message   = "UNH005: #$directive directive found. Remove #region/#endregion directives from code."
@@ -100,18 +137,68 @@ foreach ($file in $files) {
 }
 
 if ($violations.Count -gt 0) {
-  Write-Host "#region lint failed:" -ForegroundColor Red
-  Write-Host ""
-  foreach ($v in $violations) {
-    # Output in format compatible with GitHub Actions annotations
-    $ghAnnotation = "::error file=$($v.Path),line=$($v.Line)::$($v.Message)"
-    Write-Host $ghAnnotation
-    Write-Host ("{0}:{1}: {2}" -f $v.Path, $v.Line, $v.Message) -ForegroundColor Yellow
+  $isCI = Test-IsCI
+  $canFix = $Fix -and (-not $isCI)
+
+  if ($canFix) {
+    # Auto-fix: remove regions from affected files
+    Write-Host "Auto-fixing: removing #region directives..." -ForegroundColor Cyan
+
+    # Group violations by file path
+    $fileGroups = $violations | Group-Object -Property Path
+
+    $totalRemoved = 0
+    $fixedFiles = @()
+
+    foreach ($group in $fileGroups) {
+      $filePath = $group.Group[0].FullPath
+      $rel = $group.Name
+
+      $removed = Remove-RegionsFromFile $filePath
+      if ($removed -gt 0) {
+        $totalRemoved += $removed
+        $fixedFiles += $rel
+        Write-Host "  Removed $removed directive(s) from $rel" -ForegroundColor Green
+
+        # Re-stage the file if we're in staged-only mode
+        if ($StagedOnly) {
+          & git add $filePath 2>$null
+        }
+      }
+    }
+
+    Write-Host ""
+    Write-Host "Fixed $($fixedFiles.Count) file(s), removed $totalRemoved #region directive(s)." -ForegroundColor Green
+    # Exit successfully since we fixed the issues
+    exit 0
+  } elseif ($Fix -and $isCI) {
+    # In CI, -Fix is ignored; just report errors
+    Write-Host "#region lint failed (auto-fix disabled in CI):" -ForegroundColor Red
+    Write-Host ""
+    foreach ($v in $violations) {
+      # Output in format compatible with GitHub Actions annotations
+      $ghAnnotation = "::error file=$($v.Path),line=$($v.Line)::$($v.Message)"
+      Write-Host $ghAnnotation
+      Write-Host ("{0}:{1}: {2}" -f $v.Path, $v.Line, $v.Message) -ForegroundColor Yellow
+    }
+    Write-Host ""
+    Write-Host "Found $($violations.Count) #region directive(s)." -ForegroundColor Red
+    Write-Host "#region directives are not allowed. Run locally with -Fix to auto-remove." -ForegroundColor Yellow
+    exit 1
+  } else {
+    Write-Host "#region lint failed:" -ForegroundColor Red
+    Write-Host ""
+    foreach ($v in $violations) {
+      # Output in format compatible with GitHub Actions annotations
+      $ghAnnotation = "::error file=$($v.Path),line=$($v.Line)::$($v.Message)"
+      Write-Host $ghAnnotation
+      Write-Host ("{0}:{1}: {2}" -f $v.Path, $v.Line, $v.Message) -ForegroundColor Yellow
+    }
+    Write-Host ""
+    Write-Host "Found $($violations.Count) #region directive(s)." -ForegroundColor Red
+    Write-Host "#region directives are not allowed. Use proper code organization instead." -ForegroundColor Yellow
+    exit 1
   }
-  Write-Host ""
-  Write-Host "Found $($violations.Count) #region directive(s)." -ForegroundColor Red
-  Write-Host "#region directives are not allowed. Use proper code organization instead." -ForegroundColor Yellow
-  exit 1
 } else {
   Write-Info "No #region directives found."
   if (-not $StagedOnly) {

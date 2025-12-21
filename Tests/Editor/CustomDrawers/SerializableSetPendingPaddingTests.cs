@@ -411,22 +411,24 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
             setProperty.isExpanded = true;
 
-            SerializableSetPropertyDrawer drawer = new();
             GUIContent label = new("Set");
+            Rect originalRect = new(0f, 0f, 400f, 300f);
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
             {
                 EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
 
-                drawer.GetPropertyHeight(setProperty, label);
-                Rect resolvedRect = drawer.LastResolvedPosition;
+                Rect resolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                    originalRect,
+                    skipIndentation: false
+                );
 
-                // At indent level 0, there should still be minimum padding applied
                 float expectedMinimumIndent = 6f;
                 Assert.GreaterOrEqual(
                     resolvedRect.x,
-                    expectedMinimumIndent - 1f, // Allow small tolerance
+                    expectedMinimumIndent - 1f,
                     "Minimum padding should be applied at indent level 0."
                 );
             }
@@ -448,19 +450,25 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty setProperty = serializedObject.FindProperty(nameof(TestSetHost.set));
             setProperty.isExpanded = true;
 
-            SerializableSetPropertyDrawer drawer = new();
             GUIContent label = new("Set");
+            Rect originalRect = new(0f, 0f, 400f, 300f);
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
             {
+                GroupGUIWidthUtility.ResetForTests();
+
                 EditorGUI.indentLevel = 1;
-                drawer.GetPropertyHeight(setProperty, label);
-                Rect rectAtLevel1 = drawer.LastResolvedPosition;
+                Rect rectAtLevel1 = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                    originalRect,
+                    skipIndentation: false
+                );
 
                 EditorGUI.indentLevel = 4;
-                drawer.GetPropertyHeight(setProperty, label);
-                Rect rectAtLevel4 = drawer.LastResolvedPosition;
+                Rect rectAtLevel4 = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                    originalRect,
+                    skipIndentation: false
+                );
 
                 Assert.Greater(
                     rectAtLevel4.x,

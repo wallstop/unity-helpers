@@ -21,18 +21,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 _padding = resolved;
                 _leftPadding = split;
                 _rightPadding = resolved - split;
-                _trackScopeDepth = true;
 
-                _scopeDepth++;
+                // Only track scope depth if there's actual padding to apply
+                // Zero padding should not increase scope depth as it has no visual effect
+                _trackScopeDepth = _padding > 0f;
 
-                if (_padding <= 0f)
+                if (_trackScopeDepth)
                 {
-                    return;
+                    _scopeDepth++;
+                    _totalPadding += _padding;
+                    _totalLeftPadding += _leftPadding;
+                    _totalRightPadding += _rightPadding;
                 }
-
-                _totalPadding += _padding;
-                _totalLeftPadding += _leftPadding;
-                _totalRightPadding += _rightPadding;
             }
 
             internal WidthPaddingScope(
@@ -44,18 +44,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 _leftPadding = Mathf.Max(0f, leftPadding);
                 _rightPadding = Mathf.Max(0f, rightPadding);
                 float combined = Mathf.Max(0f, horizontalPadding);
-                _trackScopeDepth = true;
                 if (combined <= 0f)
                 {
                     combined = _leftPadding + _rightPadding;
                 }
 
+                // Only track scope depth if there's actual padding to apply
+                // Zero padding should not increase scope depth as it has no visual effect
                 if (combined <= 0f)
                 {
                     _padding = 0f;
                     _leftPadding = 0f;
                     _rightPadding = 0f;
-                    _scopeDepth++;
+                    _trackScopeDepth = false;
                     return;
                 }
 
@@ -71,6 +72,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                 _leftPadding = resolvedLeft;
                 _rightPadding = resolvedRight;
+                _trackScopeDepth = true;
 
                 _scopeDepth++;
                 _totalPadding += _padding;
@@ -87,13 +89,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                 _disposed = true;
 
-                if (_padding > 0f || _leftPadding > 0f || _rightPadding > 0f)
-                {
-                    _totalPadding = Mathf.Max(0f, _totalPadding - _padding);
-                    _totalLeftPadding = Mathf.Max(0f, _totalLeftPadding - _leftPadding);
-                    _totalRightPadding = Mathf.Max(0f, _totalRightPadding - _rightPadding);
-                }
-
+                _totalPadding = Mathf.Max(0f, _totalPadding - _padding);
+                _totalLeftPadding = Mathf.Max(0f, _totalLeftPadding - _leftPadding);
+                _totalRightPadding = Mathf.Max(0f, _totalRightPadding - _rightPadding);
                 _scopeDepth = Mathf.Max(0, _scopeDepth - 1);
             }
         }

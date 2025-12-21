@@ -1154,6 +1154,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
             {
                 _items = null;
                 _preserveSerializedEntries = false;
+                _hasDuplicatesOrNulls = false;
+                _itemsDirty = false;
                 _set.Clear();
                 return;
             }
@@ -1173,12 +1175,25 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
 
             _items = convertedItems;
             _preserveSerializedEntries = preserveSerializedEntries;
+            _itemsDirty = false;
 
+            bool hasDuplicates = false;
+            bool hasNulls = false;
+            bool supportsNullCheck = TypeSupportsNullReferences(typeof(T));
             _set.Clear();
             foreach (T convertedItem in convertedItems)
             {
-                _set.Add(convertedItem);
+                if (supportsNullCheck && ReferenceEquals(convertedItem, null))
+                {
+                    hasNulls = true;
+                }
+                else if (!_set.Add(convertedItem))
+                {
+                    hasDuplicates = true;
+                }
             }
+
+            _hasDuplicatesOrNulls = hasDuplicates || hasNulls;
         }
 
         void ISerializableSetInspector.SynchronizeSerializedState()

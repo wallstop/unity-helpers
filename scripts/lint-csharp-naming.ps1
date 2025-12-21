@@ -1,6 +1,7 @@
 Param(
   [switch]$VerboseOutput,
-  [switch]$StagedOnly
+  [switch]$StagedOnly,
+  [switch]$Fix
 )
 
 Set-StrictMode -Version Latest
@@ -8,6 +9,30 @@ $ErrorActionPreference = 'Stop'
 
 function Write-Info($msg) {
   if ($VerboseOutput) { Write-Host "[lint-csharp-naming] $msg" -ForegroundColor Cyan }
+}
+
+function Test-IsCI {
+  # Check for common CI environment variables
+  $ciVars = @('CI', 'GITHUB_ACTIONS', 'GITLAB_CI', 'JENKINS_URL', 'TRAVIS', 'CIRCLECI', 'AZURE_PIPELINES', 'TF_BUILD', 'BUILDKITE', 'CODEBUILD_BUILD_ID')
+  foreach ($var in $ciVars) {
+    if ([Environment]::GetEnvironmentVariable($var)) {
+      return $true
+    }
+  }
+  return $false
+}
+
+function Convert-ToPascalCase([string]$name) {
+  # Split by underscores and capitalize each part
+  $parts = $name -split '_'
+  $result = ""
+  foreach ($part in $parts) {
+    if ($part.Length -gt 0) {
+      # Capitalize first letter, keep rest as-is
+      $result += $part.Substring(0, 1).ToUpper() + $part.Substring(1)
+    }
+  }
+  return $result
 }
 
 # Directories to scan
@@ -114,27 +139,97 @@ foreach ($file in $files) {
     $lineNo = ($prefix -split "`n").Length
 
     $violations += @{
-      Path    = $rel
-      Line    = $lineNo
-      Method  = $methodName
-      Message = "UNH004: Method name '$methodName' contains underscore(s). Use PascalCase without underscores."
+      Path     = $rel
+      FullPath = $filePath
+      Line     = $lineNo
+      Method   = $methodName
+      Message  = "UNH004: Method name '$methodName' contains underscore(s). Use PascalCase without underscores."
     }
   }
 }
 
 if ($violations.Count -gt 0) {
-  Write-Host "C# naming convention lint failed:" -ForegroundColor Red
-  Write-Host ""
-  foreach ($v in $violations) {
-    # Output in format compatible with GitHub Actions annotations
-    $ghAnnotation = "::error file=$($v.Path),line=$($v.Line)::$($v.Message)"
-    Write-Host $ghAnnotation
-    Write-Host ("{0}:{1}: {2}" -f $v.Path, $v.Line, $v.Message) -ForegroundColor Yellow
+  $isCI = Test-IsCI
+  $canFix = $Fix -and (-not $isCI)
+
+  if ($canFix) {
+    # Auto-fix: rename methods in affected files
+    Write-Host "Auto-fixing: renaming methods with underscores..." -ForegroundColor Cyan
+
+    # Group violations by file path
+    $fileGroups = $violations | Group-Object -Property Path
+
+    $totalRenamed = 0
+    $fixedFiles = @()
+
+    foreach ($group in $fileGroups) {
+      $filePath = $group.Group[0].FullPath
+      $rel = $group.Name
+
+      # Read file content
+      $content = [System.IO.File]::ReadAllText($filePath)
+      $originalContent = $content
+
+      # Get unique method names to rename in this file
+      $methodsToRename = $group.Group | Select-Object -ExpandProperty Method -Unique
+
+      foreach ($oldName in $methodsToRename) {
+        $newName = Convert-ToPascalCase $oldName
+
+        # Replace all occurrences with word boundaries
+        # Use regex to match the exact method name (not as part of a larger identifier)
+        $pattern = "(?<![a-zA-Z0-9_])$([regex]::Escape($oldName))(?![a-zA-Z0-9_])"
+        $content = [regex]::Replace($content, $pattern, $newName)
+
+        Write-Host "  $rel : $oldName -> $newName" -ForegroundColor Green
+        $totalRenamed++
+      }
+
+      # Write back if changed
+      if ($content -ne $originalContent) {
+        [System.IO.File]::WriteAllText($filePath, $content)
+        $fixedFiles += $rel
+
+        # Re-stage the file if we're in staged-only mode
+        if ($StagedOnly) {
+          & git add $filePath 2>$null
+        }
+      }
+    }
+
+    Write-Host ""
+    Write-Host "Fixed $($fixedFiles.Count) file(s), renamed $totalRenamed method(s)." -ForegroundColor Green
+    Write-Host "Note: References in other files may need manual updating." -ForegroundColor Yellow
+    # Exit successfully since we fixed the issues
+    exit 0
+  } elseif ($Fix -and $isCI) {
+    # In CI, -Fix is ignored; just report errors
+    Write-Host "C# naming convention lint failed (auto-fix disabled in CI):" -ForegroundColor Red
+    Write-Host ""
+    foreach ($v in $violations) {
+      # Output in format compatible with GitHub Actions annotations
+      $ghAnnotation = "::error file=$($v.Path),line=$($v.Line)::$($v.Message)"
+      Write-Host $ghAnnotation
+      Write-Host ("{0}:{1}: {2}" -f $v.Path, $v.Line, $v.Message) -ForegroundColor Yellow
+    }
+    Write-Host ""
+    Write-Host "Found $($violations.Count) method(s) with underscores in name." -ForegroundColor Red
+    Write-Host "Run locally with -Fix to auto-rename methods." -ForegroundColor Yellow
+    exit 1
+  } else {
+    Write-Host "C# naming convention lint failed:" -ForegroundColor Red
+    Write-Host ""
+    foreach ($v in $violations) {
+      # Output in format compatible with GitHub Actions annotations
+      $ghAnnotation = "::error file=$($v.Path),line=$($v.Line)::$($v.Message)"
+      Write-Host $ghAnnotation
+      Write-Host ("{0}:{1}: {2}" -f $v.Path, $v.Line, $v.Message) -ForegroundColor Yellow
+    }
+    Write-Host ""
+    Write-Host "Found $($violations.Count) method(s) with underscores in name." -ForegroundColor Red
+    Write-Host "Method names should use PascalCase without underscores (e.g., 'DoSomething' not 'Do_Something')." -ForegroundColor Yellow
+    exit 1
   }
-  Write-Host ""
-  Write-Host "Found $($violations.Count) method(s) with underscores in name." -ForegroundColor Red
-  Write-Host "Method names should use PascalCase without underscores (e.g., 'DoSomething' not 'Do_Something')." -ForegroundColor Yellow
-  exit 1
 } else {
   Write-Info "No naming convention violations found."
   if (-not $StagedOnly) {

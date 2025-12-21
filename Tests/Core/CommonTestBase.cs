@@ -68,6 +68,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
             return Track(ScriptableObject.CreateInstance<T>());
         }
 
+        protected ScriptableObject CreateScriptableObject(Type type)
+        {
+            return Track(ScriptableObject.CreateInstance(type));
+        }
+
         protected T Track<T>(T obj)
             where T : Object
         {

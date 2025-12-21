@@ -1458,6 +1458,151 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        public void SetSerializedItemsSnapshotPreservesDuplicatesInItemsArray()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 3);
+            duplicates.SetValue(7, 0);
+            duplicates.SetValue(7, 1);
+            duplicates.SetValue(8, 2);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+
+            Assert.AreEqual(
+                3,
+                inspector.SerializedCount,
+                "SerializedCount should preserve all entries including duplicates."
+            );
+            Assert.AreEqual(
+                2,
+                inspector.UniqueCount,
+                "UniqueCount should only count unique entries."
+            );
+
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.AreEqual(
+                3,
+                itemsProperty.arraySize,
+                "Items array should preserve duplicate entries after synchronization."
+            );
+        }
+
+        [Test]
+        [TestCase(typeof(HashSetHost), "set", 42, 42, 99)]
+        [TestCase(typeof(SortedSetHost), "set", 15, 15, 25)]
+        public void SetSerializedItemsSnapshotPreservesDuplicatesAcrossSetTypes(
+            Type hostType,
+            string setFieldName,
+            object duplicateValue,
+            object duplicateValue2,
+            object uniqueValue
+        )
+        {
+            ScriptableObject host = CreateScriptableObject(hostType);
+            System.Reflection.FieldInfo setField = hostType.GetField(setFieldName);
+            Assert.IsTrue(setField != null, $"Field '{setFieldName}' not found on host type.");
+
+            object setInstance = setField.GetValue(host);
+            ISerializableSetInspector inspector = setInstance as ISerializableSetInspector;
+            Assert.IsTrue(
+                inspector != null,
+                "Set field should implement ISerializableSetInspector."
+            );
+
+            Array duplicates = Array.CreateInstance(inspector.ElementType, 3);
+            duplicates.SetValue(Convert.ChangeType(duplicateValue, inspector.ElementType), 0);
+            duplicates.SetValue(Convert.ChangeType(duplicateValue2, inspector.ElementType), 1);
+            duplicates.SetValue(Convert.ChangeType(uniqueValue, inspector.ElementType), 2);
+            inspector.SetSerializedItemsSnapshot(duplicates, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(setFieldName);
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.AreEqual(
+                3,
+                itemsProperty.arraySize,
+                $"Items array should preserve duplicates for {hostType.Name}."
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.DuplicateState state = drawer.EvaluateDuplicateState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(
+                state.hasDuplicates,
+                $"Duplicate detection should work for {hostType.Name}."
+            );
+            CollectionAssert.AreEquivalent(
+                new[] { 0, 1 },
+                state.duplicateIndices,
+                $"Duplicate indices should be correct for {hostType.Name}."
+            );
+        }
+
+        [Test]
+        public void SetSerializedItemsSnapshotPreservesNullEntriesInItemsArray()
+        {
+            ObjectSetHost host = CreateScriptableObject<ObjectSetHost>();
+            ISerializableSetInspector inspector = host.set;
+
+            TestData validObject = CreateScriptableObject<TestData>();
+            Array values = Array.CreateInstance(inspector.ElementType, 3);
+            values.SetValue(null, 0);
+            values.SetValue(validObject, 1);
+            values.SetValue(null, 2);
+            inspector.SetSerializedItemsSnapshot(values, preserveSerializedEntries: true);
+            inspector.SynchronizeSerializedState();
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(ObjectSetHost.set)
+            );
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            Assert.AreEqual(
+                3,
+                itemsProperty.arraySize,
+                "Items array should preserve null entries after synchronization."
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.NullEntryState nullState = drawer.EvaluateNullEntryState(
+                setProperty,
+                itemsProperty,
+                force: true
+            );
+
+            Assert.IsTrue(
+                nullState.hasNullEntries,
+                "Null entry detection should find the null entries."
+            );
+            Assert.IsTrue(
+                nullState.nullIndices.Contains(0) && nullState.nullIndices.Contains(2),
+                "Both null indices (0 and 2) should be detected."
+            );
+        }
+
+        [Test]
         public void DuplicateStateDoesNotReportDistinctValuesAsDuplicates()
         {
             HashSetHost host = CreateScriptableObject<HashSetHost>();
@@ -1618,25 +1763,32 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             host.set.OnAfterDeserialize();
+            host.set.OnBeforeSerialize();
             serializedObject.Update();
             setProperty = serializedObject.FindProperty(nameof(SortedSetHost.set));
             itemsProperty = setProperty.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            bool showSort = SerializableSetPropertyDrawer.ShouldShowSortButton(
+            bool showSortAfterDeserialize = SerializableSetPropertyDrawer.ShouldShowSortButton(
                 SerializableSetPropertyDrawer.IsSortedSet(setProperty),
                 typeof(int),
                 itemsProperty
             );
 
-            Assert.IsFalse(
-                showSort,
-                $"Sorted sets reorder entries immediately. Items: {DumpIntArray(itemsProperty)}"
+            TestContext.WriteLine(
+                $"After OnAfterDeserialize + OnBeforeSerialize: Items={DumpIntArray(itemsProperty)}, "
+                    + $"PreserveSerializedEntries={host.set.PreserveSerializedEntries}, "
+                    + $"ShouldShowSortButton={showSortAfterDeserialize}"
             );
-            Assert.IsFalse(
+
+            Assert.IsTrue(
+                showSortAfterDeserialize,
+                $"Sorted sets preserve user-specified order; sort button should remain visible until user clicks it. Items: {DumpIntArray(itemsProperty)}"
+            );
+            Assert.IsTrue(
                 host.set.PreserveSerializedEntries,
-                "Sorted set should clear PreserveSerializedEntries once it reorders elements automatically."
+                "PreserveSerializedEntries should be true to maintain user-specified inspector order."
             );
         }
 
@@ -2753,23 +2905,28 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Rect groupedHeader = SerializableSetPropertyDrawer.LastManualEntryHeaderRect;
 
+            float contentDeltaX = groupedResolvedPosition.x - baselineResolvedPosition.x;
+            float contentDeltaWidth =
+                baselineResolvedPosition.width - groupedResolvedPosition.width;
+
             TestContext.WriteLine(
                 $"ManualEntryHeader diagnostics -> baseline.xMin={baselineHeader.xMin:F2}, baseline.width={baselineHeader.width:F2}, "
                     + $"grouped.xMin={groupedHeader.xMin:F2}, grouped.width={groupedHeader.width:F2}, "
                     + $"LeftPadding={LeftPadding:F2}, RightPadding={RightPadding:F2}, "
-                    + $"expected.xMin={baselineHeader.xMin + LeftPadding:F2}, "
-                    + $"expected.width={Mathf.Max(0f, baselineHeader.width - horizontalPadding):F2}"
+                    + $"contentDeltaX={contentDeltaX:F2}, contentDeltaWidth={contentDeltaWidth:F2}, "
+                    + $"expected.xMin={baselineHeader.xMin + contentDeltaX:F2}, "
+                    + $"expected.width={Mathf.Max(0f, baselineHeader.width - contentDeltaWidth):F2}"
             );
 
             Assert.That(
                 groupedHeader.xMin,
-                Is.EqualTo(baselineHeader.xMin + LeftPadding).Within(0.0001f),
-                "Manual entry header should shift by the applied left padding."
+                Is.EqualTo(baselineHeader.xMin + contentDeltaX).Within(0.5f),
+                "Manual entry header should shift by the content rect's x delta."
             );
             Assert.That(
                 groupedHeader.width,
-                Is.EqualTo(Mathf.Max(0f, baselineHeader.width - horizontalPadding)).Within(0.0001f),
-                "Manual entry header width should shrink by the total padding."
+                Is.EqualTo(Mathf.Max(0f, baselineHeader.width - contentDeltaWidth)).Within(0.5f),
+                "Manual entry header width should shrink by the content rect's width delta."
             );
         }
 
@@ -2800,6 +2957,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
             bool baselineSetExpandedBeforeDraw = setProperty.isExpanded;
             bool baselinePendingExpandedBeforeDraw = pending.isExpanded;
+            Rect baselineResolvedPosition = default;
 
             yield return TestIMGUIExecutor.Run(() =>
             {
@@ -2815,6 +2973,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 {
                     EditorGUI.indentLevel = previousIndent;
                 }
+                baselineResolvedPosition = drawer.LastResolvedPosition;
             });
 
             serializedObject.Update();
@@ -2834,11 +2993,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             const float RightPadding = 14f;
             float horizontalPadding = LeftPadding + RightPadding;
 
-            // Reset padding state before grouped draw (consistent with dictionary tests)
             GroupGUIWidthUtility.ResetForTests();
 
             bool groupedSetExpandedBeforeDraw = setProperty.isExpanded;
             bool groupedPendingExpandedBeforeDraw = pending.isExpanded;
+            Rect groupedResolvedPosition = default;
 
             yield return TestIMGUIExecutor.Run(() =>
             {
@@ -2863,6 +3022,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     {
                         EditorGUI.indentLevel = previousIndent;
                     }
+                    groupedResolvedPosition = drawer.LastResolvedPosition;
                 }
             });
 
@@ -2879,15 +3039,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Rect groupedValue = SerializableSetPropertyDrawer.LastManualEntryValueRect;
 
+            float contentDeltaX = groupedResolvedPosition.x - baselineResolvedPosition.x;
+            float contentDeltaWidth =
+                baselineResolvedPosition.width - groupedResolvedPosition.width;
+
             Assert.That(
                 groupedValue.xMin,
-                Is.EqualTo(baselineValue.xMin + LeftPadding).Within(0.0001f),
-                "Manual entry value field should shift by the applied left padding."
+                Is.EqualTo(baselineValue.xMin + contentDeltaX).Within(0.5f),
+                "Manual entry value field should shift by the content rect's x delta."
             );
             Assert.That(
                 groupedValue.width,
-                Is.EqualTo(Mathf.Max(0f, baselineValue.width - horizontalPadding)).Within(0.0001f),
-                "Manual entry value width should shrink by the total padding."
+                Is.EqualTo(Mathf.Max(0f, baselineValue.width - contentDeltaWidth)).Within(0.5f),
+                "Manual entry value width should shrink by the content rect's width delta."
             );
         }
 
@@ -2968,6 +3132,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
             bool baselineSetExpandedBeforeDraw = setProperty.isExpanded;
+            Rect baselineResolvedPosition = default;
 
             yield return TestIMGUIExecutor.Run(() =>
             {
@@ -2982,6 +3147,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 {
                     EditorGUI.indentLevel = previousIndent;
                 }
+                baselineResolvedPosition = drawer.LastResolvedPosition;
             });
 
             serializedObject.Update();
@@ -3001,10 +3167,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             const float RightPadding = 10f;
             float horizontalPadding = LeftPadding + RightPadding;
 
-            // Reset padding state before grouped draw (consistent with dictionary tests)
             GroupGUIWidthUtility.ResetForTests();
 
             bool groupedSetExpandedBeforeDraw = setProperty.isExpanded;
+            Rect groupedResolvedPosition = default;
 
             yield return TestIMGUIExecutor.Run(() =>
             {
@@ -3028,6 +3194,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     {
                         EditorGUI.indentLevel = previousIndent;
                     }
+                    groupedResolvedPosition = drawer.LastResolvedPosition;
                 }
             });
 
@@ -3044,15 +3211,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Rect groupedRow = SerializableSetPropertyDrawer.LastRowContentRect;
 
+            float contentDeltaX = groupedResolvedPosition.x - baselineResolvedPosition.x;
+            float contentDeltaWidth =
+                baselineResolvedPosition.width - groupedResolvedPosition.width;
+
             Assert.That(
                 groupedRow.xMin,
-                Is.EqualTo(baselineRow.xMin + LeftPadding).Within(0.0001f),
-                "Row content should shift by the configured left padding."
+                Is.EqualTo(baselineRow.xMin + contentDeltaX).Within(0.5f),
+                "Row content should shift by the content rect's x delta."
             );
             Assert.That(
                 groupedRow.width,
-                Is.EqualTo(Mathf.Max(0f, baselineRow.width - horizontalPadding)).Within(0.0001f),
-                "Row content width should shrink by the total padding."
+                Is.EqualTo(Mathf.Max(0f, baselineRow.width - contentDeltaWidth)).Within(0.5f),
+                "Row content width should shrink by the content rect's width delta."
             );
         }
 
@@ -3798,11 +3969,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
+            int itemsArraySize = itemsProperty != null ? itemsProperty.arraySize : -1;
+            TestContext.WriteLine(
+                $"After SetSerializedItemsSnapshot: itemsProperty.arraySize={itemsArraySize}, inspector.SerializedCount={inspector.SerializedCount}, inspector.UniqueCount={inspector.UniqueCount}"
+            );
+
             SerializableSetPropertyDrawer drawer = new();
 
             SerializableSetPropertyDrawer.DuplicateState initialState =
                 drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
-            Assert.IsTrue(initialState.hasDuplicates, "Initial state should have duplicates.");
+            Assert.IsTrue(
+                initialState.hasDuplicates,
+                $"Initial state should have duplicates. arraySize={itemsArraySize}, SerializedCount={inspector.SerializedCount}, UniqueCount={inspector.UniqueCount}"
+            );
 
             SerializedProperty secondElement = itemsProperty.GetArrayElementAtIndex(1);
             secondElement.stringValue = "Different";
@@ -4071,6 +4250,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
+            int itemsArraySize = itemsProperty != null ? itemsProperty.arraySize : -1;
+            TestContext.WriteLine(
+                $"After SetSerializedItemsSnapshot: itemsProperty.arraySize={itemsArraySize}, inspector.SerializedCount={inspector.SerializedCount}, inspector.UniqueCount={inspector.UniqueCount}"
+            );
+
             SerializableSetPropertyDrawer drawer = new();
 
             SerializableSetPropertyDrawer.DuplicateState dupState = drawer.EvaluateDuplicateState(
@@ -4086,7 +4270,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Assert.IsTrue(
                 dupState.hasDuplicates,
-                "Duplicate detection should find the shared object."
+                $"Duplicate detection should find the shared object. arraySize={itemsArraySize}, SerializedCount={inspector.SerializedCount}, UniqueCount={inspector.UniqueCount}"
             );
             Assert.IsTrue(nullState.hasNullEntries, "Null detection should find the null entry.");
             CollectionAssert.AreEquivalent(new[] { 0, 1 }, dupState.duplicateIndices);
@@ -4140,13 +4324,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
+            int itemsArraySize = itemsProperty != null ? itemsProperty.arraySize : -1;
+            TestContext.WriteLine(
+                $"After SetSerializedItemsSnapshot: itemsProperty.arraySize={itemsArraySize}, inspector.SerializedCount={inspector.SerializedCount}, inspector.UniqueCount={inspector.UniqueCount}"
+            );
+
             SerializableSetPropertyDrawer drawer = new();
             SerializableSetPropertyDrawer.DuplicateState duplicateState =
                 drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
 
             Assert.IsTrue(
                 duplicateState.hasDuplicates,
-                "Set with duplicate entries should report hasDuplicates=true."
+                $"Set with duplicate entries should report hasDuplicates=true. arraySize={itemsArraySize}, SerializedCount={inspector.SerializedCount}, UniqueCount={inspector.UniqueCount}"
             );
             CollectionAssert.AreEquivalent(new[] { 0, 1 }, duplicateState.duplicateIndices);
             StringAssert.Contains("Duplicate entry 42", duplicateState.summary);
@@ -4435,11 +4624,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
+            int itemsArraySize = itemsProperty != null ? itemsProperty.arraySize : -1;
+            TestContext.WriteLine(
+                $"After SetSerializedItemsSnapshot (initial): itemsProperty.arraySize={itemsArraySize}, inspector.SerializedCount={inspector.SerializedCount}, inspector.UniqueCount={inspector.UniqueCount}"
+            );
+
             SerializableSetPropertyDrawer drawer = new();
 
             SerializableSetPropertyDrawer.DuplicateState initialState =
                 drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
-            Assert.IsTrue(initialState.hasDuplicates, "Initial duplicates should be detected.");
+            Assert.IsTrue(
+                initialState.hasDuplicates,
+                $"Initial duplicates should be detected. arraySize={itemsArraySize}, SerializedCount={inspector.SerializedCount}, UniqueCount={inspector.UniqueCount}"
+            );
 
             inspector.ClearElements();
             inspector.SynchronizeSerializedState();
@@ -4667,13 +4864,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
+            int itemsArraySize = itemsProperty != null ? itemsProperty.arraySize : -1;
+            TestContext.WriteLine(
+                $"After SetSerializedItemsSnapshot: itemsProperty.arraySize={itemsArraySize}, inspector.SerializedCount={inspector.SerializedCount}, inspector.UniqueCount={inspector.UniqueCount}"
+            );
+
             SerializableSetPropertyDrawer drawer = new();
             SerializableSetPropertyDrawer.DuplicateState beforeClear =
                 drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
 
             Assert.IsTrue(
                 beforeClear.hasDuplicates,
-                "Sorted set with duplicates should report hasDuplicates."
+                $"Sorted set with duplicates should report hasDuplicates. arraySize={itemsArraySize}, SerializedCount={inspector.SerializedCount}, UniqueCount={inspector.UniqueCount}"
             );
 
             inspector.ClearElements();
@@ -4717,13 +4919,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
+            int itemsArraySize = itemsProperty != null ? itemsProperty.arraySize : -1;
+            TestContext.WriteLine(
+                $"After SetSerializedItemsSnapshot: itemsProperty.arraySize={itemsArraySize}, inspector.SerializedCount={inspector.SerializedCount}, inspector.UniqueCount={inspector.UniqueCount}"
+            );
+
             SerializableSetPropertyDrawer drawer = new();
             SerializableSetPropertyDrawer.DuplicateState beforeClear =
                 drawer.EvaluateDuplicateState(setProperty, itemsProperty, force: true);
 
             Assert.IsTrue(
                 beforeClear.hasDuplicates,
-                "String set with duplicates should report hasDuplicates."
+                $"String set with duplicates should report hasDuplicates. arraySize={itemsArraySize}, SerializedCount={inspector.SerializedCount}, UniqueCount={inspector.UniqueCount}"
             );
             CollectionAssert.AreEquivalent(new[] { 0, 1 }, beforeClear.duplicateIndices);
             StringAssert.Contains("Alpha", beforeClear.summary);

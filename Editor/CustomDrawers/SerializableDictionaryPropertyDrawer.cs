@@ -870,14 +870,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 SerializedProperty valuesProperty = propertyPair.valuesProperty;
                 EnsureParallelArraySizes(keysProperty, valuesProperty);
 
-                if (
-                    !TryResolveKeyValueTypes(
-                        fieldInfo,
-                        out Type keyType,
-                        out Type valueType,
-                        out bool isSortedDictionary
+                bool resolvedTypes = TryResolveKeyValueTypes(
+                    fieldInfo,
+                    out Type keyType,
+                    out Type valueType,
+                    out bool isSortedDictionary
+                );
+
+                if (!resolvedTypes || keyType == null || valueType == null)
+                {
+                    object dictionaryInstance = GetDictionaryInstance(property);
+                    if (
+                        TryResolveKeyValueTypesFromInstance(
+                            dictionaryInstance,
+                            out Type runtimeKeyType,
+                            out Type runtimeValueType,
+                            out bool runtimeSorted
+                        )
                     )
-                )
+                    {
+                        keyType ??= runtimeKeyType;
+                        valueType ??= runtimeValueType;
+                        isSortedDictionary = runtimeSorted;
+                        resolvedTypes = keyType != null && valueType != null;
+                    }
+                }
+
+                if (!resolvedTypes)
                 {
                     EditorGUI.LabelField(position, label.text, "Unsupported dictionary type");
                     return;
@@ -1146,6 +1165,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             Rect indented = EditorGUI.IndentedRect(padded);
 
+            // Clamp width to non-negative after IndentedRect (high indent levels can cause negative width)
+            if (indented.width < 0f || float.IsNaN(indented.width))
+            {
+                indented.width = 0f;
+            }
+
             // Only add minimum indent when not inside a WGroup (which already has padding)
             // and when indent level is zero (no parent property nesting)
             Rect final = indented;
@@ -1205,14 +1230,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float baseHeight = EditorGUIUtility.singleLineHeight;
 
             // Resolve types early to determine if sorted dictionary (affects animation settings)
-            if (
-                !TryResolveKeyValueTypes(
-                    fieldInfo,
-                    out Type keyType,
-                    out Type valueType,
-                    out bool isSortedDictionary
+            bool resolvedTypes = TryResolveKeyValueTypes(
+                fieldInfo,
+                out Type keyType,
+                out Type valueType,
+                out bool isSortedDictionary
+            );
+
+            if (!resolvedTypes || keyType == null || valueType == null)
+            {
+                object dictionaryInstance = GetDictionaryInstance(property);
+                if (
+                    TryResolveKeyValueTypesFromInstance(
+                        dictionaryInstance,
+                        out Type runtimeKeyType,
+                        out Type runtimeValueType,
+                        out bool runtimeSorted
+                    )
                 )
-            )
+                {
+                    keyType ??= runtimeKeyType;
+                    valueType ??= runtimeValueType;
+                    isSortedDictionary = runtimeSorted;
+                    resolvedTypes = keyType != null && valueType != null;
+                }
+            }
+
+            if (!resolvedTypes)
             {
                 return baseHeight;
             }
@@ -4900,16 +4944,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return null;
             }
 
-            SerializedObject serializedObject = dictionaryProperty.serializedObject;
-            if (serializedObject == null || serializedObject.targetObject == null)
+            try
             {
+                SerializedObject serializedObject = dictionaryProperty.serializedObject;
+                if (serializedObject == null)
+                {
+                    return null;
+                }
+
+                Object targetObject = serializedObject.targetObject;
+                if (targetObject == null)
+                {
+                    return null;
+                }
+
+                return GetTargetObjectOfProperty(targetObject, dictionaryProperty.propertyPath);
+            }
+            catch (ArgumentNullException)
+            {
+                // SerializedObject may have been disposed, causing ArgumentNullException
+                // when accessing targetObject on a disposed native object
                 return null;
             }
-
-            return GetTargetObjectOfProperty(
-                serializedObject.targetObject,
-                dictionaryProperty.propertyPath
-            );
+            catch (ObjectDisposedException)
+            {
+                // SerializedObject has been explicitly disposed
+                return null;
+            }
         }
 
         private static bool TryResolveKeyValueTypesFromInstance(
@@ -6500,6 +6561,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return GetMainFoldoutProgress(propertyPath, isExpanded, isSortedDictionary);
         }
 
+        /// <summary>
+        /// Resolves the content rect for testing purposes, applying WGroup padding and indentation
+        /// without requiring a full OnGUI context.
+        /// </summary>
+        /// <param name="position">The original position rect.</param>
+        /// <param name="skipIndentation">Whether to skip standard Unity indentation.</param>
+        /// <returns>The resolved content rect.</returns>
+        internal static Rect ResolveContentRectForTests(Rect position, bool skipIndentation = false)
+        {
+            return ResolveContentRect(position, skipIndentation);
+        }
+
         private static bool ShouldTweenPendingFoldout(bool isSortedDictionary)
         {
             return isSortedDictionary
@@ -6605,6 +6678,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             bool shouldTween = ShouldTweenPendingFoldout(pending.isSorted);
+
+            // Always call EnsurePendingFoldoutAnim to properly clean up the AnimBool when
+            // tweening is disabled. This ensures the foldoutAnim is set to null when shouldTween
+            // is false, which is important for consistent state management.
+            AnimBool anim = EnsurePendingFoldoutAnim(pending, propertyPath);
+
             if (!shouldTween)
             {
                 float immediateProgress = pending.isExpanded ? 1f : 0f;
@@ -6621,7 +6700,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return immediateProgress;
             }
 
-            AnimBool anim = EnsurePendingFoldoutAnim(pending, propertyPath);
+            // anim should not be null here since shouldTween is true, but handle defensively
             if (anim == null)
             {
                 float fallbackProgress = pending.isExpanded ? 1f : 0f;

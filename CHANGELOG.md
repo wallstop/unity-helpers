@@ -37,10 +37,13 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - `SerializableDictionary<TKey, TValue>` with custom inspector drawer
   - `SerializableSortedDictionary<TKey, TValue>` with ordered iteration
   - `SerializableHashSet<T>` with custom set drawer and duplicate detection
+  - `SerializableSortedSet<T>` for sorted sets with `IComparable<T>` elements
   - `SerializableNullable<T>` for nullable value types in inspector
   - `SerializableType` for type references in inspector
   - Pagination support for large collections in editor
   - Inline nested editor support for complex types
+  - Undo/Redo support for all serializable collection modifications
+  - Confirmation dialog when clearing collections to prevent accidental data loss
 - **Editor Tooling Enhancements**:
   - Enhanced `StringInListDrawer` for validated string input with suggestions
   - UI Toolkit-based editors for modern Unity editor integration
@@ -105,6 +108,13 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Data structure conversion optimizations
   - Minor relational component performance improvements, specifically for children components
   - Reduced GC allocations across property drawers, editor tools, and various helpers
+- **EnhancedImage Visual Component**:
+  - Improved material instance management with proper cleanup on destroy
+  - Better domain reload handling for HDR color and material state persistence
+  - Enhanced editor inspector with automatic material fix suggestions
+- **Animation Editor Tools**:
+  - Fixed FPS field handling in Animation Viewer and Sprite Sheet Animation Creator
+  - Improved frame reordering and preview responsiveness
 - **Documentation**:
   - Major documentation refactor for clarity
   - Added GUID generation documentation

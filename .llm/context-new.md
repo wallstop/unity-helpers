@@ -71,7 +71,6 @@ Invoke these skills for specific tasks:
 
 | Skill                                                        | When to Use                           |
 | ------------------------------------------------------------ | ------------------------------------- |
-| [high-performance-csharp](skills/high-performance-csharp.md) | **ALL code** (features, bugs, editor) |
 | [create-csharp-file](skills/create-csharp-file.md)           | Creating any new `.cs` file           |
 | [create-unity-meta](skills/create-unity-meta.md)             | After creating any new file or folder |
 | [create-test](skills/create-test.md)                         | Writing or modifying test files       |
@@ -149,44 +148,6 @@ See [create-csharp-file](skills/create-csharp-file.md) for detailed rules. Key p
 6. One file per MonoBehaviour/ScriptableObject
 7. NEVER use `?.`, `??`, `??=` on UnityEngine.Object types
 8. Minimal comments (self-documenting code)
-
----
-
-## High-Performance C# Requirements
-
-**MANDATORY**: All code must follow [high-performance-csharp](skills/high-performance-csharp.md). This applies to:
-
-- **New features** — Design for zero allocation from the start
-- **Bug fixes** — Must not regress performance; improve if possible
-- **Editor tooling** — Inspectors run every frame; cache everything
-
-### Quick Rules
-
-| Forbidden                          | Use Instead                                     |
-| ---------------------------------- | ----------------------------------------------- |
-| LINQ (`.Where`, `.Select`, `.Any`) | `for` loops                                     |
-| `new List<T>()` in methods         | `Buffers<T>.List.Get()`                         |
-| Closures capturing variables       | Static lambdas or explicit loops                |
-| Reflection on our code             | `internal` + `[InternalsVisibleTo]`, interfaces |
-| Reflection on external APIs        | `ReflectionHelpers` (last resort)               |
-| `string +` in loops                | `Buffers.StringBuilder`                         |
-
-### Required Patterns
-
-```csharp
-// Collection pooling
-using var lease = Buffers<T>.List.Get(out List<T> buffer);
-
-// Array pooling (variable sizes)
-using PooledArray<T> pooled = SystemArrayPool<T>.Get(count, out T[] array);
-
-// Cached reflection
-ReflectionHelpers.TryGetField(type, "name", out FieldInfo field);
-
-// Hot path inlining
-[MethodImpl(MethodImplOptions.AggressiveInlining)]
-public int GetHashCode() => _cachedHash;
-```
 
 ---
 

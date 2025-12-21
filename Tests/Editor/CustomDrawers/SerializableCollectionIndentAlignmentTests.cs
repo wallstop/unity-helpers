@@ -1,15 +1,18 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
     using System;
+    using System.Collections;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.EditorFramework;
 
     /// <summary>
     /// Tests for precise pixel-level indent alignment of SerializableDictionary and SerializableSet
@@ -67,20 +70,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void DictionaryAtIndentZeroWithoutWGroupAppliesMinimumIndent()
         {
-            SimpleDictionaryHost host = CreateScriptableObject<SimpleDictionaryHost>();
-            host.dictionary["key1"] = 100;
-
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(SimpleDictionaryHost.dictionary)
-            );
-            dictionaryProperty.isExpanded = true;
-
-            SerializableDictionaryPropertyDrawer drawer = new();
             Rect controlRect = new(0f, 0f, 400f, 300f);
-            GUIContent label = new("Dictionary");
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -88,10 +78,17 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 EditorGUI.indentLevel = 0;
                 GroupGUIWidthUtility.ResetForTests();
 
-                drawer.GetPropertyHeight(dictionaryProperty, label);
-                Rect resolvedRect = drawer.LastResolvedPosition;
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
 
                 float expectedX = controlRect.x + MinimumGroupIndent;
+                TestContext.WriteLine(
+                    $"[DictionaryAtIndentZeroWithoutWGroupAppliesMinimumIndent] "
+                        + $"input=({controlRect.x}, {controlRect.width}), "
+                        + $"resolved=({resolvedRect.x}, {resolvedRect.width})"
+                );
                 Assert.AreEqual(
                     expectedX,
                     resolvedRect.x,
@@ -108,20 +105,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void SetAtIndentZeroWithoutWGroupAppliesMinimumIndent()
         {
-            SimpleSetHost host = CreateScriptableObject<SimpleSetHost>();
-            host.set.Add(42);
-
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-
-            SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(SimpleSetHost.set)
-            );
-            setProperty.isExpanded = true;
-
-            SerializableSetPropertyDrawer drawer = new();
             Rect controlRect = new(0f, 0f, 400f, 300f);
-            GUIContent label = new("Set");
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -129,10 +113,17 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 EditorGUI.indentLevel = 0;
                 GroupGUIWidthUtility.ResetForTests();
 
-                drawer.GetPropertyHeight(setProperty, label);
-                Rect resolvedRect = drawer.LastResolvedPosition;
+                Rect resolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
 
                 float expectedX = controlRect.x + MinimumGroupIndent;
+                TestContext.WriteLine(
+                    $"[SetAtIndentZeroWithoutWGroupAppliesMinimumIndent] "
+                        + $"input=({controlRect.x}, {controlRect.width}), "
+                        + $"resolved=({resolvedRect.x}, {resolvedRect.width})"
+                );
                 Assert.AreEqual(
                     expectedX,
                     resolvedRect.x,
@@ -149,20 +140,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void DictionaryInWGroupUsesOnlyWGroupPadding()
         {
-            WGroupDictionaryHost host = CreateScriptableObject<WGroupDictionaryHost>();
-            host.dictionary["key1"] = 100;
-
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(WGroupDictionaryHost.dictionary)
-            );
-            dictionaryProperty.isExpanded = true;
-
-            SerializableDictionaryPropertyDrawer drawer = new();
             Rect controlRect = new(0f, 0f, 400f, 300f);
-            GUIContent label = new("Dictionary");
 
             float helpBoxPadding = GroupGUIWidthUtility.CalculateHorizontalPadding(
                 EditorStyles.helpBox,
@@ -184,10 +162,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     )
                 )
                 {
-                    drawer.GetPropertyHeight(dictionaryProperty, label);
-                    Rect resolvedRect = drawer.LastResolvedPosition;
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
 
                     float expectedX = controlRect.x + leftPadding;
+                    TestContext.WriteLine(
+                        $"[DictionaryInWGroupUsesOnlyWGroupPadding] "
+                            + $"leftPadding={leftPadding}, rightPadding={rightPadding}, "
+                            + $"resolved=({resolvedRect.x}, {resolvedRect.width})"
+                    );
                     Assert.AreEqual(
                         expectedX,
                         resolvedRect.x,
@@ -213,20 +199,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void SetInWGroupUsesOnlyWGroupPadding()
         {
-            WGroupSetHost host = CreateScriptableObject<WGroupSetHost>();
-            host.set.Add(42);
-
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-
-            SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(WGroupSetHost.set)
-            );
-            setProperty.isExpanded = true;
-
-            SerializableSetPropertyDrawer drawer = new();
             Rect controlRect = new(0f, 0f, 400f, 300f);
-            GUIContent label = new("Set");
 
             float helpBoxPadding = GroupGUIWidthUtility.CalculateHorizontalPadding(
                 EditorStyles.helpBox,
@@ -248,10 +221,17 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     )
                 )
                 {
-                    drawer.GetPropertyHeight(setProperty, label);
-                    Rect resolvedRect = drawer.LastResolvedPosition;
+                    Rect resolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                        controlRect,
+                        skipIndentation: false
+                    );
 
                     float expectedX = controlRect.x + leftPadding;
+                    TestContext.WriteLine(
+                        $"[SetInWGroupUsesOnlyWGroupPadding] "
+                            + $"leftPadding={leftPadding}, rightPadding={rightPadding}, "
+                            + $"resolved=({resolvedRect.x}, {resolvedRect.width})"
+                    );
                     Assert.AreEqual(
                         expectedX,
                         resolvedRect.x,
@@ -277,20 +257,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void DictionaryNestedInMultipleWGroupsAccumulatesPadding()
         {
-            WGroupDictionaryHost host = CreateScriptableObject<WGroupDictionaryHost>();
-            host.dictionary["key1"] = 100;
-
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(WGroupDictionaryHost.dictionary)
-            );
-            dictionaryProperty.isExpanded = true;
-
-            SerializableDictionaryPropertyDrawer drawer = new();
             Rect controlRect = new(0f, 0f, 400f, 300f);
-            GUIContent label = new("Dictionary");
 
             const float OuterLeftPadding = 10f;
             const float OuterRightPadding = 10f;
@@ -318,13 +285,21 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     )
                 )
                 {
-                    drawer.GetPropertyHeight(dictionaryProperty, label);
-                    Rect resolvedRect = drawer.LastResolvedPosition;
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
 
                     float totalLeftPadding = OuterLeftPadding + InnerLeftPadding;
                     float totalRightPadding = OuterRightPadding + InnerRightPadding;
 
                     float expectedX = controlRect.x + totalLeftPadding;
+                    TestContext.WriteLine(
+                        $"[DictionaryNestedInMultipleWGroupsAccumulatesPadding] "
+                            + $"totalLeft={totalLeftPadding}, totalRight={totalRightPadding}, "
+                            + $"resolved=({resolvedRect.x}, {resolvedRect.width})"
+                    );
                     Assert.AreEqual(
                         expectedX,
                         resolvedRect.x,
@@ -350,20 +325,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void SetNestedInMultipleWGroupsAccumulatesPadding()
         {
-            WGroupSetHost host = CreateScriptableObject<WGroupSetHost>();
-            host.set.Add(42);
-
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-
-            SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(WGroupSetHost.set)
-            );
-            setProperty.isExpanded = true;
-
-            SerializableSetPropertyDrawer drawer = new();
             Rect controlRect = new(0f, 0f, 400f, 300f);
-            GUIContent label = new("Set");
 
             const float OuterLeftPadding = 10f;
             const float OuterRightPadding = 10f;
@@ -391,13 +353,20 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     )
                 )
                 {
-                    drawer.GetPropertyHeight(setProperty, label);
-                    Rect resolvedRect = drawer.LastResolvedPosition;
+                    Rect resolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                        controlRect,
+                        skipIndentation: false
+                    );
 
                     float totalLeftPadding = OuterLeftPadding + InnerLeftPadding;
                     float totalRightPadding = OuterRightPadding + InnerRightPadding;
 
                     float expectedX = controlRect.x + totalLeftPadding;
+                    TestContext.WriteLine(
+                        $"[SetNestedInMultipleWGroupsAccumulatesPadding] "
+                            + $"totalLeft={totalLeftPadding}, totalRight={totalRightPadding}, "
+                            + $"resolved=({resolvedRect.x}, {resolvedRect.width})"
+                    );
                     Assert.AreEqual(
                         expectedX,
                         resolvedRect.x,
@@ -423,20 +392,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void DictionaryWithNonZeroIndentAndNoWGroupUsesUnityIndent()
         {
-            SimpleDictionaryHost host = CreateScriptableObject<SimpleDictionaryHost>();
-            host.dictionary["key1"] = 100;
-
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(SimpleDictionaryHost.dictionary)
-            );
-            dictionaryProperty.isExpanded = true;
-
-            SerializableDictionaryPropertyDrawer drawer = new();
             Rect controlRect = new(0f, 0f, 400f, 300f);
-            GUIContent label = new("Dictionary");
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -444,8 +400,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 EditorGUI.indentLevel = 2;
                 GroupGUIWidthUtility.ResetForTests();
 
-                drawer.GetPropertyHeight(dictionaryProperty, label);
-                Rect resolvedRect = drawer.LastResolvedPosition;
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                TestContext.WriteLine(
+                    $"[DictionaryWithNonZeroIndentAndNoWGroupUsesUnityIndent] "
+                        + $"indentLevel=2, resolved=({resolvedRect.x}, {resolvedRect.width})"
+                );
 
                 // With indent level > 0 and no WGroup, Unity's IndentedRect applies indentation
                 Assert.Greater(
@@ -470,20 +433,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void SetWithNonZeroIndentAndNoWGroupUsesUnityIndent()
         {
-            SimpleSetHost host = CreateScriptableObject<SimpleSetHost>();
-            host.set.Add(42);
-
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-
-            SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(SimpleSetHost.set)
-            );
-            setProperty.isExpanded = true;
-
-            SerializableSetPropertyDrawer drawer = new();
             Rect controlRect = new(0f, 0f, 400f, 300f);
-            GUIContent label = new("Set");
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -491,8 +441,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 EditorGUI.indentLevel = 2;
                 GroupGUIWidthUtility.ResetForTests();
 
-                drawer.GetPropertyHeight(setProperty, label);
-                Rect resolvedRect = drawer.LastResolvedPosition;
+                Rect resolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                TestContext.WriteLine(
+                    $"[SetWithNonZeroIndentAndNoWGroupUsesUnityIndent] "
+                        + $"indentLevel=2, resolved=({resolvedRect.x}, {resolvedRect.width})"
+                );
 
                 // With indent level > 0 and no WGroup, Unity's IndentedRect applies indentation
                 Assert.Greater(
@@ -517,20 +474,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void DictionaryWidthIsNeverNegativeWithExcessivePadding()
         {
-            SimpleDictionaryHost host = CreateScriptableObject<SimpleDictionaryHost>();
-            host.dictionary["key1"] = 100;
-
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(SimpleDictionaryHost.dictionary)
-            );
-            dictionaryProperty.isExpanded = true;
-
-            SerializableDictionaryPropertyDrawer drawer = new();
             Rect controlRect = new(0f, 0f, 50f, 300f); // Narrow rect
-            GUIContent label = new("Dictionary");
 
             const float ExcessivePadding = 100f; // Larger than control rect width
 
@@ -548,8 +492,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     )
                 )
                 {
-                    drawer.GetPropertyHeight(dictionaryProperty, label);
-                    Rect resolvedRect = drawer.LastResolvedPosition;
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    TestContext.WriteLine(
+                        $"[DictionaryWidthIsNeverNegativeWithExcessivePadding] "
+                            + $"resolved=({resolvedRect.x}, {resolvedRect.width})"
+                    );
 
                     Assert.GreaterOrEqual(
                         resolvedRect.width,
@@ -571,20 +523,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void SetWidthIsNeverNegativeWithExcessivePadding()
         {
-            SimpleSetHost host = CreateScriptableObject<SimpleSetHost>();
-            host.set.Add(42);
-
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-
-            SerializedProperty setProperty = serializedObject.FindProperty(
-                nameof(SimpleSetHost.set)
-            );
-            setProperty.isExpanded = true;
-
-            SerializableSetPropertyDrawer drawer = new();
             Rect controlRect = new(0f, 0f, 50f, 300f); // Narrow rect
-            GUIContent label = new("Set");
 
             const float ExcessivePadding = 100f; // Larger than control rect width
 
@@ -602,8 +541,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     )
                 )
                 {
-                    drawer.GetPropertyHeight(setProperty, label);
-                    Rect resolvedRect = drawer.LastResolvedPosition;
+                    Rect resolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                        controlRect,
+                        skipIndentation: false
+                    );
+
+                    TestContext.WriteLine(
+                        $"[SetWidthIsNeverNegativeWithExcessivePadding] "
+                            + $"resolved=({resolvedRect.x}, {resolvedRect.width})"
+                    );
 
                     Assert.GreaterOrEqual(
                         resolvedRect.width,
@@ -619,8 +565,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
         }
 
-        [Test]
-        public void DictionarySettingsContextAppliesOnlyWGroupPadding()
+        [UnityTest]
+        public IEnumerator DictionarySettingsContextAppliesOnlyWGroupPadding()
         {
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
             SerializedObject serializedSettings = TrackDisposable(new SerializedObject(settings));
@@ -634,7 +580,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             if (paletteProp == null)
             {
                 Assert.Ignore("WButtonCustomColors property not found in settings.");
-                return;
+                yield break;
             }
 
             paletteProp.isExpanded = true;
@@ -647,7 +593,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             const float TestRightPadding = 15f;
 
             int previousIndentLevel = EditorGUI.indentLevel;
-            try
+            Rect resolvedRect = default;
+
+            yield return TestIMGUIExecutor.Run(() =>
             {
                 EditorGUI.indentLevel = 0;
                 GroupGUIWidthUtility.ResetForTests();
@@ -660,31 +608,34 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     )
                 )
                 {
-                    // Settings context uses skipIndentation=true
-                    drawer.OnGUI(controlRect, paletteProp, label);
-                    Rect resolvedRect = drawer.LastResolvedPosition;
-
-                    float expectedX = controlRect.x + TestLeftPadding;
-                    Assert.AreEqual(
-                        expectedX,
-                        resolvedRect.x,
-                        PixelTolerance,
-                        "Dictionary in settings context should apply only WGroup padding."
-                    );
-
-                    float expectedWidth = controlRect.width - TestLeftPadding - TestRightPadding;
-                    Assert.AreEqual(
-                        expectedWidth,
-                        resolvedRect.width,
-                        PixelTolerance,
-                        "Dictionary in settings context should reduce width by WGroup padding."
-                    );
+                    try
+                    {
+                        // Settings context uses skipIndentation=true
+                        drawer.OnGUI(controlRect, paletteProp, label);
+                        resolvedRect = drawer.LastResolvedPosition;
+                    }
+                    finally
+                    {
+                        EditorGUI.indentLevel = previousIndentLevel;
+                    }
                 }
-            }
-            finally
-            {
-                EditorGUI.indentLevel = previousIndentLevel;
-            }
+            });
+
+            float expectedX = controlRect.x + TestLeftPadding;
+            Assert.AreEqual(
+                expectedX,
+                resolvedRect.x,
+                PixelTolerance,
+                "Dictionary in settings context should apply only WGroup padding."
+            );
+
+            float expectedWidth = controlRect.width - TestLeftPadding - TestRightPadding;
+            Assert.AreEqual(
+                expectedWidth,
+                resolvedRect.width,
+                PixelTolerance,
+                "Dictionary in settings context should reduce width by WGroup padding."
+            );
         }
 
         [Test]
@@ -882,8 +833,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
         }
 
-        [Test]
-        public void DictionaryIndentRestoredAfterOnGUI()
+        [UnityTest]
+        public IEnumerator DictionaryIndentRestoredAfterOnGUI()
         {
             SimpleDictionaryHost host = CreateScriptableObject<SimpleDictionaryHost>();
             host.dictionary["key1"] = 100;
@@ -901,27 +852,33 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GUIContent label = new("Dictionary");
 
             int previousIndentLevel = EditorGUI.indentLevel;
-            try
+            int indentAfterOnGUI = -1;
+
+            yield return TestIMGUIExecutor.Run(() =>
             {
                 EditorGUI.indentLevel = 3;
                 GroupGUIWidthUtility.ResetForTests();
 
-                drawer.OnGUI(controlRect, dictionaryProperty, label);
+                try
+                {
+                    drawer.OnGUI(controlRect, dictionaryProperty, label);
+                    indentAfterOnGUI = EditorGUI.indentLevel;
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndentLevel;
+                }
+            });
 
-                Assert.AreEqual(
-                    3,
-                    EditorGUI.indentLevel,
-                    "Indent level should be restored after OnGUI completes."
-                );
-            }
-            finally
-            {
-                EditorGUI.indentLevel = previousIndentLevel;
-            }
+            Assert.AreEqual(
+                3,
+                indentAfterOnGUI,
+                "Indent level should be restored after OnGUI completes."
+            );
         }
 
-        [Test]
-        public void SetIndentRestoredAfterOnGUI()
+        [UnityTest]
+        public IEnumerator SetIndentRestoredAfterOnGUI()
         {
             SimpleSetHost host = CreateScriptableObject<SimpleSetHost>();
             host.set.Add(42);
@@ -939,23 +896,29 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             GUIContent label = new("Set");
 
             int previousIndentLevel = EditorGUI.indentLevel;
-            try
+            int indentAfterOnGUI = -1;
+
+            yield return TestIMGUIExecutor.Run(() =>
             {
                 EditorGUI.indentLevel = 3;
                 GroupGUIWidthUtility.ResetForTests();
 
-                drawer.OnGUI(controlRect, setProperty, label);
+                try
+                {
+                    drawer.OnGUI(controlRect, setProperty, label);
+                    indentAfterOnGUI = EditorGUI.indentLevel;
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndentLevel;
+                }
+            });
 
-                Assert.AreEqual(
-                    3,
-                    EditorGUI.indentLevel,
-                    "Indent level should be restored after OnGUI completes."
-                );
-            }
-            finally
-            {
-                EditorGUI.indentLevel = previousIndentLevel;
-            }
+            Assert.AreEqual(
+                3,
+                indentAfterOnGUI,
+                "Indent level should be restored after OnGUI completes."
+            );
         }
 
         [Test]

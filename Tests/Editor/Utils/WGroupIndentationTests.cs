@@ -455,14 +455,152 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 Assert.That(
                     GroupGUIWidthUtility.CurrentHorizontalPadding,
-                    Is.EqualTo(originalPadding).Within(0.0001f)
+                    Is.EqualTo(originalPadding).Within(0.0001f),
+                    "Zero padding should not change horizontal padding total."
                 );
                 Assert.That(
                     GroupGUIWidthUtility.CurrentScopeDepth,
-                    Is.EqualTo(originalDepth + 1),
-                    "Scope depth should still increment even with zero padding."
+                    Is.EqualTo(originalDepth),
+                    "Zero padding should not increment scope depth since there is no visual WGroup context."
                 );
             }
+        }
+
+        [TestCase(0f, 0f, 0f, 0, Description = "All zeros - no scope depth increment")]
+        [TestCase(0f, 0f, 0.001f, 1, Description = "Tiny right padding - increments scope depth")]
+        [TestCase(0f, 0.001f, 0f, 1, Description = "Tiny left padding - increments scope depth")]
+        [TestCase(
+            0.001f,
+            0f,
+            0f,
+            1,
+            Description = "Tiny horizontal padding - increments scope depth"
+        )]
+        [TestCase(1f, 0f, 0f, 1, Description = "1px horizontal padding - increments scope depth")]
+        [TestCase(0f, 1f, 1f, 1, Description = "1px left and right - increments scope depth")]
+        [TestCase(10f, 5f, 5f, 1, Description = "Typical padding values - increments scope depth")]
+        public void PaddingScopeDepthBehaviorWithVariousValues(
+            float horizontalPadding,
+            float leftPadding,
+            float rightPadding,
+            int expectedDepthIncrement
+        )
+        {
+            GroupGUIWidthUtility.ResetForTests();
+            int originalDepth = GroupGUIWidthUtility.CurrentScopeDepth;
+
+            using (
+                GroupGUIWidthUtility.PushContentPadding(
+                    horizontalPadding,
+                    leftPadding,
+                    rightPadding
+                )
+            )
+            {
+                int actualDepth = GroupGUIWidthUtility.CurrentScopeDepth;
+                Assert.That(
+                    actualDepth,
+                    Is.EqualTo(originalDepth + expectedDepthIncrement),
+                    $"Scope depth should be {originalDepth + expectedDepthIncrement} with padding "
+                        + $"(h={horizontalPadding}, l={leftPadding}, r={rightPadding}). Actual: {actualDepth}"
+                );
+            }
+
+            // Verify scope is properly restored after disposal
+            Assert.That(
+                GroupGUIWidthUtility.CurrentScopeDepth,
+                Is.EqualTo(originalDepth),
+                "Scope depth should be restored after disposing padding scope."
+            );
+        }
+
+        [Test]
+        public void NestedZeroPaddingScopesDoNotIncrementDepth()
+        {
+            GroupGUIWidthUtility.ResetForTests();
+            int originalDepth = GroupGUIWidthUtility.CurrentScopeDepth;
+
+            using (GroupGUIWidthUtility.PushContentPadding(0f, 0f, 0f))
+            {
+                Assert.That(
+                    GroupGUIWidthUtility.CurrentScopeDepth,
+                    Is.EqualTo(originalDepth),
+                    "First zero padding scope should not increment depth."
+                );
+
+                using (GroupGUIWidthUtility.PushContentPadding(0f, 0f, 0f))
+                {
+                    Assert.That(
+                        GroupGUIWidthUtility.CurrentScopeDepth,
+                        Is.EqualTo(originalDepth),
+                        "Nested zero padding scope should not increment depth."
+                    );
+                }
+
+                Assert.That(
+                    GroupGUIWidthUtility.CurrentScopeDepth,
+                    Is.EqualTo(originalDepth),
+                    "Depth should remain unchanged after nested scope disposal."
+                );
+            }
+
+            Assert.That(
+                GroupGUIWidthUtility.CurrentScopeDepth,
+                Is.EqualTo(originalDepth),
+                "Depth should be restored after all scopes disposed."
+            );
+        }
+
+        [Test]
+        public void MixedZeroAndNonZeroPaddingScopesTrackCorrectly()
+        {
+            GroupGUIWidthUtility.ResetForTests();
+            int originalDepth = GroupGUIWidthUtility.CurrentScopeDepth;
+
+            using (GroupGUIWidthUtility.PushContentPadding(10f, 5f, 5f))
+            {
+                Assert.That(
+                    GroupGUIWidthUtility.CurrentScopeDepth,
+                    Is.EqualTo(originalDepth + 1),
+                    "Non-zero padding should increment depth."
+                );
+
+                using (GroupGUIWidthUtility.PushContentPadding(0f, 0f, 0f))
+                {
+                    Assert.That(
+                        GroupGUIWidthUtility.CurrentScopeDepth,
+                        Is.EqualTo(originalDepth + 1),
+                        "Zero padding nested inside non-zero should not change depth."
+                    );
+
+                    using (GroupGUIWidthUtility.PushContentPadding(5f, 2f, 3f))
+                    {
+                        Assert.That(
+                            GroupGUIWidthUtility.CurrentScopeDepth,
+                            Is.EqualTo(originalDepth + 2),
+                            "Another non-zero padding should increment depth."
+                        );
+                    }
+
+                    Assert.That(
+                        GroupGUIWidthUtility.CurrentScopeDepth,
+                        Is.EqualTo(originalDepth + 1),
+                        "Depth should decrement after innermost non-zero scope disposal."
+                    );
+                }
+
+                Assert.That(
+                    GroupGUIWidthUtility.CurrentScopeDepth,
+                    Is.EqualTo(originalDepth + 1),
+                    "Depth should remain after zero scope disposal."
+                );
+            }
+
+            Assert.That(
+                GroupGUIWidthUtility.CurrentScopeDepth,
+                Is.EqualTo(originalDepth),
+                "Depth should be restored after all scopes disposed."
+            );
         }
 
         [Test]
@@ -516,6 +654,155 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 EditorGUI.indentLevel,
                 Is.EqualTo(5),
                 "Original indent should be restored."
+            );
+        }
+
+        [TestCase(10f, 5f, 0f)]
+        [TestCase(24f, 10f, 0f)]
+        [TestCase(4f, 4f, 0f)]
+        [TestCase(16f, 8f, 100f)]
+        [TestCase(24f, 10f, 50f)]
+        public void ApplyCurrentPaddingAdjustsRectConsistentlyWithVariousPaddingsAndOffsets(
+            float leftPadding,
+            float rightPadding,
+            float rectX
+        )
+        {
+            Rect originalRect = new(rectX, 0f, 300f, 100f);
+            float totalPadding = leftPadding + rightPadding;
+
+            using (GroupGUIWidthUtility.PushContentPadding(totalPadding, leftPadding, rightPadding))
+            {
+                Rect adjustedRect = GroupGUIWidthUtility.ApplyCurrentPadding(originalRect);
+
+                Assert.That(
+                    adjustedRect.xMin,
+                    Is.EqualTo(originalRect.xMin + leftPadding).Within(0.0001f),
+                    $"Adjusted xMin should be original xMin ({originalRect.xMin}) + left padding ({leftPadding})"
+                );
+                Assert.That(
+                    adjustedRect.xMax,
+                    Is.EqualTo(originalRect.xMax - rightPadding).Within(0.0001f),
+                    $"Adjusted xMax should be original xMax ({originalRect.xMax}) - right padding ({rightPadding})"
+                );
+                Assert.That(
+                    adjustedRect.width,
+                    Is.EqualTo(originalRect.width - totalPadding).Within(0.0001f),
+                    $"Adjusted width should be original width ({originalRect.width}) - total padding ({totalPadding})"
+                );
+            }
+        }
+
+        [TestCase(10f, 5f)]
+        [TestCase(24f, 10f)]
+        [TestCase(4f, 4f)]
+        [TestCase(16f, 8f)]
+        public void PaddingShouldNotBeAppliedMultipleTimesToSameRect(
+            float leftPadding,
+            float rightPadding
+        )
+        {
+            Rect originalRect = new(0f, 0f, 300f, 100f);
+            float totalPadding = leftPadding + rightPadding;
+
+            using (GroupGUIWidthUtility.PushContentPadding(totalPadding, leftPadding, rightPadding))
+            {
+                Rect firstAdjustment = GroupGUIWidthUtility.ApplyCurrentPadding(originalRect);
+                Rect secondAdjustment = GroupGUIWidthUtility.ApplyCurrentPadding(firstAdjustment);
+
+                float totalLeftShift = secondAdjustment.xMin - originalRect.xMin;
+                float totalWidthReduction = originalRect.width - secondAdjustment.width;
+
+                // This test documents the current behavior where double-application
+                // results in double the shift. Tests that pass pre-adjusted rects
+                // to drawers that also apply padding will see this issue.
+                Assert.That(
+                    totalLeftShift,
+                    Is.EqualTo(leftPadding * 2f).Within(0.0001f),
+                    $"Double-applying padding results in 2x left shift. "
+                        + $"Single application = {leftPadding}, Double = {totalLeftShift}. "
+                        + "Tests must NOT pass pre-adjusted rects to drawers that apply padding internally."
+                );
+                Assert.That(
+                    totalWidthReduction,
+                    Is.EqualTo(totalPadding * 2f).Within(0.0001f),
+                    $"Double-applying padding results in 2x width reduction. "
+                        + $"Single application = {totalPadding}, Double = {totalWidthReduction}."
+                );
+            }
+        }
+
+        [Test]
+        public void NestedPaddingScopesAccumulateCorrectly()
+        {
+            Rect originalRect = new(0f, 0f, 400f, 100f);
+            float outerLeft = 10f;
+            float outerRight = 5f;
+            float innerLeft = 8f;
+            float innerRight = 4f;
+
+            using (
+                GroupGUIWidthUtility.PushContentPadding(
+                    outerLeft + outerRight,
+                    outerLeft,
+                    outerRight
+                )
+            )
+            {
+                float afterOuterLeft = GroupGUIWidthUtility.CurrentLeftPadding;
+                float afterOuterRight = GroupGUIWidthUtility.CurrentRightPadding;
+
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        innerLeft + innerRight,
+                        innerLeft,
+                        innerRight
+                    )
+                )
+                {
+                    float totalLeft = GroupGUIWidthUtility.CurrentLeftPadding;
+                    float totalRight = GroupGUIWidthUtility.CurrentRightPadding;
+
+                    Assert.That(
+                        totalLeft,
+                        Is.EqualTo(outerLeft + innerLeft).Within(0.0001f),
+                        "Nested padding scopes should accumulate left padding"
+                    );
+                    Assert.That(
+                        totalRight,
+                        Is.EqualTo(outerRight + innerRight).Within(0.0001f),
+                        "Nested padding scopes should accumulate right padding"
+                    );
+
+                    Rect adjustedRect = GroupGUIWidthUtility.ApplyCurrentPadding(originalRect);
+                    Assert.That(
+                        adjustedRect.xMin,
+                        Is.EqualTo(originalRect.xMin + totalLeft).Within(0.0001f),
+                        "ApplyCurrentPadding should use accumulated left padding"
+                    );
+                }
+
+                Assert.That(
+                    GroupGUIWidthUtility.CurrentLeftPadding,
+                    Is.EqualTo(afterOuterLeft).Within(0.0001f),
+                    "After inner scope disposed, left padding should return to outer value"
+                );
+                Assert.That(
+                    GroupGUIWidthUtility.CurrentRightPadding,
+                    Is.EqualTo(afterOuterRight).Within(0.0001f),
+                    "After inner scope disposed, right padding should return to outer value"
+                );
+            }
+
+            Assert.That(
+                GroupGUIWidthUtility.CurrentLeftPadding,
+                Is.EqualTo(0f).Within(0.0001f),
+                "After all scopes disposed, left padding should be zero"
+            );
+            Assert.That(
+                GroupGUIWidthUtility.CurrentRightPadding,
+                Is.EqualTo(0f).Within(0.0001f),
+                "After all scopes disposed, right padding should be zero"
             );
         }
     }
