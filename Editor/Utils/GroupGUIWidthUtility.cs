@@ -161,6 +161,84 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             return new ExitWGroupThemingScope();
         }
 
+        /// <summary>
+        /// Saved state for a GUIStyle, used to restore EditorStyles after exiting WGroup theming.
+        /// </summary>
+        private struct StyleState
+        {
+            public Texture2D NormalBackground;
+            public Texture2D FocusedBackground;
+            public Texture2D ActiveBackground;
+            public Texture2D HoverBackground;
+            public Texture2D OnNormalBackground;
+            public Texture2D OnFocusedBackground;
+            public Texture2D OnActiveBackground;
+            public Texture2D OnHoverBackground;
+            public Color NormalTextColor;
+            public Color FocusedTextColor;
+            public Color ActiveTextColor;
+            public Color HoverTextColor;
+            public Color OnNormalTextColor;
+            public Color OnFocusedTextColor;
+            public Color OnActiveTextColor;
+            public Color OnHoverTextColor;
+            public bool IsValid;
+        }
+
+        private static StyleState SaveFullStyleState(GUIStyle style)
+        {
+            if (style == null)
+            {
+                return default;
+            }
+
+            return new StyleState
+            {
+                NormalBackground = style.normal.background,
+                FocusedBackground = style.focused.background,
+                ActiveBackground = style.active.background,
+                HoverBackground = style.hover.background,
+                OnNormalBackground = style.onNormal.background,
+                OnFocusedBackground = style.onFocused.background,
+                OnActiveBackground = style.onActive.background,
+                OnHoverBackground = style.onHover.background,
+                NormalTextColor = style.normal.textColor,
+                FocusedTextColor = style.focused.textColor,
+                ActiveTextColor = style.active.textColor,
+                HoverTextColor = style.hover.textColor,
+                OnNormalTextColor = style.onNormal.textColor,
+                OnFocusedTextColor = style.onFocused.textColor,
+                OnActiveTextColor = style.onActive.textColor,
+                OnHoverTextColor = style.onHover.textColor,
+                IsValid = true,
+            };
+        }
+
+        private static void RestoreFullStyleState(GUIStyle style, StyleState saved)
+        {
+            if (style == null || !saved.IsValid)
+            {
+                return;
+            }
+
+            style.normal.background = saved.NormalBackground;
+            style.focused.background = saved.FocusedBackground;
+            style.active.background = saved.ActiveBackground;
+            style.hover.background = saved.HoverBackground;
+            style.onNormal.background = saved.OnNormalBackground;
+            style.onFocused.background = saved.OnFocusedBackground;
+            style.onActive.background = saved.OnActiveBackground;
+            style.onHover.background = saved.OnHoverBackground;
+            style.normal.textColor = saved.NormalTextColor;
+            style.focused.textColor = saved.FocusedTextColor;
+            style.active.textColor = saved.ActiveTextColor;
+            style.hover.textColor = saved.HoverTextColor;
+            style.onNormal.textColor = saved.OnNormalTextColor;
+            style.onFocused.textColor = saved.OnFocusedTextColor;
+            style.onActive.textColor = saved.OnActiveTextColor;
+            style.onHover.textColor = saved.OnHoverTextColor;
+        }
+
         private sealed class ExitWGroupThemingScope : IDisposable
         {
             private readonly UnityHelpersSettings.WGroupPaletteEntry? _previousPalette;
@@ -168,6 +246,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             private readonly Color _previousContentColor;
             private readonly Color _previousColor;
             private readonly Color _previousBackgroundColor;
+
+            // Saved EditorStyles states - WGroupColorScope modifies these globally
+            private readonly StyleState _savedTextField;
+            private readonly StyleState _savedNumberField;
+            private readonly StyleState _savedObjectField;
+            private readonly StyleState _savedPopup;
+            private readonly StyleState _savedHelpBox;
+            private readonly StyleState _savedFoldout;
+            private readonly StyleState _savedLabel;
+            private readonly StyleState _savedToggle;
+            private readonly StyleState _savedMiniButton;
+            private readonly StyleState _savedMiniButtonLeft;
+            private readonly StyleState _savedMiniButtonMid;
+            private readonly StyleState _savedMiniButtonRight;
+
             private bool _disposed;
 
             internal ExitWGroupThemingScope()
@@ -178,6 +271,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 _previousColor = GUI.color;
                 _previousBackgroundColor = GUI.backgroundColor;
 
+                // Save current EditorStyles state (which may have been modified by WGroupColorScope)
+                _savedTextField = SaveFullStyleState(EditorStyles.textField);
+                _savedNumberField = SaveFullStyleState(EditorStyles.numberField);
+                _savedObjectField = SaveFullStyleState(EditorStyles.objectField);
+                _savedPopup = SaveFullStyleState(EditorStyles.popup);
+                _savedHelpBox = SaveFullStyleState(EditorStyles.helpBox);
+                _savedFoldout = SaveFullStyleState(EditorStyles.foldout);
+                _savedLabel = SaveFullStyleState(EditorStyles.label);
+                _savedToggle = SaveFullStyleState(EditorStyles.toggle);
+                _savedMiniButton = SaveFullStyleState(EditorStyles.miniButton);
+                _savedMiniButtonLeft = SaveFullStyleState(EditorStyles.miniButtonLeft);
+                _savedMiniButtonMid = SaveFullStyleState(EditorStyles.miniButtonMid);
+                _savedMiniButtonRight = SaveFullStyleState(EditorStyles.miniButtonRight);
+
                 // Clear WGroup context
                 _currentPalette = null;
                 _isInsideWGroupPropertyDraw = false;
@@ -186,6 +293,68 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 GUI.contentColor = Color.white;
                 GUI.color = Color.white;
                 GUI.backgroundColor = Color.white;
+
+                // Reset EditorStyles to their default values by clearing any custom backgrounds/colors
+                // We do this by getting fresh copies from EditorStyles and restoring them
+                // For now, we just clear any custom texture backgrounds to let Unity use defaults
+                ResetStyleToDefaults(EditorStyles.textField);
+                ResetStyleToDefaults(EditorStyles.numberField);
+                ResetStyleToDefaults(EditorStyles.objectField);
+                ResetStyleToDefaults(EditorStyles.popup);
+                ResetStyleToDefaults(EditorStyles.helpBox);
+                ResetStyleTextColors(EditorStyles.foldout);
+                ResetStyleTextColors(EditorStyles.label);
+                ResetStyleTextColors(EditorStyles.toggle);
+                ResetStyleTextColors(EditorStyles.miniButton);
+                ResetStyleTextColors(EditorStyles.miniButtonLeft);
+                ResetStyleTextColors(EditorStyles.miniButtonMid);
+                ResetStyleTextColors(EditorStyles.miniButtonRight);
+            }
+
+            private static void ResetStyleToDefaults(GUIStyle style)
+            {
+                if (style == null)
+                {
+                    return;
+                }
+
+                // Clear any custom backgrounds - Unity will use its internal defaults
+                style.normal.background = null;
+                style.focused.background = null;
+                style.active.background = null;
+                style.hover.background = null;
+                style.onNormal.background = null;
+                style.onFocused.background = null;
+                style.onActive.background = null;
+                style.onHover.background = null;
+
+                // Reset text colors to default (clear/transparent means use default)
+                style.normal.textColor = default;
+                style.focused.textColor = default;
+                style.active.textColor = default;
+                style.hover.textColor = default;
+                style.onNormal.textColor = default;
+                style.onFocused.textColor = default;
+                style.onActive.textColor = default;
+                style.onHover.textColor = default;
+            }
+
+            private static void ResetStyleTextColors(GUIStyle style)
+            {
+                if (style == null)
+                {
+                    return;
+                }
+
+                // Only reset text colors for styles where WGroupColorScope only changes text
+                style.normal.textColor = default;
+                style.focused.textColor = default;
+                style.active.textColor = default;
+                style.hover.textColor = default;
+                style.onNormal.textColor = default;
+                style.onFocused.textColor = default;
+                style.onActive.textColor = default;
+                style.onHover.textColor = default;
             }
 
             public void Dispose()
@@ -196,6 +365,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 }
 
                 _disposed = true;
+
+                // Restore EditorStyles to their previous state (with WGroup theming if applicable)
+                RestoreFullStyleState(EditorStyles.textField, _savedTextField);
+                RestoreFullStyleState(EditorStyles.numberField, _savedNumberField);
+                RestoreFullStyleState(EditorStyles.objectField, _savedObjectField);
+                RestoreFullStyleState(EditorStyles.popup, _savedPopup);
+                RestoreFullStyleState(EditorStyles.helpBox, _savedHelpBox);
+                RestoreFullStyleState(EditorStyles.foldout, _savedFoldout);
+                RestoreFullStyleState(EditorStyles.label, _savedLabel);
+                RestoreFullStyleState(EditorStyles.toggle, _savedToggle);
+                RestoreFullStyleState(EditorStyles.miniButton, _savedMiniButton);
+                RestoreFullStyleState(EditorStyles.miniButtonLeft, _savedMiniButtonLeft);
+                RestoreFullStyleState(EditorStyles.miniButtonMid, _savedMiniButtonMid);
+                RestoreFullStyleState(EditorStyles.miniButtonRight, _savedMiniButtonRight);
 
                 // Restore WGroup context
                 _currentPalette = _previousPalette;
