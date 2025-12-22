@@ -215,6 +215,40 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal static bool HasLastRowContentRect { get; private set; }
         internal static Rect LastRowContentRect { get; private set; }
 
+        /// <summary>
+        /// Frame number when a child property drawer signaled that its height changed.
+        /// When this matches the current frame, the row render cache should be invalidated.
+        /// </summary>
+        private static int _childHeightChangedFrame = -1;
+
+        /// <summary>
+        /// Signals that a child property drawer's height has changed and the parent
+        /// SerializableSetPropertyDrawer should invalidate its row height cache.
+        /// This should be called when nested foldouts or expandable sections change state.
+        /// </summary>
+        internal static void SignalChildHeightChanged()
+        {
+            _childHeightChangedFrame = Time.frameCount;
+            InternalEditorUtility.RepaintAllViews();
+        }
+
+        /// <summary>
+        /// Gets the frame number when the child height changed signal was last set.
+        /// For testing purposes only.
+        /// </summary>
+        internal static int GetChildHeightChangedFrameForTests()
+        {
+            return _childHeightChangedFrame;
+        }
+
+        /// <summary>
+        /// Resets the child height changed frame to -1 for testing purposes.
+        /// </summary>
+        internal static void ResetChildHeightChangedFrameForTests()
+        {
+            _childHeightChangedFrame = -1;
+        }
+
         internal sealed class PaginationState
         {
             public int page;
@@ -520,7 +554,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static void DrawSetBodyTopBorder(Rect rect)
         {
-            Color borderColor = GroupGUIWidthUtility.GetThemedBorderColor(
+            Color borderColor = GroupGUIWidthUtility.GetPaletteBorderColor(
                 new Color(0.7f, 0.7f, 0.7f, 1f),
                 new Color(0.25f, 0.25f, 0.25f, 1f)
             );
@@ -1088,7 +1122,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 pendingFoldoutProgress = GetPendingFoldoutProgress(pendingEntry);
             }
 
-            if (_heightCache.TryGetValue(cacheKey, out HeightCacheEntry cached))
+            // Skip cache if a child drawer signaled height change this frame
+            bool childHeightChangedThisFrame = _childHeightChangedFrame == currentFrame;
+
+            if (
+                !childHeightChangedThisFrame
+                && _heightCache.TryGetValue(cacheKey, out HeightCacheEntry cached)
+            )
             {
                 const float foldoutProgressTolerance = 0.001f;
                 if (
@@ -2085,7 +2125,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
 
                 Rect backgroundRect = new(containerX, containerY, containerWidth, sectionHeight);
-                Color backgroundColor = GroupGUIWidthUtility.GetThemedPendingBackgroundColor(
+                Color backgroundColor = GroupGUIWidthUtility.GetPalettePendingBackgroundColor(
                     new Color(0.92f, 0.92f, 0.92f, 1f),
                     new Color(0.18f, 0.18f, 0.18f, 1f)
                 );
@@ -2524,18 +2564,47 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static GUIStyle GetManualEntryFoldoutLabelStyle()
         {
-            if (_manualEntryFoldoutLabelStyle != null)
+            if (_manualEntryFoldoutLabelStyle == null)
             {
-                return _manualEntryFoldoutLabelStyle;
+                _manualEntryFoldoutLabelStyle = new GUIStyle(EditorStyles.boldLabel)
+                {
+                    alignment = TextAnchor.MiddleLeft,
+                    padding = new RectOffset(0, 0, 0, 0),
+                    margin = new RectOffset(0, 0, 0, 0),
+                    wordWrap = false,
+                };
             }
 
-            _manualEntryFoldoutLabelStyle = new GUIStyle(EditorStyles.boldLabel)
+            // Update text color based on current palette context
+            UnityHelpersSettings.WGroupPaletteEntry? palette = GroupGUIWidthUtility.CurrentPalette;
+            if (palette.HasValue)
             {
-                alignment = TextAnchor.MiddleLeft,
-                padding = new RectOffset(0, 0, 0, 0),
-                margin = new RectOffset(0, 0, 0, 0),
-                wordWrap = false,
-            };
+                _manualEntryFoldoutLabelStyle.normal.textColor = palette.Value.TextColor;
+                _manualEntryFoldoutLabelStyle.hover.textColor = palette.Value.TextColor;
+                _manualEntryFoldoutLabelStyle.active.textColor = palette.Value.TextColor;
+                _manualEntryFoldoutLabelStyle.focused.textColor = palette.Value.TextColor;
+            }
+            else
+            {
+                // Reset to default editor label colors when not in palette context
+                _manualEntryFoldoutLabelStyle.normal.textColor = EditorStyles
+                    .boldLabel
+                    .normal
+                    .textColor;
+                _manualEntryFoldoutLabelStyle.hover.textColor = EditorStyles
+                    .boldLabel
+                    .hover
+                    .textColor;
+                _manualEntryFoldoutLabelStyle.active.textColor = EditorStyles
+                    .boldLabel
+                    .active
+                    .textColor;
+                _manualEntryFoldoutLabelStyle.focused.textColor = EditorStyles
+                    .boldLabel
+                    .focused
+                    .textColor;
+            }
+
             return _manualEntryFoldoutLabelStyle;
         }
 
@@ -5283,7 +5352,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             int currentFrame = Time.frameCount;
-            if (_lastRowRenderCacheFrame != currentFrame)
+            // Clear cache on new frame OR when a child drawer signaled height change
+            if (
+                _lastRowRenderCacheFrame != currentFrame
+                || _childHeightChangedFrame == currentFrame
+            )
             {
                 _rowRenderCache.Clear();
                 _lastRowRenderCacheFrame = currentFrame;
@@ -5440,7 +5513,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             backgroundRect.x += 2f;
             backgroundRect.width = Mathf.Max(0f, backgroundRect.width - 4f);
 
-            Color baseRowColor = GroupGUIWidthUtility.GetThemedRowColor(
+            Color baseRowColor = GroupGUIWidthUtility.GetPaletteRowColor(
                 LightRowColor,
                 DarkRowColor
             );

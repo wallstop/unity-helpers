@@ -13,6 +13,7 @@ Unity Helpers provides powerful grouping attributes that create boxed sections a
 - [Configuration](#configuration)
 - [Best Practices](#best-practices)
 - [Examples](#examples)
+- [Collection Styling](#collection-styling)
 
 ---
 
@@ -618,6 +619,53 @@ public class AIController : MonoBehaviour
 ```
 
 ![Nested groups showing visual hierarchy](../../images/inspector/wgroup-nested-2.png)
+
+---
+
+## Collection Styling
+
+When `SerializableDictionary` or `SerializableSet` fields are nested inside WGroup-attributed fields, they automatically inherit themed colors from the active palette.
+
+### Automatic Color Derivation
+
+By default, collection row colors are intelligently derived from the palette's `BackgroundColor`:
+
+- **Dark palettes**: Row colors are lightened for readability
+- **Light palettes**: Row colors are darkened for contrast
+
+This fixes the dark-on-dark readability issue that occurred when using `Default-Dark` or other dark palettes with serializable collections.
+
+### Custom Collection Colors
+
+For fine-grained control, expand **"Collection Styling (Advanced)"** in **Project Settings → Unity Helpers → Custom Colors**:
+
+| Setting             | Description                                       |
+| ------------------- | ------------------------------------------------- |
+| Row Color           | Base background for collection rows               |
+| Alternate Row Color | Every-other-row background for visual distinction |
+| Selection Color     | Highlight when hovering/selecting rows            |
+| Border Color        | Outer border of collection containers             |
+| Pending Background  | Background for new/pending entries                |
+
+Unchecked options use auto-derived colors. Check the box and pick a custom color to override.
+
+### Programmatic Color Derivation
+
+Use the `WGroupColorDerivation` utility class for deriving collection colors programmatically:
+
+```csharp
+using WallstopStudios.UnityHelpers.Editor.Utils;
+
+// Derive all collection colors from a base background color
+Color backgroundColor = new Color(0.2f, 0.2f, 0.25f);
+Color rowColor = WGroupColorDerivation.DeriveRowColor(backgroundColor);
+Color alternateRowColor = WGroupColorDerivation.DeriveAlternateRowColor(backgroundColor);
+Color selectionColor = WGroupColorDerivation.DeriveSelectionColor(backgroundColor);
+```
+
+### Reset to Defaults
+
+Click **"Reset to Defaults"** to clear all custom collection colors and return to auto-derivation.
 
 ---
 

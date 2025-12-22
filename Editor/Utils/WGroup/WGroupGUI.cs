@@ -1793,6 +1793,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
         private static Color GetHeaderTint(Color baseColor)
         {
+            // Get expected editor background color for pre-compositing
+            Color editorBg = EditorGUIUtility.isProSkin
+                ? new Color(0.22f, 0.22f, 0.22f, 1f) // Dark editor background
+                : new Color(0.76f, 0.76f, 0.76f, 1f); // Light editor background
+
             // Use background luminance to determine appropriate alpha
             // Cross-theme palettes (e.g., light palette on dark editor) need sufficient opacity
             float bgLuminance = 0.299f * baseColor.r + 0.587f * baseColor.g + 0.114f * baseColor.b;
@@ -1803,7 +1808,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             bool isCrossTheme = isLightBackground == EditorGUIUtility.isProSkin;
             float alpha = isCrossTheme ? 0.85f : (EditorGUIUtility.isProSkin ? 0.62f : 0.55f);
 
-            return new Color(baseColor.r, baseColor.g, baseColor.b, alpha);
+            // Pre-composite: result = bg * (1-a) + fg * a
+            // This avoids blending issues when the header is drawn over other content
+            return new Color(
+                editorBg.r * (1f - alpha) + baseColor.r * alpha,
+                editorBg.g * (1f - alpha) + baseColor.g * alpha,
+                editorBg.b * (1f - alpha) + baseColor.b * alpha,
+                1f // Output fully opaque to prevent further blending
+            );
         }
 
         private static float GetBorderThickness(Rect rect)

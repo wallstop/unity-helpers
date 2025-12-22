@@ -762,6 +762,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly HashSet<Type> PendingWrapperNonEditableTypes = new();
         private static readonly ReorderableList.DrawNoneElementCallback EmptyDrawNoneCallback =
             static _ => { };
+
+        /// <summary>
+        /// Types with custom PropertyDrawers that should NOT use the foldout rendering path.
+        /// These types should use EditorGUI.PropertyField directly so their full PropertyDrawer runs.
+        /// </summary>
+        private static readonly HashSet<Type> TypesWithCustomPropertyDrawer =
+            BuildTypesWithCustomPropertyDrawer();
+
         private const HideFlags PendingWrapperHideFlags =
             HideFlags.HideInHierarchy
             | HideFlags.HideInInspector
@@ -791,6 +799,40 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal static bool HasRowChildLabelWidthData { get; private set; }
         internal static float LastRowChildMinLabelWidth { get; private set; }
         internal static float LastRowChildMaxLabelWidth { get; private set; }
+
+        /// <summary>
+        /// Frame number when a child property drawer signaled that its height changed.
+        /// When this matches the current frame, the row render cache should be invalidated.
+        /// </summary>
+        private static int _childHeightChangedFrame = -1;
+
+        /// <summary>
+        /// Signals that a child property drawer's height has changed and the parent
+        /// SerializableDictionaryPropertyDrawer should invalidate its row height cache.
+        /// This should be called when nested foldouts or expandable sections change state.
+        /// </summary>
+        internal static void SignalChildHeightChanged()
+        {
+            _childHeightChangedFrame = Time.frameCount;
+            InternalEditorUtility.RepaintAllViews();
+        }
+
+        /// <summary>
+        /// Gets the frame number when the child height changed signal was last set.
+        /// For testing purposes only.
+        /// </summary>
+        internal static int GetChildHeightChangedFrameForTests()
+        {
+            return _childHeightChangedFrame;
+        }
+
+        /// <summary>
+        /// Resets the child height changed frame to -1 for testing purposes.
+        /// </summary>
+        internal static void ResetChildHeightChangedFrameForTests()
+        {
+            _childHeightChangedFrame = -1;
+        }
 
         internal static void ResetLayoutTrackingForTests()
         {
@@ -1374,7 +1416,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool pendingIsExpanded = pending.isExpanded;
             float pendingFoldoutProgress = GetPendingFoldoutProgress(pending);
 
-            if (_heightCache.TryGetValue(cacheKey, out HeightCacheEntry cached))
+            // Skip cache if a child drawer signaled height change this frame
+            bool childHeightChangedThisFrame = _childHeightChangedFrame == currentFrame;
+
+            if (
+                !childHeightChangedThisFrame
+                && _heightCache.TryGetValue(cacheKey, out HeightCacheEntry cached)
+            )
             {
                 const float foldoutProgressTolerance = 0.001f;
                 if (
@@ -1393,6 +1441,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     return cached.height;
                 }
+            }
+            else
+            {
+                cached = default;
             }
 
             // Calculate the expanded content height (everything after the header)
@@ -1538,7 +1590,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 Rect backgroundRect = new(rect.x, rect.y, rect.width, rowData.rowHeight);
-                Color rowColor = GroupGUIWidthUtility.GetThemedRowColor(
+                Color rowColor = GroupGUIWidthUtility.GetPaletteRowColor(
                     LightRowColor,
                     DarkRowColor
                 );
@@ -1609,7 +1661,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     Rect selectionRect = highlightRect;
                     selectionRect.x += shakeOffset;
-                    Color selectionColor = GroupGUIWidthUtility.GetThemedSelectionColor(
+                    Color selectionColor = GroupGUIWidthUtility.GetPaletteSelectionColor(
                         LightSelectionColor,
                         DarkSelectionColor
                     );
@@ -2265,6 +2317,46 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return CalculateFoldoutValueHeight(valueProperty);
         }
 
+        /// <summary>
+        /// Calculates the height for a WGroupCustomColor property, matching the logic
+        /// in WGroupCustomColorDrawer.GetPropertyHeight. This is needed because Unity
+        /// may not find the PropertyDrawer for private nested classes.
+        /// </summary>
+        internal static float CalculateWGroupCustomColorHeight(SerializedProperty property)
+        {
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            float spacing = EditorGUIUtility.standardVerticalSpacing;
+
+            // Base height: background + text row
+            float height = lineHeight;
+
+            // Always include the foldout header line
+            height += spacing + lineHeight;
+
+            // Check foldout state - use the property path as key
+            string foldoutKey = property.propertyPath;
+            if (
+                WGroupCustomColorFoldoutStates.TryGetValue(foldoutKey, out bool expanded)
+                && expanded
+            )
+            {
+                // 5 toggle+color rows
+                height += (spacing + lineHeight) * 5;
+                // Reset button (20f)
+                height += spacing + 20f;
+            }
+
+            return height;
+        }
+
+        /// <summary>
+        /// Shared foldout state dictionary for WGroupCustomColor properties.
+        /// This mirrors the CollectionStylingFoldoutStates in WGroupCustomColorDrawer.
+        /// </summary>
+        internal static readonly Dictionary<string, bool> WGroupCustomColorFoldoutStates = new(
+            StringComparer.Ordinal
+        );
+
         private static float CalculateFoldoutValueHeight(SerializedProperty valueProperty)
         {
             float height = EditorGUIUtility.singleLineHeight;
@@ -2336,7 +2428,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             int currentFrame = Time.frameCount;
-            if (_lastRowRenderCacheFrame != currentFrame)
+            // Clear cache on new frame OR when a child drawer signaled height change
+            if (
+                _lastRowRenderCacheFrame != currentFrame
+                || _childHeightChangedFrame == currentFrame
+            )
             {
                 _rowRenderCache.Clear();
                 _lastRowRenderCacheFrame = currentFrame;
@@ -2366,13 +2462,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             data.isValid = true;
 
             bool shouldAutoExpand = false;
-            if (data.valueProperty != null && resolvedValueType != null)
+            bool isWGroupCustomColor =
+                resolvedValueType != null
+                && TypesWithCustomPropertyDrawer != null
+                && TypesWithCustomPropertyDrawer.Contains(resolvedValueType);
+
+            if (!isWGroupCustomColor && data.valueProperty != null && resolvedValueType != null)
             {
                 shouldAutoExpand =
                     ValueTypeSupportsFoldout(resolvedValueType)
                     && SerializedPropertySupportsFoldout(data.valueProperty);
             }
-            else if (data.valueProperty != null)
+            else if (!isWGroupCustomColor && data.valueProperty != null)
             {
                 shouldAutoExpand = data.valueProperty.hasVisibleChildren;
             }
@@ -2384,10 +2485,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     ? EditorGUI.GetPropertyHeight(data.keyProperty, GUIContent.none, true)
                     : EditorGUIUtility.singleLineHeight;
 
-            data.valueHeight =
-                data.valueProperty != null
-                    ? CalculateValueContentHeight(data.valueProperty, shouldAutoExpand)
-                    : EditorGUIUtility.singleLineHeight;
+            // Use explicit height calculation for WGroupCustomColor since Unity may not
+            // find the PropertyDrawer for private nested classes
+            if (isWGroupCustomColor && data.valueProperty != null)
+            {
+                data.valueHeight = CalculateWGroupCustomColorHeight(data.valueProperty);
+            }
+            else
+            {
+                data.valueHeight =
+                    data.valueProperty != null
+                        ? CalculateValueContentHeight(data.valueProperty, shouldAutoExpand)
+                        : EditorGUIUtility.singleLineHeight;
+            }
 
             float spacing = EditorGUIUtility.standardVerticalSpacing;
             float contentHeight = Mathf.Max(
@@ -3879,7 +3989,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
 
                 Rect containerRect = new(fullPosition.x, y, fullPosition.width, sectionHeight);
-                Color backgroundColor = GroupGUIWidthUtility.GetThemedPendingBackgroundColor(
+                Color backgroundColor = GroupGUIWidthUtility.GetPalettePendingBackgroundColor(
                     new Color(0.92f, 0.92f, 0.92f, 1f),
                     new Color(0.18f, 0.18f, 0.18f, 1f)
                 );
@@ -6820,16 +6930,32 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static GUIStyle GetPendingFoldoutLabelStyle()
         {
-            if (_pendingFoldoutLabelStyle != null)
+            if (_pendingFoldoutLabelStyle == null)
             {
-                return _pendingFoldoutLabelStyle;
+                _pendingFoldoutLabelStyle = new GUIStyle(EditorStyles.label)
+                {
+                    fontStyle = FontStyle.Bold,
+                    alignment = TextAnchor.MiddleLeft,
+                };
             }
 
-            _pendingFoldoutLabelStyle = new GUIStyle(EditorStyles.label)
+            // Update text color based on current palette context
+            UnityHelpersSettings.WGroupPaletteEntry? palette = GroupGUIWidthUtility.CurrentPalette;
+            if (palette.HasValue)
             {
-                fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.MiddleLeft,
-            };
+                _pendingFoldoutLabelStyle.normal.textColor = palette.Value.TextColor;
+                _pendingFoldoutLabelStyle.hover.textColor = palette.Value.TextColor;
+                _pendingFoldoutLabelStyle.active.textColor = palette.Value.TextColor;
+                _pendingFoldoutLabelStyle.focused.textColor = palette.Value.TextColor;
+            }
+            else
+            {
+                // Reset to default editor label colors when not in palette context
+                _pendingFoldoutLabelStyle.normal.textColor = EditorStyles.label.normal.textColor;
+                _pendingFoldoutLabelStyle.hover.textColor = EditorStyles.label.hover.textColor;
+                _pendingFoldoutLabelStyle.active.textColor = EditorStyles.label.active.textColor;
+                _pendingFoldoutLabelStyle.focused.textColor = EditorStyles.label.focused.textColor;
+            }
 
             return _pendingFoldoutLabelStyle;
         }
@@ -6846,6 +6972,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return paletteRenderer.Height;
             }
 
+            // Explicit handling for WGroupCustomColor since Unity may not find the
+            // PropertyDrawer for private nested classes
+            if (
+                isValueField
+                && TypesWithCustomPropertyDrawer != null
+                && TypesWithCustomPropertyDrawer.Contains(fieldType)
+            )
+            {
+                PendingWrapperContext context = EnsurePendingWrapper(
+                    pending,
+                    fieldType,
+                    isValueField
+                );
+                if (context.Property != null)
+                {
+                    return CalculateWGroupCustomColorHeight(context.Property);
+                }
+            }
+
             float defaultHeight = EditorGUIUtility.singleLineHeight;
             if (
                 pending == null
@@ -6860,18 +7005,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return defaultHeight;
             }
 
-            PendingWrapperContext context = EnsurePendingWrapper(pending, fieldType, isValueField);
-            if (context.Property == null)
+            PendingWrapperContext context2 = EnsurePendingWrapper(pending, fieldType, isValueField);
+            if (context2.Property == null)
             {
                 return defaultHeight;
             }
 
             if (TypeSupportsComplexEditing(fieldType))
             {
-                context.Property.isExpanded = true;
+                context2.Property.isExpanded = true;
             }
 
-            return EditorGUI.GetPropertyHeight(context.Property, true);
+            return EditorGUI.GetPropertyHeight(context2.Property, true);
         }
 
         private static GUIContent GetUnsupportedTypeContent(Type type)
@@ -7331,6 +7476,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             if (PaletteValueRenderers != null && PaletteValueRenderers.ContainsKey(type))
+            {
+                return false;
+            }
+
+            // Types with custom PropertyDrawers that handle their own rendering should NOT
+            // use the foldout path. The foldout path manually iterates children which bypasses
+            // the PropertyDrawer. Instead, they should use EditorGUI.PropertyField directly.
+            if (
+                TypesWithCustomPropertyDrawer != null
+                && TypesWithCustomPropertyDrawer.Contains(type)
+            )
             {
                 return false;
             }
@@ -8036,17 +8192,34 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 "Text",
                 "textColor"
             );
-            TryRegisterDualColorPaletteRenderer(
-                renderers,
-                settingsType,
-                "WGroupCustomColor",
-                "Background",
-                "backgroundColor",
-                "Text",
-                "textColor"
-            );
+            // Note: WGroupCustomColor is intentionally NOT registered here.
+            // It has a full PropertyDrawer (WGroupCustomColorDrawer) that handles the
+            // "Collection Styling (Advanced)" foldout section with 5 toggle+color fields.
+            // The DualColorRenderer only renders 2 color fields with single-line height,
+            // which would hide the advanced settings. By not registering it, we force
+            // the dictionary to use EditorGUI.PropertyField which invokes the full drawer.
             TryRegisterWEnumPaletteRenderer(renderers, settingsType);
             return renderers;
+        }
+
+        private static HashSet<Type> BuildTypesWithCustomPropertyDrawer()
+        {
+            HashSet<Type> types = new();
+            Type settingsType = typeof(UnityHelpersSettings);
+
+            // WGroupCustomColor has a custom PropertyDrawer that handles advanced foldout content.
+            // It must NOT use the foldout rendering path or its PropertyDrawer won't run properly.
+            // Use Public | NonPublic for nested type lookup (not Instance which is for members)
+            Type wGroupCustomColorType = settingsType.GetNestedType(
+                "WGroupCustomColor",
+                BindingFlags.Public | BindingFlags.NonPublic
+            );
+            if (wGroupCustomColorType != null)
+            {
+                types.Add(wGroupCustomColorType);
+            }
+
+            return types;
         }
 
         internal static void TryRegisterDualColorPaletteRenderer(

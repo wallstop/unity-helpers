@@ -2,9 +2,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 {
 #if UNITY_EDITOR
     using System;
+    using System.Runtime.CompilerServices;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
 
     internal static class GroupGUIWidthUtility
     {
@@ -573,6 +575,129 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             Color bg = _currentPalette.Value.BackgroundColor;
             float luminance = 0.299f * bg.r + 0.587f * bg.g + 0.114f * bg.b;
             return luminance > 0.5f ? lightBackgroundColor : darkBackgroundColor;
+        }
+
+        /// <summary>
+        /// Gets the palette-aware row color. When inside a WGroup:
+        /// - Returns the palette's explicit RowColor if set
+        /// - Otherwise derives an appropriate row color from the palette's BackgroundColor
+        /// When not inside a WGroup, uses the provided fallback colors based on editor skin.
+        /// </summary>
+        /// <param name="fallbackLight">Color to use for light themes when not in WGroup context.</param>
+        /// <param name="fallbackDark">Color to use for dark themes when not in WGroup context.</param>
+        /// <returns>The appropriate row color for the current context.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static Color GetPaletteRowColor(Color fallbackLight, Color fallbackDark)
+        {
+            if (_currentPalette.HasValue)
+            {
+                UnityHelpersSettings.WGroupPaletteEntry palette = _currentPalette.Value;
+                return WGroupColorDerivation.GetEffectiveRowColor(
+                    palette.BackgroundColor,
+                    palette.RowColor
+                );
+            }
+
+            return EditorGUIUtility.isProSkin ? fallbackDark : fallbackLight;
+        }
+
+        /// <summary>
+        /// Gets the palette-aware alternate row color. When inside a WGroup:
+        /// - Returns the palette's explicit AlternateRowColor if set
+        /// - Otherwise derives an appropriate alternate row color from the palette's BackgroundColor
+        /// When not inside a WGroup, uses the provided fallback colors based on editor skin.
+        /// </summary>
+        /// <param name="fallbackLight">Color to use for light themes when not in WGroup context.</param>
+        /// <param name="fallbackDark">Color to use for dark themes when not in WGroup context.</param>
+        /// <returns>The appropriate alternate row color for the current context.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static Color GetPaletteAlternateRowColor(Color fallbackLight, Color fallbackDark)
+        {
+            if (_currentPalette.HasValue)
+            {
+                UnityHelpersSettings.WGroupPaletteEntry palette = _currentPalette.Value;
+                return WGroupColorDerivation.GetEffectiveAlternateRowColor(
+                    palette.BackgroundColor,
+                    palette.AlternateRowColor
+                );
+            }
+
+            return EditorGUIUtility.isProSkin ? fallbackDark : fallbackLight;
+        }
+
+        /// <summary>
+        /// Gets the palette-aware selection/hover color. When inside a WGroup:
+        /// - Returns the palette's explicit SelectionColor if set
+        /// - Otherwise derives an appropriate selection color from the palette's BackgroundColor
+        /// When not inside a WGroup, uses the provided fallback colors based on editor skin.
+        /// </summary>
+        /// <param name="fallbackLight">Color to use for light themes when not in WGroup context.</param>
+        /// <param name="fallbackDark">Color to use for dark themes when not in WGroup context.</param>
+        /// <returns>The appropriate selection color for the current context.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static Color GetPaletteSelectionColor(Color fallbackLight, Color fallbackDark)
+        {
+            if (_currentPalette.HasValue)
+            {
+                UnityHelpersSettings.WGroupPaletteEntry palette = _currentPalette.Value;
+                return WGroupColorDerivation.GetEffectiveSelectionColor(
+                    palette.BackgroundColor,
+                    palette.SelectionColor
+                );
+            }
+
+            return EditorGUIUtility.isProSkin ? fallbackDark : fallbackLight;
+        }
+
+        /// <summary>
+        /// Gets the palette-aware border color. When inside a WGroup:
+        /// - Returns the palette's explicit BorderColor if set
+        /// - Otherwise derives an appropriate border color from the palette's BackgroundColor
+        /// When not inside a WGroup, uses the provided fallback colors based on editor skin.
+        /// </summary>
+        /// <param name="fallbackLight">Color to use for light themes when not in WGroup context.</param>
+        /// <param name="fallbackDark">Color to use for dark themes when not in WGroup context.</param>
+        /// <returns>The appropriate border color for the current context.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static Color GetPaletteBorderColor(Color fallbackLight, Color fallbackDark)
+        {
+            if (_currentPalette.HasValue)
+            {
+                UnityHelpersSettings.WGroupPaletteEntry palette = _currentPalette.Value;
+                return WGroupColorDerivation.GetEffectiveBorderColor(
+                    palette.BackgroundColor,
+                    palette.BorderColor
+                );
+            }
+
+            return EditorGUIUtility.isProSkin ? fallbackDark : fallbackLight;
+        }
+
+        /// <summary>
+        /// Gets the palette-aware pending background color. When inside a WGroup:
+        /// - Returns the palette's explicit PendingBackgroundColor if set
+        /// - Otherwise derives an appropriate pending background color from the palette's BackgroundColor
+        /// When not inside a WGroup, uses the provided fallback colors based on editor skin.
+        /// </summary>
+        /// <param name="fallbackLight">Color to use for light themes when not in WGroup context.</param>
+        /// <param name="fallbackDark">Color to use for dark themes when not in WGroup context.</param>
+        /// <returns>The appropriate pending background color for the current context.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static Color GetPalettePendingBackgroundColor(
+            Color fallbackLight,
+            Color fallbackDark
+        )
+        {
+            if (_currentPalette.HasValue)
+            {
+                UnityHelpersSettings.WGroupPaletteEntry palette = _currentPalette.Value;
+                return WGroupColorDerivation.GetEffectivePendingBackgroundColor(
+                    palette.BackgroundColor,
+                    palette.PendingBackgroundColor
+                );
+            }
+
+            return EditorGUIUtility.isProSkin ? fallbackDark : fallbackLight;
         }
 
         /// <summary>

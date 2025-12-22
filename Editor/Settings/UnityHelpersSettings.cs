@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
     using UnityEngine.Serialization;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
     using WallstopStudios.UnityHelpers.Settings;
@@ -372,15 +373,53 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         public readonly struct WGroupPaletteEntry
         {
-            public WGroupPaletteEntry(Color backgroundColor, Color textColor)
+            public WGroupPaletteEntry(
+                Color backgroundColor,
+                Color textColor,
+                Nullable<Color> rowColor = null,
+                Nullable<Color> alternateRowColor = null,
+                Nullable<Color> selectionColor = null,
+                Nullable<Color> borderColor = null,
+                Nullable<Color> pendingBackgroundColor = null
+            )
             {
                 BackgroundColor = backgroundColor;
                 TextColor = textColor;
+                RowColor = rowColor;
+                AlternateRowColor = alternateRowColor;
+                SelectionColor = selectionColor;
+                BorderColor = borderColor;
+                PendingBackgroundColor = pendingBackgroundColor;
             }
 
             public Color BackgroundColor { get; }
 
             public Color TextColor { get; }
+
+            /// <summary>
+            /// Base row background color for collections. Null indicates fallback to derived defaults.
+            /// </summary>
+            public Nullable<Color> RowColor { get; }
+
+            /// <summary>
+            /// Alternating row color for collections. Null indicates fallback to derived defaults.
+            /// </summary>
+            public Nullable<Color> AlternateRowColor { get; }
+
+            /// <summary>
+            /// Selected/hover row color. Null indicates fallback to derived defaults.
+            /// </summary>
+            public Nullable<Color> SelectionColor { get; }
+
+            /// <summary>
+            /// Border color for collection containers. Null indicates fallback to derived defaults.
+            /// </summary>
+            public Nullable<Color> BorderColor { get; }
+
+            /// <summary>
+            /// Background color for pending/new entries. Null indicates fallback to derived defaults.
+            /// </summary>
+            public Nullable<Color> PendingBackgroundColor { get; }
         }
 
         public readonly struct WEnumToggleButtonsPaletteEntry
@@ -464,7 +503,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [WGroup(
             "Pagination",
             displayName: "Pagination Defaults",
-            autoIncludeCount: 4,
+            autoIncludeCount: 5,
             collapsible: true
         )]
         private int _stringInListPageSize = DefaultStringInListPageSize;
@@ -594,14 +633,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [WGroup(
             "Dictionary Foldouts",
             displayName: "Dictionary Foldouts",
-            autoIncludeCount: 3,
+            autoIncludeCount: 4,
             collapsible: true
         )]
         private bool _serializableDictionaryFoldoutTweenEnabled = true;
 
         [FormerlySerializedAs("foldoutTweenSettingsInitialized")]
         [SerializeField]
-        [HideInInspector]
         private bool _foldoutTweenSettingsInitialized;
 
         [FormerlySerializedAs("serializableDictionaryFoldoutSpeed")]
@@ -658,13 +696,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         )]
         [WShowIf(nameof(_serializableSetDuplicateTweenEnabled))]
         private int _serializableSetDuplicateTweenCycles = DefaultDuplicateTweenCycles;
-
-        [FormerlySerializedAs("serializableSetTweensGroupEndSentinel")]
-        [SerializeField]
-        [HideInInspector]
-#pragma warning disable CS0169 // Field is never used
-        private bool _serializableSetTweensGroupEndSentinel;
-#pragma warning restore CS0169 // Field is never used
 
         [FormerlySerializedAs("serializableSetDuplicateTweenSettingsInitialized")]
         [SerializeField]
@@ -1107,6 +1138,36 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             [SerializeField]
             internal Color _textColor = Color.white;
 
+            [SerializeField]
+            internal bool _useCustomRowColor;
+
+            [SerializeField]
+            internal Color _rowColor = new Color(0.25f, 0.25f, 0.25f, 1f);
+
+            [SerializeField]
+            internal bool _useCustomAlternateRowColor;
+
+            [SerializeField]
+            internal Color _alternateRowColor = new Color(0.22f, 0.22f, 0.22f, 1f);
+
+            [SerializeField]
+            internal bool _useCustomSelectionColor;
+
+            [SerializeField]
+            internal Color _selectionColor = new Color(0.243f, 0.525f, 0.988f, 0.5f);
+
+            [SerializeField]
+            internal bool _useCustomBorderColor;
+
+            [SerializeField]
+            internal Color _borderColor = new Color(0.15f, 0.15f, 0.15f, 1f);
+
+            [SerializeField]
+            internal bool _useCustomPendingBackgroundColor;
+
+            [SerializeField]
+            internal Color _pendingBackgroundColor = new Color(0.2f, 0.2f, 0.2f, 1f);
+
             public Color BackgroundColor
             {
                 get => _backgroundColor;
@@ -1119,12 +1180,131 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 set => _textColor = value;
             }
 
+            /// <summary>
+            /// Returns the row color if custom is enabled, otherwise null.
+            /// </summary>
+            public Nullable<Color> RowColor
+            {
+                get => _useCustomRowColor ? _rowColor : (Nullable<Color>)null;
+                set
+                {
+                    if (value.HasValue)
+                    {
+                        _useCustomRowColor = true;
+                        _rowColor = value.Value;
+                    }
+                    else
+                    {
+                        _useCustomRowColor = false;
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Returns the alternate row color if custom is enabled, otherwise null.
+            /// </summary>
+            public Nullable<Color> AlternateRowColor
+            {
+                get => _useCustomAlternateRowColor ? _alternateRowColor : (Nullable<Color>)null;
+                set
+                {
+                    if (value.HasValue)
+                    {
+                        _useCustomAlternateRowColor = true;
+                        _alternateRowColor = value.Value;
+                    }
+                    else
+                    {
+                        _useCustomAlternateRowColor = false;
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Returns the selection color if custom is enabled, otherwise null.
+            /// </summary>
+            public Nullable<Color> SelectionColor
+            {
+                get => _useCustomSelectionColor ? _selectionColor : (Nullable<Color>)null;
+                set
+                {
+                    if (value.HasValue)
+                    {
+                        _useCustomSelectionColor = true;
+                        _selectionColor = value.Value;
+                    }
+                    else
+                    {
+                        _useCustomSelectionColor = false;
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Returns the border color if custom is enabled, otherwise null.
+            /// </summary>
+            public Nullable<Color> BorderColor
+            {
+                get => _useCustomBorderColor ? _borderColor : (Nullable<Color>)null;
+                set
+                {
+                    if (value.HasValue)
+                    {
+                        _useCustomBorderColor = true;
+                        _borderColor = value.Value;
+                    }
+                    else
+                    {
+                        _useCustomBorderColor = false;
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Returns the pending background color if custom is enabled, otherwise null.
+            /// </summary>
+            public Nullable<Color> PendingBackgroundColor
+            {
+                get =>
+                    _useCustomPendingBackgroundColor
+                        ? _pendingBackgroundColor
+                        : (Nullable<Color>)null;
+                set
+                {
+                    if (value.HasValue)
+                    {
+                        _useCustomPendingBackgroundColor = true;
+                        _pendingBackgroundColor = value.Value;
+                    }
+                    else
+                    {
+                        _useCustomPendingBackgroundColor = false;
+                    }
+                }
+            }
+
             public void EnsureReadableText()
             {
                 if (_textColor.maxColorComponent <= 0f)
                 {
                     _textColor = WButtonColorUtility.GetReadableTextColor(_backgroundColor);
                 }
+            }
+
+            /// <summary>
+            /// Converts this custom color instance to a <see cref="WGroupPaletteEntry"/>.
+            /// </summary>
+            public WGroupPaletteEntry ToPaletteEntry()
+            {
+                return new WGroupPaletteEntry(
+                    _backgroundColor,
+                    _textColor,
+                    RowColor,
+                    AlternateRowColor,
+                    SelectionColor,
+                    BorderColor,
+                    PendingBackgroundColor
+                );
             }
         }
 
@@ -1201,19 +1381,94 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [CustomPropertyDrawer(typeof(WGroupCustomColor))]
         private sealed class WGroupCustomColorDrawer : PropertyDrawer
         {
+            // Use the shared foldout state dictionary from the dictionary drawer to ensure
+            // height calculation and rendering are in sync
+            private static Dictionary<string, bool> CollectionStylingFoldoutStates =>
+                SerializableDictionaryPropertyDrawer.WGroupCustomColorFoldoutStates;
+
             private static readonly GUIContent BackgroundLabelContent =
                 EditorGUIUtility.TrTextContent("Background");
             private static readonly GUIContent TextLabelContent = EditorGUIUtility.TrTextContent(
                 "Text"
             );
+            private static readonly GUIContent CollectionStylingFoldoutContent =
+                EditorGUIUtility.TrTextContent(
+                    "Collection Styling (Advanced)",
+                    "Configure custom colors for collection elements like lists and dictionaries. When unchecked, colors are auto-derived from the Background Color."
+                );
+            private static readonly GUIContent RowColorContent = EditorGUIUtility.TrTextContent(
+                "Row Color",
+                "Background color for odd rows in collections. When unchecked, derived from Background Color."
+            );
+            private static readonly GUIContent AlternateRowColorContent =
+                EditorGUIUtility.TrTextContent(
+                    "Alternate Row Color",
+                    "Background color for even rows in collections. When unchecked, derived from Background Color."
+                );
+            private static readonly GUIContent SelectionColorContent =
+                EditorGUIUtility.TrTextContent(
+                    "Selection Color",
+                    "Highlight color for selected items in collections. When unchecked, derived from Background Color."
+                );
+            private static readonly GUIContent BorderColorContent = EditorGUIUtility.TrTextContent(
+                "Border Color",
+                "Border color for collection containers. When unchecked, derived from Background Color."
+            );
+            private static readonly GUIContent PendingBackgroundContent =
+                EditorGUIUtility.TrTextContent(
+                    "Pending Background",
+                    "Background color for pending/new items in collections. When unchecked, derived from Background Color."
+                );
+            private static readonly GUIContent ResetToDefaultsContent =
+                EditorGUIUtility.TrTextContent(
+                    "Reset to Defaults",
+                    "Reset all collection styling options to use auto-derived colors from Background Color."
+                );
+
+            private const float ToggleWidth = 16f;
+            private const float ToggleSpacing = 4f;
+            private const float ResetButtonHeight = 20f;
+            private const float MinCollectionColorLabelWidth = 100f;
+            private const float MaxCollectionColorLabelWidth = 160f;
+            private const float CollectionColorLabelWidthRatio = 0.35f;
+            private const float CollectionStylingIndentOffset = 15f;
 
             public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
             {
-                return EditorGUIUtility.singleLineHeight;
+                float lineHeight = EditorGUIUtility.singleLineHeight;
+                float spacing = EditorGUIUtility.standardVerticalSpacing;
+
+                // Base height: background + text row
+                float height = lineHeight;
+
+                // Always include the foldout header line
+                height += spacing + lineHeight;
+
+                // Check foldout state for collection styling section
+                // Initialize if not present to ensure consistency between GetPropertyHeight and OnGUI
+                string foldoutKey = property.propertyPath;
+                if (!CollectionStylingFoldoutStates.TryGetValue(foldoutKey, out bool expanded))
+                {
+                    expanded = false;
+                    CollectionStylingFoldoutStates[foldoutKey] = expanded;
+                }
+
+                if (expanded)
+                {
+                    // 5 toggle+color rows
+                    height += (spacing + lineHeight) * 5;
+                    // Reset button
+                    height += spacing + ResetButtonHeight;
+                }
+
+                return height;
             }
 
             public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
             {
+                // Begin property scope for proper undo/prefab handling
+                EditorGUI.BeginProperty(position, label, property);
+
                 SerializedProperty background = property.FindPropertyRelative(
                     SerializedPropertyNames.WGroupCustomColorBackground
                 );
@@ -1222,6 +1477,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 );
 
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
+                float lineHeight = EditorGUIUtility.singleLineHeight;
                 float availableWidth = Mathf.Max(0f, position.width - spacing);
                 float halfWidth = availableWidth * 0.5f;
 
@@ -1234,14 +1490,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 float previousLabelWidth = EditorGUIUtility.labelWidth;
                 EditorGUIUtility.labelWidth = labelWidth;
 
+                float currentY = position.y;
+
                 try
                 {
-                    Rect backgroundRect = new(position.x, position.y, halfWidth, position.height);
+                    // Draw background and text color fields on the first row
+                    Rect backgroundRect = new(position.x, currentY, halfWidth, lineHeight);
                     Rect textRect = new(
                         position.x + halfWidth + spacing,
-                        position.y,
+                        currentY,
                         halfWidth,
-                        position.height
+                        lineHeight
                     );
 
                     float minFieldWidth = CustomColorDrawerMinColorFieldWidth + labelWidth;
@@ -1257,11 +1516,245 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         text,
                         useLabels ? TextLabelContent : GUIContent.none
                     );
+
+                    currentY += lineHeight + spacing;
+
+                    // Collection Styling foldout section
+                    string foldoutKey = property.propertyPath;
+                    if (!CollectionStylingFoldoutStates.TryGetValue(foldoutKey, out bool expanded))
+                    {
+                        expanded = false;
+                        CollectionStylingFoldoutStates[foldoutKey] = expanded;
+                    }
+
+                    // Store previous state to detect changes
+                    bool previousExpanded = expanded;
+
+                    Rect foldoutRect = new(position.x, currentY, position.width, lineHeight);
+                    expanded = EditorGUI.Foldout(
+                        foldoutRect,
+                        expanded,
+                        CollectionStylingFoldoutContent,
+                        true
+                    );
+                    CollectionStylingFoldoutStates[foldoutKey] = expanded;
+
+                    // If foldout state changed, signal the parent collection drawers to invalidate their height caches
+                    if (expanded != previousExpanded)
+                    {
+                        SerializableDictionaryPropertyDrawer.SignalChildHeightChanged();
+                        SerializableSetPropertyDrawer.SignalChildHeightChanged();
+                    }
+
+                    if (expanded)
+                    {
+                        currentY += lineHeight + spacing;
+
+                        // Use manual indentation without modifying EditorGUI.indentLevel
+                        // This prevents Unity controls from double-indenting (manual + internal indent)
+                        float indentOffset = CollectionStylingIndentOffset;
+                        float contentWidth = Mathf.Max(0f, position.width - indentOffset);
+
+                        // Calculate responsive label width for toggle+color fields
+                        float responsiveLabelWidth = Mathf.Clamp(
+                            contentWidth * CollectionColorLabelWidthRatio,
+                            MinCollectionColorLabelWidth,
+                            MaxCollectionColorLabelWidth
+                        );
+
+                        currentY = DrawToggleColorField(
+                            position,
+                            currentY,
+                            indentOffset,
+                            responsiveLabelWidth,
+                            property,
+                            SerializedPropertyNames.WGroupCustomColorUseRowColor,
+                            SerializedPropertyNames.WGroupCustomColorRowColor,
+                            RowColorContent
+                        );
+
+                        currentY = DrawToggleColorField(
+                            position,
+                            currentY,
+                            indentOffset,
+                            responsiveLabelWidth,
+                            property,
+                            SerializedPropertyNames.WGroupCustomColorUseAlternateRowColor,
+                            SerializedPropertyNames.WGroupCustomColorAlternateRowColor,
+                            AlternateRowColorContent
+                        );
+
+                        currentY = DrawToggleColorField(
+                            position,
+                            currentY,
+                            indentOffset,
+                            responsiveLabelWidth,
+                            property,
+                            SerializedPropertyNames.WGroupCustomColorUseSelectionColor,
+                            SerializedPropertyNames.WGroupCustomColorSelectionColor,
+                            SelectionColorContent
+                        );
+
+                        currentY = DrawToggleColorField(
+                            position,
+                            currentY,
+                            indentOffset,
+                            responsiveLabelWidth,
+                            property,
+                            SerializedPropertyNames.WGroupCustomColorUseBorderColor,
+                            SerializedPropertyNames.WGroupCustomColorBorderColor,
+                            BorderColorContent
+                        );
+
+                        currentY = DrawToggleColorField(
+                            position,
+                            currentY,
+                            indentOffset,
+                            responsiveLabelWidth,
+                            property,
+                            SerializedPropertyNames.WGroupCustomColorUsePendingBackgroundColor,
+                            SerializedPropertyNames.WGroupCustomColorPendingBackgroundColor,
+                            PendingBackgroundContent
+                        );
+
+                        // Reset to Defaults button - also responsive
+                        float buttonWidth = Mathf.Min(130f, contentWidth);
+                        Rect resetButtonRect = new(
+                            position.x + indentOffset,
+                            currentY,
+                            buttonWidth,
+                            ResetButtonHeight
+                        );
+
+                        if (GUI.Button(resetButtonRect, ResetToDefaultsContent))
+                        {
+                            ResetCollectionStylingToDefaults(property);
+                        }
+                    }
                 }
                 finally
                 {
                     EditorGUIUtility.labelWidth = previousLabelWidth;
+                    EditorGUI.EndProperty();
                 }
+            }
+
+            private static float DrawToggleColorField(
+                Rect position,
+                float currentY,
+                float indentOffset,
+                float labelWidth,
+                SerializedProperty property,
+                string useCustomPropertyName,
+                string colorPropertyName,
+                GUIContent labelContent
+            )
+            {
+                float lineHeight = EditorGUIUtility.singleLineHeight;
+                float spacing = EditorGUIUtility.standardVerticalSpacing;
+
+                SerializedProperty useCustomProp = property.FindPropertyRelative(
+                    useCustomPropertyName
+                );
+                SerializedProperty colorProp = property.FindPropertyRelative(colorPropertyName);
+
+                // Safety check - if properties not found, just advance Y and return
+                if (useCustomProp == null || colorProp == null)
+                {
+                    return currentY + lineHeight + spacing;
+                }
+
+                // Save and reset indent level to prevent Unity controls from adding internal indentation
+                // We handle indentation manually via indentOffset parameter
+                int originalIndent = EditorGUI.indentLevel;
+                EditorGUI.indentLevel = 0;
+
+                float startX = position.x + indentOffset;
+                float fieldWidth = Mathf.Max(0f, position.width - indentOffset);
+
+                // Toggle checkbox
+                Rect toggleRect = new(startX, currentY, ToggleWidth, lineHeight);
+                EditorGUI.BeginChangeCheck();
+                bool useCustom = EditorGUI.Toggle(toggleRect, useCustomProp.boolValue);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    useCustomProp.boolValue = useCustom;
+                    property.serializedObject.ApplyModifiedProperties();
+                }
+
+                // Label and color field with responsive label width
+                float colorFieldStart = startX + ToggleWidth + ToggleSpacing;
+                float colorFieldWidth = Mathf.Max(0f, fieldWidth - ToggleWidth - ToggleSpacing);
+                Rect colorFieldRect = new(colorFieldStart, currentY, colorFieldWidth, lineHeight);
+
+                float prevLabelWidth = EditorGUIUtility.labelWidth;
+                EditorGUIUtility.labelWidth = labelWidth;
+
+                EditorGUI.BeginDisabledGroup(!useCustom);
+                EditorGUI.BeginChangeCheck();
+                EditorGUI.PropertyField(colorFieldRect, colorProp, labelContent);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    property.serializedObject.ApplyModifiedProperties();
+                }
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUIUtility.labelWidth = prevLabelWidth;
+                EditorGUI.indentLevel = originalIndent;
+
+                return currentY + lineHeight + spacing;
+            }
+
+            private static void ResetCollectionStylingToDefaults(SerializedProperty property)
+            {
+                SerializedProperty useRowColor = property.FindPropertyRelative(
+                    SerializedPropertyNames.WGroupCustomColorUseRowColor
+                );
+                SerializedProperty useAlternateRowColor = property.FindPropertyRelative(
+                    SerializedPropertyNames.WGroupCustomColorUseAlternateRowColor
+                );
+                SerializedProperty useSelectionColor = property.FindPropertyRelative(
+                    SerializedPropertyNames.WGroupCustomColorUseSelectionColor
+                );
+                SerializedProperty useBorderColor = property.FindPropertyRelative(
+                    SerializedPropertyNames.WGroupCustomColorUseBorderColor
+                );
+                SerializedProperty usePendingBackgroundColor = property.FindPropertyRelative(
+                    SerializedPropertyNames.WGroupCustomColorUsePendingBackgroundColor
+                );
+
+                // Reset toggles to false (use auto-derived colors)
+                useRowColor.boolValue = false;
+                useAlternateRowColor.boolValue = false;
+                useSelectionColor.boolValue = false;
+                useBorderColor.boolValue = false;
+                usePendingBackgroundColor.boolValue = false;
+
+                // Also reset color values to their defaults
+                SerializedProperty rowColor = property.FindPropertyRelative(
+                    SerializedPropertyNames.WGroupCustomColorRowColor
+                );
+                SerializedProperty alternateRowColor = property.FindPropertyRelative(
+                    SerializedPropertyNames.WGroupCustomColorAlternateRowColor
+                );
+                SerializedProperty selectionColor = property.FindPropertyRelative(
+                    SerializedPropertyNames.WGroupCustomColorSelectionColor
+                );
+                SerializedProperty borderColor = property.FindPropertyRelative(
+                    SerializedPropertyNames.WGroupCustomColorBorderColor
+                );
+                SerializedProperty pendingBackgroundColor = property.FindPropertyRelative(
+                    SerializedPropertyNames.WGroupCustomColorPendingBackgroundColor
+                );
+
+                // Default values from WGroupCustomColor field initializers
+                rowColor.colorValue = new Color(0.25f, 0.25f, 0.25f, 1f);
+                alternateRowColor.colorValue = new Color(0.22f, 0.22f, 0.22f, 1f);
+                selectionColor.colorValue = new Color(0.243f, 0.525f, 0.988f, 0.5f);
+                borderColor.colorValue = new Color(0.15f, 0.15f, 0.15f, 1f);
+                pendingBackgroundColor.colorValue = new Color(0.2f, 0.2f, 0.2f, 1f);
+
+                property.serializedObject.ApplyModifiedProperties();
             }
         }
 #endif
@@ -2119,6 +2612,34 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 WGroupCustomColor._backgroundColor
             );
             internal const string WGroupCustomColorText = nameof(WGroupCustomColor._textColor);
+            internal const string WGroupCustomColorUseRowColor = nameof(
+                WGroupCustomColor._useCustomRowColor
+            );
+            internal const string WGroupCustomColorRowColor = nameof(WGroupCustomColor._rowColor);
+            internal const string WGroupCustomColorUseAlternateRowColor = nameof(
+                WGroupCustomColor._useCustomAlternateRowColor
+            );
+            internal const string WGroupCustomColorAlternateRowColor = nameof(
+                WGroupCustomColor._alternateRowColor
+            );
+            internal const string WGroupCustomColorUseSelectionColor = nameof(
+                WGroupCustomColor._useCustomSelectionColor
+            );
+            internal const string WGroupCustomColorSelectionColor = nameof(
+                WGroupCustomColor._selectionColor
+            );
+            internal const string WGroupCustomColorUseBorderColor = nameof(
+                WGroupCustomColor._useCustomBorderColor
+            );
+            internal const string WGroupCustomColorBorderColor = nameof(
+                WGroupCustomColor._borderColor
+            );
+            internal const string WGroupCustomColorUsePendingBackgroundColor = nameof(
+                WGroupCustomColor._useCustomPendingBackgroundColor
+            );
+            internal const string WGroupCustomColorPendingBackgroundColor = nameof(
+                WGroupCustomColor._pendingBackgroundColor
+            );
             internal const string WEnumToggleButtonsSelectedBackground = nameof(
                 WEnumToggleButtonsCustomColor._selectedBackgroundColor
             );
@@ -3409,7 +3930,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             )
             {
                 value.EnsureReadableText();
-                return new WGroupPaletteEntry(value.BackgroundColor, value.TextColor);
+                return value.ToPaletteEntry();
             }
 
             Color readableText =
@@ -3469,7 +3990,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             )
             {
                 directValue.EnsureReadableText();
-                return new WGroupPaletteEntry(directValue.BackgroundColor, directValue.TextColor);
+                return directValue.ToPaletteEntry();
             }
 
             if (_wgroupCustomColors != null)
@@ -3482,10 +4003,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     )
                     {
                         entry.Value.EnsureReadableText();
-                        return new WGroupPaletteEntry(
-                            entry.Value.BackgroundColor,
-                            entry.Value.TextColor
-                        );
+                        return entry.Value.ToPaletteEntry();
                     }
                 }
             }
