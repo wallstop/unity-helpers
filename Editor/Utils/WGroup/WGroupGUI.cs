@@ -697,13 +697,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             _paletteBorderTexture = GetOrCreatePaletteBorderTexture(palette.BackgroundColor);
             _fieldTextColor = palette.TextColor;
 
+            // Always reset GUI.color to white to prevent texture tinting in embedded controls.
+            // This ensures solid-colored buttons, reorderable list elements, and other
+            // texture-based controls render without ambient color multiplication.
+            // Must be done regardless of _isActive to handle same-theme scenarios.
+            GUI.color = Color.white;
+
             if (_isActive)
             {
                 // Override content color for labels (this is safe to keep for the scope duration)
                 GUI.contentColor = palette.TextColor;
-
-                // Adjust overall GUI color for icon tinting
-                GUI.color = CalculateGuiColor(palette.BackgroundColor, palette.TextColor);
 
                 // Set background color to influence built-in controls
                 GUI.backgroundColor = _fieldBackgroundColor;
@@ -1617,6 +1620,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
             _disposed = true;
 
+            // Always restore GUI.color since we always set it to white in constructor
+            GUI.color = _previousColor;
+
             if (_isActive)
             {
                 // Restore all overridden styles
@@ -1633,9 +1639,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 RestoreFullStyleState(EditorStyles.miniButtonMid, _savedMiniButtonMid);
                 RestoreFullStyleState(EditorStyles.miniButtonRight, _savedMiniButtonRight);
 
-                // Restore GUI colors
+                // Restore remaining GUI colors
                 GUI.contentColor = _previousContentColor;
-                GUI.color = _previousColor;
                 GUI.backgroundColor = _previousBackgroundColor;
             }
         }

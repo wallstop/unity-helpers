@@ -488,7 +488,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float rightCursor = buttonsRect.xMax;
 
             Rect addRect = new(rightCursor - 60f, buttonsRect.y, 60f, lineHeight);
-            if (GUI.Button(addRect, AddEntryContent, AddButtonStyle))
+            bool addClicked;
+            addClicked = GUI.Button(addRect, AddEntryContent, AddButtonStyle);
+            if (addClicked)
             {
                 if (
                     TryAddNewElement(
@@ -517,7 +519,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 : ClearAllInactiveButtonStyle;
             using (new EditorGUI.DisabledScope(!canClear))
             {
-                if (GUI.Button(clearRect, ClearAllContent, clearStyle) && canClear)
+                bool clearClicked;
+                clearClicked = GUI.Button(clearRect, ClearAllContent, clearStyle);
+                if (clearClicked && canClear)
                 {
                     bool confirmed = EditorUtility.DisplayDialog(
                         "Clear Set",
@@ -1783,7 +1787,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float buttonSpacing = ButtonSpacing;
 
             Rect addRect = new(rightCursor - 60f, verticalCenter, 60f, lineHeight);
-            if (GUI.Button(addRect, AddEntryContent, AddButtonStyle))
+            bool addClicked;
+            addClicked = GUI.Button(addRect, AddEntryContent, AddButtonStyle);
+            if (addClicked)
             {
                 if (
                     TryAddNewElement(
@@ -1810,7 +1816,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             GUIStyle clearStyle = canClear
                 ? ClearAllActiveButtonStyle
                 : ClearAllInactiveButtonStyle;
-            if (GUI.Button(clearRect, ClearAllContent, clearStyle) && canClear)
+            bool clearClicked;
+            clearClicked = GUI.Button(clearRect, ClearAllContent, clearStyle);
+            if (clearClicked && canClear)
             {
                 bool confirmed = EditorUtility.DisplayDialog(
                     "Clear Set",
@@ -1845,7 +1853,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         "Sort",
                         canSort && GUI.enabled
                     );
-                    if (GUI.Button(sortRect, SortContent, sortStyle) && canSort)
+                    bool sortClicked;
+                    sortClicked = GUI.Button(sortRect, SortContent, sortStyle);
+                    if (sortClicked && canSort)
                     {
                         if (TrySortElements(ref propertyRef, propertyPath, itemsPropertyRef))
                         {
@@ -1876,7 +1886,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     removeWidth,
                     lineHeight
                 );
-                if (GUI.Button(removeRect, "-", RemoveButtonStyle))
+                bool removeClicked;
+                removeClicked = GUI.Button(removeRect, "-", RemoveButtonStyle);
+                if (removeClicked)
                 {
                     TryRemoveSelectedEntry(
                         ref propertyRef,
@@ -1906,7 +1918,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     );
                     using (new EditorGUI.DisabledScope(pagination.selectedIndex >= totalCount - 1))
                     {
-                        if (GUI.Button(moveDownRect, MoveDownContent, MoveButtonStyle))
+                        bool moveDownClicked;
+                        moveDownClicked = GUI.Button(
+                            moveDownRect,
+                            MoveDownContent,
+                            MoveButtonStyle
+                        );
+                        if (moveDownClicked)
                         {
                             TryMoveSelectedEntry(
                                 ref propertyRef,
@@ -1935,7 +1953,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     );
                     using (new EditorGUI.DisabledScope(pagination.selectedIndex <= 0))
                     {
-                        if (GUI.Button(moveUpRect, MoveUpContent, MoveButtonStyle))
+                        bool moveUpClicked;
+                        moveUpClicked = GUI.Button(moveUpRect, MoveUpContent, MoveButtonStyle);
+                        if (moveUpClicked)
                         {
                             TryMoveSelectedEntry(
                                 ref propertyRef,
@@ -2458,8 +2478,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         : duplicateExists ? "Overwrite"
                         : "Add";
                     GUIStyle addStyle = SolidButtonStyles.GetSolidButtonStyle(styleKey, addEnabled);
+                    bool addClicked;
+                    addClicked = GUI.Button(addRect, ManualEntryAddContent, addStyle);
                     if (
-                        GUI.Button(addRect, ManualEntryAddContent, addStyle)
+                        addClicked
                         && TryCommitPendingEntry(
                             pending,
                             property,
@@ -2489,7 +2511,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         "Reset",
                         styleEnabled
                     );
-                    if (GUI.Button(resetRect, ManualEntryResetContent, resetStyle))
+                    bool resetClicked;
+                    resetClicked = GUI.Button(resetRect, ManualEntryResetContent, resetStyle);
+                    if (resetClicked)
                     {
                         ResetPendingEntry(pending, collapseFoldout: false);
                         SyncPendingWrapperValue(pending);
