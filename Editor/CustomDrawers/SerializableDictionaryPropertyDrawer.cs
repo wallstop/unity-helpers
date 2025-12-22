@@ -1078,7 +1078,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             0
                         );
                         EditorGUI.indentLevel = 0;
+
+                        // Always reset GUI colors to defaults for list drawing to prevent any
+                        // tinting of list container, footer backgrounds, and controls.
+                        // This ensures consistent rendering regardless of parent WGroup scope colors.
+                        // GUI.color affects GUIStyle.Draw tinting, GUI.backgroundColor affects button/field backgrounds,
+                        // GUI.contentColor affects label/text content tinting.
+                        Color listPreviousGuiColor = GUI.color;
+                        Color listPreviousBackgroundColor = GUI.backgroundColor;
+                        Color listPreviousContentColor = GUI.contentColor;
+                        GUI.color = Color.white;
+                        GUI.backgroundColor = Color.white;
+                        GUI.contentColor = Color.white;
+
                         list.DoList(listRect);
+
+                        GUI.color = listPreviousGuiColor;
+                        GUI.backgroundColor = listPreviousBackgroundColor;
+                        GUI.contentColor = listPreviousContentColor;
+
                         EditorGUI.indentLevel = previousIndent;
                     }
                     finally

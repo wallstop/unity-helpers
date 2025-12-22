@@ -456,10 +456,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void CrossThemeGuiColorBlendedTowardsTextColor()
+        public void CrossThemeGuiColorIsWhiteForVerbatimNestedColors()
         {
-            // When cross-theme, GUI.color should be blended slightly towards text color
-            // to ensure icons/textures are visible
+            // GUI.color should be pure white in cross-theme mode.
+            // This ensures nested elements (like SerializableDictionary/Set drawers)
+            // receive untinted colors that they can modify independently.
 
             UnityHelpersSettings.WGroupPaletteEntry crossThemePalette;
             if (EditorGUIUtility.isProSkin)
@@ -473,17 +474,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             using (var scope = new WGroupColorScope(crossThemePalette))
             {
-                // GUI.color should not be pure white when in cross-theme mode
-                // It should be blended towards the text color
-                bool isBlended =
-                    !Mathf.Approximately(GUI.color.r, 1f)
-                    || !Mathf.Approximately(GUI.color.g, 1f)
-                    || !Mathf.Approximately(GUI.color.b, 1f);
-
+                // GUI.color should be pure white in cross-theme mode
+                // to prevent color tinting in nested drawers
                 Assert.That(
-                    isBlended,
-                    Is.True,
-                    "GUI color should be blended towards text color in cross-theme mode."
+                    GUI.color.r,
+                    Is.EqualTo(1f).Within(0.001f),
+                    "GUI.color.r should be 1 (white) in cross-theme mode."
+                );
+                Assert.That(
+                    GUI.color.g,
+                    Is.EqualTo(1f).Within(0.001f),
+                    "GUI.color.g should be 1 (white) in cross-theme mode."
+                );
+                Assert.That(
+                    GUI.color.b,
+                    Is.EqualTo(1f).Within(0.001f),
+                    "GUI.color.b should be 1 (white) in cross-theme mode."
                 );
             }
         }

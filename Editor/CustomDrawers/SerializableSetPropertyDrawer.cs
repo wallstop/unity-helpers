@@ -844,6 +844,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                                 * Mathf.Max(1, Mathf.Min(totalCount, pagination.pageSize))
                             + GetFooterHeight();
                     Rect listRect = new(position.x, y, position.width, listHeight);
+
+                    // Always reset GUI colors to defaults for list drawing to prevent any
+                    // tinting of list container, footer backgrounds, and controls.
+                    // This ensures consistent rendering regardless of parent WGroup scope colors.
+                    // GUI.color affects GUIStyle.Draw tinting, GUI.backgroundColor affects button/field backgrounds,
+                    // GUI.contentColor affects label/text content tinting.
+                    Color listPreviousGuiColor = GUI.color;
+                    Color listPreviousBackgroundColor = GUI.backgroundColor;
+                    Color listPreviousContentColor = GUI.contentColor;
+                    GUI.color = Color.white;
+                    GUI.backgroundColor = Color.white;
+                    GUI.contentColor = Color.white;
+
                     if (list != null && Event.current.type == EventType.Repaint)
                     {
                         GUIStyle listBackgroundStyle =
@@ -877,6 +890,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                     LastItemsContainerRect = listRect;
                     HasItemsContainerRect = true;
+
                     if (list != null)
                     {
                         list.DoList(listRect);
@@ -885,6 +899,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     {
                         GUI.Box(listRect, GUIContent.none, EditorStyles.helpBox);
                     }
+
+                    GUI.color = listPreviousGuiColor;
+                    GUI.backgroundColor = listPreviousBackgroundColor;
+                    GUI.contentColor = listPreviousContentColor;
                 }
 
                 bool applied = serializedObject.ApplyModifiedProperties();

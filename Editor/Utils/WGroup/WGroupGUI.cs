@@ -1064,7 +1064,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
         private static Color CalculateGuiColor(Color backgroundColor, Color textColor)
         {
-            return Color.Lerp(Color.white, textColor, 0.15f);
+            return Color.white;
         }
 
         /// <summary>
