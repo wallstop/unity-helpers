@@ -150,6 +150,64 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             return new WGroupPaletteScope(palette);
         }
 
+        /// <summary>
+        /// Creates a scope that temporarily exits WGroup theming context.
+        /// Within this scope, IsInsideWGroup will return false and GUI colors will be reset to defaults.
+        /// Use this for complex property drawers (like SerializableDictionary/SerializableHashSet)
+        /// that have their own theming and don't work well with WGroup palette overrides.
+        /// </summary>
+        internal static IDisposable ExitWGroupTheming()
+        {
+            return new ExitWGroupThemingScope();
+        }
+
+        private sealed class ExitWGroupThemingScope : IDisposable
+        {
+            private readonly UnityHelpersSettings.WGroupPaletteEntry? _previousPalette;
+            private readonly bool _previousIsInsideWGroupPropertyDraw;
+            private readonly Color _previousContentColor;
+            private readonly Color _previousColor;
+            private readonly Color _previousBackgroundColor;
+            private bool _disposed;
+
+            internal ExitWGroupThemingScope()
+            {
+                _previousPalette = _currentPalette;
+                _previousIsInsideWGroupPropertyDraw = _isInsideWGroupPropertyDraw;
+                _previousContentColor = GUI.contentColor;
+                _previousColor = GUI.color;
+                _previousBackgroundColor = GUI.backgroundColor;
+
+                // Clear WGroup context
+                _currentPalette = null;
+                _isInsideWGroupPropertyDraw = false;
+
+                // Reset GUI colors to defaults
+                GUI.contentColor = Color.white;
+                GUI.color = Color.white;
+                GUI.backgroundColor = Color.white;
+            }
+
+            public void Dispose()
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _disposed = true;
+
+                // Restore WGroup context
+                _currentPalette = _previousPalette;
+                _isInsideWGroupPropertyDraw = _previousIsInsideWGroupPropertyDraw;
+
+                // Restore GUI colors
+                GUI.contentColor = _previousContentColor;
+                GUI.color = _previousColor;
+                GUI.backgroundColor = _previousBackgroundColor;
+            }
+        }
+
         private sealed class WGroupPaletteScope : IDisposable
         {
             private readonly UnityHelpersSettings.WGroupPaletteEntry? _previousPalette;

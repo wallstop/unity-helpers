@@ -851,278 +851,303 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EditorGUI.BeginProperty(originalPosition, label, property);
             int previousIndentLevel = EditorGUI.indentLevel;
 
-            try
-            {
-                // In SettingsProvider context, we handle our own indentation via WGroup padding
-                // Reset indent level to avoid double-indentation from EditorGUI methods
-                if (targetsSettings)
+            // Exit WGroup theming context for the entire drawer.
+            // SerializableDictionary has complex custom drawing that doesn't integrate well
+            // with WGroup palette overrides. By exiting theming, we ensure consistent
+            // rendering regardless of whether we're inside a WGroup or not.
+            using (GroupGUIWidthUtility.ExitWGroupTheming())
+                try
                 {
-                    EditorGUI.indentLevel = 0;
-                }
-
-                position = contentPosition;
-
-                SerializedObject serializedObject = property.serializedObject;
-
-                string cacheKey = GetListKey(property);
-                CachedPropertyPair propertyPair = GetOrCreateCachedPropertyPair(cacheKey, property);
-                SerializedProperty keysProperty = propertyPair.keysProperty;
-                SerializedProperty valuesProperty = propertyPair.valuesProperty;
-                EnsureParallelArraySizes(keysProperty, valuesProperty);
-
-                bool resolvedTypes = TryResolveKeyValueTypes(
-                    fieldInfo,
-                    out Type keyType,
-                    out Type valueType,
-                    out bool isSortedDictionary
-                );
-
-                if (!resolvedTypes || keyType == null || valueType == null)
-                {
-                    object dictionaryInstance = GetDictionaryInstance(property);
-                    if (
-                        TryResolveKeyValueTypesFromInstance(
-                            dictionaryInstance,
-                            out Type runtimeKeyType,
-                            out Type runtimeValueType,
-                            out bool runtimeSorted
-                        )
-                    )
+                    // In SettingsProvider context, we handle our own indentation via WGroup padding
+                    // Reset indent level to avoid double-indentation from EditorGUI methods
+                    if (targetsSettings)
                     {
-                        keyType ??= runtimeKeyType;
-                        valueType ??= runtimeValueType;
-                        isSortedDictionary = runtimeSorted;
-                        resolvedTypes = keyType != null && valueType != null;
-                    }
-                }
-
-                if (!resolvedTypes)
-                {
-                    EditorGUI.LabelField(position, label.text, "Unsupported dictionary type");
-                    return;
-                }
-
-                CacheValueType(cacheKey, valueType);
-                DuplicateKeyState duplicateState = RefreshDuplicateState(
-                    cacheKey,
-                    keysProperty,
-                    keyType
-                );
-                NullKeyState nullKeyState = RefreshNullKeyState(cacheKey, keysProperty, keyType);
-
-                // Apply additional foldout alignment offset when inside a WGroup property context
-                float foldoutAlignmentOffset =
-                    GroupGUIWidthUtility.IsInsideWGroupPropertyDraw && !targetsSettings
-                        ? WGroupFoldoutAlignmentOffset
-                        : 0f;
-
-                Rect foldoutRect = new(
-                    position.x + foldoutAlignmentOffset,
-                    position.y,
-                    position.width - foldoutAlignmentOffset,
-                    EditorGUIUtility.singleLineHeight
-                );
-                if (!targetsSettings)
-                {
-                    WSerializableCollectionFoldoutUtility.EnsureFoldoutInitialized(
-                        property,
-                        fieldInfo,
-                        WSerializableCollectionFoldoutUtility.SerializableCollectionType.Dictionary
-                    );
-                }
-                property.isExpanded = EditorGUI.Foldout(
-                    foldoutRect,
-                    property.isExpanded,
-                    label,
-                    true
-                );
-
-                // Track the foldout rect for testing
-                HasLastMainFoldoutRect = true;
-                LastMainFoldoutRect = foldoutRect;
-
-                // Get main foldout animation progress for smooth expand/collapse animation
-                float mainFoldoutProgress = GetMainFoldoutProgress(
-                    property.propertyPath,
-                    property.isExpanded,
-                    isSortedDictionary
-                );
-
-                float iconSize = EditorGUIUtility.singleLineHeight;
-                float iconPadding = 4f;
-                float nextIconX = Mathf.Max(position.x, position.xMax - iconSize - iconPadding);
-
-                if (duplicateState is { HasDuplicates: true })
-                {
-                    Rect iconRect = new(nextIconX, foldoutRect.y, iconSize, iconSize);
-                    GUI.Label(iconRect, GetDuplicateIconContent(duplicateState.SummaryTooltip));
-                    nextIconX -= iconSize + iconPadding;
-                }
-
-                if (nullKeyState is { HasNullKeys: true })
-                {
-                    float clampedX = Mathf.Max(position.x, nextIconX);
-                    Rect iconRect = new(clampedX, foldoutRect.y, iconSize, iconSize);
-                    GUI.Label(iconRect, GetNullKeyIconContent(nullKeyState.WarningMessage));
-                }
-
-                float y = foldoutRect.yMax + EditorGUIUtility.standardVerticalSpacing;
-
-                // During collapse, hide content early and fade faster to avoid visual confusion
-                // where large dictionaries' contents "stick around" longer than surrounding elements
-                bool isCollapsing = !property.isExpanded && mainFoldoutProgress < 1f;
-                bool shouldDrawContent;
-                float contentAlpha;
-
-                if (isCollapsing)
-                {
-                    // During collapse, skip drawing content below threshold for snappier feel
-                    const float CollapseContentThreshold = 0.4f;
-                    shouldDrawContent = mainFoldoutProgress >= CollapseContentThreshold;
-                    // Use cubic curve so alpha drops much faster at start of collapse
-                    // When progress is 0.5, alpha becomes ~0.125 (very faded)
-                    contentAlpha = mainFoldoutProgress * mainFoldoutProgress * mainFoldoutProgress;
-                }
-                else
-                {
-                    shouldDrawContent = mainFoldoutProgress > 0f;
-                    contentAlpha = mainFoldoutProgress;
-                }
-
-                // Draw expanded content with animation support
-                if (shouldDrawContent)
-                {
-                    // Apply alpha fade during animation
-                    bool adjustAlpha = !Mathf.Approximately(contentAlpha, 1f);
-                    Color previousColor = GUI.color;
-                    if (adjustAlpha)
-                    {
-                        GUI.color = new Color(
-                            previousColor.r,
-                            previousColor.g,
-                            previousColor.b,
-                            previousColor.a * Mathf.Clamp01(contentAlpha)
-                        );
-                    }
-
-                    try
-                    {
-                        float warningHeight = GetWarningBarHeight();
-
-                        if (nullKeyState is { HasNullKeys: true })
-                        {
-                            Rect warningRect = new(position.x, y, position.width, warningHeight);
-                            EditorGUI.HelpBox(
-                                warningRect,
-                                nullKeyState.WarningMessage,
-                                MessageType.Warning
-                            );
-                            y = warningRect.yMax + EditorGUIUtility.standardVerticalSpacing;
-                        }
-
-                        if (
-                            duplicateState is { HasDuplicates: true }
-                            && !string.IsNullOrEmpty(duplicateState.SummaryTooltip)
-                        )
-                        {
-                            Rect warningRect = new(position.x, y, position.width, warningHeight);
-                            EditorGUI.HelpBox(
-                                warningRect,
-                                duplicateState.SummaryTooltip,
-                                MessageType.Warning
-                            );
-                            y = warningRect.yMax + EditorGUIUtility.standardVerticalSpacing;
-                        }
-
-                        ReorderableList list = GetOrCreateList(property);
-                        PaginationState pagination = GetOrCreatePaginationState(property);
-                        PendingEntry pending = GetOrCreatePendingEntry(
-                            property,
-                            keyType,
-                            valueType,
-                            isSortedDictionary
-                        );
-
-                        float pendingY = y;
-                        SerializableDictionaryIndentDiagnostics.LogDrawPendingEntryUI(
-                            property.propertyPath,
-                            position,
-                            pendingY,
-                            targetsSettings,
-                            EditorGUI.indentLevel
-                        );
-                        DrawPendingEntryUI(
-                            ref pendingY,
-                            position,
-                            pending,
-                            list,
-                            pagination,
-                            property,
-                            keysProperty,
-                            valuesProperty,
-                            keyType,
-                            valueType
-                        );
-                        y = pendingY + EditorGUIUtility.standardVerticalSpacing;
-
-                        Rect listRect = new(position.x, y, position.width, list.GetHeight());
-                        LastListRect = listRect;
-                        HasLastListRect = true;
-
-                        int previousIndent = EditorGUI.indentLevel;
-                        SerializableDictionaryIndentDiagnostics.LogListDoList(
-                            property.propertyPath,
-                            listRect,
-                            targetsSettings,
-                            previousIndent,
-                            0
-                        );
                         EditorGUI.indentLevel = 0;
-
-                        // Always reset GUI colors to defaults for list drawing to prevent any
-                        // tinting of list container, footer backgrounds, and controls.
-                        // This ensures consistent rendering regardless of parent WGroup scope colors.
-                        // GUI.color affects GUIStyle.Draw tinting, GUI.backgroundColor affects button/field backgrounds,
-                        // GUI.contentColor affects label/text content tinting.
-                        Color listPreviousGuiColor = GUI.color;
-                        Color listPreviousBackgroundColor = GUI.backgroundColor;
-                        Color listPreviousContentColor = GUI.contentColor;
-                        GUI.color = Color.white;
-                        GUI.backgroundColor = Color.white;
-                        GUI.contentColor = Color.white;
-
-                        list.DoList(listRect);
-
-                        GUI.color = listPreviousGuiColor;
-                        GUI.backgroundColor = listPreviousBackgroundColor;
-                        GUI.contentColor = listPreviousContentColor;
-
-                        EditorGUI.indentLevel = previousIndent;
                     }
-                    finally
+
+                    position = contentPosition;
+
+                    SerializedObject serializedObject = property.serializedObject;
+
+                    string cacheKey = GetListKey(property);
+                    CachedPropertyPair propertyPair = GetOrCreateCachedPropertyPair(
+                        cacheKey,
+                        property
+                    );
+                    SerializedProperty keysProperty = propertyPair.keysProperty;
+                    SerializedProperty valuesProperty = propertyPair.valuesProperty;
+                    EnsureParallelArraySizes(keysProperty, valuesProperty);
+
+                    bool resolvedTypes = TryResolveKeyValueTypes(
+                        fieldInfo,
+                        out Type keyType,
+                        out Type valueType,
+                        out bool isSortedDictionary
+                    );
+
+                    if (!resolvedTypes || keyType == null || valueType == null)
                     {
+                        object dictionaryInstance = GetDictionaryInstance(property);
+                        if (
+                            TryResolveKeyValueTypesFromInstance(
+                                dictionaryInstance,
+                                out Type runtimeKeyType,
+                                out Type runtimeValueType,
+                                out bool runtimeSorted
+                            )
+                        )
+                        {
+                            keyType ??= runtimeKeyType;
+                            valueType ??= runtimeValueType;
+                            isSortedDictionary = runtimeSorted;
+                            resolvedTypes = keyType != null && valueType != null;
+                        }
+                    }
+
+                    if (!resolvedTypes)
+                    {
+                        EditorGUI.LabelField(position, label.text, "Unsupported dictionary type");
+                        return;
+                    }
+
+                    CacheValueType(cacheKey, valueType);
+                    DuplicateKeyState duplicateState = RefreshDuplicateState(
+                        cacheKey,
+                        keysProperty,
+                        keyType
+                    );
+                    NullKeyState nullKeyState = RefreshNullKeyState(
+                        cacheKey,
+                        keysProperty,
+                        keyType
+                    );
+
+                    // Apply additional foldout alignment offset when inside a WGroup property context
+                    float foldoutAlignmentOffset =
+                        GroupGUIWidthUtility.IsInsideWGroupPropertyDraw && !targetsSettings
+                            ? WGroupFoldoutAlignmentOffset
+                            : 0f;
+
+                    Rect foldoutRect = new(
+                        position.x + foldoutAlignmentOffset,
+                        position.y,
+                        position.width - foldoutAlignmentOffset,
+                        EditorGUIUtility.singleLineHeight
+                    );
+                    if (!targetsSettings)
+                    {
+                        WSerializableCollectionFoldoutUtility.EnsureFoldoutInitialized(
+                            property,
+                            fieldInfo,
+                            WSerializableCollectionFoldoutUtility
+                                .SerializableCollectionType
+                                .Dictionary
+                        );
+                    }
+                    property.isExpanded = EditorGUI.Foldout(
+                        foldoutRect,
+                        property.isExpanded,
+                        label,
+                        true
+                    );
+
+                    // Track the foldout rect for testing
+                    HasLastMainFoldoutRect = true;
+                    LastMainFoldoutRect = foldoutRect;
+
+                    // Get main foldout animation progress for smooth expand/collapse animation
+                    float mainFoldoutProgress = GetMainFoldoutProgress(
+                        property.propertyPath,
+                        property.isExpanded,
+                        isSortedDictionary
+                    );
+
+                    float iconSize = EditorGUIUtility.singleLineHeight;
+                    float iconPadding = 4f;
+                    float nextIconX = Mathf.Max(position.x, position.xMax - iconSize - iconPadding);
+
+                    if (duplicateState is { HasDuplicates: true })
+                    {
+                        Rect iconRect = new(nextIconX, foldoutRect.y, iconSize, iconSize);
+                        GUI.Label(iconRect, GetDuplicateIconContent(duplicateState.SummaryTooltip));
+                        nextIconX -= iconSize + iconPadding;
+                    }
+
+                    if (nullKeyState is { HasNullKeys: true })
+                    {
+                        float clampedX = Mathf.Max(position.x, nextIconX);
+                        Rect iconRect = new(clampedX, foldoutRect.y, iconSize, iconSize);
+                        GUI.Label(iconRect, GetNullKeyIconContent(nullKeyState.WarningMessage));
+                    }
+
+                    float y = foldoutRect.yMax + EditorGUIUtility.standardVerticalSpacing;
+
+                    // During collapse, hide content early and fade faster to avoid visual confusion
+                    // where large dictionaries' contents "stick around" longer than surrounding elements
+                    bool isCollapsing = !property.isExpanded && mainFoldoutProgress < 1f;
+                    bool shouldDrawContent;
+                    float contentAlpha;
+
+                    if (isCollapsing)
+                    {
+                        // During collapse, skip drawing content below threshold for snappier feel
+                        const float CollapseContentThreshold = 0.4f;
+                        shouldDrawContent = mainFoldoutProgress >= CollapseContentThreshold;
+                        // Use cubic curve so alpha drops much faster at start of collapse
+                        // When progress is 0.5, alpha becomes ~0.125 (very faded)
+                        contentAlpha =
+                            mainFoldoutProgress * mainFoldoutProgress * mainFoldoutProgress;
+                    }
+                    else
+                    {
+                        shouldDrawContent = mainFoldoutProgress > 0f;
+                        contentAlpha = mainFoldoutProgress;
+                    }
+
+                    // Draw expanded content with animation support
+                    if (shouldDrawContent)
+                    {
+                        // Apply alpha fade during animation
+                        bool adjustAlpha = !Mathf.Approximately(contentAlpha, 1f);
+                        Color previousColor = GUI.color;
                         if (adjustAlpha)
                         {
-                            GUI.color = previousColor;
+                            GUI.color = new Color(
+                                previousColor.r,
+                                previousColor.g,
+                                previousColor.b,
+                                previousColor.a * Mathf.Clamp01(contentAlpha)
+                            );
+                        }
+
+                        try
+                        {
+                            float warningHeight = GetWarningBarHeight();
+
+                            if (nullKeyState is { HasNullKeys: true })
+                            {
+                                Rect warningRect = new(
+                                    position.x,
+                                    y,
+                                    position.width,
+                                    warningHeight
+                                );
+                                EditorGUI.HelpBox(
+                                    warningRect,
+                                    nullKeyState.WarningMessage,
+                                    MessageType.Warning
+                                );
+                                y = warningRect.yMax + EditorGUIUtility.standardVerticalSpacing;
+                            }
+
+                            if (
+                                duplicateState is { HasDuplicates: true }
+                                && !string.IsNullOrEmpty(duplicateState.SummaryTooltip)
+                            )
+                            {
+                                Rect warningRect = new(
+                                    position.x,
+                                    y,
+                                    position.width,
+                                    warningHeight
+                                );
+                                EditorGUI.HelpBox(
+                                    warningRect,
+                                    duplicateState.SummaryTooltip,
+                                    MessageType.Warning
+                                );
+                                y = warningRect.yMax + EditorGUIUtility.standardVerticalSpacing;
+                            }
+
+                            ReorderableList list = GetOrCreateList(property);
+                            PaginationState pagination = GetOrCreatePaginationState(property);
+                            PendingEntry pending = GetOrCreatePendingEntry(
+                                property,
+                                keyType,
+                                valueType,
+                                isSortedDictionary
+                            );
+
+                            float pendingY = y;
+                            SerializableDictionaryIndentDiagnostics.LogDrawPendingEntryUI(
+                                property.propertyPath,
+                                position,
+                                pendingY,
+                                targetsSettings,
+                                EditorGUI.indentLevel
+                            );
+                            DrawPendingEntryUI(
+                                ref pendingY,
+                                position,
+                                pending,
+                                list,
+                                pagination,
+                                property,
+                                keysProperty,
+                                valuesProperty,
+                                keyType,
+                                valueType
+                            );
+                            y = pendingY + EditorGUIUtility.standardVerticalSpacing;
+
+                            Rect listRect = new(position.x, y, position.width, list.GetHeight());
+                            LastListRect = listRect;
+                            HasLastListRect = true;
+
+                            int previousIndent = EditorGUI.indentLevel;
+                            SerializableDictionaryIndentDiagnostics.LogListDoList(
+                                property.propertyPath,
+                                listRect,
+                                targetsSettings,
+                                previousIndent,
+                                0
+                            );
+                            EditorGUI.indentLevel = 0;
+
+                            // Always reset GUI colors to defaults for list drawing to prevent any
+                            // tinting of list container, footer backgrounds, and controls.
+                            // This ensures consistent rendering regardless of parent WGroup scope colors.
+                            // GUI.color affects GUIStyle.Draw tinting, GUI.backgroundColor affects button/field backgrounds,
+                            // GUI.contentColor affects label/text content tinting.
+                            Color listPreviousGuiColor = GUI.color;
+                            Color listPreviousBackgroundColor = GUI.backgroundColor;
+                            Color listPreviousContentColor = GUI.contentColor;
+                            GUI.color = Color.white;
+                            GUI.backgroundColor = Color.white;
+                            GUI.contentColor = Color.white;
+
+                            list.DoList(listRect);
+
+                            GUI.color = listPreviousGuiColor;
+                            GUI.backgroundColor = listPreviousBackgroundColor;
+                            GUI.contentColor = listPreviousContentColor;
+
+                            EditorGUI.indentLevel = previousIndent;
+                        }
+                        finally
+                        {
+                            if (adjustAlpha)
+                            {
+                                GUI.color = previousColor;
+                            }
                         }
                     }
-                }
 
-                bool applied = ApplyModifiedPropertiesWithUndoFallback(
-                    serializedObject,
-                    property,
-                    "OnGUI::ListApply"
-                );
-                if (applied)
-                {
-                    SyncRuntimeDictionary(property);
+                    bool applied = ApplyModifiedPropertiesWithUndoFallback(
+                        serializedObject,
+                        property,
+                        "OnGUI::ListApply"
+                    );
+                    if (applied)
+                    {
+                        SyncRuntimeDictionary(property);
+                    }
                 }
-            }
-            finally
-            {
-                EditorGUI.indentLevel = previousIndentLevel;
-                EditorGUI.EndProperty();
-            }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndentLevel;
+                    EditorGUI.EndProperty();
+                }
         }
 
         private static Rect ResolveContentRect(Rect position, bool skipIndentation = false)

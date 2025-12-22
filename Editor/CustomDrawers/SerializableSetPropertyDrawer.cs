@@ -657,265 +657,276 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EditorGUI.BeginProperty(originalPosition, label, property);
             int previousIndentScope = EditorGUI.indentLevel;
 
-            try
-            {
-                // In SettingsProvider context, we handle our own indentation via WGroup padding
-                // Reset indent level to avoid double-indentation from EditorGUI methods
-                if (targetsSettings)
+            // Exit WGroup theming context for the entire drawer.
+            // SerializableHashSet has complex custom drawing that doesn't integrate well
+            // with WGroup palette overrides. By exiting theming, we ensure consistent
+            // rendering regardless of whether we're inside a WGroup or not.
+            using (GroupGUIWidthUtility.ExitWGroupTheming())
+                try
                 {
-                    EditorGUI.indentLevel = 0;
-                }
-
-                position = contentPosition;
-
-                SerializedObject serializedObject = property.serializedObject;
-
-                string propertyPath = property.propertyPath;
-                bool hasInspector = TryGetSetInspectorCached(
-                    property,
-                    propertyPath,
-                    out ISerializableSetInspector inspector
-                );
-                Type elementType = inspector?.ElementType;
-
-                string listKey = GetListKey(property);
-                CachedItemsProperty cachedItems = GetOrCreateCachedItemsProperty(listKey, property);
-                SerializedProperty itemsProperty = cachedItems.itemsProperty;
-
-                bool hasItemsArray = itemsProperty is { isArray: true };
-                int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
-
-                GUIContent foldoutLabel = GetFoldoutLabelContent(label);
-
-                // Apply additional foldout alignment offset when inside a WGroup property context
-                float foldoutAlignmentOffset = GroupGUIWidthUtility.IsInsideWGroupPropertyDraw
-                    ? WGroupFoldoutAlignmentOffset
-                    : 0f;
-
-                Rect foldoutRect = new(
-                    position.x + foldoutAlignmentOffset,
-                    position.y,
-                    position.width - foldoutAlignmentOffset,
-                    EditorGUIUtility.singleLineHeight
-                );
-                if (!targetsSettings)
-                {
-                    WSerializableCollectionFoldoutUtility.EnsureFoldoutInitialized(
-                        property,
-                        fieldInfo,
-                        WSerializableCollectionFoldoutUtility.SerializableCollectionType.Set
-                    );
-                }
-
-                property.isExpanded = EditorGUI.Foldout(
-                    foldoutRect,
-                    property.isExpanded,
-                    foldoutLabel,
-                    true
-                );
-
-                // Track the foldout rect for testing
-                HasLastMainFoldoutRect = true;
-                LastMainFoldoutRect = foldoutRect;
-
-                float y = foldoutRect.yMax + SectionSpacing;
-
-                if (!property.isExpanded)
-                {
-                    return;
-                }
-
-                PaginationState pagination = GetOrCreatePaginationState(property);
-                EnsurePaginationBounds(pagination, totalCount);
-
-                bool isSortedSet = IsSortedSetCached(property);
-
-                // Refresh the cached items property in case serialized object changed
-                cachedItems = GetOrCreateCachedItemsProperty(listKey, property);
-                itemsProperty = cachedItems.itemsProperty;
-                hasItemsArray = itemsProperty is { isArray: true };
-                totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
-                EnsurePaginationBounds(pagination, totalCount);
-
-                // Check if an element was modified and force duplicate refresh
-                SetListRenderContext renderContext = GetOrCreateListContext(listKey);
-                bool forceRefresh = renderContext.needsDuplicateRefresh;
-                if (forceRefresh)
-                {
-                    renderContext.needsDuplicateRefresh = false;
-                }
-
-                DuplicateState duplicateState = EvaluateDuplicateState(
-                    property,
-                    itemsProperty,
-                    forceRefresh
-                );
-                NullEntryState nullState = EvaluateNullEntryState(
-                    property,
-                    itemsProperty,
-                    forceRefresh
-                );
-
-                if (nullState.hasNullEntries && !string.IsNullOrEmpty(nullState.summary))
-                {
-                    float helpHeight = GetWarningBarHeight();
-                    Rect helpRect = new(position.x, y, position.width, helpHeight);
-                    EditorGUI.HelpBox(helpRect, nullState.summary, MessageType.Warning);
-                    y = helpRect.yMax + SectionSpacing;
-                }
-
-                if (duplicateState.hasDuplicates && !string.IsNullOrEmpty(duplicateState.summary))
-                {
-                    float helpHeight = GetWarningBarHeight();
-                    Rect helpRect = new(position.x, y, position.width, helpHeight);
-                    EditorGUI.HelpBox(helpRect, duplicateState.summary, MessageType.Warning);
-                    y = helpRect.yMax + SectionSpacing;
-                }
-
-                bool drewPendingEntry = false;
-                if (hasInspector && elementType != null)
-                {
-                    PendingEntry pendingEntry = GetOrCreatePendingEntry(
-                        property,
-                        propertyPath,
-                        elementType,
-                        isSortedSet
-                    );
-                    DrawPendingEntryUI(
-                        ref y,
-                        position,
-                        pendingEntry,
-                        property,
-                        propertyPath,
-                        ref itemsProperty,
-                        pagination,
-                        inspector,
-                        elementType
-                    );
-                    y += SectionSpacing;
-                    drewPendingEntry = true;
-                }
-
-                if (totalCount <= 0)
-                {
-                    if (drewPendingEntry)
+                    // In SettingsProvider context, we handle our own indentation via WGroup padding
+                    // Reset indent level to avoid double-indentation from EditorGUI methods
+                    if (targetsSettings)
                     {
-                        float infoHeight = GetWarningBarHeight();
-                        Rect infoRect = new(position.x, y, position.width, infoHeight);
-                        EditorGUI.HelpBox(infoRect, "No entries yet.", MessageType.Info);
+                        EditorGUI.indentLevel = 0;
                     }
-                    else
+
+                    position = contentPosition;
+
+                    SerializedObject serializedObject = property.serializedObject;
+
+                    string propertyPath = property.propertyPath;
+                    bool hasInspector = TryGetSetInspectorCached(
+                        property,
+                        propertyPath,
+                        out ISerializableSetInspector inspector
+                    );
+                    Type elementType = inspector?.ElementType;
+
+                    string listKey = GetListKey(property);
+                    CachedItemsProperty cachedItems = GetOrCreateCachedItemsProperty(
+                        listKey,
+                        property
+                    );
+                    SerializedProperty itemsProperty = cachedItems.itemsProperty;
+
+                    bool hasItemsArray = itemsProperty is { isArray: true };
+                    int totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
+
+                    GUIContent foldoutLabel = GetFoldoutLabelContent(label);
+
+                    // Apply additional foldout alignment offset when inside a WGroup property context
+                    float foldoutAlignmentOffset = GroupGUIWidthUtility.IsInsideWGroupPropertyDraw
+                        ? WGroupFoldoutAlignmentOffset
+                        : 0f;
+
+                    Rect foldoutRect = new(
+                        position.x + foldoutAlignmentOffset,
+                        position.y,
+                        position.width - foldoutAlignmentOffset,
+                        EditorGUIUtility.singleLineHeight
+                    );
+                    if (!targetsSettings)
                     {
-                        float emptyHeight = GetEmptySetDrawerHeight();
-                        Rect emptyRect = new(position.x, y, position.width, emptyHeight);
-                        LastItemsContainerRect = emptyRect;
-                        HasItemsContainerRect = true;
-                        DrawEmptySetDrawer(
-                            emptyRect,
+                        WSerializableCollectionFoldoutUtility.EnsureFoldoutInitialized(
+                            property,
+                            fieldInfo,
+                            WSerializableCollectionFoldoutUtility.SerializableCollectionType.Set
+                        );
+                    }
+
+                    property.isExpanded = EditorGUI.Foldout(
+                        foldoutRect,
+                        property.isExpanded,
+                        foldoutLabel,
+                        true
+                    );
+
+                    // Track the foldout rect for testing
+                    HasLastMainFoldoutRect = true;
+                    LastMainFoldoutRect = foldoutRect;
+
+                    float y = foldoutRect.yMax + SectionSpacing;
+
+                    if (!property.isExpanded)
+                    {
+                        return;
+                    }
+
+                    PaginationState pagination = GetOrCreatePaginationState(property);
+                    EnsurePaginationBounds(pagination, totalCount);
+
+                    bool isSortedSet = IsSortedSetCached(property);
+
+                    // Refresh the cached items property in case serialized object changed
+                    cachedItems = GetOrCreateCachedItemsProperty(listKey, property);
+                    itemsProperty = cachedItems.itemsProperty;
+                    hasItemsArray = itemsProperty is { isArray: true };
+                    totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
+                    EnsurePaginationBounds(pagination, totalCount);
+
+                    // Check if an element was modified and force duplicate refresh
+                    SetListRenderContext renderContext = GetOrCreateListContext(listKey);
+                    bool forceRefresh = renderContext.needsDuplicateRefresh;
+                    if (forceRefresh)
+                    {
+                        renderContext.needsDuplicateRefresh = false;
+                    }
+
+                    DuplicateState duplicateState = EvaluateDuplicateState(
+                        property,
+                        itemsProperty,
+                        forceRefresh
+                    );
+                    NullEntryState nullState = EvaluateNullEntryState(
+                        property,
+                        itemsProperty,
+                        forceRefresh
+                    );
+
+                    if (nullState.hasNullEntries && !string.IsNullOrEmpty(nullState.summary))
+                    {
+                        float helpHeight = GetWarningBarHeight();
+                        Rect helpRect = new(position.x, y, position.width, helpHeight);
+                        EditorGUI.HelpBox(helpRect, nullState.summary, MessageType.Warning);
+                        y = helpRect.yMax + SectionSpacing;
+                    }
+
+                    if (
+                        duplicateState.hasDuplicates
+                        && !string.IsNullOrEmpty(duplicateState.summary)
+                    )
+                    {
+                        float helpHeight = GetWarningBarHeight();
+                        Rect helpRect = new(position.x, y, position.width, helpHeight);
+                        EditorGUI.HelpBox(helpRect, duplicateState.summary, MessageType.Warning);
+                        y = helpRect.yMax + SectionSpacing;
+                    }
+
+                    bool drewPendingEntry = false;
+                    if (hasInspector && elementType != null)
+                    {
+                        PendingEntry pendingEntry = GetOrCreatePendingEntry(
                             property,
                             propertyPath,
-                            itemsProperty,
-                            pagination
+                            elementType,
+                            isSortedSet
                         );
+                        DrawPendingEntryUI(
+                            ref y,
+                            position,
+                            pendingEntry,
+                            property,
+                            propertyPath,
+                            ref itemsProperty,
+                            pagination,
+                            inspector,
+                            elementType
+                        );
+                        y += SectionSpacing;
+                        drewPendingEntry = true;
                     }
-                }
-                else
-                {
-                    UpdateListContext(
-                        listKey,
-                        property,
-                        itemsProperty,
-                        duplicateState,
-                        nullState,
-                        elementType
-                    );
-                    ReorderableList list = GetOrCreateList(
-                        listKey,
-                        property,
-                        itemsProperty,
-                        pagination,
-                        propertyPath,
-                        isSortedSet
-                    );
-                    float listHeight =
-                        list?.GetHeight()
-                        ?? GetPaginationHeaderHeight()
-                            + EditorGUIUtility.singleLineHeight
-                                * Mathf.Max(1, Mathf.Min(totalCount, pagination.pageSize))
-                            + GetFooterHeight();
-                    Rect listRect = new(position.x, y, position.width, listHeight);
 
-                    // Always reset GUI colors to defaults for list drawing to prevent any
-                    // tinting of list container, footer backgrounds, and controls.
-                    // This ensures consistent rendering regardless of parent WGroup scope colors.
-                    // GUI.color affects GUIStyle.Draw tinting, GUI.backgroundColor affects button/field backgrounds,
-                    // GUI.contentColor affects label/text content tinting.
-                    Color listPreviousGuiColor = GUI.color;
-                    Color listPreviousBackgroundColor = GUI.backgroundColor;
-                    Color listPreviousContentColor = GUI.contentColor;
-                    GUI.color = Color.white;
-                    GUI.backgroundColor = Color.white;
-                    GUI.contentColor = Color.white;
-
-                    if (list != null && Event.current.type == EventType.Repaint)
+                    if (totalCount <= 0)
                     {
-                        GUIStyle listBackgroundStyle =
-                            ReorderableList.defaultBehaviours.boxBackground ?? GUI.skin.box;
-                        float headerHeight = Mathf.Max(0f, list.headerHeight);
-                        float footerHeight = Mathf.Max(0f, list.footerHeight);
-                        float bodyHeight = Mathf.Max(
-                            0f,
-                            listRect.height - headerHeight - footerHeight
-                        );
-                        if (bodyHeight > 0f)
+                        if (drewPendingEntry)
                         {
-                            float overlap = Mathf.Min(5f, bodyHeight);
-                            float bodyTop = listRect.y + headerHeight - overlap;
-                            float adjustedHeight = bodyHeight + overlap;
-                            Rect bodyRect = new(
-                                listRect.x,
-                                bodyTop,
-                                listRect.width,
-                                adjustedHeight
-                            );
-                            listBackgroundStyle.Draw(
-                                bodyRect,
-                                GUIContent.none,
-                                false,
-                                false,
-                                false,
-                                false
+                            float infoHeight = GetWarningBarHeight();
+                            Rect infoRect = new(position.x, y, position.width, infoHeight);
+                            EditorGUI.HelpBox(infoRect, "No entries yet.", MessageType.Info);
+                        }
+                        else
+                        {
+                            float emptyHeight = GetEmptySetDrawerHeight();
+                            Rect emptyRect = new(position.x, y, position.width, emptyHeight);
+                            LastItemsContainerRect = emptyRect;
+                            HasItemsContainerRect = true;
+                            DrawEmptySetDrawer(
+                                emptyRect,
+                                property,
+                                propertyPath,
+                                itemsProperty,
+                                pagination
                             );
                         }
                     }
-                    LastItemsContainerRect = listRect;
-                    HasItemsContainerRect = true;
-
-                    if (list != null)
-                    {
-                        list.DoList(listRect);
-                    }
                     else
                     {
-                        GUI.Box(listRect, GUIContent.none, EditorStyles.helpBox);
+                        UpdateListContext(
+                            listKey,
+                            property,
+                            itemsProperty,
+                            duplicateState,
+                            nullState,
+                            elementType
+                        );
+                        ReorderableList list = GetOrCreateList(
+                            listKey,
+                            property,
+                            itemsProperty,
+                            pagination,
+                            propertyPath,
+                            isSortedSet
+                        );
+                        float listHeight =
+                            list?.GetHeight()
+                            ?? GetPaginationHeaderHeight()
+                                + EditorGUIUtility.singleLineHeight
+                                    * Mathf.Max(1, Mathf.Min(totalCount, pagination.pageSize))
+                                + GetFooterHeight();
+                        Rect listRect = new(position.x, y, position.width, listHeight);
+
+                        // Always reset GUI colors to defaults for list drawing to prevent any
+                        // tinting of list container, footer backgrounds, and controls.
+                        // This ensures consistent rendering regardless of parent WGroup scope colors.
+                        // GUI.color affects GUIStyle.Draw tinting, GUI.backgroundColor affects button/field backgrounds,
+                        // GUI.contentColor affects label/text content tinting.
+                        Color listPreviousGuiColor = GUI.color;
+                        Color listPreviousBackgroundColor = GUI.backgroundColor;
+                        Color listPreviousContentColor = GUI.contentColor;
+                        GUI.color = Color.white;
+                        GUI.backgroundColor = Color.white;
+                        GUI.contentColor = Color.white;
+
+                        if (list != null && Event.current.type == EventType.Repaint)
+                        {
+                            GUIStyle listBackgroundStyle =
+                                ReorderableList.defaultBehaviours.boxBackground ?? GUI.skin.box;
+                            float headerHeight = Mathf.Max(0f, list.headerHeight);
+                            float footerHeight = Mathf.Max(0f, list.footerHeight);
+                            float bodyHeight = Mathf.Max(
+                                0f,
+                                listRect.height - headerHeight - footerHeight
+                            );
+                            if (bodyHeight > 0f)
+                            {
+                                float overlap = Mathf.Min(5f, bodyHeight);
+                                float bodyTop = listRect.y + headerHeight - overlap;
+                                float adjustedHeight = bodyHeight + overlap;
+                                Rect bodyRect = new(
+                                    listRect.x,
+                                    bodyTop,
+                                    listRect.width,
+                                    adjustedHeight
+                                );
+                                listBackgroundStyle.Draw(
+                                    bodyRect,
+                                    GUIContent.none,
+                                    false,
+                                    false,
+                                    false,
+                                    false
+                                );
+                            }
+                        }
+                        LastItemsContainerRect = listRect;
+                        HasItemsContainerRect = true;
+
+                        if (list != null)
+                        {
+                            list.DoList(listRect);
+                        }
+                        else
+                        {
+                            GUI.Box(listRect, GUIContent.none, EditorStyles.helpBox);
+                        }
+
+                        GUI.color = listPreviousGuiColor;
+                        GUI.backgroundColor = listPreviousBackgroundColor;
+                        GUI.contentColor = listPreviousContentColor;
                     }
 
-                    GUI.color = listPreviousGuiColor;
-                    GUI.backgroundColor = listPreviousBackgroundColor;
-                    GUI.contentColor = listPreviousContentColor;
+                    bool applied = serializedObject.ApplyModifiedProperties();
+                    if (applied)
+                    {
+                        SyncRuntimeSet(property);
+                    }
                 }
-
-                bool applied = serializedObject.ApplyModifiedProperties();
-                if (applied)
+                finally
                 {
-                    SyncRuntimeSet(property);
+                    EditorGUI.indentLevel = previousIndentScope;
+                    EditorGUI.EndProperty();
                 }
-            }
-            finally
-            {
-                EditorGUI.indentLevel = previousIndentScope;
-                EditorGUI.EndProperty();
-            }
         }
 
         private static Rect ResolveContentRect(Rect position, bool skipIndentation = false)

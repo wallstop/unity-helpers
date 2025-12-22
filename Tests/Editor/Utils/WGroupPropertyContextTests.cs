@@ -235,6 +235,77 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
+        public void ExitWGroupThemingClearsPaletteAndContextFlags()
+        {
+            GroupGUIWidthUtility.ResetForTests();
+
+            // Set up a WGroup context with palette and property context
+            using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+            {
+                Assert.That(
+                    GroupGUIWidthUtility.IsInsideWGroupPropertyDraw,
+                    Is.True,
+                    "Should be inside WGroup property context before exit."
+                );
+
+                // Exit the theming
+                using (GroupGUIWidthUtility.ExitWGroupTheming())
+                {
+                    Assert.That(
+                        GroupGUIWidthUtility.IsInsideWGroupPropertyDraw,
+                        Is.False,
+                        "Should NOT be inside WGroup property context while in ExitWGroupTheming scope."
+                    );
+
+                    Assert.That(
+                        GroupGUIWidthUtility.IsInsideWGroup,
+                        Is.False,
+                        "Should NOT be inside WGroup while in ExitWGroupTheming scope."
+                    );
+                }
+
+                // After exit scope ends, context should be restored
+                Assert.That(
+                    GroupGUIWidthUtility.IsInsideWGroupPropertyDraw,
+                    Is.True,
+                    "Should be restored to inside WGroup property context after ExitWGroupTheming scope ends."
+                );
+            }
+        }
+
+        [Test]
+        public void ExitWGroupThemingRestoresContextOnException()
+        {
+            GroupGUIWidthUtility.ResetForTests();
+
+            using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+            {
+                try
+                {
+                    using (GroupGUIWidthUtility.ExitWGroupTheming())
+                    {
+                        Assert.That(
+                            GroupGUIWidthUtility.IsInsideWGroupPropertyDraw,
+                            Is.False,
+                            "Should NOT be inside WGroup property context in exit scope."
+                        );
+                        throw new InvalidOperationException("Test exception");
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    // Expected
+                }
+
+                Assert.That(
+                    GroupGUIWidthUtility.IsInsideWGroupPropertyDraw,
+                    Is.True,
+                    "Should restore to inside WGroup property context after exception."
+                );
+            }
+        }
+
+        [Test]
         public void DictionaryInsideWGroupPropertyContextDoesNotApplyPadding()
         {
             // When inside WGroup property context, WGroup uses EditorGUILayout.PropertyField
