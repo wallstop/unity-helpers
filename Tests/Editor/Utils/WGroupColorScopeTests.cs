@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
 
     /// <summary>
@@ -1027,6 +1028,455 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Is.EqualTo(originalTextColor),
                 "HelpBox text color should be restored after scope disposal."
             );
+        }
+
+        [Test]
+        public void ExitWGroupThemingInsideActiveColorScopeResetsStyles()
+        {
+            if (!EditorGUIUtility.isProSkin)
+            {
+                Assert.Ignore("Test requires dark editor theme (Pro skin).");
+            }
+
+            using (var colorScope = new WGroupColorScope(LightPalette))
+            {
+                Assert.That(
+                    colorScope.IsActive,
+                    Is.True,
+                    "Light palette on dark editor should be active."
+                );
+
+                // WGroupColorScope has modified EditorStyles
+                // ExitWGroupTheming should reset them
+                using (GroupGUIWidthUtility.ExitWGroupTheming())
+                {
+                    // GUI colors should be reset to white
+                    Assert.That(
+                        GUI.contentColor,
+                        Is.EqualTo(Color.white),
+                        "ExitWGroupTheming should reset contentColor to white."
+                    );
+                    Assert.That(
+                        GUI.color,
+                        Is.EqualTo(Color.white),
+                        "ExitWGroupTheming should reset color to white."
+                    );
+                    Assert.That(
+                        GUI.backgroundColor,
+                        Is.EqualTo(Color.white),
+                        "ExitWGroupTheming should reset backgroundColor to white."
+                    );
+
+                    // EditorStyles should be reset to defaults (null backgrounds)
+                    Assert.That(
+                        EditorStyles.textField.normal.background,
+                        Is.Null,
+                        "ExitWGroupTheming should clear textField background."
+                    );
+                    Assert.That(
+                        EditorStyles.label.normal.textColor,
+                        Is.EqualTo(default(Color)),
+                        "ExitWGroupTheming should clear label textColor."
+                    );
+                }
+
+                // After ExitWGroupTheming scope ends, WGroupColorScope modifications should be restored
+                Assert.That(
+                    GUI.contentColor,
+                    Is.EqualTo(LightPalette.TextColor),
+                    "After ExitWGroupTheming ends, contentColor should be restored to palette text color."
+                );
+            }
+        }
+
+        [Test]
+        public void ExitWGroupThemingRestoresWGroupColorScopeModificationsOnDispose()
+        {
+            if (!EditorGUIUtility.isProSkin)
+            {
+                Assert.Ignore("Test requires dark editor theme (Pro skin).");
+            }
+
+            Texture2D originalTextFieldBg = EditorStyles.textField.normal.background;
+            Color originalLabelColor = EditorStyles.label.normal.textColor;
+
+            using (var colorScope = new WGroupColorScope(LightPalette))
+            {
+                Assert.That(colorScope.IsActive, Is.True);
+
+                // Capture what WGroupColorScope set
+                Texture2D wgroupTextFieldBg = EditorStyles.textField.normal.background;
+                Color wgroupLabelColor = EditorStyles.label.normal.textColor;
+
+                using (GroupGUIWidthUtility.ExitWGroupTheming())
+                {
+                    // Inside exit scope, backgrounds should be cleared but text colors preserved
+                    Assert.That(EditorStyles.textField.normal.background, Is.Null);
+                    Assert.That(
+                        EditorStyles.label.normal.textColor,
+                        Is.EqualTo(wgroupLabelColor),
+                        "Text colors should be preserved inside ExitWGroupTheming scope."
+                    );
+                }
+
+                // After exit scope, WGroupColorScope's modifications should be restored
+                Assert.That(
+                    EditorStyles.textField.normal.background,
+                    Is.EqualTo(wgroupTextFieldBg),
+                    "ExitWGroupTheming should restore WGroupColorScope's textField background."
+                );
+                Assert.That(
+                    EditorStyles.label.normal.textColor,
+                    Is.EqualTo(wgroupLabelColor),
+                    "ExitWGroupTheming should restore WGroupColorScope's label textColor."
+                );
+            }
+
+            // After WGroupColorScope ends, original values should be restored
+            Assert.That(
+                EditorStyles.textField.normal.background,
+                Is.EqualTo(originalTextFieldBg),
+                "After all scopes, original textField background should be restored."
+            );
+            Assert.That(
+                EditorStyles.label.normal.textColor,
+                Is.EqualTo(originalLabelColor),
+                "After all scopes, original label textColor should be restored."
+            );
+        }
+
+        [Test]
+        public void ExitWGroupThemingWhenColorScopeNotActiveStillWorks()
+        {
+            // When not cross-theme, WGroupColorScope won't be active, but ExitWGroupTheming should still work
+            UnityHelpersSettings.WGroupPaletteEntry matchingPalette = EditorGUIUtility.isProSkin
+                ? DarkPalette
+                : LightPalette;
+
+            using (var colorScope = new WGroupColorScope(matchingPalette))
+            {
+                // Not active because palette matches editor theme
+                Assert.That(
+                    colorScope.IsActive,
+                    Is.False,
+                    "Matching palette should not be cross-theme."
+                );
+
+                Color beforeContentColor = GUI.contentColor;
+
+                using (GroupGUIWidthUtility.ExitWGroupTheming())
+                {
+                    // Should still reset to white
+                    Assert.That(GUI.contentColor, Is.EqualTo(Color.white));
+                }
+
+                // Should restore
+                Assert.That(GUI.contentColor, Is.EqualTo(beforeContentColor));
+            }
+        }
+
+        [Test]
+        public void NestedWGroupColorScopesWithExitWGroupThemingInMiddle()
+        {
+            if (!EditorGUIUtility.isProSkin)
+            {
+                Assert.Ignore("Test requires dark editor theme (Pro skin).");
+            }
+
+            Color originalContentColor = GUI.contentColor;
+
+            using (var outerScope = new WGroupColorScope(LightPalette))
+            {
+                Assert.That(outerScope.IsActive, Is.True);
+                Color outerContentColor = GUI.contentColor;
+
+                using (var innerScope = new WGroupColorScope(VeryLightPalette))
+                {
+                    Color innerContentColor = GUI.contentColor;
+
+                    using (GroupGUIWidthUtility.ExitWGroupTheming())
+                    {
+                        // Inside exit scope, all theming cleared
+                        Assert.That(GUI.contentColor, Is.EqualTo(Color.white));
+                        Assert.That(GroupGUIWidthUtility.IsInsideWGroup, Is.False);
+                    }
+
+                    // After exit scope, should restore to inner scope's state
+                    Assert.That(
+                        GUI.contentColor,
+                        Is.EqualTo(innerContentColor),
+                        "After exit scope, should restore to inner scope content color."
+                    );
+                }
+
+                // After inner scope, should restore to outer scope's state
+                Assert.That(
+                    GUI.contentColor,
+                    Is.EqualTo(outerContentColor),
+                    "After inner scope, should restore to outer scope content color."
+                );
+            }
+
+            // After all scopes, should restore to original
+            Assert.That(
+                GUI.contentColor,
+                Is.EqualTo(originalContentColor),
+                "After all scopes, should restore to original content color."
+            );
+        }
+
+        [Test]
+        public void ExitWGroupThemingExceptionSafetyWithActiveColorScope()
+        {
+            if (!EditorGUIUtility.isProSkin)
+            {
+                Assert.Ignore("Test requires dark editor theme (Pro skin).");
+            }
+
+            using (var colorScope = new WGroupColorScope(LightPalette))
+            {
+                Assert.That(colorScope.IsActive, Is.True);
+                Color wgroupContentColor = GUI.contentColor;
+                Texture2D wgroupTextFieldBg = EditorStyles.textField.normal.background;
+
+                try
+                {
+                    using (GroupGUIWidthUtility.ExitWGroupTheming())
+                    {
+                        Assert.That(GUI.contentColor, Is.EqualTo(Color.white));
+                        throw new System.InvalidOperationException("Test exception");
+                    }
+                }
+                catch (System.InvalidOperationException)
+                {
+                    // Expected
+                }
+
+                // After exception, WGroupColorScope's state should be restored
+                Assert.That(
+                    GUI.contentColor,
+                    Is.EqualTo(wgroupContentColor),
+                    "After exception, contentColor should be restored to WGroupColorScope's value."
+                );
+                Assert.That(
+                    EditorStyles.textField.normal.background,
+                    Is.EqualTo(wgroupTextFieldBg),
+                    "After exception, textField background should be restored to WGroupColorScope's value."
+                );
+            }
+        }
+
+        [Test]
+        public void MultipleExitWGroupThemingScopesInsideSameColorScope()
+        {
+            if (!EditorGUIUtility.isProSkin)
+            {
+                Assert.Ignore("Test requires dark editor theme (Pro skin).");
+            }
+
+            using (var colorScope = new WGroupColorScope(LightPalette))
+            {
+                Assert.That(colorScope.IsActive, Is.True);
+                Color wgroupContentColor = GUI.contentColor;
+
+                // First exit scope
+                using (GroupGUIWidthUtility.ExitWGroupTheming())
+                {
+                    Assert.That(GUI.contentColor, Is.EqualTo(Color.white));
+                }
+
+                Assert.That(
+                    GUI.contentColor,
+                    Is.EqualTo(wgroupContentColor),
+                    "After first exit scope, should restore."
+                );
+
+                // Second exit scope
+                using (GroupGUIWidthUtility.ExitWGroupTheming())
+                {
+                    Assert.That(GUI.contentColor, Is.EqualTo(Color.white));
+                }
+
+                Assert.That(
+                    GUI.contentColor,
+                    Is.EqualTo(wgroupContentColor),
+                    "After second exit scope, should restore."
+                );
+            }
+        }
+
+        [Test]
+        public void ExitWGroupThemingAllBackgroundStatesAreNullInsideScope()
+        {
+            if (!EditorGUIUtility.isProSkin)
+            {
+                Assert.Ignore("Test requires dark editor theme (Pro skin).");
+            }
+
+            using (var colorScope = new WGroupColorScope(LightPalette))
+            {
+                Assert.That(colorScope.IsActive, Is.True);
+
+                using (GroupGUIWidthUtility.ExitWGroupTheming())
+                {
+                    // Check all 8 background states for textField
+                    Assert.That(EditorStyles.textField.normal.background, Is.Null);
+                    Assert.That(EditorStyles.textField.focused.background, Is.Null);
+                    Assert.That(EditorStyles.textField.active.background, Is.Null);
+                    Assert.That(EditorStyles.textField.hover.background, Is.Null);
+                    Assert.That(EditorStyles.textField.onNormal.background, Is.Null);
+                    Assert.That(EditorStyles.textField.onFocused.background, Is.Null);
+                    Assert.That(EditorStyles.textField.onActive.background, Is.Null);
+                    Assert.That(EditorStyles.textField.onHover.background, Is.Null);
+
+                    // Check popup too
+                    Assert.That(EditorStyles.popup.normal.background, Is.Null);
+                    Assert.That(EditorStyles.popup.focused.background, Is.Null);
+                }
+            }
+        }
+
+        [Test]
+        public void ExitWGroupThemingAllTextColorStatesArePreservedInsideScope()
+        {
+            if (!EditorGUIUtility.isProSkin)
+            {
+                Assert.Ignore("Test requires dark editor theme (Pro skin).");
+            }
+
+            using (var colorScope = new WGroupColorScope(LightPalette))
+            {
+                Assert.That(colorScope.IsActive, Is.True);
+
+                // Capture text colors set by WGroupColorScope
+                Color labelNormal = EditorStyles.label.normal.textColor;
+                Color labelFocused = EditorStyles.label.focused.textColor;
+                Color labelActive = EditorStyles.label.active.textColor;
+                Color labelHover = EditorStyles.label.hover.textColor;
+                Color labelOnNormal = EditorStyles.label.onNormal.textColor;
+                Color labelOnFocused = EditorStyles.label.onFocused.textColor;
+                Color labelOnActive = EditorStyles.label.onActive.textColor;
+                Color labelOnHover = EditorStyles.label.onHover.textColor;
+                Color foldoutNormal = EditorStyles.foldout.normal.textColor;
+
+                using (GroupGUIWidthUtility.ExitWGroupTheming())
+                {
+                    // Text colors should be preserved (not cleared) to keep labels visible
+                    Assert.That(
+                        EditorStyles.label.normal.textColor,
+                        Is.EqualTo(labelNormal),
+                        "label.normal.textColor should be preserved"
+                    );
+                    Assert.That(
+                        EditorStyles.label.focused.textColor,
+                        Is.EqualTo(labelFocused),
+                        "label.focused.textColor should be preserved"
+                    );
+                    Assert.That(
+                        EditorStyles.label.active.textColor,
+                        Is.EqualTo(labelActive),
+                        "label.active.textColor should be preserved"
+                    );
+                    Assert.That(
+                        EditorStyles.label.hover.textColor,
+                        Is.EqualTo(labelHover),
+                        "label.hover.textColor should be preserved"
+                    );
+                    Assert.That(
+                        EditorStyles.label.onNormal.textColor,
+                        Is.EqualTo(labelOnNormal),
+                        "label.onNormal.textColor should be preserved"
+                    );
+                    Assert.That(
+                        EditorStyles.label.onFocused.textColor,
+                        Is.EqualTo(labelOnFocused),
+                        "label.onFocused.textColor should be preserved"
+                    );
+                    Assert.That(
+                        EditorStyles.label.onActive.textColor,
+                        Is.EqualTo(labelOnActive),
+                        "label.onActive.textColor should be preserved"
+                    );
+                    Assert.That(
+                        EditorStyles.label.onHover.textColor,
+                        Is.EqualTo(labelOnHover),
+                        "label.onHover.textColor should be preserved"
+                    );
+                    Assert.That(
+                        EditorStyles.foldout.normal.textColor,
+                        Is.EqualTo(foldoutNormal),
+                        "foldout.normal.textColor should be preserved"
+                    );
+                }
+            }
+        }
+
+        [Test]
+        public void ExitWGroupThemingRestoresAll12StylesAfterActiveColorScope()
+        {
+            if (!EditorGUIUtility.isProSkin)
+            {
+                Assert.Ignore("Test requires dark editor theme (Pro skin).");
+            }
+
+            using (var colorScope = new WGroupColorScope(LightPalette))
+            {
+                Assert.That(colorScope.IsActive, Is.True);
+
+                // Capture WGroupColorScope's modifications
+                Texture2D wgroupTextFieldBg = EditorStyles.textField.normal.background;
+                Texture2D wgroupNumberFieldBg = EditorStyles.numberField.normal.background;
+                Texture2D wgroupObjectFieldBg = EditorStyles.objectField.normal.background;
+                Texture2D wgroupPopupBg = EditorStyles.popup.normal.background;
+                Texture2D wgroupHelpBoxBg = EditorStyles.helpBox.normal.background;
+                Color wgroupFoldoutColor = EditorStyles.foldout.normal.textColor;
+                Color wgroupLabelColor = EditorStyles.label.normal.textColor;
+                Color wgroupToggleColor = EditorStyles.toggle.normal.textColor;
+                Color wgroupMiniButtonColor = EditorStyles.miniButton.normal.textColor;
+                Color wgroupMiniButtonLeftColor = EditorStyles.miniButtonLeft.normal.textColor;
+                Color wgroupMiniButtonMidColor = EditorStyles.miniButtonMid.normal.textColor;
+                Color wgroupMiniButtonRightColor = EditorStyles.miniButtonRight.normal.textColor;
+
+                using (GroupGUIWidthUtility.ExitWGroupTheming())
+                {
+                    // All should be reset inside scope
+                }
+
+                // All 12 should be restored after exit scope
+                Assert.That(
+                    EditorStyles.textField.normal.background,
+                    Is.EqualTo(wgroupTextFieldBg)
+                );
+                Assert.That(
+                    EditorStyles.numberField.normal.background,
+                    Is.EqualTo(wgroupNumberFieldBg)
+                );
+                Assert.That(
+                    EditorStyles.objectField.normal.background,
+                    Is.EqualTo(wgroupObjectFieldBg)
+                );
+                Assert.That(EditorStyles.popup.normal.background, Is.EqualTo(wgroupPopupBg));
+                Assert.That(EditorStyles.helpBox.normal.background, Is.EqualTo(wgroupHelpBoxBg));
+                Assert.That(EditorStyles.foldout.normal.textColor, Is.EqualTo(wgroupFoldoutColor));
+                Assert.That(EditorStyles.label.normal.textColor, Is.EqualTo(wgroupLabelColor));
+                Assert.That(EditorStyles.toggle.normal.textColor, Is.EqualTo(wgroupToggleColor));
+                Assert.That(
+                    EditorStyles.miniButton.normal.textColor,
+                    Is.EqualTo(wgroupMiniButtonColor)
+                );
+                Assert.That(
+                    EditorStyles.miniButtonLeft.normal.textColor,
+                    Is.EqualTo(wgroupMiniButtonLeftColor)
+                );
+                Assert.That(
+                    EditorStyles.miniButtonMid.normal.textColor,
+                    Is.EqualTo(wgroupMiniButtonMidColor)
+                );
+                Assert.That(
+                    EditorStyles.miniButtonRight.normal.textColor,
+                    Is.EqualTo(wgroupMiniButtonRightColor)
+                );
+            }
         }
 
         [Test]

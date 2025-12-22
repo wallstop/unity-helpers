@@ -294,24 +294,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 GUI.color = Color.white;
                 GUI.backgroundColor = Color.white;
 
-                // Reset EditorStyles to their default values by clearing any custom backgrounds/colors
-                // We do this by getting fresh copies from EditorStyles and restoring them
-                // For now, we just clear any custom texture backgrounds to let Unity use defaults
-                ResetStyleToDefaults(EditorStyles.textField);
-                ResetStyleToDefaults(EditorStyles.numberField);
-                ResetStyleToDefaults(EditorStyles.objectField);
-                ResetStyleToDefaults(EditorStyles.popup);
-                ResetStyleToDefaults(EditorStyles.helpBox);
-                ResetStyleTextColors(EditorStyles.foldout);
-                ResetStyleTextColors(EditorStyles.label);
-                ResetStyleTextColors(EditorStyles.toggle);
-                ResetStyleTextColors(EditorStyles.miniButton);
-                ResetStyleTextColors(EditorStyles.miniButtonLeft);
-                ResetStyleTextColors(EditorStyles.miniButtonMid);
-                ResetStyleTextColors(EditorStyles.miniButtonRight);
+                // Reset EditorStyles backgrounds to null so Unity uses its internal defaults.
+                // We only clear backgrounds (not text colors) because:
+                // 1. WGroupColorScope sets custom background textures that need to be removed
+                // 2. Text colors set to default(Color) can make text invisible in some contexts
+                // 3. The saved state will restore everything properly on dispose anyway
+                ResetStyleBackgrounds(EditorStyles.textField);
+                ResetStyleBackgrounds(EditorStyles.numberField);
+                ResetStyleBackgrounds(EditorStyles.objectField);
+                ResetStyleBackgrounds(EditorStyles.popup);
+                ResetStyleBackgrounds(EditorStyles.helpBox);
+                // For text-only styles (foldout, label, toggle, miniButton variants),
+                // we don't reset anything - just rely on save/restore
             }
 
-            private static void ResetStyleToDefaults(GUIStyle style)
+            private static void ResetStyleBackgrounds(GUIStyle style)
             {
                 if (style == null)
                 {
@@ -327,34 +324,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 style.onFocused.background = null;
                 style.onActive.background = null;
                 style.onHover.background = null;
-
-                // Reset text colors to default (clear/transparent means use default)
-                style.normal.textColor = default;
-                style.focused.textColor = default;
-                style.active.textColor = default;
-                style.hover.textColor = default;
-                style.onNormal.textColor = default;
-                style.onFocused.textColor = default;
-                style.onActive.textColor = default;
-                style.onHover.textColor = default;
-            }
-
-            private static void ResetStyleTextColors(GUIStyle style)
-            {
-                if (style == null)
-                {
-                    return;
-                }
-
-                // Only reset text colors for styles where WGroupColorScope only changes text
-                style.normal.textColor = default;
-                style.focused.textColor = default;
-                style.active.textColor = default;
-                style.hover.textColor = default;
-                style.onNormal.textColor = default;
-                style.onFocused.textColor = default;
-                style.onActive.textColor = default;
-                style.onHover.textColor = default;
             }
 
             public void Dispose()
