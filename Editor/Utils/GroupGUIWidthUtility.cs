@@ -106,6 +106,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         private static int _scopeDepth;
         private static bool _isInsideWGroupPropertyDraw;
         private static UnityHelpersSettings.WGroupPaletteEntry? _currentPalette;
+        private static WGroupThemeState? _currentThemeState;
 
         internal static float CurrentHorizontalPadding => _totalPadding;
         internal static float CurrentLeftPadding => _totalLeftPadding;
@@ -113,6 +114,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         internal static int CurrentScopeDepth => _scopeDepth;
 
         internal static bool IsInsideWGroupPropertyDraw => _isInsideWGroupPropertyDraw;
+
+        internal static WGroupThemeState? CurrentThemeState => _currentThemeState;
 
         /// <summary>
         /// Gets whether code is currently executing inside any WGroup scope.
@@ -135,6 +138,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             _scopeDepth = 0;
             _isInsideWGroupPropertyDraw = false;
             _currentPalette = null;
+            _currentThemeState = null;
         }
 
         internal static IDisposable PushWGroupPropertyContext()
@@ -152,6 +156,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             return new WGroupPaletteScope(palette);
         }
 
+        internal static void ApplyCurrentThemeColors()
+        {
+            if (_currentThemeState.HasValue)
+            {
+                WGroupThemeState state = _currentThemeState.Value;
+                GUI.color = state.GuiColor;
+                GUI.contentColor = state.ContentColor;
+                GUI.backgroundColor = state.BackgroundColor;
+                return;
+            }
+
+            GUI.color = Color.white;
+            GUI.contentColor = Color.white;
+            GUI.backgroundColor = Color.white;
+        }
+
         /// <summary>
         /// Creates a scope that temporarily exits WGroup theming context.
         /// Within this scope, IsInsideWGroup will return false and GUI colors will be reset to defaults.
@@ -161,6 +181,42 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         internal static IDisposable ExitWGroupTheming()
         {
             return new ExitWGroupThemingScope();
+        }
+
+        /// <summary>
+        /// Creates a scope that temporarily restores WGroup theming colors.
+        /// Use this INSIDE an ExitWGroupTheming scope when you need to draw specific elements
+        /// (like foldout labels) that should still use WGroup palette colors because they
+        /// render against the WGroup background.
+        /// </summary>
+        /// <param name="savedColors">The saved GUI colors to restore (from before exiting theming).</param>
+        internal static IDisposable RestoreWGroupTheming(WGroupSavedColors savedColors)
+        {
+            return new RestoreWGroupThemingScope(savedColors);
+        }
+
+        /// <summary>
+        /// Captures the current WGroup GUI colors before exiting theming.
+        /// Call this BEFORE entering ExitWGroupTheming to save the colors for later restoration.
+        /// </summary>
+        internal static WGroupSavedColors CaptureWGroupColors()
+        {
+            return new WGroupSavedColors
+            {
+                ContentColor = GUI.contentColor,
+                Color = GUI.color,
+                BackgroundColor = GUI.backgroundColor,
+            };
+        }
+
+        /// <summary>
+        /// Stores saved WGroup GUI colors for temporary restoration.
+        /// </summary>
+        internal struct WGroupSavedColors
+        {
+            public Color ContentColor;
+            public Color Color;
+            public Color BackgroundColor;
         }
 
         /// <summary>
@@ -185,6 +241,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             public Color OnActiveTextColor;
             public Color OnHoverTextColor;
             public bool IsValid;
+        }
+
+        internal readonly struct WGroupThemeState
+        {
+            public readonly Color GuiColor;
+            public readonly Color ContentColor;
+            public readonly Color BackgroundColor;
+
+            internal WGroupThemeState(Color guiColor, Color contentColor, Color backgroundColor)
+            {
+                GuiColor = guiColor;
+                ContentColor = contentColor;
+                BackgroundColor = backgroundColor;
+            }
         }
 
         private static StyleState SaveFullStyleState(GUIStyle style)
@@ -248,6 +318,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             private readonly Color _previousContentColor;
             private readonly Color _previousColor;
             private readonly Color _previousBackgroundColor;
+            private readonly WGroupThemeState? _previousThemeState;
 
             // Saved EditorStyles states - WGroupColorScope modifies these globally
             private readonly StyleState _savedTextField;
@@ -272,6 +343,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 _previousContentColor = GUI.contentColor;
                 _previousColor = GUI.color;
                 _previousBackgroundColor = GUI.backgroundColor;
+                _previousThemeState = _currentThemeState;
 
                 // Save current EditorStyles state (which may have been modified by WGroupColorScope)
                 _savedTextField = SaveFullStyleState(EditorStyles.textField);
@@ -289,25 +361,74 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                 // Clear WGroup context
                 _currentPalette = null;
+                _currentThemeState = null;
                 _isInsideWGroupPropertyDraw = false;
 
-                // Reset GUI colors to defaults
-                GUI.contentColor = Color.white;
+                // Reset GUI colors to skin-appropriate defaults
+                // GUI.contentColor is the main control for text rendering color - must be reset!
+                // Pro skin (dark theme) uses light text, Personal skin (light theme) uses dark text
+                Color skinTextColor = EditorGUIUtility.isProSkin
+                    ? new Color(0.82f, 0.82f, 0.82f, 1f) // Light gray for dark theme
+                    : new Color(0.09f, 0.09f, 0.09f, 1f); // Dark gray for light theme
+                GUI.contentColor = skinTextColor;
                 GUI.color = Color.white;
                 GUI.backgroundColor = Color.white;
 
-                // Reset EditorStyles backgrounds to null so Unity uses its internal defaults.
-                // We only clear backgrounds (not text colors) because:
-                // 1. WGroupColorScope sets custom background textures that need to be removed
-                // 2. Text colors set to default(Color) can make text invisible in some contexts
-                // 3. The saved state will restore everything properly on dispose anyway
-                ResetStyleBackgrounds(EditorStyles.textField);
-                ResetStyleBackgrounds(EditorStyles.numberField);
-                ResetStyleBackgrounds(EditorStyles.objectField);
-                ResetStyleBackgrounds(EditorStyles.popup);
-                ResetStyleBackgrounds(EditorStyles.helpBox);
-                // For text-only styles (foldout, label, toggle, miniButton variants),
-                // we don't reset anything - just rely on save/restore
+                // Reset EditorStyles backgrounds to Unity defaults (null = use internal default)
+                // WGroupColorScope modifies backgrounds on EditorStyles.
+                ResetStyleToSkinDefaults(EditorStyles.textField);
+                ResetStyleToSkinDefaults(EditorStyles.numberField);
+                ResetStyleToSkinDefaults(EditorStyles.objectField);
+                ResetStyleToSkinDefaults(EditorStyles.popup);
+                ResetStyleToSkinDefaults(EditorStyles.helpBox);
+                ResetStyleToSkinDefaults(EditorStyles.foldout);
+                ResetStyleToSkinDefaults(EditorStyles.label);
+                ResetStyleToSkinDefaults(EditorStyles.boldLabel);
+                ResetStyleToSkinDefaults(EditorStyles.toggle);
+                ResetStyleToSkinDefaults(EditorStyles.miniButton);
+                ResetStyleToSkinDefaults(EditorStyles.miniButtonLeft);
+                ResetStyleToSkinDefaults(EditorStyles.miniButtonMid);
+                ResetStyleToSkinDefaults(EditorStyles.miniButtonRight);
+                ResetStyleToSkinDefaults(EditorStyles.miniLabel);
+
+                // Reset text colors from GUI.skin which has the correct skin-specific defaults
+                // GUI.skin styles have the proper text colors for light/dark themes
+                // Use EditorGUIUtility.isProSkin to determine the correct text color
+                // Pro skin (dark theme) uses light text, Personal skin (light theme) uses dark text
+                skinTextColor = EditorGUIUtility.isProSkin
+                    ? new Color(0.82f, 0.82f, 0.82f, 1f) // Light gray for dark theme
+                    : new Color(0.09f, 0.09f, 0.09f, 1f); // Dark gray for light theme
+
+                SetStyleTextColor(EditorStyles.label, skinTextColor);
+                SetStyleTextColor(EditorStyles.boldLabel, skinTextColor);
+                SetStyleTextColor(EditorStyles.toggle, skinTextColor);
+                SetStyleTextColor(EditorStyles.foldout, skinTextColor);
+                SetStyleTextColor(EditorStyles.miniLabel, skinTextColor);
+
+                // For input fields and buttons, also use the skin text color
+                SetStyleTextColor(EditorStyles.textField, skinTextColor);
+                SetStyleTextColor(EditorStyles.numberField, skinTextColor);
+                SetStyleTextColor(EditorStyles.miniButton, skinTextColor);
+                SetStyleTextColor(EditorStyles.miniButtonLeft, skinTextColor);
+                SetStyleTextColor(EditorStyles.miniButtonMid, skinTextColor);
+                SetStyleTextColor(EditorStyles.miniButtonRight, skinTextColor);
+            }
+
+            private static void SetStyleTextColor(GUIStyle style, Color color)
+            {
+                if (style == null)
+                {
+                    return;
+                }
+
+                style.normal.textColor = color;
+                style.hover.textColor = color;
+                style.active.textColor = color;
+                style.focused.textColor = color;
+                style.onNormal.textColor = color;
+                style.onHover.textColor = color;
+                style.onActive.textColor = color;
+                style.onFocused.textColor = color;
             }
 
             private static void ResetStyleBackgrounds(GUIStyle style)
@@ -326,6 +447,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 style.onFocused.background = null;
                 style.onActive.background = null;
                 style.onHover.background = null;
+            }
+
+            private static void ResetStyleToSkinDefaults(GUIStyle style)
+            {
+                if (style == null)
+                {
+                    return;
+                }
+
+                // Clear any custom backgrounds - Unity will use its internal defaults
+                style.normal.background = null;
+                style.focused.background = null;
+                style.active.background = null;
+                style.hover.background = null;
+                style.onNormal.background = null;
+                style.onFocused.background = null;
+                style.onActive.background = null;
+                style.onHover.background = null;
+
+                // Don't reset text colors - we'll copy from the skin's defaults below
             }
 
             public void Dispose()
@@ -353,6 +494,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                 // Restore WGroup context
                 _currentPalette = _previousPalette;
+                _currentThemeState = _previousThemeState;
                 _isInsideWGroupPropertyDraw = _previousIsInsideWGroupPropertyDraw;
 
                 // Restore GUI colors
@@ -362,15 +504,59 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             }
         }
 
+        /// <summary>
+        /// Temporarily restores WGroup GUI colors within an ExitWGroupTheming scope.
+        /// Used for drawing elements like foldout labels that need WGroup theming
+        /// because they render against the WGroup background.
+        /// </summary>
+        private sealed class RestoreWGroupThemingScope : IDisposable
+        {
+            private readonly Color _savedContentColor;
+            private readonly Color _savedColor;
+            private readonly Color _savedBackgroundColor;
+            private bool _disposed;
+
+            internal RestoreWGroupThemingScope(WGroupSavedColors colors)
+            {
+                // Save current (non-themed) colors
+                _savedContentColor = GUI.contentColor;
+                _savedColor = GUI.color;
+                _savedBackgroundColor = GUI.backgroundColor;
+
+                // Restore WGroup themed colors
+                GUI.contentColor = colors.ContentColor;
+                GUI.color = colors.Color;
+                GUI.backgroundColor = colors.BackgroundColor;
+            }
+
+            public void Dispose()
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _disposed = true;
+
+                // Restore non-themed colors
+                GUI.contentColor = _savedContentColor;
+                GUI.color = _savedColor;
+                GUI.backgroundColor = _savedBackgroundColor;
+            }
+        }
+
         private sealed class WGroupPaletteScope : IDisposable
         {
             private readonly UnityHelpersSettings.WGroupPaletteEntry? _previousPalette;
+            private readonly WGroupThemeState? _previousThemeState;
             private bool _disposed;
 
             internal WGroupPaletteScope(UnityHelpersSettings.WGroupPaletteEntry palette)
             {
                 _previousPalette = _currentPalette;
+                _previousThemeState = _currentThemeState;
                 _currentPalette = palette;
+                _currentThemeState = BuildThemeState(palette);
             }
 
             public void Dispose()
@@ -382,6 +568,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                 _disposed = true;
                 _currentPalette = _previousPalette;
+                _currentThemeState = _previousThemeState;
             }
         }
 
@@ -795,6 +982,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             }
 
             return !EditorGUIUtility.isProSkin;
+        }
+
+        private static WGroupThemeState BuildThemeState(
+            UnityHelpersSettings.WGroupPaletteEntry palette
+        )
+        {
+            Color themeBackground = WGroupColorScope.CalculateFieldBackgroundColor(
+                palette.BackgroundColor
+            );
+            return new WGroupThemeState(Color.white, palette.TextColor, themeBackground);
         }
     }
 #endif

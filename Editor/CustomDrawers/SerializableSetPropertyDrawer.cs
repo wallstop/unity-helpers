@@ -679,25 +679,43 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
+            // Check if we're inside a WGroup BEFORE exiting theming - we need this info
+            // to know whether to draw custom backgrounds (to override Unity's tinted defaults)
+            bool wasInsideWGroup = GroupGUIWidthUtility.CurrentScopeDepth > 0;
+
+            // Capture WGroup colors BEFORE exiting theming - we need these for the foldout label
+            // which renders against the WGroup background and should use WGroup text colors.
+            GroupGUIWidthUtility.WGroupSavedColors savedColors =
+                GroupGUIWidthUtility.CaptureWGroupColors();
+
+            // Exit WGroup theming entirely - serializable collections manage their own styling.
+            // This clears the palette context so GetPaletteRowColor etc. use fallback colors.
+            using (GroupGUIWidthUtility.ExitWGroupTheming())
+            {
+                OnGUIInternal(position, property, label, wasInsideWGroup, savedColors);
+            }
+        }
+
+        private void OnGUIInternal(
+            Rect position,
+            SerializedProperty property,
+            GUIContent label,
+            bool wasInsideWGroup,
+            GroupGUIWidthUtility.WGroupSavedColors wgroupColors
+        )
+        {
             Rect originalPosition = position;
             bool targetsSettings = TargetsUnityHelpersSettings(property?.serializedObject);
             Rect contentPosition = ResolveContentRect(originalPosition, targetsSettings);
             LastResolvedPosition = contentPosition;
             HasItemsContainerRect = false;
 
-            // Log all tween settings on first draw or when inside WGroup for debugging
-            if (GroupGUIWidthUtility.CurrentScopeDepth > 0)
-            {
-                SerializableCollectionTweenDiagnostics.LogAllTweenSettings(
-                    $"OnGUI_InWGroup (path={property?.propertyPath ?? "(null)"})"
-                );
-            }
-
             EditorGUI.BeginProperty(originalPosition, label, property);
             int previousIndentScope = EditorGUI.indentLevel;
 
-            // Track if we're inside a WGroup for custom background drawing
-            _currentDrawInsideWGroup = GroupGUIWidthUtility.CurrentScopeDepth > 0;
+            // Track if we need custom backgrounds to override Unity's tinted defaults.
+            // We opt out of WGroup color theming but still need to draw our own backgrounds.
+            _currentDrawInsideWGroup = wasInsideWGroup;
 
             try
             {
@@ -749,12 +767,29 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     );
                 }
 
-                property.isExpanded = EditorGUI.Foldout(
-                    foldoutRect,
-                    property.isExpanded,
-                    foldoutLabel,
-                    true
-                );
+                // Foldout label and icon use WGroup theming since they render against WGroup background.
+                // Temporarily restore WGroup colors just for the foldout draw.
+                if (wasInsideWGroup)
+                {
+                    using (GroupGUIWidthUtility.RestoreWGroupTheming(wgroupColors))
+                    {
+                        property.isExpanded = EditorGUI.Foldout(
+                            foldoutRect,
+                            property.isExpanded,
+                            foldoutLabel,
+                            true
+                        );
+                    }
+                }
+                else
+                {
+                    property.isExpanded = EditorGUI.Foldout(
+                        foldoutRect,
+                        property.isExpanded,
+                        foldoutLabel,
+                        true
+                    );
+                }
 
                 // Track the foldout rect for testing
                 HasLastMainFoldoutRect = true;

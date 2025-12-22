@@ -135,6 +135,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             SerializedProperty property
         );
 
+        public static void DrawRectUntinted(Rect rect, Color color)
+        {
+            Color previousColor = GUI.color;
+            GUI.color = Color.white;
+            EditorGUI.DrawRect(rect, color);
+            GUI.color = previousColor;
+        }
+
         /// <summary>
         /// Draws a group using a pre-built property lookup to avoid FindProperty allocations.
         /// </summary>
@@ -189,7 +197,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 backgroundRect.xMax -= 2f;
                 backgroundRect.yMin += 2f;
                 backgroundRect.yMax -= 2f;
+                // Save and reset GUI.color to ensure WGroup background renders with true palette color
+                Color savedColor = GUI.color;
+                GUI.color = Color.white;
                 EditorGUI.DrawRect(backgroundRect, palette.BackgroundColor);
+                GUI.color = savedColor;
             }
 
             {
@@ -212,6 +224,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                     bool visible = EditorGUILayout.BeginFadeGroup(fade);
                     if (visible)
                     {
+                        // Reset GUI.color to white after FadeGroup modifies it.
+                        // FadeGroup sets GUI.color.alpha = fade for animation, but this causes
+                        // solid-colored backgrounds, buttons, and other texture-based elements
+                        // to appear tinted. We handle the visual fade through other means.
+                        GUI.color = Color.white;
+
                         DrawGroupContent(
                             definition,
                             serializedObject,
@@ -278,6 +296,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
             int originalIndent = EditorGUI.indentLevel;
             EditorGUI.indentLevel = 0;
+            // Reset GUI.color to prevent tinting of foldout arrow texture
+            Color savedColor = GUI.color;
+            GUI.color = Color.white;
             expanded = EditorGUI.Foldout(
                 foldoutRect,
                 expanded,
@@ -285,6 +306,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 true,
                 foldoutStyle
             );
+            GUI.color = savedColor;
             EditorGUI.indentLevel = originalIndent;
 
             WGroupStyles.DrawHeaderBorder(headerRect, palette.BackgroundColor);
@@ -439,6 +461,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                             continue;
                         }
 
+                        // Check if this is a serializable collection type that should not
+                        // be affected by WGroup color theming (dictionaries, sets, arrays, lists)
+                        bool isSerializableCollection = IsSerializableCollectionProperty(property);
+
                         // All properties are drawn within a WGroup property context.
                         // Custom drawers can check GroupGUIWidthUtility.IsInsideWGroupPropertyDraw
                         // to detect they're inside a WGroup and adjust their layout accordingly.
@@ -446,7 +472,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                         // drawers can handle their own layout knowing they're in WGroup context.
                         using (GroupGUIWidthUtility.PushWGroupPropertyContext())
                         {
-                            if (property.hasVisibleChildren)
+                            if (isSerializableCollection)
+                            {
+                                // Exit WGroup theming for serializable collections
+                                // These have their own visual style that shouldn't be tinted
+                                GroupGUIWidthUtility.ExitWGroupTheming();
+                                // Don't override contentColor - let Unity use skin-appropriate text color
+                                EditorGUI.PropertyField(
+                                    EditorGUILayout.GetControlRect(
+                                        false,
+                                        EditorGUI.GetPropertyHeight(property, true)
+                                    ),
+                                    property,
+                                    true
+                                );
+                            }
+                            else if (property.hasVisibleChildren)
                             {
                                 colorScope.DrawPropertyFieldWithBackground(property, true);
                             }
@@ -489,6 +530,49 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         {
             float spacing = Mathf.Max(1f, EditorGUIUtility.standardVerticalSpacing);
             GUILayout.Space(spacing);
+        }
+
+        /// <summary>
+        /// Determines if a property is a serializable collection type that should
+        /// not be affected by WGroup color theming. This includes:
+        /// - SerializableDictionary
+        /// - SerializableHashSet
+        /// - Arrays and Lists (rendered as reorderable lists)
+        /// </summary>
+        private static bool IsSerializableCollectionProperty(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return false;
+            }
+
+            string type = property.type;
+
+            // Check for SerializableDictionary<K,V> (mangled as SerializableDictionary`2)
+            if (type.StartsWith("SerializableDictionary", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            // Check for SerializableHashSet<T> (mangled as SerializableHashSet`1)
+            if (type.StartsWith("SerializableHashSet", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            // Check for SerializableSortedDictionary<K,V>
+            if (type.StartsWith("SerializableSortedDictionary", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            // Check for arrays and lists (excluding strings which are also isArray)
+            if (property.isArray && property.propertyType != SerializedPropertyType.String)
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private static SerializedProperty ResolveProperty(
@@ -696,11 +780,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             _paletteTexture = GetOrCreatePaletteTexture(palette.BackgroundColor);
             _paletteBorderTexture = GetOrCreatePaletteBorderTexture(palette.BackgroundColor);
             _fieldTextColor = palette.TextColor;
-
-            // Always reset GUI.color to white to prevent texture tinting in embedded controls.
+            // Reset GUI.color to white to prevent texture tinting in embedded controls.
             // This ensures solid-colored buttons, reorderable list elements, and other
             // texture-based controls render without ambient color multiplication.
-            // Must be done regardless of _isActive to handle same-theme scenarios.
             GUI.color = Color.white;
 
             if (_isActive)
@@ -1126,7 +1208,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
             if (Event.current.type == EventType.Repaint)
             {
-                EditorGUI.DrawRect(headerRect, _paletteBackgroundColor);
+                WGroupGUI.DrawRectUntinted(headerRect, _paletteBackgroundColor);
             }
 
             // Draw foldout with themed text
@@ -1165,7 +1247,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             // Draw palette background for entire area
             if (Event.current.type == EventType.Repaint)
             {
-                EditorGUI.DrawRect(totalRect, _paletteBackgroundColor);
+                WGroupGUI.DrawRectUntinted(totalRect, _paletteBackgroundColor);
             }
 
             // Set colors to influence internal rendering
@@ -1344,7 +1426,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             // Draw footer background
             if (Event.current.type == EventType.Repaint)
             {
-                EditorGUI.DrawRect(rect, _paletteBackgroundColor);
+                WGroupGUI.DrawRectUntinted(rect, _paletteBackgroundColor);
             }
 
             // Button sizing
@@ -1533,7 +1615,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                     rowColor = bgColor;
                 }
 
-                EditorGUI.DrawRect(rect, rowColor);
+                WGroupGUI.DrawRectUntinted(rect, rowColor);
             };
 
             // Empty list callback
@@ -1545,7 +1627,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
                 if (Event.current.type == EventType.Repaint)
                 {
-                    EditorGUI.DrawRect(rect, bgColor);
+                    WGroupGUI.DrawRectUntinted(rect, bgColor);
                 }
 
                 Color savedColor = GUI.contentColor;
@@ -1638,11 +1720,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 RestoreFullStyleState(EditorStyles.miniButtonLeft, _savedMiniButtonLeft);
                 RestoreFullStyleState(EditorStyles.miniButtonMid, _savedMiniButtonMid);
                 RestoreFullStyleState(EditorStyles.miniButtonRight, _savedMiniButtonRight);
-
-                // Restore remaining GUI colors
-                GUI.contentColor = _previousContentColor;
-                GUI.backgroundColor = _previousBackgroundColor;
             }
+
+            GUI.contentColor = _previousContentColor;
+            GUI.backgroundColor = _previousBackgroundColor;
         }
     }
 
@@ -1723,6 +1804,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             }
         }
 
+        private static void DrawRectUntinted(Rect rect, Color color)
+        {
+            Color previousColor = GUI.color;
+            GUI.color = Color.white;
+            EditorGUI.DrawRect(rect, color);
+            GUI.color = previousColor;
+        }
+
         internal static void DrawHeaderBackground(Rect rect, Color baseColor)
         {
             if (Event.current.type != EventType.Repaint)
@@ -1731,7 +1820,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             }
 
             Color tinted = GetHeaderTint(baseColor);
+            // Save and reset GUI.color to ensure header renders with true computed color
+            Color savedColor = GUI.color;
+            GUI.color = Color.white;
             EditorGUI.DrawRect(rect, tinted);
+            GUI.color = savedColor;
         }
 
         internal static Rect GetContentRect(
@@ -1857,10 +1950,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 rect.height
             );
 
+            // Save and reset GUI.color to ensure borders render with true computed color
+            Color savedColor = GUI.color;
+            GUI.color = Color.white;
             EditorGUI.DrawRect(topBorder, borderColor);
             EditorGUI.DrawRect(bottomBorder, borderColor);
             EditorGUI.DrawRect(leftBorder, borderColor);
             EditorGUI.DrawRect(rightBorder, borderColor);
+            GUI.color = savedColor;
         }
 
         private static Color GetHeaderBorderColor(Color baseColor)
