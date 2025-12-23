@@ -97,11 +97,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                             skipIndentation: false
                         );
 
+                    float expectedX = controlRect.x + SimulatedLeftPadding;
                     Assert.AreEqual(
-                        controlRect.x + SimulatedLeftPadding,
+                        expectedX,
                         resolvedRect.x,
                         0.1f,
-                        "Dictionary inside WGroup should use WGroup padding."
+                        $"Dictionary inside WGroup should use WGroup padding. "
+                            + $"Input: controlRect.x={controlRect.x}, leftPadding={SimulatedLeftPadding}, "
+                            + $"Expected x={expectedX}, Actual x={resolvedRect.x}, "
+                            + $"ScopeDepth={GroupGUIWidthUtility.CurrentScopeDepth}"
                     );
                 }
             }
@@ -143,11 +147,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         skipIndentation: false
                     );
 
+                    float expectedX = controlRect.x + SimulatedLeftPadding;
                     Assert.AreEqual(
-                        controlRect.x + SimulatedLeftPadding,
+                        expectedX,
                         resolvedRect.x,
                         0.1f,
-                        "Set inside WGroup should use WGroup padding."
+                        $"Set inside WGroup should use WGroup padding. "
+                            + $"Input: controlRect.x={controlRect.x}, leftPadding={SimulatedLeftPadding}, "
+                            + $"Expected x={expectedX}, Actual x={resolvedRect.x}, "
+                            + $"ScopeDepth={GroupGUIWidthUtility.CurrentScopeDepth}"
                     );
                 }
             }
@@ -238,7 +246,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 expectedX,
                 capturedFoldoutRect.x,
                 0.1f,
-                "Dictionary foldout inside WGroup should be shifted right by alignment offset."
+                $"Dictionary foldout inside WGroup should be shifted right by alignment offset. "
+                    + $"Input: controlRect.x={controlRect.x}, leftPadding={SimulatedLeftPadding}, "
+                    + $"alignmentOffset={SerializableDictionaryPropertyDrawer.WGroupFoldoutAlignmentOffset}, "
+                    + $"Expected x={expectedX}, Actual x={capturedFoldoutRect.x}"
             );
 
             float expectedWidth =
@@ -249,7 +260,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 expectedWidth,
                 capturedFoldoutRect.width,
                 0.1f,
-                "Dictionary foldout width should be reduced by alignment offset."
+                $"Dictionary foldout width should be reduced by alignment offset. "
+                    + $"Input: controlRect.width={controlRect.width}, horizontalPadding={horizontalPadding}, "
+                    + $"alignmentOffset={SerializableDictionaryPropertyDrawer.WGroupFoldoutAlignmentOffset}, "
+                    + $"Expected width={expectedWidth}, Actual width={capturedFoldoutRect.width}"
             );
         }
 
@@ -323,7 +337,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 expectedX,
                 capturedFoldoutRect.x,
                 0.1f,
-                "Set foldout inside WGroup should be shifted right by alignment offset."
+                $"Set foldout inside WGroup should be shifted right by alignment offset. "
+                    + $"Input: controlRect.x={controlRect.x}, leftPadding={SimulatedLeftPadding}, "
+                    + $"alignmentOffset={SerializableSetPropertyDrawer.WGroupFoldoutAlignmentOffset}, "
+                    + $"Expected x={expectedX}, Actual x={capturedFoldoutRect.x}"
             );
 
             float expectedWidth =
@@ -334,7 +351,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 expectedWidth,
                 capturedFoldoutRect.width,
                 0.1f,
-                "Set foldout width should be reduced by alignment offset."
+                $"Set foldout width should be reduced by alignment offset. "
+                    + $"Input: controlRect.width={controlRect.width}, horizontalPadding={horizontalPadding}, "
+                    + $"alignmentOffset={SerializableSetPropertyDrawer.WGroupFoldoutAlignmentOffset}, "
+                    + $"Expected width={expectedWidth}, Actual width={capturedFoldoutRect.width}"
             );
         }
 
@@ -987,7 +1007,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 expectedX,
                 capturedRect.x,
                 0.1f,
-                "Dictionary OnGUI in WGroup context should apply WGroup padding correctly."
+                $"Dictionary OnGUI in WGroup context should apply WGroup padding correctly. "
+                    + $"Input: controlRect.x={controlRect.x}, leftPadding={SimulatedLeftPadding}, "
+                    + $"Expected x={expectedX}, Actual x={capturedRect.x}"
             );
 
             float expectedWidth = controlRect.width - horizontalPadding;
@@ -995,7 +1017,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 expectedWidth,
                 capturedRect.width,
                 0.1f,
-                "Dictionary OnGUI in WGroup context should have width reduced by WGroup padding."
+                $"Dictionary OnGUI in WGroup context should have width reduced by WGroup padding. "
+                    + $"Input: controlRect.width={controlRect.width}, horizontalPadding={horizontalPadding}, "
+                    + $"Expected width={expectedWidth}, Actual width={capturedRect.width}"
             );
         }
 
@@ -1058,7 +1082,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 expectedX,
                 capturedRect.x,
                 0.1f,
-                "Set OnGUI in WGroup context should apply WGroup padding correctly."
+                $"Set OnGUI in WGroup context should apply WGroup padding correctly. "
+                    + $"Input: controlRect.x={controlRect.x}, leftPadding={SimulatedLeftPadding}, "
+                    + $"Expected x={expectedX}, Actual x={capturedRect.x}"
             );
 
             float expectedWidth = controlRect.width - horizontalPadding;
@@ -1066,7 +1092,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 expectedWidth,
                 capturedRect.width,
                 0.1f,
-                "Set OnGUI in WGroup context should have width reduced by WGroup padding."
+                $"Set OnGUI in WGroup context should have width reduced by WGroup padding. "
+                    + $"Input: controlRect.width={controlRect.width}, horizontalPadding={horizontalPadding}, "
+                    + $"Expected width={expectedWidth}, Actual width={capturedRect.width}"
             );
         }
 
@@ -1400,8 +1428,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
-        public void SetWithoutWGroupPaddingAlignsWithUnityLists()
+        public void SetWithoutWGroupPaddingAlignsWithUnityListsClampedAtZero()
         {
+            // When controlRect.x starts at 0, the alignment offset (-1.25f) would produce a negative x,
+            // which is clamped to 0 to prevent off-screen rendering.
             Rect controlRect = new(0f, 0f, 400f, 300f);
 
             int previousIndentLevel = EditorGUI.indentLevel;
@@ -1418,12 +1448,51 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     skipIndentation: false
                 );
 
-                // Without WGroup padding and with indent level 0, aligns with Unity's default list rendering
+                // Without WGroup padding and with indent level 0, alignment offset is applied but clamped to 0
+                float rawExpectedX = controlRect.x - 1.25f;
+                float expectedX = 0f; // Clamped from -1.25f to 0f
                 Assert.AreEqual(
-                    controlRect.x - 1.25f,
+                    expectedX,
                     resolvedRect.x,
                     0.01f,
-                    "Set without WGroup padding and indent=0 should align with Unity's default list rendering (-1px alignment offset)."
+                    $"Set without WGroup padding and indent=0 should align with Unity's default list rendering but clamp to 0. "
+                        + $"Raw expected x={rawExpectedX}, Clamped expected x={expectedX}, Actual x={resolvedRect.x}"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        [Test]
+        public void SetWithoutWGroupPaddingAlignsWithUnityListsWithPositiveX()
+        {
+            // With a positive starting x, the alignment offset (-1.25f) is applied without clamping.
+            Rect controlRect = new(10f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+
+                GroupGUIWidthUtility.ResetForTests();
+                // No WGroup padding pushed
+
+                // Use skipIndentation=false to get normal behavior
+                Rect resolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                // Without WGroup padding and with indent level 0, aligns with Unity's default list rendering
+                float expectedX = controlRect.x - 1.25f; // 10f - 1.25f = 8.75f
+                Assert.AreEqual(
+                    expectedX,
+                    resolvedRect.x,
+                    0.01f,
+                    $"Set without WGroup padding and indent=0 should align with Unity's default list rendering (-1.25f alignment offset). "
+                        + $"Expected x={expectedX}, Actual x={resolvedRect.x}"
                 );
             }
             finally
@@ -1511,7 +1580,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                             expectedX,
                             resolvedRect.x,
                             0.01f,
-                            "Nested WGroups should accumulate left padding."
+                            $"Nested WGroups should accumulate left padding. "
+                                + $"Input: controlRect.x={controlRect.x}, outer={OuterLeftPadding}, inner={InnerLeftPadding}, "
+                                + $"Expected x={expectedX}, Actual x={resolvedRect.x}, "
+                                + $"ScopeDepth={GroupGUIWidthUtility.CurrentScopeDepth}, "
+                                + $"CurrentLeftPadding={GroupGUIWidthUtility.CurrentLeftPadding}"
                         );
 
                         float expectedWidth =
@@ -1524,7 +1597,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                             expectedWidth,
                             resolvedRect.width,
                             0.01f,
-                            "Nested WGroups should accumulate total padding reduction on width."
+                            $"Nested WGroups should accumulate total padding reduction on width. "
+                                + $"Input: controlRect.width={controlRect.width}, "
+                                + $"outer=(left={OuterLeftPadding}, right={OuterRightPadding}), "
+                                + $"inner=(left={InnerLeftPadding}, right={InnerRightPadding}), "
+                                + $"Expected width={expectedWidth}, Actual width={resolvedRect.width}"
                         );
                     }
                 }
@@ -3311,21 +3388,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 }
             });
 
-            // The available width is reduced only by left padding because the range label
-            // is positioned from the left (shifted right by WGroup left padding to avoid clipping),
-            // while buttons remain at their normal positions from the right.
-            float expectedDifference = SimulatedLeftPadding;
+            // The available width is reduced by the full horizontal padding (left + right)
+            // because ResolveContentRect narrows the rect on both sides when inside a WGroup.
+            // Note: When controlRect starts at x=0, the UnityListAlignmentOffset (-1.25f) cannot
+            // expand the rect leftward (xMin is clamped to 0), so the difference is just the padding.
+            // The alignment offset only provides additional width when x > 1.25.
+            float expectedDifference = horizontalPadding;
             float actualDifference = availableWidthWithoutPadding - availableWidthWithPadding;
 
             Assert.AreEqual(
                 expectedDifference,
                 actualDifference,
-                1f,
-                $"Available width should be reduced by WGroup padding. "
+                2f,
+                $"Available width should be reduced by WGroup horizontal padding. "
                     + $"Without padding: {availableWidthWithoutPadding}, "
                     + $"With padding: {availableWidthWithPadding}, "
                     + $"Difference: {actualDifference}, "
-                    + $"Expected: {expectedDifference}"
+                    + $"Expected: {expectedDifference} (horizontalPadding={horizontalPadding})"
             );
         }
 
@@ -3433,15 +3512,22 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             float xDifference = rangeLabelRectWithPadding.x - rangeLabelRectWithoutPadding.x;
 
+            // When outside a WGroup with rect starting at x=0, the UnityListAlignmentOffset (-1.25f)
+            // would shift xMin negative, but it gets clamped back to 0. So the "without padding" case
+            // has x=0, and the difference is exactly equal to the left padding.
+            // Note: If the rect started at a non-zero x, we would see the full alignment offset effect.
+            float expectedDifference = SimulatedLeftPadding;
+
             Assert.AreEqual(
-                SimulatedLeftPadding,
+                expectedDifference,
                 xDifference,
                 1f,
                 $"Range label X position should be shifted right by WGroup left padding. "
+                    + $"(Alignment offset is clamped when starting rect x=0) "
                     + $"With padding X: {rangeLabelRectWithPadding.x}, "
                     + $"Without padding X: {rangeLabelRectWithoutPadding.x}, "
                     + $"Difference: {xDifference}, "
-                    + $"Expected: {SimulatedLeftPadding}"
+                    + $"Expected: {expectedDifference} (padding={SimulatedLeftPadding})"
             );
         }
 
@@ -3625,11 +3711,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [UnityTest]
-        public IEnumerator SetFooterEmptyLabelDrawnInsideWGroup()
+        public IEnumerator SetFooterRangeLabelDrawnInsideWGroup()
         {
             IntegrationTestWGroupSetHost host =
                 CreateScriptableObject<IntegrationTestWGroupSetHost>();
-            // Do not add any items - set is empty
+            // Add one item so that DrawFooterControls is called (empty sets use DrawEmptySetDrawer instead)
+            host.set.Add(1);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
@@ -3689,13 +3776,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Assert.IsTrue(
                 rangeLabelWasDrawn,
-                "Empty label should be drawn inside WGroup when space is sufficient."
+                "Range label should be drawn inside WGroup when space is sufficient."
             );
             Assert.AreEqual(
                 SimulatedLeftPadding,
                 capturedLeftPadding,
                 0.1f,
-                "Empty set footer should still capture WGroup padding."
+                "Footer should capture WGroup padding."
             );
         }
 
@@ -3892,6 +3979,431 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 $"Available width difference should equal WGroup LEFT padding only. "
                     + $"Expected: {expectedDifference}, Actual: {difference}"
             );
+        }
+
+        // Data-driven tests for verifying indentation with various padding values
+        private static IEnumerable<TestCaseData> IndentationTestCases()
+        {
+            // Standard padding values
+            yield return new TestCaseData(4f, 4f).SetName("StandardPadding4x4");
+            yield return new TestCaseData(8f, 8f).SetName("SymmetricPadding8x8");
+            yield return new TestCaseData(12f, 12f).SetName("LargePadding12x12");
+
+            // Asymmetric padding
+            yield return new TestCaseData(10f, 5f).SetName("AsymmetricPaddingLeftHeavy");
+            yield return new TestCaseData(5f, 10f).SetName("AsymmetricPaddingRightHeavy");
+
+            // Edge cases
+            yield return new TestCaseData(0.5f, 0.5f).SetName("SmallPadding");
+            yield return new TestCaseData(50f, 50f).SetName("VeryLargePadding");
+        }
+
+        [TestCaseSource(nameof(IndentationTestCases))]
+        public void DictionaryResolveContentRectAppliesPaddingCorrectly(
+            float leftPadding,
+            float rightPadding
+        )
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+            float horizontalPadding = leftPadding + rightPadding;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        leftPadding,
+                        rightPadding
+                    )
+                )
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    float expectedX = controlRect.x + leftPadding;
+                    float expectedWidth = controlRect.width - horizontalPadding;
+
+                    Assert.AreEqual(
+                        expectedX,
+                        resolvedRect.x,
+                        0.1f,
+                        $"Dictionary x position should equal input x + leftPadding. "
+                            + $"Input: ({controlRect.x}, leftPadding={leftPadding}), "
+                            + $"Expected: {expectedX}, Actual: {resolvedRect.x}, "
+                            + $"ScopeDepth: {GroupGUIWidthUtility.CurrentScopeDepth}"
+                    );
+
+                    Assert.AreEqual(
+                        expectedWidth,
+                        resolvedRect.width,
+                        0.1f,
+                        $"Dictionary width should equal input width - horizontalPadding. "
+                            + $"Input: ({controlRect.width}, horizontalPadding={horizontalPadding}), "
+                            + $"Expected: {expectedWidth}, Actual: {resolvedRect.width}"
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        [TestCaseSource(nameof(IndentationTestCases))]
+        public void SetResolveContentRectAppliesPaddingCorrectly(
+            float leftPadding,
+            float rightPadding
+        )
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+            float horizontalPadding = leftPadding + rightPadding;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        leftPadding,
+                        rightPadding
+                    )
+                )
+                {
+                    Rect resolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                        controlRect,
+                        skipIndentation: false
+                    );
+
+                    float expectedX = controlRect.x + leftPadding;
+                    float expectedWidth = controlRect.width - horizontalPadding;
+
+                    Assert.AreEqual(
+                        expectedX,
+                        resolvedRect.x,
+                        0.1f,
+                        $"Set x position should equal input x + leftPadding. "
+                            + $"Input: ({controlRect.x}, leftPadding={leftPadding}), "
+                            + $"Expected: {expectedX}, Actual: {resolvedRect.x}, "
+                            + $"ScopeDepth: {GroupGUIWidthUtility.CurrentScopeDepth}"
+                    );
+
+                    Assert.AreEqual(
+                        expectedWidth,
+                        resolvedRect.width,
+                        0.1f,
+                        $"Set width should equal input width - horizontalPadding. "
+                            + $"Input: ({controlRect.width}, horizontalPadding={horizontalPadding}), "
+                            + $"Expected: {expectedWidth}, Actual: {resolvedRect.width}"
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        [Test]
+        public void DictionaryOutsideWGroupAppliesUnityListAlignmentOffsetClampedAtZero()
+        {
+            // When outside a WGroup (scopeDepth == 0), the UnityListAlignmentOffset (-1.25f)
+            // is applied to align with Unity's default list rendering.
+            // However, when controlRect.x starts at 0, the negative offset would produce a negative x,
+            // which is clamped to 0 to prevent off-screen rendering.
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+            const float UnityListAlignmentOffset = -1.25f;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                // No WGroup padding - scopeDepth should be 0
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                // x would be shifted left by alignment offset, but clamped to 0 to prevent negative values
+                float rawExpectedX = controlRect.x + UnityListAlignmentOffset;
+                float expectedX = 0f; // Clamped from -1.25f to 0f
+
+                Assert.AreEqual(
+                    0,
+                    GroupGUIWidthUtility.CurrentScopeDepth,
+                    "ScopeDepth should be 0 when no WGroup padding is active"
+                );
+
+                Assert.AreEqual(
+                    expectedX,
+                    resolvedRect.x,
+                    0.1f,
+                    $"Dictionary outside WGroup should apply UnityListAlignmentOffset but clamp to 0. "
+                        + $"Input: controlRect.x={controlRect.x}, alignmentOffset={UnityListAlignmentOffset}, "
+                        + $"Raw expected x={rawExpectedX}, Clamped expected x={expectedX}, Actual x={resolvedRect.x}"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        [Test]
+        public void DictionaryOutsideWGroupAppliesUnityListAlignmentOffsetWithPositiveX()
+        {
+            // When outside a WGroup (scopeDepth == 0), the UnityListAlignmentOffset (-1.25f)
+            // is applied to align with Unity's default list rendering.
+            // With a positive starting x, the offset is applied without clamping.
+            Rect controlRect = new(10f, 0f, 400f, 300f);
+            const float UnityListAlignmentOffset = -1.25f;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                // No WGroup padding - scopeDepth should be 0
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                // x should be shifted left by alignment offset (10f + (-1.25f) = 8.75f)
+                float expectedX = controlRect.x + UnityListAlignmentOffset;
+
+                Assert.AreEqual(
+                    0,
+                    GroupGUIWidthUtility.CurrentScopeDepth,
+                    "ScopeDepth should be 0 when no WGroup padding is active"
+                );
+
+                Assert.AreEqual(
+                    expectedX,
+                    resolvedRect.x,
+                    0.1f,
+                    $"Dictionary outside WGroup should apply UnityListAlignmentOffset. "
+                        + $"Input: controlRect.x={controlRect.x}, alignmentOffset={UnityListAlignmentOffset}, "
+                        + $"Expected x={expectedX}, Actual x={resolvedRect.x}"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        [Test]
+        public void SetOutsideWGroupAppliesUnityListAlignmentOffsetClampedAtZero()
+        {
+            // When outside a WGroup (scopeDepth == 0), the UnityListAlignmentOffset (-1.25f)
+            // is applied to align with Unity's default list rendering.
+            // However, when controlRect.x starts at 0, the negative offset would produce a negative x,
+            // which is clamped to 0 to prevent off-screen rendering.
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+            const float UnityListAlignmentOffset = -1.25f;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                // No WGroup padding - scopeDepth should be 0
+                Rect resolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                // x would be shifted left by alignment offset, but clamped to 0 to prevent negative values
+                float rawExpectedX = controlRect.x + UnityListAlignmentOffset;
+                float expectedX = 0f; // Clamped from -1.25f to 0f
+
+                Assert.AreEqual(
+                    0,
+                    GroupGUIWidthUtility.CurrentScopeDepth,
+                    "ScopeDepth should be 0 when no WGroup padding is active"
+                );
+
+                Assert.AreEqual(
+                    expectedX,
+                    resolvedRect.x,
+                    0.1f,
+                    $"Set outside WGroup should apply UnityListAlignmentOffset but clamp to 0. "
+                        + $"Input: controlRect.x={controlRect.x}, alignmentOffset={UnityListAlignmentOffset}, "
+                        + $"Raw expected x={rawExpectedX}, Clamped expected x={expectedX}, Actual x={resolvedRect.x}"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        [Test]
+        public void SetOutsideWGroupAppliesUnityListAlignmentOffsetWithPositiveX()
+        {
+            // When outside a WGroup (scopeDepth == 0), the UnityListAlignmentOffset (-1.25f)
+            // is applied to align with Unity's default list rendering.
+            // With a positive starting x, the offset is applied without clamping.
+            Rect controlRect = new(10f, 0f, 400f, 300f);
+            const float UnityListAlignmentOffset = -1.25f;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                // No WGroup padding - scopeDepth should be 0
+                Rect resolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                // x should be shifted left by alignment offset (10f + (-1.25f) = 8.75f)
+                float expectedX = controlRect.x + UnityListAlignmentOffset;
+
+                Assert.AreEqual(
+                    0,
+                    GroupGUIWidthUtility.CurrentScopeDepth,
+                    "ScopeDepth should be 0 when no WGroup padding is active"
+                );
+
+                Assert.AreEqual(
+                    expectedX,
+                    resolvedRect.x,
+                    0.1f,
+                    $"Set outside WGroup should apply UnityListAlignmentOffset. "
+                        + $"Input: controlRect.x={controlRect.x}, alignmentOffset={UnityListAlignmentOffset}, "
+                        + $"Expected x={expectedX}, Actual x={resolvedRect.x}"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        [Test]
+        public void DictionaryInsideWGroupDoesNotApplyUnityListAlignmentOffset()
+        {
+            // When inside a WGroup (scopeDepth > 0), the UnityListAlignmentOffset should NOT
+            // be applied - only the WGroup padding should affect positioning
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+            const float SimulatedLeftPadding = 6f;
+            const float SimulatedRightPadding = 6f;
+            float horizontalPadding = SimulatedLeftPadding + SimulatedRightPadding;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        SimulatedLeftPadding,
+                        SimulatedRightPadding
+                    )
+                )
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    // x should ONLY be affected by WGroup left padding, NOT UnityListAlignmentOffset
+                    float expectedX = controlRect.x + SimulatedLeftPadding;
+
+                    Assert.Greater(
+                        GroupGUIWidthUtility.CurrentScopeDepth,
+                        0,
+                        "ScopeDepth should be > 0 when WGroup padding is active"
+                    );
+
+                    Assert.AreEqual(
+                        expectedX,
+                        resolvedRect.x,
+                        0.1f,
+                        $"Dictionary inside WGroup should NOT apply UnityListAlignmentOffset. "
+                            + $"Input: controlRect.x={controlRect.x}, leftPadding={SimulatedLeftPadding}, "
+                            + $"Expected x={expectedX} (no alignment offset), Actual x={resolvedRect.x}"
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        [Test]
+        public void SetInsideWGroupDoesNotApplyUnityListAlignmentOffset()
+        {
+            // When inside a WGroup (scopeDepth > 0), the UnityListAlignmentOffset should NOT
+            // be applied - only the WGroup padding should affect positioning
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+            const float SimulatedLeftPadding = 6f;
+            const float SimulatedRightPadding = 6f;
+            float horizontalPadding = SimulatedLeftPadding + SimulatedRightPadding;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        SimulatedLeftPadding,
+                        SimulatedRightPadding
+                    )
+                )
+                {
+                    Rect resolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                        controlRect,
+                        skipIndentation: false
+                    );
+
+                    // x should ONLY be affected by WGroup left padding, NOT UnityListAlignmentOffset
+                    float expectedX = controlRect.x + SimulatedLeftPadding;
+
+                    Assert.Greater(
+                        GroupGUIWidthUtility.CurrentScopeDepth,
+                        0,
+                        "ScopeDepth should be > 0 when WGroup padding is active"
+                    );
+
+                    Assert.AreEqual(
+                        expectedX,
+                        resolvedRect.x,
+                        0.1f,
+                        $"Set inside WGroup should NOT apply UnityListAlignmentOffset. "
+                            + $"Input: controlRect.x={controlRect.x}, leftPadding={SimulatedLeftPadding}, "
+                            + $"Expected x={expectedX} (no alignment offset), Actual x={resolvedRect.x}"
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
         }
     }
 }

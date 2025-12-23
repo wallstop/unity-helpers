@@ -85,8 +85,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
         }
 
+        /// <summary>
+        /// Tests that at indentLevel 0 outside a WGroup, the UnityListAlignmentOffset (-1.25f)
+        /// is applied, but clamped to 0 when the rect starts at x=0.
+        /// </summary>
         [Test]
-        public void ResolveContentRectNormalContextZeroIndentAppliesMinimumIndent()
+        public void ResolveContentRectNormalContextZeroIndentAppliesAlignmentOffset()
         {
             Rect controlRect = new(0f, 0f, 400f, 300f);
 
@@ -101,12 +105,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     skipIndentation: false
                 );
 
-                float expectedMinimumIndent = 6f;
+                // When outside a WGroup (scopeDepth == 0), the UnityListAlignmentOffset (-1.25f)
+                // would make xMin negative, but production code clamps xMin to 0.
+                float expectedX = 0f;
                 Assert.AreEqual(
-                    controlRect.x + expectedMinimumIndent,
+                    expectedX,
                     resolvedRect.x,
                     0.01f,
-                    "ResolvedPosition.x should have minimum indent applied when indentLevel is 0 in normal context."
+                    "ResolvedPosition.x should be clamped to 0 when alignment offset would make it negative."
                 );
             }
             finally
@@ -1015,23 +1021,34 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         + $"resolved=({resolvedRect.x:F3}, {resolvedRect.width:F3})"
                 );
 
-                // At indentLevel 0 with no WGroup, aligns with Unity's default list rendering (no offset)
+                // At indentLevel 0 with no WGroup, UnityListAlignmentOffset (-1.25f) is applied
                 if (indentLevel == 0)
                 {
-                    float expectedX = inputX;
+                    const float UnityListAlignmentOffset = -1.25f;
+                    // When starting at x=0, the offset would make x negative, so it's clamped to 0
+                    float expectedX = inputX + UnityListAlignmentOffset;
+                    if (expectedX < 0f)
+                    {
+                        expectedX = 0f;
+                    }
                     Assert.AreEqual(
                         expectedX,
                         resolvedRect.x,
                         0.1f,
-                        "At indentLevel 0, x should align with Unity's default list rendering (no offset)"
+                        "At indentLevel 0, x should have UnityListAlignmentOffset applied (clamped if needed)"
                     );
 
-                    // Width should be unchanged at indentLevel 0 without WGroup
+                    // Width increases by the alignment offset (or less if clamped)
+                    float widthIncrease =
+                        inputX + UnityListAlignmentOffset < 0f
+                            ? inputX + UnityListAlignmentOffset + (-UnityListAlignmentOffset)
+                            : -UnityListAlignmentOffset;
+                    float expectedWidth = inputWidth + widthIncrease;
                     Assert.AreEqual(
-                        inputWidth,
+                        expectedWidth,
                         resolvedRect.width,
                         0.1f,
-                        "Width should be unchanged at indent level 0 without WGroup"
+                        "Width should account for UnityListAlignmentOffset at indent level 0 without WGroup"
                     );
                 }
                 else
@@ -1055,12 +1072,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 // Width should always be non-negative
                 Assert.GreaterOrEqual(resolvedRect.width, 0f, "Width should never be negative");
 
-                // Width should not exceed original
-                Assert.LessOrEqual(
-                    resolvedRect.width,
-                    inputWidth,
-                    "Width should never exceed original width"
-                );
+                // At indentLevel 0, width can increase due to UnityListAlignmentOffset
+                // At indentLevel > 0, width should not exceed original
+                if (indentLevel > 0)
+                {
+                    Assert.LessOrEqual(
+                        resolvedRect.width,
+                        inputWidth,
+                        "Width should never exceed original width when indentLevel > 0"
+                    );
+                }
             }
             finally
             {
@@ -1282,13 +1303,17 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         /// <summary>
-        /// Tests that when IsInsideWGroupPropertyDraw is true, ResolveContentRect returns
-        /// the position unchanged - Unity's layout has already positioned the rect.
+        /// Tests that when IsInsideWGroupPropertyDraw is true, ResolveContentRect applies
+        /// a -4f alignment offset to x and increases width by 4f for visual alignment.
         /// </summary>
         [Test]
-        public void WGroupPropertyContextReturnsPositionUnchanged()
+        public void WGroupPropertyContextAppliesAlignmentOffset()
         {
             Rect controlRect = new(25f, 50f, 400f, 300f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -1305,16 +1330,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         );
 
                     TestContext.WriteLine(
-                        $"[WGroupPropertyContextReturnsPositionUnchanged] "
+                        $"[WGroupPropertyContextAppliesAlignmentOffset] "
                             + $"controlRect=({controlRect.x:F3}, {controlRect.y:F3}, {controlRect.width:F3}, {controlRect.height:F3}), "
                             + $"resolvedRect=({resolvedRect.x:F3}, {resolvedRect.y:F3}, {resolvedRect.width:F3}, {resolvedRect.height:F3})"
                     );
 
                     Assert.AreEqual(
-                        controlRect.x,
+                        expectedX,
                         resolvedRect.x,
                         0.001f,
-                        "WGroupPropertyContext should return position.x unchanged."
+                        "WGroupPropertyContext should apply -4f alignment offset to x."
                     );
                     Assert.AreEqual(
                         controlRect.y,
@@ -1323,10 +1348,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         "WGroupPropertyContext should return position.y unchanged."
                     );
                     Assert.AreEqual(
-                        controlRect.width,
+                        expectedWidth,
                         resolvedRect.width,
                         0.001f,
-                        "WGroupPropertyContext should return position.width unchanged."
+                        "WGroupPropertyContext should increase width by 4f."
                     );
                     Assert.AreEqual(
                         controlRect.height,
@@ -1343,7 +1368,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         /// <summary>
-        /// Tests WGroupPropertyContext with various indent levels - rect should always be unchanged.
+        /// Tests WGroupPropertyContext with various indent levels - only -4f alignment offset is applied, indent is ignored.
         /// </summary>
         [TestCase(0, TestName = "WGroupPropertyContextWithIndentLevel0")]
         [TestCase(1, TestName = "WGroupPropertyContextWithIndentLevel1")]
@@ -1353,6 +1378,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void WGroupPropertyContextIgnoresIndentLevel(int indentLevel)
         {
             Rect controlRect = new(15f, 30f, 450f, 250f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -1375,16 +1404,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     );
 
                     Assert.AreEqual(
-                        controlRect.x,
+                        expectedX,
                         resolvedRect.x,
                         0.001f,
-                        $"WGroupPropertyContext should ignore indentLevel {indentLevel} and return x unchanged."
+                        $"WGroupPropertyContext should ignore indentLevel {indentLevel} and apply only -4f alignment offset."
                     );
                     Assert.AreEqual(
-                        controlRect.width,
+                        expectedWidth,
                         resolvedRect.width,
                         0.001f,
-                        $"WGroupPropertyContext should ignore indentLevel {indentLevel} and return width unchanged."
+                        $"WGroupPropertyContext should ignore indentLevel {indentLevel} and increase width by 4f."
                     );
                 }
             }
@@ -1395,7 +1424,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         /// <summary>
-        /// Tests that even with padding values set, the rect is unchanged in WGroup property context.
+        /// Tests that even with padding values set, only the -4f alignment offset is applied in WGroup property context.
         /// This is the key distinction: PushWGroupPropertyContext means Unity's layout already applied padding.
         /// </summary>
         [Test]
@@ -1406,6 +1435,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             const float GroupLeftPadding = 15f;
             const float GroupRightPadding = 10f;
             float horizontalPadding = GroupLeftPadding + GroupRightPadding;
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -1437,19 +1470,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                                 + $"padding=({GroupLeftPadding:F3}, {GroupRightPadding:F3})"
                         );
 
-                        // Despite padding being set, rect should be unchanged because
-                        // Unity's layout system already applied it
+                        // Despite padding being set, only the -4f alignment offset is applied because
+                        // Unity's layout system already applied the padding
                         Assert.AreEqual(
-                            controlRect.x,
+                            expectedX,
                             resolvedRect.x,
                             0.001f,
-                            "WGroupPropertyContext should return x unchanged even with padding set."
+                            "WGroupPropertyContext should apply -4f alignment offset even with padding set."
                         );
                         Assert.AreEqual(
-                            controlRect.width,
+                            expectedWidth,
                             resolvedRect.width,
                             0.001f,
-                            "WGroupPropertyContext should return width unchanged even with padding set."
+                            "WGroupPropertyContext should increase width by 4f even with padding set."
                         );
                     }
                 }
@@ -1462,11 +1495,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         /// <summary>
         /// Tests zero padding and zero indent in WGroup property context.
+        /// WGroupPropertyContext applies a -4f alignment offset to align with other WGroup content.
         /// </summary>
         [Test]
         public void WGroupPropertyContextZeroPaddingZeroIndent()
         {
             Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            // WGroupPropertyContext applies WGroupAlignmentOffset (-4f) to align with other WGroup content.
+            // Note: When starting at x=0, the result is x=-4f (no clamping in WGroup context).
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -1489,16 +1529,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     );
 
                     Assert.AreEqual(
-                        controlRect.x,
+                        expectedX,
                         resolvedRect.x,
                         0.001f,
-                        "WGroupPropertyContext with zero padding and indent should return x unchanged."
+                        "WGroupPropertyContext should apply -4f alignment offset even at zero padding and indent."
                     );
                     Assert.AreEqual(
-                        controlRect.width,
+                        expectedWidth,
                         resolvedRect.width,
                         0.001f,
-                        "WGroupPropertyContext with zero padding and indent should return width unchanged."
+                        "WGroupPropertyContext should increase width by 4f even at zero padding and indent."
                     );
                 }
             }
@@ -1510,6 +1550,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         /// <summary>
         /// Tests WGroupPropertyContext with maximum padding values.
+        /// Only the -4f alignment offset is applied, padding is ignored.
         /// </summary>
         [Test]
         public void WGroupPropertyContextWithMaxPaddingValues()
@@ -1519,6 +1560,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             const float MaxLeftPadding = 100f;
             const float MaxRightPadding = 100f;
             float horizontalPadding = MaxLeftPadding + MaxRightPadding;
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -1550,16 +1595,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         );
 
                         Assert.AreEqual(
-                            controlRect.x,
+                            expectedX,
                             resolvedRect.x,
                             0.001f,
-                            "WGroupPropertyContext should return x unchanged even with max padding."
+                            "WGroupPropertyContext should apply -4f alignment offset even with max padding."
                         );
                         Assert.AreEqual(
-                            controlRect.width,
+                            expectedWidth,
                             resolvedRect.width,
                             0.001f,
-                            "WGroupPropertyContext should return width unchanged even with max padding."
+                            "WGroupPropertyContext should increase width by 4f even with max padding."
                         );
                     }
                 }
@@ -1572,11 +1617,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         /// <summary>
         /// Tests WGroupPropertyContext with very high indent level.
+        /// Only the -4f alignment offset is applied, indent is ignored.
         /// </summary>
         [Test]
         public void WGroupPropertyContextWithVeryHighIndentLevel()
         {
             Rect controlRect = new(50f, 25f, 800f, 500f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -1600,16 +1650,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     );
 
                     Assert.AreEqual(
-                        controlRect.x,
+                        expectedX,
                         resolvedRect.x,
                         0.001f,
-                        "WGroupPropertyContext should return x unchanged even with very high indent."
+                        "WGroupPropertyContext should apply -4f alignment offset even with very high indent."
                     );
                     Assert.AreEqual(
-                        controlRect.width,
+                        expectedWidth,
                         resolvedRect.width,
                         0.001f,
-                        "WGroupPropertyContext should return width unchanged even with very high indent."
+                        "WGroupPropertyContext should increase width by 4f even with very high indent."
                     );
                 }
             }
@@ -1621,11 +1671,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         /// <summary>
         /// Tests nested WGroupPropertyContext scopes.
+        /// The -4f alignment offset is applied (once, not doubled for nesting).
         /// </summary>
         [Test]
-        public void WGroupPropertyContextNestedScopesReturnUnchanged()
+        public void WGroupPropertyContextNestedScopesApplyAlignmentOffset()
         {
             Rect controlRect = new(30f, 60f, 350f, 200f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -1644,22 +1699,22 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                             );
 
                         TestContext.WriteLine(
-                            $"[WGroupPropertyContextNestedScopesReturnUnchanged] "
+                            $"[WGroupPropertyContextNestedScopesApplyAlignmentOffset] "
                                 + $"controlRect=({controlRect.x:F3}, {controlRect.width:F3}), "
                                 + $"resolvedRect=({resolvedRect.x:F3}, {resolvedRect.width:F3})"
                         );
 
                         Assert.AreEqual(
-                            controlRect.x,
+                            expectedX,
                             resolvedRect.x,
                             0.001f,
-                            "Nested WGroupPropertyContext should return x unchanged."
+                            "Nested WGroupPropertyContext should apply -4f alignment offset."
                         );
                         Assert.AreEqual(
-                            controlRect.width,
+                            expectedWidth,
                             resolvedRect.width,
                             0.001f,
-                            "Nested WGroupPropertyContext should return width unchanged."
+                            "Nested WGroupPropertyContext should increase width by 4f."
                         );
                     }
                 }
@@ -1677,6 +1732,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void WGroupPropertyContextRestoredAfterDisposal()
         {
             Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedXWithContext = controlRect.x + WGroupAlignmentOffset;
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -1701,10 +1759,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         );
 
                     Assert.AreEqual(
-                        controlRect.x,
+                        expectedXWithContext,
                         rectWithContext.x,
                         0.001f,
-                        "Inside WGroupPropertyContext, x should be unchanged."
+                        "Inside WGroupPropertyContext, x should have -4f alignment offset."
                     );
                 }
 
@@ -1742,7 +1800,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         /// <summary>
         /// Tests WGroupPropertyContext with skipIndentation=true parameter.
-        /// Even in settings context, WGroupPropertyContext should return unchanged.
+        /// Even in settings context, WGroupPropertyContext applies -4f alignment offset.
         /// </summary>
         [Test]
         public void WGroupPropertyContextWithSkipIndentationTrue()
@@ -1752,6 +1810,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             const float LeftPadding = 15f;
             const float RightPadding = 10f;
             float horizontalPadding = LeftPadding + RightPadding;
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -1782,16 +1844,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         );
 
                         Assert.AreEqual(
-                            controlRect.x,
+                            expectedX,
                             resolvedRect.x,
                             0.001f,
-                            "WGroupPropertyContext with skipIndentation=true should return x unchanged."
+                            "WGroupPropertyContext with skipIndentation=true should apply -4f alignment offset."
                         );
                         Assert.AreEqual(
-                            controlRect.width,
+                            expectedWidth,
                             resolvedRect.width,
                             0.001f,
-                            "WGroupPropertyContext with skipIndentation=true should return width unchanged."
+                            "WGroupPropertyContext with skipIndentation=true should increase width by 4f."
                         );
                     }
                 }
@@ -2035,7 +2097,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         /// <summary>
-        /// Tests contrast between WGroupPropertyContext (returns unchanged) vs
+        /// Tests contrast between WGroupPropertyContext (applies -4f alignment offset) vs
         /// PushContentPadding only (applies padding manually).
         /// </summary>
         [Test]
@@ -2046,6 +2108,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             const float LeftPadding = 15f;
             const float RightPadding = 10f;
             float horizontalPadding = LeftPadding + RightPadding;
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedXWithWGroup = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidthWithWGroup = controlRect.width - WGroupAlignmentOffset;
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -2110,18 +2176,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     "PushContentPadding only should reduce width."
                 );
 
-                // WGroupPropertyContext should return unchanged
+                // WGroupPropertyContext should apply -4f alignment offset
                 Assert.AreEqual(
-                    controlRect.x,
+                    expectedXWithWGroup,
                     rectWithWGroupContext.x,
                     0.001f,
-                    "WGroupPropertyContext should return x unchanged."
+                    "WGroupPropertyContext should apply -4f alignment offset to x."
                 );
                 Assert.AreEqual(
-                    controlRect.width,
+                    expectedWidthWithWGroup,
                     rectWithWGroupContext.width,
                     0.001f,
-                    "WGroupPropertyContext should return width unchanged."
+                    "WGroupPropertyContext should increase width by 4f."
                 );
             }
             finally
@@ -2192,11 +2258,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         /// <summary>
         /// Tests WGroupPropertyContext with a rect at origin (0,0).
+        /// The -4f alignment offset results in x=-4f.
         /// </summary>
         [Test]
         public void WGroupPropertyContextWithRectAtOrigin()
         {
             Rect controlRect = new(0f, 0f, 300f, 200f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -2219,16 +2290,22 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     );
 
                     Assert.AreEqual(
-                        0f,
+                        expectedX,
                         resolvedRect.x,
                         0.001f,
-                        "WGroupPropertyContext should preserve x=0."
+                        "WGroupPropertyContext should apply -4f alignment offset even at origin."
                     );
                     Assert.AreEqual(
                         0f,
                         resolvedRect.y,
                         0.001f,
                         "WGroupPropertyContext should preserve y=0."
+                    );
+                    Assert.AreEqual(
+                        expectedWidth,
+                        resolvedRect.width,
+                        0.001f,
+                        "WGroupPropertyContext should increase width by 4f."
                     );
                 }
             }
@@ -2240,11 +2317,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         /// <summary>
         /// Tests WGroupPropertyContext with a very narrow rect.
+        /// The -4f alignment offset still applies, increasing width by 4f.
         /// </summary>
         [Test]
         public void WGroupPropertyContextWithNarrowRect()
         {
             Rect controlRect = new(10f, 10f, 50f, 300f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -2269,10 +2350,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         );
 
                         Assert.AreEqual(
-                            controlRect.width,
+                            expectedWidth,
                             resolvedRect.width,
                             0.001f,
-                            "WGroupPropertyContext should preserve width even for narrow rect."
+                            "WGroupPropertyContext should increase width by 4f even for narrow rect."
                         );
                     }
                 }
@@ -2496,19 +2577,1639 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     + $"capturedRect=({capturedRect.x:F3}, {capturedRect.width:F3})"
             );
 
-            // With WGroupPropertyContext, even in settings, the rect should be returned unchanged
+            // WGroupPropertyContext applies -4f alignment offset, even in settings context
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
+
             Assert.AreEqual(
-                controlRect.x,
+                expectedX,
                 capturedRect.x,
                 0.01f,
-                "WGroupPropertyContext in settings context should return x unchanged."
+                "WGroupPropertyContext in settings context should apply -4f alignment offset to x."
             );
             Assert.AreEqual(
-                controlRect.width,
+                expectedWidth,
                 capturedRect.width,
                 0.01f,
-                "WGroupPropertyContext in settings context should return width unchanged."
+                "WGroupPropertyContext in settings context should increase width by 4f."
             );
+        }
+
+        /// <summary>
+        /// Data-driven test for WGroupPropertyContext alignment offset with various starting x values.
+        /// Tests that the -4f offset is consistently applied regardless of starting x position.
+        /// </summary>
+        [TestCase(
+            4f,
+            400f,
+            0,
+            TestName = "WGroupPropertyContextAlignmentOffset_X4_Width400_Indent0"
+        )]
+        [TestCase(
+            8f,
+            400f,
+            0,
+            TestName = "WGroupPropertyContextAlignmentOffset_X8_Width400_Indent0"
+        )]
+        [TestCase(
+            12f,
+            400f,
+            0,
+            TestName = "WGroupPropertyContextAlignmentOffset_X12_Width400_Indent0"
+        )]
+        [TestCase(
+            20f,
+            400f,
+            0,
+            TestName = "WGroupPropertyContextAlignmentOffset_X20_Width400_Indent0"
+        )]
+        [TestCase(
+            50f,
+            400f,
+            0,
+            TestName = "WGroupPropertyContextAlignmentOffset_X50_Width400_Indent0"
+        )]
+        [TestCase(
+            0f,
+            400f,
+            0,
+            TestName = "WGroupPropertyContextAlignmentOffset_X0_Width400_Indent0"
+        )]
+        [TestCase(
+            100f,
+            400f,
+            0,
+            TestName = "WGroupPropertyContextAlignmentOffset_X100_Width400_Indent0"
+        )]
+        [TestCase(
+            4f,
+            400f,
+            1,
+            TestName = "WGroupPropertyContextAlignmentOffset_X4_Width400_Indent1"
+        )]
+        [TestCase(
+            4f,
+            400f,
+            2,
+            TestName = "WGroupPropertyContextAlignmentOffset_X4_Width400_Indent2"
+        )]
+        [TestCase(
+            4f,
+            400f,
+            5,
+            TestName = "WGroupPropertyContextAlignmentOffset_X4_Width400_Indent5"
+        )]
+        [TestCase(
+            20f,
+            200f,
+            3,
+            TestName = "WGroupPropertyContextAlignmentOffset_X20_Width200_Indent3"
+        )]
+        [TestCase(
+            50f,
+            600f,
+            4,
+            TestName = "WGroupPropertyContextAlignmentOffset_X50_Width600_Indent4"
+        )]
+        public void WGroupPropertyContextAlignmentOffsetDataDriven(
+            float startX,
+            float width,
+            int indentLevel
+        )
+        {
+            Rect controlRect = new(startX, 0f, width, 300f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = indentLevel;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    TestContext.WriteLine(
+                        $"[WGroupPropertyContextAlignmentOffsetDataDriven] "
+                            + $"startX={startX:F3}, width={width:F3}, indentLevel={indentLevel}, "
+                            + $"expectedX={expectedX:F3}, resolvedRect.x={resolvedRect.x:F3}, "
+                            + $"expectedWidth={expectedWidth:F3}, resolvedRect.width={resolvedRect.width:F3}"
+                    );
+
+                    Assert.AreEqual(
+                        expectedX,
+                        resolvedRect.x,
+                        0.001f,
+                        $"WGroupPropertyContext should apply -4f offset: x={startX} should become {expectedX}."
+                    );
+                    Assert.AreEqual(
+                        expectedWidth,
+                        resolvedRect.width,
+                        0.001f,
+                        $"WGroupPropertyContext should increase width by 4f: {width} should become {expectedWidth}."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests WGroupPropertyContext with very small widths to ensure width increases by 4f without issues.
+        /// </summary>
+        [TestCase(1f, TestName = "WGroupPropertyContextSmallWidth_1")]
+        [TestCase(2f, TestName = "WGroupPropertyContextSmallWidth_2")]
+        [TestCase(5f, TestName = "WGroupPropertyContextSmallWidth_5")]
+        [TestCase(10f, TestName = "WGroupPropertyContextSmallWidth_10")]
+        public void WGroupPropertyContextSmallWidthHandling(float smallWidth)
+        {
+            Rect controlRect = new(20f, 0f, smallWidth, 300f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    TestContext.WriteLine(
+                        $"[WGroupPropertyContextSmallWidthHandling] "
+                            + $"smallWidth={smallWidth:F3}, expectedWidth={expectedWidth:F3}, "
+                            + $"resolvedRect.width={resolvedRect.width:F3}"
+                    );
+
+                    Assert.AreEqual(
+                        expectedX,
+                        resolvedRect.x,
+                        0.001f,
+                        $"WGroupPropertyContext should apply -4f offset even with small width {smallWidth}."
+                    );
+                    Assert.AreEqual(
+                        expectedWidth,
+                        resolvedRect.width,
+                        0.001f,
+                        $"WGroupPropertyContext should increase small width {smallWidth} to {expectedWidth}."
+                    );
+                    Assert.IsFalse(
+                        float.IsNaN(resolvedRect.width),
+                        "Resolved width should not be NaN."
+                    );
+                    Assert.IsFalse(
+                        float.IsInfinity(resolvedRect.width),
+                        "Resolved width should not be infinite."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests WGroupPropertyContext with very large rects to ensure no overflow issues.
+        /// </summary>
+        [TestCase(1000f, TestName = "WGroupPropertyContextLargeWidth_1000")]
+        [TestCase(2000f, TestName = "WGroupPropertyContextLargeWidth_2000")]
+        [TestCase(5000f, TestName = "WGroupPropertyContextLargeWidth_5000")]
+        [TestCase(10000f, TestName = "WGroupPropertyContextLargeWidth_10000")]
+        public void WGroupPropertyContextLargeWidthHandling(float largeWidth)
+        {
+            Rect controlRect = new(100f, 0f, largeWidth, 300f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    TestContext.WriteLine(
+                        $"[WGroupPropertyContextLargeWidthHandling] "
+                            + $"largeWidth={largeWidth:F3}, expectedWidth={expectedWidth:F3}, "
+                            + $"resolvedRect.width={resolvedRect.width:F3}"
+                    );
+
+                    Assert.AreEqual(
+                        expectedX,
+                        resolvedRect.x,
+                        0.001f,
+                        $"WGroupPropertyContext should apply -4f offset with large width {largeWidth}."
+                    );
+                    Assert.AreEqual(
+                        expectedWidth,
+                        resolvedRect.width,
+                        0.001f,
+                        $"WGroupPropertyContext should correctly handle large width {largeWidth}."
+                    );
+                    Assert.IsFalse(
+                        float.IsNaN(resolvedRect.width),
+                        "Resolved width should not be NaN."
+                    );
+                    Assert.IsFalse(
+                        float.IsInfinity(resolvedRect.width),
+                        "Resolved width should not be infinite."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests WGroupPropertyContext with negative x boundary after offset is applied.
+        /// When x=0 and offset is -4f, result is x=-4f (no clamping in WGroupPropertyContext).
+        /// </summary>
+        [Test]
+        public void WGroupPropertyContextNegativeXBoundary()
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset; // 0 + (-4) = -4
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset; // 400 - (-4) = 404
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    TestContext.WriteLine(
+                        $"[WGroupPropertyContextNegativeXBoundary] "
+                            + $"controlRect.x={controlRect.x:F3}, resolvedRect.x={resolvedRect.x:F3}, "
+                            + $"expectedX={expectedX:F3} (negative x is allowed in WGroupPropertyContext)"
+                    );
+
+                    Assert.AreEqual(
+                        expectedX,
+                        resolvedRect.x,
+                        0.001f,
+                        "WGroupPropertyContext should allow negative x values after -4f offset."
+                    );
+                    Assert.AreEqual(
+                        expectedWidth,
+                        resolvedRect.width,
+                        0.001f,
+                        "WGroupPropertyContext should increase width by 4f."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests WGroupPropertyContext with x=4 specifically to verify offset results in x=0.
+        /// </summary>
+        [Test]
+        public void WGroupPropertyContextXEqualsOffset()
+        {
+            Rect controlRect = new(4f, 0f, 400f, 300f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset; // 4 + (-4) = 0
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset; // 400 - (-4) = 404
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    TestContext.WriteLine(
+                        $"[WGroupPropertyContextXEqualsOffset] "
+                            + $"controlRect.x={controlRect.x:F3}, resolvedRect.x={resolvedRect.x:F3}, "
+                            + $"expectedX={expectedX:F3} (x=4 - 4 = 0)"
+                    );
+
+                    Assert.AreEqual(
+                        expectedX,
+                        resolvedRect.x,
+                        0.001f,
+                        "WGroupPropertyContext with x=4 should result in x=0 after -4f offset."
+                    );
+                    Assert.AreEqual(
+                        expectedWidth,
+                        resolvedRect.width,
+                        0.001f,
+                        "WGroupPropertyContext should increase width by 4f."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Documents the Unity Rect xMin/xMax/width interdependency behavior.
+        /// When xMin is modified, xMax stays constant and width adjusts automatically.
+        /// This behavior is critical to understand for correct offset calculations.
+        /// </summary>
+        [Test]
+        public void UnityRectBehaviorXMinModificationAdjustsWidthAutomatically()
+        {
+            Rect original = new(10f, 0f, 100f, 50f);
+            float originalXMax = original.xMax; // 110
+
+            TestContext.WriteLine(
+                $"[Original] x={original.x}, width={original.width}, xMax={originalXMax}"
+            );
+
+            // Modify xMin - this should keep xMax constant and adjust width
+            Rect modified = original;
+            modified.xMin -= 5f; // Shift left by 5
+
+            TestContext.WriteLine(
+                $"[After xMin -= 5] x={modified.x}, width={modified.width}, xMax={modified.xMax}"
+            );
+
+            Assert.AreEqual(5f, modified.x, 0.001f, "x (xMin) should be reduced by 5");
+            Assert.AreEqual(
+                originalXMax,
+                modified.xMax,
+                0.001f,
+                "xMax should stay constant when xMin is modified"
+            );
+            Assert.AreEqual(
+                105f,
+                modified.width,
+                0.001f,
+                "Width should increase by 5 when xMin decreases by 5 (since xMax stays constant)"
+            );
+        }
+
+        /// <summary>
+        /// Demonstrates that explicit width modification AFTER xMin modification
+        /// would cause a double adjustment - the bug that was fixed.
+        /// </summary>
+        [Test]
+        public void UnityRectBehaviorDoubleAdjustmentDemonstration()
+        {
+            Rect rect = new(10f, 0f, 100f, 50f);
+            float offset = -4f;
+
+            TestContext.WriteLine($"[Original] x={rect.x}, width={rect.width}, xMax={rect.xMax}");
+
+            // CORRECT: Only modify xMin, width adjusts automatically
+            Rect correct = rect;
+            correct.xMin += offset; // x becomes 6, width becomes 104
+
+            TestContext.WriteLine(
+                $"[Correct - xMin only] x={correct.x}, width={correct.width}, xMax={correct.xMax}"
+            );
+
+            // INCORRECT: Modify both xMin and width explicitly (the old buggy approach)
+            Rect incorrect = rect;
+            incorrect.xMin += offset; // x becomes 6, width becomes 104
+            incorrect.width -= offset; // width becomes 108 (WRONG - double adjustment!)
+
+            TestContext.WriteLine(
+                $"[Incorrect - xMin AND width] x={incorrect.x}, width={incorrect.width}, xMax={incorrect.xMax}"
+            );
+
+            Assert.AreEqual(
+                6f,
+                correct.x,
+                0.001f,
+                "Correct approach: x should be original + offset"
+            );
+            Assert.AreEqual(
+                104f,
+                correct.width,
+                0.001f,
+                "Correct approach: width should increase by |offset|"
+            );
+
+            Assert.AreEqual(6f, incorrect.x, 0.001f, "Incorrect approach: x is same");
+            Assert.AreEqual(
+                108f,
+                incorrect.width,
+                0.001f,
+                "Incorrect approach: width is doubled (the bug)"
+            );
+
+            // The key assertion - correct width should be 4 less than incorrect
+            Assert.AreEqual(
+                correct.width + 4f,
+                incorrect.width,
+                0.001f,
+                "Double adjustment causes width to be 4 more than intended"
+            );
+        }
+
+        private static IEnumerable<TestCaseData> WGroupPropertyContextEdgeCases()
+        {
+            // Standard cases
+            yield return new TestCaseData(0f, 400f, 0).SetName("X0_Width400_Indent0");
+            yield return new TestCaseData(4f, 400f, 0).SetName("X4_Width400_Indent0_XBecomesZero");
+            yield return new TestCaseData(2f, 400f, 0).SetName(
+                "X2_Width400_Indent0_XBecomesNegative"
+            );
+
+            // Various widths
+            yield return new TestCaseData(10f, 100f, 0).SetName("X10_Width100_Indent0");
+            yield return new TestCaseData(10f, 200f, 0).SetName("X10_Width200_Indent0");
+            yield return new TestCaseData(10f, 500f, 0).SetName("X10_Width500_Indent0");
+
+            // Different indent levels (indent level shouldn't matter in WGroupPropertyContext)
+            yield return new TestCaseData(10f, 400f, 1).SetName("X10_Width400_Indent1");
+            yield return new TestCaseData(10f, 400f, 2).SetName("X10_Width400_Indent2");
+
+            // Edge case: very small rect
+            yield return new TestCaseData(4f, 10f, 0).SetName("SmallRect_X4_Width10");
+
+            // Edge case: large x offset
+            yield return new TestCaseData(100f, 400f, 0).SetName("LargeX_100_Width400");
+        }
+
+        [TestCaseSource(nameof(WGroupPropertyContextEdgeCases))]
+        public void WGroupPropertyContextWidthAdjustmentEdgeCases(
+            float inputX,
+            float inputWidth,
+            int indentLevel
+        )
+        {
+            Rect controlRect = new(inputX, 0f, inputWidth, 300f);
+            const float WGroupAlignmentOffset = -4f;
+
+            // Expected: xMin shifts left by 4, xMax stays constant, so width increases by 4
+            float expectedX = inputX + WGroupAlignmentOffset;
+            float expectedWidth = inputWidth - WGroupAlignmentOffset; // width + 4
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = indentLevel;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    TestContext.WriteLine(
+                        $"[EdgeCase] input=({inputX}, {inputWidth}), indent={indentLevel}, "
+                            + $"resolved=({resolvedRect.x:F3}, {resolvedRect.width:F3}), "
+                            + $"expected=({expectedX:F3}, {expectedWidth:F3})"
+                    );
+
+                    Assert.AreEqual(
+                        expectedX,
+                        resolvedRect.x,
+                        0.001f,
+                        $"x should be input.x + WGroupAlignmentOffset ({inputX} + {WGroupAlignmentOffset} = {expectedX})"
+                    );
+                    Assert.AreEqual(
+                        expectedWidth,
+                        resolvedRect.width,
+                        0.001f,
+                        $"Width should increase by |WGroupAlignmentOffset| ({inputWidth} + 4 = {expectedWidth})"
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        private static IEnumerable<TestCaseData> UnityListAlignmentOffsetEdgeCases()
+        {
+            const float UnityListAlignmentOffset = -1.25f;
+
+            // Case: x starts at 0, gets clamped
+            yield return new TestCaseData(0f, 400f, 0f, 400f).SetName("X0_ClampedToZero");
+
+            // Case: x starts at 0.5, would go negative, gets clamped
+            yield return new TestCaseData(0.5f, 400f, 0f, 400.5f).SetName("X0_5_ClampedToZero");
+
+            // Case: x starts at 1.25, goes exactly to 0
+            yield return new TestCaseData(1.25f, 400f, 0f, 401.25f).SetName("X1_25_ExactlyZero");
+
+            // Case: x starts above 1.25, normal shift
+            yield return new TestCaseData(
+                50f,
+                300f,
+                50f + UnityListAlignmentOffset,
+                300f - UnityListAlignmentOffset
+            ).SetName("X50_NormalShift");
+
+            // Case: large x, normal shift
+            yield return new TestCaseData(
+                100f,
+                500f,
+                100f + UnityListAlignmentOffset,
+                500f - UnityListAlignmentOffset
+            ).SetName("X100_LargeRect");
+        }
+
+        [TestCaseSource(nameof(UnityListAlignmentOffsetEdgeCases))]
+        public void UnityListAlignmentOffsetDataDriven(
+            float inputX,
+            float inputWidth,
+            float expectedX,
+            float expectedWidth
+        )
+        {
+            Rect controlRect = new(inputX, 0f, inputWidth, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                // Normal context (no WGroup), indentLevel 0
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                TestContext.WriteLine(
+                    $"[UnityListOffset] input=({inputX}, {inputWidth}), "
+                        + $"resolved=({resolvedRect.x:F3}, {resolvedRect.width:F3}), "
+                        + $"expected=({expectedX:F3}, {expectedWidth:F3})"
+                );
+
+                Assert.AreEqual(
+                    expectedX,
+                    resolvedRect.x,
+                    0.01f,
+                    $"x should be {expectedX} after UnityListAlignmentOffset with clamping"
+                );
+                Assert.AreEqual(
+                    expectedWidth,
+                    resolvedRect.width,
+                    0.01f,
+                    $"Width should be {expectedWidth}"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Documents the behavior of EditorGUI.IndentedRect at indentLevel=0.
+        /// In some Unity versions, IndentedRect unexpectedly modifies the rect width
+        /// even at indentLevel=0 (shifts xMax left by approximately 1.25).
+        /// In other Unity versions, IndentedRect returns the rect unchanged at level 0.
+        /// The production fix skips calling IndentedRect when indentLevel=0 to ensure
+        /// consistent behavior across all Unity versions.
+        /// </summary>
+        [Test]
+        public void IndentedRectAtZeroIndentBehaviorDocumentation()
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+
+                Rect indentedRect = EditorGUI.IndentedRect(controlRect);
+
+                float xMaxShift = controlRect.xMax - indentedRect.xMax;
+                float widthDifference = controlRect.width - indentedRect.width;
+                bool behaviorModifiesRect = widthDifference > 0.001f;
+
+                TestContext.WriteLine(
+                    $"[IndentedRect at indentLevel=0] Unity Version Behavior Documentation:"
+                );
+                TestContext.WriteLine(
+                    $"  original=({controlRect.x:F3}, {controlRect.width:F3}, xMax={controlRect.xMax:F3})"
+                );
+                TestContext.WriteLine(
+                    $"  indented=({indentedRect.x:F3}, {indentedRect.width:F3}, xMax={indentedRect.xMax:F3})"
+                );
+                TestContext.WriteLine(
+                    $"  xMaxShift={xMaxShift:F4}, widthDifference={widthDifference:F4}"
+                );
+                TestContext.WriteLine(
+                    $"  Unity behavior in this version: {(behaviorModifiesRect ? "MODIFIES rect at level 0" : "Returns rect UNCHANGED at level 0")}"
+                );
+                TestContext.WriteLine(
+                    $"  Production code skips IndentedRect at level 0 to ensure consistent behavior."
+                );
+
+                // xMin (x) should remain unchanged at indentLevel=0 in all Unity versions
+                Assert.AreEqual(
+                    controlRect.x,
+                    indentedRect.x,
+                    0.001f,
+                    "IndentedRect at indentLevel=0 should not modify xMin/x in any Unity version"
+                );
+
+                // Document but don't assert the version-specific behavior
+                // The important thing is that our fix handles both cases correctly
+                Assert.IsTrue(
+                    !float.IsNaN(indentedRect.width) && !float.IsInfinity(indentedRect.width),
+                    "IndentedRect should return valid width values"
+                );
+                Assert.GreaterOrEqual(
+                    indentedRect.width,
+                    0f,
+                    "IndentedRect should return non-negative width"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Documents the xMax shift magnitude at indentLevel=0 across Unity versions.
+        /// In some versions: shift is approximately 1.25 (Unity modifies the rect).
+        /// In other versions: shift is 0 (Unity returns rect unchanged).
+        /// This test documents the observed behavior without asserting a specific value.
+        /// </summary>
+        [Test]
+        public void IndentedRectAtZeroIndentXMaxShiftDocumentation()
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+
+                Rect indentedRect = EditorGUI.IndentedRect(controlRect);
+                float xMaxShift = controlRect.xMax - indentedRect.xMax;
+
+                TestContext.WriteLine(
+                    $"[xMax shift at indentLevel=0] Unity Version Behavior Documentation:"
+                );
+                TestContext.WriteLine(
+                    $"  shift={xMaxShift:F4} (original.xMax={controlRect.xMax:F3}, indented.xMax={indentedRect.xMax:F3})"
+                );
+                TestContext.WriteLine($"  Known Unity behaviors:");
+                TestContext.WriteLine(
+                    $"    - Some versions: shift ~1.25 (unexpectedly modifies rect)"
+                );
+                TestContext.WriteLine($"    - Other versions: shift 0 (returns rect unchanged)");
+                TestContext.WriteLine($"  Current Unity version shift: {xMaxShift:F4}");
+
+                // The shift should be either 0 (newer behavior) or approximately 1.25 (older behavior)
+                // We accept any value in range [0, 2] to handle version differences
+                Assert.GreaterOrEqual(xMaxShift, 0f, "xMax shift should be non-negative");
+                Assert.LessOrEqual(
+                    xMaxShift,
+                    2f,
+                    "xMax shift should not exceed 2 (typical range is 0 to 1.25)"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Verifies that skipping IndentedRect at indentLevel=0 preserves the original rect.
+        /// This is the behavior our fix implements.
+        /// </summary>
+        [Test]
+        public void SkippingIndentedRectAtZeroIndentPreservesRect()
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+
+                // Our fix: skip IndentedRect at level 0
+                Rect result =
+                    EditorGUI.indentLevel > 0 ? EditorGUI.IndentedRect(controlRect) : controlRect;
+
+                Assert.AreEqual(
+                    controlRect.x,
+                    result.x,
+                    0.001f,
+                    "Skipping IndentedRect at level 0 preserves x"
+                );
+                Assert.AreEqual(
+                    controlRect.width,
+                    result.width,
+                    0.001f,
+                    "Skipping IndentedRect at level 0 preserves width"
+                );
+                Assert.AreEqual(
+                    controlRect.xMax,
+                    result.xMax,
+                    0.001f,
+                    "Skipping IndentedRect at level 0 preserves xMax"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests IndentedRect behavior at indentLevel=1 for comparison with level 0.
+        /// At level 1, the x position should shift right and width should decrease.
+        /// </summary>
+        [Test]
+        public void IndentedRectAtLevel1ShiftsXAndReducesWidth()
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 1;
+
+                Rect indentedRect = EditorGUI.IndentedRect(controlRect);
+
+                TestContext.WriteLine(
+                    $"[IndentedRect at indentLevel=1] "
+                        + $"original=({controlRect.x:F3}, {controlRect.width:F3}), "
+                        + $"indented=({indentedRect.x:F3}, {indentedRect.width:F3})"
+                );
+
+                // At level 1, x should shift right (indentation applied)
+                Assert.Greater(
+                    indentedRect.x,
+                    controlRect.x,
+                    "IndentedRect at indentLevel=1 should shift x right"
+                );
+
+                // Width should decrease
+                Assert.Less(
+                    indentedRect.width,
+                    controlRect.width,
+                    "IndentedRect at indentLevel=1 should reduce width"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Compares IndentedRect behavior between level 0 and level 1 to show the difference.
+        /// </summary>
+        [Test]
+        public void IndentedRectLevel0VsLevel1Comparison()
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                Rect rectAtLevel0 = EditorGUI.IndentedRect(controlRect);
+
+                EditorGUI.indentLevel = 1;
+                Rect rectAtLevel1 = EditorGUI.IndentedRect(controlRect);
+
+                TestContext.WriteLine(
+                    $"[Level comparison] "
+                        + $"Level0=({rectAtLevel0.x:F3}, {rectAtLevel0.width:F3}), "
+                        + $"Level1=({rectAtLevel1.x:F3}, {rectAtLevel1.width:F3})"
+                );
+
+                // Level 1 should have larger x offset than level 0
+                Assert.Greater(
+                    rectAtLevel1.x,
+                    rectAtLevel0.x,
+                    "IndentedRect at level 1 should have larger x than level 0"
+                );
+
+                // Level 1 should have smaller width than level 0
+                Assert.Less(
+                    rectAtLevel1.width,
+                    rectAtLevel0.width,
+                    "IndentedRect at level 1 should have smaller width than level 0"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Data-driven test for IndentedRect behavior at various indent levels.
+        /// Verifies that the production code's approach of skipping IndentedRect at level 0
+        /// produces consistent results regardless of Unity version.
+        /// </summary>
+        private static IEnumerable<TestCaseData> IndentedRectBehaviorTestCases()
+        {
+            // Indent level 0: production code skips IndentedRect entirely
+            yield return new TestCaseData(0, 0f, 400f).SetName(
+                "IndentLevel0_ZeroStart_ProductionSkipsCall"
+            );
+            yield return new TestCaseData(0, 50f, 400f).SetName(
+                "IndentLevel0_NonZeroStart_ProductionSkipsCall"
+            );
+            yield return new TestCaseData(0, 0f, 200f).SetName(
+                "IndentLevel0_SmallWidth_ProductionSkipsCall"
+            );
+
+            // Higher indent levels: IndentedRect is called normally
+            yield return new TestCaseData(1, 0f, 400f).SetName("IndentLevel1_NormalIndentation");
+            yield return new TestCaseData(2, 0f, 400f).SetName("IndentLevel2_NormalIndentation");
+            yield return new TestCaseData(3, 50f, 300f).SetName("IndentLevel3_OffsetStart");
+        }
+
+        [TestCaseSource(nameof(IndentedRectBehaviorTestCases))]
+        public void IndentedRectBehaviorDataDriven(int indentLevel, float inputX, float inputWidth)
+        {
+            Rect controlRect = new(inputX, 0f, inputWidth, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = indentLevel;
+
+                Rect directIndentedRect = EditorGUI.IndentedRect(controlRect);
+
+                // Production approach: skip IndentedRect at level 0
+                Rect productionApproach =
+                    indentLevel > 0 ? EditorGUI.IndentedRect(controlRect) : controlRect;
+
+                TestContext.WriteLine(
+                    $"[IndentedRect DataDriven] indentLevel={indentLevel}, "
+                        + $"input=({inputX}, {inputWidth})"
+                );
+                TestContext.WriteLine(
+                    $"  Direct IndentedRect: ({directIndentedRect.x:F3}, {directIndentedRect.width:F3})"
+                );
+                TestContext.WriteLine(
+                    $"  Production approach: ({productionApproach.x:F3}, {productionApproach.width:F3})"
+                );
+
+                if (indentLevel == 0)
+                {
+                    // At level 0, production code preserves the original rect
+                    Assert.AreEqual(
+                        inputX,
+                        productionApproach.x,
+                        0.001f,
+                        "Production approach at level 0 should preserve original x"
+                    );
+                    Assert.AreEqual(
+                        inputWidth,
+                        productionApproach.width,
+                        0.001f,
+                        "Production approach at level 0 should preserve original width"
+                    );
+                }
+                else
+                {
+                    // At higher levels, production code uses IndentedRect
+                    Assert.AreEqual(
+                        directIndentedRect.x,
+                        productionApproach.x,
+                        0.001f,
+                        $"Production approach at level {indentLevel} should match direct IndentedRect x"
+                    );
+                    Assert.AreEqual(
+                        directIndentedRect.width,
+                        productionApproach.width,
+                        0.001f,
+                        $"Production approach at level {indentLevel} should match direct IndentedRect width"
+                    );
+                    // Higher levels should shift x right
+                    Assert.Greater(
+                        productionApproach.x,
+                        inputX,
+                        $"At indent level {indentLevel}, x should be shifted right"
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Verifies that the production code's ResolveContentRect handles the
+        /// Unity version-specific IndentedRect behavior correctly at indent level 0.
+        /// </summary>
+        [Test]
+        public void ResolveContentRectHandlesIndentLevel0Correctly()
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                // Regardless of Unity's IndentedRect behavior at level 0,
+                // production code applies UnityListAlignmentOffset (-1.25f) when outside WGroup
+                // and clamps xMin to 0 if it would go negative
+                Assert.GreaterOrEqual(
+                    resolvedRect.x,
+                    0f,
+                    "Production code should clamp x to non-negative at indent level 0"
+                );
+                Assert.GreaterOrEqual(
+                    resolvedRect.width,
+                    0f,
+                    "Production code should maintain non-negative width"
+                );
+
+                TestContext.WriteLine(
+                    $"[ResolveContentRect at indentLevel=0] "
+                        + $"input=({controlRect.x}, {controlRect.width}), "
+                        + $"resolved=({resolvedRect.x:F3}, {resolvedRect.width:F3})"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests the IndentedRect behavior across multiple indent levels
+        /// to verify the progressive indentation pattern.
+        /// </summary>
+        [Test]
+        public void IndentedRectProgressiveIndentation()
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+            int previousIndentLevel = EditorGUI.indentLevel;
+
+            List<(int level, float x, float width)> results = new();
+
+            try
+            {
+                for (int level = 0; level <= 5; level++)
+                {
+                    EditorGUI.indentLevel = level;
+                    Rect indented = EditorGUI.IndentedRect(controlRect);
+                    results.Add((level, indented.x, indented.width));
+                }
+
+                TestContext.WriteLine("[Progressive Indentation]");
+                foreach ((int level, float x, float width) in results)
+                {
+                    TestContext.WriteLine($"  Level {level}: x={x:F3}, width={width:F3}");
+                }
+
+                // Verify that higher levels have larger x offsets (starting from level 1)
+                for (int i = 2; i < results.Count; i++)
+                {
+                    Assert.GreaterOrEqual(
+                        results[i].x,
+                        results[i - 1].x,
+                        $"Level {results[i].level} x should be >= level {results[i - 1].level} x"
+                    );
+                }
+
+                // Verify that higher levels have smaller widths (starting from level 1)
+                for (int i = 2; i < results.Count; i++)
+                {
+                    Assert.LessOrEqual(
+                        results[i].width,
+                        results[i - 1].width,
+                        $"Level {results[i].level} width should be <= level {results[i - 1].level} width"
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests ResolveContentRect with zero width input.
+        /// </summary>
+        [Test]
+        public void ResolveContentRectZeroWidthInput()
+        {
+            Rect controlRect = new(10f, 0f, 0f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                TestContext.WriteLine(
+                    $"[ZeroWidth] input.width={controlRect.width:F3}, resolved.width={resolvedRect.width:F3}"
+                );
+
+                Assert.GreaterOrEqual(
+                    resolvedRect.width,
+                    0f,
+                    "Width should remain non-negative with zero input width"
+                );
+                Assert.IsFalse(
+                    float.IsNaN(resolvedRect.width),
+                    "Width should not be NaN with zero input"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests ResolveContentRect with negative width input.
+        /// </summary>
+        [Test]
+        public void ResolveContentRectNegativeWidthInput()
+        {
+            Rect controlRect = new(10f, 0f, -50f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                TestContext.WriteLine(
+                    $"[NegativeWidth] input.width={controlRect.width:F3}, resolved.width={resolvedRect.width:F3}"
+                );
+
+                // Implementation may clamp or pass through; verify it doesn't crash
+                Assert.IsFalse(
+                    float.IsNaN(resolvedRect.width),
+                    "Width should not be NaN with negative input"
+                );
+                Assert.IsFalse(
+                    float.IsInfinity(resolvedRect.width),
+                    "Width should not be infinite with negative input"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests ResolveContentRect with very large width input.
+        /// </summary>
+        [TestCase(10000f, TestName = "VeryLargeWidth_10000")]
+        [TestCase(100000f, TestName = "VeryLargeWidth_100000")]
+        [TestCase(1000000f, TestName = "VeryLargeWidth_1000000")]
+        public void ResolveContentRectVeryLargeWidthInput(float largeWidth)
+        {
+            Rect controlRect = new(10f, 0f, largeWidth, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                TestContext.WriteLine(
+                    $"[LargeWidth] input.width={largeWidth:F0}, resolved.width={resolvedRect.width:F3}"
+                );
+
+                Assert.IsFalse(
+                    float.IsNaN(resolvedRect.width),
+                    "Width should not be NaN with large input"
+                );
+                Assert.IsFalse(
+                    float.IsInfinity(resolvedRect.width),
+                    "Width should not be infinite with large input"
+                );
+                Assert.GreaterOrEqual(
+                    resolvedRect.width,
+                    0f,
+                    "Width should be non-negative with large input"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests ResolveContentRect with negative X input at indentLevel=0.
+        /// </summary>
+        [Test]
+        public void ResolveContentRectNegativeXAtIndentLevel0()
+        {
+            Rect controlRect = new(-10f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                TestContext.WriteLine(
+                    $"[NegativeX] input.x={controlRect.x:F3}, resolved.x={resolvedRect.x:F3}"
+                );
+
+                Assert.IsFalse(
+                    float.IsNaN(resolvedRect.x),
+                    "X should not be NaN with negative input"
+                );
+                Assert.IsFalse(
+                    float.IsInfinity(resolvedRect.x),
+                    "X should not be infinite with negative input"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests ResolveContentRect with X exactly equal to the UnityListAlignmentOffset (1.25).
+        /// At this value, the offset should result in x=0 exactly.
+        /// </summary>
+        [Test]
+        public void ResolveContentRectXEqualsUnityListAlignmentOffset()
+        {
+            const float UnityListAlignmentOffset = -1.25f;
+            float inputX = -UnityListAlignmentOffset; // 1.25
+            Rect controlRect = new(inputX, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                TestContext.WriteLine(
+                    $"[XEquals1.25] input.x={inputX:F3}, resolved.x={resolvedRect.x:F3}"
+                );
+
+                // When x=1.25 and offset=-1.25, result should be x=0
+                Assert.AreEqual(
+                    0f,
+                    resolvedRect.x,
+                    0.01f,
+                    "When input.x equals |UnityListAlignmentOffset|, result.x should be 0"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests ResolveContentRect with fractional X values close to the alignment threshold.
+        /// </summary>
+        [TestCase(0.5f, TestName = "FractionalX_0_5")]
+        [TestCase(1.0f, TestName = "FractionalX_1_0")]
+        [TestCase(1.24f, TestName = "FractionalX_1_24_JustBelowThreshold")]
+        [TestCase(1.26f, TestName = "FractionalX_1_26_JustAboveThreshold")]
+        [TestCase(2.5f, TestName = "FractionalX_2_5")]
+        public void ResolveContentRectFractionalXValues(float inputX)
+        {
+            const float UnityListAlignmentOffset = -1.25f;
+            Rect controlRect = new(inputX, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                float expectedX = inputX + UnityListAlignmentOffset;
+                if (expectedX < 0f)
+                {
+                    expectedX = 0f;
+                }
+
+                TestContext.WriteLine(
+                    $"[FractionalX] input.x={inputX:F3}, resolved.x={resolvedRect.x:F3}, expected={expectedX:F3}"
+                );
+
+                Assert.AreEqual(
+                    expectedX,
+                    resolvedRect.x,
+                    0.01f,
+                    $"For input.x={inputX}, result.x should be {expectedX} (clamped if needed)"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests that UnityListAlignmentOffset is only applied at indentLevel=0 outside WGroup.
+        /// At indentLevel > 0, IndentedRect handles positioning and no extra offset is applied.
+        /// </summary>
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        public void UnityListAlignmentOffsetNotAppliedAtHigherIndentLevels(int indentLevel)
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = indentLevel;
+                GroupGUIWidthUtility.ResetForTests();
+
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                Rect indentedOnly = EditorGUI.IndentedRect(controlRect);
+
+                TestContext.WriteLine(
+                    $"[IndentLevel{indentLevel}] resolved.x={resolvedRect.x:F3}, indentedOnly.x={indentedOnly.x:F3}"
+                );
+
+                // At indentLevel > 0, the x position comes from IndentedRect, not alignment offset
+                Assert.Greater(
+                    resolvedRect.x,
+                    0f,
+                    $"At indentLevel={indentLevel}, x should be positive (from IndentedRect)"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests that at indentLevel=0 with positive X, UnityListAlignmentOffset shifts X left.
+        /// </summary>
+        [Test]
+        public void UnityListAlignmentOffsetShiftsXLeftAtIndentLevel0()
+        {
+            const float UnityListAlignmentOffset = -1.25f;
+            Rect controlRect = new(50f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                float expectedX = controlRect.x + UnityListAlignmentOffset;
+
+                TestContext.WriteLine(
+                    $"[AlignmentOffset] input.x={controlRect.x:F3}, resolved.x={resolvedRect.x:F3}, expected={expectedX:F3}"
+                );
+
+                Assert.AreEqual(
+                    expectedX,
+                    resolvedRect.x,
+                    0.01f,
+                    "At indentLevel=0 with positive X, alignment offset should shift X left"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests that width increases by |UnityListAlignmentOffset| at indentLevel=0
+        /// because xMax stays constant while xMin shifts left.
+        /// </summary>
+        [Test]
+        public void UnityListAlignmentOffsetIncreasesWidthAtIndentLevel0()
+        {
+            const float UnityListAlignmentOffset = -1.25f;
+            Rect controlRect = new(50f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                // Width increases because xMin shifts left by 1.25 while xMax stays constant
+                float expectedWidth = controlRect.width - UnityListAlignmentOffset;
+
+                TestContext.WriteLine(
+                    $"[WidthIncrease] input.width={controlRect.width:F3}, resolved.width={resolvedRect.width:F3}, expected={expectedWidth:F3}"
+                );
+
+                Assert.AreEqual(
+                    expectedWidth,
+                    resolvedRect.width,
+                    0.01f,
+                    "Width should increase by |alignment offset| at indentLevel=0"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests the clamping behavior when X is small and alignment offset would make it negative.
+        /// </summary>
+        [TestCase(0f, 0f, TestName = "XStartsAt0_ClampedTo0")]
+        [TestCase(0.5f, 0f, TestName = "XStartsAt0_5_ClampedTo0")]
+        [TestCase(1.0f, 0f, TestName = "XStartsAt1_0_ClampedTo0")]
+        [TestCase(1.25f, 0f, TestName = "XStartsAt1_25_BecomesExactly0")]
+        [TestCase(2.0f, 0.75f, TestName = "XStartsAt2_0_Becomes0_75")]
+        public void UnityListAlignmentOffsetClampingBehavior(float inputX, float expectedX)
+        {
+            Rect controlRect = new(inputX, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                Rect resolvedRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                TestContext.WriteLine(
+                    $"[Clamping] input.x={inputX:F3}, resolved.x={resolvedRect.x:F3}, expected={expectedX:F3}"
+                );
+
+                Assert.AreEqual(
+                    expectedX,
+                    resolvedRect.x,
+                    0.01f,
+                    $"For input.x={inputX}, result.x should be clamped to {expectedX}"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests that UnityListAlignmentOffset is NOT applied inside WGroup (scopeDepth > 0).
+        /// </summary>
+        [Test]
+        public void UnityListAlignmentOffsetNotAppliedInsideWGroup()
+        {
+            const float LeftPadding = 12f;
+            const float RightPadding = 8f;
+            float horizontalPadding = LeftPadding + RightPadding;
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    // Inside WGroup, x should be exactly controlRect.x + LeftPadding
+                    // (no UnityListAlignmentOffset applied)
+                    float expectedX = controlRect.x + LeftPadding;
+
+                    TestContext.WriteLine(
+                        $"[InsideWGroup] resolved.x={resolvedRect.x:F3}, expected={expectedX:F3}"
+                    );
+
+                    Assert.AreEqual(
+                        expectedX,
+                        resolvedRect.x,
+                        0.01f,
+                        "Inside WGroup, UnityListAlignmentOffset should not be applied"
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Verifies that SerializableSetPropertyDrawer has the same WGroupPropertyContext behavior
+        /// as SerializableDictionaryPropertyDrawer.
+        /// </summary>
+        [Test]
+        public void SetDrawerWGroupPropertyContextMatchesDictionaryDrawer()
+        {
+            Rect controlRect = new(10f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect dictRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                        controlRect,
+                        skipIndentation: false
+                    );
+
+                    Rect setRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                        controlRect,
+                        skipIndentation: false
+                    );
+
+                    TestContext.WriteLine(
+                        $"[Consistency] Dictionary=({dictRect.x:F3}, {dictRect.width:F3}), "
+                            + $"Set=({setRect.x:F3}, {setRect.width:F3})"
+                    );
+
+                    Assert.AreEqual(
+                        dictRect.x,
+                        setRect.x,
+                        0.001f,
+                        "Set drawer x should match Dictionary drawer x in WGroupPropertyContext"
+                    );
+                    Assert.AreEqual(
+                        dictRect.width,
+                        setRect.width,
+                        0.001f,
+                        "Set drawer width should match Dictionary drawer width in WGroupPropertyContext"
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Verifies that SerializableSetPropertyDrawer has the same UnityListAlignmentOffset behavior
+        /// as SerializableDictionaryPropertyDrawer outside WGroup context.
+        /// </summary>
+        [Test]
+        public void SetDrawerUnityListAlignmentOffsetMatchesDictionaryDrawer()
+        {
+            Rect controlRect = new(50f, 0f, 300f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                // No WGroup context
+                Rect dictRect = SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                Rect setRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                    controlRect,
+                    skipIndentation: false
+                );
+
+                TestContext.WriteLine(
+                    $"[Consistency] Dictionary=({dictRect.x:F3}, {dictRect.width:F3}), "
+                        + $"Set=({setRect.x:F3}, {setRect.width:F3})"
+                );
+
+                Assert.AreEqual(
+                    dictRect.x,
+                    setRect.x,
+                    0.001f,
+                    "Set drawer x should match Dictionary drawer x outside WGroup"
+                );
+                Assert.AreEqual(
+                    dictRect.width,
+                    setRect.width,
+                    0.001f,
+                    "Set drawer width should match Dictionary drawer width outside WGroup"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
         }
     }
 }

@@ -2717,10 +2717,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             EditorGUI.indentLevel = IndentDepth;
             Rect expectedBaselineRect = EditorGUI.IndentedRect(controlRect);
             EditorGUI.indentLevel = snapshotIndent;
+
+            // When outside a WGroup (scopeDepth == 0), UnityListAlignmentOffset is applied.
+            // The offset shifts xMin left by 1.25f, but it's clamped to not go below 0.
+            const float UnityListAlignmentOffset = -1.25f;
+            float expectedXMin = Mathf.Max(
+                0f,
+                expectedBaselineRect.xMin + UnityListAlignmentOffset
+            );
+
             Assert.That(
                 drawer.LastResolvedPosition.xMin,
-                Is.EqualTo(expectedBaselineRect.xMin).Within(0.0001f),
-                "Indentation should influence the resolved content rectangle."
+                Is.EqualTo(expectedXMin).Within(0.0001f),
+                $"Indentation should influence the resolved content rectangle. "
+                    + $"IndentedRect.xMin={expectedBaselineRect.xMin}, "
+                    + $"AlignmentOffset={UnityListAlignmentOffset}, "
+                    + $"ExpectedXMin={expectedXMin}, "
+                    + $"ActualXMin={drawer.LastResolvedPosition.xMin}"
             );
 
             const float LeftPadding = 16f;

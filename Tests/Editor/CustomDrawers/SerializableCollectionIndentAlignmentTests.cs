@@ -39,7 +39,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void DictionaryAtIndentZeroWithoutWGroupAlignsWithUnityLists()
         {
-            Rect controlRect = new(0f, 0f, 400f, 300f);
+            // Use x=18 to simulate realistic Inspector positioning (Unity never starts at x=0)
+            // This allows the -1.25f offset to be applied without hitting the xMin >= 0 clamp
+            Rect controlRect = new(18f, 0f, 400f, 300f);
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -74,7 +76,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void SetAtIndentZeroWithoutWGroupAlignsWithUnityLists()
         {
-            Rect controlRect = new(0f, 0f, 400f, 300f);
+            // Use x=18 to simulate realistic Inspector positioning (Unity never starts at x=0)
+            // This allows the -1.25f offset to be applied without hitting the xMin >= 0 clamp
+            Rect controlRect = new(18f, 0f, 400f, 300f);
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -936,6 +940,452 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     0f,
                     "Right padding should be clamped to >= 0."
                 );
+            }
+        }
+
+        /// <summary>
+        /// Data-driven test for WGroupPropertyContext alignment offset with various starting x values.
+        /// Tests both Dictionary and Set to ensure consistent behavior.
+        /// </summary>
+        [TestCase(
+            4f,
+            400f,
+            0,
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X4_Width400_Indent0"
+        )]
+        [TestCase(
+            8f,
+            400f,
+            0,
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X8_Width400_Indent0"
+        )]
+        [TestCase(
+            12f,
+            400f,
+            0,
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X12_Width400_Indent0"
+        )]
+        [TestCase(
+            20f,
+            400f,
+            0,
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X20_Width400_Indent0"
+        )]
+        [TestCase(
+            50f,
+            400f,
+            0,
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X50_Width400_Indent0"
+        )]
+        [TestCase(
+            0f,
+            400f,
+            0,
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X0_Width400_Indent0"
+        )]
+        [TestCase(
+            100f,
+            400f,
+            0,
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X100_Width400_Indent0"
+        )]
+        [TestCase(
+            4f,
+            400f,
+            1,
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X4_Width400_Indent1"
+        )]
+        [TestCase(
+            4f,
+            400f,
+            2,
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X4_Width400_Indent2"
+        )]
+        [TestCase(
+            4f,
+            400f,
+            5,
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X4_Width400_Indent5"
+        )]
+        [TestCase(
+            20f,
+            200f,
+            3,
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X20_Width200_Indent3"
+        )]
+        [TestCase(
+            50f,
+            600f,
+            4,
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X50_Width600_Indent4"
+        )]
+        public void WGroupPropertyContextAlignmentOffsetBothCollections(
+            float startX,
+            float width,
+            int indentLevel
+        )
+        {
+            Rect controlRect = new(startX, 0f, width, 300f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = indentLevel;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect dictResolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    Rect setResolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                        controlRect,
+                        skipIndentation: false
+                    );
+
+                    TestContext.WriteLine(
+                        $"[WGroupPropertyContextAlignmentOffsetBothCollections] "
+                            + $"startX={startX:F3}, width={width:F3}, indentLevel={indentLevel}, "
+                            + $"dict.x={dictResolvedRect.x:F3}, set.x={setResolvedRect.x:F3}, "
+                            + $"dict.width={dictResolvedRect.width:F3}, set.width={setResolvedRect.width:F3}"
+                    );
+
+                    // Dictionary assertions
+                    Assert.AreEqual(
+                        expectedX,
+                        dictResolvedRect.x,
+                        PixelTolerance,
+                        $"Dictionary: WGroupPropertyContext should apply -4f offset to x={startX}."
+                    );
+                    Assert.AreEqual(
+                        expectedWidth,
+                        dictResolvedRect.width,
+                        PixelTolerance,
+                        $"Dictionary: WGroupPropertyContext should increase width by 4f."
+                    );
+
+                    // Set assertions
+                    Assert.AreEqual(
+                        expectedX,
+                        setResolvedRect.x,
+                        PixelTolerance,
+                        $"Set: WGroupPropertyContext should apply -4f offset to x={startX}."
+                    );
+                    Assert.AreEqual(
+                        expectedWidth,
+                        setResolvedRect.width,
+                        PixelTolerance,
+                        $"Set: WGroupPropertyContext should increase width by 4f."
+                    );
+
+                    // Both should be identical
+                    Assert.AreEqual(
+                        dictResolvedRect.x,
+                        setResolvedRect.x,
+                        PixelTolerance,
+                        "Dictionary and Set should produce identical x in WGroupPropertyContext."
+                    );
+                    Assert.AreEqual(
+                        dictResolvedRect.width,
+                        setResolvedRect.width,
+                        PixelTolerance,
+                        "Dictionary and Set should produce identical width in WGroupPropertyContext."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests WGroupPropertyContext with very small widths for both Dictionary and Set.
+        /// </summary>
+        [TestCase(1f, TestName = "CollectionWGroupPropertyContextSmallWidth_1")]
+        [TestCase(2f, TestName = "CollectionWGroupPropertyContextSmallWidth_2")]
+        [TestCase(5f, TestName = "CollectionWGroupPropertyContextSmallWidth_5")]
+        [TestCase(10f, TestName = "CollectionWGroupPropertyContextSmallWidth_10")]
+        public void WGroupPropertyContextSmallWidthBothCollections(float smallWidth)
+        {
+            Rect controlRect = new(20f, 0f, smallWidth, 300f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect dictResolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    Rect setResolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                        controlRect,
+                        skipIndentation: false
+                    );
+
+                    TestContext.WriteLine(
+                        $"[WGroupPropertyContextSmallWidthBothCollections] "
+                            + $"smallWidth={smallWidth:F3}, "
+                            + $"dict.width={dictResolvedRect.width:F3}, set.width={setResolvedRect.width:F3}"
+                    );
+
+                    // Dictionary assertions
+                    Assert.AreEqual(
+                        expectedWidth,
+                        dictResolvedRect.width,
+                        PixelTolerance,
+                        $"Dictionary: Small width {smallWidth} should become {expectedWidth}."
+                    );
+                    Assert.IsFalse(
+                        float.IsNaN(dictResolvedRect.width),
+                        "Dictionary: Resolved width should not be NaN."
+                    );
+
+                    // Set assertions
+                    Assert.AreEqual(
+                        expectedWidth,
+                        setResolvedRect.width,
+                        PixelTolerance,
+                        $"Set: Small width {smallWidth} should become {expectedWidth}."
+                    );
+                    Assert.IsFalse(
+                        float.IsNaN(setResolvedRect.width),
+                        "Set: Resolved width should not be NaN."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests WGroupPropertyContext with very large widths for both Dictionary and Set.
+        /// </summary>
+        [TestCase(1000f, TestName = "CollectionWGroupPropertyContextLargeWidth_1000")]
+        [TestCase(2000f, TestName = "CollectionWGroupPropertyContextLargeWidth_2000")]
+        [TestCase(5000f, TestName = "CollectionWGroupPropertyContextLargeWidth_5000")]
+        [TestCase(10000f, TestName = "CollectionWGroupPropertyContextLargeWidth_10000")]
+        public void WGroupPropertyContextLargeWidthBothCollections(float largeWidth)
+        {
+            Rect controlRect = new(100f, 0f, largeWidth, 300f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset;
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect dictResolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    Rect setResolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                        controlRect,
+                        skipIndentation: false
+                    );
+
+                    TestContext.WriteLine(
+                        $"[WGroupPropertyContextLargeWidthBothCollections] "
+                            + $"largeWidth={largeWidth:F3}, "
+                            + $"dict.width={dictResolvedRect.width:F3}, set.width={setResolvedRect.width:F3}"
+                    );
+
+                    // Dictionary assertions
+                    Assert.AreEqual(
+                        expectedWidth,
+                        dictResolvedRect.width,
+                        PixelTolerance,
+                        $"Dictionary: Large width {largeWidth} should become {expectedWidth}."
+                    );
+                    Assert.IsFalse(
+                        float.IsInfinity(dictResolvedRect.width),
+                        "Dictionary: Resolved width should not be infinite."
+                    );
+
+                    // Set assertions
+                    Assert.AreEqual(
+                        expectedWidth,
+                        setResolvedRect.width,
+                        PixelTolerance,
+                        $"Set: Large width {largeWidth} should become {expectedWidth}."
+                    );
+                    Assert.IsFalse(
+                        float.IsInfinity(setResolvedRect.width),
+                        "Set: Resolved width should not be infinite."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests WGroupPropertyContext negative x boundary for both Dictionary and Set.
+        /// </summary>
+        [Test]
+        public void WGroupPropertyContextNegativeXBoundaryBothCollections()
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset; // 0 + (-4) = -4
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset; // 400 - (-4) = 404
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect dictResolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    Rect setResolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                        controlRect,
+                        skipIndentation: false
+                    );
+
+                    TestContext.WriteLine(
+                        $"[WGroupPropertyContextNegativeXBoundaryBothCollections] "
+                            + $"dict.x={dictResolvedRect.x:F3}, set.x={setResolvedRect.x:F3}, "
+                            + $"expectedX={expectedX:F3}"
+                    );
+
+                    // Both should allow negative x
+                    Assert.AreEqual(
+                        expectedX,
+                        dictResolvedRect.x,
+                        PixelTolerance,
+                        "Dictionary: Should allow negative x after -4f offset."
+                    );
+                    Assert.AreEqual(
+                        expectedX,
+                        setResolvedRect.x,
+                        PixelTolerance,
+                        "Set: Should allow negative x after -4f offset."
+                    );
+
+                    // Width should be increased
+                    Assert.AreEqual(
+                        expectedWidth,
+                        dictResolvedRect.width,
+                        PixelTolerance,
+                        "Dictionary: Width should be increased by 4f."
+                    );
+                    Assert.AreEqual(
+                        expectedWidth,
+                        setResolvedRect.width,
+                        PixelTolerance,
+                        "Set: Width should be increased by 4f."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests WGroupPropertyContext with x=4 specifically (offset cancels out to zero).
+        /// </summary>
+        [Test]
+        public void WGroupPropertyContextXEqualsOffsetBothCollections()
+        {
+            Rect controlRect = new(4f, 0f, 400f, 300f);
+
+            const float WGroupAlignmentOffset = -4f;
+            float expectedX = controlRect.x + WGroupAlignmentOffset; // 4 + (-4) = 0
+            float expectedWidth = controlRect.width - WGroupAlignmentOffset; // 400 - (-4) = 404
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect dictResolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    Rect setResolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                        controlRect,
+                        skipIndentation: false
+                    );
+
+                    TestContext.WriteLine(
+                        $"[WGroupPropertyContextXEqualsOffsetBothCollections] "
+                            + $"dict.x={dictResolvedRect.x:F3}, set.x={setResolvedRect.x:F3}, "
+                            + $"expectedX={expectedX:F3} (x=4 - 4 = 0)"
+                    );
+
+                    Assert.AreEqual(
+                        expectedX,
+                        dictResolvedRect.x,
+                        PixelTolerance,
+                        "Dictionary: x=4 should result in x=0 after -4f offset."
+                    );
+                    Assert.AreEqual(
+                        expectedX,
+                        setResolvedRect.x,
+                        PixelTolerance,
+                        "Set: x=4 should result in x=0 after -4f offset."
+                    );
+                    Assert.AreEqual(
+                        expectedWidth,
+                        dictResolvedRect.width,
+                        PixelTolerance,
+                        "Dictionary: Width should be 404f."
+                    );
+                    Assert.AreEqual(
+                        expectedWidth,
+                        setResolvedRect.width,
+                        PixelTolerance,
+                        "Set: Width should be 404f."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
             }
         }
     }

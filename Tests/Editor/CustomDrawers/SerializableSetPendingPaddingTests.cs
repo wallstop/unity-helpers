@@ -276,17 +276,33 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializableSetPropertyDrawer drawer = new();
             GUIContent label = new("Set");
 
-            setProperty.isExpanded = true;
-            float expandedHeight = drawer.GetPropertyHeight(setProperty, label);
+            // Disable tweening to get immediate height values.
+            // When tweening is enabled, the foldout animation uses an AnimBool which
+            // doesn't instantly reflect the isExpanded state, causing both heights to be equal.
+            bool originalTweenEnabled = UnityHelpersSettings.ShouldTweenSerializableSetFoldouts();
+            try
+            {
+                UnityHelpersSettings.SetSerializableSetFoldoutTweenEnabled(false);
+                SerializableSetPropertyDrawer.ClearMainFoldoutAnimCacheForTests();
 
-            setProperty.isExpanded = false;
-            float collapsedHeight = drawer.GetPropertyHeight(setProperty, label);
+                setProperty.isExpanded = true;
+                float expandedHeight = drawer.GetPropertyHeight(setProperty, label);
 
-            Assert.Greater(
-                expandedHeight,
-                collapsedHeight,
-                "Expanded set should be taller than collapsed."
-            );
+                setProperty.isExpanded = false;
+                float collapsedHeight = drawer.GetPropertyHeight(setProperty, label);
+
+                Assert.Greater(
+                    expandedHeight,
+                    collapsedHeight,
+                    $"Expanded set should be taller than collapsed. "
+                        + $"ExpandedHeight={expandedHeight}, CollapsedHeight={collapsedHeight}, "
+                        + $"TweenEnabled={originalTweenEnabled}"
+                );
+            }
+            finally
+            {
+                UnityHelpersSettings.SetSerializableSetFoldoutTweenEnabled(originalTweenEnabled);
+            }
         }
 
         [UnityTest]
@@ -439,11 +455,17 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     skipIndentation: false
                 );
 
-                float expectedMinimumIndent = 6f;
+                // At indent level 0, production code skips IndentedRect entirely to avoid
+                // version-specific Unity behavior differences. UnityListAlignmentOffset (-1.25f)
+                // is applied, which would make xMin negative, but production code clamps xMin
+                // to 0 to prevent negative values.
+                float expectedMinimumX = 0f;
                 Assert.GreaterOrEqual(
                     resolvedRect.x,
-                    expectedMinimumIndent - 1f,
-                    "Minimum padding should be applied at indent level 0."
+                    expectedMinimumX,
+                    $"x should be clamped to non-negative at indent level 0. "
+                        + $"OriginalRect.x={originalRect.x}, ResolvedRect.x={resolvedRect.x}, "
+                        + $"IndentLevel={EditorGUI.indentLevel}"
                 );
             }
             finally
@@ -495,6 +517,181 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     rectAtLevel4.width,
                     rectAtLevel1.width,
                     "Higher indent level should reduce width."
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Data-driven test for ResolveContentRect behavior across various starting x positions.
+        /// Verifies that xMin never goes negative regardless of the original rect's x position.
+        /// </summary>
+        /// <param name="startX">The starting x position of the rect.</param>
+        [TestCase(0f)]
+        [TestCase(0.5f)]
+        [TestCase(1f)]
+        [TestCase(1.25f)]
+        [TestCase(2f)]
+        [TestCase(10f)]
+        [TestCase(-5f)]
+        public void ResolveContentRectNeverReturnsNegativeXMin(float startX)
+        {
+            Rect originalRect = new(startX, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                Rect resolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                    originalRect,
+                    skipIndentation: false
+                );
+
+                Assert.GreaterOrEqual(
+                    resolvedRect.x,
+                    0f,
+                    $"xMin should never be negative. StartX={startX}, ResolvedX={resolvedRect.x}"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Data-driven test for ResolveContentRect behavior at various indent levels.
+        /// Verifies that xMin is always non-negative regardless of indent level.
+        /// </summary>
+        /// <param name="indentLevel">The indent level to test.</param>
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(5)]
+        [TestCase(10)]
+        public void ResolveContentRectNonNegativeAtVariousIndentLevels(int indentLevel)
+        {
+            Rect originalRect = new(0f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = indentLevel;
+                GroupGUIWidthUtility.ResetForTests();
+
+                Rect resolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                    originalRect,
+                    skipIndentation: false
+                );
+
+                Assert.GreaterOrEqual(
+                    resolvedRect.x,
+                    0f,
+                    $"xMin should never be negative at indent level {indentLevel}. ResolvedX={resolvedRect.x}"
+                );
+                Assert.GreaterOrEqual(
+                    resolvedRect.width,
+                    0f,
+                    $"Width should never be negative at indent level {indentLevel}. ResolvedWidth={resolvedRect.width}"
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Data-driven test for expanded vs collapsed height across different element counts.
+        /// Verifies that expanded height is always greater than collapsed height.
+        /// </summary>
+        /// <param name="elementCount">The number of elements in the set.</param>
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        [TestCase(5)]
+        [TestCase(10)]
+        public void ExpandedHeightAlwaysGreaterThanCollapsedForVariousElementCounts(
+            int elementCount
+        )
+        {
+            PaddingTestSetHost host = CreateScriptableObject<PaddingTestSetHost>();
+            for (int i = 0; i < elementCount; i++)
+            {
+                host.set.Add(i);
+            }
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(PaddingTestSetHost.set)
+            );
+
+            SerializableSetPropertyDrawer drawer = new();
+            GUIContent label = new("Set");
+
+            bool originalTweenEnabled = UnityHelpersSettings.ShouldTweenSerializableSetFoldouts();
+            try
+            {
+                UnityHelpersSettings.SetSerializableSetFoldoutTweenEnabled(false);
+                SerializableSetPropertyDrawer.ClearMainFoldoutAnimCacheForTests();
+
+                setProperty.isExpanded = true;
+                float expandedHeight = drawer.GetPropertyHeight(setProperty, label);
+
+                setProperty.isExpanded = false;
+                float collapsedHeight = drawer.GetPropertyHeight(setProperty, label);
+
+                Assert.Greater(
+                    expandedHeight,
+                    collapsedHeight,
+                    $"Expanded height should be greater than collapsed for {elementCount} element(s). "
+                        + $"ExpandedHeight={expandedHeight}, CollapsedHeight={collapsedHeight}"
+                );
+            }
+            finally
+            {
+                UnityHelpersSettings.SetSerializableSetFoldoutTweenEnabled(originalTweenEnabled);
+            }
+        }
+
+        /// <summary>
+        /// Data-driven test for rect width at various starting widths.
+        /// Verifies that resolved width is always non-negative.
+        /// </summary>
+        /// <param name="startWidth">The starting width of the rect.</param>
+        [TestCase(400f)]
+        [TestCase(200f)]
+        [TestCase(100f)]
+        [TestCase(50f)]
+        [TestCase(20f)]
+        [TestCase(10f)]
+        [TestCase(5f)]
+        public void ResolveContentRectWidthNonNegativeForVariousWidths(float startWidth)
+        {
+            Rect originalRect = new(0f, 0f, startWidth, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                Rect resolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
+                    originalRect,
+                    skipIndentation: false
+                );
+
+                Assert.GreaterOrEqual(
+                    resolvedRect.width,
+                    0f,
+                    $"Width should never be negative. StartWidth={startWidth}, ResolvedWidth={resolvedRect.width}"
                 );
             }
             finally

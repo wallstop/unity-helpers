@@ -1187,8 +1187,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 const float WGroupAlignmentOffset = -4f;
                 Rect alignedPosition = position;
+                // Note: Modifying xMin automatically adjusts width to keep xMax constant
                 alignedPosition.xMin += WGroupAlignmentOffset;
-                alignedPosition.width -= WGroupAlignmentOffset;
                 SerializableDictionaryIndentDiagnostics.LogResolveContentRect(
                     original,
                     alignedPosition,
@@ -1248,7 +1248,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
-            Rect indentedResult = EditorGUI.IndentedRect(padded2);
+            // Skip EditorGUI.IndentedRect when indentLevel is 0 to ensure consistent behavior
+            // across all Unity versions. In some versions, IndentedRect unexpectedly modifies
+            // the rect width at level 0 (shifts xMax left by ~1.25), while in other versions
+            // it returns the rect unchanged. By skipping the call at level 0, we handle both
+            // cases consistently. Our own alignment offset is applied below for level 0.
+            Rect indentedResult = indentLevel > 0 ? EditorGUI.IndentedRect(padded2) : padded2;
 
             // Clamp width to non-negative after IndentedRect (high indent levels can cause negative width)
             if (indentedResult.width < 0f || float.IsNaN(indentedResult.width))
@@ -1256,12 +1261,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 indentedResult.width = 0f;
             }
 
-            // When outside a WGroup, shift slightly left to align with Unity's default
-            // list/array rendering
-            const float UnityListAlignmentOffset = -1.25f;
             Rect final = indentedResult;
-            final.xMin += UnityListAlignmentOffset;
-            final.width -= UnityListAlignmentOffset;
+
+            // Only apply Unity list alignment offset when truly outside a WGroup context
+            // (scopeDepth == 0 means no WGroup padding is active)
+            if (scopeDepth == 0)
+            {
+                // When outside a WGroup, shift slightly left to align with Unity's default
+                // list/array rendering
+                const float UnityListAlignmentOffset = -1.25f;
+                // Note: Modifying xMin automatically adjusts width to keep xMax constant
+                final.xMin += UnityListAlignmentOffset;
+
+                // Ensure xMin doesn't go negative (can happen when original rect starts at x=0)
+                // Simply clamp xMin to 0; this preserves xMax and correctly adjusts width
+                if (final.xMin < 0f)
+                {
+                    final.xMin = 0f;
+                }
+            }
 
             SerializableDictionaryIndentDiagnostics.LogResolveContentRectSteps(
                 original,
@@ -6655,6 +6673,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return fallbackProgress;
             }
 
+            if (anim.isAnimating)
+            {
+                RequestRepaint();
+            }
+
             float animatedProgress = anim.faded;
 
             SerializableCollectionTweenDiagnostics.LogFoldoutProgressCalculation(
@@ -6858,6 +6881,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             anim.target = pending.isExpanded;
+            if (anim.isAnimating)
+            {
+                RequestRepaint();
+            }
             float animatedProgress = anim.faded;
 
             SerializableCollectionTweenDiagnostics.LogFoldoutProgressCalculation(
