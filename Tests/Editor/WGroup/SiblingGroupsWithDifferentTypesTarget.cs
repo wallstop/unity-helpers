@@ -12,16 +12,24 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
     /// </summary>
     internal sealed class SiblingGroupsWithDifferentTypesTarget : ScriptableObject
     {
-        [WGroup("GroupA", "Group A - Primitives")]
+        [WGroup(
+            "GroupA",
+            "Group A - Primitives",
+            autoIncludeCount: WGroupAttribute.InfiniteAutoInclude
+        )]
         public int intA;
 
-        [WGroupEnd("GroupA")]
+        [WGroup("GroupA"), WGroupEnd("GroupA")]
         public float floatA;
 
-        [WGroup("GroupB", "Group B - Collections")]
+        [WGroup(
+            "GroupB",
+            "Group B - Collections",
+            autoIncludeCount: WGroupAttribute.InfiniteAutoInclude
+        )]
         public List<int> listB = new();
 
-        [WGroupEnd("GroupB")]
+        [WGroup("GroupB"), WGroupEnd("GroupB")]
         public int[] arrayB = Array.Empty<int>();
 
         [WGroup("GroupC", "Group C - Nested")]

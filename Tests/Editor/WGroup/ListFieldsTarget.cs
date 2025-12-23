@@ -11,12 +11,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
     /// </summary>
     internal sealed class ListFieldsTarget : ScriptableObject
     {
-        [WGroup("Lists", "List Types")]
+        [WGroup("Lists", "List Types", autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
         public List<int> intList = new();
 
         public List<string> stringList = new();
 
-        [WGroupEnd("Lists")]
+        [WGroup("Lists"), WGroupEnd("Lists")]
         public List<float> floatList = new();
 
         public int afterListField;

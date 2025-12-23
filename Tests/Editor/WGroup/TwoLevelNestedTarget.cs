@@ -10,16 +10,21 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
     /// </summary>
     public sealed class TwoLevelNestedTarget : ScriptableObject
     {
-        [WGroup("outer", "Character")]
+        [WGroup("outer", "Character", autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
         public string characterName;
 
-        [WGroup("inner", "Stats", parentGroup: "outer")]
+        [WGroup(
+            "inner",
+            "Stats",
+            parentGroup: "outer",
+            autoIncludeCount: WGroupAttribute.InfiniteAutoInclude
+        )]
         public int level;
 
-        [WGroupEnd("inner")]
+        [WGroup("inner"), WGroupEnd("inner")]
         public int experience;
 
-        [WGroupEnd("outer")]
+        [WGroup("outer"), WGroupEnd("outer")]
         public string faction;
     }
 }

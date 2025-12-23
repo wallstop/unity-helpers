@@ -11,12 +11,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
     /// </summary>
     internal sealed class ArrayFieldsTarget : ScriptableObject
     {
-        [WGroup("Arrays", "Array Types")]
+        [WGroup("Arrays", "Array Types", autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
         public int[] intArray = Array.Empty<int>();
 
         public string[] stringArray = Array.Empty<string>();
 
-        [WGroupEnd("Arrays")]
+        [WGroup("Arrays"), WGroupEnd("Arrays")]
         public float[] floatArray = Array.Empty<float>();
 
         public int afterArrayField;

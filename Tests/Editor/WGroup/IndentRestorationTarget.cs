@@ -13,10 +13,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
     {
         public int beforeGroup;
 
-        [WGroup("Middle", "Middle Group")]
+        [WGroup("Middle", "Middle Group", autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
         public List<int> middleList = new();
 
-        [WGroupEnd("Middle")]
+        [WGroup("Middle"), WGroupEnd("Middle")]
         public NestedData middleNested = new();
 
         public int afterGroup;

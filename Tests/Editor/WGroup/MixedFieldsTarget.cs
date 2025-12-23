@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
     /// </summary>
     internal sealed class MixedFieldsTarget : ScriptableObject
     {
-        [WGroup("Mixed", "Mixed Types")]
+        [WGroup("Mixed", "Mixed Types", autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
         public int simpleInt;
 
         public List<int> listField = new();
@@ -20,7 +20,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
 
         public NestedData nestedField = new();
 
-        [WGroupEnd("Mixed")]
+        [WGroup("Mixed"), WGroupEnd("Mixed")]
         public float simpleFloat;
     }
 }

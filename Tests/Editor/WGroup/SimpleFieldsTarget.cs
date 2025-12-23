@@ -10,14 +10,18 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
     /// </summary>
     internal sealed class SimpleFieldsTarget : ScriptableObject
     {
-        [WGroup("Primitives", "Primitive Types")]
+        [WGroup(
+            "Primitives",
+            "Primitive Types",
+            autoIncludeCount: WGroupAttribute.InfiniteAutoInclude
+        )]
         public int intField;
 
         public float floatField;
 
         public string stringField;
 
-        [WGroupEnd("Primitives")]
+        [WGroup("Primitives"), WGroupEnd("Primitives")]
         public bool boolField;
     }
 }

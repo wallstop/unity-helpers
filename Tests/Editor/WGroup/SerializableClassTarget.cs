@@ -10,10 +10,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
     /// </summary>
     internal sealed class SerializableClassTarget : ScriptableObject
     {
-        [WGroup("Nested", "Nested Objects")]
+        [WGroup("Nested", "Nested Objects", autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
         public NestedData nestedData = new();
 
-        [WGroupEnd("Nested")]
+        [WGroup("Nested"), WGroupEnd("Nested")]
         public NestedData anotherNestedData = new();
 
         public int afterNestedField;

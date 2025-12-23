@@ -579,6 +579,131 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
 
             Assert.That(deepest.PropertyPaths, Contains.Item("deepestArray"));
         }
+
+        /// <summary>
+        /// Data-driven test cases validating that groups contain their expected properties.
+        /// These test cases validate the correct behavior of explicit [WGroup] + InfiniteAutoInclude
+        /// combined with [WGroup] + [WGroupEnd] patterns.
+        /// </summary>
+        private static System.Collections.IEnumerable GroupPropertyCountTestCases()
+        {
+            // SimpleFieldsTarget: 4 fields with InfiniteAutoInclude and [WGroup]+[WGroupEnd] on last
+            yield return new TestCaseData(
+                typeof(SimpleFieldsTarget),
+                "Primitives",
+                4,
+                new[] { "intField", "floatField", "stringField", "boolField" }
+            ).SetName("SimpleFields.HasAllFourPrimitives");
+
+            // ListFieldsTarget: 3 list fields with InfiniteAutoInclude
+            yield return new TestCaseData(
+                typeof(ListFieldsTarget),
+                "Lists",
+                3,
+                new[] { "intList", "stringList", "floatList" }
+            ).SetName("ListFields.HasAllThreeLists");
+
+            // ArrayFieldsTarget: 3 array fields with InfiniteAutoInclude
+            yield return new TestCaseData(
+                typeof(ArrayFieldsTarget),
+                "Arrays",
+                3,
+                new[] { "intArray", "stringArray", "floatArray" }
+            ).SetName("ArrayFields.HasAllThreeArrays");
+
+            // SerializableClassTarget: 2 nested fields
+            yield return new TestCaseData(
+                typeof(SerializableClassTarget),
+                "Nested",
+                2,
+                new[] { "nestedData", "anotherNestedData" }
+            ).SetName("SerializableClass.HasBothNestedFields");
+
+            // MixedFieldsTarget: 5 mixed fields
+            yield return new TestCaseData(
+                typeof(MixedFieldsTarget),
+                "Mixed",
+                5,
+                new[] { "simpleInt", "listField", "simpleString", "nestedField", "simpleFloat" }
+            ).SetName("MixedFields.HasAllFiveMixedFields");
+        }
+
+        [Test]
+        [TestCaseSource(nameof(GroupPropertyCountTestCases))]
+        public void GroupContainsExpectedProperties(
+            System.Type targetType,
+            string groupName,
+            int expectedCount,
+            string[] expectedProperties
+        )
+        {
+            UnityEngine.Object target = CreateScriptableObject(targetType);
+            using SerializedObject serializedObject = new(target);
+
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, "m_Script");
+
+            Assert.That(
+                layout.TryGetGroup(groupName, out WGroupDefinition group),
+                Is.True,
+                () => $"Group '{groupName}' should exist.\n{FormatLayoutDiagnostics(layout)}"
+            );
+
+            Assert.That(
+                group.PropertyPaths,
+                Has.Count.EqualTo(expectedCount),
+                () =>
+                    $"Group '{groupName}' should have {expectedCount} properties but has {group.PropertyPaths.Count}: [{string.Join(", ", group.PropertyPaths)}].\n{FormatLayoutDiagnostics(layout)}"
+            );
+
+            foreach (string expectedProperty in expectedProperties)
+            {
+                Assert.That(
+                    group.PropertyPaths,
+                    Contains.Item(expectedProperty),
+                    () =>
+                        $"Group '{groupName}' should contain '{expectedProperty}'.\n{FormatLayoutDiagnostics(layout)}"
+                );
+            }
+        }
+
+        /// <summary>
+        /// Test cases validating behavior of WGroupEnd without [WGroup] (should NOT include field).
+        /// </summary>
+        private static System.Collections.IEnumerable WGroupEndOnlyDoesNotIncludeFieldTestCases()
+        {
+            yield return new TestCaseData(
+                typeof(SiblingGroupsWithDifferentTypesTarget),
+                "GroupC",
+                "afterAllGroups"
+            ).SetName("WGroupEndOnly.DoesNotIncludeTerminatingField");
+        }
+
+        [Test]
+        [TestCaseSource(nameof(WGroupEndOnlyDoesNotIncludeFieldTestCases))]
+        public void WGroupEndOnlyDoesNotIncludeField(
+            System.Type targetType,
+            string groupName,
+            string fieldWithEndOnly
+        )
+        {
+            UnityEngine.Object target = CreateScriptableObject(targetType);
+            using SerializedObject serializedObject = new(target);
+
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, "m_Script");
+
+            Assert.That(
+                layout.TryGetGroup(groupName, out WGroupDefinition group),
+                Is.True,
+                () => $"Group '{groupName}' should exist.\n{FormatLayoutDiagnostics(layout)}"
+            );
+
+            Assert.That(
+                group.PropertyPaths,
+                Does.Not.Contain(fieldWithEndOnly),
+                () =>
+                    $"Field '{fieldWithEndOnly}' with only [WGroupEnd] should NOT be in group '{groupName}'.\n{FormatLayoutDiagnostics(layout)}"
+            );
+        }
     }
 }
 #endif
