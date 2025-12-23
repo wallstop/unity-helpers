@@ -2,7 +2,7 @@
 
 **Organize your inspector without writing custom editors.**
 
-Unity Helpers provides powerful grouping attributes that create boxed sections and collapsible foldouts with zero boilerplate. These attributes rival commercial tools like Odin Inspector while offering unique features like auto-inclusion and project-wide color theming.
+Unity Helpers provides powerful grouping attributes that create boxed sections and collapsible foldouts with zero boilerplate. These attributes rival commercial tools like Odin Inspector while offering unique features like auto-inclusion.
 
 ---
 
@@ -13,7 +13,6 @@ Unity Helpers provides powerful grouping attributes that create boxed sections a
 - [Configuration](#configuration)
 - [Best Practices](#best-practices)
 - [Examples](#examples)
-- [Collection Styling](#collection-styling)
 
 ---
 
@@ -52,7 +51,6 @@ public class CharacterStatsWGroup : MonoBehaviour
     int autoIncludeCount = UseGlobalAutoInclude,  // Auto-include N fields (or use global setting)
     bool collapsible = false,            // Enable foldout behavior
     bool startCollapsed = false,         // Initial collapsed state
-    string colorKey = "Default",         // Color palette key
     bool hideHeader = false,             // Draw body without header bar
     string parentGroup = null            // Optional: Nest inside another group
 )]
@@ -146,48 +144,6 @@ Configure in **Project Settings → Unity Helpers** or see [Inspector Settings](
 
 ---
 
-### Color Theming
-
-```csharp
-using UnityEngine;
-using WallstopStudios.UnityHelpers.Core.Attributes;
-
-public class ColorThemingExample : MonoBehaviour
-{
-    [WGroup("health", "Health", colorKey: "Default-Dark")]
-    public float currentHealth;
-
-    [WGroupEnd("health")]
-    public float maxHealth;
-
-    [WGroup("mana", "Mana", colorKey: "Default-Light")]
-    public float currentMana;
-
-    [WGroupEnd("mana")]
-    public float maxMana;
-}
-```
-
-![Two groups with different color themes (dark blue and light blue)](../../images/inspector/wgroup-light-dark.png)
-
-**Built-in Color Keys:**
-
-- `"Default"` - Theme-aware (light theme = light colors, dark theme = dark colors)
-- `"Default-Dark"` - Dark theme palette
-- `"Default-Light"` - Light theme palette
-- `"WDefault"` - Legacy vibrant blue
-- Custom keys defined in `UnityHelpersSettings.WGroupCustomColors`
-
-**Define Custom Colors:**
-
-1. Open `ProjectSettings/UnityHelpersSettings.asset`
-2. Add entry to `WGroupCustomColors` dictionary
-3. Set `Header Background`, `Border Color`, `Body Background`
-
-![UnityHelpersSettings showing custom color palette configuration](../../images/inspector/wgroup-color-settings.png)
-
----
-
 ### Hiding Headers
 
 ```csharp
@@ -196,7 +152,7 @@ using WallstopStudios.UnityHelpers.Core.Attributes;
 
 public class HealthExample : MonoBehaviour
 {
-    [WGroup("stealth", "", hideHeader: true, colorKey: "Default-Light")]
+    [WGroup("stealth", "", hideHeader: true)]
     public float opacity = 1f;
 
     [WGroupEnd("stealth")]
@@ -227,7 +183,7 @@ public class NestedGroupExample : MonoBehaviour
     [WGroup("outer", "Character")]
     public string characterName;
 
-    [WGroup("inner", "Stats", parentGroup: "outer", colorKey: "Default-Light")]
+    [WGroup("inner", "Stats", parentGroup: "outer")]
     public int level;
     public int experience;
 
@@ -370,7 +326,6 @@ All grouping attributes respect project-wide settings defined in `UnityHelpersSe
 - `WGroupStartCollapsed` (default: true) - Whether collapsible groups start collapsed
 - `WGroupFoldoutTweenEnabled` (default: true) - Enable expand/collapse animations
 - `WGroupFoldoutSpeed` (default: 2.0, range: 2-12) - Animation speed
-- `WGroupCustomColors` - Custom color palette dictionary
 
 ![UnityHelpersSettings asset showing WGroup configuration section](../../images/inspector/wgroup-settings.png)
 
@@ -417,21 +372,7 @@ public int field2;
 public string unrelatedField;  // Also included!
 ```
 
-### 3. Color Usage
-
-```csharp
-// ✅ GOOD: Use colors to differentiate categories
-[WGroup("health", "Health", colorKey: "Default-Dark")]
-// ... health fields ...
-
-[WGroup("mana", "Mana", colorKey: "Default-Light")]
-// ... mana fields ...
-
-// ❌ BAD: Random colors without meaning
-[WGroup("stats", colorKey: "CustomRed")]  // Why red?
-```
-
-### 4. Collapsible vs. Always-Open
+### 3. Collapsible vs. Always-Open
 
 ```csharp
 // ✅ GOOD: Always-visible for frequently accessed data
@@ -464,7 +405,7 @@ using WallstopStudios.UnityHelpers.Core.Attributes;
 
 public class RPGCharacter : MonoBehaviour
 {
-    [WGroup("identity", "Identity", colorKey: "Default-Dark")]
+    [WGroup("identity", "Identity")]
     public string characterName;
     public Sprite portrait;
     public string className;
@@ -477,7 +418,7 @@ public class RPGCharacter : MonoBehaviour
     public int vitality = 10;
 
     [WGroupEnd("attributes")]
-    [WGroup("combat", "Combat Stats", colorKey: "Default-Light")]
+    [WGroup("combat", "Combat Stats")]
     public float maxHealth = 100f;
     public float attackPower = 25f;
     public float defense = 15f;
@@ -491,7 +432,7 @@ public class RPGCharacter : MonoBehaviour
 }
 ```
 
-![RPGCharacter inspector showing all groups with different colors](../../images/inspector/rpg-character.png)
+![RPGCharacter inspector showing all groups](../../images/inspector/rpg-character.png)
 
 ---
 
@@ -515,7 +456,7 @@ public class WeaponConfig2 : MonoBehaviour
     [WGroupEnd("basic")]
     public Sprite icon;
 
-    [WGroup("damage", "Damage", collapsible: true, colorKey: "Default-Dark")]
+    [WGroup("damage", "Damage", collapsible: true)]
     public float baseDamage = 10f;
     public float criticalMultiplier = 2f;
 
@@ -603,13 +544,13 @@ using WallstopStudios.UnityHelpers.Core.Attributes;
 public class AIController : MonoBehaviour
 {
     [WGroup("outer", "AI Configuration")]
-    [WGroup("detection", "Detection", colorKey: "Default-Light", parentGroup: "outer")]
+    [WGroup("detection", "Detection", parentGroup: "outer")]
     public float sightRange = 10f;
 
     [WGroupEnd("detection")]
     public float hearingRange = 5f;
 
-    [WGroup("behavior", "Behavior", colorKey: "Default-Dark", parentGroup: "outer")]
+    [WGroup("behavior", "Behavior", parentGroup: "outer")]
     public float aggressionLevel = 0.5f;
 
     [WGroupEnd("behavior")]
@@ -619,53 +560,6 @@ public class AIController : MonoBehaviour
 ```
 
 ![Nested groups showing visual hierarchy](../../images/inspector/wgroup-nested-2.png)
-
----
-
-## Collection Styling
-
-When `SerializableDictionary` or `SerializableSet` fields are nested inside WGroup-attributed fields, they automatically inherit themed colors from the active palette.
-
-### Automatic Color Derivation
-
-By default, collection row colors are intelligently derived from the palette's `BackgroundColor`:
-
-- **Dark palettes**: Row colors are lightened for readability
-- **Light palettes**: Row colors are darkened for contrast
-
-This fixes the dark-on-dark readability issue that occurred when using `Default-Dark` or other dark palettes with serializable collections.
-
-### Custom Collection Colors
-
-For fine-grained control, expand **"Collection Styling (Advanced)"** in **Project Settings → Unity Helpers → Custom Colors**:
-
-| Setting             | Description                                       |
-| ------------------- | ------------------------------------------------- |
-| Row Color           | Base background for collection rows               |
-| Alternate Row Color | Every-other-row background for visual distinction |
-| Selection Color     | Highlight when hovering/selecting rows            |
-| Border Color        | Outer border of collection containers             |
-| Pending Background  | Background for new/pending entries                |
-
-Unchecked options use auto-derived colors. Check the box and pick a custom color to override.
-
-### Programmatic Color Derivation
-
-Use the `WGroupColorDerivation` utility class for deriving collection colors programmatically:
-
-```csharp
-using WallstopStudios.UnityHelpers.Editor.Utils;
-
-// Derive all collection colors from a base background color
-Color backgroundColor = new Color(0.2f, 0.2f, 0.25f);
-Color rowColor = WGroupColorDerivation.DeriveRowColor(backgroundColor);
-Color alternateRowColor = WGroupColorDerivation.DeriveAlternateRowColor(backgroundColor);
-Color selectionColor = WGroupColorDerivation.DeriveSelectionColor(backgroundColor);
-```
-
-### Reset to Defaults
-
-Click **"Reset to Defaults"** to clear all custom collection colors and return to auto-derivation.
 
 ---
 
@@ -713,18 +607,6 @@ public int intelligence;
 
 ---
 
-### Color Not Applied
-
-**Problem:** Custom color key doesn't work
-
-**Solutions:**
-
-1. Verify the color key exists in `UnityHelpersSettings.WGroupCustomColors`
-2. Check spelling - color keys are case-sensitive
-3. Ensure the settings asset is saved
-
----
-
 ## Compatibility
 
 WGroup operates at the inspector level, so existing property drawers and custom inspectors continue to work. Groups appear in the order of their first declaration, and multi-object editing remains fully supported.
@@ -743,5 +625,4 @@ WGroup operates at the inspector level, so existing property drawers and custom 
 **Next Steps:**
 
 - Try grouping your existing scripts with `[WGroup]`
-- Customize colors in `UnityHelpersSettings.asset`
 - Explore `[WButton]` to add method buttons to your groups

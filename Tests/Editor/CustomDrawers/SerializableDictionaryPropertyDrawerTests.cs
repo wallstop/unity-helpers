@@ -739,81 +739,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
-        public void SortDictionaryEntriesOrdersPaletteKeysInGroupedInspector()
-        {
-            GroupedPaletteHost host = CreateScriptableObject<GroupedPaletteHost>();
-
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
-                nameof(GroupedPaletteHost.palette)
-            );
-            SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
-                SerializableDictionarySerializedPropertyNames.Keys
-            );
-            SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
-                SerializableDictionarySerializedPropertyNames.Values
-            );
-
-            keysProperty.arraySize = 3;
-            valuesProperty.arraySize = 3;
-            SetPaletteRow(0, "SortZeta", new Color(0.85f, 0.2f, 0.2f, 1f), Color.white);
-            SetPaletteRow(1, "SortAlpha", new Color(0.2f, 0.75f, 0.35f, 1f), Color.black);
-            SetPaletteRow(2, "SortMid", new Color(0.25f, 0.35f, 0.9f, 1f), Color.white);
-            serializedObject.ApplyModifiedProperties();
-
-            SerializableDictionaryPropertyDrawer drawer = new();
-            SerializableDictionaryPropertyDrawer.PaginationState pagination =
-                drawer.GetOrCreatePaginationState(dictionaryProperty);
-            pagination.selectedIndex = 0;
-            ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
-
-            drawer.SortDictionaryEntries(
-                dictionaryProperty,
-                keysProperty,
-                valuesProperty,
-                typeof(string),
-                typeof(UnityHelpersSettings.WGroupCustomColor),
-                Comparison,
-                pagination,
-                list
-            );
-
-            serializedObject.Update();
-            Assert.AreEqual("SortAlpha", keysProperty.GetArrayElementAtIndex(0).stringValue);
-            Assert.AreEqual("SortMid", keysProperty.GetArrayElementAtIndex(1).stringValue);
-            Assert.AreEqual("SortZeta", keysProperty.GetArrayElementAtIndex(2).stringValue);
-
-            string[] runtimeOrder = host.palette.Select(pair => pair.Key).ToArray();
-            string[] expectedOrder = { "SortAlpha", "SortMid", "SortZeta" };
-            CollectionAssert.AreEqual(expectedOrder, runtimeOrder);
-
-            void SetPaletteRow(int index, string key, Color background, Color text)
-            {
-                SerializedProperty keyProperty = keysProperty.GetArrayElementAtIndex(index);
-                keyProperty.stringValue = key;
-                SerializedProperty valueProperty = valuesProperty.GetArrayElementAtIndex(index);
-                valueProperty
-                    .FindPropertyRelative(
-                        UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorBackground
-                    )
-                    .colorValue = background;
-                valueProperty
-                    .FindPropertyRelative(
-                        UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColorText
-                    )
-                    .colorValue = text;
-            }
-
-            int Comparison(object left, object right)
-            {
-                string leftKey = left as string ?? left?.ToString();
-                string rightKey = right as string ?? right?.ToString();
-                return string.CompareOrdinal(leftKey, rightKey);
-            }
-        }
-
-        [Test]
         public void SortDictionaryEntriesUsesUnityObjectNameComparerForObjectKeys()
         {
             UnityObjectDictionaryHost host = CreateScriptableObject<UnityObjectDictionaryHost>();
@@ -2776,7 +2701,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             const float LeftPadding = 20f;
             const float RightPadding = 12f;
-            const float MinimumGroupIndent = 6f;
             float horizontalPadding = LeftPadding + RightPadding;
 
             GroupGUIWidthUtility.ResetForTests();
@@ -2808,27 +2732,27 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 $"[PendingEntryHeaderHonorsGroupPadding] "
                     + $"baselineHeader.xMin={baselineHeader.xMin:F3}, groupedHeader.xMin={groupedHeader.xMin:F3}, "
                     + $"baselineHeader.width={baselineHeader.width:F3}, groupedHeader.width={groupedHeader.width:F3}, "
-                    + $"LeftPadding={LeftPadding:F3}, MinimumGroupIndent={MinimumGroupIndent:F3}"
+                    + $"LeftPadding={LeftPadding:F3}"
             );
 
-            // The x position should shift by approximately (LeftPadding - MinimumGroupIndent)
-            // because WGroup padding replaces the MinimumGroupIndent that was applied in baseline
-            float expectedXShift = LeftPadding - MinimumGroupIndent;
+            // The x position should shift by approximately LeftPadding
+            // because baseline now aligns with Unity's default list rendering (no offset)
+            float expectedXShift = LeftPadding;
             float actualXShift = groupedHeader.xMin - baselineHeader.xMin;
             Assert.That(
                 actualXShift,
                 Is.EqualTo(expectedXShift).Within(1.0f),
-                $"Pending header xMin shift should be approximately LeftPadding ({LeftPadding}) - MinimumGroupIndent ({MinimumGroupIndent}) = {expectedXShift}. Actual shift: {actualXShift}"
+                $"Pending header xMin shift should be approximately LeftPadding ({LeftPadding}). Actual shift: {actualXShift}"
             );
 
             // The width should decrease when WGroup padding is applied
-            // The reduction should be approximately (horizontalPadding - MinimumGroupIndent)
-            float expectedWidthReduction = horizontalPadding - MinimumGroupIndent;
+            // The reduction should be approximately horizontalPadding
+            float expectedWidthReduction = horizontalPadding;
             float actualWidthReduction = baselineHeader.width - groupedHeader.width;
             Assert.That(
                 actualWidthReduction,
                 Is.EqualTo(expectedWidthReduction).Within(12.0f),
-                $"Pending header width should decrease by approximately (horizontalPadding - MinimumGroupIndent) = {expectedWidthReduction}. Actual reduction: {actualWidthReduction}"
+                $"Pending header width should decrease by approximately horizontalPadding = {expectedWidthReduction}. Actual reduction: {actualWidthReduction}"
             );
 
             // Verify grouped header is smaller than baseline (more padding applied)
@@ -2967,7 +2891,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             const float LeftPadding = 18f;
             const float RightPadding = 14f;
-            const float MinimumGroupIndent = 6f;
             float horizontalPadding = LeftPadding + RightPadding;
 
             GroupGUIWidthUtility.ResetForTests();
@@ -3001,11 +2924,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 $"[PendingEntryFieldsHonorGroupPadding] "
                     + $"baselineKey.xMin={baselineKey.xMin:F3}, groupedKey.xMin={groupedKey.xMin:F3}, "
                     + $"baselineKey.width={baselineKey.width:F3}, groupedKey.width={groupedKey.width:F3}, "
-                    + $"LeftPadding={LeftPadding:F3}, MinimumGroupIndent={MinimumGroupIndent:F3}"
+                    + $"LeftPadding={LeftPadding:F3}"
             );
 
-            // The x position should shift by approximately (LeftPadding - MinimumGroupIndent)
-            float expectedXShift = LeftPadding - MinimumGroupIndent;
+            // The x position should shift by approximately LeftPadding
+            // because baseline now aligns with Unity's default list rendering (no offset)
+            float expectedXShift = LeftPadding;
             float actualKeyXShift = groupedKey.xMin - baselineKey.xMin;
             Assert.That(
                 actualKeyXShift,
@@ -3017,7 +2941,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.That(
                 actualValueXShift,
                 Is.EqualTo(expectedXShift).Within(1.0f),
-                $"Pending value field xMin shift should be approximately {expectedXShift}. Actual: {actualValueXShift}"
+                $"Pending value field xMin shift should be approximately LeftPadding ({LeftPadding}). Actual: {actualValueXShift}"
             );
 
             // Width should decrease when WGroup padding is applied
@@ -3193,7 +3117,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             const float LeftPadding = 16f;
             const float RightPadding = 12f;
-            const float MinimumGroupIndent = 6f;
             float horizontalPadding = LeftPadding + RightPadding;
 
             GroupGUIWidthUtility.ResetForTests();
@@ -3236,16 +3159,17 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 $"[PendingEntryFoldoutValueRespectsGroupPadding] "
                     + $"baselineValue.xMin={baselineValue.xMin:F3}, groupedValue.xMin={groupedValue.xMin:F3}, "
                     + $"baselineValue.width={baselineValue.width:F3}, groupedValue.width={groupedValue.width:F3}, "
-                    + $"LeftPadding={LeftPadding:F3}, MinimumGroupIndent={MinimumGroupIndent:F3}"
+                    + $"LeftPadding={LeftPadding:F3}"
             );
 
-            // The x position should shift by approximately (LeftPadding - MinimumGroupIndent)
-            float expectedXShift = LeftPadding - MinimumGroupIndent;
+            // The x position should shift by approximately LeftPadding
+            // because baseline now aligns with Unity's default list rendering (no offset)
+            float expectedXShift = LeftPadding;
             float actualXShift = groupedValue.xMin - baselineValue.xMin;
             Assert.That(
                 actualXShift,
                 Is.EqualTo(expectedXShift).Within(1.0f),
-                $"Pending value foldout xMin shift should be approximately {expectedXShift}. Actual: {actualXShift}"
+                $"Pending value foldout xMin shift should be approximately LeftPadding ({LeftPadding}). Actual: {actualXShift}"
             );
 
             // Width should decrease when WGroup padding is applied
@@ -3299,7 +3223,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             const float LeftPadding = 24f;
             const float RightPadding = 10f;
-            const float MinimumGroupIndent = 6f;
             float horizontalPadding = LeftPadding + RightPadding;
 
             GroupGUIWidthUtility.ResetForTests();
@@ -3332,33 +3255,32 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Rect groupedKeyRect = SerializableDictionaryPropertyDrawer.LastRowKeyRect;
             Rect groupedValueRect = SerializableDictionaryPropertyDrawer.LastRowValueRect;
 
-            // The xMin shift should be approximately (LeftPadding - MinimumGroupIndent) because:
-            // - Baseline: controlRect.x=0 + MinimumGroupIndent (6) applied in ResolveContentRect
+            // The xMin shift should be approximately LeftPadding because:
+            // - Baseline: controlRect.x=0 with no additional offset (aligns with Unity lists)
             // - Grouped: controlRect.x=0 + LeftPadding (24) applied via GroupGUIWidthUtility
-            // The WGroup padding replaces the MinimumGroupIndent, so net shift = LeftPadding - MinimumGroupIndent
-            float expectedXShift = LeftPadding - MinimumGroupIndent;
+            float expectedXShift = LeftPadding;
             float actualRowXShift = groupedRowRect.xMin - baselineRowRect.xMin;
 
             TestContext.WriteLine(
                 $"[DictionaryRowsHonorGroupPadding] "
                     + $"baselineRowRect.xMin={baselineRowRect.xMin:F3}, groupedRowRect.xMin={groupedRowRect.xMin:F3}, "
                     + $"baselineRowRect.width={baselineRowRect.width:F3}, groupedRowRect.width={groupedRowRect.width:F3}, "
-                    + $"LeftPadding={LeftPadding:F3}, MinimumGroupIndent={MinimumGroupIndent:F3}, "
+                    + $"LeftPadding={LeftPadding:F3}, "
                     + $"expectedXShift={expectedXShift:F3}, actualRowXShift={actualRowXShift:F3}"
             );
 
-            // The row origin shift should approximately match (LeftPadding - MinimumGroupIndent)
+            // The row origin shift should approximately match LeftPadding
             Assert.That(
                 actualRowXShift,
                 Is.EqualTo(expectedXShift).Within(2.0f),
-                $"Row origin xMin shift should approximately match (LeftPadding - MinimumGroupIndent). Expected: {expectedXShift}, Actual: {actualRowXShift}"
+                $"Row origin xMin shift should approximately match LeftPadding. Expected: {expectedXShift}, Actual: {actualRowXShift}"
             );
 
             float actualKeyXShift = groupedKeyRect.xMin - baselineKeyRect.xMin;
             Assert.That(
                 actualKeyXShift,
                 Is.EqualTo(expectedXShift).Within(2.0f),
-                $"Key field xMin shift should approximately match (LeftPadding - MinimumGroupIndent). Expected: {expectedXShift}, Actual: {actualKeyXShift}"
+                $"Key field xMin shift should approximately match LeftPadding. Expected: {expectedXShift}, Actual: {actualKeyXShift}"
             );
 
             // The value offset within the row may vary slightly between baseline and grouped draws
@@ -3579,16 +3501,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Rect groupedKeyRect = SerializableDictionaryPropertyDrawer.LastRowKeyRect;
             Rect groupedValueRect = SerializableDictionaryPropertyDrawer.LastRowValueRect;
 
-            const float MinimumGroupIndent = 6f;
-
             // Edge case: Zero padding does NOT increase scope depth in GroupGUIWidthUtility
-            // (see WidthPaddingScope: "_trackScopeDepth = _padding > 0f"), so MinimumGroupIndent
-            // is still applied to both baseline and grouped, resulting in no shift.
+            // (see WidthPaddingScope: "_trackScopeDepth = _padding > 0f"), so no padding
+            // is applied to either baseline or grouped, resulting in no shift.
             bool zeroPadding = horizontalPadding <= 0f;
 
-            // When zero padding is used, both draws have MinimumGroupIndent applied, so no shift occurs.
-            // When non-zero padding is used, baseline has MinimumGroupIndent, grouped has leftPadding instead.
-            float expectedXShift = zeroPadding ? 0f : (leftPadding - MinimumGroupIndent);
+            // When zero padding is used, both draws have no offset applied, so no shift occurs.
+            // When non-zero padding is used, baseline has no offset, grouped has leftPadding.
+            float expectedXShift = zeroPadding ? 0f : leftPadding;
             float actualRowXShift = groupedRowRect.xMin - baselineRowRect.xMin;
 
             // Track scope depth to verify our assumption about zero-padding behavior
@@ -3645,16 +3565,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             // Width comparison logic:
             // The actual width difference between grouped and baseline follows the formula:
-            //   actualWidthDiff = WidthTransitionThreshold - horizontalPadding
+            //   actualWidthDiff = horizontalPadding
             //
             // This is because:
-            // - Baseline has both MinimumGroupIndent (6) AND ReorderableList internal offset (~6) applied
-            // - Grouped only has horizontalPadding applied (no MinimumGroupIndent when scopeDepth > 0)
-            //
-            // The WidthTransitionThreshold is empirically determined to be ~12 (2 * MinimumGroupIndent),
-            // accounting for both the MinimumGroupIndent and ReorderableList's internal element padding
-            // which together result in baseline being ~12px narrower than raw control rect width,
-            // while grouped is only narrower by horizontalPadding.
+            // - Baseline has no offset applied (aligns with Unity's default list rendering)
+            // - Grouped has horizontalPadding applied
             //
             // IMPORTANT: The production code enforces a minimum content width floor:
             //   MinContentWidth = DictionaryRowKeyColumnMinWidth + DictionaryRowValueColumnMinWidth
@@ -3662,7 +3577,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             // When the rect width falls below this minimum, it gets clamped to MinContentWidth.
             // This means very large paddings will hit this floor and show smaller width differences
             // than the linear formula predicts.
-            const float WidthTransitionThreshold = 12f;
 
             // Calculate the minimum content width floor from production constants
             float minContentWidth =
@@ -3681,11 +3595,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             if (zeroPadding)
             {
-                // Zero padding: both draws have MinimumGroupIndent applied, widths should be equal
+                // Zero padding: both draws have no offset applied, widths should be equal
                 Assert.That(
                     groupedRowRect.width,
                     Is.EqualTo(baselineRowRect.width).Within(1.0f),
-                    "Zero padding should result in equal widths (both have MinimumGroupIndent applied)."
+                    "Zero padding should result in equal widths (both have no offset applied)."
                 );
             }
             else if (groupedHitMinFloor)
@@ -3706,37 +3620,20 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         + $"Width diff should be baseline - minFloor = {expectedWidthDiff:F1}."
                 );
             }
-            else if (horizontalPadding < WidthTransitionThreshold)
-            {
-                // Below threshold: grouped has less total deduction than baseline
-                // Expected: grouped is (WidthTransitionThreshold - horizontalPadding) pixels wider
-                float expectedWidthDiff = WidthTransitionThreshold - horizontalPadding;
-                float actualWidthDiff = groupedRowRect.width - baselineRowRect.width;
-                TestContext.WriteLine(
-                    $"[DictionaryRowLayoutConsistencyWithVariousPaddings] Below threshold case: "
-                        + $"expectedWidthDiff={expectedWidthDiff:F3}, actualWidthDiff={actualWidthDiff:F3}"
-                );
-                Assert.That(
-                    actualWidthDiff,
-                    Is.EqualTo(expectedWidthDiff).Within(2.0f),
-                    $"Padding ({horizontalPadding:F1}) below threshold should result in grouped being ~{expectedWidthDiff:F1}px wider than baseline."
-                );
-            }
             else
             {
-                // At or above threshold: grouped has more total deduction than baseline
-                // Expected: grouped is (horizontalPadding - WidthTransitionThreshold) pixels narrower
-                float expectedWidthDiff = horizontalPadding - WidthTransitionThreshold;
+                // Normal case: grouped is horizontalPadding pixels narrower than baseline
+                float expectedWidthDiff = horizontalPadding;
                 float actualWidthDiff = baselineRowRect.width - groupedRowRect.width;
                 TestContext.WriteLine(
-                    $"[DictionaryRowLayoutConsistencyWithVariousPaddings] At/above threshold case: "
+                    $"[DictionaryRowLayoutConsistencyWithVariousPaddings] Normal case: "
                         + $"expectedWidthDiff={expectedWidthDiff:F3}, actualWidthDiff={actualWidthDiff:F3}, "
                         + $"baselineWidth={baselineRowRect.width:F3}, groupedWidth={groupedRowRect.width:F3}"
                 );
                 Assert.That(
                     actualWidthDiff,
                     Is.EqualTo(expectedWidthDiff).Within(2.0f),
-                    $"Padding ({horizontalPadding:F1}) at/above threshold should result in grouped being ~{expectedWidthDiff:F1}px narrower than baseline."
+                    $"Grouped should be ~{expectedWidthDiff:F1}px narrower than baseline."
                 );
             }
         }

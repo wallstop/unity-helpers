@@ -101,7 +101,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         controlRect.x + SimulatedLeftPadding,
                         resolvedRect.x,
                         0.1f,
-                        "Dictionary inside WGroup should use WGroup padding, not MinimumGroupIndent."
+                        "Dictionary inside WGroup should use WGroup padding."
                     );
                 }
             }
@@ -147,7 +147,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         controlRect.x + SimulatedLeftPadding,
                         resolvedRect.x,
                         0.1f,
-                        "Set inside WGroup should use WGroup padding, not MinimumGroupIndent."
+                        "Set inside WGroup should use WGroup padding."
                     );
                 }
             }
@@ -1400,7 +1400,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
-        public void SetInSettingsContextWithoutWGroupPaddingAppliesMinimumIndent()
+        public void SetWithoutWGroupPaddingAlignsWithUnityLists()
         {
             Rect controlRect = new(0f, 0f, 400f, 300f);
 
@@ -1412,19 +1412,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 GroupGUIWidthUtility.ResetForTests();
                 // No WGroup padding pushed
 
-                // Use skipIndentation=false to get normal behavior with minimum indent
+                // Use skipIndentation=false to get normal behavior
                 Rect resolvedRect = SerializableSetPropertyDrawer.ResolveContentRectForTests(
                     controlRect,
                     skipIndentation: false
                 );
 
-                // Without WGroup padding and with indent level 0, the minimum indent (6) is applied
-                const float MinimumGroupIndent = 6f;
+                // Without WGroup padding and with indent level 0, aligns with Unity's default list rendering
                 Assert.AreEqual(
-                    controlRect.x + MinimumGroupIndent,
+                    controlRect.x - 1.25f,
                     resolvedRect.x,
                     0.01f,
-                    "Set without WGroup padding and indent=0 should apply minimum indent."
+                    "Set without WGroup padding and indent=0 should align with Unity's default list rendering (-1px alignment offset)."
                 );
             }
             finally
@@ -3007,6 +3006,892 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             {
                 EditorGUI.indentLevel = previousIndentLevel;
             }
+        }
+
+        [UnityTest]
+        public IEnumerator SetFooterRangeLabelAccountsForWGroupPadding()
+        {
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
+            host.set.Add(1);
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(IntegrationTestWGroupSetHost.set)
+            );
+            setProperty.isExpanded = true;
+
+            SerializableSetPropertyDrawer drawer = new();
+            PropertyDrawerTestHelper.AssignFieldInfo(
+                drawer,
+                typeof(IntegrationTestWGroupSetHost),
+                nameof(IntegrationTestWGroupSetHost.set)
+            );
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+            GUIContent label = new("Set");
+
+            const float SimulatedLeftPadding = 12f;
+            const float SimulatedRightPadding = 12f;
+            float horizontalPadding = SimulatedLeftPadding + SimulatedRightPadding;
+
+            float capturedLeftPadding = 0f;
+            float capturedRightPadding = 0f;
+            bool rangeLabelWasDrawn = false;
+            int previousIndentLevel = EditorGUI.indentLevel;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                try
+                {
+                    EditorGUI.indentLevel = 0;
+
+                    GroupGUIWidthUtility.ResetForTests();
+                    SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+                    using (
+                        GroupGUIWidthUtility.PushContentPadding(
+                            horizontalPadding,
+                            SimulatedLeftPadding,
+                            SimulatedRightPadding
+                        )
+                    )
+                    {
+                        drawer.OnGUI(controlRect, setProperty, label);
+
+                        capturedLeftPadding =
+                            SerializableSetPropertyDrawer.LastFooterWGroupLeftPadding;
+                        capturedRightPadding =
+                            SerializableSetPropertyDrawer.LastFooterWGroupRightPadding;
+                        rangeLabelWasDrawn =
+                            SerializableSetPropertyDrawer.LastFooterRangeLabelWasDrawn;
+                    }
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndentLevel;
+                }
+            });
+
+            Assert.AreEqual(
+                SimulatedLeftPadding,
+                capturedLeftPadding,
+                0.1f,
+                "Footer should capture WGroup left padding."
+            );
+            Assert.AreEqual(
+                SimulatedRightPadding,
+                capturedRightPadding,
+                0.1f,
+                "Footer should capture WGroup right padding."
+            );
+            Assert.IsTrue(
+                rangeLabelWasDrawn,
+                "Range label should be drawn when sufficient space is available."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator SetFooterRangeLabelDrawnWithNoPadding()
+        {
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
+            host.set.Add(42);
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(IntegrationTestWGroupSetHost.set)
+            );
+            setProperty.isExpanded = true;
+
+            SerializableSetPropertyDrawer drawer = new();
+            PropertyDrawerTestHelper.AssignFieldInfo(
+                drawer,
+                typeof(IntegrationTestWGroupSetHost),
+                nameof(IntegrationTestWGroupSetHost.set)
+            );
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+            GUIContent label = new("Set");
+
+            float capturedAvailableWidth = 0f;
+            bool rangeLabelWasDrawn = false;
+            int previousIndentLevel = EditorGUI.indentLevel;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                try
+                {
+                    EditorGUI.indentLevel = 0;
+
+                    GroupGUIWidthUtility.ResetForTests();
+                    SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+                    // No WGroup padding
+                    drawer.OnGUI(controlRect, setProperty, label);
+
+                    capturedAvailableWidth = SerializableSetPropertyDrawer.LastFooterAvailableWidth;
+                    rangeLabelWasDrawn = SerializableSetPropertyDrawer.LastFooterRangeLabelWasDrawn;
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndentLevel;
+                }
+            });
+
+            Assert.Greater(
+                capturedAvailableWidth,
+                0f,
+                "Available width should be positive with no WGroup padding."
+            );
+            Assert.IsTrue(
+                rangeLabelWasDrawn,
+                "Range label should be drawn with no WGroup padding and sufficient space."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator SetFooterRangeLabelHiddenWhenInsufficientSpace()
+        {
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
+            host.set.Add(1);
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(IntegrationTestWGroupSetHost.set)
+            );
+            setProperty.isExpanded = true;
+
+            SerializableSetPropertyDrawer drawer = new();
+            PropertyDrawerTestHelper.AssignFieldInfo(
+                drawer,
+                typeof(IntegrationTestWGroupSetHost),
+                nameof(IntegrationTestWGroupSetHost.set)
+            );
+            // Use very narrow width to force range label to be hidden
+            Rect controlRect = new(0f, 0f, 150f, 300f);
+            GUIContent label = new("Set");
+
+            // Use very large WGroup padding to consume most of the width
+            const float SimulatedLeftPadding = 40f;
+            const float SimulatedRightPadding = 40f;
+            float horizontalPadding = SimulatedLeftPadding + SimulatedRightPadding;
+
+            float capturedAvailableWidth = 0f;
+            float capturedRangeWidth = 0f;
+            bool rangeLabelWasDrawn = false;
+            int previousIndentLevel = EditorGUI.indentLevel;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                try
+                {
+                    EditorGUI.indentLevel = 0;
+
+                    GroupGUIWidthUtility.ResetForTests();
+                    SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+                    using (
+                        GroupGUIWidthUtility.PushContentPadding(
+                            horizontalPadding,
+                            SimulatedLeftPadding,
+                            SimulatedRightPadding
+                        )
+                    )
+                    {
+                        drawer.OnGUI(controlRect, setProperty, label);
+
+                        capturedAvailableWidth =
+                            SerializableSetPropertyDrawer.LastFooterAvailableWidth;
+                        capturedRangeWidth = SerializableSetPropertyDrawer.LastFooterRangeWidth;
+                        rangeLabelWasDrawn =
+                            SerializableSetPropertyDrawer.LastFooterRangeLabelWasDrawn;
+                    }
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndentLevel;
+                }
+            });
+
+            Assert.IsFalse(
+                rangeLabelWasDrawn,
+                "Range label should NOT be drawn when WGroup padding leaves insufficient space."
+            );
+            Assert.Greater(
+                capturedRangeWidth,
+                capturedAvailableWidth,
+                "Range width should exceed available width when label is hidden."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator SetFooterPaginationWidthReducedByWGroupPadding()
+        {
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
+            host.set.Add(1);
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(IntegrationTestWGroupSetHost.set)
+            );
+            setProperty.isExpanded = true;
+
+            SerializableSetPropertyDrawer drawer = new();
+            PropertyDrawerTestHelper.AssignFieldInfo(
+                drawer,
+                typeof(IntegrationTestWGroupSetHost),
+                nameof(IntegrationTestWGroupSetHost.set)
+            );
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+            GUIContent label = new("Set");
+
+            const float SimulatedLeftPadding = 20f;
+            const float SimulatedRightPadding = 20f;
+            float horizontalPadding = SimulatedLeftPadding + SimulatedRightPadding;
+
+            float availableWidthWithPadding = 0f;
+            float availableWidthWithoutPadding = 0f;
+            int previousIndentLevel = EditorGUI.indentLevel;
+
+            // First measure with WGroup padding
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                try
+                {
+                    EditorGUI.indentLevel = 0;
+
+                    GroupGUIWidthUtility.ResetForTests();
+                    SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+                    using (
+                        GroupGUIWidthUtility.PushContentPadding(
+                            horizontalPadding,
+                            SimulatedLeftPadding,
+                            SimulatedRightPadding
+                        )
+                    )
+                    {
+                        drawer.OnGUI(controlRect, setProperty, label);
+                        availableWidthWithPadding =
+                            SerializableSetPropertyDrawer.LastFooterAvailableWidth;
+                    }
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndentLevel;
+                }
+            });
+
+            // Then measure without WGroup padding
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                try
+                {
+                    EditorGUI.indentLevel = 0;
+
+                    GroupGUIWidthUtility.ResetForTests();
+                    SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+                    drawer.OnGUI(controlRect, setProperty, label);
+                    availableWidthWithoutPadding =
+                        SerializableSetPropertyDrawer.LastFooterAvailableWidth;
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndentLevel;
+                }
+            });
+
+            // The available width is reduced only by left padding because the range label
+            // is positioned from the left (shifted right by WGroup left padding to avoid clipping),
+            // while buttons remain at their normal positions from the right.
+            float expectedDifference = SimulatedLeftPadding;
+            float actualDifference = availableWidthWithoutPadding - availableWidthWithPadding;
+
+            Assert.AreEqual(
+                expectedDifference,
+                actualDifference,
+                1f,
+                $"Available width should be reduced by WGroup padding. "
+                    + $"Without padding: {availableWidthWithoutPadding}, "
+                    + $"With padding: {availableWidthWithPadding}, "
+                    + $"Difference: {actualDifference}, "
+                    + $"Expected: {expectedDifference}"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator SetFooterRangeLabelPositionRespectsWGroupLeftPadding()
+        {
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
+            host.set.Add(1);
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(IntegrationTestWGroupSetHost.set)
+            );
+            setProperty.isExpanded = true;
+
+            SerializableSetPropertyDrawer drawer = new();
+            PropertyDrawerTestHelper.AssignFieldInfo(
+                drawer,
+                typeof(IntegrationTestWGroupSetHost),
+                nameof(IntegrationTestWGroupSetHost.set)
+            );
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+            GUIContent label = new("Set");
+
+            const float SimulatedLeftPadding = 15f;
+            const float SimulatedRightPadding = 15f;
+            float horizontalPadding = SimulatedLeftPadding + SimulatedRightPadding;
+
+            Rect rangeLabelRectWithPadding = default;
+            Rect rangeLabelRectWithoutPadding = default;
+            bool drawnWithPadding = false;
+            bool drawnWithoutPadding = false;
+            int previousIndentLevel = EditorGUI.indentLevel;
+
+            // Draw with WGroup padding
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                try
+                {
+                    EditorGUI.indentLevel = 0;
+
+                    GroupGUIWidthUtility.ResetForTests();
+                    SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+                    using (
+                        GroupGUIWidthUtility.PushContentPadding(
+                            horizontalPadding,
+                            SimulatedLeftPadding,
+                            SimulatedRightPadding
+                        )
+                    )
+                    {
+                        drawer.OnGUI(controlRect, setProperty, label);
+                        drawnWithPadding =
+                            SerializableSetPropertyDrawer.LastFooterRangeLabelWasDrawn;
+                        if (drawnWithPadding)
+                        {
+                            rangeLabelRectWithPadding =
+                                SerializableSetPropertyDrawer.LastFooterRangeLabelRect;
+                        }
+                    }
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndentLevel;
+                }
+            });
+
+            // Draw without WGroup padding
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                try
+                {
+                    EditorGUI.indentLevel = 0;
+
+                    GroupGUIWidthUtility.ResetForTests();
+                    SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+                    drawer.OnGUI(controlRect, setProperty, label);
+                    drawnWithoutPadding =
+                        SerializableSetPropertyDrawer.LastFooterRangeLabelWasDrawn;
+                    if (drawnWithoutPadding)
+                    {
+                        rangeLabelRectWithoutPadding =
+                            SerializableSetPropertyDrawer.LastFooterRangeLabelRect;
+                    }
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndentLevel;
+                }
+            });
+
+            Assert.IsTrue(
+                drawnWithPadding,
+                "Range label should be drawn with WGroup padding in sufficient space."
+            );
+            Assert.IsTrue(
+                drawnWithoutPadding,
+                "Range label should be drawn without WGroup padding."
+            );
+
+            float xDifference = rangeLabelRectWithPadding.x - rangeLabelRectWithoutPadding.x;
+
+            Assert.AreEqual(
+                SimulatedLeftPadding,
+                xDifference,
+                1f,
+                $"Range label X position should be shifted right by WGroup left padding. "
+                    + $"With padding X: {rangeLabelRectWithPadding.x}, "
+                    + $"Without padding X: {rangeLabelRectWithoutPadding.x}, "
+                    + $"Difference: {xDifference}, "
+                    + $"Expected: {SimulatedLeftPadding}"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator SetFooterInNestedWGroupsAccumulatesPadding()
+        {
+            IntegrationTestMultiWGroupHost host =
+                CreateScriptableObject<IntegrationTestMultiWGroupHost>();
+            host.nestedSet.Add(1);
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(IntegrationTestMultiWGroupHost.nestedSet)
+            );
+            setProperty.isExpanded = true;
+
+            SerializableSetPropertyDrawer drawer = new();
+            PropertyDrawerTestHelper.AssignFieldInfo(
+                drawer,
+                typeof(IntegrationTestMultiWGroupHost),
+                nameof(IntegrationTestMultiWGroupHost.nestedSet)
+            );
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+            GUIContent label = new("NestedSet");
+
+            // Simulate nested WGroups with cumulative padding
+            const float OuterLeftPadding = 10f;
+            const float OuterRightPadding = 10f;
+            const float InnerLeftPadding = 8f;
+            const float InnerRightPadding = 8f;
+
+            float capturedLeftPadding = 0f;
+            float capturedRightPadding = 0f;
+            int previousIndentLevel = EditorGUI.indentLevel;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                try
+                {
+                    EditorGUI.indentLevel = 0;
+
+                    GroupGUIWidthUtility.ResetForTests();
+                    SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+                    // Simulate outer WGroup
+                    using (
+                        GroupGUIWidthUtility.PushContentPadding(
+                            OuterLeftPadding + OuterRightPadding,
+                            OuterLeftPadding,
+                            OuterRightPadding
+                        )
+                    )
+                    {
+                        // Simulate inner WGroup
+                        using (
+                            GroupGUIWidthUtility.PushContentPadding(
+                                InnerLeftPadding + InnerRightPadding,
+                                InnerLeftPadding,
+                                InnerRightPadding
+                            )
+                        )
+                        {
+                            drawer.OnGUI(controlRect, setProperty, label);
+
+                            capturedLeftPadding =
+                                SerializableSetPropertyDrawer.LastFooterWGroupLeftPadding;
+                            capturedRightPadding =
+                                SerializableSetPropertyDrawer.LastFooterWGroupRightPadding;
+                        }
+                    }
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndentLevel;
+                }
+            });
+
+            float expectedTotalLeftPadding = OuterLeftPadding + InnerLeftPadding;
+            float expectedTotalRightPadding = OuterRightPadding + InnerRightPadding;
+
+            Assert.AreEqual(
+                expectedTotalLeftPadding,
+                capturedLeftPadding,
+                0.1f,
+                $"Nested WGroups should accumulate left padding. "
+                    + $"Expected: {expectedTotalLeftPadding}, Actual: {capturedLeftPadding}"
+            );
+            Assert.AreEqual(
+                expectedTotalRightPadding,
+                capturedRightPadding,
+                0.1f,
+                $"Nested WGroups should accumulate right padding. "
+                    + $"Expected: {expectedTotalRightPadding}, Actual: {capturedRightPadding}"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator SortedSetFooterRangeLabelAccountsForWGroupPadding()
+        {
+            IntegrationTestWGroupSortedSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSortedSetHost>();
+            host.sortedSet.Add(1);
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(IntegrationTestWGroupSortedSetHost.sortedSet)
+            );
+            setProperty.isExpanded = true;
+
+            SerializableSetPropertyDrawer drawer = new();
+            PropertyDrawerTestHelper.AssignFieldInfo(
+                drawer,
+                typeof(IntegrationTestWGroupSortedSetHost),
+                nameof(IntegrationTestWGroupSortedSetHost.sortedSet)
+            );
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+            GUIContent label = new("SortedSet");
+
+            const float SimulatedLeftPadding = 12f;
+            const float SimulatedRightPadding = 12f;
+            float horizontalPadding = SimulatedLeftPadding + SimulatedRightPadding;
+
+            float capturedLeftPadding = 0f;
+            float capturedRightPadding = 0f;
+            bool rangeLabelWasDrawn = false;
+            int previousIndentLevel = EditorGUI.indentLevel;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                try
+                {
+                    EditorGUI.indentLevel = 0;
+
+                    GroupGUIWidthUtility.ResetForTests();
+                    SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+                    using (
+                        GroupGUIWidthUtility.PushContentPadding(
+                            horizontalPadding,
+                            SimulatedLeftPadding,
+                            SimulatedRightPadding
+                        )
+                    )
+                    {
+                        drawer.OnGUI(controlRect, setProperty, label);
+
+                        capturedLeftPadding =
+                            SerializableSetPropertyDrawer.LastFooterWGroupLeftPadding;
+                        capturedRightPadding =
+                            SerializableSetPropertyDrawer.LastFooterWGroupRightPadding;
+                        rangeLabelWasDrawn =
+                            SerializableSetPropertyDrawer.LastFooterRangeLabelWasDrawn;
+                    }
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndentLevel;
+                }
+            });
+
+            Assert.AreEqual(
+                SimulatedLeftPadding,
+                capturedLeftPadding,
+                0.1f,
+                "SortedSet footer should capture WGroup left padding."
+            );
+            Assert.AreEqual(
+                SimulatedRightPadding,
+                capturedRightPadding,
+                0.1f,
+                "SortedSet footer should capture WGroup right padding."
+            );
+            Assert.IsTrue(
+                rangeLabelWasDrawn,
+                "SortedSet range label should be drawn when sufficient space is available."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator SetFooterEmptyLabelDrawnInsideWGroup()
+        {
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
+            // Do not add any items - set is empty
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(IntegrationTestWGroupSetHost.set)
+            );
+            setProperty.isExpanded = true;
+
+            SerializableSetPropertyDrawer drawer = new();
+            PropertyDrawerTestHelper.AssignFieldInfo(
+                drawer,
+                typeof(IntegrationTestWGroupSetHost),
+                nameof(IntegrationTestWGroupSetHost.set)
+            );
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+            GUIContent label = new("Set");
+
+            const float SimulatedLeftPadding = 12f;
+            const float SimulatedRightPadding = 12f;
+            float horizontalPadding = SimulatedLeftPadding + SimulatedRightPadding;
+
+            bool rangeLabelWasDrawn = false;
+            float capturedLeftPadding = 0f;
+            int previousIndentLevel = EditorGUI.indentLevel;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                try
+                {
+                    EditorGUI.indentLevel = 0;
+
+                    GroupGUIWidthUtility.ResetForTests();
+                    SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+                    using (
+                        GroupGUIWidthUtility.PushContentPadding(
+                            horizontalPadding,
+                            SimulatedLeftPadding,
+                            SimulatedRightPadding
+                        )
+                    )
+                    {
+                        drawer.OnGUI(controlRect, setProperty, label);
+
+                        rangeLabelWasDrawn =
+                            SerializableSetPropertyDrawer.LastFooterRangeLabelWasDrawn;
+                        capturedLeftPadding =
+                            SerializableSetPropertyDrawer.LastFooterWGroupLeftPadding;
+                    }
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndentLevel;
+                }
+            });
+
+            Assert.IsTrue(
+                rangeLabelWasDrawn,
+                "Empty label should be drawn inside WGroup when space is sufficient."
+            );
+            Assert.AreEqual(
+                SimulatedLeftPadding,
+                capturedLeftPadding,
+                0.1f,
+                "Empty set footer should still capture WGroup padding."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator SetFooterWithMultipleItemsDrawsCorrectlyInsideWGroup()
+        {
+            IntegrationTestWGroupSetHost host =
+                CreateScriptableObject<IntegrationTestWGroupSetHost>();
+            // Add multiple items to test "1-15 of 20" style labels
+            for (int i = 0; i < 20; i++)
+            {
+                host.set.Add(i);
+            }
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(IntegrationTestWGroupSetHost.set)
+            );
+            setProperty.isExpanded = true;
+
+            SerializableSetPropertyDrawer drawer = new();
+            PropertyDrawerTestHelper.AssignFieldInfo(
+                drawer,
+                typeof(IntegrationTestWGroupSetHost),
+                nameof(IntegrationTestWGroupSetHost.set)
+            );
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+            GUIContent label = new("Set");
+
+            const float SimulatedLeftPadding = 12f;
+            const float SimulatedRightPadding = 12f;
+            float horizontalPadding = SimulatedLeftPadding + SimulatedRightPadding;
+
+            bool rangeLabelWasDrawn = false;
+            float capturedAvailableWidth = 0f;
+            float capturedRangeWidth = 0f;
+            int previousIndentLevel = EditorGUI.indentLevel;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                try
+                {
+                    EditorGUI.indentLevel = 0;
+
+                    GroupGUIWidthUtility.ResetForTests();
+                    SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+                    using (
+                        GroupGUIWidthUtility.PushContentPadding(
+                            horizontalPadding,
+                            SimulatedLeftPadding,
+                            SimulatedRightPadding
+                        )
+                    )
+                    {
+                        drawer.OnGUI(controlRect, setProperty, label);
+
+                        rangeLabelWasDrawn =
+                            SerializableSetPropertyDrawer.LastFooterRangeLabelWasDrawn;
+                        capturedAvailableWidth =
+                            SerializableSetPropertyDrawer.LastFooterAvailableWidth;
+                        capturedRangeWidth = SerializableSetPropertyDrawer.LastFooterRangeWidth;
+                    }
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndentLevel;
+                }
+            });
+
+            Assert.IsTrue(
+                rangeLabelWasDrawn,
+                "Range label with multiple items should be drawn inside WGroup."
+            );
+            Assert.GreaterOrEqual(
+                capturedAvailableWidth,
+                capturedRangeWidth,
+                "Available width should be >= range width when label is drawn."
+            );
+        }
+
+        [Test]
+        public void SetFooterRangeLabelWidthCalculationWithZeroPadding()
+        {
+            // Unit test to verify the width calculation logic without IMGUI context
+            const float RectWidth = 400f;
+            const float InternalPadding = 4f;
+            const float WGroupLeftPadding = 0f;
+            const float WGroupRightPadding = 0f;
+
+            // Simulate the footer calculation from DrawFooterControls
+            float rightCursor = RectWidth - InternalPadding - WGroupRightPadding;
+            float leftCursor = InternalPadding + WGroupLeftPadding;
+
+            // Simulate buttons consuming space (Add = 60, Clear = 80, spacing = 4 each)
+            rightCursor -= 60f; // Add button
+            rightCursor -= 4f; // Spacing
+            rightCursor -= 80f; // Clear button
+            rightCursor -= 4f; // Spacing
+
+            float availableWidth = Mathf.Max(0f, rightCursor - leftCursor);
+
+            // With zero padding, available width should be:
+            // 400 - 4 (left padding) - 4 (right padding) - 60 - 4 - 80 - 4 = 244
+            float expectedAvailableWidth = RectWidth - (2 * InternalPadding) - 60f - 4f - 80f - 4f;
+
+            Assert.AreEqual(
+                expectedAvailableWidth,
+                availableWidth,
+                0.1f,
+                $"Available width calculation with zero WGroup padding. "
+                    + $"Expected: {expectedAvailableWidth}, Actual: {availableWidth}"
+            );
+        }
+
+        [Test]
+        public void SetFooterRangeLabelWidthCalculationWithWGroupPadding()
+        {
+            // Unit test to verify the width calculation logic with WGroup padding.
+            // The current implementation only adjusts the left cursor for the range label
+            // (to prevent clipping at WGroup's left boundary), not the right cursor for buttons.
+            const float RectWidth = 400f;
+            const float InternalPadding = 4f;
+            const float WGroupLeftPadding = 12f;
+
+            // Simulate the footer calculation from DrawFooterControls
+            // rightCursor is NOT adjusted - buttons remain at normal positions
+            float rightCursor = RectWidth - InternalPadding;
+            // leftCursor IS adjusted for range label positioning
+            float adjustedLeftCursor = InternalPadding + WGroupLeftPadding;
+
+            // Simulate buttons consuming space (Add = 60, Clear = 80, spacing = 4 each)
+            rightCursor -= 60f; // Add button
+            rightCursor -= 4f; // Spacing
+            rightCursor -= 80f; // Clear button
+            rightCursor -= 4f; // Spacing
+
+            float availableWidth = Mathf.Max(0f, rightCursor - adjustedLeftCursor);
+
+            // With WGroup left padding of 12px, available width is reduced by 12
+            // rightCursor: 400 - 4 - 60 - 4 - 80 - 4 = 248
+            // adjustedLeftCursor: 4 + 12 = 16
+            // availableWidth: 248 - 16 = 232
+            float expectedAvailableWidth =
+                RectWidth
+                - InternalPadding
+                - 60f
+                - 4f
+                - 80f
+                - 4f
+                - (InternalPadding + WGroupLeftPadding);
+
+            Assert.AreEqual(
+                expectedAvailableWidth,
+                availableWidth,
+                0.1f,
+                $"Available width calculation with WGroup padding. "
+                    + $"Expected: {expectedAvailableWidth}, Actual: {availableWidth}"
+            );
+        }
+
+        [Test]
+        public void SetFooterAvailableWidthDifferenceMatchesWGroupLeftPadding()
+        {
+            // Verify that the difference in available width matches WGroup LEFT padding only.
+            // The right cursor is NOT adjusted (buttons stay at normal positions),
+            // only the range label's left position is shifted.
+            const float RectWidth = 400f;
+            const float InternalPadding = 4f;
+            const float WGroupLeftPadding = 15f;
+
+            // Calculate without WGroup padding
+            float rightCursorNoPadding = RectWidth - InternalPadding;
+            float leftCursorNoPadding = InternalPadding;
+            rightCursorNoPadding -= 60f + 4f + 80f + 4f; // Buttons
+            float availableNoPadding = Mathf.Max(0f, rightCursorNoPadding - leftCursorNoPadding);
+
+            // Calculate with WGroup padding (only left cursor is adjusted)
+            float rightCursorWithPadding = RectWidth - InternalPadding; // NOT adjusted
+            float adjustedLeftCursor = InternalPadding + WGroupLeftPadding; // Adjusted
+            rightCursorWithPadding -= 60f + 4f + 80f + 4f; // Buttons
+            float availableWithPadding = Mathf.Max(0f, rightCursorWithPadding - adjustedLeftCursor);
+
+            float difference = availableNoPadding - availableWithPadding;
+            // Only left padding affects available width now
+            float expectedDifference = WGroupLeftPadding;
+
+            Assert.AreEqual(
+                expectedDifference,
+                difference,
+                0.1f,
+                $"Available width difference should equal WGroup LEFT padding only. "
+                    + $"Expected: {expectedDifference}, Actual: {difference}"
+            );
         }
     }
 }

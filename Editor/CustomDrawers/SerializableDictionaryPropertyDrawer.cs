@@ -708,6 +708,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float DuplicateBorderThickness = 1f;
         private static readonly Color LightRowColor = new(0.97f, 0.97f, 0.97f, 1f);
         private static readonly Color DarkRowColor = new(0.16f, 0.16f, 0.16f, 0.45f);
+
+        // Opaque versions for header/footer backgrounds to fully cover Unity's default styling
+        private static readonly Color LightHeaderColor = new(0.85f, 0.85f, 0.85f, 1f);
+        private static readonly Color DarkHeaderColor = new(0.22f, 0.22f, 0.22f, 1f);
         private static readonly Color LightSelectionColor = new(0.33f, 0.62f, 0.95f, 0.65f);
         private static readonly Color DarkSelectionColor = new(0.2f, 0.45f, 0.85f, 0.7f);
         private static readonly ConcurrentDictionary<
@@ -767,13 +771,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly HashSet<Type> PendingWrapperNonEditableTypes = new();
         private static readonly ReorderableList.DrawNoneElementCallback EmptyDrawNoneCallback =
             static _ => { };
-
-        /// <summary>
-        /// Types with custom PropertyDrawers that should NOT use the foldout rendering path.
-        /// These types should use EditorGUI.PropertyField directly so their full PropertyDrawer runs.
-        /// </summary>
-        private static readonly HashSet<Type> TypesWithCustomPropertyDrawer =
-            BuildTypesWithCustomPropertyDrawer();
 
         private const HideFlags PendingWrapperHideFlags =
             HideFlags.HideInHierarchy
@@ -872,20 +869,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         /// </example>
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
+            OnGUIInternal(position, property, label);
+        }
+
+        private void OnGUIInternal(Rect position, SerializedProperty property, GUIContent label)
+        {
             Rect originalPosition = position;
             bool targetsSettings = TargetsUnityHelpersSettings(property?.serializedObject);
 
-            // Track whether we're inside a WGroup for custom background drawing
-            bool wasInsideWGroup = GroupGUIWidthUtility.CurrentScopeDepth > 0;
-            _currentDrawInsideWGroup = wasInsideWGroup;
-
-            // Log all tween settings on first draw or when inside WGroup for debugging
-            if (wasInsideWGroup)
-            {
-                SerializableCollectionTweenDiagnostics.LogAllTweenSettings(
-                    $"OnGUI_InWGroup (path={property?.propertyPath ?? "(null)"})"
-                );
-            }
+            // Track if we need custom backgrounds to override Unity's tinted defaults.
+            _currentDrawInsideWGroup = GroupGUIWidthUtility.CurrentScopeDepth > 0;
 
             SerializableDictionaryIndentDiagnostics.LogOnGUIEntry(
                 originalPosition,
@@ -963,7 +956,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 // Apply additional foldout alignment offset when inside a WGroup property context
                 float foldoutAlignmentOffset =
-                    GroupGUIWidthUtility.IsInsideWGroupPropertyDraw && !targetsSettings
+                    GroupGUIWidthUtility.CurrentScopeDepth > 0 && !targetsSettings
                         ? WGroupFoldoutAlignmentOffset
                         : 0f;
 
@@ -981,6 +974,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         WSerializableCollectionFoldoutUtility.SerializableCollectionType.Dictionary
                     );
                 }
+
                 property.isExpanded = EditorGUI.Foldout(
                     foldoutRect,
                     property.isExpanded,
@@ -1122,12 +1116,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                         // Draw custom list container background when inside WGroup to respect theming
                         // This draws before Unity's default ReorderableList backgrounds
+                        // Use opaque colors to fully cover Unity's default styling
                         if (_currentDrawInsideWGroup && Event.current.type == EventType.Repaint)
                         {
-                            Color listBgColor = GroupGUIWidthUtility.GetPaletteRowColor(
-                                LightRowColor,
-                                DarkRowColor
-                            );
+                            Color listBgColor = EditorGUIUtility.isProSkin
+                                ? DarkHeaderColor
+                                : LightHeaderColor;
                             // Temporarily reset GUI.color to prevent tinting from parent WGroup
                             Color prevGuiColor = GUI.color;
                             GUI.color = Color.white;
@@ -1177,8 +1171,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static Rect ResolveContentRect(Rect position, bool skipIndentation = false)
         {
-            const float MinimumGroupIndent = 6f;
-
             float leftPadding = GroupGUIWidthUtility.CurrentLeftPadding;
             float rightPadding = GroupGUIWidthUtility.CurrentRightPadding;
             int scopeDepth = GroupGUIWidthUtility.CurrentScopeDepth;
@@ -1190,19 +1182,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             // which means Unity's layout system has ALREADY:
             // 1. Positioned the rect based on the current layout group (with WGroup padding)
             // 2. Applied indentation based on EditorGUI.indentLevel
-            // We should NOT apply any additional transformations - just return position as-is.
+            // Apply a small alignment offset to align with other WGroup content.
             if (isInsideWGroupProperty)
             {
+                const float WGroupAlignmentOffset = -4f;
+                Rect alignedPosition = position;
+                alignedPosition.xMin += WGroupAlignmentOffset;
+                alignedPosition.width -= WGroupAlignmentOffset;
                 SerializableDictionaryIndentDiagnostics.LogResolveContentRect(
                     original,
-                    position,
+                    alignedPosition,
                     skipIndentation,
                     leftPadding,
                     rightPadding,
                     scopeDepth,
                     indentLevel
                 );
-                return position;
+                return alignedPosition;
             }
 
             // When skipIndentation is true, we're in a GUILayout context (e.g., SettingsProvider)
@@ -1260,14 +1256,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 indentedResult.width = 0f;
             }
 
-            // Only add minimum indent when not inside a WGroup (which already has padding)
-            // and when indent level is zero (no parent property nesting)
+            // When outside a WGroup, shift slightly left to align with Unity's default
+            // list/array rendering
+            const float UnityListAlignmentOffset = -1.25f;
             Rect final = indentedResult;
-            if (indentLevel <= 0 && leftPadding <= 0f && scopeDepth <= 0)
-            {
-                final.xMin += MinimumGroupIndent;
-                final.width = Mathf.Max(0f, final.width - MinimumGroupIndent);
-            }
+            final.xMin += UnityListAlignmentOffset;
+            final.width -= UnityListAlignmentOffset;
 
             SerializableDictionaryIndentDiagnostics.LogResolveContentRectSteps(
                 original,
@@ -1573,11 +1567,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 Rect backgroundRect = new(rect.x, rect.y, rect.width, rowData.rowHeight);
-                // Use palette row color for theming support
-                Color rowColor = GroupGUIWidthUtility.GetPaletteRowColor(
-                    LightRowColor,
-                    DarkRowColor
-                );
+                // Use skin-based row color
+                Color rowColor = EditorGUIUtility.isProSkin ? DarkRowColor : LightRowColor;
                 // Temporarily reset GUI.color to prevent tinting from parent WGroup
                 Color prevGuiColor = GUI.color;
                 GUI.color = Color.white;
@@ -1649,11 +1640,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     Rect selectionRect = highlightRect;
                     selectionRect.x += shakeOffset;
-                    // Use palette selection color for theming support
-                    Color selectionColor = GroupGUIWidthUtility.GetPaletteSelectionColor(
-                        LightSelectionColor,
-                        DarkSelectionColor
-                    );
+                    // Use skin-based selection color
+                    Color selectionColor = EditorGUIUtility.isProSkin
+                        ? DarkSelectionColor
+                        : LightSelectionColor;
                     // Temporarily reset GUI.color to prevent tinting from parent WGroup
                     prevGuiColor = GUI.color;
                     GUI.color = Color.white;
@@ -2310,46 +2300,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return CalculateFoldoutValueHeight(valueProperty);
         }
 
-        /// <summary>
-        /// Calculates the height for a WGroupCustomColor property, matching the logic
-        /// in WGroupCustomColorDrawer.GetPropertyHeight. This is needed because Unity
-        /// may not find the PropertyDrawer for private nested classes.
-        /// </summary>
-        internal static float CalculateWGroupCustomColorHeight(SerializedProperty property)
-        {
-            float lineHeight = EditorGUIUtility.singleLineHeight;
-            float spacing = EditorGUIUtility.standardVerticalSpacing;
-
-            // Base height: background + text row
-            float height = lineHeight;
-
-            // Always include the foldout header line
-            height += spacing + lineHeight;
-
-            // Check foldout state - use the property path as key
-            string foldoutKey = property.propertyPath;
-            if (
-                WGroupCustomColorFoldoutStates.TryGetValue(foldoutKey, out bool expanded)
-                && expanded
-            )
-            {
-                // 5 toggle+color rows
-                height += (spacing + lineHeight) * 5;
-                // Reset button (20f)
-                height += spacing + 20f;
-            }
-
-            return height;
-        }
-
-        /// <summary>
-        /// Shared foldout state dictionary for WGroupCustomColor properties.
-        /// This mirrors the CollectionStylingFoldoutStates in WGroupCustomColorDrawer.
-        /// </summary>
-        internal static readonly Dictionary<string, bool> WGroupCustomColorFoldoutStates = new(
-            StringComparer.Ordinal
-        );
-
         private static float CalculateFoldoutValueHeight(SerializedProperty valueProperty)
         {
             float height = EditorGUIUtility.singleLineHeight;
@@ -2455,18 +2405,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             data.isValid = true;
 
             bool shouldAutoExpand = false;
-            bool isWGroupCustomColor =
-                resolvedValueType != null
-                && TypesWithCustomPropertyDrawer != null
-                && TypesWithCustomPropertyDrawer.Contains(resolvedValueType);
-
-            if (!isWGroupCustomColor && data.valueProperty != null && resolvedValueType != null)
+            if (data.valueProperty != null && resolvedValueType != null)
             {
                 shouldAutoExpand =
                     ValueTypeSupportsFoldout(resolvedValueType)
                     && SerializedPropertySupportsFoldout(data.valueProperty);
             }
-            else if (!isWGroupCustomColor && data.valueProperty != null)
+            else if (data.valueProperty != null)
             {
                 shouldAutoExpand = data.valueProperty.hasVisibleChildren;
             }
@@ -2478,19 +2423,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     ? EditorGUI.GetPropertyHeight(data.keyProperty, GUIContent.none, true)
                     : EditorGUIUtility.singleLineHeight;
 
-            // Use explicit height calculation for WGroupCustomColor since Unity may not
-            // find the PropertyDrawer for private nested classes
-            if (isWGroupCustomColor && data.valueProperty != null)
-            {
-                data.valueHeight = CalculateWGroupCustomColorHeight(data.valueProperty);
-            }
-            else
-            {
-                data.valueHeight =
-                    data.valueProperty != null
-                        ? CalculateValueContentHeight(data.valueProperty, shouldAutoExpand)
-                        : EditorGUIUtility.singleLineHeight;
-            }
+            data.valueHeight =
+                data.valueProperty != null
+                    ? CalculateValueContentHeight(data.valueProperty, shouldAutoExpand)
+                    : EditorGUIUtility.singleLineHeight;
 
             float spacing = EditorGUIUtility.standardVerticalSpacing;
             float contentHeight = Mathf.Max(
@@ -3125,14 +3061,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             // Draw custom header background when inside WGroup to respect theming
-            // Draw custom header background when inside WGroup to respect theming
             // This draws over Unity's default ReorderableList header background
+            // Use opaque colors to fully cover Unity's default header styling
             if (_currentDrawInsideWGroup && Event.current.type == EventType.Repaint)
             {
-                Color headerColor = GroupGUIWidthUtility.GetPaletteRowColor(
-                    LightRowColor,
-                    DarkRowColor
-                );
+                Color headerColor = EditorGUIUtility.isProSkin ? DarkHeaderColor : LightHeaderColor;
                 // Temporarily reset GUI.color to prevent tinting from parent WGroup
                 Color prevGuiColor = GUI.color;
                 GUI.color = Color.white;
@@ -3370,12 +3303,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (Event.current.type == EventType.Repaint)
             {
                 // Draw custom footer background when inside WGroup to respect theming
+                // Use opaque colors to fully cover Unity's default footer styling
                 if (_currentDrawInsideWGroup)
                 {
-                    Color footerColor = GroupGUIWidthUtility.GetPaletteRowColor(
-                        LightRowColor,
-                        DarkRowColor
-                    );
+                    Color footerColor = EditorGUIUtility.isProSkin
+                        ? DarkHeaderColor
+                        : LightHeaderColor;
                     // Temporarily reset GUI.color to prevent tinting from parent WGroup
                     Color prevGuiColor = GUI.color;
                     GUI.color = Color.white;
@@ -4014,10 +3947,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 float spacing = EditorGUIUtility.standardVerticalSpacing;
 
                 Rect containerRect = new(fullPosition.x, y, fullPosition.width, sectionHeight);
-                Color backgroundColor = GroupGUIWidthUtility.GetPalettePendingBackgroundColor(
-                    new Color(0.92f, 0.92f, 0.92f, 1f),
-                    new Color(0.18f, 0.18f, 0.18f, 1f)
-                );
+                Color backgroundColor = EditorGUIUtility.isProSkin
+                    ? new Color(0.18f, 0.18f, 0.18f, 1f)
+                    : new Color(0.92f, 0.92f, 0.92f, 1f);
                 if (Event.current.type == EventType.Repaint)
                 {
                     // Temporarily reset GUI.color to prevent tinting from parent WGroup
@@ -6968,23 +6900,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 };
             }
 
-            // Update text color based on current palette context
-            UnityHelpersSettings.WGroupPaletteEntry? palette = GroupGUIWidthUtility.CurrentPalette;
-            if (palette.HasValue)
-            {
-                _pendingFoldoutLabelStyle.normal.textColor = palette.Value.TextColor;
-                _pendingFoldoutLabelStyle.hover.textColor = palette.Value.TextColor;
-                _pendingFoldoutLabelStyle.active.textColor = palette.Value.TextColor;
-                _pendingFoldoutLabelStyle.focused.textColor = palette.Value.TextColor;
-            }
-            else
-            {
-                // Reset to default editor label colors when not in palette context
-                _pendingFoldoutLabelStyle.normal.textColor = EditorStyles.label.normal.textColor;
-                _pendingFoldoutLabelStyle.hover.textColor = EditorStyles.label.hover.textColor;
-                _pendingFoldoutLabelStyle.active.textColor = EditorStyles.label.active.textColor;
-                _pendingFoldoutLabelStyle.focused.textColor = EditorStyles.label.focused.textColor;
-            }
+            // Use default editor label colors
+            _pendingFoldoutLabelStyle.normal.textColor = EditorStyles.label.normal.textColor;
+            _pendingFoldoutLabelStyle.hover.textColor = EditorStyles.label.hover.textColor;
+            _pendingFoldoutLabelStyle.active.textColor = EditorStyles.label.active.textColor;
+            _pendingFoldoutLabelStyle.focused.textColor = EditorStyles.label.focused.textColor;
 
             return _pendingFoldoutLabelStyle;
         }
@@ -7001,25 +6921,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return paletteRenderer.Height;
             }
 
-            // Explicit handling for WGroupCustomColor since Unity may not find the
-            // PropertyDrawer for private nested classes
-            if (
-                isValueField
-                && TypesWithCustomPropertyDrawer != null
-                && TypesWithCustomPropertyDrawer.Contains(fieldType)
-            )
-            {
-                PendingWrapperContext context = EnsurePendingWrapper(
-                    pending,
-                    fieldType,
-                    isValueField
-                );
-                if (context.Property != null)
-                {
-                    return CalculateWGroupCustomColorHeight(context.Property);
-                }
-            }
-
             float defaultHeight = EditorGUIUtility.singleLineHeight;
             if (
                 pending == null
@@ -7034,18 +6935,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return defaultHeight;
             }
 
-            PendingWrapperContext context2 = EnsurePendingWrapper(pending, fieldType, isValueField);
-            if (context2.Property == null)
+            PendingWrapperContext context = EnsurePendingWrapper(pending, fieldType, isValueField);
+            if (context.Property == null)
             {
                 return defaultHeight;
             }
 
             if (TypeSupportsComplexEditing(fieldType))
             {
-                context2.Property.isExpanded = true;
+                context.Property.isExpanded = true;
             }
 
-            return EditorGUI.GetPropertyHeight(context2.Property, true);
+            return EditorGUI.GetPropertyHeight(context.Property, true);
         }
 
         private static GUIContent GetUnsupportedTypeContent(Type type)
@@ -7505,17 +7406,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             if (PaletteValueRenderers != null && PaletteValueRenderers.ContainsKey(type))
-            {
-                return false;
-            }
-
-            // Types with custom PropertyDrawers that handle their own rendering should NOT
-            // use the foldout path. The foldout path manually iterates children which bypasses
-            // the PropertyDrawer. Instead, they should use EditorGUI.PropertyField directly.
-            if (
-                TypesWithCustomPropertyDrawer != null
-                && TypesWithCustomPropertyDrawer.Contains(type)
-            )
             {
                 return false;
             }
@@ -8221,34 +8111,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 "Text",
                 "textColor"
             );
-            // Note: WGroupCustomColor is intentionally NOT registered here.
-            // It has a full PropertyDrawer (WGroupCustomColorDrawer) that handles the
-            // "Collection Styling (Advanced)" foldout section with 5 toggle+color fields.
-            // The DualColorRenderer only renders 2 color fields with single-line height,
-            // which would hide the advanced settings. By not registering it, we force
-            // the dictionary to use EditorGUI.PropertyField which invokes the full drawer.
             TryRegisterWEnumPaletteRenderer(renderers, settingsType);
             return renderers;
-        }
-
-        private static HashSet<Type> BuildTypesWithCustomPropertyDrawer()
-        {
-            HashSet<Type> types = new();
-            Type settingsType = typeof(UnityHelpersSettings);
-
-            // WGroupCustomColor has a custom PropertyDrawer that handles advanced foldout content.
-            // It must NOT use the foldout rendering path or its PropertyDrawer won't run properly.
-            // Use Public | NonPublic for nested type lookup (not Instance which is for members)
-            Type wGroupCustomColorType = settingsType.GetNestedType(
-                "WGroupCustomColor",
-                BindingFlags.Public | BindingFlags.NonPublic
-            );
-            if (wGroupCustomColorType != null)
-            {
-                types.Add(wGroupCustomColorType);
-            }
-
-            return types;
         }
 
         internal static void TryRegisterDualColorPaletteRenderer(

@@ -247,7 +247,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private static readonly string[] PalettePropertyRoots =
         {
             UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors,
-            UnityHelpersSettings.SerializedPropertyNames.WGroupCustomColors,
             UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsCustomColors,
         };
 

@@ -21,6 +21,204 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
+    internal static class SerializableSetIndentDiagnostics
+    {
+        /// <summary>
+        /// When true, enables diagnostic logging for indentation-related calculations.
+        /// </summary>
+        internal static bool Enabled { get; set; } = false;
+
+        /// <summary>
+        /// When set, only logs for properties matching this path (substring match).
+        /// Leave null to log all properties.
+        /// </summary>
+        internal static string PropertyPathFilter { get; set; } = null;
+
+        /// <summary>
+        /// When true, only logs for properties targeting UnityHelpersSettings.
+        /// </summary>
+        internal static bool OnlyUnityHelpersSettings { get; set; } = false;
+
+        private const string LogPrefix = "[SetIndent] ";
+
+        private static bool ShouldLog(string propertyPath, bool isSettings)
+        {
+            if (!Enabled)
+            {
+                return false;
+            }
+
+            if (OnlyUnityHelpersSettings && !isSettings)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrEmpty(PropertyPathFilter))
+            {
+                if (string.IsNullOrEmpty(propertyPath))
+                {
+                    return false;
+                }
+
+                if (
+                    propertyPath.IndexOf(PropertyPathFilter, StringComparison.OrdinalIgnoreCase) < 0
+                )
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        internal static void LogOnGUIEntry(
+            Rect originalPosition,
+            SerializedProperty property,
+            bool targetsSettings,
+            int indentLevel
+        )
+        {
+            string propertyPath = property?.propertyPath ?? "(null)";
+            if (!ShouldLog(propertyPath, targetsSettings))
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"{LogPrefix}OnGUI Entry: path={propertyPath}, targetsSettings={targetsSettings}, "
+                    + $"indentLevel={indentLevel}, originalPos={FormatRect(originalPosition)}"
+            );
+        }
+
+        internal static void LogResolveContentRect(
+            Rect inputRect,
+            Rect outputRect,
+            bool skipIndentation,
+            float leftPadding,
+            float rightPadding,
+            int scopeDepth,
+            int indentLevel
+        )
+        {
+            if (!Enabled)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"{LogPrefix}ResolveContentRect: skip={skipIndentation}, "
+                    + $"leftPad={leftPadding:F2}, rightPad={rightPadding:F2}, scopeDepth={scopeDepth}, "
+                    + $"indentLevel={indentLevel}, input={FormatRect(inputRect)}, output={FormatRect(outputRect)}"
+            );
+        }
+
+        internal static void LogResolveContentRectSteps(
+            Rect original,
+            Rect afterPadding,
+            Rect afterIndent,
+            Rect final,
+            bool skipIndentation,
+            float leftPadding,
+            float rightPadding,
+            int indentLevel
+        )
+        {
+            if (!Enabled)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"{LogPrefix}ResolveContentRect Steps: skip={skipIndentation}, "
+                    + $"leftPad={leftPadding:F2}, rightPad={rightPadding:F2}, indent={indentLevel}\n"
+                    + $"  original   = {FormatRect(original)}\n"
+                    + $"  afterPad   = {FormatRect(afterPadding)}\n"
+                    + $"  afterIndent= {FormatRect(afterIndent)}\n"
+                    + $"  final      = {FormatRect(final)}"
+            );
+        }
+
+        internal static void LogDrawPendingEntryUI(
+            string propertyPath,
+            Rect position,
+            float pendingY,
+            bool targetsSettings,
+            int indentLevel
+        )
+        {
+            if (!ShouldLog(propertyPath, targetsSettings))
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"{LogPrefix}DrawPendingEntryUI: path={propertyPath}, targetsSettings={targetsSettings}, "
+                    + $"indentLevel={indentLevel}, pendingY={pendingY:F2}, position={FormatRect(position)}"
+            );
+        }
+
+        internal static void LogListDoList(
+            string propertyPath,
+            Rect listRect,
+            bool targetsSettings,
+            int indentLevelBefore,
+            int indentLevelDuring
+        )
+        {
+            if (!ShouldLog(propertyPath, targetsSettings))
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"{LogPrefix}DoList: path={propertyPath}, targetsSettings={targetsSettings}, "
+                    + $"indentBefore={indentLevelBefore}, indentDuring={indentLevelDuring}, "
+                    + $"listRect={FormatRect(listRect)}"
+            );
+        }
+
+        internal static void LogGroupPaddingState(string context)
+        {
+            if (!Enabled)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"{LogPrefix}GroupPadding ({context}): "
+                    + $"left={GroupGUIWidthUtility.CurrentLeftPadding:F2}, "
+                    + $"right={GroupGUIWidthUtility.CurrentRightPadding:F2}, "
+                    + $"total={GroupGUIWidthUtility.CurrentHorizontalPadding:F2}, "
+                    + $"depth={GroupGUIWidthUtility.CurrentScopeDepth}"
+            );
+        }
+
+        internal static void LogDrawRowElement(
+            string propertyPath,
+            int index,
+            int globalIndex,
+            Rect rect,
+            float valueWidth,
+            bool targetsSettings
+        )
+        {
+            if (!ShouldLog(propertyPath, targetsSettings))
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"{LogPrefix}DrawRow: path={propertyPath}, index={index}, globalIdx={globalIndex}, "
+                    + $"rect={FormatRect(rect)}, valueW={valueWidth:F2}"
+            );
+        }
+
+        private static string FormatRect(Rect r)
+        {
+            return $"(x={r.x:F1}, y={r.y:F1}, w={r.width:F1}, h={r.height:F1})";
+        }
+    }
+
     [CustomPropertyDrawer(typeof(SerializableHashSet<>), true)]
     [CustomPropertyDrawer(typeof(SerializableSortedSet<>), true)]
     public sealed class SerializableSetPropertyDrawer : PropertyDrawer
@@ -75,6 +273,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Color DuplicateOutlineColor = new(0.65f, 0.18f, 0.18f, 0.9f);
         private static readonly Color LightRowColor = new(0.97f, 0.97f, 0.97f, 1f);
         private static readonly Color DarkRowColor = new(0.16f, 0.16f, 0.16f, 0.45f);
+
+        // Opaque versions for header/footer backgrounds to fully cover Unity's default styling
+        private static readonly Color LightHeaderColor = new(0.85f, 0.85f, 0.85f, 1f);
+        private static readonly Color DarkHeaderColor = new(0.22f, 0.22f, 0.22f, 1f);
         private static readonly Color NullEntryHighlightColor = new(0.84f, 0.2f, 0.2f, 0.6f);
         internal const float WGroupFoldoutAlignmentOffset = 2.5f;
         private const float ManualEntrySectionPadding = 6f;
@@ -215,6 +417,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal static float LastManualEntryValueFoldoutOffset { get; private set; }
         internal static bool HasLastRowContentRect { get; private set; }
         internal static Rect LastRowContentRect { get; private set; }
+
+        // Footer range label test tracking
+        internal static bool HasLastFooterRangeLabelRect { get; private set; }
+        internal static Rect LastFooterRangeLabelRect { get; private set; }
+        internal static bool LastFooterRangeLabelWasDrawn { get; private set; }
+        internal static float LastFooterAvailableWidth { get; private set; }
+        internal static float LastFooterRangeWidth { get; private set; }
+        internal static float LastFooterWGroupLeftPadding { get; private set; }
+        internal static float LastFooterWGroupRightPadding { get; private set; }
 
         /// <summary>
         /// Frame number when a child property drawer signaled that its height changed.
@@ -559,10 +770,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static void DrawSetBodyTopBorder(Rect rect)
         {
-            Color borderColor = GroupGUIWidthUtility.GetPaletteBorderColor(
-                new Color(0.7f, 0.7f, 0.7f, 1f),
-                new Color(0.25f, 0.25f, 0.25f, 1f)
-            );
+            Color borderColor = EditorGUIUtility.isProSkin
+                ? new Color(0.25f, 0.25f, 0.25f, 1f)
+                : new Color(0.7f, 0.7f, 0.7f, 1f);
             EditorGUI.DrawRect(rect, borderColor);
         }
 
@@ -679,29 +889,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            // Check if we're inside a WGroup BEFORE exiting theming - we need this info
-            // to know whether to draw custom backgrounds (to override Unity's tinted defaults)
-            bool wasInsideWGroup = GroupGUIWidthUtility.CurrentScopeDepth > 0;
-
-            // Capture WGroup colors BEFORE exiting theming - we need these for the foldout label
-            // which renders against the WGroup background and should use WGroup text colors.
-            GroupGUIWidthUtility.WGroupSavedColors savedColors =
-                GroupGUIWidthUtility.CaptureWGroupColors();
-
-            // Exit WGroup theming entirely - serializable collections manage their own styling.
-            // This clears the palette context so GetPaletteRowColor etc. use fallback colors.
-            using (GroupGUIWidthUtility.ExitWGroupTheming())
-            {
-                OnGUIInternal(position, property, label, wasInsideWGroup, savedColors);
-            }
+            OnGUIInternal(position, property, label, wasInsideWGroup: false);
         }
 
         private void OnGUIInternal(
             Rect position,
             SerializedProperty property,
             GUIContent label,
-            bool wasInsideWGroup,
-            GroupGUIWidthUtility.WGroupSavedColors wgroupColors
+            bool wasInsideWGroup
         )
         {
             Rect originalPosition = position;
@@ -747,10 +942,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 GUIContent foldoutLabel = GetFoldoutLabelContent(label);
 
-                // Apply additional foldout alignment offset when inside a WGroup property context
-                float foldoutAlignmentOffset = GroupGUIWidthUtility.IsInsideWGroupPropertyDraw
-                    ? WGroupFoldoutAlignmentOffset
-                    : 0f;
+                float foldoutAlignmentOffset = 0f;
 
                 Rect foldoutRect = new(
                     position.x + foldoutAlignmentOffset,
@@ -767,29 +959,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     );
                 }
 
-                // Foldout label and icon use WGroup theming since they render against WGroup background.
-                // Temporarily restore WGroup colors just for the foldout draw.
-                if (wasInsideWGroup)
-                {
-                    using (GroupGUIWidthUtility.RestoreWGroupTheming(wgroupColors))
-                    {
-                        property.isExpanded = EditorGUI.Foldout(
-                            foldoutRect,
-                            property.isExpanded,
-                            foldoutLabel,
-                            true
-                        );
-                    }
-                }
-                else
-                {
-                    property.isExpanded = EditorGUI.Foldout(
-                        foldoutRect,
-                        property.isExpanded,
-                        foldoutLabel,
-                        true
-                    );
-                }
+                // Foldout label
+                property.isExpanded = EditorGUI.Foldout(
+                    foldoutRect,
+                    property.isExpanded,
+                    foldoutLabel,
+                    true
+                );
 
                 // Track the foldout rect for testing
                 HasLastMainFoldoutRect = true;
@@ -922,22 +1098,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             + GetFooterHeight();
                     Rect listRect = new(position.x, y, position.width, listHeight);
 
-                    // Draw custom list container background when inside WGroup to respect theming
+                    // Draw custom list container background with opaque color
                     if (
                         _currentDrawInsideWGroup
                         && list != null
                         && Event.current.type == EventType.Repaint
                     )
                     {
-                        Color listBgColor = GroupGUIWidthUtility.GetPaletteRowColor(
-                            LightRowColor,
-                            DarkRowColor
-                        );
-                        // Temporarily reset GUI.color to prevent tinting from parent WGroup
-                        Color prevGuiColor = GUI.color;
-                        GUI.color = Color.white;
+                        Color listBgColor = EditorGUIUtility.isProSkin
+                            ? DarkHeaderColor
+                            : LightHeaderColor;
                         EditorGUI.DrawRect(listRect, listBgColor);
-                        GUI.color = prevGuiColor;
                     }
 
                     if (
@@ -1003,21 +1174,34 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static Rect ResolveContentRect(Rect position, bool skipIndentation = false)
         {
-            const float MinimumGroupIndent = 6f;
-
             float leftPadding = GroupGUIWidthUtility.CurrentLeftPadding;
             float rightPadding = GroupGUIWidthUtility.CurrentRightPadding;
             int scopeDepth = GroupGUIWidthUtility.CurrentScopeDepth;
+            int indentLevel = EditorGUI.indentLevel;
             bool isInsideWGroupProperty = GroupGUIWidthUtility.IsInsideWGroupPropertyDraw;
+            Rect original = position;
 
             // When inside WGroup property context, WGroup uses EditorGUILayout.PropertyField
             // which means Unity's layout system has ALREADY:
             // 1. Positioned the rect based on the current layout group (with WGroup padding)
             // 2. Applied indentation based on EditorGUI.indentLevel
-            // We should NOT apply any additional transformations - just return position as-is.
+            // Apply a small alignment offset to align with other WGroup content.
             if (isInsideWGroupProperty)
             {
-                return position;
+                const float WGroupAlignmentOffset = -2f;
+                Rect alignedPosition = position;
+                alignedPosition.xMin += WGroupAlignmentOffset;
+                alignedPosition.width -= WGroupAlignmentOffset;
+                SerializableSetIndentDiagnostics.LogResolveContentRect(
+                    original,
+                    alignedPosition,
+                    skipIndentation,
+                    leftPadding,
+                    rightPadding,
+                    scopeDepth,
+                    indentLevel
+                );
+                return alignedPosition;
             }
 
             // When skipIndentation is true, we're in a GUILayout context (e.g., SettingsProvider)
@@ -1039,6 +1223,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
 
+                SerializableSetIndentDiagnostics.LogResolveContentRect(
+                    original,
+                    result,
+                    skipIndentation,
+                    leftPadding,
+                    rightPadding,
+                    scopeDepth,
+                    indentLevel
+                );
                 return result;
             }
 
@@ -1066,15 +1259,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 indentedResult.width = 0f;
             }
 
-            // Only add minimum indent when not inside a WGroup (which already has padding)
-            // and when indent level is zero (no parent property nesting)
-            if (EditorGUI.indentLevel <= 0 && leftPadding <= 0f && scopeDepth <= 0)
-            {
-                indentedResult.xMin += MinimumGroupIndent;
-                indentedResult.width = Mathf.Max(0f, indentedResult.width - MinimumGroupIndent);
-            }
+            // When outside a WGroup, shift slightly left to align with Unity's default
+            // list/array rendering
+            const float UnityListAlignmentOffset = -1.25f;
+            Rect final = indentedResult;
+            final.xMin += UnityListAlignmentOffset;
+            final.width -= UnityListAlignmentOffset;
 
-            return indentedResult;
+            SerializableSetIndentDiagnostics.LogResolveContentRectSteps(
+                original,
+                padded2,
+                indentedResult,
+                final,
+                skipIndentation,
+                leftPadding,
+                rightPadding,
+                indentLevel
+            );
+
+            return final;
         }
 
         /// <summary>
@@ -1102,6 +1305,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             LastManualEntryValueFoldoutOffset = 0f;
             HasLastRowContentRect = false;
             LastRowContentRect = default;
+            HasLastFooterRangeLabelRect = false;
+            LastFooterRangeLabelRect = default;
+            LastFooterRangeLabelWasDrawn = false;
+            LastFooterAvailableWidth = 0f;
+            LastFooterRangeWidth = 0f;
+            LastFooterWGroupLeftPadding = 0f;
+            LastFooterWGroupRightPadding = 0f;
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
@@ -1732,18 +1942,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             };
             list.drawHeaderCallback = rect =>
             {
-                // Draw custom header background when inside WGroup to respect theming
+                // Draw custom header background with opaque color to fully cover Unity's default
                 if (_currentDrawInsideWGroup && Event.current.type == EventType.Repaint)
                 {
-                    Color headerColor = GroupGUIWidthUtility.GetPaletteRowColor(
-                        LightRowColor,
-                        DarkRowColor
-                    );
-                    // Temporarily reset GUI.color to prevent tinting from parent WGroup
-                    Color prevGuiColor = GUI.color;
-                    GUI.color = Color.white;
+                    Color headerColor = EditorGUIUtility.isProSkin
+                        ? DarkHeaderColor
+                        : LightHeaderColor;
                     EditorGUI.DrawRect(rect, headerColor);
-                    GUI.color = prevGuiColor;
                 }
 
                 ListPageCache currentCache = cacheProvider();
@@ -1790,18 +1995,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (Event.current.type == EventType.Repaint)
             {
-                // Draw custom footer background when inside WGroup to respect theming
+                // Draw custom footer background with opaque color to fully cover Unity's default
                 if (_currentDrawInsideWGroup)
                 {
-                    Color footerColor = GroupGUIWidthUtility.GetPaletteRowColor(
-                        LightRowColor,
-                        DarkRowColor
-                    );
-                    // Temporarily reset GUI.color to prevent tinting from parent WGroup
-                    Color prevGuiColor = GUI.color;
-                    GUI.color = Color.white;
+                    Color footerColor = EditorGUIUtility.isProSkin
+                        ? DarkHeaderColor
+                        : LightHeaderColor;
                     EditorGUI.DrawRect(rect, footerColor);
-                    GUI.color = prevGuiColor;
                 }
                 else
                 {
@@ -2021,13 +2221,40 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             GUIStyle rangeStyle = EditorStyles.miniLabel;
             RangeLabelGUIContent.text = rangeText;
             float rangeWidth = rangeStyle.CalcSize(RangeLabelGUIContent).x;
-            float availableWidth = Mathf.Max(0f, rightCursor - leftCursor);
+
+            // When inside a WGroup, the visible area may be narrower than the rect suggests
+            // due to WGroup's helpBox padding creating a clip region. We need to account for
+            // this when positioning the range label to prevent it from being clipped.
+            // The buttons (positioned from the right) don't have this issue because they're
+            // within the WGroup's visible bounds, but the range label (positioned from the left)
+            // can extend into the clipped region.
+            float wGroupLeftPadding = GroupGUIWidthUtility.CurrentLeftPadding;
+            float adjustedLeftCursor = leftCursor + wGroupLeftPadding;
+            float availableWidth = Mathf.Max(0f, rightCursor - adjustedLeftCursor);
+
+            // Track footer range label state for tests
+            LastFooterAvailableWidth = availableWidth;
+            LastFooterRangeWidth = rangeWidth;
+            LastFooterWGroupLeftPadding = wGroupLeftPadding;
+            LastFooterWGroupRightPadding = GroupGUIWidthUtility.CurrentRightPadding;
+            HasLastFooterRangeLabelRect = true;
+
             if (rangeWidth <= availableWidth)
             {
                 float rangeHeight = lineHeight + 4f;
                 float rangeY = rect.y + Mathf.Max(0f, (rect.height - rangeHeight) * 0.5f) - 2.5f;
-                Rect rangeRect = new(leftCursor, rangeY, rangeWidth, rangeHeight);
+                // Use available width for the rect to prevent clipping beyond visible area.
+                // This matches how SerializableDictionaryPropertyDrawer handles the range label.
+                float labelWidth = Mathf.Max(0f, availableWidth);
+                Rect rangeRect = new(adjustedLeftCursor, rangeY, labelWidth, rangeHeight);
+                LastFooterRangeLabelRect = rangeRect;
+                LastFooterRangeLabelWasDrawn = true;
                 EditorGUI.LabelField(rangeRect, rangeText, rangeStyle);
+            }
+            else
+            {
+                LastFooterRangeLabelRect = default;
+                LastFooterRangeLabelWasDrawn = false;
             }
         }
 
@@ -2209,17 +2436,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
 
                 Rect backgroundRect = new(containerX, containerY, containerWidth, sectionHeight);
-                Color backgroundColor = GroupGUIWidthUtility.GetPalettePendingBackgroundColor(
-                    new Color(0.92f, 0.92f, 0.92f, 1f),
-                    new Color(0.18f, 0.18f, 0.18f, 1f)
-                );
+                Color backgroundColor = EditorGUIUtility.isProSkin
+                    ? new Color(0.18f, 0.18f, 0.18f, 1f)
+                    : new Color(0.92f, 0.92f, 0.92f, 1f);
                 if (Event.current.type == EventType.Repaint)
                 {
-                    // Temporarily reset GUI.color to prevent tinting from parent WGroup
-                    Color prevGuiColor = GUI.color;
-                    GUI.color = Color.white;
                     EditorGUI.DrawRect(backgroundRect, backgroundColor);
-                    GUI.color = prevGuiColor;
                 }
 
                 float headerY = containerY + resolvedSectionPadding;
@@ -2671,35 +2893,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 };
             }
 
-            // Update text color based on current palette context
-            UnityHelpersSettings.WGroupPaletteEntry? palette = GroupGUIWidthUtility.CurrentPalette;
-            if (palette.HasValue)
-            {
-                _manualEntryFoldoutLabelStyle.normal.textColor = palette.Value.TextColor;
-                _manualEntryFoldoutLabelStyle.hover.textColor = palette.Value.TextColor;
-                _manualEntryFoldoutLabelStyle.active.textColor = palette.Value.TextColor;
-                _manualEntryFoldoutLabelStyle.focused.textColor = palette.Value.TextColor;
-            }
-            else
-            {
-                // Reset to default editor label colors when not in palette context
-                _manualEntryFoldoutLabelStyle.normal.textColor = EditorStyles
-                    .boldLabel
-                    .normal
-                    .textColor;
-                _manualEntryFoldoutLabelStyle.hover.textColor = EditorStyles
-                    .boldLabel
-                    .hover
-                    .textColor;
-                _manualEntryFoldoutLabelStyle.active.textColor = EditorStyles
-                    .boldLabel
-                    .active
-                    .textColor;
-                _manualEntryFoldoutLabelStyle.focused.textColor = EditorStyles
-                    .boldLabel
-                    .focused
-                    .textColor;
-            }
+            // Use default editor label colors
+            _manualEntryFoldoutLabelStyle.normal.textColor = EditorStyles
+                .boldLabel
+                .normal
+                .textColor;
+            _manualEntryFoldoutLabelStyle.hover.textColor = EditorStyles.boldLabel.hover.textColor;
+            _manualEntryFoldoutLabelStyle.active.textColor = EditorStyles
+                .boldLabel
+                .active
+                .textColor;
+            _manualEntryFoldoutLabelStyle.focused.textColor = EditorStyles
+                .boldLabel
+                .focused
+                .textColor;
 
             return _manualEntryFoldoutLabelStyle;
         }
@@ -5609,15 +5816,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             backgroundRect.x += 2f;
             backgroundRect.width = Mathf.Max(0f, backgroundRect.width - 4f);
 
-            Color baseRowColor = GroupGUIWidthUtility.GetPaletteRowColor(
-                LightRowColor,
-                DarkRowColor
-            );
-            // Temporarily reset GUI.color to prevent tinting from parent WGroup
-            Color prevGuiColor = GUI.color;
-            GUI.color = Color.white;
+            Color baseRowColor = EditorGUIUtility.isProSkin ? DarkRowColor : LightRowColor;
             EditorGUI.DrawRect(backgroundRect, baseRowColor);
-            GUI.color = prevGuiColor;
 
             UnityHelpersSettings.DuplicateRowAnimationMode animationMode =
                 UnityHelpersSettings.GetDuplicateRowAnimationMode();

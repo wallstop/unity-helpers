@@ -20,7 +20,6 @@ Unity Helpers includes a powerful suite of inspector attributes and serializatio
 
 - Designer-friendly interfaces reduce programmer bottlenecks
 - Project-wide settings ensure consistent styling and behavior
-- Fully customizable color palettes for theming
 - Pagination, animation, and polish built-in
 
 ---
@@ -35,7 +34,6 @@ Control how fields are grouped and organized in the inspector:
 
 ![Image placeholder: WGroup example showing boxed fields with colored header]
 ![Image placeholder: WGroup collapsed and expanded states]
-![Image placeholder: Color palette customization in settings]
 
 **[→ Full Guide: Inspector Grouping Attributes](inspector-grouping-attributes.md)**
 
@@ -140,7 +138,7 @@ using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 public class CharacterStats : MonoBehaviour
 {
     // Grouped fields with collapsible sections
-    [WGroup("Combat", "Combat Stats", colorKey: "Default-Dark", collapsible: true)]
+    [WGroup("Combat", "Combat Stats", collapsible: true)]
     public float maxHealth = 100f;
     public float defense = 10f;
     [WGroupEnd("Combat")]
@@ -215,7 +213,6 @@ For individual feature examples, see the detailed guides linked above.
 **Project-Consistent:**
 
 - Centralized settings asset
-- Color palettes for theming
 - Predictable behavior across all inspectors
 
 ---

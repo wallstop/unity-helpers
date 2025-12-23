@@ -360,35 +360,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 $"Second layout should have StartCollapsed=false after settings change to false. Actual={definition2.StartCollapsed}"
             );
         }
-
-        [Test]
-        public void ColorKeyRegistrationUsesPalette()
-        {
-            UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
-                UnityHelpersSettings.WGroupAutoIncludeMode.None,
-                0
-            );
-
-            ColorKeyAsset asset = CreateScriptableObject<ColorKeyAsset>();
-            using SerializedObject serializedObject = new(asset);
-            serializedObject.Update();
-
-            SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
-            string scriptPath = scriptProperty != null ? scriptProperty.propertyPath : null;
-
-            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, scriptPath);
-            Assert.IsTrue(layout.TryGetGroup("PaletteGroup", out WGroupDefinition definition));
-
-            Assert.That(definition.HideHeader, Is.True);
-            Assert.That(definition.Collapsible, Is.False);
-
-            Assert.That(definition.ColorKey, Is.EqualTo("TestPalette_WGroup"));
-
-            UnityHelpersSettings.WGroupPaletteEntry entry =
-                UnityHelpersSettings.ResolveWGroupPalette(definition.ColorKey);
-            Assert.That(entry.BackgroundColor.a, Is.GreaterThan(0f));
-            Assert.IsTrue(UnityHelpersSettings.HasWGroupPaletteColorKey(definition.ColorKey));
-        }
     }
 }
 #endif

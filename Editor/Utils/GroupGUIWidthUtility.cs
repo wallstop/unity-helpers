@@ -2,11 +2,133 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 {
 #if UNITY_EDITOR
     using System;
-    using System.Runtime.CompilerServices;
     using UnityEditor;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Editor.Settings;
-    using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
+
+    /// <summary>
+    /// Diagnostics helper for debugging WGroup theming restoration issues.
+    /// </summary>
+    public static class WGroupThemingDiagnostics
+    {
+        /// <summary>
+        /// When true, enables diagnostic logging for WGroup theming operations.
+        /// </summary>
+        public static bool Enabled { get; set; } = false;
+
+        private const string LogPrefix = "[WGroupTheming] ";
+
+        internal static void LogCaptureColors(
+            Color contentColor,
+            Color guiColor,
+            Color backgroundColor,
+            bool isInsideWGroup,
+            int scopeDepth
+        )
+        {
+            if (!Enabled)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"{LogPrefix}CaptureWGroupColors: "
+                    + $"contentColor={FormatColor(contentColor)}, "
+                    + $"guiColor={FormatColor(guiColor)}, "
+                    + $"bgColor={FormatColor(backgroundColor)}, "
+                    + $"isInsideWGroup={isInsideWGroup}, "
+                    + $"scopeDepth={scopeDepth}"
+            );
+        }
+
+        internal static void LogExitTheming(
+            Color beforeContentColor,
+            Color beforeGuiColor,
+            Color beforeBgColor,
+            Color afterContentColor,
+            Color afterGuiColor,
+            Color afterBgColor
+        )
+        {
+            if (!Enabled)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"{LogPrefix}ExitWGroupTheming ENTER: "
+                    + $"BEFORE: content={FormatColor(beforeContentColor)}, "
+                    + $"gui={FormatColor(beforeGuiColor)}, "
+                    + $"bg={FormatColor(beforeBgColor)} | "
+                    + $"AFTER: content={FormatColor(afterContentColor)}, "
+                    + $"gui={FormatColor(afterGuiColor)}, "
+                    + $"bg={FormatColor(afterBgColor)}"
+            );
+        }
+
+        internal static void LogRestoreTheming(
+            string phase,
+            Color contentColor,
+            Color guiColor,
+            Color backgroundColor
+        )
+        {
+            if (!Enabled)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"{LogPrefix}RestoreWGroupTheming {phase}: "
+                    + $"content={FormatColor(contentColor)}, "
+                    + $"gui={FormatColor(guiColor)}, "
+                    + $"bg={FormatColor(backgroundColor)}"
+            );
+        }
+
+        internal static void LogDrawFoldout(
+            string propertyPath,
+            bool wasInsideWGroup,
+            Color currentContentColor,
+            Color currentGuiColor,
+            Color savedContentColor,
+            Color savedGuiColor
+        )
+        {
+            if (!Enabled)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"{LogPrefix}DrawFoldout: path={propertyPath}, "
+                    + $"wasInsideWGroup={wasInsideWGroup}, "
+                    + $"CURRENT: content={FormatColor(currentContentColor)}, "
+                    + $"gui={FormatColor(currentGuiColor)} | "
+                    + $"SAVED: content={FormatColor(savedContentColor)}, "
+                    + $"gui={FormatColor(savedGuiColor)}"
+            );
+        }
+
+        internal static void LogFoldoutStyleColors(string phase, GUIStyle foldout)
+        {
+            if (!Enabled)
+            {
+                return;
+            }
+
+            Debug.Log(
+                $"{LogPrefix}FoldoutStyle {phase}: "
+                    + $"normal={FormatColor(foldout.normal.textColor)}, "
+                    + $"onNormal={FormatColor(foldout.onNormal.textColor)}, "
+                    + $"hover={FormatColor(foldout.hover.textColor)}"
+            );
+        }
+
+        internal static string FormatColor(Color c)
+        {
+            return $"({c.r:F2},{c.g:F2},{c.b:F2},{c.a:F2})";
+        }
+    }
 
     internal static class GroupGUIWidthUtility
     {
@@ -105,7 +227,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         private static float _totalRightPadding;
         private static int _scopeDepth;
         private static bool _isInsideWGroupPropertyDraw;
-        private static UnityHelpersSettings.WGroupPaletteEntry? _currentPalette;
         private static WGroupThemeState? _currentThemeState;
 
         internal static float CurrentHorizontalPadding => _totalPadding;
@@ -117,18 +238,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
         internal static WGroupThemeState? CurrentThemeState => _currentThemeState;
 
-        /// <summary>
-        /// Gets whether code is currently executing inside any WGroup scope.
-        /// This is true whenever there is an active WGroup palette on the stack.
-        /// </summary>
-        internal static bool IsInsideWGroup => _currentPalette != null;
-
-        /// <summary>
-        /// Gets the current WGroup palette entry if drawing inside a WGroup, or null otherwise.
-        /// Use this to ensure child elements (lists, dictionaries, etc.) use consistent theming.
-        /// </summary>
-        internal static UnityHelpersSettings.WGroupPaletteEntry? CurrentPalette => _currentPalette;
-
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
         internal static void ResetForTests()
         {
@@ -137,23 +246,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             _totalRightPadding = 0f;
             _scopeDepth = 0;
             _isInsideWGroupPropertyDraw = false;
-            _currentPalette = null;
             _currentThemeState = null;
         }
 
         internal static IDisposable PushWGroupPropertyContext()
         {
             return new WGroupPropertyContextScope();
-        }
-
-        /// <summary>
-        /// Pushes a WGroup palette onto the stack so child drawers can access it.
-        /// </summary>
-        internal static IDisposable PushWGroupPalette(
-            UnityHelpersSettings.WGroupPaletteEntry palette
-        )
-        {
-            return new WGroupPaletteScope(palette);
         }
 
         internal static void ApplyCurrentThemeColors()
@@ -198,15 +296,173 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         /// <summary>
         /// Captures the current WGroup GUI colors before exiting theming.
         /// Call this BEFORE entering ExitWGroupTheming to save the colors for later restoration.
+        /// If currently inside a WGroup with a palette, uses the theme state colors which
+        /// represent the actual palette colors (since GUI.contentColor may have been modified).
         /// </summary>
         internal static WGroupSavedColors CaptureWGroupColors()
         {
-            return new WGroupSavedColors
+            // If we have a current theme state (inside WGroup), use those colors
+            // since GUI.contentColor may have been modified by nested scopes
+            WGroupSavedColors colors;
+            if (_currentThemeState.HasValue)
             {
-                ContentColor = GUI.contentColor,
-                Color = GUI.color,
-                BackgroundColor = GUI.backgroundColor,
-            };
+                WGroupThemeState state = _currentThemeState.Value;
+                colors = new WGroupSavedColors
+                {
+                    ContentColor = state.ContentColor,
+                    Color = state.GuiColor,
+                    BackgroundColor = state.BackgroundColor,
+                };
+            }
+            else
+            {
+                colors = new WGroupSavedColors
+                {
+                    ContentColor = GUI.contentColor,
+                    Color = GUI.color,
+                    BackgroundColor = GUI.backgroundColor,
+                };
+            }
+
+            WGroupThemingDiagnostics.LogCaptureColors(
+                colors.ContentColor,
+                colors.Color,
+                colors.BackgroundColor,
+                _currentThemeState != null,
+                _scopeDepth
+            );
+
+            return colors;
+        }
+
+        /// <summary>
+        /// Cached foldout arrow texture for drawing themed foldouts.
+        /// </summary>
+        private static Texture2D _foldoutArrowRight;
+
+        /// <summary>
+        /// Cached expanded foldout arrow texture for drawing themed foldouts.
+        /// </summary>
+        private static Texture2D _foldoutArrowDown;
+
+        /// <summary>
+        /// Draws a foldout with proper WGroup theming. Unity's built-in EditorGUI.Foldout
+        /// uses pre-baked icon textures that don't respect GUI.contentColor, so this method
+        /// manually draws the arrow icon with the correct tint color.
+        /// </summary>
+        /// <param name="position">The rectangle to draw the foldout in.</param>
+        /// <param name="isExpanded">Current expansion state.</param>
+        /// <param name="content">The label content to display.</param>
+        /// <param name="toggleOnLabelClick">Whether clicking the label toggles the foldout.</param>
+        /// <returns>The new expansion state.</returns>
+        internal static bool DrawThemedFoldout(
+            Rect position,
+            bool isExpanded,
+            GUIContent content,
+            bool toggleOnLabelClick = true
+        )
+        {
+            // Cache arrow textures
+            if (_foldoutArrowRight == null)
+            {
+                _foldoutArrowRight =
+                    EditorGUIUtility.IconContent("d_forward@2x").image as Texture2D;
+                if (_foldoutArrowRight == null)
+                {
+                    _foldoutArrowRight =
+                        EditorGUIUtility.IconContent("d_forward").image as Texture2D;
+                }
+
+                if (_foldoutArrowRight == null)
+                {
+                    _foldoutArrowRight =
+                        EditorGUIUtility.IconContent("forward@2x").image as Texture2D;
+                }
+
+                if (_foldoutArrowRight == null)
+                {
+                    _foldoutArrowRight = EditorGUIUtility.IconContent("forward").image as Texture2D;
+                }
+            }
+
+            if (_foldoutArrowDown == null)
+            {
+                _foldoutArrowDown =
+                    EditorGUIUtility.IconContent("d_icon dropdown@2x").image as Texture2D;
+                if (_foldoutArrowDown == null)
+                {
+                    _foldoutArrowDown =
+                        EditorGUIUtility.IconContent("d_icon dropdown").image as Texture2D;
+                }
+
+                if (_foldoutArrowDown == null)
+                {
+                    _foldoutArrowDown =
+                        EditorGUIUtility.IconContent("icon dropdown@2x").image as Texture2D;
+                }
+
+                if (_foldoutArrowDown == null)
+                {
+                    _foldoutArrowDown =
+                        EditorGUIUtility.IconContent("icon dropdown").image as Texture2D;
+                }
+            }
+
+            // If we don't have custom arrow textures, fall back to standard foldout
+            if (_foldoutArrowRight == null && _foldoutArrowDown == null)
+            {
+                return EditorGUI.Foldout(position, isExpanded, content, toggleOnLabelClick);
+            }
+
+            // Calculate rects
+            float arrowSize = EditorGUIUtility.singleLineHeight;
+            Rect arrowRect = new Rect(position.x, position.y, arrowSize, arrowSize);
+            Rect labelRect = new Rect(
+                position.x + arrowSize,
+                position.y,
+                position.width - arrowSize,
+                position.height
+            );
+
+            // Handle click on arrow
+            Event evt = Event.current;
+            if (evt.type == EventType.MouseDown && evt.button == 0)
+            {
+                if (arrowRect.Contains(evt.mousePosition))
+                {
+                    isExpanded = !isExpanded;
+                    evt.Use();
+                    GUI.changed = true;
+                }
+                else if (toggleOnLabelClick && labelRect.Contains(evt.mousePosition))
+                {
+                    isExpanded = !isExpanded;
+                    evt.Use();
+                    GUI.changed = true;
+                }
+            }
+
+            // Draw arrow icon with current GUI.contentColor tint
+            Texture2D arrowTexture = isExpanded ? _foldoutArrowDown : _foldoutArrowRight;
+            if (arrowTexture != null)
+            {
+                // Center the arrow in the rect
+                float iconSize = Mathf.Min(arrowRect.width, arrowRect.height) * 0.7f;
+                Rect iconRect = new Rect(
+                    arrowRect.x + (arrowRect.width - iconSize) * 0.5f,
+                    arrowRect.y + (arrowRect.height - iconSize) * 0.5f,
+                    iconSize,
+                    iconSize
+                );
+
+                // GUI.DrawTexture respects GUI.contentColor for tinting
+                GUI.DrawTexture(iconRect, arrowTexture, ScaleMode.ScaleToFit);
+            }
+
+            // Draw label with current style colors
+            EditorGUI.LabelField(labelRect, content);
+
+            return isExpanded;
         }
 
         /// <summary>
@@ -313,7 +569,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
         private sealed class ExitWGroupThemingScope : IDisposable
         {
-            private readonly UnityHelpersSettings.WGroupPaletteEntry? _previousPalette;
             private readonly bool _previousIsInsideWGroupPropertyDraw;
             private readonly Color _previousContentColor;
             private readonly Color _previousColor;
@@ -338,7 +593,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
             internal ExitWGroupThemingScope()
             {
-                _previousPalette = _currentPalette;
                 _previousIsInsideWGroupPropertyDraw = _isInsideWGroupPropertyDraw;
                 _previousContentColor = GUI.contentColor;
                 _previousColor = GUI.color;
@@ -360,7 +614,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 _savedMiniButtonRight = SaveFullStyleState(EditorStyles.miniButtonRight);
 
                 // Clear WGroup context
-                _currentPalette = null;
                 _currentThemeState = null;
                 _isInsideWGroupPropertyDraw = false;
 
@@ -493,7 +746,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 RestoreFullStyleState(EditorStyles.miniButtonRight, _savedMiniButtonRight);
 
                 // Restore WGroup context
-                _currentPalette = _previousPalette;
                 _currentThemeState = _previousThemeState;
                 _isInsideWGroupPropertyDraw = _previousIsInsideWGroupPropertyDraw;
 
@@ -514,6 +766,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             private readonly Color _savedContentColor;
             private readonly Color _savedColor;
             private readonly Color _savedBackgroundColor;
+
+            // Saved foldout style text colors - the foldout icon uses these
+            private readonly Color _savedFoldoutNormalTextColor;
+            private readonly Color _savedFoldoutOnNormalTextColor;
+            private readonly Color _savedFoldoutHoverTextColor;
+            private readonly Color _savedFoldoutOnHoverTextColor;
+            private readonly Color _savedFoldoutActiveTextColor;
+            private readonly Color _savedFoldoutOnActiveTextColor;
+            private readonly Color _savedFoldoutFocusedTextColor;
+            private readonly Color _savedFoldoutOnFocusedTextColor;
+
             private bool _disposed;
 
             internal RestoreWGroupThemingScope(WGroupSavedColors colors)
@@ -523,10 +786,48 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 _savedColor = GUI.color;
                 _savedBackgroundColor = GUI.backgroundColor;
 
+                // Save current foldout style text colors
+                GUIStyle foldout = EditorStyles.foldout;
+                _savedFoldoutNormalTextColor = foldout.normal.textColor;
+                _savedFoldoutOnNormalTextColor = foldout.onNormal.textColor;
+                _savedFoldoutHoverTextColor = foldout.hover.textColor;
+                _savedFoldoutOnHoverTextColor = foldout.onHover.textColor;
+                _savedFoldoutActiveTextColor = foldout.active.textColor;
+                _savedFoldoutOnActiveTextColor = foldout.onActive.textColor;
+                _savedFoldoutFocusedTextColor = foldout.focused.textColor;
+                _savedFoldoutOnFocusedTextColor = foldout.onFocused.textColor;
+
+                WGroupThemingDiagnostics.LogRestoreTheming(
+                    "ENTER (saving non-themed)",
+                    _savedContentColor,
+                    _savedColor,
+                    _savedBackgroundColor
+                );
+
                 // Restore WGroup themed colors
                 GUI.contentColor = colors.ContentColor;
                 GUI.color = colors.Color;
                 GUI.backgroundColor = colors.BackgroundColor;
+
+                // Apply WGroup text color to foldout style for icon coloring
+                Color textColor = colors.ContentColor;
+                foldout.normal.textColor = textColor;
+                foldout.onNormal.textColor = textColor;
+                foldout.hover.textColor = textColor;
+                foldout.onHover.textColor = textColor;
+                foldout.active.textColor = textColor;
+                foldout.onActive.textColor = textColor;
+                foldout.focused.textColor = textColor;
+                foldout.onFocused.textColor = textColor;
+
+                WGroupThemingDiagnostics.LogFoldoutStyleColors("after set", foldout);
+
+                WGroupThemingDiagnostics.LogRestoreTheming(
+                    "ENTER (restored WGroup colors)",
+                    GUI.contentColor,
+                    GUI.color,
+                    GUI.backgroundColor
+                );
             }
 
             public void Dispose()
@@ -537,38 +838,36 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 }
 
                 _disposed = true;
+
+                WGroupThemingDiagnostics.LogRestoreTheming(
+                    "EXIT (before restore)",
+                    GUI.contentColor,
+                    GUI.color,
+                    GUI.backgroundColor
+                );
 
                 // Restore non-themed colors
                 GUI.contentColor = _savedContentColor;
                 GUI.color = _savedColor;
                 GUI.backgroundColor = _savedBackgroundColor;
-            }
-        }
 
-        private sealed class WGroupPaletteScope : IDisposable
-        {
-            private readonly UnityHelpersSettings.WGroupPaletteEntry? _previousPalette;
-            private readonly WGroupThemeState? _previousThemeState;
-            private bool _disposed;
+                // Restore foldout style text colors
+                GUIStyle foldout = EditorStyles.foldout;
+                foldout.normal.textColor = _savedFoldoutNormalTextColor;
+                foldout.onNormal.textColor = _savedFoldoutOnNormalTextColor;
+                foldout.hover.textColor = _savedFoldoutHoverTextColor;
+                foldout.onHover.textColor = _savedFoldoutOnHoverTextColor;
+                foldout.active.textColor = _savedFoldoutActiveTextColor;
+                foldout.onActive.textColor = _savedFoldoutOnActiveTextColor;
+                foldout.focused.textColor = _savedFoldoutFocusedTextColor;
+                foldout.onFocused.textColor = _savedFoldoutOnFocusedTextColor;
 
-            internal WGroupPaletteScope(UnityHelpersSettings.WGroupPaletteEntry palette)
-            {
-                _previousPalette = _currentPalette;
-                _previousThemeState = _currentThemeState;
-                _currentPalette = palette;
-                _currentThemeState = BuildThemeState(palette);
-            }
-
-            public void Dispose()
-            {
-                if (_disposed)
-                {
-                    return;
-                }
-
-                _disposed = true;
-                _currentPalette = _previousPalette;
-                _currentThemeState = _previousThemeState;
+                WGroupThemingDiagnostics.LogRestoreTheming(
+                    "EXIT (after restore)",
+                    GUI.contentColor,
+                    GUI.color,
+                    GUI.backgroundColor
+                );
             }
         }
 
@@ -657,341 +956,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             rightPadding = Mathf.Max(0f, padding.right);
             int total = padding.left + padding.right;
             return Mathf.Max(0f, total);
-        }
-
-        /// <summary>
-        /// Returns true if there is an active WGroup palette with a light background
-        /// (luminance > 0.5), indicating child elements should use dark/light theming
-        /// opposite to the Unity editor skin.
-        /// </summary>
-        internal static bool IsInsideLightPaletteWGroup()
-        {
-            if (_currentPalette == null)
-            {
-                return false;
-            }
-
-            Color bg = _currentPalette.Value.BackgroundColor;
-            float luminance = 0.299f * bg.r + 0.587f * bg.g + 0.114f * bg.b;
-            return luminance > 0.5f;
-        }
-
-        /// <summary>
-        /// Returns true if there is an active WGroup palette with a dark background
-        /// (luminance <= 0.5), indicating child elements should use dark theming.
-        /// </summary>
-        internal static bool IsInsideDarkPaletteWGroup()
-        {
-            if (_currentPalette == null)
-            {
-                return false;
-            }
-
-            Color bg = _currentPalette.Value.BackgroundColor;
-            float luminance = 0.299f * bg.r + 0.587f * bg.g + 0.114f * bg.b;
-            return luminance <= 0.5f;
-        }
-
-        /// <summary>
-        /// Gets the appropriate row background color considering the current WGroup palette.
-        /// When inside a WGroup, the color is derived from the palette's background luminance.
-        /// Otherwise, uses Unity's editor skin (Pro = dark, Personal = light).
-        /// </summary>
-        internal static Color GetThemedRowColor(Color lightRowColor, Color darkRowColor)
-        {
-            if (_currentPalette == null)
-            {
-                return EditorGUIUtility.isProSkin ? darkRowColor : lightRowColor;
-            }
-
-            Color bg = _currentPalette.Value.BackgroundColor;
-            float luminance = 0.299f * bg.r + 0.587f * bg.g + 0.114f * bg.b;
-
-            // Light palette background -> use light row colors
-            // Dark palette background -> use dark row colors
-            return luminance > 0.5f ? lightRowColor : darkRowColor;
-        }
-
-        /// <summary>
-        /// Gets the appropriate selection/highlight color considering the current WGroup palette.
-        /// </summary>
-        internal static Color GetThemedSelectionColor(
-            Color lightSelectionColor,
-            Color darkSelectionColor
-        )
-        {
-            if (_currentPalette == null)
-            {
-                return EditorGUIUtility.isProSkin ? darkSelectionColor : lightSelectionColor;
-            }
-
-            Color bg = _currentPalette.Value.BackgroundColor;
-            float luminance = 0.299f * bg.r + 0.587f * bg.g + 0.114f * bg.b;
-            return luminance > 0.5f ? lightSelectionColor : darkSelectionColor;
-        }
-
-        /// <summary>
-        /// Gets the appropriate border color considering the current WGroup palette.
-        /// </summary>
-        internal static Color GetThemedBorderColor(Color lightBorderColor, Color darkBorderColor)
-        {
-            if (_currentPalette == null)
-            {
-                return EditorGUIUtility.isProSkin ? darkBorderColor : lightBorderColor;
-            }
-
-            Color bg = _currentPalette.Value.BackgroundColor;
-            float luminance = 0.299f * bg.r + 0.587f * bg.g + 0.114f * bg.b;
-            return luminance > 0.5f ? lightBorderColor : darkBorderColor;
-        }
-
-        /// <summary>
-        /// Gets the appropriate background color for pending entry sections
-        /// considering the current WGroup palette.
-        /// </summary>
-        internal static Color GetThemedPendingBackgroundColor(
-            Color lightBackgroundColor,
-            Color darkBackgroundColor
-        )
-        {
-            if (_currentPalette == null)
-            {
-                return EditorGUIUtility.isProSkin ? darkBackgroundColor : lightBackgroundColor;
-            }
-
-            Color bg = _currentPalette.Value.BackgroundColor;
-            float luminance = 0.299f * bg.r + 0.587f * bg.g + 0.114f * bg.b;
-            return luminance > 0.5f ? lightBackgroundColor : darkBackgroundColor;
-        }
-
-        /// <summary>
-        /// Gets the palette-aware row color. When inside a WGroup:
-        /// - Returns the palette's explicit RowColor if set
-        /// - Otherwise derives an appropriate row color from the palette's BackgroundColor
-        /// When not inside a WGroup, uses the provided fallback colors based on editor skin.
-        /// </summary>
-        /// <param name="fallbackLight">Color to use for light themes when not in WGroup context.</param>
-        /// <param name="fallbackDark">Color to use for dark themes when not in WGroup context.</param>
-        /// <returns>The appropriate row color for the current context.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static Color GetPaletteRowColor(Color fallbackLight, Color fallbackDark)
-        {
-            if (_currentPalette.HasValue)
-            {
-                UnityHelpersSettings.WGroupPaletteEntry palette = _currentPalette.Value;
-                return WGroupColorDerivation.GetEffectiveRowColor(
-                    palette.BackgroundColor,
-                    palette.RowColor
-                );
-            }
-
-            return EditorGUIUtility.isProSkin ? fallbackDark : fallbackLight;
-        }
-
-        /// <summary>
-        /// Gets the palette-aware alternate row color. When inside a WGroup:
-        /// - Returns the palette's explicit AlternateRowColor if set
-        /// - Otherwise derives an appropriate alternate row color from the palette's BackgroundColor
-        /// When not inside a WGroup, uses the provided fallback colors based on editor skin.
-        /// </summary>
-        /// <param name="fallbackLight">Color to use for light themes when not in WGroup context.</param>
-        /// <param name="fallbackDark">Color to use for dark themes when not in WGroup context.</param>
-        /// <returns>The appropriate alternate row color for the current context.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static Color GetPaletteAlternateRowColor(Color fallbackLight, Color fallbackDark)
-        {
-            if (_currentPalette.HasValue)
-            {
-                UnityHelpersSettings.WGroupPaletteEntry palette = _currentPalette.Value;
-                return WGroupColorDerivation.GetEffectiveAlternateRowColor(
-                    palette.BackgroundColor,
-                    palette.AlternateRowColor
-                );
-            }
-
-            return EditorGUIUtility.isProSkin ? fallbackDark : fallbackLight;
-        }
-
-        /// <summary>
-        /// Gets the palette-aware selection/hover color. When inside a WGroup:
-        /// - Returns the palette's explicit SelectionColor if set
-        /// - Otherwise derives an appropriate selection color from the palette's BackgroundColor
-        /// When not inside a WGroup, uses the provided fallback colors based on editor skin.
-        /// </summary>
-        /// <param name="fallbackLight">Color to use for light themes when not in WGroup context.</param>
-        /// <param name="fallbackDark">Color to use for dark themes when not in WGroup context.</param>
-        /// <returns>The appropriate selection color for the current context.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static Color GetPaletteSelectionColor(Color fallbackLight, Color fallbackDark)
-        {
-            if (_currentPalette.HasValue)
-            {
-                UnityHelpersSettings.WGroupPaletteEntry palette = _currentPalette.Value;
-                return WGroupColorDerivation.GetEffectiveSelectionColor(
-                    palette.BackgroundColor,
-                    palette.SelectionColor
-                );
-            }
-
-            return EditorGUIUtility.isProSkin ? fallbackDark : fallbackLight;
-        }
-
-        /// <summary>
-        /// Gets the palette-aware border color. When inside a WGroup:
-        /// - Returns the palette's explicit BorderColor if set
-        /// - Otherwise derives an appropriate border color from the palette's BackgroundColor
-        /// When not inside a WGroup, uses the provided fallback colors based on editor skin.
-        /// </summary>
-        /// <param name="fallbackLight">Color to use for light themes when not in WGroup context.</param>
-        /// <param name="fallbackDark">Color to use for dark themes when not in WGroup context.</param>
-        /// <returns>The appropriate border color for the current context.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static Color GetPaletteBorderColor(Color fallbackLight, Color fallbackDark)
-        {
-            if (_currentPalette.HasValue)
-            {
-                UnityHelpersSettings.WGroupPaletteEntry palette = _currentPalette.Value;
-                return WGroupColorDerivation.GetEffectiveBorderColor(
-                    palette.BackgroundColor,
-                    palette.BorderColor
-                );
-            }
-
-            return EditorGUIUtility.isProSkin ? fallbackDark : fallbackLight;
-        }
-
-        /// <summary>
-        /// Gets the palette-aware pending background color. When inside a WGroup:
-        /// - Returns the palette's explicit PendingBackgroundColor if set
-        /// - Otherwise derives an appropriate pending background color from the palette's BackgroundColor
-        /// When not inside a WGroup, uses the provided fallback colors based on editor skin.
-        /// </summary>
-        /// <param name="fallbackLight">Color to use for light themes when not in WGroup context.</param>
-        /// <param name="fallbackDark">Color to use for dark themes when not in WGroup context.</param>
-        /// <returns>The appropriate pending background color for the current context.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static Color GetPalettePendingBackgroundColor(
-            Color fallbackLight,
-            Color fallbackDark
-        )
-        {
-            if (_currentPalette.HasValue)
-            {
-                UnityHelpersSettings.WGroupPaletteEntry palette = _currentPalette.Value;
-                return WGroupColorDerivation.GetEffectivePendingBackgroundColor(
-                    palette.BackgroundColor,
-                    palette.PendingBackgroundColor
-                );
-            }
-
-            return EditorGUIUtility.isProSkin ? fallbackDark : fallbackLight;
-        }
-
-        /// <summary>
-        /// Gets a palette-derived row background color for alternating rows in collection drawers.
-        /// When inside a WGroup, this creates a subtle variation of the palette background color.
-        /// </summary>
-        /// <param name="rowIndex">Row index for alternation (0-based).</param>
-        /// <returns>Palette-derived color for the row, or default based on editor skin if not in WGroup.</returns>
-        internal static Color GetPaletteDerivedRowColor(int rowIndex)
-        {
-            if (_currentPalette == null)
-            {
-                // Fallback to default colors when not in WGroup
-                Color defaultLight = new(0.88f, 0.88f, 0.88f, 1f);
-                Color defaultDark = new(0.22f, 0.22f, 0.22f, 1f);
-                Color baseColor = EditorGUIUtility.isProSkin ? defaultDark : defaultLight;
-                // Slight variation for alternating rows
-                return rowIndex % 2 == 0 ? baseColor : Color.Lerp(baseColor, Color.black, 0.05f);
-            }
-
-            Color bg = _currentPalette.Value.BackgroundColor;
-            float luminance = 0.299f * bg.r + 0.587f * bg.g + 0.114f * bg.b;
-
-            // Create subtle variations of the palette background for rows
-            Color rowBase =
-                rowIndex % 2 == 0
-                    ? bg
-                    : Color.Lerp(bg, luminance > 0.5f ? Color.black : Color.white, 0.05f);
-
-            return rowBase;
-        }
-
-        /// <summary>
-        /// Gets the current palette's background color, or a default color if not in a WGroup.
-        /// </summary>
-        internal static Color GetPaletteBackgroundColor()
-        {
-            if (_currentPalette == null)
-            {
-                return EditorGUIUtility.isProSkin
-                    ? new Color(0.22f, 0.22f, 0.22f, 1f)
-                    : new Color(0.88f, 0.88f, 0.88f, 1f);
-            }
-
-            return _currentPalette.Value.BackgroundColor;
-        }
-
-        /// <summary>
-        /// Gets the current palette's text color, or a default color if not in a WGroup.
-        /// </summary>
-        internal static Color GetPaletteTextColor()
-        {
-            if (_currentPalette == null)
-            {
-                return EditorGUIUtility.isProSkin
-                    ? new Color(0.9f, 0.9f, 0.9f, 1f)
-                    : new Color(0.1f, 0.1f, 0.1f, 1f);
-            }
-
-            return _currentPalette.Value.TextColor;
-        }
-
-        /// <summary>
-        /// Gets a palette-derived border color for collection containers.
-        /// </summary>
-        internal static Color GetPaletteDerivedBorderColor()
-        {
-            if (_currentPalette == null)
-            {
-                return EditorGUIUtility.isProSkin
-                    ? new Color(0.15f, 0.15f, 0.15f, 1f)
-                    : new Color(0.6f, 0.6f, 0.6f, 1f);
-            }
-
-            Color bg = _currentPalette.Value.BackgroundColor;
-            float luminance = 0.299f * bg.r + 0.587f * bg.g + 0.114f * bg.b;
-
-            // Border is a contrasting shade of the palette background
-            return luminance > 0.5f
-                ? Color.Lerp(bg, Color.black, 0.3f)
-                : Color.Lerp(bg, Color.white, 0.3f);
-        }
-
-        /// <summary>
-        /// Determines if the current context should use "light theme" styling.
-        /// Returns true if inside a light-background WGroup, or if Unity skin is Personal (light).
-        /// </summary>
-        internal static bool ShouldUseLightThemeStyling()
-        {
-            if (_currentPalette != null)
-            {
-                Color bg = _currentPalette.Value.BackgroundColor;
-                float luminance = 0.299f * bg.r + 0.587f * bg.g + 0.114f * bg.b;
-                return luminance > 0.5f;
-            }
-
-            return !EditorGUIUtility.isProSkin;
-        }
-
-        private static WGroupThemeState BuildThemeState(
-            UnityHelpersSettings.WGroupPaletteEntry palette
-        )
-        {
-            Color themeBackground = WGroupColorScope.CalculateFieldBackgroundColor(
-                palette.BackgroundColor
-            );
-            return new WGroupThemeState(Color.white, palette.TextColor, themeBackground);
         }
     }
 #endif

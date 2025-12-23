@@ -734,7 +734,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             return new WGroupDefinition(
                 name: name,
                 displayName: name,
-                colorKey: UnityHelpersSettings.DefaultWGroupColorKey,
                 collapsible: true,
                 startCollapsed: false,
                 hideHeader: false,

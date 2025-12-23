@@ -93,7 +93,7 @@ public class CharacterStatsEditor : Editor {
 // ✅ NEW WAY: Declarative attributes, zero custom editors
 public class CharacterStats : MonoBehaviour
 {
-    [WGroup("combat", "Combat Stats", colorKey: "Default-Dark", collapsible: true)]
+    [WGroup("combat", "Combat Stats", collapsible: true)]
     public float maxHealth = 100f;
     public float defense = 10f;
     [WGroupEnd("combat")]
@@ -117,7 +117,7 @@ public class CharacterStats : MonoBehaviour
 
 **Features:**
 
-- **[WGroup](docs/features/inspector/inspector-grouping-attributes.md)** - Boxed sections with auto-inclusion, color themes, collapsible headers, and animations when enabled
+- **[WGroup](docs/features/inspector/inspector-grouping-attributes.md)** - Boxed sections with auto-inclusion, collapsible headers, and animations when enabled
 - **[WButton](docs/features/inspector/inspector-button.md)** - Method buttons with history, async support, cancellation
 - **[WShowIf](docs/features/inspector/inspector-conditional-display.md)** - Conditional visibility (9 comparison operators)
 - **[WEnumToggleButtons](docs/features/inspector/inspector-selection-attributes.md)** - Flag enums as visual toggle grids

@@ -768,8 +768,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
             internal bool HideHeader { get; private set; }
 
-            internal string ColorKey { get; private set; }
-
             internal int AnchorIndex { get; private set; }
 
             internal string AnchorPropertyPath { get; private set; }
@@ -809,17 +807,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 if (!string.IsNullOrWhiteSpace(attribute.ParentGroup))
                 {
                     ParentGroupName = attribute.ParentGroup.Trim();
-                }
-
-                if (!string.IsNullOrWhiteSpace(attribute.ColorKey))
-                {
-                    string normalized = UnityHelpersSettings.EnsureWGroupColorKey(
-                        attribute.ColorKey
-                    );
-                    if (!string.IsNullOrEmpty(normalized))
-                    {
-                        ColorKey = normalized;
-                    }
                 }
 
                 if (Collapsible != attribute.Collapsible)
@@ -932,7 +919,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 return new WGroupDefinition(
                     Name,
                     displayName,
-                    ColorKey,
                     Collapsible,
                     StartCollapsed,
                     HideHeader,
@@ -1033,7 +1019,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         internal WGroupDefinition(
             string name,
             string displayName,
-            string colorKey,
             bool collapsible,
             bool startCollapsed,
             bool hideHeader,
@@ -1046,7 +1031,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         {
             Name = name;
             DisplayName = displayName;
-            ColorKey = colorKey;
             Collapsible = collapsible;
             StartCollapsed = startCollapsed;
             HideHeader = hideHeader;
@@ -1062,8 +1046,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         internal string Name { get; }
 
         internal string DisplayName { get; }
-
-        internal string ColorKey { get; }
 
         internal bool Collapsible { get; }
 

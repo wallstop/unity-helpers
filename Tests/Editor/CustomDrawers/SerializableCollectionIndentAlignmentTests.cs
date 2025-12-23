@@ -19,7 +19,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     public sealed class SerializableCollectionIndentAlignmentTests : CommonTestBase
     {
         private const float PixelTolerance = 0.01f;
-        private const float MinimumGroupIndent = 6f;
 
         [SetUp]
         public override void BaseSetUp()
@@ -38,7 +37,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
-        public void DictionaryAtIndentZeroWithoutWGroupAppliesMinimumIndent()
+        public void DictionaryAtIndentZeroWithoutWGroupAlignsWithUnityLists()
         {
             Rect controlRect = new(0f, 0f, 400f, 300f);
 
@@ -53,9 +52,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     skipIndentation: false
                 );
 
-                float expectedX = controlRect.x + MinimumGroupIndent;
+                float expectedX = controlRect.x - 1.25f;
                 TestContext.WriteLine(
-                    $"[DictionaryAtIndentZeroWithoutWGroupAppliesMinimumIndent] "
+                    $"[DictionaryAtIndentZeroWithoutWGroupAlignsWithUnityLists] "
                         + $"input=({controlRect.x}, {controlRect.width}), "
                         + $"resolved=({resolvedRect.x}, {resolvedRect.width})"
                 );
@@ -63,7 +62,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     expectedX,
                     resolvedRect.x,
                     PixelTolerance,
-                    $"Dictionary at indent=0 without WGroup should apply MinimumGroupIndent ({MinimumGroupIndent}px)."
+                    "Dictionary at indent=0 without WGroup should align with Unity's default list rendering (-1px alignment offset)."
                 );
             }
             finally
@@ -73,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
-        public void SetAtIndentZeroWithoutWGroupAppliesMinimumIndent()
+        public void SetAtIndentZeroWithoutWGroupAlignsWithUnityLists()
         {
             Rect controlRect = new(0f, 0f, 400f, 300f);
 
@@ -88,9 +87,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     skipIndentation: false
                 );
 
-                float expectedX = controlRect.x + MinimumGroupIndent;
+                float expectedX = controlRect.x - 1.25f;
                 TestContext.WriteLine(
-                    $"[SetAtIndentZeroWithoutWGroupAppliesMinimumIndent] "
+                    $"[SetAtIndentZeroWithoutWGroupAlignsWithUnityLists] "
                         + $"input=({controlRect.x}, {controlRect.width}), "
                         + $"resolved=({resolvedRect.x}, {resolvedRect.width})"
                 );
@@ -98,7 +97,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     expectedX,
                     resolvedRect.x,
                     PixelTolerance,
-                    $"Set at indent=0 without WGroup should apply MinimumGroupIndent ({MinimumGroupIndent}px)."
+                    "Set at indent=0 without WGroup should align with Unity's default list rendering (-1px alignment offset)."
                 );
             }
             finally
@@ -148,7 +147,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         expectedX,
                         resolvedRect.x,
                         PixelTolerance,
-                        "Dictionary in WGroup should use only WGroup padding (no MinimumGroupIndent)."
+                        "Dictionary in WGroup should use WGroup padding."
                     );
 
                     float expectedWidth = controlRect.width - leftPadding - rightPadding;
@@ -206,7 +205,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         expectedX,
                         resolvedRect.x,
                         PixelTolerance,
-                        "Set in WGroup should use only WGroup padding (no MinimumGroupIndent)."
+                        "Set in WGroup should use WGroup padding."
                     );
 
                     float expectedWidth = controlRect.width - leftPadding - rightPadding;
@@ -387,7 +386,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     "Dictionary with indent > 0 should have positive x offset from IndentedRect."
                 );
 
-                // Should NOT have MinimumGroupIndent added since indent > 0
+                // Indentation should be within reasonable bounds
                 Assert.Less(
                     resolvedRect.x,
                     controlRect.x + 50f,
@@ -428,7 +427,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     "Set with indent > 0 should have positive x offset from IndentedRect."
                 );
 
-                // Should NOT have MinimumGroupIndent added since indent > 0
+                // Indentation should be within reasonable bounds
                 Assert.Less(
                     resolvedRect.x,
                     controlRect.x + 50f,

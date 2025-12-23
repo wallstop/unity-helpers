@@ -96,9 +96,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// </param>
         /// <param name="collapsible">Set to <see langword="true"/> to draw the box with a foldout.</param>
         /// <param name="startCollapsed">When collapsible, controls whether the group starts closed.</param>
-        /// <param name="colorKey">
-        /// Optional palette identifier consumed by <c>UnityHelpersSettings</c> to style the group background/border.
-        /// </param>
         /// <param name="hideHeader">Set to <see langword="true"/> to draw the group body without the title bar.</param>
         /// <param name="parentGroup">
         /// Optional name of another group that this group should be nested inside.
@@ -111,7 +108,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             int autoIncludeCount = UseGlobalAutoInclude,
             bool collapsible = false,
             bool startCollapsed = false,
-            string colorKey = null,
             bool hideHeader = false,
             string parentGroup = null
         )
@@ -132,7 +128,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             {
                 CollapseBehavior = WGroupCollapseBehavior.ForceCollapsed;
             }
-            ColorKey = string.IsNullOrWhiteSpace(colorKey) ? null : colorKey.Trim();
             HideHeader = hideHeader;
             ParentGroup = string.IsNullOrWhiteSpace(parentGroup) ? null : parentGroup.Trim();
         }
@@ -170,11 +165,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         {
             get { return CollapseBehavior == WGroupCollapseBehavior.ForceCollapsed; }
         }
-
-        /// <summary>
-        /// Optional palette key used to resolve colors from <c>UnityHelpersSettings</c>.
-        /// </summary>
-        public string ColorKey { get; }
 
         /// <summary>
         /// Set to <see langword="true"/> to hide the header while still wrapping the grouped fields inside the styled container.

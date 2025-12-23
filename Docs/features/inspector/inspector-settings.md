@@ -382,7 +382,7 @@ public AbilityConfig collapsedByDefault;
 
 ## Color Palettes
 
-Palette keys keep WButton, WGroup, and WEnumToggleButtons visuals consistent across the project. Open the **Color Palettes** foldout inside `UnityHelpersSettings` to add or edit entries. Each key is matched at draw time against the `ColorKey`/`priority` parameter on the corresponding attribute; unknown keys fall back to theme-aware defaults.
+Palette keys keep WButton and WEnumToggleButtons visuals consistent across the project. Open the **Color Palettes** foldout inside `UnityHelpersSettings` to add or edit entries. Each key is matched at draw time against the `ColorKey`/`priority` parameter on the corresponding attribute; unknown keys fall back to theme-aware defaults.
 
 ### WButtonCustomColors
 
@@ -399,13 +399,6 @@ Palette keys keep WButton, WGroup, and WEnumToggleButtons visuals consistent acr
 [WButton("Submit", priority: "Highlight")]
 private void Submit() { }
 ```
-
-### WGroupCustomColors
-
-**Applies to:** `[WGroup]` via the `colorKey` constructor argument  
-**Reserved keys:** `Default`, `Default-Light`, `Default-Dark`, `WDefault`  
-**Description:** Entries store background and header text colors for boxed groups. Reserved keys map to light/dark editor themes, while custom keys let you brand different sections (e.g., `Stats`, `Networking`, `Danger`). Unknown keys are created automatically, but editing them here ensures consistent palettes across scenes.  
-**Usage:** Add a key under **WGroup Custom Colors** and reference it: `[WGroup("stats", colorKey: "StatsAccent")]`.
 
 ### WEnumToggleButtonsCustomColors
 
@@ -554,7 +547,7 @@ WButtonHistorySize: 10
 **Solution:**
 
 1. Check color key spelling (case-sensitive)
-2. Verify entry exists in the appropriate dictionary (WButtonCustomColors, WGroupCustomColors, etc.)
+2. Verify entry exists in the appropriate dictionary (WButtonCustomColors, WEnumToggleButtonsCustomColors)
 3. Ensure colors are set (not transparent/default)
 4. Save settings asset
 

@@ -335,7 +335,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
             return new WGroupDefinition(
                 name: name,
                 displayName: name,
-                colorKey: UnityHelpersSettings.DefaultWGroupColorKey,
                 collapsible: true,
                 startCollapsed: false,
                 hideHeader: false,

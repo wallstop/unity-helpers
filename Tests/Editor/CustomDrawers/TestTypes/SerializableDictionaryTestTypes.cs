@@ -45,10 +45,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
     public sealed class PrivateCtorDictionary
         : SerializableDictionary<PrivateCtorKey, PrivateCtorValue> { }
 
-    [Serializable]
-    public sealed class GroupPaletteDictionary
-        : SerializableDictionary<string, UnityHelpersSettings.WGroupCustomColor> { }
-
     /// <summary>
     /// Complex value type with button and text color fields.
     /// </summary>

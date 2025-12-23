@@ -425,7 +425,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         expectedX,
                         resolvedRect.x,
                         0.01f,
-                        "When inside WGroup (padding applied) at indentLevel 0, should NOT add MinimumGroupIndent."
+                        "When inside WGroup (padding applied) at indentLevel 0, should use WGroup left padding."
                     );
 
                     float expectedWidth = controlRect.width - horizontalPadding;
@@ -433,7 +433,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         expectedWidth,
                         resolvedRect.width,
                         0.01f,
-                        "Width should only account for WGroup padding, not MinimumGroupIndent."
+                        "Width should account for WGroup padding."
                     );
                 }
             }
@@ -525,21 +525,21 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                             skipIndentation: false
                         );
 
-                    float expectedNoGroupX = controlRect.x + 6f;
+                    float expectedNoGroupX = controlRect.x;
                     float expectedWithGroupX = controlRect.x + GroupLeftPadding;
 
                     Assert.AreEqual(
                         expectedNoGroupX,
                         noGroupRect.x,
                         0.01f,
-                        "Without WGroup at indentLevel 0, MinimumGroupIndent (6f) should be applied."
+                        "Without WGroup at indentLevel 0, should align with Unity's default list rendering (no offset)."
                     );
 
                     Assert.AreEqual(
                         expectedWithGroupX,
                         withGroupRect.x,
                         0.01f,
-                        "With WGroup at indentLevel 0, only WGroup padding should be applied (no MinimumGroupIndent)."
+                        "With WGroup at indentLevel 0, WGroup padding should be applied."
                     );
                 }
             }
@@ -674,7 +674,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 expectedX,
                 capturedRect.x,
                 0.01f,
-                "OnGUI in WGroup context at indentLevel 0 should use WGroup padding without MinimumGroupIndent."
+                "OnGUI in WGroup context at indentLevel 0 should use WGroup padding."
             );
         }
 
@@ -998,7 +998,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void ResolveContentRectDataDriven(int indentLevel, float inputX, float inputWidth)
         {
             Rect controlRect = new(inputX, 0f, inputWidth, 300f);
-            const float MinimumGroupIndent = 6f;
 
             int previousIndentLevel = EditorGUI.indentLevel;
             try
@@ -1016,24 +1015,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                         + $"resolved=({resolvedRect.x:F3}, {resolvedRect.width:F3})"
                 );
 
-                // At indentLevel 0 with no WGroup, MinimumGroupIndent should be applied to x
+                // At indentLevel 0 with no WGroup, aligns with Unity's default list rendering (no offset)
                 if (indentLevel == 0)
                 {
-                    float expectedX = inputX + MinimumGroupIndent;
+                    float expectedX = inputX;
                     Assert.AreEqual(
                         expectedX,
                         resolvedRect.x,
                         0.1f,
-                        $"At indentLevel 0, x should be input + MinimumGroupIndent ({MinimumGroupIndent})"
+                        "At indentLevel 0, x should align with Unity's default list rendering (no offset)"
                     );
 
-                    // Width should be reduced by MinimumGroupIndent
-                    // Note: EditorGUI.IndentedRect at level 0 may also reduce width slightly
-                    float maxExpectedWidth = inputWidth - MinimumGroupIndent;
-                    Assert.LessOrEqual(
+                    // Width should be unchanged at indentLevel 0 without WGroup
+                    Assert.AreEqual(
+                        inputWidth,
                         resolvedRect.width,
-                        maxExpectedWidth + 0.1f,
-                        "Width should be reduced by at least MinimumGroupIndent at indent level 0"
+                        0.1f,
+                        "Width should be unchanged at indent level 0 without WGroup"
                     );
                 }
                 else
@@ -1281,6 +1279,1236 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             {
                 EditorGUI.indentLevel = previousIndentLevel;
             }
+        }
+
+        /// <summary>
+        /// Tests that when IsInsideWGroupPropertyDraw is true, ResolveContentRect returns
+        /// the position unchanged - Unity's layout has already positioned the rect.
+        /// </summary>
+        [Test]
+        public void WGroupPropertyContextReturnsPositionUnchanged()
+        {
+            Rect controlRect = new(25f, 50f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 2;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    TestContext.WriteLine(
+                        $"[WGroupPropertyContextReturnsPositionUnchanged] "
+                            + $"controlRect=({controlRect.x:F3}, {controlRect.y:F3}, {controlRect.width:F3}, {controlRect.height:F3}), "
+                            + $"resolvedRect=({resolvedRect.x:F3}, {resolvedRect.y:F3}, {resolvedRect.width:F3}, {resolvedRect.height:F3})"
+                    );
+
+                    Assert.AreEqual(
+                        controlRect.x,
+                        resolvedRect.x,
+                        0.001f,
+                        "WGroupPropertyContext should return position.x unchanged."
+                    );
+                    Assert.AreEqual(
+                        controlRect.y,
+                        resolvedRect.y,
+                        0.001f,
+                        "WGroupPropertyContext should return position.y unchanged."
+                    );
+                    Assert.AreEqual(
+                        controlRect.width,
+                        resolvedRect.width,
+                        0.001f,
+                        "WGroupPropertyContext should return position.width unchanged."
+                    );
+                    Assert.AreEqual(
+                        controlRect.height,
+                        resolvedRect.height,
+                        0.001f,
+                        "WGroupPropertyContext should return position.height unchanged."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests WGroupPropertyContext with various indent levels - rect should always be unchanged.
+        /// </summary>
+        [TestCase(0, TestName = "WGroupPropertyContextWithIndentLevel0")]
+        [TestCase(1, TestName = "WGroupPropertyContextWithIndentLevel1")]
+        [TestCase(2, TestName = "WGroupPropertyContextWithIndentLevel2")]
+        [TestCase(5, TestName = "WGroupPropertyContextWithIndentLevel5")]
+        [TestCase(10, TestName = "WGroupPropertyContextWithIndentLevel10")]
+        public void WGroupPropertyContextIgnoresIndentLevel(int indentLevel)
+        {
+            Rect controlRect = new(15f, 30f, 450f, 250f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = indentLevel;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    TestContext.WriteLine(
+                        $"[WGroupPropertyContextIgnoresIndentLevel] "
+                            + $"indentLevel={indentLevel}, "
+                            + $"controlRect.x={controlRect.x:F3}, resolvedRect.x={resolvedRect.x:F3}"
+                    );
+
+                    Assert.AreEqual(
+                        controlRect.x,
+                        resolvedRect.x,
+                        0.001f,
+                        $"WGroupPropertyContext should ignore indentLevel {indentLevel} and return x unchanged."
+                    );
+                    Assert.AreEqual(
+                        controlRect.width,
+                        resolvedRect.width,
+                        0.001f,
+                        $"WGroupPropertyContext should ignore indentLevel {indentLevel} and return width unchanged."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests that even with padding values set, the rect is unchanged in WGroup property context.
+        /// This is the key distinction: PushWGroupPropertyContext means Unity's layout already applied padding.
+        /// </summary>
+        [Test]
+        public void WGroupPropertyContextIgnoresPaddingValues()
+        {
+            Rect controlRect = new(20f, 40f, 500f, 300f);
+
+            const float GroupLeftPadding = 15f;
+            const float GroupRightPadding = 10f;
+            float horizontalPadding = GroupLeftPadding + GroupRightPadding;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 1;
+                GroupGUIWidthUtility.ResetForTests();
+
+                // Push padding, then push WGroupPropertyContext
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        GroupLeftPadding,
+                        GroupRightPadding
+                    )
+                )
+                {
+                    using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                    {
+                        Rect resolvedRect =
+                            SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                                controlRect,
+                                skipIndentation: false
+                            );
+
+                        TestContext.WriteLine(
+                            $"[WGroupPropertyContextIgnoresPaddingValues] "
+                                + $"controlRect=({controlRect.x:F3}, {controlRect.width:F3}), "
+                                + $"resolvedRect=({resolvedRect.x:F3}, {resolvedRect.width:F3}), "
+                                + $"padding=({GroupLeftPadding:F3}, {GroupRightPadding:F3})"
+                        );
+
+                        // Despite padding being set, rect should be unchanged because
+                        // Unity's layout system already applied it
+                        Assert.AreEqual(
+                            controlRect.x,
+                            resolvedRect.x,
+                            0.001f,
+                            "WGroupPropertyContext should return x unchanged even with padding set."
+                        );
+                        Assert.AreEqual(
+                            controlRect.width,
+                            resolvedRect.width,
+                            0.001f,
+                            "WGroupPropertyContext should return width unchanged even with padding set."
+                        );
+                    }
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests zero padding and zero indent in WGroup property context.
+        /// </summary>
+        [Test]
+        public void WGroupPropertyContextZeroPaddingZeroIndent()
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    TestContext.WriteLine(
+                        $"[WGroupPropertyContextZeroPaddingZeroIndent] "
+                            + $"controlRect=({controlRect.x:F3}, {controlRect.width:F3}), "
+                            + $"resolvedRect=({resolvedRect.x:F3}, {resolvedRect.width:F3})"
+                    );
+
+                    Assert.AreEqual(
+                        controlRect.x,
+                        resolvedRect.x,
+                        0.001f,
+                        "WGroupPropertyContext with zero padding and indent should return x unchanged."
+                    );
+                    Assert.AreEqual(
+                        controlRect.width,
+                        resolvedRect.width,
+                        0.001f,
+                        "WGroupPropertyContext with zero padding and indent should return width unchanged."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests WGroupPropertyContext with maximum padding values.
+        /// </summary>
+        [Test]
+        public void WGroupPropertyContextWithMaxPaddingValues()
+        {
+            Rect controlRect = new(100f, 50f, 600f, 400f);
+
+            const float MaxLeftPadding = 100f;
+            const float MaxRightPadding = 100f;
+            float horizontalPadding = MaxLeftPadding + MaxRightPadding;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 5;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        MaxLeftPadding,
+                        MaxRightPadding
+                    )
+                )
+                {
+                    using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                    {
+                        Rect resolvedRect =
+                            SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                                controlRect,
+                                skipIndentation: false
+                            );
+
+                        TestContext.WriteLine(
+                            $"[WGroupPropertyContextWithMaxPaddingValues] "
+                                + $"controlRect=({controlRect.x:F3}, {controlRect.width:F3}), "
+                                + $"resolvedRect=({resolvedRect.x:F3}, {resolvedRect.width:F3}), "
+                                + $"maxPadding=({MaxLeftPadding:F3}, {MaxRightPadding:F3})"
+                        );
+
+                        Assert.AreEqual(
+                            controlRect.x,
+                            resolvedRect.x,
+                            0.001f,
+                            "WGroupPropertyContext should return x unchanged even with max padding."
+                        );
+                        Assert.AreEqual(
+                            controlRect.width,
+                            resolvedRect.width,
+                            0.001f,
+                            "WGroupPropertyContext should return width unchanged even with max padding."
+                        );
+                    }
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests WGroupPropertyContext with very high indent level.
+        /// </summary>
+        [Test]
+        public void WGroupPropertyContextWithVeryHighIndentLevel()
+        {
+            Rect controlRect = new(50f, 25f, 800f, 500f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 50;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    TestContext.WriteLine(
+                        $"[WGroupPropertyContextWithVeryHighIndentLevel] "
+                            + $"indentLevel=50, "
+                            + $"controlRect=({controlRect.x:F3}, {controlRect.width:F3}), "
+                            + $"resolvedRect=({resolvedRect.x:F3}, {resolvedRect.width:F3})"
+                    );
+
+                    Assert.AreEqual(
+                        controlRect.x,
+                        resolvedRect.x,
+                        0.001f,
+                        "WGroupPropertyContext should return x unchanged even with very high indent."
+                    );
+                    Assert.AreEqual(
+                        controlRect.width,
+                        resolvedRect.width,
+                        0.001f,
+                        "WGroupPropertyContext should return width unchanged even with very high indent."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests nested WGroupPropertyContext scopes.
+        /// </summary>
+        [Test]
+        public void WGroupPropertyContextNestedScopesReturnUnchanged()
+        {
+            Rect controlRect = new(30f, 60f, 350f, 200f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 3;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                    {
+                        Rect resolvedRect =
+                            SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                                controlRect,
+                                skipIndentation: false
+                            );
+
+                        TestContext.WriteLine(
+                            $"[WGroupPropertyContextNestedScopesReturnUnchanged] "
+                                + $"controlRect=({controlRect.x:F3}, {controlRect.width:F3}), "
+                                + $"resolvedRect=({resolvedRect.x:F3}, {resolvedRect.width:F3})"
+                        );
+
+                        Assert.AreEqual(
+                            controlRect.x,
+                            resolvedRect.x,
+                            0.001f,
+                            "Nested WGroupPropertyContext should return x unchanged."
+                        );
+                        Assert.AreEqual(
+                            controlRect.width,
+                            resolvedRect.width,
+                            0.001f,
+                            "Nested WGroupPropertyContext should return width unchanged."
+                        );
+                    }
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests that WGroupPropertyContext correctly restores state after disposal.
+        /// </summary>
+        [Test]
+        public void WGroupPropertyContextRestoredAfterDisposal()
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 2;
+                GroupGUIWidthUtility.ResetForTests();
+
+                // First, resolve without WGroupPropertyContext
+                Rect rectWithoutContext =
+                    SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                        controlRect,
+                        skipIndentation: false
+                    );
+
+                // Then with WGroupPropertyContext
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect rectWithContext =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    Assert.AreEqual(
+                        controlRect.x,
+                        rectWithContext.x,
+                        0.001f,
+                        "Inside WGroupPropertyContext, x should be unchanged."
+                    );
+                }
+
+                // After disposal, should be back to normal behavior
+                Rect rectAfterContext =
+                    SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                        controlRect,
+                        skipIndentation: false
+                    );
+
+                TestContext.WriteLine(
+                    $"[WGroupPropertyContextRestoredAfterDisposal] "
+                        + $"rectWithoutContext.x={rectWithoutContext.x:F3}, "
+                        + $"rectAfterContext.x={rectAfterContext.x:F3}"
+                );
+
+                Assert.AreEqual(
+                    rectWithoutContext.x,
+                    rectAfterContext.x,
+                    0.001f,
+                    "After WGroupPropertyContext disposal, behavior should be restored."
+                );
+                Assert.AreEqual(
+                    rectWithoutContext.width,
+                    rectAfterContext.width,
+                    0.001f,
+                    "After WGroupPropertyContext disposal, width behavior should be restored."
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests WGroupPropertyContext with skipIndentation=true parameter.
+        /// Even in settings context, WGroupPropertyContext should return unchanged.
+        /// </summary>
+        [Test]
+        public void WGroupPropertyContextWithSkipIndentationTrue()
+        {
+            Rect controlRect = new(10f, 20f, 400f, 300f);
+
+            const float LeftPadding = 15f;
+            const float RightPadding = 10f;
+            float horizontalPadding = LeftPadding + RightPadding;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 2;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                    {
+                        Rect resolvedRect =
+                            SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                                controlRect,
+                                skipIndentation: true
+                            );
+
+                        TestContext.WriteLine(
+                            $"[WGroupPropertyContextWithSkipIndentationTrue] "
+                                + $"controlRect=({controlRect.x:F3}, {controlRect.width:F3}), "
+                                + $"resolvedRect=({resolvedRect.x:F3}, {resolvedRect.width:F3})"
+                        );
+
+                        Assert.AreEqual(
+                            controlRect.x,
+                            resolvedRect.x,
+                            0.001f,
+                            "WGroupPropertyContext with skipIndentation=true should return x unchanged."
+                        );
+                        Assert.AreEqual(
+                            controlRect.width,
+                            resolvedRect.width,
+                            0.001f,
+                            "WGroupPropertyContext with skipIndentation=true should return width unchanged."
+                        );
+                    }
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests that padding is correctly applied when not in WGroup property context.
+        /// This is the case where CurrentScopeDepth > 0 but IsInsideWGroupPropertyDraw = false.
+        /// </summary>
+        [Test]
+        public void PushContentPaddingOnlyAppliesPadding()
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            const float LeftPadding = 12f;
+            const float RightPadding = 8f;
+            float horizontalPadding = LeftPadding + RightPadding;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                // Push padding but NOT WGroupPropertyContext
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    TestContext.WriteLine(
+                        $"[PushContentPaddingOnlyAppliesPadding] "
+                            + $"controlRect=({controlRect.x:F3}, {controlRect.width:F3}), "
+                            + $"resolvedRect=({resolvedRect.x:F3}, {resolvedRect.width:F3}), "
+                            + $"expectedX={controlRect.x + LeftPadding:F3}"
+                    );
+
+                    // Without WGroupPropertyContext, padding should be manually applied
+                    Assert.AreEqual(
+                        controlRect.x + LeftPadding,
+                        resolvedRect.x,
+                        0.01f,
+                        "Without WGroupPropertyContext, left padding should be manually applied."
+                    );
+                    Assert.AreEqual(
+                        controlRect.width - horizontalPadding,
+                        resolvedRect.width,
+                        0.01f,
+                        "Without WGroupPropertyContext, horizontal padding should reduce width."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests nested padding accumulation without WGroupPropertyContext.
+        /// </summary>
+        [Test]
+        public void PushContentPaddingNestedAccumulation()
+        {
+            Rect controlRect = new(0f, 0f, 500f, 300f);
+
+            const float OuterLeftPadding = 10f;
+            const float OuterRightPadding = 10f;
+            const float InnerLeftPadding = 8f;
+            const float InnerRightPadding = 8f;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        OuterLeftPadding + OuterRightPadding,
+                        OuterLeftPadding,
+                        OuterRightPadding
+                    )
+                )
+                {
+                    using (
+                        GroupGUIWidthUtility.PushContentPadding(
+                            InnerLeftPadding + InnerRightPadding,
+                            InnerLeftPadding,
+                            InnerRightPadding
+                        )
+                    )
+                    {
+                        Rect resolvedRect =
+                            SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                                controlRect,
+                                skipIndentation: false
+                            );
+
+                        float totalLeftPadding = OuterLeftPadding + InnerLeftPadding;
+                        float totalRightPadding = OuterRightPadding + InnerRightPadding;
+                        float totalHorizontalPadding = totalLeftPadding + totalRightPadding;
+
+                        TestContext.WriteLine(
+                            $"[PushContentPaddingNestedAccumulation] "
+                                + $"resolvedRect.x={resolvedRect.x:F3} (expected={totalLeftPadding:F3}), "
+                                + $"resolvedRect.width={resolvedRect.width:F3} (expected={controlRect.width - totalHorizontalPadding:F3})"
+                        );
+
+                        Assert.AreEqual(
+                            controlRect.x + totalLeftPadding,
+                            resolvedRect.x,
+                            0.01f,
+                            "Nested padding should accumulate left padding correctly."
+                        );
+                        Assert.AreEqual(
+                            controlRect.width - totalHorizontalPadding,
+                            resolvedRect.width,
+                            0.01f,
+                            "Nested padding should accumulate total horizontal padding correctly."
+                        );
+                    }
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests combined padding and indent levels without WGroupPropertyContext.
+        /// </summary>
+        [Test]
+        public void PushContentPaddingCombinedWithIndentLevel()
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            const float LeftPadding = 10f;
+            const float RightPadding = 10f;
+            float horizontalPadding = LeftPadding + RightPadding;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 2;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    TestContext.WriteLine(
+                        $"[PushContentPaddingCombinedWithIndentLevel] "
+                            + $"resolvedRect.x={resolvedRect.x:F3}, "
+                            + $"resolvedRect.width={resolvedRect.width:F3}, "
+                            + $"minExpectedX={controlRect.x + LeftPadding:F3}"
+                    );
+
+                    // Should apply both padding AND indent
+                    Assert.Greater(
+                        resolvedRect.x,
+                        controlRect.x + LeftPadding,
+                        "Should apply both padding and indent offset."
+                    );
+                    Assert.Less(
+                        resolvedRect.width,
+                        controlRect.width - horizontalPadding,
+                        "Should reduce width by both padding and indent."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests that zero padding does not increase scope depth.
+        /// </summary>
+        [Test]
+        public void PushContentPaddingZeroPaddingDoesNotIncreaseScopeDepth()
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                int initialScopeDepth = GroupGUIWidthUtility.CurrentScopeDepth;
+
+                // Push zero padding
+                using (GroupGUIWidthUtility.PushContentPadding(0f, 0f, 0f))
+                {
+                    int scopeDepthWithZeroPadding = GroupGUIWidthUtility.CurrentScopeDepth;
+
+                    TestContext.WriteLine(
+                        $"[PushContentPaddingZeroPaddingDoesNotIncreaseScopeDepth] "
+                            + $"initialScopeDepth={initialScopeDepth}, "
+                            + $"scopeDepthWithZeroPadding={scopeDepthWithZeroPadding}"
+                    );
+
+                    Assert.AreEqual(
+                        initialScopeDepth,
+                        scopeDepthWithZeroPadding,
+                        "Zero padding should not increase scope depth."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests contrast between WGroupPropertyContext (returns unchanged) vs
+        /// PushContentPadding only (applies padding manually).
+        /// </summary>
+        [Test]
+        public void ContrastWGroupPropertyContextVsPushContentPaddingOnly()
+        {
+            Rect controlRect = new(10f, 20f, 400f, 300f);
+
+            const float LeftPadding = 15f;
+            const float RightPadding = 10f;
+            float horizontalPadding = LeftPadding + RightPadding;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 1;
+                GroupGUIWidthUtility.ResetForTests();
+
+                // Case 1: PushContentPadding only (no WGroupPropertyContext)
+                Rect rectWithPaddingOnly;
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    rectWithPaddingOnly =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+                }
+
+                GroupGUIWidthUtility.ResetForTests();
+
+                // Case 2: PushContentPadding with WGroupPropertyContext
+                Rect rectWithWGroupContext;
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                    {
+                        rectWithWGroupContext =
+                            SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                                controlRect,
+                                skipIndentation: false
+                            );
+                    }
+                }
+
+                TestContext.WriteLine(
+                    $"[ContrastWGroupPropertyContextVsPushContentPaddingOnly] "
+                        + $"paddingOnly=({rectWithPaddingOnly.x:F3}, {rectWithPaddingOnly.width:F3}), "
+                        + $"withWGroupContext=({rectWithWGroupContext.x:F3}, {rectWithWGroupContext.width:F3})"
+                );
+
+                // PushContentPadding only should apply padding
+                Assert.Greater(
+                    rectWithPaddingOnly.x,
+                    controlRect.x,
+                    "PushContentPadding only should shift x position."
+                );
+                Assert.Less(
+                    rectWithPaddingOnly.width,
+                    controlRect.width,
+                    "PushContentPadding only should reduce width."
+                );
+
+                // WGroupPropertyContext should return unchanged
+                Assert.AreEqual(
+                    controlRect.x,
+                    rectWithWGroupContext.x,
+                    0.001f,
+                    "WGroupPropertyContext should return x unchanged."
+                );
+                Assert.AreEqual(
+                    controlRect.width,
+                    rectWithWGroupContext.width,
+                    0.001f,
+                    "WGroupPropertyContext should return width unchanged."
+                );
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests PushContentPadding with skipIndentation=true (settings context).
+        /// Without WGroupPropertyContext, padding should still be applied.
+        /// </summary>
+        [Test]
+        public void PushContentPaddingWithSkipIndentationTrue()
+        {
+            Rect controlRect = new(5f, 10f, 450f, 300f);
+
+            const float LeftPadding = 12f;
+            const float RightPadding = 8f;
+            float horizontalPadding = LeftPadding + RightPadding;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 3; // Should be ignored with skipIndentation=true
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: true
+                        );
+
+                    TestContext.WriteLine(
+                        $"[PushContentPaddingWithSkipIndentationTrue] "
+                            + $"controlRect=({controlRect.x:F3}, {controlRect.width:F3}), "
+                            + $"resolvedRect=({resolvedRect.x:F3}, {resolvedRect.width:F3})"
+                    );
+
+                    // With skipIndentation=true but no WGroupPropertyContext, padding is still applied
+                    Assert.AreEqual(
+                        controlRect.x + LeftPadding,
+                        resolvedRect.x,
+                        0.01f,
+                        "skipIndentation=true without WGroupPropertyContext should still apply left padding."
+                    );
+                    Assert.AreEqual(
+                        controlRect.width - horizontalPadding,
+                        resolvedRect.width,
+                        0.01f,
+                        "skipIndentation=true without WGroupPropertyContext should still apply horizontal padding."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests WGroupPropertyContext with a rect at origin (0,0).
+        /// </summary>
+        [Test]
+        public void WGroupPropertyContextWithRectAtOrigin()
+        {
+            Rect controlRect = new(0f, 0f, 300f, 200f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    TestContext.WriteLine(
+                        $"[WGroupPropertyContextWithRectAtOrigin] "
+                            + $"controlRect=({controlRect.x:F3}, {controlRect.y:F3}), "
+                            + $"resolvedRect=({resolvedRect.x:F3}, {resolvedRect.y:F3})"
+                    );
+
+                    Assert.AreEqual(
+                        0f,
+                        resolvedRect.x,
+                        0.001f,
+                        "WGroupPropertyContext should preserve x=0."
+                    );
+                    Assert.AreEqual(
+                        0f,
+                        resolvedRect.y,
+                        0.001f,
+                        "WGroupPropertyContext should preserve y=0."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests WGroupPropertyContext with a very narrow rect.
+        /// </summary>
+        [Test]
+        public void WGroupPropertyContextWithNarrowRect()
+        {
+            Rect controlRect = new(10f, 10f, 50f, 300f);
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 3;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (GroupGUIWidthUtility.PushContentPadding(40f, 20f, 20f))
+                {
+                    using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                    {
+                        Rect resolvedRect =
+                            SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                                controlRect,
+                                skipIndentation: false
+                            );
+
+                        TestContext.WriteLine(
+                            $"[WGroupPropertyContextWithNarrowRect] "
+                                + $"controlRect.width={controlRect.width:F3}, "
+                                + $"resolvedRect.width={resolvedRect.width:F3}"
+                        );
+
+                        Assert.AreEqual(
+                            controlRect.width,
+                            resolvedRect.width,
+                            0.001f,
+                            "WGroupPropertyContext should preserve width even for narrow rect."
+                        );
+                    }
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests triple-nested padding scopes without WGroupPropertyContext.
+        /// </summary>
+        [Test]
+        public void TripleNestedPaddingScopesWithoutWGroupContext()
+        {
+            Rect controlRect = new(0f, 0f, 600f, 300f);
+
+            const float Padding1Left = 10f;
+            const float Padding1Right = 10f;
+            const float Padding2Left = 8f;
+            const float Padding2Right = 8f;
+            const float Padding3Left = 6f;
+            const float Padding3Right = 6f;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        Padding1Left + Padding1Right,
+                        Padding1Left,
+                        Padding1Right
+                    )
+                )
+                {
+                    using (
+                        GroupGUIWidthUtility.PushContentPadding(
+                            Padding2Left + Padding2Right,
+                            Padding2Left,
+                            Padding2Right
+                        )
+                    )
+                    {
+                        using (
+                            GroupGUIWidthUtility.PushContentPadding(
+                                Padding3Left + Padding3Right,
+                                Padding3Left,
+                                Padding3Right
+                            )
+                        )
+                        {
+                            Rect resolvedRect =
+                                SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                                    controlRect,
+                                    skipIndentation: false
+                                );
+
+                            float totalLeft = Padding1Left + Padding2Left + Padding3Left;
+                            float totalRight = Padding1Right + Padding2Right + Padding3Right;
+                            float totalHorizontal = totalLeft + totalRight;
+
+                            TestContext.WriteLine(
+                                $"[TripleNestedPaddingScopesWithoutWGroupContext] "
+                                    + $"totalLeft={totalLeft:F3}, totalRight={totalRight:F3}, "
+                                    + $"resolvedRect.x={resolvedRect.x:F3}, resolvedRect.width={resolvedRect.width:F3}"
+                            );
+
+                            Assert.AreEqual(
+                                controlRect.x + totalLeft,
+                                resolvedRect.x,
+                                0.01f,
+                                "Triple-nested padding should accumulate left padding."
+                            );
+                            Assert.AreEqual(
+                                controlRect.width - totalHorizontal,
+                                resolvedRect.width,
+                                0.01f,
+                                "Triple-nested padding should accumulate horizontal padding."
+                            );
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests asymmetric padding (different left and right values) without WGroupPropertyContext.
+        /// </summary>
+        [Test]
+        public void AsymmetricPaddingWithoutWGroupContext()
+        {
+            Rect controlRect = new(0f, 0f, 400f, 300f);
+
+            const float LeftPadding = 25f;
+            const float RightPadding = 5f;
+            float horizontalPadding = LeftPadding + RightPadding;
+
+            int previousIndentLevel = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                GroupGUIWidthUtility.ResetForTests();
+
+                using (
+                    GroupGUIWidthUtility.PushContentPadding(
+                        horizontalPadding,
+                        LeftPadding,
+                        RightPadding
+                    )
+                )
+                {
+                    Rect resolvedRect =
+                        SerializableDictionaryPropertyDrawer.ResolveContentRectForTests(
+                            controlRect,
+                            skipIndentation: false
+                        );
+
+                    TestContext.WriteLine(
+                        $"[AsymmetricPaddingWithoutWGroupContext] "
+                            + $"leftPadding={LeftPadding:F3}, rightPadding={RightPadding:F3}, "
+                            + $"resolvedRect.x={resolvedRect.x:F3}, resolvedRect.width={resolvedRect.width:F3}"
+                    );
+
+                    Assert.AreEqual(
+                        controlRect.x + LeftPadding,
+                        resolvedRect.x,
+                        0.01f,
+                        "Asymmetric padding should apply left padding correctly."
+                    );
+                    Assert.AreEqual(
+                        controlRect.width - horizontalPadding,
+                        resolvedRect.width,
+                        0.01f,
+                        "Asymmetric padding should apply total horizontal padding to width."
+                    );
+                }
+            }
+            finally
+            {
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Tests WGroupPropertyContext combined with Settings context (UnityHelpersSettings).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator WGroupPropertyContextInSettingsContext()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            SerializedObject serializedSettings = TrackDisposable(new SerializedObject(settings));
+            serializedSettings.Update();
+
+            SerializedProperty paletteProp = serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+
+            Assert.IsTrue(
+                paletteProp != null,
+                "Settings should have the WButtonCustomColors dictionary property."
+            );
+
+            if (paletteProp == null)
+            {
+                yield break;
+            }
+
+            paletteProp.isExpanded = true;
+            serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            Rect controlRect = new(15f, 25f, 500f, 300f);
+            GUIContent label = new("Palette");
+
+            const float GroupLeftPadding = 20f;
+            const float GroupRightPadding = 15f;
+            float horizontalPadding = GroupLeftPadding + GroupRightPadding;
+
+            Rect capturedRect = default;
+            int previousIndentLevel = EditorGUI.indentLevel;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                EditorGUI.indentLevel = 2;
+                try
+                {
+                    serializedSettings.UpdateIfRequiredOrScript();
+                    GroupGUIWidthUtility.ResetForTests();
+                    using (
+                        GroupGUIWidthUtility.PushContentPadding(
+                            horizontalPadding,
+                            GroupLeftPadding,
+                            GroupRightPadding
+                        )
+                    )
+                    {
+                        using (GroupGUIWidthUtility.PushWGroupPropertyContext())
+                        {
+                            drawer.OnGUI(controlRect, paletteProp, label);
+                            capturedRect = drawer.LastResolvedPosition;
+                        }
+                    }
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndentLevel;
+                }
+            });
+
+            TestContext.WriteLine(
+                $"[WGroupPropertyContextInSettingsContext] "
+                    + $"controlRect=({controlRect.x:F3}, {controlRect.width:F3}), "
+                    + $"capturedRect=({capturedRect.x:F3}, {capturedRect.width:F3})"
+            );
+
+            // With WGroupPropertyContext, even in settings, the rect should be returned unchanged
+            Assert.AreEqual(
+                controlRect.x,
+                capturedRect.x,
+                0.01f,
+                "WGroupPropertyContext in settings context should return x unchanged."
+            );
+            Assert.AreEqual(
+                controlRect.width,
+                capturedRect.width,
+                0.01f,
+                "WGroupPropertyContext in settings context should return width unchanged."
+            );
         }
     }
 }
