@@ -21,204 +21,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
-    internal static class SerializableSetIndentDiagnostics
-    {
-        /// <summary>
-        /// When true, enables diagnostic logging for indentation-related calculations.
-        /// </summary>
-        internal static bool Enabled { get; set; } = false;
-
-        /// <summary>
-        /// When set, only logs for properties matching this path (substring match).
-        /// Leave null to log all properties.
-        /// </summary>
-        internal static string PropertyPathFilter { get; set; } = null;
-
-        /// <summary>
-        /// When true, only logs for properties targeting UnityHelpersSettings.
-        /// </summary>
-        internal static bool OnlyUnityHelpersSettings { get; set; } = false;
-
-        private const string LogPrefix = "[SetIndent] ";
-
-        private static bool ShouldLog(string propertyPath, bool isSettings)
-        {
-            if (!Enabled)
-            {
-                return false;
-            }
-
-            if (OnlyUnityHelpersSettings && !isSettings)
-            {
-                return false;
-            }
-
-            if (!string.IsNullOrEmpty(PropertyPathFilter))
-            {
-                if (string.IsNullOrEmpty(propertyPath))
-                {
-                    return false;
-                }
-
-                if (
-                    propertyPath.IndexOf(PropertyPathFilter, StringComparison.OrdinalIgnoreCase) < 0
-                )
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        internal static void LogOnGUIEntry(
-            Rect originalPosition,
-            SerializedProperty property,
-            bool targetsSettings,
-            int indentLevel
-        )
-        {
-            string propertyPath = property?.propertyPath ?? "(null)";
-            if (!ShouldLog(propertyPath, targetsSettings))
-            {
-                return;
-            }
-
-            Debug.Log(
-                $"{LogPrefix}OnGUI Entry: path={propertyPath}, targetsSettings={targetsSettings}, "
-                    + $"indentLevel={indentLevel}, originalPos={FormatRect(originalPosition)}"
-            );
-        }
-
-        internal static void LogResolveContentRect(
-            Rect inputRect,
-            Rect outputRect,
-            bool skipIndentation,
-            float leftPadding,
-            float rightPadding,
-            int scopeDepth,
-            int indentLevel
-        )
-        {
-            if (!Enabled)
-            {
-                return;
-            }
-
-            Debug.Log(
-                $"{LogPrefix}ResolveContentRect: skip={skipIndentation}, "
-                    + $"leftPad={leftPadding:F2}, rightPad={rightPadding:F2}, scopeDepth={scopeDepth}, "
-                    + $"indentLevel={indentLevel}, input={FormatRect(inputRect)}, output={FormatRect(outputRect)}"
-            );
-        }
-
-        internal static void LogResolveContentRectSteps(
-            Rect original,
-            Rect afterPadding,
-            Rect afterIndent,
-            Rect final,
-            bool skipIndentation,
-            float leftPadding,
-            float rightPadding,
-            int indentLevel
-        )
-        {
-            if (!Enabled)
-            {
-                return;
-            }
-
-            Debug.Log(
-                $"{LogPrefix}ResolveContentRect Steps: skip={skipIndentation}, "
-                    + $"leftPad={leftPadding:F2}, rightPad={rightPadding:F2}, indent={indentLevel}\n"
-                    + $"  original   = {FormatRect(original)}\n"
-                    + $"  afterPad   = {FormatRect(afterPadding)}\n"
-                    + $"  afterIndent= {FormatRect(afterIndent)}\n"
-                    + $"  final      = {FormatRect(final)}"
-            );
-        }
-
-        internal static void LogDrawPendingEntryUI(
-            string propertyPath,
-            Rect position,
-            float pendingY,
-            bool targetsSettings,
-            int indentLevel
-        )
-        {
-            if (!ShouldLog(propertyPath, targetsSettings))
-            {
-                return;
-            }
-
-            Debug.Log(
-                $"{LogPrefix}DrawPendingEntryUI: path={propertyPath}, targetsSettings={targetsSettings}, "
-                    + $"indentLevel={indentLevel}, pendingY={pendingY:F2}, position={FormatRect(position)}"
-            );
-        }
-
-        internal static void LogListDoList(
-            string propertyPath,
-            Rect listRect,
-            bool targetsSettings,
-            int indentLevelBefore,
-            int indentLevelDuring
-        )
-        {
-            if (!ShouldLog(propertyPath, targetsSettings))
-            {
-                return;
-            }
-
-            Debug.Log(
-                $"{LogPrefix}DoList: path={propertyPath}, targetsSettings={targetsSettings}, "
-                    + $"indentBefore={indentLevelBefore}, indentDuring={indentLevelDuring}, "
-                    + $"listRect={FormatRect(listRect)}"
-            );
-        }
-
-        internal static void LogGroupPaddingState(string context)
-        {
-            if (!Enabled)
-            {
-                return;
-            }
-
-            Debug.Log(
-                $"{LogPrefix}GroupPadding ({context}): "
-                    + $"left={GroupGUIWidthUtility.CurrentLeftPadding:F2}, "
-                    + $"right={GroupGUIWidthUtility.CurrentRightPadding:F2}, "
-                    + $"total={GroupGUIWidthUtility.CurrentHorizontalPadding:F2}, "
-                    + $"depth={GroupGUIWidthUtility.CurrentScopeDepth}"
-            );
-        }
-
-        internal static void LogDrawRowElement(
-            string propertyPath,
-            int index,
-            int globalIndex,
-            Rect rect,
-            float valueWidth,
-            bool targetsSettings
-        )
-        {
-            if (!ShouldLog(propertyPath, targetsSettings))
-            {
-                return;
-            }
-
-            Debug.Log(
-                $"{LogPrefix}DrawRow: path={propertyPath}, index={index}, globalIdx={globalIndex}, "
-                    + $"rect={FormatRect(rect)}, valueW={valueWidth:F2}"
-            );
-        }
-
-        private static string FormatRect(Rect r)
-        {
-            return $"(x={r.x:F1}, y={r.y:F1}, w={r.width:F1}, h={r.height:F1})";
-        }
-    }
-
     [CustomPropertyDrawer(typeof(SerializableHashSet<>), true)]
     [CustomPropertyDrawer(typeof(SerializableSortedSet<>), true)]
     public sealed class SerializableSetPropertyDrawer : PropertyDrawer
@@ -273,10 +75,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Color DuplicateOutlineColor = new(0.65f, 0.18f, 0.18f, 0.9f);
         private static readonly Color LightRowColor = new(0.97f, 0.97f, 0.97f, 1f);
         private static readonly Color DarkRowColor = new(0.16f, 0.16f, 0.16f, 0.45f);
-
-        // Opaque versions for header/footer backgrounds to fully cover Unity's default styling
-        private static readonly Color LightHeaderColor = new(0.85f, 0.85f, 0.85f, 1f);
-        private static readonly Color DarkHeaderColor = new(0.22f, 0.22f, 0.22f, 1f);
         private static readonly Color NullEntryHighlightColor = new(0.84f, 0.2f, 0.2f, 0.6f);
         internal const float WGroupFoldoutAlignmentOffset = 2.5f;
         private const float ManualEntrySectionPadding = 6f;
@@ -316,6 +114,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly ConcurrentDictionary<Type, byte> UnsupportedParameterlessTypes =
             new();
 
+        // Main foldout animation cache - static because property drawers can be recreated
+        private static readonly Dictionary<string, AnimBool> MainFoldoutAnimations = new Dictionary<
+            string,
+            AnimBool
+        >(StringComparer.Ordinal);
+
         private readonly Dictionary<string, PaginationState> _paginationStates = new();
         private readonly Dictionary<string, DuplicateState> _duplicateStates = new();
         private readonly Dictionary<string, NullEntryState> _nullEntryStates = new();
@@ -336,7 +140,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private int _lastNullEntryRefreshFrame = -1;
         private int _lastRowRenderCacheFrame = -1;
         private int _lastItemsPropertyCacheFrame = -1;
-        private bool _currentDrawInsideWGroup;
 
         private sealed class CachedItemsProperty
         {
@@ -365,6 +168,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public bool hasDuplicates;
             public bool pendingIsExpanded;
             public float pendingFoldoutProgress;
+            public float mainFoldoutProgress;
             public int frameNumber;
         }
 
@@ -418,48 +222,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal static bool HasLastRowContentRect { get; private set; }
         internal static Rect LastRowContentRect { get; private set; }
 
-        // Footer range label test tracking
-        internal static bool HasLastFooterRangeLabelRect { get; private set; }
-        internal static Rect LastFooterRangeLabelRect { get; private set; }
-        internal static bool LastFooterRangeLabelWasDrawn { get; private set; }
-        internal static float LastFooterAvailableWidth { get; private set; }
-        internal static float LastFooterRangeWidth { get; private set; }
+        // Footer tracking for WGroup integration tests
         internal static float LastFooterWGroupLeftPadding { get; private set; }
         internal static float LastFooterWGroupRightPadding { get; private set; }
+        internal static float LastFooterAvailableWidth { get; private set; }
+        internal static float LastFooterRangeWidth { get; private set; }
+        internal static bool LastFooterRangeLabelWasDrawn { get; private set; }
+        internal static Rect LastFooterRangeLabelRect { get; private set; }
 
         /// <summary>
         /// Frame number when a child property drawer signaled that its height changed.
         /// When this matches the current frame, the row render cache should be invalidated.
         /// </summary>
         private static int _childHeightChangedFrame = -1;
-
-        /// <summary>
-        /// Signals that a child property drawer's height has changed and the parent
-        /// SerializableSetPropertyDrawer should invalidate its row height cache.
-        /// This should be called when nested foldouts or expandable sections change state.
-        /// </summary>
-        internal static void SignalChildHeightChanged()
-        {
-            _childHeightChangedFrame = Time.frameCount;
-            InternalEditorUtility.RepaintAllViews();
-        }
-
-        /// <summary>
-        /// Gets the frame number when the child height changed signal was last set.
-        /// For testing purposes only.
-        /// </summary>
-        internal static int GetChildHeightChangedFrameForTests()
-        {
-            return _childHeightChangedFrame;
-        }
-
-        /// <summary>
-        /// Resets the child height changed frame to -1 for testing purposes.
-        /// </summary>
-        internal static void ResetChildHeightChangedFrameForTests()
-        {
-            _childHeightChangedFrame = -1;
-        }
 
         internal sealed class PaginationState
         {
@@ -699,9 +474,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float rightCursor = buttonsRect.xMax;
 
             Rect addRect = new(rightCursor - 60f, buttonsRect.y, 60f, lineHeight);
-            bool addClicked;
-            addClicked = GUI.Button(addRect, AddEntryContent, AddButtonStyle);
-            if (addClicked)
+            if (GUI.Button(addRect, AddEntryContent, AddButtonStyle))
             {
                 if (
                     TryAddNewElement(
@@ -730,9 +503,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 : ClearAllInactiveButtonStyle;
             using (new EditorGUI.DisabledScope(!canClear))
             {
-                bool clearClicked;
-                clearClicked = GUI.Button(clearRect, ClearAllContent, clearStyle);
-                if (clearClicked && canClear)
+                if (GUI.Button(clearRect, ClearAllContent, clearStyle) && canClear)
                 {
                     bool confirmed = EditorUtility.DisplayDialog(
                         "Clear Set",
@@ -889,28 +660,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            OnGUIInternal(position, property, label, wasInsideWGroup: false);
-        }
-
-        private void OnGUIInternal(
-            Rect position,
-            SerializedProperty property,
-            GUIContent label,
-            bool wasInsideWGroup
-        )
-        {
             Rect originalPosition = position;
             bool targetsSettings = TargetsUnityHelpersSettings(property?.serializedObject);
             Rect contentPosition = ResolveContentRect(originalPosition, targetsSettings);
             LastResolvedPosition = contentPosition;
             HasItemsContainerRect = false;
 
+            // Log all tween settings on first draw or when inside WGroup for debugging
+            if (GroupGUIWidthUtility.CurrentScopeDepth > 0)
+            {
+                SerializableCollectionTweenDiagnostics.LogAllTweenSettings(
+                    $"OnGUI_InWGroup (path={property?.propertyPath ?? "(null)"})"
+                );
+            }
+
             EditorGUI.BeginProperty(originalPosition, label, property);
             int previousIndentScope = EditorGUI.indentLevel;
-
-            // Track if we need custom backgrounds to override Unity's tinted defaults.
-            // We opt out of WGroup color theming but still need to draw our own backgrounds.
-            _currentDrawInsideWGroup = wasInsideWGroup;
 
             try
             {
@@ -942,7 +707,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 GUIContent foldoutLabel = GetFoldoutLabelContent(label);
 
-                float foldoutAlignmentOffset = 0f;
+                // Apply additional foldout alignment offset when inside a WGroup property context
+                float foldoutAlignmentOffset =
+                    GroupGUIWidthUtility.CurrentScopeDepth > 0 && !targetsSettings
+                        ? WGroupFoldoutAlignmentOffset
+                        : 0f;
 
                 Rect foldoutRect = new(
                     position.x + foldoutAlignmentOffset,
@@ -959,7 +728,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     );
                 }
 
-                // Foldout label
                 property.isExpanded = EditorGUI.Foldout(
                     foldoutRect,
                     property.isExpanded,
@@ -971,191 +739,227 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 HasLastMainFoldoutRect = true;
                 LastMainFoldoutRect = foldoutRect;
 
+                // Get main foldout animation progress for smooth expand/collapse animation
+                float mainFoldoutProgress = GetMainFoldoutProgress(
+                    property.propertyPath,
+                    property.isExpanded,
+                    IsSortedSetCached(property)
+                );
+
                 float y = foldoutRect.yMax + SectionSpacing;
 
-                if (!property.isExpanded)
+                // During collapse, hide content early and fade faster to avoid visual confusion
+                // where large sets' contents "stick around" longer than surrounding elements
+                bool isCollapsing = !property.isExpanded && mainFoldoutProgress < 1f;
+                bool shouldDrawContent;
+                float contentAlpha;
+
+                if (isCollapsing)
+                {
+                    // During collapse, skip drawing content below threshold for snappier feel
+                    const float CollapseContentThreshold = 0.4f;
+                    shouldDrawContent = mainFoldoutProgress >= CollapseContentThreshold;
+                    // Use cubic curve so alpha drops much faster at start of collapse
+                    // When progress is 0.5, alpha becomes ~0.125 (very faded)
+                    contentAlpha = mainFoldoutProgress * mainFoldoutProgress * mainFoldoutProgress;
+                }
+                else
+                {
+                    shouldDrawContent = mainFoldoutProgress > 0f;
+                    contentAlpha = mainFoldoutProgress;
+                }
+
+                // Draw expanded content with animation support
+                if (!shouldDrawContent)
                 {
                     return;
                 }
 
-                PaginationState pagination = GetOrCreatePaginationState(property);
-                EnsurePaginationBounds(pagination, totalCount);
-
-                bool isSortedSet = IsSortedSetCached(property);
-
-                // Refresh the cached items property in case serialized object changed
-                cachedItems = GetOrCreateCachedItemsProperty(listKey, property);
-                itemsProperty = cachedItems.itemsProperty;
-                hasItemsArray = itemsProperty is { isArray: true };
-                totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
-                EnsurePaginationBounds(pagination, totalCount);
-
-                // Check if an element was modified and force duplicate refresh
-                SetListRenderContext renderContext = GetOrCreateListContext(listKey);
-                bool forceRefresh = renderContext.needsDuplicateRefresh;
-                if (forceRefresh)
+                // Apply alpha fade during animation
+                bool adjustAlpha = !Mathf.Approximately(contentAlpha, 1f);
+                Color previousColor = GUI.color;
+                if (adjustAlpha)
                 {
-                    renderContext.needsDuplicateRefresh = false;
-                }
-
-                DuplicateState duplicateState = EvaluateDuplicateState(
-                    property,
-                    itemsProperty,
-                    forceRefresh
-                );
-                NullEntryState nullState = EvaluateNullEntryState(
-                    property,
-                    itemsProperty,
-                    forceRefresh
-                );
-
-                if (nullState.hasNullEntries && !string.IsNullOrEmpty(nullState.summary))
-                {
-                    float helpHeight = GetWarningBarHeight();
-                    Rect helpRect = new(position.x, y, position.width, helpHeight);
-                    EditorGUI.HelpBox(helpRect, nullState.summary, MessageType.Warning);
-                    y = helpRect.yMax + SectionSpacing;
-                }
-
-                if (duplicateState.hasDuplicates && !string.IsNullOrEmpty(duplicateState.summary))
-                {
-                    float helpHeight = GetWarningBarHeight();
-                    Rect helpRect = new(position.x, y, position.width, helpHeight);
-                    EditorGUI.HelpBox(helpRect, duplicateState.summary, MessageType.Warning);
-                    y = helpRect.yMax + SectionSpacing;
-                }
-
-                bool drewPendingEntry = false;
-                if (hasInspector && elementType != null)
-                {
-                    PendingEntry pendingEntry = GetOrCreatePendingEntry(
-                        property,
-                        propertyPath,
-                        elementType,
-                        isSortedSet
+                    GUI.color = new Color(
+                        previousColor.r,
+                        previousColor.g,
+                        previousColor.b,
+                        previousColor.a * Mathf.Clamp01(contentAlpha)
                     );
-                    DrawPendingEntryUI(
-                        ref y,
-                        position,
-                        pendingEntry,
-                        property,
-                        propertyPath,
-                        ref itemsProperty,
-                        pagination,
-                        inspector,
-                        elementType
-                    );
-                    y += SectionSpacing;
-                    drewPendingEntry = true;
                 }
 
-                if (totalCount <= 0)
+                try
                 {
-                    if (drewPendingEntry)
+                    PaginationState pagination = GetOrCreatePaginationState(property);
+                    EnsurePaginationBounds(pagination, totalCount);
+
+                    bool isSortedSet = IsSortedSetCached(property);
+
+                    // Refresh the cached items property in case serialized object changed
+                    cachedItems = GetOrCreateCachedItemsProperty(listKey, property);
+                    itemsProperty = cachedItems.itemsProperty;
+                    hasItemsArray = itemsProperty is { isArray: true };
+                    totalCount = hasItemsArray ? itemsProperty.arraySize : 0;
+                    EnsurePaginationBounds(pagination, totalCount);
+
+                    // Check if an element was modified and force duplicate refresh
+                    SetListRenderContext renderContext = GetOrCreateListContext(listKey);
+                    bool forceRefresh = renderContext.needsDuplicateRefresh;
+                    if (forceRefresh)
                     {
-                        float infoHeight = GetWarningBarHeight();
-                        Rect infoRect = new(position.x, y, position.width, infoHeight);
-                        EditorGUI.HelpBox(infoRect, "No entries yet.", MessageType.Info);
+                        renderContext.needsDuplicateRefresh = false;
                     }
-                    else
+
+                    DuplicateState duplicateState = EvaluateDuplicateState(
+                        property,
+                        itemsProperty,
+                        forceRefresh
+                    );
+                    NullEntryState nullState = EvaluateNullEntryState(
+                        property,
+                        itemsProperty,
+                        forceRefresh
+                    );
+
+                    if (nullState.hasNullEntries && !string.IsNullOrEmpty(nullState.summary))
                     {
-                        float emptyHeight = GetEmptySetDrawerHeight();
-                        Rect emptyRect = new(position.x, y, position.width, emptyHeight);
-                        LastItemsContainerRect = emptyRect;
-                        HasItemsContainerRect = true;
-                        DrawEmptySetDrawer(
-                            emptyRect,
+                        float helpHeight = GetWarningBarHeight();
+                        Rect helpRect = new(position.x, y, position.width, helpHeight);
+                        EditorGUI.HelpBox(helpRect, nullState.summary, MessageType.Warning);
+                        y = helpRect.yMax + SectionSpacing;
+                    }
+
+                    if (
+                        duplicateState.hasDuplicates
+                        && !string.IsNullOrEmpty(duplicateState.summary)
+                    )
+                    {
+                        float helpHeight = GetWarningBarHeight();
+                        Rect helpRect = new(position.x, y, position.width, helpHeight);
+                        EditorGUI.HelpBox(helpRect, duplicateState.summary, MessageType.Warning);
+                        y = helpRect.yMax + SectionSpacing;
+                    }
+
+                    bool drewPendingEntry = false;
+                    if (hasInspector && elementType != null)
+                    {
+                        PendingEntry pendingEntry = GetOrCreatePendingEntry(
                             property,
                             propertyPath,
-                            itemsProperty,
-                            pagination
+                            elementType,
+                            isSortedSet
                         );
-                    }
-                }
-                else
-                {
-                    UpdateListContext(
-                        listKey,
-                        property,
-                        itemsProperty,
-                        duplicateState,
-                        nullState,
-                        elementType
-                    );
-                    ReorderableList list = GetOrCreateList(
-                        listKey,
-                        property,
-                        itemsProperty,
-                        pagination,
-                        propertyPath,
-                        isSortedSet
-                    );
-                    float listHeight =
-                        list?.GetHeight()
-                        ?? GetPaginationHeaderHeight()
-                            + EditorGUIUtility.singleLineHeight
-                                * Mathf.Max(1, Mathf.Min(totalCount, pagination.pageSize))
-                            + GetFooterHeight();
-                    Rect listRect = new(position.x, y, position.width, listHeight);
-
-                    // Draw custom list container background with opaque color
-                    if (
-                        _currentDrawInsideWGroup
-                        && list != null
-                        && Event.current.type == EventType.Repaint
-                    )
-                    {
-                        Color listBgColor = EditorGUIUtility.isProSkin
-                            ? DarkHeaderColor
-                            : LightHeaderColor;
-                        EditorGUI.DrawRect(listRect, listBgColor);
+                        DrawPendingEntryUI(
+                            ref y,
+                            position,
+                            pendingEntry,
+                            property,
+                            propertyPath,
+                            ref itemsProperty,
+                            pagination,
+                            inspector,
+                            elementType
+                        );
+                        y += SectionSpacing;
+                        drewPendingEntry = true;
                     }
 
-                    if (
-                        list != null
-                        && Event.current.type == EventType.Repaint
-                        && !_currentDrawInsideWGroup
-                    )
+                    if (totalCount <= 0)
                     {
-                        GUIStyle listBackgroundStyle =
-                            ReorderableList.defaultBehaviours.boxBackground ?? GUI.skin.box;
-                        float headerHeight = Mathf.Max(0f, list.headerHeight);
-                        float footerHeight = Mathf.Max(0f, list.footerHeight);
-                        float bodyHeight = Mathf.Max(
-                            0f,
-                            listRect.height - headerHeight - footerHeight
-                        );
-                        if (bodyHeight > 0f)
+                        if (drewPendingEntry)
                         {
-                            float overlap = Mathf.Min(5f, bodyHeight);
-                            float bodyTop = listRect.y + headerHeight - overlap;
-                            float adjustedHeight = bodyHeight + overlap;
-                            Rect bodyRect = new(
-                                listRect.x,
-                                bodyTop,
-                                listRect.width,
-                                adjustedHeight
-                            );
-                            listBackgroundStyle.Draw(
-                                bodyRect,
-                                GUIContent.none,
-                                false,
-                                false,
-                                false,
-                                false
+                            float infoHeight = GetWarningBarHeight();
+                            Rect infoRect = new(position.x, y, position.width, infoHeight);
+                            EditorGUI.HelpBox(infoRect, "No entries yet.", MessageType.Info);
+                        }
+                        else
+                        {
+                            float emptyHeight = GetEmptySetDrawerHeight();
+                            Rect emptyRect = new(position.x, y, position.width, emptyHeight);
+                            LastItemsContainerRect = emptyRect;
+                            HasItemsContainerRect = true;
+                            DrawEmptySetDrawer(
+                                emptyRect,
+                                property,
+                                propertyPath,
+                                itemsProperty,
+                                pagination
                             );
                         }
                     }
-                    LastItemsContainerRect = listRect;
-                    HasItemsContainerRect = true;
-
-                    if (list != null)
-                    {
-                        list.DoList(listRect);
-                    }
                     else
                     {
-                        GUI.Box(listRect, GUIContent.none, EditorStyles.helpBox);
+                        UpdateListContext(
+                            listKey,
+                            property,
+                            itemsProperty,
+                            duplicateState,
+                            nullState,
+                            elementType
+                        );
+                        ReorderableList list = GetOrCreateList(
+                            listKey,
+                            property,
+                            itemsProperty,
+                            pagination,
+                            propertyPath,
+                            isSortedSet
+                        );
+                        float listHeight =
+                            list?.GetHeight()
+                            ?? GetPaginationHeaderHeight()
+                                + EditorGUIUtility.singleLineHeight
+                                    * Mathf.Max(1, Mathf.Min(totalCount, pagination.pageSize))
+                                + GetFooterHeight();
+                        Rect listRect = new(position.x, y, position.width, listHeight);
+                        if (list != null && Event.current.type == EventType.Repaint)
+                        {
+                            GUIStyle listBackgroundStyle =
+                                ReorderableList.defaultBehaviours.boxBackground ?? GUI.skin.box;
+                            float headerHeight = Mathf.Max(0f, list.headerHeight);
+                            float footerHeight = Mathf.Max(0f, list.footerHeight);
+                            float bodyHeight = Mathf.Max(
+                                0f,
+                                listRect.height - headerHeight - footerHeight
+                            );
+                            if (bodyHeight > 0f)
+                            {
+                                float overlap = Mathf.Min(5f, bodyHeight);
+                                float bodyTop = listRect.y + headerHeight - overlap;
+                                float adjustedHeight = bodyHeight + overlap;
+                                Rect bodyRect = new(
+                                    listRect.x,
+                                    bodyTop,
+                                    listRect.width,
+                                    adjustedHeight
+                                );
+                                listBackgroundStyle.Draw(
+                                    bodyRect,
+                                    GUIContent.none,
+                                    false,
+                                    false,
+                                    false,
+                                    false
+                                );
+                            }
+                        }
+                        LastItemsContainerRect = listRect;
+                        HasItemsContainerRect = true;
+                        if (list != null)
+                        {
+                            list.DoList(listRect);
+                        }
+                        else
+                        {
+                            GUI.Box(listRect, GUIContent.none, EditorStyles.helpBox);
+                        }
+                    }
+                }
+                finally
+                {
+                    if (adjustAlpha)
+                    {
+                        GUI.color = previousColor;
                     }
                 }
 
@@ -1176,10 +980,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             float leftPadding = GroupGUIWidthUtility.CurrentLeftPadding;
             float rightPadding = GroupGUIWidthUtility.CurrentRightPadding;
-            int scopeDepth = GroupGUIWidthUtility.CurrentScopeDepth;
-            int indentLevel = EditorGUI.indentLevel;
             bool isInsideWGroupProperty = GroupGUIWidthUtility.IsInsideWGroupPropertyDraw;
-            Rect original = position;
 
             // When inside WGroup property context, WGroup uses EditorGUILayout.PropertyField
             // which means Unity's layout system has ALREADY:
@@ -1188,19 +989,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             // Apply a small alignment offset to align with other WGroup content.
             if (isInsideWGroupProperty)
             {
-                const float WGroupAlignmentOffset = -2f;
+                const float WGroupAlignmentOffset = -4f;
                 Rect alignedPosition = position;
                 alignedPosition.xMin += WGroupAlignmentOffset;
                 alignedPosition.width -= WGroupAlignmentOffset;
-                SerializableSetIndentDiagnostics.LogResolveContentRect(
-                    original,
-                    alignedPosition,
-                    skipIndentation,
-                    leftPadding,
-                    rightPadding,
-                    scopeDepth,
-                    indentLevel
-                );
                 return alignedPosition;
             }
 
@@ -1223,35 +1015,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
 
-                SerializableSetIndentDiagnostics.LogResolveContentRect(
-                    original,
-                    result,
-                    skipIndentation,
-                    leftPadding,
-                    rightPadding,
-                    scopeDepth,
-                    indentLevel
-                );
                 return result;
             }
 
             // Normal context (outside WGroup): apply WGroup padding ourselves
-            Rect padded2 = GroupGUIWidthUtility.ApplyCurrentPadding(position);
+            Rect padded = GroupGUIWidthUtility.ApplyCurrentPadding(position);
             if (
                 (leftPadding > 0f || rightPadding > 0f)
-                && Mathf.Approximately(padded2.xMin, position.xMin)
-                && Mathf.Approximately(padded2.width, position.width)
+                && Mathf.Approximately(padded.xMin, position.xMin)
+                && Mathf.Approximately(padded.width, position.width)
             )
             {
-                padded2.xMin += leftPadding;
-                padded2.xMax -= rightPadding;
-                if (padded2.width < 0f || float.IsNaN(padded2.width))
+                padded.xMin += leftPadding;
+                padded.xMax -= rightPadding;
+                if (padded.width < 0f || float.IsNaN(padded.width))
                 {
-                    padded2.width = 0f;
+                    padded.width = 0f;
                 }
             }
 
-            Rect indentedResult = EditorGUI.IndentedRect(padded2);
+            Rect indentedResult = EditorGUI.IndentedRect(padded);
 
             // Clamp width to non-negative after IndentedRect (high indent levels can cause negative width)
             if (indentedResult.width < 0f || float.IsNaN(indentedResult.width))
@@ -1265,17 +1048,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Rect final = indentedResult;
             final.xMin += UnityListAlignmentOffset;
             final.width -= UnityListAlignmentOffset;
-
-            SerializableSetIndentDiagnostics.LogResolveContentRectSteps(
-                original,
-                padded2,
-                indentedResult,
-                final,
-                skipIndentation,
-                leftPadding,
-                rightPadding,
-                indentLevel
-            );
 
             return final;
         }
@@ -1305,13 +1077,49 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             LastManualEntryValueFoldoutOffset = 0f;
             HasLastRowContentRect = false;
             LastRowContentRect = default;
-            HasLastFooterRangeLabelRect = false;
-            LastFooterRangeLabelRect = default;
-            LastFooterRangeLabelWasDrawn = false;
-            LastFooterAvailableWidth = 0f;
-            LastFooterRangeWidth = 0f;
+
+            // Reset footer tracking properties
             LastFooterWGroupLeftPadding = 0f;
             LastFooterWGroupRightPadding = 0f;
+            LastFooterAvailableWidth = 0f;
+            LastFooterRangeWidth = 0f;
+            LastFooterRangeLabelWasDrawn = false;
+            LastFooterRangeLabelRect = default;
+
+            // Clear main foldout animation cache
+            foreach (KeyValuePair<string, AnimBool> kvp in MainFoldoutAnimations)
+            {
+                kvp.Value?.valueChanged.RemoveListener(RequestRepaint);
+            }
+            MainFoldoutAnimations.Clear();
+        }
+
+        /// <summary>
+        /// Signals that a child property drawer's height has changed and the parent
+        /// SerializableSetPropertyDrawer should invalidate its row height cache.
+        /// This should be called when nested foldouts or expandable sections change state.
+        /// </summary>
+        internal static void SignalChildHeightChanged()
+        {
+            _childHeightChangedFrame = Time.frameCount;
+            InternalEditorUtility.RepaintAllViews();
+        }
+
+        /// <summary>
+        /// Gets the frame number when the child height changed signal was last set.
+        /// For testing purposes only.
+        /// </summary>
+        internal static int GetChildHeightChangedFrameForTests()
+        {
+            return _childHeightChangedFrame;
+        }
+
+        /// <summary>
+        /// Resets the child height changed frame to -1 for testing purposes.
+        /// </summary>
+        internal static void ResetChildHeightChangedFrameForTests()
+        {
+            _childHeightChangedFrame = -1;
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
@@ -1319,11 +1127,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float baseHeight = EditorGUIUtility.singleLineHeight;
 
             PaginationState pagination = GetOrCreatePaginationState(property);
-
-            if (!property.isExpanded)
-            {
-                return baseHeight + InspectorHeightPadding;
-            }
 
             string listKey = GetListKey(property);
             CachedItemsProperty cachedItems = GetOrCreateCachedItemsProperty(listKey, property);
@@ -1339,6 +1142,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             );
             Type elementType = inspector?.ElementType;
 
+            bool isSortedSet = IsSortedSetCached(property);
+
+            // Get main foldout animation progress
+            float mainFoldoutProgress = GetMainFoldoutProgress(
+                propertyPath,
+                property.isExpanded,
+                isSortedSet
+            );
+
+            // If fully collapsed (animation complete), return only header height
+            if (mainFoldoutProgress <= 0f)
+            {
+                return baseHeight + InspectorHeightPadding;
+            }
+
             string cacheKey = listKey;
             int currentFrame = Time.frameCount;
 
@@ -1353,7 +1171,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool hasDuplicates =
                 duplicateState.hasDuplicates && !string.IsNullOrEmpty(duplicateState.summary);
 
-            bool isSortedSet = IsSortedSetCached(property);
             bool shouldDrawPendingEntry = hasInspector && elementType != null;
             PendingEntry pendingEntry = null;
             bool pendingIsExpanded = false;
@@ -1370,13 +1187,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 pendingFoldoutProgress = GetPendingFoldoutProgress(pendingEntry);
             }
 
-            // Skip cache if a child drawer signaled height change this frame
-            bool childHeightChangedThisFrame = _childHeightChangedFrame == currentFrame;
-
-            if (
-                !childHeightChangedThisFrame
-                && _heightCache.TryGetValue(cacheKey, out HeightCacheEntry cached)
-            )
+            if (_heightCache.TryGetValue(cacheKey, out HeightCacheEntry cached))
             {
                 const float foldoutProgressTolerance = 0.001f;
                 if (
@@ -1389,24 +1200,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     && cached.pendingIsExpanded == pendingIsExpanded
                     && Mathf.Abs(cached.pendingFoldoutProgress - pendingFoldoutProgress)
                         < foldoutProgressTolerance
+                    && Mathf.Abs(cached.mainFoldoutProgress - mainFoldoutProgress)
+                        < foldoutProgressTolerance
                 )
                 {
                     return cached.height;
                 }
             }
 
-            float height = baseHeight;
+            // Calculate the expanded content height (everything after the header)
             float footerHeight = GetFooterHeight();
-            height += SectionSpacing;
+            float expandedContentHeight = SectionSpacing;
 
             if (hasNullEntries)
             {
-                height += GetWarningBarHeight() + SectionSpacing;
+                expandedContentHeight += GetWarningBarHeight() + SectionSpacing;
             }
 
             if (hasDuplicates)
             {
-                height += GetWarningBarHeight() + SectionSpacing;
+                expandedContentHeight += GetWarningBarHeight() + SectionSpacing;
             }
 
             float pendingHeightWithSpacing = 0f;
@@ -1419,73 +1232,52 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 if (shouldDrawPendingEntry)
                 {
-                    height += pendingHeightWithSpacing;
-                    height += GetWarningBarHeight() + SectionSpacing;
-                    float emptyWithPendingHeight = height + InspectorHeightPadding;
-                    CacheHeight(
-                        cacheKey,
-                        emptyWithPendingHeight,
-                        totalCount,
-                        pageIndex,
-                        property.isExpanded,
-                        hasNullEntries,
-                        hasDuplicates,
-                        pendingIsExpanded,
-                        pendingFoldoutProgress,
-                        currentFrame
-                    );
-                    return emptyWithPendingHeight;
+                    expandedContentHeight += pendingHeightWithSpacing;
+                    expandedContentHeight += GetWarningBarHeight() + SectionSpacing;
                 }
-
-                height += GetEmptySetDrawerHeight() + SectionSpacing;
-                float emptyHeight = height + InspectorHeightPadding;
-                CacheHeight(
-                    cacheKey,
-                    emptyHeight,
-                    totalCount,
-                    pageIndex,
-                    property.isExpanded,
-                    hasNullEntries,
-                    hasDuplicates,
-                    pendingIsExpanded,
-                    pendingFoldoutProgress,
-                    currentFrame
-                );
-                return emptyHeight;
+                else
+                {
+                    expandedContentHeight += GetEmptySetDrawerHeight() + SectionSpacing;
+                }
             }
-
-            propertyPath = property.propertyPath;
-            UpdateListContext(
-                listKey,
-                property,
-                itemsProperty,
-                duplicateState,
-                nullState,
-                elementType
-            );
-            ReorderableList list = GetOrCreateList(
-                listKey,
-                property,
-                itemsProperty,
-                pagination,
-                propertyPath,
-                isSortedSet
-            );
-
-            float listHeight =
-                list?.GetHeight()
-                ?? GetPaginationHeaderHeight()
-                    + EditorGUIUtility.singleLineHeight
-                        * Mathf.Max(1, Mathf.Min(totalCount, pagination.pageSize))
-                    + footerHeight;
-            height += listHeight + SectionSpacing;
-
-            if (shouldDrawPendingEntry)
+            else
             {
-                height += pendingHeightWithSpacing;
+                propertyPath = property.propertyPath;
+                UpdateListContext(
+                    listKey,
+                    property,
+                    itemsProperty,
+                    duplicateState,
+                    nullState,
+                    elementType
+                );
+                ReorderableList list = GetOrCreateList(
+                    listKey,
+                    property,
+                    itemsProperty,
+                    pagination,
+                    propertyPath,
+                    isSortedSet
+                );
+
+                float listHeight =
+                    list?.GetHeight()
+                    ?? GetPaginationHeaderHeight()
+                        + EditorGUIUtility.singleLineHeight
+                            * Mathf.Max(1, Mathf.Min(totalCount, pagination.pageSize))
+                        + footerHeight;
+                expandedContentHeight += listHeight + SectionSpacing;
+
+                if (shouldDrawPendingEntry)
+                {
+                    expandedContentHeight += pendingHeightWithSpacing;
+                }
             }
 
+            // Interpolate height based on main foldout animation progress
+            float height = baseHeight + (expandedContentHeight * mainFoldoutProgress);
             float finalHeight = height + InspectorHeightPadding;
+
             CacheHeight(
                 cacheKey,
                 finalHeight,
@@ -1496,6 +1288,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 hasDuplicates,
                 pendingIsExpanded,
                 pendingFoldoutProgress,
+                mainFoldoutProgress,
                 currentFrame
             );
             return finalHeight;
@@ -1511,6 +1304,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool hasDuplicates,
             bool pendingIsExpanded,
             float pendingFoldoutProgress,
+            float mainFoldoutProgress,
             int frameNumber
         )
         {
@@ -1527,6 +1321,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             entry.hasDuplicates = hasDuplicates;
             entry.pendingIsExpanded = pendingIsExpanded;
             entry.pendingFoldoutProgress = pendingFoldoutProgress;
+            entry.mainFoldoutProgress = mainFoldoutProgress;
             entry.frameNumber = frameNumber;
         }
 
@@ -1942,15 +1737,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             };
             list.drawHeaderCallback = rect =>
             {
-                // Draw custom header background with opaque color to fully cover Unity's default
-                if (_currentDrawInsideWGroup && Event.current.type == EventType.Repaint)
-                {
-                    Color headerColor = EditorGUIUtility.isProSkin
-                        ? DarkHeaderColor
-                        : LightHeaderColor;
-                    EditorGUI.DrawRect(rect, headerColor);
-                }
-
                 ListPageCache currentCache = cacheProvider();
                 int totalCount =
                     currentCache != null ? Mathf.Max(0, currentCache.itemCount)
@@ -1995,20 +1781,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (Event.current.type == EventType.Repaint)
             {
-                // Draw custom footer background with opaque color to fully cover Unity's default
-                if (_currentDrawInsideWGroup)
-                {
-                    Color footerColor = EditorGUIUtility.isProSkin
-                        ? DarkHeaderColor
-                        : LightHeaderColor;
-                    EditorGUI.DrawRect(rect, footerColor);
-                }
-                else
-                {
-                    GUIStyle footerStyle =
-                        ReorderableList.defaultBehaviours.footerBackground ?? "RL Footer";
-                    footerStyle.Draw(rect, GUIContent.none, false, false, false, false);
-                }
+                GUIStyle footerStyle =
+                    ReorderableList.defaultBehaviours.footerBackground ?? "RL Footer";
+                footerStyle.Draw(rect, GUIContent.none, false, false, false, false);
                 DrawSetBodyTopBorder(new Rect(rect.x, rect.y, rect.width, 1f));
             }
 
@@ -2022,9 +1797,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float buttonSpacing = ButtonSpacing;
 
             Rect addRect = new(rightCursor - 60f, verticalCenter, 60f, lineHeight);
-            bool addClicked;
-            addClicked = GUI.Button(addRect, AddEntryContent, AddButtonStyle);
-            if (addClicked)
+            if (GUI.Button(addRect, AddEntryContent, AddButtonStyle))
             {
                 if (
                     TryAddNewElement(
@@ -2051,9 +1824,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             GUIStyle clearStyle = canClear
                 ? ClearAllActiveButtonStyle
                 : ClearAllInactiveButtonStyle;
-            bool clearClicked;
-            clearClicked = GUI.Button(clearRect, ClearAllContent, clearStyle);
-            if (clearClicked && canClear)
+            if (GUI.Button(clearRect, ClearAllContent, clearStyle) && canClear)
             {
                 bool confirmed = EditorUtility.DisplayDialog(
                     "Clear Set",
@@ -2088,9 +1859,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         "Sort",
                         canSort && GUI.enabled
                     );
-                    bool sortClicked;
-                    sortClicked = GUI.Button(sortRect, SortContent, sortStyle);
-                    if (sortClicked && canSort)
+                    if (GUI.Button(sortRect, SortContent, sortStyle) && canSort)
                     {
                         if (TrySortElements(ref propertyRef, propertyPath, itemsPropertyRef))
                         {
@@ -2121,9 +1890,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     removeWidth,
                     lineHeight
                 );
-                bool removeClicked;
-                removeClicked = GUI.Button(removeRect, "-", RemoveButtonStyle);
-                if (removeClicked)
+                if (GUI.Button(removeRect, "-", RemoveButtonStyle))
                 {
                     TryRemoveSelectedEntry(
                         ref propertyRef,
@@ -2153,13 +1920,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     );
                     using (new EditorGUI.DisabledScope(pagination.selectedIndex >= totalCount - 1))
                     {
-                        bool moveDownClicked;
-                        moveDownClicked = GUI.Button(
-                            moveDownRect,
-                            MoveDownContent,
-                            MoveButtonStyle
-                        );
-                        if (moveDownClicked)
+                        if (GUI.Button(moveDownRect, MoveDownContent, MoveButtonStyle))
                         {
                             TryMoveSelectedEntry(
                                 ref propertyRef,
@@ -2188,9 +1949,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     );
                     using (new EditorGUI.DisabledScope(pagination.selectedIndex <= 0))
                     {
-                        bool moveUpClicked;
-                        moveUpClicked = GUI.Button(moveUpRect, MoveUpContent, MoveButtonStyle);
-                        if (moveUpClicked)
+                        if (GUI.Button(moveUpRect, MoveUpContent, MoveButtonStyle))
                         {
                             TryMoveSelectedEntry(
                                 ref propertyRef,
@@ -2221,40 +1980,27 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             GUIStyle rangeStyle = EditorStyles.miniLabel;
             RangeLabelGUIContent.text = rangeText;
             float rangeWidth = rangeStyle.CalcSize(RangeLabelGUIContent).x;
+            float availableWidth = Mathf.Max(0f, rightCursor - leftCursor);
 
-            // When inside a WGroup, the visible area may be narrower than the rect suggests
-            // due to WGroup's helpBox padding creating a clip region. We need to account for
-            // this when positioning the range label to prevent it from being clipped.
-            // The buttons (positioned from the right) don't have this issue because they're
-            // within the WGroup's visible bounds, but the range label (positioned from the left)
-            // can extend into the clipped region.
-            float wGroupLeftPadding = GroupGUIWidthUtility.CurrentLeftPadding;
-            float adjustedLeftCursor = leftCursor + wGroupLeftPadding;
-            float availableWidth = Mathf.Max(0f, rightCursor - adjustedLeftCursor);
-
-            // Track footer range label state for tests
+            // Capture footer tracking data for tests
+            LastFooterWGroupLeftPadding = GroupGUIWidthUtility.CurrentLeftPadding;
+            LastFooterWGroupRightPadding = GroupGUIWidthUtility.CurrentRightPadding;
             LastFooterAvailableWidth = availableWidth;
             LastFooterRangeWidth = rangeWidth;
-            LastFooterWGroupLeftPadding = wGroupLeftPadding;
-            LastFooterWGroupRightPadding = GroupGUIWidthUtility.CurrentRightPadding;
-            HasLastFooterRangeLabelRect = true;
 
             if (rangeWidth <= availableWidth)
             {
                 float rangeHeight = lineHeight + 4f;
                 float rangeY = rect.y + Mathf.Max(0f, (rect.height - rangeHeight) * 0.5f) - 2.5f;
-                // Use available width for the rect to prevent clipping beyond visible area.
-                // This matches how SerializableDictionaryPropertyDrawer handles the range label.
-                float labelWidth = Mathf.Max(0f, availableWidth);
-                Rect rangeRect = new(adjustedLeftCursor, rangeY, labelWidth, rangeHeight);
-                LastFooterRangeLabelRect = rangeRect;
-                LastFooterRangeLabelWasDrawn = true;
+                Rect rangeRect = new(leftCursor, rangeY, rangeWidth, rangeHeight);
                 EditorGUI.LabelField(rangeRect, rangeText, rangeStyle);
+                LastFooterRangeLabelWasDrawn = true;
+                LastFooterRangeLabelRect = rangeRect;
             }
             else
             {
-                LastFooterRangeLabelRect = default;
                 LastFooterRangeLabelWasDrawn = false;
+                LastFooterRangeLabelRect = default;
             }
         }
 
@@ -2566,11 +2312,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     backgroundRect.height = sectionHeight;
                     if (Event.current.type == EventType.Repaint)
                     {
-                        // Temporarily reset GUI.color to prevent tinting from parent WGroup
-                        Color prevGuiColor = GUI.color;
-                        GUI.color = Color.white;
                         EditorGUI.DrawRect(backgroundRect, backgroundColor);
-                        GUI.color = prevGuiColor;
                     }
                     RequestRepaint();
                 }
@@ -2735,10 +2477,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         : duplicateExists ? "Overwrite"
                         : "Add";
                     GUIStyle addStyle = SolidButtonStyles.GetSolidButtonStyle(styleKey, addEnabled);
-                    bool addClicked;
-                    addClicked = GUI.Button(addRect, ManualEntryAddContent, addStyle);
                     if (
-                        addClicked
+                        GUI.Button(addRect, ManualEntryAddContent, addStyle)
                         && TryCommitPendingEntry(
                             pending,
                             property,
@@ -2768,9 +2508,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         "Reset",
                         styleEnabled
                     );
-                    bool resetClicked;
-                    resetClicked = GUI.Button(resetRect, ManualEntryResetContent, resetStyle);
-                    if (resetClicked)
+                    if (GUI.Button(resetRect, ManualEntryResetContent, resetStyle))
                     {
                         ResetPendingEntry(pending, collapseFoldout: false);
                         SyncPendingWrapperValue(pending);
@@ -2882,32 +2620,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static GUIStyle GetManualEntryFoldoutLabelStyle()
         {
-            if (_manualEntryFoldoutLabelStyle == null)
+            if (_manualEntryFoldoutLabelStyle != null)
             {
-                _manualEntryFoldoutLabelStyle = new GUIStyle(EditorStyles.boldLabel)
-                {
-                    alignment = TextAnchor.MiddleLeft,
-                    padding = new RectOffset(0, 0, 0, 0),
-                    margin = new RectOffset(0, 0, 0, 0),
-                    wordWrap = false,
-                };
+                return _manualEntryFoldoutLabelStyle;
             }
 
-            // Use default editor label colors
-            _manualEntryFoldoutLabelStyle.normal.textColor = EditorStyles
-                .boldLabel
-                .normal
-                .textColor;
-            _manualEntryFoldoutLabelStyle.hover.textColor = EditorStyles.boldLabel.hover.textColor;
-            _manualEntryFoldoutLabelStyle.active.textColor = EditorStyles
-                .boldLabel
-                .active
-                .textColor;
-            _manualEntryFoldoutLabelStyle.focused.textColor = EditorStyles
-                .boldLabel
-                .focused
-                .textColor;
-
+            _manualEntryFoldoutLabelStyle = new GUIStyle(EditorStyles.boldLabel)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                padding = new RectOffset(0, 0, 0, 0),
+                margin = new RectOffset(0, 0, 0, 0),
+                wordWrap = false,
+            };
             return _manualEntryFoldoutLabelStyle;
         }
 
@@ -3378,6 +3102,166 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 anim.target = expanded;
             }
+        }
+
+        private static bool ShouldTweenMainFoldout(bool isSortedSet)
+        {
+            return isSortedSet
+                ? UnityHelpersSettings.ShouldTweenSerializableSortedSetFoldouts()
+                : UnityHelpersSettings.ShouldTweenSerializableSetFoldouts();
+        }
+
+        private static float GetMainFoldoutAnimationSpeed(bool isSortedSet)
+        {
+            return isSortedSet
+                ? UnityHelpersSettings.GetSerializableSortedSetFoldoutSpeed()
+                : UnityHelpersSettings.GetSerializableSetFoldoutSpeed();
+        }
+
+        private static AnimBool EnsureMainFoldoutAnim(
+            string propertyPath,
+            bool isExpanded,
+            bool isSortedSet
+        )
+        {
+            bool shouldTween = ShouldTweenMainFoldout(isSortedSet);
+            float speed = GetMainFoldoutAnimationSpeed(isSortedSet);
+
+            SerializableCollectionTweenDiagnostics.LogTweenSettingsQuery(
+                "EnsureMainFoldoutAnim",
+                propertyPath ?? "(unknown)",
+                isSortedSet,
+                shouldTween,
+                speed
+            );
+
+            if (!shouldTween)
+            {
+                if (MainFoldoutAnimations.TryGetValue(propertyPath, out AnimBool existing))
+                {
+                    existing.valueChanged.RemoveListener(RequestRepaint);
+                    MainFoldoutAnimations.Remove(propertyPath);
+
+                    SerializableCollectionTweenDiagnostics.LogAnimBoolDestroyed(
+                        propertyPath,
+                        "MainFoldout_TweeningDisabled"
+                    );
+                }
+
+                return null;
+            }
+
+            if (!MainFoldoutAnimations.TryGetValue(propertyPath, out AnimBool anim) || anim == null)
+            {
+                anim = new AnimBool(isExpanded) { speed = speed };
+                anim.valueChanged.AddListener(RequestRepaint);
+                MainFoldoutAnimations[propertyPath] = anim;
+
+                SerializableCollectionTweenDiagnostics.LogAnimBoolCreation(
+                    propertyPath,
+                    isExpanded,
+                    isSortedSet,
+                    speed
+                );
+            }
+            else
+            {
+                anim.speed = speed;
+            }
+
+            anim.target = isExpanded;
+            return anim;
+        }
+
+        private static float GetMainFoldoutProgress(
+            string propertyPath,
+            bool isExpanded,
+            bool isSortedSet
+        )
+        {
+            bool shouldTween = ShouldTweenMainFoldout(isSortedSet);
+            if (!shouldTween)
+            {
+                float immediateProgress = isExpanded ? 1f : 0f;
+
+                SerializableCollectionTweenDiagnostics.LogFoldoutProgressCalculation(
+                    "GetMainFoldoutProgress_NoTween",
+                    propertyPath ?? "(unknown)",
+                    false,
+                    isExpanded,
+                    immediateProgress,
+                    false
+                );
+
+                return immediateProgress;
+            }
+
+            AnimBool anim = EnsureMainFoldoutAnim(propertyPath, isExpanded, isSortedSet);
+            if (anim == null)
+            {
+                float fallbackProgress = isExpanded ? 1f : 0f;
+
+                SerializableCollectionTweenDiagnostics.LogFoldoutProgressCalculation(
+                    "GetMainFoldoutProgress_NoAnimBool",
+                    propertyPath ?? "(unknown)",
+                    true,
+                    isExpanded,
+                    fallbackProgress,
+                    false
+                );
+
+                return fallbackProgress;
+            }
+
+            if (anim.isAnimating)
+            {
+                RequestRepaint();
+            }
+
+            float animatedProgress = anim.faded;
+
+            SerializableCollectionTweenDiagnostics.LogFoldoutProgressCalculation(
+                "GetMainFoldoutProgress_Animated",
+                propertyPath ?? "(unknown)",
+                true,
+                isExpanded,
+                animatedProgress,
+                true
+            );
+
+            return animatedProgress;
+        }
+
+        /// <summary>
+        /// Clears the main foldout animation cache. Used for testing purposes.
+        /// </summary>
+        internal static void ClearMainFoldoutAnimCacheForTests()
+        {
+            foreach (KeyValuePair<string, AnimBool> kvp in MainFoldoutAnimations)
+            {
+                kvp.Value?.valueChanged.RemoveListener(RequestRepaint);
+            }
+            MainFoldoutAnimations.Clear();
+        }
+
+        /// <summary>
+        /// Returns true if a main foldout AnimBool exists for the given property path.
+        /// </summary>
+        internal static bool HasMainFoldoutAnimBoolForTests(string propertyPath)
+        {
+            return MainFoldoutAnimations.ContainsKey(propertyPath);
+        }
+
+        /// <summary>
+        /// Gets the main foldout progress for testing purposes.
+        /// </summary>
+        internal static float GetMainFoldoutProgressForTests(
+            string propertyPath,
+            bool isExpanded,
+            bool isSortedSet
+        )
+        {
+            return GetMainFoldoutProgress(propertyPath, isExpanded, isSortedSet);
         }
 
         private static bool ShouldTweenManualEntryFoldout(bool isSortedSet)
@@ -5655,11 +5539,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             int currentFrame = Time.frameCount;
-            // Clear cache on new frame OR when a child drawer signaled height change
-            if (
-                _lastRowRenderCacheFrame != currentFrame
-                || _childHeightChangedFrame == currentFrame
-            )
+            if (_lastRowRenderCacheFrame != currentFrame)
             {
                 _rowRenderCache.Clear();
                 _lastRowRenderCacheFrame = currentFrame;
