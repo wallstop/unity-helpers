@@ -861,16 +861,6 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 - Multiple events can exist at the same frame
 - Use "Re-Order" before saving for consistency
 
-> **Visual Reference**
->
-> ![Animation Event Editor window showing event list and sprite preview](../../images/editor-tools/animation-event-editor.png)
->
-> _Animation Event Editor with sprite preview, method selector, and parameter editing_
->
-> ![Animation Event Editor adding a new event at frame index](../../images/editor-tools/animation-event-editor-add.gif)
->
-> _Adding an animation event at a specific frame with method auto-discovery_
-
 **Common Method Signatures:**
 
 ```csharp
