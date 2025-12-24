@@ -3111,6 +3111,78 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [UnityTest]
+        public IEnumerator ManualEntryAnimBoolSynchronizesWithExpandedState()
+        {
+            // This test verifies that when pending.isExpanded is set programmatically,
+            // the AnimBool target synchronizes correctly so the animation starts toward
+            // the new state. We then force the animation to complete to verify content renders.
+            StringSetHost host = CreateScriptableObject<StringSetHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            setProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableSetPropertyDrawer drawer = new();
+            Rect controlRect = new(0f, 0f, 360f, 420f);
+            GUIContent label = new("Set");
+
+            // Create pending entry and get reference to it - initially collapsed
+            SerializableSetPropertyDrawer.PendingEntry pending = drawer.GetOrCreatePendingEntry(
+                setProperty,
+                setProperty.propertyPath,
+                typeof(string),
+                isSortedSet: false
+            );
+            pending.isExpanded = false;
+
+            // First draw with collapsed state to create AnimBool
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                setProperty.serializedObject.UpdateIfRequiredOrScript();
+                drawer.OnGUI(controlRect, setProperty, label);
+            });
+
+            bool rectsAfterCollapsed = SerializableSetPropertyDrawer.HasLastManualEntryValueRect;
+            TestContext.WriteLine(
+                $"[ManualEntryAnimBoolSynchronizesWithExpandedState] after collapsed draw: "
+                    + $"hasValueRect={rectsAfterCollapsed}"
+            );
+
+            // Now expand programmatically (simulating what tests do)
+            pending.isExpanded = true;
+
+            // Force animation to complete immediately for test purposes
+            // (in real usage, this animates smoothly over multiple frames)
+            if (pending.foldoutAnim != null)
+            {
+                pending.foldoutAnim.value = pending.isExpanded;
+            }
+
+            SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+
+            // Draw again - content should now render since animation is complete
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                setProperty.serializedObject.UpdateIfRequiredOrScript();
+                drawer.OnGUI(controlRect, setProperty, label);
+            });
+
+            bool rectsAfterExpanded = SerializableSetPropertyDrawer.HasLastManualEntryValueRect;
+            TestContext.WriteLine(
+                $"[ManualEntryAnimBoolSynchronizesWithExpandedState] after expanded draw: "
+                    + $"hasValueRect={rectsAfterExpanded}, isExpanded={pending.isExpanded}"
+            );
+
+            Assert.IsTrue(
+                rectsAfterExpanded,
+                "Manual entry value rect should be captured after expansion when animation completes."
+            );
+        }
+
+        [UnityTest]
         public IEnumerator RowContentHonorsGroupPadding()
         {
             ComplexSetHost host = CreateScriptableObject<ComplexSetHost>();

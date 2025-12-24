@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using System.Collections;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Globalization;
     using System.Reflection;
     using System.Runtime.CompilerServices;
@@ -20,6 +21,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
+    using Debug = UnityEngine.Debug;
     using Object = UnityEngine.Object;
 
     /// <summary>
@@ -857,6 +859,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         }
 
         /// <summary>
+        /// Returns the resolved pending section padding value for test diagnostics.
+        /// </summary>
+        internal static float GetPendingSectionPaddingForTests()
+        {
+            return PendingSectionPadding;
+        }
+
+        /// <summary>
         /// Draws the expandable dictionary inspector UI, including toolbar actions and inline key/value editing.
         /// </summary>
         /// <param name="position">The rectangle reserved by Unity.</param>
@@ -1612,7 +1622,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 bool animateDuplicates =
                     animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
                 int tweenCycleLimit = UnityHelpersSettings.GetDuplicateRowTweenCycleLimit();
-                double currentTime = animateDuplicates ? EditorApplication.timeSinceStartup : 0d;
+                double currentTime = animateDuplicates ? GetHighResolutionTime() : 0d;
 
                 float shakeOffset = 0f;
                 if (hasDuplicate && animateDuplicates && duplicateState != null)
@@ -1757,7 +1767,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 bool animateDuplicates =
                     animationMode == UnityHelpersSettings.DuplicateRowAnimationMode.Tween;
                 int tweenCycleLimit = UnityHelpersSettings.GetDuplicateRowTweenCycleLimit();
-                double currentTime = animateDuplicates ? EditorApplication.timeSinceStartup : 0d;
+                double currentTime = animateDuplicates ? GetHighResolutionTime() : 0d;
 
                 if (hasDuplicate && animateDuplicates && duplicateState != null)
                 {
@@ -1876,7 +1886,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 HasLastRowRects = true;
                 LastRowKeyRect = keyRect;
-                LastRowValueRect = valueRect;
 
                 EditorGUI.BeginChangeCheck();
                 EditorGUI.PropertyField(keyRect, keyProperty, GUIContent.none, true);
@@ -1915,6 +1924,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     EditorGUI.PropertyField(valueRect, valueProperty, valueLabel, true);
                     valueChanged = EditorGUI.EndChangeCheck();
                 }
+
+                // Track the final adjusted value rect after foldout offset is applied
+                LastRowValueRect = valueRect;
 
                 if (valueChanged)
                 {
@@ -2128,7 +2140,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (state.HasDuplicates && animateDuplicates)
             {
                 int tweenCycleLimit = UnityHelpersSettings.GetDuplicateRowTweenCycleLimit();
-                double currentTime = EditorApplication.timeSinceStartup;
+                double currentTime = GetHighResolutionTime();
                 state.CheckAnimationCompletion(currentTime, tweenCycleLimit);
 
                 if (state.IsAnimating)
@@ -2424,12 +2436,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             data.valueProperty = valuesProperty.GetArrayElementAtIndex(globalIndex);
             data.isValid = true;
 
+            // Determine if the value type supports foldout/expansion.
+            // Trust the type-based check when the type is known to support complex editing,
+            // because Unity's hasVisibleChildren may temporarily return false for newly created
+            // array elements before the serialization system fully processes the type structure.
             bool shouldAutoExpand = false;
             if (data.valueProperty != null && resolvedValueType != null)
             {
-                shouldAutoExpand =
-                    ValueTypeSupportsFoldout(resolvedValueType)
-                    && SerializedPropertySupportsFoldout(data.valueProperty);
+                bool typeSupportsFoldout = ValueTypeSupportsFoldout(resolvedValueType);
+                bool propertySupportsFoldout = SerializedPropertySupportsFoldout(
+                    data.valueProperty
+                );
+                // If type definitively supports foldout OR property has visible children, enable foldout
+                shouldAutoExpand = typeSupportsFoldout || propertySupportsFoldout;
             }
             else if (data.valueProperty != null)
             {
@@ -2500,10 +2519,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 startTime = currentTime;
             }
 
+            double elapsed = currentTime - startTime;
+
             if (cycleLimit > 0)
             {
                 double cycleDuration = (2d * Math.PI) / DuplicateShakeFrequency;
-                double elapsed = currentTime - startTime;
                 double maxDuration = cycleDuration * cycleLimit;
                 if (elapsed >= maxDuration)
                 {
@@ -2511,7 +2531,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
             }
 
-            float phase = (float)(currentTime * DuplicateShakeFrequency);
+            float phase = (float)(elapsed * DuplicateShakeFrequency);
             float seed = arrayIndex * 0.35f;
             return Mathf.Sin(phase + seed) * DuplicateShakeAmplitude;
         }
@@ -2537,6 +2557,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EditorGUI.DrawRect(bottom, DuplicateOutlineColor);
             EditorGUI.DrawRect(left, DuplicateOutlineColor);
             EditorGUI.DrawRect(right, DuplicateOutlineColor);
+        }
+
+        /// <summary>
+        /// Gets high-resolution time in seconds using <see cref="Stopwatch"/> for accurate animation timing.
+        /// This is more reliable than <see cref="EditorApplication.timeSinceStartup"/> for animations
+        /// that need consistent frame-to-frame timing.
+        /// </summary>
+        private static double GetHighResolutionTime()
+        {
+            return (double)Stopwatch.GetTimestamp() / Stopwatch.Frequency;
         }
 
         private static float GetWarningBarHeight()
@@ -2936,9 +2966,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     continue;
                 }
 
-                bool propertySupportsFoldout = typeSupportsFoldout
-                    ? SerializedPropertySupportsFoldout(valueProperty)
-                    : valueProperty.hasVisibleChildren;
+                // Trust the type-based check when the type is known to support complex editing,
+                // because Unity's hasVisibleChildren may temporarily return false for newly created
+                // array elements before the serialization system fully processes the type structure.
+                bool propertySupportsFoldout =
+                    typeSupportsFoldout
+                    || SerializedPropertySupportsFoldout(valueProperty)
+                    || valueProperty.hasVisibleChildren;
                 if (!propertySupportsFoldout)
                 {
                     continue;
@@ -6986,6 +7020,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             else
             {
                 pending.foldoutAnim.speed = speed;
+                // Sync AnimBool target with pending.isExpanded if they're out of sync.
+                // This starts the animation toward the new state when isExpanded changes
+                // (e.g., via foldout click or programmatic assignment).
+                if (pending.foldoutAnim.target != pending.isExpanded)
+                {
+                    pending.foldoutAnim.target = pending.isExpanded;
+                }
             }
 
             return pending.foldoutAnim;
@@ -9616,7 +9657,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return;
                 }
 
-                double now = EditorApplication.timeSinceStartup;
+                double now = GetHighResolutionTime();
 
                 foreach (int index in _duplicateLookup.Keys)
                 {
