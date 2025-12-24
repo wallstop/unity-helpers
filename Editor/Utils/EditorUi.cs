@@ -2,24 +2,22 @@
 namespace WallstopStudios.UnityHelpers.Editor.Utils
 {
     using System;
-    using System.Diagnostics;
-    using System.Reflection;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
 
     public static class EditorUi
     {
-        // Manual suppression set by code/tests and automatic suppression inferred from environment/TestRunner
+        // Manual suppression set by code/tests and automatic suppression inferred from environment
         private static bool _suppressManual;
         private static bool _suppressAuto;
 
         public static bool Suppress
         {
-            // Only suppress when explicitly requested or when we know
-            // the environment is non-interactive (batch/CI) or tests are actively running.
-            // Avoid heuristic stack/NUnit checks that can trip when Test Runner is merely open.
-            get => _suppressManual || _suppressAuto || IsUnderTestStack();
+            // Only suppress when explicitly requested (_suppressManual, set by tests)
+            // or in non-interactive environments (_suppressAuto, set for batch mode/CI).
+            // Tests set EditorUi.Suppress = true in their SetUp via CommonTestBase.
+            get => _suppressManual || _suppressAuto;
             set => _suppressManual = value;
         }
 
@@ -28,7 +26,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             try
             {
                 // Suppress only when actually running in non-interactive contexts
-                // such as batch mode, the Unity Test Runner, or CI environments.
+                // such as batch mode, the Unity Test Runner CLI, or CI environments.
                 _suppressAuto =
                     Application.isBatchMode
                     || IsInvokedByTestRunner()
@@ -40,7 +38,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             }
 
             // Note: We avoid taking a hard compile-time dependency on the TestRunner API here.
-            // If you want tighter coupling, set EditorUi.Suppress = true in your test setup.
+            // Tests should set EditorUi.Suppress = true in their SetUp (CommonTestBase does this).
         }
 
         private static bool IsInvokedByTestRunner()
@@ -58,98 +56,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     return true;
                 }
             }
-            return false;
-        }
-
-        // Reflection-based: detect NUnit context without compile-time dependency
-        private static bool IsNUnitContextActive()
-        {
-            try
-            {
-                Type t = ReflectionHelpers.TryResolveType(
-                    "NUnit.Framework.TestContext, nunit.framework"
-                );
-                if (t == null)
-                {
-                    foreach (Assembly asm in ReflectionHelpers.GetAllLoadedAssemblies())
-                    {
-                        string an = asm.GetName().Name;
-                        if (
-                            !string.IsNullOrEmpty(an)
-                            && an.IndexOf("nunit.framework", StringComparison.OrdinalIgnoreCase)
-                                >= 0
-                        )
-                        {
-                            t = asm.GetType("NUnit.Framework.TestContext", throwOnError: false);
-                            if (t != null)
-                            {
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (t == null)
-                {
-                    return false;
-                }
-
-                PropertyInfo prop = t.GetProperty(
-                    "CurrentContext",
-                    BindingFlags.Public | BindingFlags.Static
-                );
-                if (prop == null)
-                {
-                    return false;
-                }
-
-                object ctx = prop.GetValue(null, null);
-                return ctx != null;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        // Heuristic: scan callstack for known test runner/framework frames
-        private static bool IsUnderTestStack()
-        {
-            try
-            {
-                StackTrace st = new();
-                int frames = Math.Min(st.FrameCount, 20);
-                for (int i = 0; i < frames; i++)
-                {
-                    MethodBase method = st.GetFrame(i)?.GetMethod();
-                    Type type = method?.DeclaringType;
-                    string asm = type?.Assembly?.GetName()?.Name ?? string.Empty;
-                    string full = type?.FullName ?? string.Empty;
-                    if (
-                        asm.IndexOf("nunit", StringComparison.OrdinalIgnoreCase) >= 0
-                        || asm.IndexOf("UnityEditor.TestRunner", StringComparison.OrdinalIgnoreCase)
-                            >= 0
-                        || asm.IndexOf("UnityEditor.TestTools", StringComparison.OrdinalIgnoreCase)
-                            >= 0
-                        || asm.IndexOf("UnityEngine.TestRunner", StringComparison.OrdinalIgnoreCase)
-                            >= 0
-                    )
-                    {
-                        return true;
-                    }
-                    if (
-                        full.IndexOf("NUnit", StringComparison.OrdinalIgnoreCase) >= 0
-                        || full.IndexOf("UnityEditor.TestTools", StringComparison.OrdinalIgnoreCase)
-                            >= 0
-                        || full.IndexOf("UnityEngine.TestTools", StringComparison.OrdinalIgnoreCase)
-                            >= 0
-                        || full.IndexOf("TestRunner", StringComparison.OrdinalIgnoreCase) >= 0
-                    )
-                    {
-                        return true;
-                    }
-                }
-            }
-            catch { }
             return false;
         }
 
