@@ -26,6 +26,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
+            if (property == null)
+            {
+                return;
+            }
+
+            label ??= GUIContent.none;
+
             EditorGUI.BeginProperty(position, label, property);
             Rect foldoutRect = new(
                 position.x,
@@ -241,6 +248,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                             newRegex.stringValue = string.Empty;
                             property.serializedObject.ApplyModifiedProperties();
                         }
+                        currentY +=
+                            EditorGUIUtility.singleLineHeight
+                            + EditorGUIUtility.standardVerticalSpacing;
                     }
 
                     // Exclude Regexes
@@ -494,6 +504,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
+            if (property == null)
+            {
+                return EditorGUIUtility.singleLineHeight;
+            }
+
             float height = EditorGUIUtility.singleLineHeight;
             if (!property.isExpanded)
             {
