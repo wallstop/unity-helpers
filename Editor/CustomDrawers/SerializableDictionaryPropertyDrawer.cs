@@ -687,7 +687,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float DictionaryRowChildHorizontalPadding = 2f;
         private const float DictionaryRowChildLabelTextPadding = 6f;
         internal const float PendingFieldLabelWidth = 72f;
-        internal const float PendingKeyContentIndent = 0f;
         internal const float PendingValueContentLeftShift = 8.5f;
         internal const float PendingFoldoutValueLeftShiftReduction = 3f;
         internal const float PendingFoldoutValueRightShift = 5.5f;

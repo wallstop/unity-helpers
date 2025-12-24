@@ -3181,6 +3181,561 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [UnityTest]
+        public IEnumerator PendingEntryKeyAndValueAlignedAtIndentLevel1()
+        {
+            yield return VerifyPendingEntryAlignmentAtIndentLevel(1);
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryKeyAndValueAlignedAtIndentLevel2()
+        {
+            yield return VerifyPendingEntryAlignmentAtIndentLevel(2);
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryKeyAndValueAlignedAtIndentLevel3()
+        {
+            yield return VerifyPendingEntryAlignmentAtIndentLevel(3);
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryKeyAndValueAlignedAtIndentLevel5()
+        {
+            yield return VerifyPendingEntryAlignmentAtIndentLevel(5);
+        }
+
+        private IEnumerator VerifyPendingEntryAlignmentAtIndentLevel(int indentLevel)
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(TestDictionaryHost),
+                nameof(TestDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new(0f, 0f, 360f, 420f);
+            GUIContent label = new("Dictionary");
+
+            SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                drawer.GetOrCreatePendingEntry(
+                    dictionaryProperty,
+                    typeof(int),
+                    typeof(string),
+                    isSortedDictionary: false
+                );
+            pending.isExpanded = true;
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                int previousIndent = EditorGUI.indentLevel;
+                try
+                {
+                    EditorGUI.indentLevel = indentLevel;
+                    dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                    pending.isExpanded = true;
+                    drawer.OnGUI(controlRect, dictionaryProperty, label);
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndent;
+                }
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastPendingFieldRects,
+                $"Draw at indent level {indentLevel} should capture pending key/value rects."
+            );
+
+            Rect keyRect = SerializableDictionaryPropertyDrawer.LastPendingKeyFieldRect;
+            Rect valueRect = SerializableDictionaryPropertyDrawer.LastPendingValueFieldRect;
+
+            TestContext.WriteLine(
+                $"[PendingEntryKeyAndValueAlignedAtIndentLevel{indentLevel}] "
+                    + $"keyRect.xMin={keyRect.xMin:F3}, valueRect.xMin={valueRect.xMin:F3}, "
+                    + $"keyRect.width={keyRect.width:F3}, valueRect.width={valueRect.width:F3}"
+            );
+
+            Assert.That(
+                keyRect.xMin,
+                Is.EqualTo(valueRect.xMin).Within(1f),
+                $"Pending key and value field left edges should be aligned at indent level {indentLevel}."
+            );
+
+            Assert.That(
+                keyRect.width,
+                Is.EqualTo(valueRect.width).Within(1f),
+                $"Pending key and value field widths should match at indent level {indentLevel}."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryKeyAndValueAlignedWithComplexFoldoutValueAtIndentLevel0()
+        {
+            yield return VerifyPendingEntryAlignmentWithComplexValueAtIndentLevel(0);
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryKeyAndValueAlignedWithComplexFoldoutValueAtIndentLevel1()
+        {
+            yield return VerifyPendingEntryAlignmentWithComplexValueAtIndentLevel(1);
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryKeyAndValueAlignedWithComplexFoldoutValueAtIndentLevel2()
+        {
+            yield return VerifyPendingEntryAlignmentWithComplexValueAtIndentLevel(2);
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryKeyAndValueAlignedWithComplexFoldoutValueAtIndentLevel3()
+        {
+            yield return VerifyPendingEntryAlignmentWithComplexValueAtIndentLevel(3);
+        }
+
+        private IEnumerator VerifyPendingEntryAlignmentWithComplexValueAtIndentLevel(
+            int indentLevel
+        )
+        {
+            ColorDataDictionaryHost host = CreateScriptableObject<ColorDataDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ColorDataDictionaryHost.dictionary)
+            );
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(ColorDataDictionaryHost),
+                nameof(ColorDataDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new(0f, 0f, 420f, 480f);
+            GUIContent label = new("Dictionary");
+
+            SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                drawer.GetOrCreatePendingEntry(
+                    dictionaryProperty,
+                    typeof(string),
+                    typeof(ColorData),
+                    isSortedDictionary: false
+                );
+            pending.isExpanded = true;
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                int previousIndent = EditorGUI.indentLevel;
+                try
+                {
+                    EditorGUI.indentLevel = indentLevel;
+                    dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                    pending.isExpanded = true;
+                    drawer.OnGUI(controlRect, dictionaryProperty, label);
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndent;
+                }
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastPendingFieldRects,
+                $"Draw with complex value at indent level {indentLevel} should capture pending key/value rects."
+            );
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.LastPendingValueUsedFoldoutLabel,
+                $"Complex value should use foldout label at indent level {indentLevel}."
+            );
+
+            Rect keyRect = SerializableDictionaryPropertyDrawer.LastPendingKeyFieldRect;
+            Rect valueRect = SerializableDictionaryPropertyDrawer.LastPendingValueFieldRect;
+
+            TestContext.WriteLine(
+                $"[PendingEntryKeyAndValueAlignedWithComplexFoldoutValue@Indent{indentLevel}] "
+                    + $"keyRect.xMin={keyRect.xMin:F3}, valueRect.xMin={valueRect.xMin:F3}, "
+                    + $"keyRect.width={keyRect.width:F3}, valueRect.width={valueRect.width:F3}, "
+                    + $"foldoutOffset={SerializableDictionaryPropertyDrawer.LastPendingValueFoldoutOffset:F3}"
+            );
+
+            Assert.That(
+                keyRect.xMin,
+                Is.EqualTo(valueRect.xMin).Within(1f),
+                $"Pending key and value field left edges should be aligned with complex foldout value at indent level {indentLevel}."
+            );
+
+            Assert.That(
+                keyRect.width,
+                Is.EqualTo(valueRect.width).Within(1f),
+                $"Pending key and value field widths should match with complex foldout value at indent level {indentLevel}."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryKeyAndValueAlignedWithWGroupPaddingAndIndent()
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(TestDictionaryHost),
+                nameof(TestDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new(0f, 0f, 400f, 450f);
+            GUIContent label = new("Dictionary");
+
+            SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                drawer.GetOrCreatePendingEntry(
+                    dictionaryProperty,
+                    typeof(int),
+                    typeof(string),
+                    isSortedDictionary: false
+                );
+            pending.isExpanded = true;
+
+            const float LeftPadding = 20f;
+            const float RightPadding = 10f;
+            const int IndentLevel = 2;
+
+            GroupGUIWidthUtility.ResetForTests();
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                int previousIndent = EditorGUI.indentLevel;
+                try
+                {
+                    EditorGUI.indentLevel = IndentLevel;
+                    dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                    using (
+                        GroupGUIWidthUtility.PushContentPadding(
+                            LeftPadding + RightPadding,
+                            LeftPadding,
+                            RightPadding
+                        )
+                    )
+                    {
+                        pending.isExpanded = true;
+                        drawer.OnGUI(controlRect, dictionaryProperty, label);
+                    }
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndent;
+                }
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastPendingFieldRects,
+                "Draw with WGroup padding and indent should capture pending key/value rects."
+            );
+
+            Rect keyRect = SerializableDictionaryPropertyDrawer.LastPendingKeyFieldRect;
+            Rect valueRect = SerializableDictionaryPropertyDrawer.LastPendingValueFieldRect;
+
+            TestContext.WriteLine(
+                $"[PendingEntryKeyAndValueAlignedWithWGroupPaddingAndIndent] "
+                    + $"keyRect.xMin={keyRect.xMin:F3}, valueRect.xMin={valueRect.xMin:F3}, "
+                    + $"keyRect.width={keyRect.width:F3}, valueRect.width={valueRect.width:F3}, "
+                    + $"LeftPadding={LeftPadding}, IndentLevel={IndentLevel}"
+            );
+
+            Assert.That(
+                keyRect.xMin,
+                Is.EqualTo(valueRect.xMin).Within(1f),
+                "Pending key and value field left edges should be aligned with WGroup padding and indent."
+            );
+
+            Assert.That(
+                keyRect.width,
+                Is.EqualTo(valueRect.width).Within(1f),
+                "Pending key and value field widths should match with WGroup padding and indent."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryKeyAndValueAlignedWithNestedWGroups()
+        {
+            ColorDataDictionaryHost host = CreateScriptableObject<ColorDataDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(ColorDataDictionaryHost.dictionary)
+            );
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(ColorDataDictionaryHost),
+                nameof(ColorDataDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new(0f, 0f, 450f, 500f);
+            GUIContent label = new("Dictionary");
+
+            SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                drawer.GetOrCreatePendingEntry(
+                    dictionaryProperty,
+                    typeof(string),
+                    typeof(ColorData),
+                    isSortedDictionary: false
+                );
+            pending.isExpanded = true;
+
+            const float OuterLeftPadding = 16f;
+            const float OuterRightPadding = 8f;
+            const float InnerLeftPadding = 12f;
+            const float InnerRightPadding = 6f;
+            const int IndentLevel = 3;
+
+            GroupGUIWidthUtility.ResetForTests();
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                int previousIndent = EditorGUI.indentLevel;
+                try
+                {
+                    EditorGUI.indentLevel = IndentLevel;
+                    dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                    using (
+                        GroupGUIWidthUtility.PushContentPadding(
+                            OuterLeftPadding + OuterRightPadding,
+                            OuterLeftPadding,
+                            OuterRightPadding
+                        )
+                    )
+                    using (
+                        GroupGUIWidthUtility.PushContentPadding(
+                            InnerLeftPadding + InnerRightPadding,
+                            InnerLeftPadding,
+                            InnerRightPadding
+                        )
+                    )
+                    {
+                        pending.isExpanded = true;
+                        drawer.OnGUI(controlRect, dictionaryProperty, label);
+                    }
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndent;
+                }
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastPendingFieldRects,
+                "Draw with nested WGroups and indent should capture pending key/value rects."
+            );
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.LastPendingValueUsedFoldoutLabel,
+                "Complex value should use foldout label with nested WGroups."
+            );
+
+            Rect keyRect = SerializableDictionaryPropertyDrawer.LastPendingKeyFieldRect;
+            Rect valueRect = SerializableDictionaryPropertyDrawer.LastPendingValueFieldRect;
+
+            TestContext.WriteLine(
+                $"[PendingEntryKeyAndValueAlignedWithNestedWGroups] "
+                    + $"keyRect.xMin={keyRect.xMin:F3}, valueRect.xMin={valueRect.xMin:F3}, "
+                    + $"keyRect.width={keyRect.width:F3}, valueRect.width={valueRect.width:F3}, "
+                    + $"TotalLeftPadding={OuterLeftPadding + InnerLeftPadding}, IndentLevel={IndentLevel}"
+            );
+
+            Assert.That(
+                keyRect.xMin,
+                Is.EqualTo(valueRect.xMin).Within(1f),
+                "Pending key and value field left edges should be aligned with nested WGroups."
+            );
+
+            Assert.That(
+                keyRect.width,
+                Is.EqualTo(valueRect.width).Within(1f),
+                "Pending key and value field widths should match with nested WGroups."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryKeyIndentIncreasesWithHigherIndentLevel()
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(TestDictionaryHost),
+                nameof(TestDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new(0f, 0f, 400f, 450f);
+            GUIContent label = new("Dictionary");
+
+            SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                drawer.GetOrCreatePendingEntry(
+                    dictionaryProperty,
+                    typeof(int),
+                    typeof(string),
+                    isSortedDictionary: false
+                );
+            pending.isExpanded = true;
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            float keyXMinAtIndent0 = 0f;
+            float keyXMinAtIndent2 = 0f;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                int previousIndent = EditorGUI.indentLevel;
+                try
+                {
+                    EditorGUI.indentLevel = 0;
+                    dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                    pending.isExpanded = true;
+                    drawer.OnGUI(controlRect, dictionaryProperty, label);
+                    keyXMinAtIndent0 = SerializableDictionaryPropertyDrawer
+                        .LastPendingKeyFieldRect
+                        .xMin;
+
+                    SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+                    EditorGUI.indentLevel = 2;
+                    drawer.OnGUI(controlRect, dictionaryProperty, label);
+                    keyXMinAtIndent2 = SerializableDictionaryPropertyDrawer
+                        .LastPendingKeyFieldRect
+                        .xMin;
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndent;
+                }
+            });
+
+            TestContext.WriteLine(
+                $"[PendingEntryKeyIndentIncreasesWithHigherIndentLevel] "
+                    + $"keyXMinAtIndent0={keyXMinAtIndent0:F3}, keyXMinAtIndent2={keyXMinAtIndent2:F3}, "
+                    + $"difference={keyXMinAtIndent2 - keyXMinAtIndent0:F3}"
+            );
+
+            Assert.Greater(
+                keyXMinAtIndent2,
+                keyXMinAtIndent0,
+                "Key field xMin should increase with higher indent level."
+            );
+
+            float expectedIndentDifference = 2 * 15f;
+            float actualDifference = keyXMinAtIndent2 - keyXMinAtIndent0;
+            Assert.That(
+                actualDifference,
+                Is.EqualTo(expectedIndentDifference).Within(2f),
+                $"Key field xMin difference should be approximately {expectedIndentDifference}px for indent level difference of 2."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryKeyAndValueAlignedWithSortedDictionary()
+        {
+            TestSortedDictionaryHost host = CreateScriptableObject<TestSortedDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestSortedDictionaryHost.dictionary)
+            );
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(TestSortedDictionaryHost),
+                nameof(TestSortedDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new(0f, 0f, 360f, 420f);
+            GUIContent label = new("SortedDictionary");
+
+            SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                drawer.GetOrCreatePendingEntry(
+                    dictionaryProperty,
+                    typeof(int),
+                    typeof(string),
+                    isSortedDictionary: true
+                );
+            pending.isExpanded = true;
+
+            const int IndentLevel = 2;
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                int previousIndent = EditorGUI.indentLevel;
+                try
+                {
+                    EditorGUI.indentLevel = IndentLevel;
+                    dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                    pending.isExpanded = true;
+                    drawer.OnGUI(controlRect, dictionaryProperty, label);
+                }
+                finally
+                {
+                    EditorGUI.indentLevel = previousIndent;
+                }
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastPendingFieldRects,
+                "Draw sorted dictionary should capture pending key/value rects."
+            );
+
+            Rect keyRect = SerializableDictionaryPropertyDrawer.LastPendingKeyFieldRect;
+            Rect valueRect = SerializableDictionaryPropertyDrawer.LastPendingValueFieldRect;
+
+            TestContext.WriteLine(
+                $"[PendingEntryKeyAndValueAlignedWithSortedDictionary] "
+                    + $"keyRect.xMin={keyRect.xMin:F3}, valueRect.xMin={valueRect.xMin:F3}, "
+                    + $"IndentLevel={IndentLevel}"
+            );
+
+            Assert.That(
+                keyRect.xMin,
+                Is.EqualTo(valueRect.xMin).Within(1f),
+                "Pending key and value field left edges should be aligned for sorted dictionary."
+            );
+        }
+
+        [UnityTest]
         public IEnumerator PendingEntryFoldoutValueRespectsGroupPadding()
         {
             ColorDataDictionaryHost host = CreateScriptableObject<ColorDataDictionaryHost>();
