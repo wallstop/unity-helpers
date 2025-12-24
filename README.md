@@ -1,5 +1,7 @@
 # Unity Helpers
 
+> **🤖 AI Assistance Disclosure:** Recent versions of this project have utilized AI assistance for bug detection, performance optimization, and documentation. The original codebase was developed entirely by humans over several years.
+
 <p align="left">
   <a href="https://unity.com/releases/2021-lts"><img alt="Unity 2021.3+" src="https://img.shields.io/badge/Unity-2021.3%2B-000000?logo=unity&amp;logoColor=white" /></a><br>
   <a href="https://www.npmjs.com/package/com.wallstop-studios.unity-helpers"><img alt="npm version" src="https://img.shields.io/npm/v/com.wallstop-studios.unity-helpers" /></a><br>
@@ -25,7 +27,7 @@ Unity Helpers eliminates entire categories of repetitive work with production-re
 - 🎮 **Designer-friendly** effects system (buffs/debuffs as ScriptableObjects)
 - 🌳 **O(log n)** spatial queries instead of O(n) loops
 - 🛠️ **20+ editor tools** that automate sprite/animation workflows
-- ✅ **4,000+ tests** ensuring production quality
+- ✅ **8,000+ tests** ensuring production quality
 
 ---
 
@@ -172,7 +174,7 @@ Designers create buffs/debuffs as ScriptableObjects. Zero programmer time after 
 // Use everywhere (zero boilerplate):
 player.ApplyEffect(hasteEffect);           // Apply buff
 if (player.HasTag("Stunned")) return;      // Query state
-player.RemoveAllEffectsWithTag("Haste");   // Batch removal
+player.RemoveEffects(player.GetHandlesWithTag("Haste")); // Batch removal
 ```
 
 **What you get:**
@@ -356,7 +358,7 @@ These powerful utilities solve specific problems that waste hours if you impleme
 **Built for Real Projects:**
 
 - ✅ **Production-tested** in shipped commercial games
-- ✅ **4,000+ automated tests** catch edge cases before you hit them
+- ✅ **8,000+ automated tests** catch edge cases before you hit them
 - ✅ **Zero dependencies** - drop it in any project
 - ✅ **IL2CPP/WebGL ready** with optimized SINGLE_THREADED paths
 - ✅ **MIT Licensed** - use freely in commercial projects

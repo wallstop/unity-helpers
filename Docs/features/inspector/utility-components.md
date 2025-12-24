@@ -145,7 +145,7 @@ using WallstopStudios.UnityHelpers.Utils;
 ChildSpawner spawner = gameObject.AddComponent<ChildSpawner>();
 spawner._prefabs = new[] { analyticsPrefab };
 spawner._developmentOnlyPrefabs = new[] { debugMenuPrefab };
-spawner._spawnMethod = ChildSpawner.SpawnMethod.Awake;
+spawner._spawnMethod = ChildSpawnMethod.Awake;
 spawner._dontDestroyOnLoad = true;
 ```
 
@@ -400,6 +400,7 @@ matcher.localOffset = new Vector3(5, 0, 0);
 ---
 
 <a id="spriterenderersyncer"></a>
+<a id="spriterenderersync"></a>
 
 ## SpriteRendererSync
 
@@ -429,7 +430,7 @@ matcher.localOffset = new Vector3(5, 0, 0);
 using WallstopStudios.UnityHelpers.Utils;
 
 // On the "follower" sprite renderer
-SpriteRendererSyncer syncer = shadowRenderer.AddComponent<SpriteRendererSyncer>();
+SpriteRendererSync syncer = shadowRenderer.AddComponent<SpriteRendererSync>();
 syncer.toMatch = characterRenderer;
 syncer.matchColor = false; // Don't copy color (shadow should be black)
 syncer.matchMaterial = true;
@@ -474,7 +475,7 @@ shadow.transform.parent = character.transform;
 shadow.transform.localPosition = new Vector3(0.2f, -0.2f, 0); // Offset
 
 SpriteRenderer shadowRenderer = shadow.AddComponent<SpriteRenderer>();
-SpriteRendererSyncer syncer = shadow.AddComponent<SpriteRendererSyncer>();
+SpriteRendererSync syncer = shadow.AddComponent<SpriteRendererSync>();
 
 syncer.toMatch = character.GetComponent<SpriteRenderer>();
 syncer.matchColor = false;

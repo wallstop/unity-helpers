@@ -49,7 +49,7 @@ Unity Helpers is a battle-tested toolkit that eliminates the boring, repetitive 
 
 **Quality you can trust:**
 
-- ✅ **4,000+ automated tests** - Edge cases covered before you hit them
+- ✅ **8,000+ automated tests** - Edge cases covered before you hit them
 - ✅ **Shipped in commercial games** - Battle-tested at scale
 - ✅ **IL2CPP/WebGL compatible** - Works with aggressive compilers
 - ✅ **Schema evolution** - Player saves never break from updates
@@ -317,7 +317,7 @@ Based on your needs:
 Yes! Unity Helpers is:
 
 - ✅ Used in shipped commercial games
-- ✅ 4,000+ automated test cases
+- ✅ 8,000+ automated test cases
 - ✅ Compatible with Unity 2022, 2023, and Unity 6
 - ✅ Zero external dependencies
 - ✅ **Fully WebGL/IL2CPP compatible** with optimized SINGLE_THREADED hot paths

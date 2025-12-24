@@ -1,12 +1,60 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/dotnet
 {
-  "name": "C# (.NET)",
+  "name": "Unity Helpers Dev",
   // Use the Dockerfile in this directory
   "build": {
     "dockerfile": "Dockerfile",
-    "context": "."
+    "context": "..",
+    "args": {
+      "TARGETARCH": "amd64"
+    }
+  },
+  // Features to add to the dev container
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": false
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  // Container settings
+  "containerEnv": {
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+    "DOTNET_NOLOGO": "1"
   },
   // Run any post-create commands
-  "postCreateCommand": "dotnet tool restore || true"
+  "postCreateCommand": "dotnet tool restore || true && git config --global --add safe.directory ${containerWorkspaceFolder}",
+  // VS Code customizations
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.csdevkit",
+        "csharpier.csharpier-vscode",
+        "editorconfig.editorconfig",
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "streetsidesoftware.code-spell-checker",
+        "DavidAnson.vscode-markdownlint"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "dotnet.defaultSolution": "disable",
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "csharpier.csharpier-vscode",
+        "[csharp]": {
+          "editor.defaultFormatter": "csharpier.csharpier-vscode"
+        }
+      }
+    }
+  },
+  // Mount settings
+  "mounts": [
+    "source=${localWorkspaceFolder}/.git,target=${containerWorkspaceFolder}/.git,type=bind,consistency=cached"
+  ],
+  // Forwarded ports (if needed for debugging)
+  "forwardPorts": [],
+  // Run as non-root user
+  "remoteUser": "vscode"
 }

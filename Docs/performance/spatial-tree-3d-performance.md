@@ -4,7 +4,7 @@
 
 - Need fast “what’s near X?” or “what’s inside this volume?” in 3D.
 - These structures avoid scanning every object; queries touch only nearby data.
-- Quick picks: OctTree3D for general 3D queries; KDTree3D for nearest‑neighbor on points; RTree3D for volumetric bounds.
+- Quick picks: OctTree3D for general 3D queries; KdTree3D for nearest‑neighbor on points; RTree3D for volumetric bounds.
 
 Note: KdTree3D, OctTree3D, and RTree3D are under active development and their APIs/performance may evolve. SpatialHash3D is stable and recommended for broad‑phase neighbor queries with many moving objects.
 
@@ -15,7 +15,7 @@ This document contains performance benchmarks for the 3D spatial tree implementa
 ## Available 3D Spatial Trees
 
 - **OctTree3D** - Easiest to use, good all-around performance for 3D
-- **KDTree3D** - Balanced and unbalanced variants available
+- **KdTree3D** - Balanced and unbalanced variants available
 - **RTree3D** - Optimized for 3D bounding box queries
 - **SpatialHash3D** - Efficient for uniformly distributed moving objects (stable)
 
@@ -216,13 +216,13 @@ All numbers represent **operations per second** (higher is better), except for c
 - Strengths: Balanced performance, easy to use, good spatial locality
 - Use cases: 3D collision detection, visibility culling, spatial audio
 
-**KDTree3D (Balanced)**:
+**KdTree3D (Balanced)**:
 
 - Best for: Nearest-neighbor queries in 3D space
 - Strengths: Fast point queries, good for smaller datasets
 - Use cases: Pathfinding, AI spatial awareness, particle systems
 
-**KDTree3D (Unbalanced)**:
+**KdTree3D (Unbalanced)**:
 
 - Best for: When you need fast construction and will rebuild frequently
 - Strengths: Fastest construction, similar query performance to balanced

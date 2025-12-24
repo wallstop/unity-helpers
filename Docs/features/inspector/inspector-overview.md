@@ -84,7 +84,18 @@ Provide designer-friendly selection controls:
 
 ---
 
-### 5. Serialization Types
+### 5. Validation & Protection
+
+Protect data integrity with validation attributes:
+
+- **[WReadOnly](inspector-validation-attributes.md#wreadonly)** - Display fields as read-only in the inspector
+- **[WNotNull](inspector-validation-attributes.md#wnotnull)** - Validate required references at runtime with `CheckForNulls()`
+
+**[→ Full Guide: Inspector Validation Attributes](inspector-validation-attributes.md)**
+
+---
+
+### 6. Serialization Types
 
 Unity-friendly wrappers for complex data:
 
@@ -103,7 +114,7 @@ Unity-friendly wrappers for complex data:
 
 ---
 
-### 6. Project Settings
+### 7. Project Settings
 
 Centralized configuration for all inspector features:
 
@@ -239,6 +250,7 @@ For individual feature examples, see the detailed guides linked above.
 - **[Inspector Buttons](inspector-button.md)** - WButton for method invocation
 - **[Inspector Conditional Display](inspector-conditional-display.md)** - WShowIf for dynamic visibility
 - **[Inspector Selection Attributes](inspector-selection-attributes.md)** - WEnumToggleButtons, dropdowns
+- **[Inspector Validation Attributes](inspector-validation-attributes.md)** - WReadOnly, WNotNull
 
 ### Serialization
 
@@ -267,4 +279,5 @@ Choose a guide based on what you want to learn first:
 - Want method buttons? → [Inspector Buttons](inspector-button.md)
 - Want conditional fields? → [Inspector Conditional Display](inspector-conditional-display.md)
 - Want better selection controls? → [Inspector Selection Attributes](inspector-selection-attributes.md)
+- Want data validation? → [Inspector Validation Attributes](inspector-validation-attributes.md)
 - Want to serialize complex data? → [Serialization Types](../serialization/serialization-types.md)

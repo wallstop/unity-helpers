@@ -3,14 +3,14 @@
 ## TL;DR — What Problem This Solves
 
 - Fast range/bounds/nearest‑neighbor queries on 2D data without scanning everything.
-- Quick picks: QuadTree2D for broad‑phase; KDTree2D (Balanced) for NN; KDTree2D (Unbalanced) for fast rebuilds; RTree2D for bounds‑based data.
+- Quick picks: QuadTree2D for broad‑phase; KdTree2D (Balanced) for NN; KdTree2D (Unbalanced) for fast rebuilds; RTree2D for bounds‑based data.
 
 This document contains performance benchmarks for the 2D spatial tree implementations in Unity Helpers.
 
 ## Available 2D Spatial Trees
 
 - **QuadTree2D** - Easiest to use, good all-around performance
-- **KDTree2D** - Balanced and unbalanced variants available
+- **KdTree2D** - Balanced and unbalanced variants available
 - **RTree2D** - Optimized for bounding box queries
 
 ### Correctness & Semantics
@@ -213,15 +213,15 @@ All numbers represent **operations per second** (higher is better), except for c
 
 - Best for: General-purpose 2D spatial queries
 - Strengths: Balanced performance across all operation types, simple to use
-- Weaknesses: Slightly slower than KDTree for point queries
+- Weaknesses: Slightly slower than KdTree for point queries
 
-**KDTree2D (Balanced)**:
+**KdTree2D (Balanced)**:
 
 - Best for: When you need consistent query performance
 - Strengths: Fast nearest-neighbor queries, good for smaller datasets
 - Weaknesses: Slower construction time
 
-**KDTree2D (Unbalanced)**:
+**KdTree2D (Unbalanced)**:
 
 - Best for: When you need fast construction and will rebuild frequently
 - Strengths: Fastest construction, similar query performance to balanced

@@ -141,6 +141,141 @@ byte[] bytes = Serializer.Serialize(data, SerializationType.Json);
 SaveData loaded = Serializer.Deserialize<SaveData>(bytes, SerializationType.Json);
 ```
 
+## Advanced JSON APIs
+
+Unity Helpers provides several advanced APIs for high-performance and robust file operations.
+
+### Async File Operations
+
+For non-blocking file I/O (useful in loading screens or background saves):
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Serialization;
+
+// Async read from file
+SaveData data = await Serializer.ReadFromJsonFileAsync<SaveData>("save.json");
+
+// Async write to file
+await Serializer.WriteToJsonFileAsync(data, "save.json", pretty: true);
+
+// With cancellation token (for interruptible operations)
+var cts = new CancellationTokenSource();
+SaveData data = await Serializer.ReadFromJsonFileAsync<SaveData>("save.json", cts.Token);
+await Serializer.WriteToJsonFileAsync(data, "save.json", pretty: true, cts.Token);
+```
+
+**When to use async:**
+
+- Loading screens where you don't want to block the main thread
+- Auto-save systems running in the background
+- Large save files that may take noticeable time
+
+### Safe Try-Pattern APIs
+
+For graceful error handling without try-catch blocks:
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Serialization;
+
+// TryRead - returns false if file missing or invalid JSON
+if (Serializer.TryReadFromJsonFile<SaveData>("save.json", out SaveData data))
+{
+    // File exists and parsed successfully
+    LoadGame(data);
+}
+else
+{
+    // File missing or corrupted - start new game
+    StartNewGame();
+}
+
+// TryWrite - returns false if write failed
+if (!Serializer.TryWriteToJsonFile(data, "save.json"))
+{
+    Debug.LogError("Failed to save game!");
+    ShowSaveErrorDialog();
+}
+```
+
+**When to use Try-pattern:**
+
+- Loading saves that may not exist (new players)
+- Handling corrupted save files gracefully
+- Writing to paths that may not be writable
+
+### Fast Serialization (Hot Paths)
+
+For performance-critical scenarios where you serialize/deserialize frequently:
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Serialization;
+
+// Fast serialize - stricter options, Unity converters, minimal validation
+byte[] fastBytes = Serializer.JsonSerializeFast(networkMessage);
+
+// Fast deserialize
+NetworkMessage msg = Serializer.JsonDeserializeFast<NetworkMessage>(fastBytes);
+
+// Fast serialize with buffer reuse (zero-allocation after warmup)
+byte[] buffer = null;
+int length = Serializer.JsonSerializeFast(networkMessage, ref buffer);
+// Use buffer[0..length], buffer is reused on subsequent calls
+```
+
+**Fast options differences:**
+
+| Setting               | Normal/Pretty | Fast     |
+| --------------------- | ------------- | -------- |
+| Case-insensitive      | ✅            | ❌       |
+| Comments allowed      | ✅            | ❌       |
+| Trailing commas       | ✅            | ❌       |
+| Include fields        | ✅            | ❌       |
+| Reference handling    | Safe          | Disabled |
+| Unity type converters | ✅            | ✅       |
+
+### Creating Custom Options
+
+Create your own options based on the Fast presets:
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Serialization;
+using System.Text.Json;
+
+// Get a copy of Fast options to customize
+JsonSerializerOptions myOptions = Serializer.CreateFastJsonOptions();
+myOptions.WriteIndented = true;  // Add pretty-printing
+
+// FastPOCO - for pure C# objects with NO Unity types (fastest)
+JsonSerializerOptions pocoOptions = Serializer.CreateFastPocoJsonOptions();
+
+// Use with any serialize method
+byte[] bytes = Serializer.JsonSerialize(data, myOptions);
+Serializer.WriteToJsonFile(data, "file.json", myOptions);
+```
+
+**Option profiles:**
+
+- `CreateFastJsonOptions()` — Fast parsing + Unity type converters (Vector3, Color, etc.)
+- `CreateFastPocoJsonOptions()` — Fastest, no converters, pure C# objects only
+
+### Performance Comparison
+
+```csharp
+// 🐌 Normal (most compatible, slightly slower)
+byte[] normal = Serializer.JsonSerialize(data);
+
+// 🚀 Fast (stricter, faster parsing/writing)
+byte[] fast = Serializer.JsonSerializeFast(data);
+
+// 🚀🚀 Fast + buffer reuse (zero-allocation after first call)
+byte[] buffer = null;
+int len = Serializer.JsonSerializeFast(data, ref buffer);
+
+// 🚀🚀🚀 Fast POCO (pure C# objects, no Unity types)
+JsonSerializerOptions pocoOpts = Serializer.CreateFastPocoJsonOptions();
+byte[] fastest = Serializer.JsonSerialize(pureCSharpData, pocoOpts);
+```
+
 ## Protobuf Examples (Compact + Evolvable)
 
 - Basic usage

@@ -101,160 +101,160 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private static UnityHelpersBufferSettingsAsset _waitInstructionBufferSettingsAsset;
         private static readonly GUIContent StringInListPageSizeContent =
             EditorGUIUtility.TrTextContent(
-                "StringInList Page Size",
+                "StringInList",
                 "Number of options displayed per page in StringInList dropdowns."
             );
         private static readonly GUIContent SerializableSetPageSizeContent =
             EditorGUIUtility.TrTextContent(
-                "Serializable Set Page Size",
+                "Sets",
                 "Number of entries displayed per page in SerializableHashSet and SerializableSortedSet inspectors."
             );
         private static readonly GUIContent SerializableSetStartCollapsedContent =
             EditorGUIUtility.TrTextContent(
-                "Start Serializable Sets Collapsed",
+                "Sets Start Collapsed",
                 "When enabled, SerializableHashSet and SerializableSortedSet inspectors start collapsed unless overridden per field via SerializableCollectionFoldoutAttribute."
             );
         private static readonly GUIContent SerializableDictionaryPageSizeContent =
             EditorGUIUtility.TrTextContent(
-                "Serializable Dictionary Page Size",
+                "Dictionaries",
                 "Number of entries displayed per page in SerializableDictionary and SerializableSortedDictionary inspectors."
             );
         private static readonly GUIContent SerializableDictionaryStartCollapsedContent =
             EditorGUIUtility.TrTextContent(
-                "Start Serializable Dictionaries Collapsed",
+                "Dicts Start Collapsed",
                 "When enabled, SerializableDictionary and SerializableSortedDictionary inspectors start collapsed unless overridden with SerializableCollectionFoldoutAttribute."
             );
         private static readonly GUIContent EnumToggleButtonsPageSizeContent =
             EditorGUIUtility.TrTextContent(
-                "WEnum Toggle Buttons Page Size",
+                "Enum Toggles",
                 "Number of toggle buttons displayed per page when WEnumToggleButtons groups exceed the configured threshold."
             );
         private static readonly GUIContent WButtonPageSizeContent = EditorGUIUtility.TrTextContent(
-            "WButton Page Size",
+            "Page Size",
             "Number of WButton actions displayed per page when grouped by draw order."
         );
         private static readonly GUIContent WButtonHistorySizeContent =
             EditorGUIUtility.TrTextContent(
-                "WButton Histroy Size",
+                "History Size",
                 "Number of recent results remembered per WButton method for each inspected object."
             );
         private static readonly GUIContent WButtonPlacementContent = EditorGUIUtility.TrTextContent(
-            "WButton Placement",
-            "Controls where WButton actions render relative to the inspector content."
+            "Placement",
+            "Controls where WButton actions render relative to the inspector content (Top or Bottom of inspector)."
         );
         private static readonly GUIContent WButtonFoldoutBehaviorContent =
             EditorGUIUtility.TrTextContent(
-                "WButton Foldout Behavior",
+                "Foldout Behavior",
                 "Determines whether WButton action groups are always visible, start expanded, or start collapsed when first drawn."
             );
         private static readonly GUIContent WButtonFoldoutTweenEnabledContent =
             EditorGUIUtility.TrTextContent(
-                "WButton Foldout Tween Enabled",
+                "Animate Foldouts",
                 "Enable animated transitions when expanding or collapsing WButton action groups."
             );
         private static readonly GUIContent WButtonFoldoutSpeedContent =
             EditorGUIUtility.TrTextContent(
-                "WButton Foldout Speed",
+                "Foldout Speed",
                 "Animation speed used when expanding or collapsing WButton action groups."
             );
         private static readonly GUIContent WButtonCustomColorsContent =
             EditorGUIUtility.TrTextContent("WButton Custom Colors");
         private static readonly GUIContent WButtonCancelButtonColorContent =
             EditorGUIUtility.TrTextContent(
-                "Cancel Button Color",
+                "Cancel Background",
                 "Background color for the Cancel button that appears during async WButton execution."
             );
         private static readonly GUIContent WButtonCancelButtonTextColorContent =
             EditorGUIUtility.TrTextContent(
-                "Cancel Button Text Color",
-                "Text color for the Cancel button."
+                "Cancel Text",
+                "Text color for the Cancel button that appears during async WButton execution."
             );
         private static readonly GUIContent WButtonClearHistoryButtonColorContent =
             EditorGUIUtility.TrTextContent(
-                "Clear History Button Color",
+                "Clear Background",
                 "Background color for the Clear History button in WButton result history."
             );
         private static readonly GUIContent WButtonClearHistoryButtonTextColorContent =
             EditorGUIUtility.TrTextContent(
-                "Clear History Button Text Color",
-                "Text color for the Clear History button."
+                "Clear Text",
+                "Text color for the Clear History button in WButton result history."
             );
         private static readonly GUIContent WEnumToggleButtonsCustomColorsContent =
             EditorGUIUtility.TrTextContent("WEnumToggleButtons Custom Colors");
         private static readonly GUIContent InlineEditorFoldoutBehaviorContent =
             EditorGUIUtility.TrTextContent(
-                "WInLineEditor Foldout Behavior",
+                "Foldout Behavior",
                 "Default foldout state for inline object editors when a field does not specify a mode."
             );
         private static readonly GUIContent InlineEditorFoldoutTweenEnabledContent =
             EditorGUIUtility.TrTextContent(
-                "Tween InlineEditor Foldouts",
+                "Animate Foldouts",
                 "Enable animated transitions when expanding or collapsing WInLineEditor foldouts."
             );
         private static readonly GUIContent InlineEditorFoldoutSpeedContent =
             EditorGUIUtility.TrTextContent(
-                "InlineEditor Foldout Speed",
+                "Foldout Speed",
                 "Animation speed used when expanding or collapsing WInLineEditor foldouts."
             );
         private static readonly GUIContent DictionaryFoldoutTweenEnabledContent =
             EditorGUIUtility.TrTextContent(
-                "Tween Dictionary Foldouts",
+                "Animate Dictionary",
                 "Enable animated transitions when expanding or collapsing SerializableDictionary pending entries."
             );
         private static readonly GUIContent DictionaryFoldoutSpeedContent =
             EditorGUIUtility.TrTextContent(
-                "Dictionary Foldout Speed",
+                "Dictionary Speed",
                 "Animation speed used when expanding or collapsing SerializableDictionary pending entries."
             );
         private static readonly GUIContent SortedDictionaryFoldoutTweenEnabledContent =
             EditorGUIUtility.TrTextContent(
-                "Tween Sorted Dictionary Foldouts",
+                "Animate Sorted Dict",
                 "Enable animated transitions when expanding or collapsing SerializableSortedDictionary pending entries."
             );
         private static readonly GUIContent SortedDictionaryFoldoutSpeedContent =
             EditorGUIUtility.TrTextContent(
-                "Sorted Dictionary Foldout Speed",
+                "Sorted Dict Speed",
                 "Animation speed used when expanding or collapsing SerializableSortedDictionary pending entries."
             );
         private static readonly GUIContent SetFoldoutTweenEnabledContent =
             EditorGUIUtility.TrTextContent(
-                "Tween Serializable Set Foldouts",
+                "Animate Foldouts",
                 "Enable animated transitions when expanding or collapsing SerializableHashSet manual entry foldouts."
             );
         private static readonly GUIContent SetFoldoutSpeedContent = EditorGUIUtility.TrTextContent(
-            "Serializable Set Foldout Speed",
+            "Foldout Speed",
             "Animation speed used when expanding or collapsing SerializableHashSet manual entry foldouts."
         );
         private static readonly GUIContent SortedSetFoldoutTweenEnabledContent =
             EditorGUIUtility.TrTextContent(
-                "Tween Serializable Sorted Set Foldouts",
+                "Animate Foldouts",
                 "Enable animated transitions when expanding or collapsing SerializableSortedSet manual entry foldouts."
             );
         private static readonly GUIContent SortedSetFoldoutSpeedContent =
             EditorGUIUtility.TrTextContent(
-                "Serializable Sorted Set Foldout Speed",
+                "Foldout Speed",
                 "Animation speed used when expanding or collapsing SerializableSortedSet manual entry foldouts."
             );
         private const string WaitInstructionBufferDefaultsHelpText =
             "Configure the global defaults for Buffers.WaitInstruction pooling. These values are applied automatically on domain reload and when the player starts if Auto Apply is enabled.";
         private static readonly GUIContent WaitInstructionBufferApplyOnLoadContent =
             EditorGUIUtility.TrTextContent(
-                "Auto Apply On Load",
+                "Auto Apply",
                 "When enabled, the configured defaults are applied automatically on domain reload, scene load, and in player builds."
             );
         private static readonly GUIContent WaitInstructionBufferQuantizationContent =
             EditorGUIUtility.TrTextContent(
-                "Quantization Step (seconds)",
-                "Durations are rounded to this step before being cached. Set to 0 to disable quantization."
+                "Quantization (s)",
+                "Durations are rounded to this step (in seconds) before being cached. Set to 0 to disable quantization."
             );
         private static readonly GUIContent WaitInstructionBufferMaxEntriesContent =
             EditorGUIUtility.TrTextContent(
-                "Max Distinct Entries",
+                "Max Entries",
                 "Maximum number of cached WaitForSeconds/Realtime durations (0 = unbounded)."
             );
         private static readonly GUIContent WaitInstructionBufferUseLruContent =
             EditorGUIUtility.TrTextContent(
-                "Use LRU Eviction",
+                "LRU Eviction",
                 "When enabled, the cache evicts the least recently used duration instead of refusing new entries once the limit is reached."
             );
         private static readonly GUIContent WaitInstructionBufferApplyNowButtonContent =
@@ -263,52 +263,52 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             EditorGUIUtility.TrTextContent("Capture Current Values");
         private static readonly GUIContent DuplicateAnimationModeContent =
             EditorGUIUtility.TrTextContent(
-                "Duplicate Row Animation",
-                "Controls how duplicate entries are presented in SerializableDictionary inspectors."
+                "Animation Mode",
+                "Controls how duplicate entries are presented in SerializableDictionary inspectors (None, Static, or Tween)."
             );
         private static readonly GUIContent DuplicateTweenCyclesContent =
             EditorGUIUtility.TrTextContent(
-                "Tween Cycle Limit",
+                "Shake Cycles",
                 "Number of shake cycles performed when highlighting duplicate entries. Negative values loop indefinitely."
             );
         private static readonly GUIContent DetectAssetChangeLoopWindowContent =
             EditorGUIUtility.TrTextContent(
-                "Detect Asset Change Loop Window (seconds)",
-                "Time window used to detect repeated DetectAssetChanged callbacks before loop suppression disables them."
+                "Window (s)",
+                "Time window (in seconds) used to detect repeated DetectAssetChanged callbacks before loop suppression disables them."
             );
         private static readonly GUIContent SerializableSetDuplicateTweenEnabledContent =
             EditorGUIUtility.TrTextContent(
-                "Tween Serializable Set Duplicates",
+                "Animate Duplicates",
                 "Enable lateral shake animations when highlighting duplicate or invalid entries in SerializableHashSet and SerializableSortedSet inspectors."
             );
         private static readonly GUIContent SerializableSetDuplicateTweenCyclesContent =
             EditorGUIUtility.TrTextContent(
-                "Set Duplicate Tween Cycles",
+                "Shake Cycles",
                 "Number of shake cycles performed for SerializableSet duplicate entries. Negative values loop indefinitely."
             );
         private static readonly GUIContent WGroupAutoIncludeModeContent =
             EditorGUIUtility.TrTextContent(
-                "Auto Include Mode",
-                "Default behavior for automatically extending WGroup declarations."
+                "Include Mode",
+                "Default behavior for automatically extending WGroup declarations (None, Finite, or Infinite)."
             );
         private static readonly GUIContent WGroupAutoIncludeCountContent =
             EditorGUIUtility.TrTextContent(
-                "Finite Include Count",
+                "Include Count",
                 "Number of additional serialized members appended when auto include mode is Finite."
             );
         private static readonly GUIContent WGroupStartCollapsedContent =
             EditorGUIUtility.TrTextContent(
-                "Start WGroups Collapsed",
+                "Start Collapsed",
                 "Default foldout state used when collapsible WGroups do not specify startCollapsed explicitly."
             );
         private static readonly GUIContent WGroupFoldoutTweenEnabledContent =
             EditorGUIUtility.TrTextContent(
-                "Tween WGroup Foldouts",
+                "Animate Foldouts",
                 "Enable animated transitions when expanding or collapsing WGroup foldouts."
             );
         private static readonly GUIContent WGroupFoldoutSpeedContent =
             EditorGUIUtility.TrTextContent(
-                "WGroup Foldout Speed",
+                "Foldout Speed",
                 "Animation speed used when expanding or collapsing WGroup foldouts."
             );
 
@@ -583,6 +583,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         [FormerlySerializedAs("foldoutTweenSettingsInitialized")]
         [SerializeField]
+        [HideInInspector]
         private bool _foldoutTweenSettingsInitialized;
 
         [FormerlySerializedAs("serializableDictionaryFoldoutSpeed")]
@@ -4374,6 +4375,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 );
                                 continue;
                             }
+
+                            // Skip hidden properties - they should not be rendered
+                            if (operation.IsHiddenInInspector)
+                            {
+                                continue;
+                            }
+
                             SerializedProperty property = serializedSettings.FindProperty(
                                 operation.PropertyPath
                             );

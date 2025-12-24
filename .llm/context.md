@@ -28,7 +28,7 @@ Unity Helpers eliminates repetitive boilerplate code with production-ready utili
 
 1. **Zero boilerplate** — APIs handle tedious work; expressive, self-documenting code
 2. **Performance-proven** — Measurable speed improvements with benchmarks
-3. **Production-ready** — 4,000+ tests, IL2CPP/WebGL compatible, shipped in commercial games
+3. **Production-ready** — 8,000+ tests, IL2CPP/WebGL compatible, shipped in commercial games
 
 ---
 
@@ -283,8 +283,8 @@ Options: `Optional`, `MaxDepth`, `OnlyAncestors`, `IncludeInactive`
 
 ### Spatial Data Structures
 
-- **2D**: `QuadTree2D<T>`, `KDTree2D<T>`, `RTree2D<T>`, `SpatialHash2D<T>`
-- **3D**: `OctTree3D<T>`, `KDTree3D<T>`, `RTree3D<T>`, `SpatialHash3D<T>`
+- **2D**: `QuadTree2D<T>`, `KdTree2D<T>`, `RTree2D<T>`, `SpatialHash2D<T>`
+- **3D**: `OctTree3D<T>`, `KdTree3D<T>`, `RTree3D<T>`, `SpatialHash3D<T>`
 
 ### Other Data Structures
 

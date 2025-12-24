@@ -117,6 +117,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                     continue;
                 }
 
+                // Skip hidden properties - they should not be rendered
+                if (operation.IsHiddenInInspector)
+                {
+                    continue;
+                }
+
                 if (
                     !propertyLookup.TryGetValue(
                         operation.PropertyPath,

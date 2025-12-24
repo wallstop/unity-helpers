@@ -65,11 +65,12 @@ public class PlayerStats : AttributesComponent
     public Attribute AttackDamage = 10f;
     public Attribute Defense = 5f;
 
-    void Start()
+    protected override void Awake()
     {
+        base.Awake();
         // Optional: Log when attributes change
-        Speed.OnValueChanged += (oldVal, newVal) =>
-            Debug.Log($"Speed changed: {oldVal} → {newVal}");
+        OnAttributeModified += (attributeName, oldVal, newVal) =>
+            Debug.Log($"{attributeName} changed: {oldVal} → {newVal}");
     }
 }
 ```
@@ -283,7 +284,7 @@ if (handle.HasValue)
 }
 
 // Remove all haste effects
-this.RemoveAllEffectsWithTag("Haste");
+this.RemoveEffects(this.GetHandlesWithTag("Haste"));
 ```
 
 ### Multiple Modifications Per Effect

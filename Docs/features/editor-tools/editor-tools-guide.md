@@ -242,6 +242,12 @@ Generate Mip Maps: false
 - Maintaining performance standards
 - Team consistency enforcement
 
+> **Visual Reference**
+>
+> ![Texture Settings Applier window showing configuration options](../../images/editor-tools/texture-settings-applier.png)
+>
+> _Texture Settings Applier with filter mode, wrap mode, and compression options_
+
 **Related Tools:**
 
 - After setting texture settings, use [Sprite Settings Applier](#sprite-settings-applier) for sprite-specific options
@@ -281,6 +287,12 @@ Generate Mip Maps: false
 - Consistent pivots across varied silhouettes
 - Normalizing pivots before animation creation
 
+> **Visual Reference**
+>
+> ![Sprite Pivot Adjuster window showing alpha-weighted pivot calculation](../../images/editor-tools/sprite-pivot-adjuster.png)
+>
+> _Sprite Pivot Adjuster with alpha cutoff slider and directory selection_
+
 ---
 
 ### Sprite Settings Applier
@@ -319,6 +331,12 @@ Generate Mip Maps: false
 - Enforcing project‑wide sprite import standards
 - Fixing inconsistent PPU/pivots automatically
 - Applying different settings per folder/pattern (via Regex/Path)
+
+> **Visual Reference**
+>
+> ![Sprite Settings Applier window showing profile configuration](../../images/editor-tools/sprite-settings-applier.png)
+>
+> _Sprite Settings Applier with profile matching modes and import settings_
 
 ---
 
@@ -386,6 +404,12 @@ Generate Mip Maps: false
 - Textures are made readable automatically
 - Changes are permanent (backup originals!)
 - AssetDatabase refreshes after completion
+
+> **Visual Reference**
+>
+> ![Texture Resizer window showing resize algorithm options](../../images/editor-tools/texture-resizer.png)
+>
+> _Texture Resizer with bilinear/point algorithm selection and multiplier settings_
 
 ---
 
@@ -469,6 +493,12 @@ Result: Max Size → 64 (matches source)
 - Uses AssetDatabase batch editing for speed
 - Progress bar for large operations
 - Cancellable during processing
+
+> **Visual Reference**
+>
+> ![Fit Texture Size window showing fit mode options and preview](../../images/editor-tools/fit-texture-size.png)
+>
+> _Fit Texture Size with GrowAndShrink/GrowOnly/ShrinkOnly mode selection_
 
 ---
 
@@ -671,6 +701,12 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 - Syncing generated clips into your canonical destination
 - Keeping animation folders tidy with cleanup actions
 
+> **Visual Reference**
+>
+> ![Animation Copier window showing source/destination analysis](../../images/editor-tools/animation-copier.png)
+>
+> _Animation Copier with new/changed/unchanged/orphan tabs and copy actions_
+
 ---
 
 ### Sprite Sheet Animation Creator
@@ -824,6 +860,16 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 - Sprite preview helps verify timing
 - Multiple events can exist at the same frame
 - Use "Re-Order" before saving for consistency
+
+> **Visual Reference**
+>
+> ![Animation Event Editor window showing event list and sprite preview](../../images/editor-tools/animation-event-editor.png)
+>
+> _Animation Event Editor with sprite preview, method selector, and parameter editing_
+>
+> ![Animation Event Editor adding a new event at frame index](../../images/editor-tools/animation-event-editor-add.gif)
+>
+> _Adding an animation event at a specific frame with method auto-discovery_
 
 **Common Method Signatures:**
 
@@ -1002,6 +1048,16 @@ maxTextureSize: 2048
 - **Quality issues:** Use "Force Uncompressed" on source sprites
 - **Regex errors:** Validate patterns (will log specific errors)
 
+> **Visual Reference**
+>
+> ![Sprite Atlas Generator window showing regex configuration](../../images/editor-tools/sprite-atlas-generator.png)
+>
+> _Sprite Atlas Generator with regex-based sprite selection and packing settings_
+>
+> ![Sprite Atlas Generator scan results showing sprites to add](../../images/editor-tools/sprite-atlas-generator-scan.gif)
+>
+> _Scanning folders and previewing which sprites will be added to the atlas_
+
 ---
 
 <a id="validation--quality-tools"></a>
@@ -1068,6 +1124,16 @@ maxTextureSize: 2048
 - Team onboarding with prefab standards
 - Migration validation after Unity upgrades
 - Continuous integration health checks
+
+> **Visual Reference**
+>
+> ![Prefab Checker window showing validation check options](../../images/editor-tools/prefab-checker.png)
+>
+> _Prefab Checker with configurable validation checks and folder selection_
+>
+> ![Prefab Checker results in console showing detected issues](../../images/editor-tools/prefab-checker-results.png)
+>
+> _Console output showing detected prefab issues with clickable links_
 
 ---
 
@@ -1339,6 +1405,16 @@ public AbilityConfig alwaysVisible;
 
 **See also:** [Inspector Settings Reference](../inspector/inspector-settings.md#inline-editor-settings) for complete settings documentation.
 
+> **Visual Reference**
+>
+> ![WInLineEditor showing embedded ScriptableObject inspector](../../images/editor-tools/winlineeditor-expanded.png)
+>
+> _WInLineEditor with embedded inspector for a ScriptableObject reference_
+>
+> ![WInLineEditor foldout animation](../../images/editor-tools/winlineeditor-foldout.gif)
+>
+> _Foldout collapse/expand animation with smooth transitions_
+
 ---
 
 ### WShowIf Property Drawer
@@ -1413,6 +1489,16 @@ public List<string> regexPatterns;
 - Mode-based configuration UI
 - Complex nested settings
 
+> **Visual Reference**
+>
+> ![WShowIf showing field visibility changing based on toggle](../../images/editor-tools/wshowif-boolean.gif)
+>
+> _Field appears/disappears based on boolean toggle state_
+>
+> ![WShowIf with enum condition showing different fields](../../images/editor-tools/wshowif-enum.gif)
+>
+> _Different fields shown based on enum selection_
+
 ---
 
 ### StringInList Property Drawer
@@ -1470,6 +1556,16 @@ public class MySettings
 - Dynamic option lists
 - User-friendly enumerations
 
+> **Visual Reference**
+>
+> ![StringInList dropdown with search and pagination](../../images/editor-tools/stringinlist-dropdown.png)
+>
+> _StringInList dropdown showing search filtering and pagination_
+>
+> ![StringInList with list field showing add/remove/reorder](../../images/editor-tools/stringinlist-list.gif)
+>
+> _StringInList on a List field with per-element dropdowns and drag reordering_
+
 ---
 
 ### IntDropdown Property Drawer
@@ -1517,6 +1613,12 @@ public int spritePadding = 4;
 [IntDropdown(0, 1, 2, 3, 4, 5)]
 public int qualityLevel = 3;
 ```
+
+> **Visual Reference**
+>
+> ![IntDropdown showing texture size options](../../images/editor-tools/intdropdown-texturesize.png)
+>
+> _IntDropdown for texture sizes showing power-of-two options_
 
 ---
 
@@ -1569,6 +1671,14 @@ public class CharacterStats : MonoBehaviour
     }
 }
 ```
+
+> **Visual Reference**
+>
+> ![WReadOnly showing grayed-out calculated value in inspector](../../images/editor-tools/wreadonly-inspector.png)
+>
+> _WReadOnly field showing totalHealth as non-editable calculated value_
+
+For detailed documentation on validation attributes, see [Inspector Validation Attributes](../inspector/inspector-validation-attributes.md).
 
 ---
 

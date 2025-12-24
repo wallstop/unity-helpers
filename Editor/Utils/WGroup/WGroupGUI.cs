@@ -4,8 +4,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
     using System;
     using System.Collections.Generic;
     using UnityEditor;
+    using UnityEditor.AnimatedValues;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Settings;
 
     /// <summary>
     /// Diagnostics helper for debugging WGroup indentation issues.
@@ -192,25 +194,63 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                 bool expanded = true;
                 bool allowHeader = !definition.HideHeader;
                 bool headerHasFoldout = HeaderHasFoldout(definition);
+                AnimBool foldoutAnim = null;
+
+                int targetInstanceId = serializedObject?.targetObject?.GetInstanceID() ?? 0;
+
                 if (headerHasFoldout)
                 {
-                    expanded = DrawFoldoutHeader(definition, foldoutStates);
+                    expanded = DrawFoldoutHeader(definition, foldoutStates, targetInstanceId);
+
+                    // Initialize animation state only for collapsible groups when tweening is enabled
+                    if (UnityHelpersSettings.ShouldTweenWGroupFoldouts())
+                    {
+                        foldoutAnim = WGroupAnimationState.GetOrCreateAnim(
+                            definition,
+                            expanded,
+                            targetInstanceId
+                        );
+                    }
                 }
                 else if (allowHeader)
                 {
                     DrawHeader(definition.DisplayName);
                 }
 
-                if (expanded)
+                // Calculate fade progress for animated content
+                float fade = foldoutAnim?.faded ?? (expanded ? 1f : 0f);
+
+                if (foldoutAnim == null)
                 {
-                    DrawGroupContent(
-                        definition,
-                        serializedObject,
-                        foldoutStates,
-                        propertyLookup,
-                        overrideDrawer,
-                        allowHeader
-                    );
+                    // No animation - draw content immediately when expanded
+                    if (expanded)
+                    {
+                        DrawGroupContent(
+                            definition,
+                            serializedObject,
+                            foldoutStates,
+                            propertyLookup,
+                            overrideDrawer,
+                            allowHeader
+                        );
+                    }
+                }
+                else
+                {
+                    // Animated - use fade group for smooth transition
+                    bool visible = EditorGUILayout.BeginFadeGroup(fade);
+                    if (visible)
+                    {
+                        DrawGroupContent(
+                            definition,
+                            serializedObject,
+                            foldoutStates,
+                            propertyLookup,
+                            overrideDrawer,
+                            allowHeader
+                        );
+                    }
+                    EditorGUILayout.EndFadeGroup();
                 }
             }
 
@@ -236,10 +276,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
         private static bool DrawFoldoutHeader(
             WGroupDefinition definition,
-            Dictionary<int, bool> foldoutStates
+            Dictionary<int, bool> foldoutStates,
+            int targetInstanceId
         )
         {
-            int key = Objects.HashCode(definition.Name, definition.AnchorPropertyPath);
+            int key = Objects.HashCode(
+                definition.Name,
+                definition.AnchorPropertyPath,
+                targetInstanceId
+            );
             if (foldoutStates != null && foldoutStates.TryGetValue(key, out bool expanded))
             {
                 // value already loaded

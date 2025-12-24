@@ -114,11 +114,70 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly ConcurrentDictionary<Type, byte> UnsupportedParameterlessTypes =
             new();
 
+        /// <summary>
+        /// Struct key for MainFoldoutAnimations cache to avoid string allocations.
+        /// Uses (instanceId, propertyPath) pair for cache identity.
+        /// </summary>
+        private readonly struct MainFoldoutCacheKey : IEquatable<MainFoldoutCacheKey>
+        {
+            public readonly int InstanceId;
+            public readonly string PropertyPath;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public MainFoldoutCacheKey(int instanceId, string propertyPath)
+            {
+                InstanceId = instanceId;
+                PropertyPath = propertyPath;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool Equals(MainFoldoutCacheKey other)
+            {
+                return InstanceId == other.InstanceId
+                    && string.Equals(PropertyPath, other.PropertyPath, StringComparison.Ordinal);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is MainFoldoutCacheKey other && Equals(other);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public override int GetHashCode()
+            {
+                return Objects.HashCode(InstanceId, PropertyPath);
+            }
+
+            /// <summary>
+            /// Converts to string representation for test verification.
+            /// </summary>
+            public override string ToString()
+            {
+                return $"{InstanceId}:{PropertyPath}";
+            }
+        }
+
         // Main foldout animation cache - static because property drawers can be recreated
-        private static readonly Dictionary<string, AnimBool> MainFoldoutAnimations = new Dictionary<
-            string,
-            AnimBool
-        >(StringComparer.Ordinal);
+        // Keys include the target object's instance ID to prevent cache collisions between different objects
+        private static readonly Dictionary<MainFoldoutCacheKey, AnimBool> MainFoldoutAnimations =
+            new();
+
+        /// <summary>
+        /// Computes the cache key for main foldout animations.
+        /// Includes the target object's instance ID to prevent collisions between different objects.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static MainFoldoutCacheKey GetMainFoldoutCacheKey(
+            SerializedObject serializedObject,
+            string propertyPath
+        )
+        {
+            int instanceId =
+                serializedObject?.targetObject != null
+                    ? serializedObject.targetObject.GetInstanceID()
+                    : 0;
+            return new MainFoldoutCacheKey(instanceId, propertyPath);
+        }
 
         private readonly Dictionary<string, PaginationState> _paginationStates = new();
         private readonly Dictionary<string, DuplicateState> _duplicateStates = new();
@@ -741,6 +800,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 // Get main foldout animation progress for smooth expand/collapse animation
                 float mainFoldoutProgress = GetMainFoldoutProgress(
+                    property.serializedObject,
                     property.propertyPath,
                     property.isExpanded,
                     IsSortedSetCached(property)
@@ -1107,7 +1167,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             LastFooterRangeLabelRect = default;
 
             // Clear main foldout animation cache
-            foreach (KeyValuePair<string, AnimBool> kvp in MainFoldoutAnimations)
+            foreach (KeyValuePair<MainFoldoutCacheKey, AnimBool> kvp in MainFoldoutAnimations)
             {
                 kvp.Value?.valueChanged.RemoveListener(RequestRepaint);
             }
@@ -1166,6 +1226,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             // Get main foldout animation progress
             float mainFoldoutProgress = GetMainFoldoutProgress(
+                property.serializedObject,
                 propertyPath,
                 property.isExpanded,
                 isSortedSet
@@ -1440,6 +1501,46 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return key;
         }
 
+        /// <summary>
+        /// Struct key for static property cache lookup to avoid string allocations.
+        /// </summary>
+        private readonly struct PropertyCacheKey : IEquatable<PropertyCacheKey>
+        {
+            public readonly int InstanceId;
+            public readonly string PropertyPath;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public PropertyCacheKey(int instanceId, string propertyPath)
+            {
+                InstanceId = instanceId;
+                PropertyPath = propertyPath;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool Equals(PropertyCacheKey other)
+            {
+                return InstanceId == other.InstanceId
+                    && string.Equals(PropertyPath, other.PropertyPath, StringComparison.Ordinal);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is PropertyCacheKey other && Equals(other);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public override int GetHashCode()
+            {
+                return Objects.HashCode(InstanceId, PropertyPath);
+            }
+        }
+
+        // Static cache for single-target property cache keys to avoid repeated string allocations
+        private static readonly Dictionary<PropertyCacheKey, string> SingleTargetPropertyKeyCache =
+            new();
+
+        private const int MaxSingleTargetPropertyKeyCacheSize = 512;
+
         private static string BuildPropertyCacheKey(SerializedProperty property)
         {
             if (property == null)
@@ -1462,9 +1563,35 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return $"{fallbackId}_{propertyPath}";
             }
 
+            // Common case: single target - use static cache to avoid string allocation
             if (targets.Length == 1 && targets[0] != null)
             {
-                return $"{targets[0].GetInstanceID()}_{propertyPath}";
+                int instanceId = targets[0].GetInstanceID();
+                PropertyCacheKey cacheKey = new(instanceId, propertyPath);
+
+                if (SingleTargetPropertyKeyCache.TryGetValue(cacheKey, out string cached))
+                {
+                    return cached;
+                }
+
+                // Build and cache the key string
+                using PooledResource<StringBuilder> lease = Buffers.GetStringBuilder(
+                    propertyPath.Length + 16,
+                    out StringBuilder builder
+                );
+                builder.Clear();
+                builder.Append(instanceId);
+                builder.Append('_');
+                builder.Append(propertyPath);
+                string result = builder.ToString();
+
+                // Limit cache size to prevent unbounded growth
+                if (SingleTargetPropertyKeyCache.Count < MaxSingleTargetPropertyKeyCacheSize)
+                {
+                    SingleTargetPropertyKeyCache[cacheKey] = result;
+                }
+
+                return result;
             }
 
             using PooledResource<StringBuilder> keyBuilderLease = Buffers.GetStringBuilder(
@@ -3139,6 +3266,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         }
 
         private static AnimBool EnsureMainFoldoutAnim(
+            SerializedObject serializedObject,
             string propertyPath,
             bool isExpanded,
             bool isSortedSet
@@ -3146,6 +3274,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             bool shouldTween = ShouldTweenMainFoldout(isSortedSet);
             float speed = GetMainFoldoutAnimationSpeed(isSortedSet);
+            MainFoldoutCacheKey cacheKey = GetMainFoldoutCacheKey(serializedObject, propertyPath);
 
             SerializableCollectionTweenDiagnostics.LogTweenSettingsQuery(
                 "EnsureMainFoldoutAnim",
@@ -3157,10 +3286,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (!shouldTween)
             {
-                if (MainFoldoutAnimations.TryGetValue(propertyPath, out AnimBool existing))
+                if (MainFoldoutAnimations.TryGetValue(cacheKey, out AnimBool existing))
                 {
                     existing.valueChanged.RemoveListener(RequestRepaint);
-                    MainFoldoutAnimations.Remove(propertyPath);
+                    MainFoldoutAnimations.Remove(cacheKey);
 
                     SerializableCollectionTweenDiagnostics.LogAnimBoolDestroyed(
                         propertyPath,
@@ -3171,11 +3300,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return null;
             }
 
-            if (!MainFoldoutAnimations.TryGetValue(propertyPath, out AnimBool anim) || anim == null)
+            if (!MainFoldoutAnimations.TryGetValue(cacheKey, out AnimBool anim) || anim == null)
             {
                 anim = new AnimBool(isExpanded) { speed = speed };
                 anim.valueChanged.AddListener(RequestRepaint);
-                MainFoldoutAnimations[propertyPath] = anim;
+                MainFoldoutAnimations[cacheKey] = anim;
 
                 SerializableCollectionTweenDiagnostics.LogAnimBoolCreation(
                     propertyPath,
@@ -3194,6 +3323,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         }
 
         private static float GetMainFoldoutProgress(
+            SerializedObject serializedObject,
             string propertyPath,
             bool isExpanded,
             bool isSortedSet
@@ -3216,7 +3346,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return immediateProgress;
             }
 
-            AnimBool anim = EnsureMainFoldoutAnim(propertyPath, isExpanded, isSortedSet);
+            AnimBool anim = EnsureMainFoldoutAnim(
+                serializedObject,
+                propertyPath,
+                isExpanded,
+                isSortedSet
+            );
             if (anim == null)
             {
                 float fallbackProgress = isExpanded ? 1f : 0f;
@@ -3257,7 +3392,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         /// </summary>
         internal static void ClearMainFoldoutAnimCacheForTests()
         {
-            foreach (KeyValuePair<string, AnimBool> kvp in MainFoldoutAnimations)
+            foreach (KeyValuePair<MainFoldoutCacheKey, AnimBool> kvp in MainFoldoutAnimations)
             {
                 kvp.Value?.valueChanged.RemoveListener(RequestRepaint);
             }
@@ -3265,23 +3400,40 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         }
 
         /// <summary>
-        /// Returns true if a main foldout AnimBool exists for the given property path.
+        /// Returns true if a main foldout AnimBool exists for the given property path and target object.
         /// </summary>
-        internal static bool HasMainFoldoutAnimBoolForTests(string propertyPath)
+        internal static bool HasMainFoldoutAnimBoolForTests(
+            SerializedObject serializedObject,
+            string propertyPath
+        )
         {
-            return MainFoldoutAnimations.ContainsKey(propertyPath);
+            MainFoldoutCacheKey cacheKey = GetMainFoldoutCacheKey(serializedObject, propertyPath);
+            return MainFoldoutAnimations.ContainsKey(cacheKey);
         }
 
         /// <summary>
         /// Gets the main foldout progress for testing purposes.
         /// </summary>
         internal static float GetMainFoldoutProgressForTests(
+            SerializedObject serializedObject,
             string propertyPath,
             bool isExpanded,
             bool isSortedSet
         )
         {
-            return GetMainFoldoutProgress(propertyPath, isExpanded, isSortedSet);
+            return GetMainFoldoutProgress(serializedObject, propertyPath, isExpanded, isSortedSet);
+        }
+
+        /// <summary>
+        /// Gets the main foldout cache key for testing purposes.
+        /// Returns the string representation of the struct key.
+        /// </summary>
+        internal static string GetMainFoldoutCacheKeyForTests(
+            SerializedObject serializedObject,
+            string propertyPath
+        )
+        {
+            return GetMainFoldoutCacheKey(serializedObject, propertyPath).ToString();
         }
 
         private static bool ShouldTweenManualEntryFoldout(bool isSortedSet)

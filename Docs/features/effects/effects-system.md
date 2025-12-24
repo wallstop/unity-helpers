@@ -220,18 +220,22 @@ public class PlayerStats : AttributesComponent
         set => currentHealth = Mathf.Clamp(value, 0, MaxHealth.Value);
     }
 
-    void Start()
+    protected override void Awake()
     {
+        base.Awake();
         // Initialize current health to max
         currentHealth = MaxHealth.Value;
 
         // When max health changes, clamp current health
-        MaxHealth.OnValueChanged += (oldMax, newMax) =>
+        OnAttributeModified += (attributeName, oldVal, newVal) =>
         {
-            // If max decreased, ensure current doesn't exceed new max
-            if (currentHealth > newMax)
+            if (attributeName == nameof(MaxHealth))
             {
-                currentHealth = newMax;
+                // If max decreased, ensure current doesn't exceed new max
+                if (currentHealth > newVal)
+                {
+                    currentHealth = newVal;
+                }
             }
         };
     }
@@ -1747,7 +1751,7 @@ public class ElementalInteractions : MonoBehaviour
                 // Water puts out fire
                 if (target.HasTag("Burning"))
                 {
-                    target.RemoveAllEffectsWithTag("Burning");
+                    target.RemoveEffects(target.GetHandlesWithTag("Burning"));
                     CreateSteamParticles(target.transform.position);
                 }
                 break;
@@ -1756,7 +1760,7 @@ public class ElementalInteractions : MonoBehaviour
                 // Fire dries wet targets
                 if (target.HasTag("Wet"))
                 {
-                    target.RemoveAllEffectsWithTag("Wet");
+                    target.RemoveEffects(target.GetHandlesWithTag("Wet"));
                     CreateSteamParticles(target.transform.position);
                 }
                 else
@@ -1771,7 +1775,7 @@ public class ElementalInteractions : MonoBehaviour
                 if (target.HasTag("Wet"))
                 {
                     target.ApplyEffect(frozenEffect);
-                    target.RemoveAllEffectsWithTag("Wet");
+                    target.RemoveEffects(target.GetHandlesWithTag("Wet"));
                 }
                 break;
 
@@ -2097,7 +2101,7 @@ public class DebugConsole : MonoBehaviour
 
    ```csharp
    // EffectTags vs GrantTags:
-   // - EffectTags: Internal organization (removable via RemoveAllEffectsWithTag)
+   // - EffectTags: Internal organization (removable via GetHandlesWithTag + RemoveEffects)
    // - GrantTags: Gameplay queries (checked via HasTag)
 
    // Example effect:

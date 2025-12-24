@@ -20,8 +20,8 @@ This practical guide complements performance and semantics pages with diagrams a
 Quick picks
 
 - Many moving points, frequent rebuilds, broad searches: QuadTree2D
-- Static points, nearest‑neighbor/k‑NN: KDTree2D (Balanced)
-- Fast builds with good‑enough queries on points: KDTree2D (Unbalanced)
+- Static points, nearest‑neighbor/k‑NN: KdTree2D (Balanced)
+- Fast builds with good‑enough queries on points: KdTree2D (Unbalanced)
 - Objects with size (bounds), intersect/contain queries: RTree2D
 
 ## Quick Start (Code)

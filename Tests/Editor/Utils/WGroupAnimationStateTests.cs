@@ -327,6 +327,213 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
             Assert.That(progress3, Is.EqualTo(1f), "Progress should be consistent.");
         }
 
+        [Test]
+        public void DifferentTargetInstanceIdsProduceDifferentAnimBools()
+        {
+            WGroupDefinition definition = CreateTestDefinition("TestGroup", "testProperty");
+            const int targetId1 = 12345;
+            const int targetId2 = 67890;
+
+            AnimBool anim1 = WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: true,
+                targetInstanceId: targetId1
+            );
+            AnimBool anim2 = WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: true,
+                targetInstanceId: targetId2
+            );
+
+            Assert.AreNotSame(
+                anim1,
+                anim2,
+                "Same definition but different targetInstanceId values should produce different AnimBool instances."
+            );
+        }
+
+        [Test]
+        public void SameTargetInstanceIdProducesSameAnimBool()
+        {
+            WGroupDefinition definition = CreateTestDefinition("TestGroup", "testProperty");
+            const int targetId = 12345;
+
+            AnimBool first = WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: true,
+                targetInstanceId: targetId
+            );
+            AnimBool second = WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: false,
+                targetInstanceId: targetId
+            );
+
+            Assert.AreSame(
+                first,
+                second,
+                "Same definition and same targetInstanceId should return the same AnimBool instance."
+            );
+        }
+
+        [Test]
+        public void DefaultTargetInstanceIdIsZero()
+        {
+            WGroupDefinition definition = CreateTestDefinition("TestGroup", "testProperty");
+
+            AnimBool animWithDefault = WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: true
+            );
+            AnimBool animWithExplicitZero = WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: true,
+                targetInstanceId: 0
+            );
+
+            Assert.AreSame(
+                animWithDefault,
+                animWithExplicitZero,
+                "When not specified, targetInstanceId should default to 0."
+            );
+        }
+
+        [Test]
+        public void SameDefinitionDifferentTargetsHaveIndependentState()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            settings.WGroupFoldoutTweenEnabled = false;
+
+            WGroupDefinition definition = CreateTestDefinition("SharedGroup", "sharedProperty");
+            const int targetA = 100;
+            const int targetB = 200;
+
+            AnimBool animA = WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: true,
+                targetInstanceId: targetA
+            );
+            AnimBool animB = WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: false,
+                targetInstanceId: targetB
+            );
+
+            Assert.AreNotSame(
+                animA,
+                animB,
+                "Same definition on different targets should have separate AnimBool instances."
+            );
+
+            Assert.IsTrue(animA.target, "Target A should have expanded=true state.");
+            Assert.IsFalse(animB.target, "Target B should have expanded=false state.");
+
+            WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: false,
+                targetInstanceId: targetA
+            );
+            Assert.IsFalse(animA.target, "Target A state should update to collapsed.");
+            Assert.IsFalse(animB.target, "Target B state should remain unchanged (collapsed).");
+
+            WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: true,
+                targetInstanceId: targetB
+            );
+            Assert.IsFalse(animA.target, "Target A state should remain unchanged (collapsed).");
+            Assert.IsTrue(animB.target, "Target B state should update to expanded.");
+        }
+
+        [Test]
+        public void GetFadeProgressWithTargetInstanceIdReturnsCorrectValues()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            settings.WGroupFoldoutTweenEnabled = false;
+
+            WGroupDefinition definition = CreateTestDefinition("TestGroup", "testProperty");
+            const int targetId1 = 111;
+            const int targetId2 = 222;
+
+            float progress1Expanded = WGroupAnimationState.GetFadeProgress(
+                definition,
+                expanded: true,
+                targetInstanceId: targetId1
+            );
+            float progress2Collapsed = WGroupAnimationState.GetFadeProgress(
+                definition,
+                expanded: false,
+                targetInstanceId: targetId2
+            );
+
+            Assert.That(
+                progress1Expanded,
+                Is.EqualTo(1f),
+                "Target 1 expanded should return 1f when tweening disabled."
+            );
+            Assert.That(
+                progress2Collapsed,
+                Is.EqualTo(0f),
+                "Target 2 collapsed should return 0f when tweening disabled."
+            );
+        }
+
+        [Test]
+        public void ClearCacheRemovesAllAnimationsIncludingThoseWithTargetInstanceIds()
+        {
+            WGroupDefinition definition = CreateTestDefinition("TestGroup", "testProperty");
+            const int targetId1 = 1001;
+            const int targetId2 = 1002;
+
+            AnimBool anim1Before = WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: true,
+                targetInstanceId: targetId1
+            );
+            AnimBool anim2Before = WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: true,
+                targetInstanceId: targetId2
+            );
+            AnimBool animDefaultBefore = WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: true
+            );
+
+            WGroupAnimationState.ClearCache();
+
+            AnimBool anim1After = WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: true,
+                targetInstanceId: targetId1
+            );
+            AnimBool anim2After = WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: true,
+                targetInstanceId: targetId2
+            );
+            AnimBool animDefaultAfter = WGroupAnimationState.GetOrCreateAnim(
+                definition,
+                expanded: true
+            );
+
+            Assert.AreNotSame(
+                anim1Before,
+                anim1After,
+                "After ClearCache, a new AnimBool should be created for targetId1."
+            );
+            Assert.AreNotSame(
+                anim2Before,
+                anim2After,
+                "After ClearCache, a new AnimBool should be created for targetId2."
+            );
+            Assert.AreNotSame(
+                animDefaultBefore,
+                animDefaultAfter,
+                "After ClearCache, a new AnimBool should be created for default targetInstanceId."
+            );
+        }
+
         /// <summary>
         /// Creates a test WGroupDefinition with the specified name and anchor property path.
         /// </summary>

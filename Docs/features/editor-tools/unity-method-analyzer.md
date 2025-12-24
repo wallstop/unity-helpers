@@ -196,7 +196,7 @@ public class Boss : BaseEnemy
 
 Configure which directories to scan:
 
-![Managing source directories in the analyzer](../../images/editor-tools/unity-method-analyzer/source-directories.png)
+![Managing source directories in the analyzer](../../images/editor-tools/unity-method-analyzer/source-directories.gif)
 
 - **Click "+"** to add a new directory
 - **Click "..."** to browse for a different path

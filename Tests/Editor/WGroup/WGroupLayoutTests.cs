@@ -78,9 +78,13 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 }
                 else
                 {
-                    lines.Add($"  [{i}] Property: {op.PropertyPath}");
+                    string hiddenMarker = op.IsHiddenInInspector ? " [HIDDEN]" : "";
+                    lines.Add($"  [{i}] Property: {op.PropertyPath}{hiddenMarker}");
                 }
             }
+
+            lines.Add("\n--- Hidden Property Paths ---");
+            lines.Add($"  [{string.Join(", ", layout.HiddenPropertyPaths)}]");
 
             return string.Join("\n", lines);
         }
@@ -896,6 +900,368 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 () =>
                     $"Finite(0) should behave like None - only 1 field expected but has {group.PropertyPaths.Count}: [{string.Join(", ", group.PropertyPaths)}].\n{FormatLayoutDiagnostics(layout)}"
             );
+        }
+
+        /// <summary>
+        /// Tests that [HideInInspector] fields are excluded from auto-include processing.
+        /// Hidden fields should not be automatically added to groups.
+        /// </summary>
+        [Test]
+        public void HideInInspectorFieldsExcludedFromAutoInclude()
+        {
+            // Arrange: Use Finite mode with enough budget to capture all fields if HideInInspector weren't respected
+            UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
+                UnityHelpersSettings.WGroupAutoIncludeMode.Finite,
+                6
+            );
+            WGroupLayoutBuilder.ClearCache();
+
+            WGroupHideInInspectorTestTarget target =
+                CreateScriptableObject<WGroupHideInInspectorTestTarget>();
+            using SerializedObject serializedObject = new(target);
+
+            // Act
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, "m_Script");
+
+            // Assert
+            Assert.That(
+                layout.TryGetGroup("Test Group", out WGroupDefinition group),
+                Is.True,
+                () => $"Test Group should exist.\n{FormatLayoutDiagnostics(layout)}"
+            );
+
+            // Should NOT contain hidden fields
+            Assert.That(
+                group.PropertyPaths.Contains("_hiddenField1"),
+                Is.False,
+                () =>
+                    $"_hiddenField1 should NOT be auto-included.\n{FormatLayoutDiagnostics(layout)}"
+            );
+            Assert.That(
+                group.PropertyPaths.Contains("_hiddenField2"),
+                Is.False,
+                () =>
+                    $"_hiddenField2 should NOT be auto-included.\n{FormatLayoutDiagnostics(layout)}"
+            );
+
+            // Should contain visible fields
+            Assert.That(
+                group.PropertyPaths.Contains("groupAnchor"),
+                Is.True,
+                () => $"groupAnchor should be in the group.\n{FormatLayoutDiagnostics(layout)}"
+            );
+            Assert.That(
+                group.PropertyPaths.Contains("visibleField1"),
+                Is.True,
+                () => $"visibleField1 should be auto-included.\n{FormatLayoutDiagnostics(layout)}"
+            );
+            Assert.That(
+                group.PropertyPaths.Contains("visibleField2"),
+                Is.True,
+                () => $"visibleField2 should be auto-included.\n{FormatLayoutDiagnostics(layout)}"
+            );
+            Assert.That(
+                group.PropertyPaths.Contains("visibleField3"),
+                Is.True,
+                () => $"visibleField3 should be auto-included.\n{FormatLayoutDiagnostics(layout)}"
+            );
+            Assert.That(
+                group.PropertyPaths.Contains("visibleField4"),
+                Is.True,
+                () => $"visibleField4 should be auto-included.\n{FormatLayoutDiagnostics(layout)}"
+            );
+        }
+
+        /// <summary>
+        /// Tests that explicitly grouped [HideInInspector] fields are still included.
+        /// The [WGroup] attribute should override the auto-include exclusion.
+        /// </summary>
+        [Test]
+        public void ExplicitlyGroupedHiddenFieldsAreIncluded()
+        {
+            // Arrange: Use None mode to ensure no auto-include interference
+            UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
+                UnityHelpersSettings.WGroupAutoIncludeMode.None,
+                0
+            );
+            WGroupLayoutBuilder.ClearCache();
+
+            WGroupExplicitHiddenFieldTestTarget target =
+                CreateScriptableObject<WGroupExplicitHiddenFieldTestTarget>();
+            using SerializedObject serializedObject = new(target);
+
+            // Act
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, "m_Script");
+
+            // Assert
+            Assert.That(
+                layout.TryGetGroup("Explicit Group", out WGroupDefinition group),
+                Is.True,
+                () => $"Explicit Group should exist.\n{FormatLayoutDiagnostics(layout)}"
+            );
+
+            // Should contain the explicitly grouped hidden field
+            Assert.That(
+                group.PropertyPaths.Contains("_explicitlyGroupedHiddenField"),
+                Is.True,
+                () =>
+                    $"_explicitlyGroupedHiddenField should be explicitly included.\n{FormatLayoutDiagnostics(layout)}"
+            );
+
+            // Should also contain the anchor
+            Assert.That(
+                group.PropertyPaths.Contains("groupAnchor"),
+                Is.True,
+                () => $"groupAnchor should be in the group.\n{FormatLayoutDiagnostics(layout)}"
+            );
+
+            // Visible field should NOT be in the group (no auto-include, not explicitly grouped)
+            Assert.That(
+                group.PropertyPaths.Contains("visibleField"),
+                Is.False,
+                () =>
+                    $"visibleField should NOT be in the group (no auto-include).\n{FormatLayoutDiagnostics(layout)}"
+            );
+        }
+
+        /// <summary>
+        /// Tests that [HideInInspector] fields are excluded from infinite auto-include mode.
+        /// </summary>
+        [Test]
+        public void HideInInspectorExcludedInInfiniteMode()
+        {
+            // Arrange: Use Infinite mode
+            UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
+                UnityHelpersSettings.WGroupAutoIncludeMode.Infinite,
+                0
+            );
+            WGroupLayoutBuilder.ClearCache();
+
+            WGroupHideInInspectorInfiniteTestTarget target =
+                CreateScriptableObject<WGroupHideInInspectorInfiniteTestTarget>();
+            using SerializedObject serializedObject = new(target);
+
+            // Act
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, "m_Script");
+
+            // Assert
+            Assert.That(
+                layout.TryGetGroup("Infinite Group", out WGroupDefinition group),
+                Is.True,
+                () => $"Infinite Group should exist.\n{FormatLayoutDiagnostics(layout)}"
+            );
+
+            // Should NOT contain hidden field even in infinite mode
+            Assert.That(
+                group.PropertyPaths.Contains("_hiddenField"),
+                Is.False,
+                () =>
+                    $"_hiddenField should NOT be auto-included even in infinite mode.\n{FormatLayoutDiagnostics(layout)}"
+            );
+
+            // Should contain visible fields
+            Assert.That(
+                group.PropertyPaths.Contains("groupAnchor"),
+                Is.True,
+                () => $"groupAnchor should be in the group.\n{FormatLayoutDiagnostics(layout)}"
+            );
+            Assert.That(
+                group.PropertyPaths.Contains("visibleField1"),
+                Is.True,
+                () => $"visibleField1 should be auto-included.\n{FormatLayoutDiagnostics(layout)}"
+            );
+            Assert.That(
+                group.PropertyPaths.Contains("visibleField2"),
+                Is.True,
+                () => $"visibleField2 should be auto-included.\n{FormatLayoutDiagnostics(layout)}"
+            );
+        }
+
+        /// <summary>
+        /// Tests that ungrouped [HideInInspector] fields are tracked in HiddenPropertyPaths.
+        /// </summary>
+        [Test]
+        public void UngroupedHiddenFieldsInHiddenPropertyPaths()
+        {
+            // Arrange
+            UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
+                UnityHelpersSettings.WGroupAutoIncludeMode.None,
+                0
+            );
+            WGroupLayoutBuilder.ClearCache();
+
+            WGroupUngroupedHiddenFieldTestTarget target =
+                CreateScriptableObject<WGroupUngroupedHiddenFieldTestTarget>();
+            using SerializedObject serializedObject = new(target);
+
+            // Act
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, "m_Script");
+
+            // Assert: HiddenPropertyPaths should contain both hidden fields
+            Assert.That(
+                layout.HiddenPropertyPaths.Contains("_ungroupedHiddenField1"),
+                Is.True,
+                () =>
+                    $"_ungroupedHiddenField1 should be in HiddenPropertyPaths.\n{FormatLayoutDiagnostics(layout)}"
+            );
+            Assert.That(
+                layout.HiddenPropertyPaths.Contains("_ungroupedHiddenField2"),
+                Is.True,
+                () =>
+                    $"_ungroupedHiddenField2 should be in HiddenPropertyPaths.\n{FormatLayoutDiagnostics(layout)}"
+            );
+
+            // Assert: Visible fields should NOT be in HiddenPropertyPaths
+            Assert.That(
+                layout.HiddenPropertyPaths.Contains("visibleField1"),
+                Is.False,
+                () =>
+                    $"visibleField1 should NOT be in HiddenPropertyPaths.\n{FormatLayoutDiagnostics(layout)}"
+            );
+            Assert.That(
+                layout.HiddenPropertyPaths.Contains("visibleField2"),
+                Is.False,
+                () =>
+                    $"visibleField2 should NOT be in HiddenPropertyPaths.\n{FormatLayoutDiagnostics(layout)}"
+            );
+        }
+
+        /// <summary>
+        /// Tests that WGroupDrawOperation.IsHiddenInInspector is set correctly for property operations.
+        /// </summary>
+        [Test]
+        public void PropertyOperationIsHiddenInInspectorFlagSetCorrectly()
+        {
+            // Arrange
+            UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
+                UnityHelpersSettings.WGroupAutoIncludeMode.None,
+                0
+            );
+            WGroupLayoutBuilder.ClearCache();
+
+            WGroupUngroupedHiddenFieldTestTarget target =
+                CreateScriptableObject<WGroupUngroupedHiddenFieldTestTarget>();
+            using SerializedObject serializedObject = new(target);
+
+            // Act
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, "m_Script");
+
+            // Assert: Find operations and verify IsHiddenInInspector flag
+            bool foundHiddenField1 = false;
+            bool foundHiddenField2 = false;
+            bool foundVisibleField1 = false;
+            bool foundVisibleField2 = false;
+
+            for (int i = 0; i < layout.Operations.Count; i++)
+            {
+                WGroupDrawOperation op = layout.Operations[i];
+                if (op.Type != WGroupDrawOperationType.Property)
+                {
+                    continue;
+                }
+
+                if (string.Equals(op.PropertyPath, "_ungroupedHiddenField1"))
+                {
+                    foundHiddenField1 = true;
+                    Assert.That(
+                        op.IsHiddenInInspector,
+                        Is.True,
+                        () =>
+                            $"_ungroupedHiddenField1 operation should have IsHiddenInInspector=true.\n{FormatLayoutDiagnostics(layout)}"
+                    );
+                }
+                else if (string.Equals(op.PropertyPath, "_ungroupedHiddenField2"))
+                {
+                    foundHiddenField2 = true;
+                    Assert.That(
+                        op.IsHiddenInInspector,
+                        Is.True,
+                        () =>
+                            $"_ungroupedHiddenField2 operation should have IsHiddenInInspector=true.\n{FormatLayoutDiagnostics(layout)}"
+                    );
+                }
+                else if (string.Equals(op.PropertyPath, "visibleField1"))
+                {
+                    foundVisibleField1 = true;
+                    Assert.That(
+                        op.IsHiddenInInspector,
+                        Is.False,
+                        () =>
+                            $"visibleField1 operation should have IsHiddenInInspector=false.\n{FormatLayoutDiagnostics(layout)}"
+                    );
+                }
+                else if (string.Equals(op.PropertyPath, "visibleField2"))
+                {
+                    foundVisibleField2 = true;
+                    Assert.That(
+                        op.IsHiddenInInspector,
+                        Is.False,
+                        () =>
+                            $"visibleField2 operation should have IsHiddenInInspector=false.\n{FormatLayoutDiagnostics(layout)}"
+                    );
+                }
+            }
+
+            Assert.That(
+                foundHiddenField1,
+                Is.True,
+                () =>
+                    $"Should have found _ungroupedHiddenField1 operation.\n{FormatLayoutDiagnostics(layout)}"
+            );
+            Assert.That(
+                foundHiddenField2,
+                Is.True,
+                () =>
+                    $"Should have found _ungroupedHiddenField2 operation.\n{FormatLayoutDiagnostics(layout)}"
+            );
+            Assert.That(
+                foundVisibleField1,
+                Is.True,
+                () =>
+                    $"Should have found visibleField1 operation.\n{FormatLayoutDiagnostics(layout)}"
+            );
+            Assert.That(
+                foundVisibleField2,
+                Is.True,
+                () =>
+                    $"Should have found visibleField2 operation.\n{FormatLayoutDiagnostics(layout)}"
+            );
+        }
+
+        /// <summary>
+        /// Tests that group operations always have IsHiddenInInspector=false.
+        /// </summary>
+        [Test]
+        public void GroupOperationIsHiddenInInspectorAlwaysFalse()
+        {
+            // Arrange
+            UnityHelpersSettings.SetWGroupAutoIncludeConfigurationForTests(
+                UnityHelpersSettings.WGroupAutoIncludeMode.None,
+                0
+            );
+            WGroupLayoutBuilder.ClearCache();
+
+            WGroupUngroupedHiddenFieldTestTarget target =
+                CreateScriptableObject<WGroupUngroupedHiddenFieldTestTarget>();
+            using SerializedObject serializedObject = new(target);
+
+            // Act
+            WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, "m_Script");
+
+            // Assert: All group operations should have IsHiddenInInspector=false
+            for (int i = 0; i < layout.Operations.Count; i++)
+            {
+                WGroupDrawOperation op = layout.Operations[i];
+                if (op.Type == WGroupDrawOperationType.Group)
+                {
+                    Assert.That(
+                        op.IsHiddenInInspector,
+                        Is.False,
+                        () =>
+                            $"Group operation '{op.Group?.Name}' should have IsHiddenInInspector=false.\n{FormatLayoutDiagnostics(layout)}"
+                    );
+                }
+            }
         }
     }
 }

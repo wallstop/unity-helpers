@@ -19,6 +19,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         private static readonly WGroupDefinition[] EmptyDefinitions =
             Array.Empty<WGroupDefinition>();
         private static readonly HashSet<string> EmptyGroupedPaths = new(0);
+        private static readonly HashSet<string> EmptyHiddenPaths = new(0);
         private static readonly Dictionary<
             string,
             IReadOnlyList<WGroupDefinition>
@@ -34,7 +35,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             EmptyDefinitions,
             new Dictionary<string, WGroupDefinition>(0),
             EmptyGroupedPaths,
-            EmptyAnchorToGroups
+            EmptyAnchorToGroups,
+            EmptyHiddenPaths
         );
 
         internal static void ClearCache()
@@ -127,7 +129,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                             ? new List<WGroupEndAttribute>(endAttrs)
                             : EmptyEndAttributes;
 
-                    entries.Add(new PropertyMetadataEntry(field.Name, groupList, endList));
+                    bool isHiddenInInspector = field.IsDefined(typeof(HideInInspector), false);
+
+                    entries.Add(
+                        new PropertyMetadataEntry(
+                            field.Name,
+                            groupList,
+                            endList,
+                            isHiddenInInspector
+                        )
+                    );
                 }
 
                 currentType = currentType.BaseType;
@@ -214,7 +225,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                     new PropertyDescriptor(
                         entry.PropertyPath,
                         entry.GroupAttributes,
-                        entry.EndAttributes
+                        entry.EndAttributes,
+                        entry.IsHiddenInInspector
                     )
                 );
             }
@@ -260,17 +272,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
                 if (explicitContexts == null || explicitContexts.Count == 0)
                 {
-                    GroupContext autoContext = SelectAutoIncludeTarget(
-                        activeAutoContexts,
-                        explicitContexts
-                    );
-                    if (autoContext != null)
+                    // Skip auto-include for HideInInspector fields - they should not be
+                    // automatically added to groups, only explicitly included via [WGroup]
+                    if (!descriptor.IsHiddenInInspector)
                     {
-                        bool added = autoContext.AddProperty(descriptor.PropertyPath, index);
-                        if (added)
+                        GroupContext autoContext = SelectAutoIncludeTarget(
+                            activeAutoContexts,
+                            explicitContexts
+                        );
+                        if (autoContext != null)
                         {
-                            autoContext.ConsumeAutoInclude();
-                            UpdateActiveContextList(activeAutoContexts, autoContext);
+                            bool added = autoContext.AddProperty(descriptor.PropertyPath, index);
+                            if (added)
+                            {
+                                autoContext.ConsumeAutoInclude();
+                                UpdateActiveContextList(activeAutoContexts, autoContext);
+                            }
                         }
                     }
                 }
@@ -459,14 +476,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             List<WGroupDrawOperation> operations = BuildDrawOperations(
                 descriptors,
                 groupsByAnchor,
-                groupsByName
+                groupsByName,
+                out HashSet<string> hiddenPropertyPaths
             );
             return new WGroupLayout(
                 operations,
                 definitions,
                 groupsByName,
                 groupedPaths,
-                anchorToGroups
+                anchorToGroups,
+                hiddenPropertyPaths
             );
         }
 
@@ -622,10 +641,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         private static List<WGroupDrawOperation> BuildDrawOperations(
             List<PropertyDescriptor> descriptors,
             Dictionary<string, List<WGroupDefinition>> groupsByAnchor,
-            Dictionary<string, WGroupDefinition> groupsByName
+            Dictionary<string, WGroupDefinition> groupsByName,
+            out HashSet<string> hiddenPropertyPaths
         )
         {
             List<WGroupDrawOperation> operations = new(descriptors.Count);
+            hiddenPropertyPaths = new HashSet<string>(StringComparer.Ordinal);
             WallstopGenericPool<HashSet<string>> consumedPool = SetBuffers<string>.GetHashSetPool(
                 StringComparer.Ordinal
             );
@@ -701,7 +722,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                         continue;
                     }
 
-                    operations.Add(new WGroupDrawOperation(propertyPath));
+                    bool isHidden = descriptor.IsHiddenInInspector;
+                    if (isHidden)
+                    {
+                        hiddenPropertyPaths.Add(propertyPath);
+                    }
+                    operations.Add(new WGroupDrawOperation(propertyPath, isHidden));
                 }
             }
 
@@ -949,12 +975,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             internal PropertyDescriptor(
                 string propertyPath,
                 List<WGroupAttribute> groupAttributes,
-                List<WGroupEndAttribute> endAttributes
+                List<WGroupEndAttribute> endAttributes,
+                bool isHiddenInInspector = false
             )
             {
                 PropertyPath = propertyPath;
                 GroupAttributes = groupAttributes ?? new List<WGroupAttribute>();
                 EndAttributes = endAttributes ?? new List<WGroupEndAttribute>();
+                IsHiddenInInspector = isHiddenInInspector;
             }
 
             internal string PropertyPath { get; }
@@ -962,6 +990,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             internal List<WGroupAttribute> GroupAttributes { get; }
 
             internal List<WGroupEndAttribute> EndAttributes { get; }
+
+            internal bool IsHiddenInInspector { get; }
         }
 
         private readonly struct AutoIncludeConfiguration
@@ -986,11 +1016,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
     internal readonly struct WGroupDrawOperation
     {
-        internal WGroupDrawOperation(string propertyPath)
+        internal WGroupDrawOperation(string propertyPath, bool isHiddenInInspector = false)
         {
             Type = WGroupDrawOperationType.Property;
             PropertyPath = propertyPath;
             Group = null;
+            IsHiddenInInspector = isHiddenInInspector;
         }
 
         internal WGroupDrawOperation(WGroupDefinition group)
@@ -998,6 +1029,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             Type = WGroupDrawOperationType.Group;
             PropertyPath = null;
             Group = group;
+            IsHiddenInInspector = false;
         }
 
         internal WGroupDrawOperationType Type { get; }
@@ -1005,6 +1037,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         internal string PropertyPath { get; }
 
         internal WGroupDefinition Group { get; }
+
+        /// <summary>
+        /// Whether this property has [HideInInspector] attribute.
+        /// Only relevant for Property operations.
+        /// </summary>
+        internal bool IsHiddenInInspector { get; }
     }
 
     internal sealed class WGroupDefinition
@@ -1122,7 +1160,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             IReadOnlyList<WGroupDefinition> groups,
             IReadOnlyDictionary<string, WGroupDefinition> groupsByName,
             IReadOnlyCollection<string> groupedPaths,
-            IReadOnlyDictionary<string, IReadOnlyList<WGroupDefinition>> anchorToGroups
+            IReadOnlyDictionary<string, IReadOnlyList<WGroupDefinition>> anchorToGroups,
+            IReadOnlyCollection<string> hiddenPropertyPaths
         )
         {
             Operations = operations;
@@ -1130,6 +1169,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             GroupsByName = groupsByName;
             GroupedPaths = groupedPaths;
             AnchorToGroups = anchorToGroups;
+            HiddenPropertyPaths = hiddenPropertyPaths;
         }
 
         internal IReadOnlyList<WGroupDrawOperation> Operations { get; }
@@ -1150,6 +1190,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             string,
             IReadOnlyList<WGroupDefinition>
         > AnchorToGroups { get; }
+
+        /// <summary>
+        /// All property paths that have [HideInInspector] attribute.
+        /// Used for quick lookup during drawing to skip hidden properties.
+        /// </summary>
+        internal IReadOnlyCollection<string> HiddenPropertyPaths { get; }
 
         internal bool TryGetGroup(string groupName, out WGroupDefinition definition)
         {
@@ -1180,12 +1226,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         internal PropertyMetadataEntry(
             string propertyPath,
             List<WGroupAttribute> groupAttributes,
-            List<WGroupEndAttribute> endAttributes
+            List<WGroupEndAttribute> endAttributes,
+            bool isHiddenInInspector = false
         )
         {
             PropertyPath = propertyPath;
             GroupAttributes = groupAttributes;
             EndAttributes = endAttributes;
+            IsHiddenInInspector = isHiddenInInspector;
         }
 
         internal string PropertyPath { get; }
@@ -1193,6 +1241,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         internal List<WGroupAttribute> GroupAttributes { get; }
 
         internal List<WGroupEndAttribute> EndAttributes { get; }
+
+        internal bool IsHiddenInInspector { get; }
     }
 #endif
 }

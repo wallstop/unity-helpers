@@ -17,14 +17,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
 
         /// <summary>
         /// Gets or creates an AnimBool for the given WGroup definition.
-        /// The AnimBool is keyed by (Name, AnchorPropertyPath) hash.
+        /// The AnimBool is keyed by (Name, AnchorPropertyPath, targetInstanceId) hash.
         /// </summary>
         /// <param name="definition">The WGroup definition to get animation state for.</param>
         /// <param name="expanded">The current expanded state of the foldout.</param>
+        /// <param name="targetInstanceId">The instance ID of the target object (0 if unknown).</param>
         /// <returns>The AnimBool instance for this definition, with target set to expanded.</returns>
-        internal static AnimBool GetOrCreateAnim(WGroupDefinition definition, bool expanded)
+        internal static AnimBool GetOrCreateAnim(
+            WGroupDefinition definition,
+            bool expanded,
+            int targetInstanceId = 0
+        )
         {
-            int key = ComputeKey(definition);
+            int key = ComputeKey(definition, targetInstanceId);
             float speed = UnityHelpersSettings.GetWGroupFoldoutSpeed();
 
             if (!FoldoutAnimations.TryGetValue(key, out AnimBool anim) || anim == null)
@@ -44,18 +49,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
         /// </summary>
         /// <param name="definition">The WGroup definition.</param>
         /// <param name="expanded">The current expanded state.</param>
+        /// <param name="targetInstanceId">The instance ID of the target object (0 if unknown).</param>
         /// <returns>
         /// A value between 0 and 1 representing the animation progress.
         /// Returns 0 or 1 immediately if tweening is disabled.
         /// </returns>
-        internal static float GetFadeProgress(WGroupDefinition definition, bool expanded)
+        internal static float GetFadeProgress(
+            WGroupDefinition definition,
+            bool expanded,
+            int targetInstanceId = 0
+        )
         {
             if (!UnityHelpersSettings.ShouldTweenWGroupFoldouts())
             {
                 return expanded ? 1f : 0f;
             }
 
-            AnimBool anim = GetOrCreateAnim(definition, expanded);
+            AnimBool anim = GetOrCreateAnim(definition, expanded, targetInstanceId);
             return anim.faded;
         }
 
@@ -76,9 +86,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
             FoldoutAnimations.Clear();
         }
 
-        private static int ComputeKey(WGroupDefinition definition)
+        private static int ComputeKey(WGroupDefinition definition, int targetInstanceId)
         {
-            return Objects.HashCode(definition.Name, definition.AnchorPropertyPath);
+            return Objects.HashCode(
+                definition.Name,
+                definition.AnchorPropertyPath,
+                targetInstanceId
+            );
         }
 
         private static void RequestRepaint()

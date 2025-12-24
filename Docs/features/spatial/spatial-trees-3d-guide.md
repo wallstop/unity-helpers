@@ -11,8 +11,8 @@ This approachable guide shows when to use OctTree3D, KdTree3D, and RTree3D, with
 Quick picks
 
 - General 3D queries (broad‑phase, good locality): OctTree3D
-- Nearest neighbors on static points: KDTree3D (Balanced)
-- Fast builds with good‑enough point queries: KDTree3D (Unbalanced)
+- Nearest neighbors on static points: KdTree3D (Balanced)
+- Fast builds with good‑enough point queries: KdTree3D (Unbalanced)
 - Objects with size (3D bounds), intersect/contain queries: RTree3D
 
 ## Quick Start (Code)

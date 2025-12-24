@@ -763,5 +763,257 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             serializedSettings.ApplyModifiedPropertiesWithoutUndo();
             settings.SaveSettings();
         }
+
+        [Test]
+        public void DictionaryMainFoldoutAnimationIsIsolatedByTargetObject()
+        {
+            UnityHelpersSettings.SetSerializableDictionaryFoldoutTweenEnabled(true);
+            SerializableDictionaryPropertyDrawer.ClearMainFoldoutAnimCacheForTests();
+
+            TweenAnimationSimpleDictionaryHost hostA =
+                CreateScriptableObject<TweenAnimationSimpleDictionaryHost>();
+            TweenAnimationSimpleDictionaryHost hostB =
+                CreateScriptableObject<TweenAnimationSimpleDictionaryHost>();
+
+            SerializedObject serializedObjectA = TrackDisposable(new SerializedObject(hostA));
+            SerializedObject serializedObjectB = TrackDisposable(new SerializedObject(hostB));
+
+            string propertyPath = nameof(TweenAnimationSimpleDictionaryHost.dictionary);
+
+            // Trigger animation state creation for both objects with different expanded states
+            SerializableDictionaryPropertyDrawer.GetMainFoldoutProgressForTests(
+                serializedObjectA,
+                propertyPath,
+                isExpanded: true,
+                isSortedDictionary: false
+            );
+            SerializableDictionaryPropertyDrawer.GetMainFoldoutProgressForTests(
+                serializedObjectB,
+                propertyPath,
+                isExpanded: false,
+                isSortedDictionary: false
+            );
+
+            // Both should have their own AnimBool entry in the cache
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasMainFoldoutAnimBoolForTests(
+                    serializedObjectA,
+                    propertyPath
+                ),
+                "First object should have its own main foldout AnimBool."
+            );
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasMainFoldoutAnimBoolForTests(
+                    serializedObjectB,
+                    propertyPath
+                ),
+                "Second object should have its own main foldout AnimBool."
+            );
+
+            // Verify the animation states are independent
+            float progressA = SerializableDictionaryPropertyDrawer.GetMainFoldoutProgressForTests(
+                serializedObjectA,
+                propertyPath,
+                isExpanded: true,
+                isSortedDictionary: false
+            );
+            float progressB = SerializableDictionaryPropertyDrawer.GetMainFoldoutProgressForTests(
+                serializedObjectB,
+                propertyPath,
+                isExpanded: false,
+                isSortedDictionary: false
+            );
+
+            // Progress values should reflect their individual expanded states
+            Assert.GreaterOrEqual(
+                progressA,
+                0f,
+                "First object progress should be valid (animating toward 1)."
+            );
+            Assert.LessOrEqual(
+                progressB,
+                1f,
+                "Second object progress should be valid (animating toward 0)."
+            );
+        }
+
+        [Test]
+        public void SetMainFoldoutAnimationIsIsolatedByTargetObject()
+        {
+            UnityHelpersSettings.SetSerializableSetFoldoutTweenEnabled(true);
+            SerializableSetPropertyDrawer.ClearMainFoldoutAnimCacheForTests();
+
+            TweenAnimationSimpleSetHost hostA =
+                CreateScriptableObject<TweenAnimationSimpleSetHost>();
+            TweenAnimationSimpleSetHost hostB =
+                CreateScriptableObject<TweenAnimationSimpleSetHost>();
+
+            SerializedObject serializedObjectA = TrackDisposable(new SerializedObject(hostA));
+            SerializedObject serializedObjectB = TrackDisposable(new SerializedObject(hostB));
+
+            string propertyPath = nameof(TweenAnimationSimpleSetHost.set);
+
+            // Trigger animation state creation for both objects with different expanded states
+            SerializableSetPropertyDrawer.GetMainFoldoutProgressForTests(
+                serializedObjectA,
+                propertyPath,
+                isExpanded: true,
+                isSortedSet: false
+            );
+            SerializableSetPropertyDrawer.GetMainFoldoutProgressForTests(
+                serializedObjectB,
+                propertyPath,
+                isExpanded: false,
+                isSortedSet: false
+            );
+
+            // Both should have their own AnimBool entry in the cache
+            Assert.IsTrue(
+                SerializableSetPropertyDrawer.HasMainFoldoutAnimBoolForTests(
+                    serializedObjectA,
+                    propertyPath
+                ),
+                "First object should have its own main foldout AnimBool."
+            );
+            Assert.IsTrue(
+                SerializableSetPropertyDrawer.HasMainFoldoutAnimBoolForTests(
+                    serializedObjectB,
+                    propertyPath
+                ),
+                "Second object should have its own main foldout AnimBool."
+            );
+
+            // Verify the animation states are independent
+            float progressA = SerializableSetPropertyDrawer.GetMainFoldoutProgressForTests(
+                serializedObjectA,
+                propertyPath,
+                isExpanded: true,
+                isSortedSet: false
+            );
+            float progressB = SerializableSetPropertyDrawer.GetMainFoldoutProgressForTests(
+                serializedObjectB,
+                propertyPath,
+                isExpanded: false,
+                isSortedSet: false
+            );
+
+            // Progress values should reflect their individual expanded states
+            Assert.GreaterOrEqual(
+                progressA,
+                0f,
+                "First object progress should be valid (animating toward 1)."
+            );
+            Assert.LessOrEqual(
+                progressB,
+                1f,
+                "Second object progress should be valid (animating toward 0)."
+            );
+        }
+
+        [Test]
+        public void DictionaryAnimationCacheKeyIncludesInstanceId()
+        {
+            TweenAnimationSimpleDictionaryHost hostA =
+                CreateScriptableObject<TweenAnimationSimpleDictionaryHost>();
+            TweenAnimationSimpleDictionaryHost hostB =
+                CreateScriptableObject<TweenAnimationSimpleDictionaryHost>();
+
+            SerializedObject serializedObjectA = TrackDisposable(new SerializedObject(hostA));
+            SerializedObject serializedObjectB = TrackDisposable(new SerializedObject(hostB));
+
+            string propertyPath = nameof(TweenAnimationSimpleDictionaryHost.dictionary);
+
+            string cacheKeyA = SerializableDictionaryPropertyDrawer.GetMainFoldoutCacheKeyForTests(
+                serializedObjectA,
+                propertyPath
+            );
+            string cacheKeyB = SerializableDictionaryPropertyDrawer.GetMainFoldoutCacheKeyForTests(
+                serializedObjectB,
+                propertyPath
+            );
+
+            // Cache keys should be different for different objects
+            Assert.AreNotEqual(
+                cacheKeyA,
+                cacheKeyB,
+                "Cache keys for different objects with the same property path should be different."
+            );
+
+            // Cache key should include the instance ID
+            int instanceIdA = hostA.GetInstanceID();
+            int instanceIdB = hostB.GetInstanceID();
+
+            Assert.IsTrue(
+                cacheKeyA.Contains(instanceIdA.ToString()),
+                $"Cache key '{cacheKeyA}' should contain instance ID {instanceIdA}."
+            );
+            Assert.IsTrue(
+                cacheKeyB.Contains(instanceIdB.ToString()),
+                $"Cache key '{cacheKeyB}' should contain instance ID {instanceIdB}."
+            );
+
+            // Cache key should include the property path
+            Assert.IsTrue(
+                cacheKeyA.Contains(propertyPath),
+                $"Cache key '{cacheKeyA}' should contain property path '{propertyPath}'."
+            );
+            Assert.IsTrue(
+                cacheKeyB.Contains(propertyPath),
+                $"Cache key '{cacheKeyB}' should contain property path '{propertyPath}'."
+            );
+        }
+
+        [Test]
+        public void SetAnimationCacheKeyIncludesInstanceId()
+        {
+            TweenAnimationSimpleSetHost hostA =
+                CreateScriptableObject<TweenAnimationSimpleSetHost>();
+            TweenAnimationSimpleSetHost hostB =
+                CreateScriptableObject<TweenAnimationSimpleSetHost>();
+
+            SerializedObject serializedObjectA = TrackDisposable(new SerializedObject(hostA));
+            SerializedObject serializedObjectB = TrackDisposable(new SerializedObject(hostB));
+
+            string propertyPath = nameof(TweenAnimationSimpleSetHost.set);
+
+            string cacheKeyA = SerializableSetPropertyDrawer.GetMainFoldoutCacheKeyForTests(
+                serializedObjectA,
+                propertyPath
+            );
+            string cacheKeyB = SerializableSetPropertyDrawer.GetMainFoldoutCacheKeyForTests(
+                serializedObjectB,
+                propertyPath
+            );
+
+            // Cache keys should be different for different objects
+            Assert.AreNotEqual(
+                cacheKeyA,
+                cacheKeyB,
+                "Cache keys for different objects with the same property path should be different."
+            );
+
+            // Cache key should include the instance ID
+            int instanceIdA = hostA.GetInstanceID();
+            int instanceIdB = hostB.GetInstanceID();
+
+            Assert.IsTrue(
+                cacheKeyA.Contains(instanceIdA.ToString()),
+                $"Cache key '{cacheKeyA}' should contain instance ID {instanceIdA}."
+            );
+            Assert.IsTrue(
+                cacheKeyB.Contains(instanceIdB.ToString()),
+                $"Cache key '{cacheKeyB}' should contain instance ID {instanceIdB}."
+            );
+
+            // Cache key should include the property path
+            Assert.IsTrue(
+                cacheKeyA.Contains(propertyPath),
+                $"Cache key '{cacheKeyA}' should contain property path '{propertyPath}'."
+            );
+            Assert.IsTrue(
+                cacheKeyB.Contains(propertyPath),
+                $"Cache key '{cacheKeyB}' should contain property path '{propertyPath}'."
+            );
+        }
     }
 }
