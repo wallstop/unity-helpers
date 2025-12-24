@@ -687,6 +687,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float DictionaryRowChildHorizontalPadding = 2f;
         private const float DictionaryRowChildLabelTextPadding = 6f;
         internal const float PendingFieldLabelWidth = 72f;
+        internal const float PendingKeyContentIndent = 0f;
         internal const float PendingValueContentLeftShift = 8.5f;
         internal const float PendingFoldoutValueLeftShiftReduction = 3f;
         internal const float PendingFoldoutValueRightShift = 5.5f;
@@ -4150,7 +4151,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 float keyHeight = pendingMetrics.KeyHeight;
-                Rect keyRect = new(resolvedSectionPadding, innerY, innerWidth, keyHeight);
+                float indentOffset = previousIndentLevel * 15f;
+                bool pendingValueSupportsFoldout = PendingValueSupportsFoldout(pending, valueType);
+                float pendingValueFoldoutOffset = pendingValueSupportsFoldout
+                    ? PendingExpandableValueFoldoutGutter
+                    : 0f;
+                Rect keyRect = new(
+                    resolvedSectionPadding + indentOffset + pendingValueFoldoutOffset,
+                    innerY,
+                    Mathf.Max(0f, innerWidth - indentOffset - pendingValueFoldoutOffset),
+                    keyHeight
+                );
                 object previousPendingKey = pending.key;
                 using (new LabelWidthScope(PendingFieldLabelWidth))
                 {
@@ -4171,11 +4182,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 Rect absoluteKeyRect = ConvertGroupRectToAbsolute(keyRect, containerRect);
 
                 float valueHeight = pendingMetrics.ValueHeight;
-                Rect valueRect = new(resolvedSectionPadding, innerY, innerWidth, valueHeight);
-                bool pendingValueSupportsFoldout = PendingValueSupportsFoldout(pending, valueType);
-                float pendingValueFoldoutOffset = pendingValueSupportsFoldout
-                    ? PendingExpandableValueFoldoutGutter
-                    : 0f;
+                Rect valueRect = new(
+                    resolvedSectionPadding + indentOffset,
+                    innerY,
+                    Mathf.Max(0f, innerWidth - indentOffset),
+                    valueHeight
+                );
                 bool trackSimplePendingValue = IsSimplePendingFieldType(valueType);
                 object previousPendingValue = trackSimplePendingValue ? pending.value : null;
                 if (pendingValueFoldoutOffset > 0f)

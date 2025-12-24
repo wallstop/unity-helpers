@@ -3059,6 +3059,128 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [UnityTest]
+        public IEnumerator PendingEntryKeyAndValueFieldsAreAligned()
+        {
+            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            dictionaryProperty.isExpanded = true;
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(TestDictionaryHost),
+                nameof(TestDictionaryHost.dictionary)
+            );
+
+            Rect controlRect = new(0f, 0f, 360f, 420f);
+            GUIContent label = new("Dictionary");
+
+            SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                drawer.GetOrCreatePendingEntry(
+                    dictionaryProperty,
+                    typeof(int),
+                    typeof(string),
+                    isSortedDictionary: false
+                );
+            pending.isExpanded = true;
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                dictionaryProperty.serializedObject.UpdateIfRequiredOrScript();
+                pending.isExpanded = true;
+                drawer.OnGUI(controlRect, dictionaryProperty, label);
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastPendingFieldRects,
+                "Draw should capture pending key/value rects."
+            );
+
+            Rect keyRect = SerializableDictionaryPropertyDrawer.LastPendingKeyFieldRect;
+            Rect valueRect = SerializableDictionaryPropertyDrawer.LastPendingValueFieldRect;
+
+            TestContext.WriteLine(
+                $"[PendingEntryKeyAndValueFieldsAreAligned] "
+                    + $"keyRect.xMin={keyRect.xMin:F3}, valueRect.xMin={valueRect.xMin:F3}, "
+                    + $"keyRect.width={keyRect.width:F3}, valueRect.width={valueRect.width:F3}"
+            );
+
+            Assert.That(
+                keyRect.xMin,
+                Is.EqualTo(valueRect.xMin).Within(1f),
+                "Pending key and value field left edges should be aligned."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator PendingEntryKeyAndValueFieldsAreAlignedInSettingsContext()
+        {
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            SerializedObject serializedSettings = TrackDisposable(new SerializedObject(settings));
+            serializedSettings.Update();
+            SerializedProperty paletteProperty = serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            paletteProperty.isExpanded = true;
+            serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializableDictionaryPropertyDrawer drawer = new();
+            AssignDictionaryFieldInfo(
+                drawer,
+                typeof(UnityHelpersSettings),
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+
+            Rect controlRect = new(0f, 0f, 360f, 420f);
+            GUIContent label = new("Palette");
+
+            SerializableDictionaryPropertyDrawer.PendingEntry pending =
+                drawer.GetOrCreatePendingEntry(
+                    paletteProperty,
+                    typeof(string),
+                    typeof(UnityHelpersSettings.WButtonCustomColor),
+                    isSortedDictionary: false
+                );
+            pending.isExpanded = true;
+
+            SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                paletteProperty.serializedObject.UpdateIfRequiredOrScript();
+                pending.isExpanded = true;
+                drawer.OnGUI(controlRect, paletteProperty, label);
+            });
+
+            Assert.IsTrue(
+                SerializableDictionaryPropertyDrawer.HasLastPendingFieldRects,
+                "Draw should capture pending key/value rects in settings context."
+            );
+
+            Rect keyRect = SerializableDictionaryPropertyDrawer.LastPendingKeyFieldRect;
+            Rect valueRect = SerializableDictionaryPropertyDrawer.LastPendingValueFieldRect;
+
+            TestContext.WriteLine(
+                $"[PendingEntryKeyAndValueFieldsAreAlignedInSettingsContext] "
+                    + $"keyRect.xMin={keyRect.xMin:F3}, valueRect.xMin={valueRect.xMin:F3}, "
+                    + $"keyRect.width={keyRect.width:F3}, valueRect.width={valueRect.width:F3}"
+            );
+
+            Assert.That(
+                keyRect.xMin,
+                Is.EqualTo(valueRect.xMin).Within(1f),
+                "Pending key and value field left edges should be aligned in settings context."
+            );
+        }
+
+        [UnityTest]
         public IEnumerator PendingEntryFoldoutValueRespectsGroupPadding()
         {
             ColorDataDictionaryHost host = CreateScriptableObject<ColorDataDictionaryHost>();
