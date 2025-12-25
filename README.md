@@ -18,10 +18,9 @@
   <a href="https://github.com/wallstop/unity-helpers/releases"><img alt="GitHub release version" src="https://img.shields.io/github/v/release/wallstop/unity-helpers" /></a>
   <a href="https://github.com/wallstop/unity-helpers/releases"><img alt="GitHub downloads" src="https://img.shields.io/github/downloads/wallstop/unity-helpers/total" /></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg" /></a>
-  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/csharpier-autofix.yml"><img alt="CSharpier" src="https://github.com/wallstop/unity-helpers/actions/workflows/csharpier-autofix.yml/badge.svg?branch=main" /></a>
-  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml"><img alt="Markdown &amp; JSON Lint/Format" src="https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml/badge.svg?branch=main" /></a>
-  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml"><img alt="Lint Docs Links" src="https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml/badge.svg?branch=main" /></a>
-  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml"><img alt="Npm Publish" src="https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml/badge.svg?branch=main" />
+  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/csharpier-autofix.yml"><img alt="CSharpier" src="https://github.com/wallstop/unity-helpers/actions/workflows/csharpier-autofix.yml/badge.svg" /></a>
+  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml"><img alt="Markdown &amp; JSON Lint/Format" src="https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml/badge.svg" /></a>
+  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml"><img alt="Lint Docs Links" src="https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml/badge.svg" /></a>
 </p>
 
 **Stop writing boilerplate. Start shipping features.**
