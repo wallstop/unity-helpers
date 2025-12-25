@@ -1,4 +1,4 @@
-﻿#if UNITY_EDITOR
+#if UNITY_EDITOR
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System.Collections.Generic;

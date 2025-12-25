@@ -302,5 +302,3 @@ jobs:
             if (existing.data.length === 0) {
               await github.rest.pulls.create({ owner, repo, head: headBranch, base: baseRef, title, body });
             }
-
-
