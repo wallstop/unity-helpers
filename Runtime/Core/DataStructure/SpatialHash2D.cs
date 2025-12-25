@@ -17,7 +17,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// SpatialHash2D<Enemy> hash = new SpatialHash2D<Enemy>(2f);
     /// hash.Insert(enemy.Position, enemy);
     /// List<Enemy> nearby = new List<Enemy>();
-    /// hash.QueryRange(playerPosition, 5f, nearby);
+    /// hash.Query(playerPosition, 5f, nearby);
     /// ]]></code>
     /// </example>
     [Serializable]

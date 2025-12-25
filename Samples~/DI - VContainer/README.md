@@ -385,17 +385,20 @@ Or enable auto-prewarm on the `AttributeMetadataCache` asset:
 ### One-liners for DI + Relational Wiring
 
 ```csharp
-// Inject + assign a single component
-resolver.InjectWithRelations(component);
+// Inject + assign a single component (generic method)
+resolver.InjectWithRelations<Enemy>(enemy);
+
+// Build up an existing instance + assign relational fields
+Enemy enemy = resolver.BuildUpWithRelations<Enemy>(existingEnemy);
 
 // Instantiate a component prefab + inject + assign
-var comp = resolver.InstantiateComponentWithRelations(prefabComp, parent);
+Enemy comp = resolver.InstantiateComponentWithRelations(prefabComp, parent);
 
 // Inject + assign a whole hierarchy
 resolver.InjectGameObjectWithRelations(root, includeInactiveChildren: true);
 
 // Instantiate a GameObject prefab + inject + assign hierarchy
-var go = resolver.InstantiateGameObjectWithRelations(prefabGo, parent);
+GameObject go = resolver.InstantiateGameObjectWithRelations(prefabGo, parent);
 ```
 
 ### Additive Scenes & Options
