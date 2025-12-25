@@ -193,6 +193,403 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.Greater(height, EditorGUIUtility.singleLineHeight);
         }
 
+        [Test]
+        public void OnGUIHandlesDisposedSerializedObjectWithoutException()
+        {
+            // Arrange - Create a container and its serialized object
+            GuidContainer container = CreateScriptableObject<GuidContainer>();
+            SerializedObject serializedObject = new(container);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
+            Assert.NotNull(property);
+
+            // Prime the state cache with this property
+            WGuidPropertyDrawer.DrawerState state = WGuidPropertyDrawer.GetState(property);
+            SerializedProperty lowProperty = property.FindPropertyRelative(WGuid.LowFieldName);
+            SerializedProperty highProperty = property.FindPropertyRelative(WGuid.HighFieldName);
+            WGuidPropertyDrawer.GenerateNewGuid(property, lowProperty, highProperty, state);
+
+            // Dispose the serialized object
+            serializedObject.Dispose();
+
+            // Act & Assert - Creating a new serialized object and accessing with same property path
+            // should not throw even though the state cache has stale references
+            GuidContainer newContainer = CreateScriptableObject<GuidContainer>();
+            using SerializedObject newSerializedObject = new(newContainer);
+            newSerializedObject.Update();
+
+            SerializedProperty newProperty = newSerializedObject.FindProperty(
+                nameof(GuidContainer.guid)
+            );
+
+            // This should not throw - it should gracefully handle the disposed state
+            WGuidPropertyDrawer drawer = new();
+            Assert.DoesNotThrow(() =>
+            {
+                float height = drawer.GetPropertyHeight(newProperty, GUIContent.none);
+                Assert.GreaterOrEqual(height, 0f);
+            });
+        }
+
+        [Test]
+        public void CachingRevalidatesForDifferentSerializedObjects()
+        {
+            // Arrange - Create two separate containers
+            GuidContainer container1 = CreateScriptableObject<GuidContainer>();
+            GuidContainer container2 = CreateScriptableObject<GuidContainer>();
+
+            using SerializedObject serializedObject1 = new(container1);
+            using SerializedObject serializedObject2 = new(container2);
+            serializedObject1.Update();
+            serializedObject2.Update();
+
+            SerializedProperty property1 = serializedObject1.FindProperty(
+                nameof(GuidContainer.guid)
+            );
+            SerializedProperty property2 = serializedObject2.FindProperty(
+                nameof(GuidContainer.guid)
+            );
+
+            // Both properties have the same propertyPath ("guid")
+            Assert.AreEqual(property1.propertyPath, property2.propertyPath);
+
+            // Generate different GUIDs for each
+            WGuidPropertyDrawer.DrawerState state = WGuidPropertyDrawer.GetState(property1);
+            SerializedProperty low1 = property1.FindPropertyRelative(WGuid.LowFieldName);
+            SerializedProperty high1 = property1.FindPropertyRelative(WGuid.HighFieldName);
+            WGuidPropertyDrawer.GenerateNewGuid(property1, low1, high1, state);
+            serializedObject1.Update();
+            WGuid guid1 = ReadGuid(property1);
+
+            // Access property2 which has the same path but different SerializedObject
+            SerializedProperty low2 = property2.FindPropertyRelative(WGuid.LowFieldName);
+            SerializedProperty high2 = property2.FindPropertyRelative(WGuid.HighFieldName);
+            WGuidPropertyDrawer.GenerateNewGuid(property2, low2, high2, state);
+            serializedObject2.Update();
+            WGuid guid2 = ReadGuid(property2);
+
+            // Both should have valid but different GUIDs
+            Assert.IsFalse(guid1.IsEmpty);
+            Assert.IsFalse(guid2.IsEmpty);
+            // They could be equal by chance but that's astronomically unlikely
+        }
+
+        [Test]
+        public void StateInvalidateCacheClearsAllCachedData()
+        {
+            // Arrange
+            GuidContainer container = CreateScriptableObject<GuidContainer>();
+            using SerializedObject serializedObject = new(container);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
+            WGuidPropertyDrawer.DrawerState state = WGuidPropertyDrawer.GetState(property);
+
+            // Prime the cache
+            state.cachedLowProperty = property.FindPropertyRelative(WGuid.LowFieldName);
+            state.cachedHighProperty = property.FindPropertyRelative(WGuid.HighFieldName);
+            state.cachedSerializedObject = serializedObject;
+            state.lastCacheFrame = 999;
+
+            // Act
+            state.InvalidateCache();
+
+            // Assert
+            Assert.IsNull(state.cachedLowProperty);
+            Assert.IsNull(state.cachedHighProperty);
+            Assert.IsNull(state.cachedSerializedObject);
+            Assert.AreEqual(-1, state.lastCacheFrame);
+        }
+
+        [Test]
+        public void ConvertToStringHandlesZeroValues()
+        {
+            string result = WGuidPropertyDrawer.ConvertToString(0L, 0L);
+            Assert.AreEqual(Guid.Empty.ToString(), result);
+        }
+
+        [Test]
+        public void ConvertToStringHandlesNonZeroValues()
+        {
+            WGuid testGuid = WGuid.NewGuid();
+            Span<byte> buffer = stackalloc byte[16];
+            testGuid.TryWriteBytes(buffer);
+            long low = unchecked(
+                (long)
+                    System.Buffers.Binary.BinaryPrimitives.ReadUInt64LittleEndian(
+                        buffer.Slice(0, 8)
+                    )
+            );
+            long high = unchecked(
+                (long)
+                    System.Buffers.Binary.BinaryPrimitives.ReadUInt64LittleEndian(
+                        buffer.Slice(8, 8)
+                    )
+            );
+
+            string result = WGuidPropertyDrawer.ConvertToString(low, high);
+
+            Assert.AreEqual(testGuid.ToString(), result);
+        }
+
+        [Test]
+        public void HandleTextChangeWithNullInputTreatedAsEmpty()
+        {
+            GuidContainer container = CreateScriptableObject<GuidContainer>();
+            using SerializedObject serializedObject = new(container);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
+            SerializedProperty lowProperty = property.FindPropertyRelative(WGuid.LowFieldName);
+            SerializedProperty highProperty = property.FindPropertyRelative(WGuid.HighFieldName);
+            WGuidPropertyDrawer.DrawerState state = WGuidPropertyDrawer.GetState(property);
+
+            // First set a valid GUID
+            WGuidPropertyDrawer.GenerateNewGuid(property, lowProperty, highProperty, state);
+            serializedObject.Update();
+            Assert.IsFalse(ReadGuid(property).IsEmpty);
+
+            // Now pass null - should clear the GUID
+            WGuidPropertyDrawer.HandleTextChange(property, lowProperty, highProperty, state, null);
+            serializedObject.Update();
+
+            Assert.IsTrue(ReadGuid(property).IsEmpty);
+            Assert.IsFalse(state.hasPendingInvalid);
+        }
+
+        [Test]
+        public void HandleTextChangeWithWhitespaceOnlyTreatedAsEmpty()
+        {
+            GuidContainer container = CreateScriptableObject<GuidContainer>();
+            using SerializedObject serializedObject = new(container);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
+            SerializedProperty lowProperty = property.FindPropertyRelative(WGuid.LowFieldName);
+            SerializedProperty highProperty = property.FindPropertyRelative(WGuid.HighFieldName);
+            WGuidPropertyDrawer.DrawerState state = WGuidPropertyDrawer.GetState(property);
+
+            WGuidPropertyDrawer.GenerateNewGuid(property, lowProperty, highProperty, state);
+            serializedObject.Update();
+            Assert.IsFalse(ReadGuid(property).IsEmpty);
+
+            WGuidPropertyDrawer.HandleTextChange(
+                property,
+                lowProperty,
+                highProperty,
+                state,
+                "   \t\n   "
+            );
+            serializedObject.Update();
+
+            Assert.IsTrue(ReadGuid(property).IsEmpty);
+            Assert.IsFalse(state.hasPendingInvalid);
+        }
+
+        [Test]
+        public void HandleTextChangeTrimsWhitespaceFromValidGuid()
+        {
+            GuidContainer container = CreateScriptableObject<GuidContainer>();
+            using SerializedObject serializedObject = new(container);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
+            SerializedProperty lowProperty = property.FindPropertyRelative(WGuid.LowFieldName);
+            SerializedProperty highProperty = property.FindPropertyRelative(WGuid.HighFieldName);
+            WGuidPropertyDrawer.DrawerState state = WGuidPropertyDrawer.GetState(property);
+
+            Guid expected = Guid.NewGuid();
+            string inputWithWhitespace = $"  {expected:D}  ";
+
+            WGuidPropertyDrawer.HandleTextChange(
+                property,
+                lowProperty,
+                highProperty,
+                state,
+                inputWithWhitespace
+            );
+            serializedObject.Update();
+
+            WGuid actual = ReadGuid(property);
+            Assert.AreEqual(expected, actual.ToGuid());
+            Assert.IsFalse(state.hasPendingInvalid);
+        }
+
+        [Test]
+        public void GetStateReturnsSameInstanceForSamePropertyPath()
+        {
+            GuidContainer container = CreateScriptableObject<GuidContainer>();
+            using SerializedObject serializedObject = new(container);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
+
+            WGuidPropertyDrawer.DrawerState state1 = WGuidPropertyDrawer.GetState(property);
+            WGuidPropertyDrawer.DrawerState state2 = WGuidPropertyDrawer.GetState(property);
+
+            Assert.AreSame(state1, state2);
+        }
+
+        [Test]
+        public void ClearCachedStatesRemovesAllStates()
+        {
+            GuidContainer container = CreateScriptableObject<GuidContainer>();
+            using SerializedObject serializedObject = new(container);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
+
+            WGuidPropertyDrawer.DrawerState state1 = WGuidPropertyDrawer.GetState(property);
+            state1.displayText = "test-value";
+
+            WGuidPropertyDrawer.ClearCachedStates();
+
+            WGuidPropertyDrawer.DrawerState state2 = WGuidPropertyDrawer.GetState(property);
+            Assert.AreNotSame(state1, state2);
+            Assert.AreNotEqual("test-value", state2.displayText);
+        }
+
+        [Test]
+        public void GetPropertyHeightReturnsMinimumLineHeightWhenValid()
+        {
+            GuidContainer container = CreateScriptableObject<GuidContainer>();
+            using SerializedObject serializedObject = new(container);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
+            WGuidPropertyDrawer.DrawerState state = WGuidPropertyDrawer.GetState(property);
+            state.hasPendingInvalid = false;
+            state.warningMessage = string.Empty;
+
+            WGuidPropertyDrawer drawer = new();
+            float height = drawer.GetPropertyHeight(property, GUIContent.none);
+
+            Assert.AreEqual(EditorGUIUtility.singleLineHeight, height);
+        }
+
+        [Test]
+        public void GenerateNewGuidClearsWarningState()
+        {
+            GuidContainer container = CreateScriptableObject<GuidContainer>();
+            using SerializedObject serializedObject = new(container);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
+            SerializedProperty lowProperty = property.FindPropertyRelative(WGuid.LowFieldName);
+            SerializedProperty highProperty = property.FindPropertyRelative(WGuid.HighFieldName);
+            WGuidPropertyDrawer.DrawerState state = WGuidPropertyDrawer.GetState(property);
+
+            // Set up an invalid state
+            state.hasPendingInvalid = true;
+            state.warningMessage = "Some warning";
+
+            // Generate a new GUID
+            WGuidPropertyDrawer.GenerateNewGuid(property, lowProperty, highProperty, state);
+            serializedObject.Update();
+
+            // Warning should be cleared
+            Assert.IsFalse(state.hasPendingInvalid);
+            Assert.IsEmpty(state.warningMessage);
+            Assert.IsFalse(ReadGuid(property).IsEmpty);
+        }
+
+        [Test]
+        public void HandleTextChangeUpdatesDisplayTextOnSuccess()
+        {
+            GuidContainer container = CreateScriptableObject<GuidContainer>();
+            using SerializedObject serializedObject = new(container);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
+            SerializedProperty lowProperty = property.FindPropertyRelative(WGuid.LowFieldName);
+            SerializedProperty highProperty = property.FindPropertyRelative(WGuid.HighFieldName);
+            WGuidPropertyDrawer.DrawerState state = WGuidPropertyDrawer.GetState(property);
+
+            Guid expected = Guid.NewGuid();
+            WGuidPropertyDrawer.HandleTextChange(
+                property,
+                lowProperty,
+                highProperty,
+                state,
+                expected.ToString("D")
+            );
+
+            // Display text should be normalized
+            Assert.AreEqual(
+                expected.ToString().ToLowerInvariant(),
+                state.displayText.ToLowerInvariant()
+            );
+            Assert.AreEqual(state.displayText, state.serializedText);
+        }
+
+        [Test]
+        public void HandleTextChangePreservesInvalidDisplayText()
+        {
+            GuidContainer container = CreateScriptableObject<GuidContainer>();
+            using SerializedObject serializedObject = new(container);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(nameof(GuidContainer.guid));
+            SerializedProperty lowProperty = property.FindPropertyRelative(WGuid.LowFieldName);
+            SerializedProperty highProperty = property.FindPropertyRelative(WGuid.HighFieldName);
+            WGuidPropertyDrawer.DrawerState state = WGuidPropertyDrawer.GetState(property);
+
+            string invalidInput = "not-a-valid-guid";
+            WGuidPropertyDrawer.HandleTextChange(
+                property,
+                lowProperty,
+                highProperty,
+                state,
+                invalidInput
+            );
+
+            // Display text should preserve what the user typed
+            Assert.AreEqual(invalidInput, state.displayText);
+            Assert.IsTrue(state.hasPendingInvalid);
+        }
+
+        [Test]
+        public void MultipleContainersIndependentStates()
+        {
+            // Test that different containers don't interfere with each other
+            GuidContainer container1 = CreateScriptableObject<GuidContainer>();
+            GuidContainer container2 = CreateScriptableObject<GuidContainer>();
+
+            using SerializedObject so1 = new(container1);
+            using SerializedObject so2 = new(container2);
+            so1.Update();
+            so2.Update();
+
+            SerializedProperty prop1 = so1.FindProperty(nameof(GuidContainer.guid));
+            SerializedProperty prop2 = so2.FindProperty(nameof(GuidContainer.guid));
+
+            SerializedProperty low1 = prop1.FindPropertyRelative(WGuid.LowFieldName);
+            SerializedProperty high1 = prop1.FindPropertyRelative(WGuid.HighFieldName);
+            SerializedProperty low2 = prop2.FindPropertyRelative(WGuid.LowFieldName);
+            SerializedProperty high2 = prop2.FindPropertyRelative(WGuid.HighFieldName);
+
+            WGuidPropertyDrawer.DrawerState state = WGuidPropertyDrawer.GetState(prop1);
+
+            // Generate for container1
+            WGuidPropertyDrawer.GenerateNewGuid(prop1, low1, high1, state);
+            so1.Update();
+            WGuid guid1 = ReadGuid(prop1);
+
+            // Now generate for container2 - should update container2, not container1
+            WGuidPropertyDrawer.GenerateNewGuid(prop2, low2, high2, state);
+            so2.Update();
+            WGuid guid2 = ReadGuid(prop2);
+
+            // Verify container1 still has its original GUID
+            so1.Update();
+            WGuid guid1After = ReadGuid(prop1);
+            Assert.AreEqual(guid1, guid1After);
+
+            // And container2 has its own GUID
+            Assert.IsFalse(guid2.IsEmpty);
+        }
+
         private static WGuid ReadGuid(SerializedProperty property)
         {
             SerializedProperty lowProperty = property.FindPropertyRelative(WGuid.LowFieldName);

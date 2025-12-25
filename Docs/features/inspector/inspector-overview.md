@@ -171,9 +171,44 @@ Provide designer-friendly selection controls:
 - **[IntDropdown](inspector-selection-attributes.md#intdropdown)** - Integer selection from predefined values
 - **[StringInList](inspector-selection-attributes.md#stringinlist)** - String selection with search and pagination
 
-![Image placeholder: WEnumToggleButtons for flag enum with Select All/None]
-![Image placeholder: WValueDropDown showing type-safe dropdown]
-![Image placeholder: StringInList with search and pagination]
+```csharp
+using System.Collections.Generic;
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public class WEnumToggleButtonOverview : MonoBehaviour
+{
+    [WEnumToggleButtons]
+    [IntDropDown(1, 2, 3, 4, 5, 6, 7, 8)]
+    public List<int> canToggle; // Works in lists!
+
+    [WEnumToggleButtons]
+    [IntDropDown(1, 2, 3, 4, 5, 6, 7, 8)]
+    public int canToggle2;
+
+    [StringInList(typeof(WEnumToggleButtonOverview), nameof(GetStringValues))]
+    public string canSelectString;
+
+    [WValueDropDown(typeof(WEnumToggleButtonOverview), nameof(GetFloatValues))]
+    public float canSelectFloat;
+
+    private IEnumerable<string> GetStringValues()
+    {
+        yield return "String1";
+        yield return "String2";
+        yield return "String3";
+    }
+
+    private IEnumerable<float> GetFloatValues()
+    {
+        yield return 1.0f;
+        yield return 2.0f;
+        yield return 3.0f;
+    }
+}
+```
+
+![WEnumToggleButtons, StringInList, and WValueDropDown examples](../../images/inspector/buttons/enum-toggle-button-overview.gif)
 
 **[→ Full Guide: Inspector Selection Attributes](inspector-selection-attributes.md)**
 
@@ -200,10 +235,7 @@ Unity-friendly wrappers for complex data:
 - **[SerializableType](../serialization/serialization-types.md#serializabletype)** - Type references that survive refactoring
 - **[SerializableNullable](../serialization/serialization-types.md#serializablenullable)** - Nullable value types
 
-![Image placeholder: WGuid drawer with Generate button]
-![Image placeholder: SerializableDictionary with key/value editor]
-![Image placeholder: SerializableSet with pagination and duplicate highlighting]
-![Image placeholder: SerializableType with search and type browser]
+![WGuid, dictionary, sets, types, nullables in action](../../images/inspector/serialization-overview.gif)
 
 **[→ Full Guide: Serialization Types](../serialization/serialization-types.md)**
 
@@ -225,7 +257,7 @@ Centralized configuration for all inspector features:
 - Animation speeds for foldouts and groups
 - Auto-include defaults
 
-![Image placeholder: UnityHelpersSettings inspector showing all configuration options]
+![UnityHelpersSettings inspector showing all configuration options](../../images/inspector/unity-helper-settings.png)
 ![GIF placeholder: Changing color palette and seeing instant update in inspector]
 
 **[→ Full Guide: Inspector Settings](inspector-settings.md)**

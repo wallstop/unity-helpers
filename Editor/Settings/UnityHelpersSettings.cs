@@ -91,6 +91,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private static readonly Color DefaultClearHistoryButtonColor = new(0.75f, 0.45f, 0.45f, 1f);
         private static readonly Color DefaultClearHistoryButtonTextColor = Color.white;
         private static readonly Dictionary<int, bool> SettingsGroupFoldoutStates = new();
+        private static SerializedObject _cachedSettingsSerializedObject;
         private const float SettingsLabelWidth = 260f;
         private const float SettingsMinFieldWidth = 110f;
         private const float CustomColorDrawerMinColorFieldWidth = 42f;
@@ -3398,6 +3399,47 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
         }
 
+        /// <summary>
+        /// Returns a cached SerializedObject for the settings instance, creating one if needed.
+        /// Caching the SerializedObject preserves property expansion states (isExpanded)
+        /// across frames, preventing foldouts from unexpectedly re-expanding.
+        /// </summary>
+        private static SerializedObject GetOrCreateCachedSerializedObject(
+            UnityHelpersSettings settings
+        )
+        {
+            if (settings == null)
+            {
+                _cachedSettingsSerializedObject = null;
+                return null;
+            }
+
+            // Check if we need to create a new SerializedObject:
+            // - First time (cache is null)
+            // - Target object changed (shouldn't happen for singleton, but defensive)
+            // - SerializedObject was disposed or invalidated
+            if (
+                _cachedSettingsSerializedObject == null
+                || _cachedSettingsSerializedObject.targetObject == null
+                || _cachedSettingsSerializedObject.targetObject != settings
+            )
+            {
+                _cachedSettingsSerializedObject?.Dispose();
+                _cachedSettingsSerializedObject = new SerializedObject(settings);
+            }
+
+            return _cachedSettingsSerializedObject;
+        }
+
+        /// <summary>
+        /// Clears the cached SerializedObject for testing purposes.
+        /// </summary>
+        internal static void ClearCachedSerializedObjectForTests()
+        {
+            _cachedSettingsSerializedObject?.Dispose();
+            _cachedSettingsSerializedObject = null;
+        }
+
         [SettingsProvider]
         private static SettingsProvider CreateSettingsProvider()
         {
@@ -3411,7 +3453,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 {
                     UnityHelpersSettings settings = instance;
                     settings.EnsureWaitInstructionBufferDefaultsInitialized();
-                    SerializedObject serializedSettings = new(settings);
+                    SerializedObject serializedSettings = GetOrCreateCachedSerializedObject(
+                        settings
+                    );
                     serializedSettings.UpdateIfRequiredOrScript();
 
                     bool dataChanged = false;

@@ -20,8 +20,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public string warningMessage = string.Empty;
             public SerializedProperty cachedLowProperty;
             public SerializedProperty cachedHighProperty;
+            public SerializedObject cachedSerializedObject;
             public int lastCacheFrame = -1;
             public readonly GUIContent warningContent = new();
+
+            public void InvalidateCache()
+            {
+                cachedLowProperty = null;
+                cachedHighProperty = null;
+                cachedSerializedObject = null;
+                lastCacheFrame = -1;
+            }
         }
 
         private const float ButtonWidth = 24f;
@@ -42,22 +51,54 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             int currentFrame = Time.frameCount;
-            if (
+            SerializedObject serializedObject = property.serializedObject;
+
+            // Validate cached properties are still valid:
+            // 1. Same frame as last cache
+            // 2. Same SerializedObject instance (not a different object with same property path)
+            // 3. Cached SerializedObject hasn't been disposed
+            // 4. Both cached properties exist
+            bool cacheValid =
                 state.lastCacheFrame == currentFrame
+                && state.cachedSerializedObject != null
+                && ReferenceEquals(state.cachedSerializedObject, serializedObject)
                 && state.cachedLowProperty != null
                 && state.cachedHighProperty != null
-            )
+                && IsSerializedObjectValid(serializedObject);
+
+            if (cacheValid)
             {
                 lowProperty = state.cachedLowProperty;
                 highProperty = state.cachedHighProperty;
                 return;
             }
 
+            // Cache miss or invalid - refresh the cache
             lowProperty = property.FindPropertyRelative(WGuid.LowFieldName);
             highProperty = property.FindPropertyRelative(WGuid.HighFieldName);
             state.cachedLowProperty = lowProperty;
             state.cachedHighProperty = highProperty;
+            state.cachedSerializedObject = serializedObject;
             state.lastCacheFrame = currentFrame;
+        }
+
+        private static bool IsSerializedObjectValid(SerializedObject serializedObject)
+        {
+            if (serializedObject == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                // Accessing targetObject will throw if the SerializedObject is disposed
+                _ = serializedObject.targetObject;
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
@@ -82,6 +123,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             DrawerState state = GetState(property);
+
+            // Early validation: check if the SerializedObject is still valid
+            if (!IsSerializedObjectValid(property.serializedObject))
+            {
+                state.InvalidateCache();
+                EditorGUI.PropertyField(position, property, label, true);
+                return;
+            }
+
             GetCachedProperties(
                 property,
                 state,
@@ -93,7 +143,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 EditorGUI.PropertyField(position, property, label, true);
                 return;
             }
-            string serializedText = ConvertToString(lowProperty.longValue, highProperty.longValue);
+
+            // Safely read property values with disposal protection
+            long lowValue;
+            long highValue;
+            try
+            {
+                lowValue = lowProperty.longValue;
+                highValue = highProperty.longValue;
+            }
+            catch (Exception)
+            {
+                // SerializedObject was disposed between validation and access
+                state.InvalidateCache();
+                EditorGUI.PropertyField(position, property, label, true);
+                return;
+            }
+
+            string serializedText = ConvertToString(lowValue, highValue);
             if (!state.hasPendingInvalid || string.IsNullOrEmpty(state.displayText))
             {
                 if (!string.Equals(state.displayText, serializedText, StringComparison.Ordinal))
@@ -113,10 +180,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 state.warningMessage = string.Empty;
             }
 
-            if (
-                !state.hasPendingInvalid
-                && !WGuid.HasVersionFourLayout(lowProperty.longValue, highProperty.longValue)
-            )
+            if (!state.hasPendingInvalid && !WGuid.HasVersionFourLayout(lowValue, highValue))
             {
                 state.hasPendingInvalid = true;
                 state.warningMessage = VersionFourWarning;
