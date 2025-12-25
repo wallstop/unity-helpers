@@ -109,7 +109,7 @@ See it working first, understand the theory later:
 
 ## Installation
 
-See the [Installation section in README.md](../../README.md#installation) for detailed installation instructions using:
+See the [Installation section](../../README.md#installation) in the main README for detailed installation instructions using:
 
 - Unity Package Manager (recommended)
 - Git URL

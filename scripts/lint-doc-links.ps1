@@ -127,37 +127,32 @@ $linkPattern = [regex]'\[[^\]]+\]\([^)]+\)'
 $standardLinkPattern = [regex]'(?<!\!)\[(?<text>[^\]]+)\]\((?<target>[^)]+)\)'
 $anglePattern = [regex]'<[^>]+>'
 $filenameTextLinkPattern = [regex]'\[(?<text>[^\]]+?\.md(?:#[^\]]+)?)\]\((?<target>[^)]+?\.md(?:#[^)]+)?)\)'
-$inlineCodeMdPattern = [regex]'`[^`\n]*?\.md[^`\n]*?`'
+# Match inline code that mentions a .md file path (not just a bare extension like `.md` or `.json`)
+# Excludes: `*.md`, `.md`, `*.json`, `.cs` etc. - these are file type references, not file paths
+$inlineCodeMdPattern = [regex]'`[^`\n]*[A-Za-z0-9_\-]+\.md[^`\n]*`'
+# Pattern to detect bare file extension references that should NOT be flagged
+$fileExtensionPattern = [regex]'^`(\*)?\.[\w]+`$'
 $imagePattern = [regex]'!\[[^\]]*\]\((?<target>[^)]+)\)'
 $imageReferencePattern = [regex]'!\[[^\]]*\]\[(?<label>[^\]]+)\]'
 $definitionPattern = [regex]'^\s*\[(?<label>[^\]]+)\]:\s*(?<rest>.+)$'
 
 $violationCount = 0
 $codeDocsPattern = [regex]'(?i)docs[\\/][A-Za-z0-9._/\\-]+\.md(?:#[A-Za-z0-9_\-]+)?'
-$codeFilePatterns = @(
-    '*.cs',
-    '*.csproj',
-    '*.props',
-    '*.targets',
-    '*.ps1',
-    '*.psm1',
-    '*.psd1',
-    '*.py',
-    '*.ts',
-    '*.tsx',
-    '*.js',
-    '*.jsx',
-    '*.json',
-    '*.yml',
-    '*.yaml',
-    '*.sh',
-    '*.cmd'
-)
+$codeFileExtensions = @('.cs', '.csproj', '.props', '.targets', '.ps1', '.psm1', '.psd1', '.py', '.ts', '.tsx', '.js', '.jsx', '.json', '.yml', '.yaml', '.sh', '.cmd')
 
-Get-ChildItem -Path . -Recurse -Include *.md -File |
-    Where-Object { $_.FullName -notmatch '(?i)[\\/](node_modules)[\\/]' } |
-    ForEach-Object {
-    $file = $_.FullName
+# Use git ls-files for efficiency and to respect .gitignore
+$gitFiles = git ls-files --cached --others --exclude-standard 2>$null
+if (-not $gitFiles) {
+    Write-Host "Warning: Not in a git repository or git not available, falling back to filesystem scan" -ForegroundColor Yellow
+    $gitFiles = Get-ChildItem -Path . -Recurse -File | ForEach-Object { $_.FullName.Substring($repoRoot.Length + 1) }
+}
+
+$mdFiles = $gitFiles | Where-Object { $_ -match '\.md$' }
+
+$mdFiles | ForEach-Object {
+    $relativePath = $_
+    $file = Join-Path $repoRoot $relativePath
+    if (-not (Test-Path -LiteralPath $file)) { return }
     $lines = Get-Content -LiteralPath $file
     $lineCount = $lines.Length
     $linkDefinitions = New-Object 'System.Collections.Generic.Dictionary[string,object]' ([System.StringComparer]::OrdinalIgnoreCase)
@@ -211,7 +206,15 @@ Get-ChildItem -Path . -Recurse -Include *.md -File |
         }
         if ($inFence) { continue }
 
-        if ($inlineCodeMdPattern.IsMatch($line)) {
+        # Check for inline code that mentions .md files (but not bare extension references)
+        foreach ($match in $inlineCodeMdPattern.Matches($line)) {
+            $codeContent = $match.Value
+            # Skip if it's a file extension or glob pattern reference like:
+            # `.md`, `*.md`, `**/*.md`, `.json`, `*.xml`, etc.
+            # Pattern: starts with `, optional glob chars (**/), optional *, then .extension, ends with `
+            if ($codeContent -match '^`(\*\*/|\./)?(\*)?\.[\w]+`$') {
+                continue
+            }
             $violationCount++
             Write-Violation -File $file -LineNumber $lineNo -Message "Inline code mentions .md; use a human-readable link instead" -Line $line
         }
@@ -276,24 +279,27 @@ Get-ChildItem -Path . -Recurse -Include *.md -File |
     }
 }
 
-$codeFilePatterns | ForEach-Object {
-    $pattern = $_
-    Get-ChildItem -Path . -Recurse -Include $pattern -File |
-        Where-Object { $_.FullName -notmatch '(?i)[\\/](node_modules|Library|Temp)[\\/]' } |
-        ForEach-Object {
-        $file = $_.FullName
-        $lines = Get-Content -LiteralPath $file
-        for ($index = 0; $index -lt $lines.Length; $index++) {
-            $line = $lines[$index]
-            $lineNo = $index + 1
-            foreach ($match in $codeDocsPattern.Matches($line)) {
-                $rawTarget = $match.Value
-                $normalizedTarget = $rawTarget -replace '\\', '/'
-                $resolvedPath = Resolve-LocalPath -SourceFile $file -Target $normalizedTarget -RepoRoot $repoRoot
-                if (-not $resolvedPath) {
-                    $violationCount++
-                    Write-Violation -File $file -LineNumber $lineNo -Message "Source reference '$normalizedTarget' does not resolve to an existing markdown file" -Line $line
-                }
+# Process code files for docs references
+$codeFiles = $gitFiles | Where-Object { 
+    $ext = [System.IO.Path]::GetExtension($_)
+    $codeFileExtensions -contains $ext
+}
+
+$codeFiles | ForEach-Object {
+    $relativePath = $_
+    $file = Join-Path $repoRoot $relativePath
+    if (-not (Test-Path -LiteralPath $file)) { return }
+    $lines = Get-Content -LiteralPath $file
+    for ($index = 0; $index -lt $lines.Length; $index++) {
+        $line = $lines[$index]
+        $lineNo = $index + 1
+        foreach ($match in $codeDocsPattern.Matches($line)) {
+            $rawTarget = $match.Value
+            $normalizedTarget = $rawTarget -replace '\\', '/'
+            $resolvedPath = Resolve-LocalPath -SourceFile $file -Target $normalizedTarget -RepoRoot $repoRoot
+            if (-not $resolvedPath) {
+                $violationCount++
+                Write-Violation -File $file -LineNumber $lineNo -Message "Source reference '$normalizedTarget' does not resolve to an existing markdown file" -Line $line
             }
         }
     }

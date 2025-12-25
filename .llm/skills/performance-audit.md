@@ -127,7 +127,7 @@ using var setLease = Buffers<T>.HashSet.Get(out HashSet<T> buffer);
 
 ### Array Pooling
 
-See [use-array-pool.md](use-array-pool.md) for detailed guidance.
+See the [Array Pooling Guide](use-array-pool.md) for detailed guidance.
 
 Quick reference:
 

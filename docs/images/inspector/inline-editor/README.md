@@ -1,6 +1,6 @@
 # Inline Editor Inspector Images
 
-This directory contains images for the inspector inline editor documentation (`inspector-inline-editor.md`).
+This directory contains images for the [Inspector Inline Editor](../../../features/inspector/inspector-inline-editor.md) documentation.
 
 ---
 

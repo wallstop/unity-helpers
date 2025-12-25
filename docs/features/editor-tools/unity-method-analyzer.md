@@ -290,8 +290,8 @@ Click **"Export ▾"** to access export options:
 
 #### Save Options
 
-- **Save as JSON...** — Export to a `.json` file for CI/CD integration
-- **Save as Markdown...** — Export to a `.md` file for documentation or review
+- **Save as JSON...** — Export to a JSON file for CI/CD integration
+- **Save as Markdown...** — Export to a Markdown file for documentation or review
 
 ### JSON Export Format
 

@@ -245,7 +245,7 @@ public void GetItems(List<Item> result)
 
 ## Array Pooling
 
-For array pooling, see [use-array-pool.md](use-array-pool.md).
+For array pooling, see the [Array Pooling Guide](use-array-pool.md).
 
 Quick summary:
 

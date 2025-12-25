@@ -1,6 +1,6 @@
 # Selection Attribute Inspector Images
 
-This directory contains images for the inspector selection attributes documentation (`inspector-selection-attributes.md`). This includes images for:
+This directory contains images for the [Inspector Selection Attributes](../../../features/inspector/inspector-selection-attributes.md) documentation. This includes images for:
 
 - **WEnumToggleButtons** - Visual toggle buttons for enums and flag enums
 - **WValueDropDown** - Generic dropdown for any type with fixed values or provider methods
@@ -289,7 +289,7 @@ public class StateMachine : MonoBehaviour
 
 ## Existing References
 
-The following image references exist in `inspector-selection-attributes.md`:
+The following image references exist in the [Inspector Selection Attributes](../../../features/inspector/inspector-selection-attributes.md) documentation:
 
 ```markdown
 > ![WEnumToggleButtons with flag enum](../../images/inspector/wenum-toggle-buttons-basic.png)

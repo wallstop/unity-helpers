@@ -1,3 +1,3 @@
 # GitHub Copilot Instructions
 
-See [.llm/context.md](../.llm/context.md) for all AI agent guidelines.
+See the [AI Agent Guidelines](../.llm/context.md) for all AI agent guidelines.

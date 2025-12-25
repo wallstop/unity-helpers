@@ -39,7 +39,7 @@ AI assistants and LLM-powered tools can:
 
 If you're an AI assistant working with this repository, you can also reference:
 
-- [`.llm/context.md`](../../.llm/context.md) - Comprehensive guidelines for AI agents
+- [AI Agent Guidelines](../../.llm/context.md) - Comprehensive guidelines for AI agents
 
 This file provides additional context about coding style, testing patterns, and repository-specific conventions.
 

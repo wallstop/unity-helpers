@@ -146,6 +146,10 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Better handling of null additions in collections
   - Updated editor tooling for better integration with Unity 2021.3+
   - Default IList.Sort to Grail sort for stability and improved performance
+- **Documentation**:
+  - Updated documentation to reflect new features and API changes
+  - Re-organized documentation into a more logical structure
+  - Consolidated documentation naming around kebab-case
 
 ---
 
