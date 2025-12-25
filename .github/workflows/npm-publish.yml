@@ -30,14 +30,14 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "Manual trigger detected. Skipping version check."
             NEW_VERSION=$(jq -r '.version' package.json)
-            echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-            echo "should_publish=true" >> $GITHUB_ENV
+            echo "NEW_VERSION=$NEW_VERSION" >> "$GITHUB_ENV"
+            echo "should_publish=true" >> "$GITHUB_ENV"
             if [[ "$NEW_VERSION" == *"rc"* ]]; then
               echo "This is a pre-release (next tag)."
-              echo "NPM_TAG=next" >> $GITHUB_ENV
+              echo "NPM_TAG=next" >> "$GITHUB_ENV"
             else
               echo "This is a stable release (latest tag)."
-              echo "NPM_TAG=latest" >> $GITHUB_ENV
+              echo "NPM_TAG=latest" >> "$GITHUB_ENV"
             fi
           else
             PREV_VERSION=$(git show HEAD~1:package.json | jq -r '.version' || echo "0.0.0")
@@ -47,20 +47,20 @@ jobs:
 
             if [ "$PREV_VERSION" != "$NEW_VERSION" ]; then
               echo "Version changed, proceeding..."
-              echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-              echo "should_publish=true" >> $GITHUB_ENV
+              echo "NEW_VERSION=$NEW_VERSION" >> "$GITHUB_ENV"
+              echo "should_publish=true" >> "$GITHUB_ENV"
 
               # Detect pre-releases (versions with "rc" or similar tags)
               if [[ "$NEW_VERSION" == *"rc"* ]]; then
                 echo "This is a pre-release (next tag)."
-                echo "NPM_TAG=next" >> $GITHUB_ENV
+                echo "NPM_TAG=next" >> "$GITHUB_ENV"
               else
                 echo "This is a stable release (latest tag)."
-                echo "NPM_TAG=latest" >> $GITHUB_ENV
+                echo "NPM_TAG=latest" >> "$GITHUB_ENV"
               fi
             else
               echo "Version did not change, skipping..."
-              echo "should_publish=false" >> $GITHUB_ENV
+              echo "should_publish=false" >> "$GITHUB_ENV"
             fi
           fi
 

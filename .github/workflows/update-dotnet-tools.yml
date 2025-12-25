@@ -76,4 +76,4 @@ jobs:
       - name: No changes summary
         if: steps.git_changes.outputs.changed != 'true'
         run: |
-          echo "## .NET tools are up to date" >> $GITHUB_STEP_SUMMARY
+          echo "## .NET tools are up to date" >> "$GITHUB_STEP_SUMMARY"
