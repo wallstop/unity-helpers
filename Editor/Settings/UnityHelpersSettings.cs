@@ -4391,6 +4391,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             return false;
                         }
 
+                        // Capture color palette state before drawing so we can detect changes
+                        ColorKeyChangeNotifier.CaptureCurrentState(serializedSettings);
+
                         EditorGUI.BeginChangeCheck();
 
                         string scriptPropertyPath = scriptProperty?.propertyPath;
@@ -4474,6 +4477,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                         guiChanged,
                         applied
                     );
+
+                    // Detect and notify color key changes to trigger inspector repaints
+                    if (palettePropertyChanged && (dataChanged || guiChanged || applied))
+                    {
+                        ColorKeyChangeNotifier.DetectAndNotifyChanges(serializedSettings);
+                        ColorKeyChangeNotifier.RepaintAffectedInspectors();
+                    }
+
                     if (!dataChanged && !guiChanged && !applied)
                     {
                         return;

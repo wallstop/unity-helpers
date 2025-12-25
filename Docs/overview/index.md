@@ -261,6 +261,9 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **OctTree3D** - 3D spatial tree (octree)
 → [3D Spatial Trees](../features/spatial/spatial-trees-3d-guide.md) | [3D Performance](../performance/spatial-tree-3d-performance.md)
 
+**Odin Inspector Migration** - Step-by-step guide for migrating from Odin Inspector
+→ [Migration Guide](../guides/odin-migration-guide.md)
+
 **ODIN Compatibility** - Automatic Odin Inspector integration
 → [Singletons - ODIN](../features/utilities/singletons.md#odin-compatibility) | [Glossary](glossary.md#odin-compatibility)
 

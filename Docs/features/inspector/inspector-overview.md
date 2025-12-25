@@ -154,9 +154,37 @@ Show or hide fields based on runtime values:
 
 - **[WShowIf](inspector-conditional-display.md)** - Visibility rules with comparison operators (Equal, GreaterThan, IsNull, etc.), inversion, stacking
 
-![Image placeholder: WShowIf showing field appearing based on bool toggle]
-![Image placeholder: WShowIf with numeric comparison]
-![GIF placeholder: WShowIf dynamic visibility based on enum selection]
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public enum ExampleEnum
+{
+    Option1,
+    Option2,
+    Option3,
+}
+
+public class WShowIfExamples : MonoBehaviour
+{
+    public bool toggle;
+
+    [WShowIf(nameof(toggle))]
+    public string hiddenByBool;
+
+    public int intValue;
+
+    [WShowIf(nameof(intValue), WShowIfComparison.GreaterThan, 5)]
+    public string hiddenByInt;
+
+    public ExampleEnum enumValue;
+
+    [WShowIf(nameof(enumValue), ExampleEnum.Option2, ExampleEnum.Option3)]
+    public string hiddenByEnum;
+}
+```
+
+![WShowIf examples showing visibility based on bool, int, and enum](../../images/inspector/wshowif-examples.gif)
 
 **[→ Full Guide: Inspector Conditional Display](inspector-conditional-display.md)**
 
@@ -258,7 +286,19 @@ Centralized configuration for all inspector features:
 - Auto-include defaults
 
 ![UnityHelpersSettings inspector showing all configuration options](../../images/inspector/unity-helper-settings.png)
-![GIF placeholder: Changing color palette and seeing instant update in inspector]
+
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public class WButtonSettingsExample : MonoBehaviour
+{
+    [WButton(priority: "Documentation Example")]
+    private void Button() { }
+}
+```
+
+![Changing color palette and seeing instant update in inspector](../../images/inspector/button-color-update-realtime.gif)
 
 **[→ Full Guide: Inspector Settings](inspector-settings.md)**
 
@@ -392,6 +432,7 @@ For individual feature examples, see the detailed guides linked above.
 
 ## See Also
 
+- **[Odin Inspector Migration Guide](../../guides/odin-migration-guide.md)** - Step-by-step migration from Odin Inspector
 - **[Editor Tools Guide](../editor-tools/editor-tools-guide.md)** - 20+ automation tools for sprites, animations, validation
 - **[Relational Components](../relational-components/relational-components.md)** - Auto-wire components with attributes
 - **[Effects System](../effects/effects-system.md)** - Data-driven buffs/debuffs

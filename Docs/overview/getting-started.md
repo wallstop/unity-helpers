@@ -86,6 +86,7 @@ Jump directly to the solution you need:
 - Need global settings → [Singletons](../features/utilities/singletons.md)
 - Need buff/debuff system → [Effects System](../features/effects/effects-system.md)
 - Need save/load system → [Serialization](../features/serialization/serialization.md)
+- Migrating from Odin Inspector → [Odin Migration Guide](../guides/odin-migration-guide.md)
 
 ### 📚 Path 2: "I Want to Understand Everything"
 
@@ -370,6 +371,7 @@ Pick one feature that solves your immediate problem:
 - [Main README](../../README.md) - Complete feature overview
 - [Feature Index](index.md) - Alphabetical reference
 - [Glossary](glossary.md) - Term definitions
+- [Odin Migration Guide](../guides/odin-migration-guide.md) - Migrate from Odin Inspector
 
 **Deep Dives:**
 

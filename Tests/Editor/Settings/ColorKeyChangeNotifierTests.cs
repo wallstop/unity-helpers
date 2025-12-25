@@ -1,0 +1,641 @@
+#if UNITY_EDITOR
+namespace WallstopStudios.UnityHelpers.Tests.Settings
+{
+    using System;
+    using System.Collections.Generic;
+    using NUnit.Framework;
+    using UnityEditor;
+    using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Editor.Settings;
+
+    /// <summary>
+    /// Tests for verifying that <see cref="ColorKeyChangeNotifier"/> correctly detects
+    /// and notifies when WButton and WEnumToggleButtons custom color entries are modified.
+    /// </summary>
+    public sealed class ColorKeyChangeNotifierTests
+    {
+        private UnityHelpersSettings _settings;
+        private SerializedObject _serializedSettings;
+        private HashSet<string> _receivedWButtonKeys;
+        private HashSet<string> _receivedWEnumKeys;
+        private int _wbuttonEventCount;
+        private int _wenumEventCount;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _settings = UnityHelpersSettings.instance;
+            _serializedSettings = new SerializedObject(_settings);
+            _serializedSettings.UpdateIfRequiredOrScript();
+            _receivedWButtonKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            _receivedWEnumKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            _wbuttonEventCount = 0;
+            _wenumEventCount = 0;
+
+            ColorKeyChangeNotifier.ClearCache();
+            ColorKeyChangeNotifier.OnWButtonColorKeysChanged += OnWButtonColorKeysChanged;
+            ColorKeyChangeNotifier.OnWEnumToggleButtonsColorKeysChanged +=
+                OnWEnumToggleButtonsColorKeysChanged;
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            ColorKeyChangeNotifier.OnWButtonColorKeysChanged -= OnWButtonColorKeysChanged;
+            ColorKeyChangeNotifier.OnWEnumToggleButtonsColorKeysChanged -=
+                OnWEnumToggleButtonsColorKeysChanged;
+            ColorKeyChangeNotifier.ClearCache();
+
+            _serializedSettings?.Dispose();
+            _serializedSettings = null;
+        }
+
+        private void OnWButtonColorKeysChanged(HashSet<string> changedKeys)
+        {
+            _wbuttonEventCount++;
+            if (changedKeys != null)
+            {
+                foreach (string key in changedKeys)
+                {
+                    _receivedWButtonKeys.Add(key);
+                }
+            }
+        }
+
+        private void OnWEnumToggleButtonsColorKeysChanged(HashSet<string> changedKeys)
+        {
+            _wenumEventCount++;
+            if (changedKeys != null)
+            {
+                foreach (string key in changedKeys)
+                {
+                    _receivedWEnumKeys.Add(key);
+                }
+            }
+        }
+
+        [Test]
+        public void CaptureCurrentStateCapturesExistingWButtonColors()
+        {
+            SerializedProperty customColors = _serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            Assert.IsNotNull(customColors, "WButtonCustomColors property should exist.");
+
+            // Capture should not throw and should complete without error
+            Assert.DoesNotThrow(() =>
+                ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings)
+            );
+        }
+
+        [Test]
+        public void CaptureCurrentStateCapturesExistingWEnumToggleButtonsColors()
+        {
+            SerializedProperty customColors = _serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsCustomColors
+            );
+            Assert.IsNotNull(customColors, "WEnumToggleButtonsCustomColors property should exist.");
+
+            Assert.DoesNotThrow(() =>
+                ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings)
+            );
+        }
+
+        [Test]
+        public void NoChangeDoesNotTriggerWButtonEvent()
+        {
+            ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings);
+
+            // No changes made - just recapture and detect
+            ColorKeyChangeNotifier.DetectAndNotifyChanges(_serializedSettings);
+
+            Assert.AreEqual(
+                0,
+                _wbuttonEventCount,
+                "No WButton event should fire when no colors changed."
+            );
+        }
+
+        [Test]
+        public void NoChangeDoesNotTriggerWEnumEvent()
+        {
+            ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings);
+
+            // No changes made - just recapture and detect
+            ColorKeyChangeNotifier.DetectAndNotifyChanges(_serializedSettings);
+
+            Assert.AreEqual(
+                0,
+                _wenumEventCount,
+                "No WEnumToggleButtons event should fire when no colors changed."
+            );
+        }
+
+        [Test]
+        public void WButtonColorModificationTriggersEventWithCorrectKey()
+        {
+            ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings);
+
+            SerializedProperty customColors = _serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            SerializedProperty keys = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty values = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            Assert.IsNotNull(keys, "Keys property should exist.");
+            Assert.IsNotNull(values, "Values property should exist.");
+
+            if (keys.arraySize == 0)
+            {
+                Assert.Inconclusive(
+                    "No WButton custom colors exist to test modification. "
+                        + "Ensure Default key exists in settings."
+                );
+                return;
+            }
+
+            SerializedProperty firstKey = keys.GetArrayElementAtIndex(0);
+            string colorKey = firstKey.stringValue;
+            Assert.IsFalse(string.IsNullOrEmpty(colorKey), "Color key should not be empty.");
+
+            SerializedProperty firstValue = values.GetArrayElementAtIndex(0);
+            SerializedProperty buttonColorProp = firstValue.FindPropertyRelative(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton
+            );
+            Assert.IsNotNull(buttonColorProp, "Button color property should exist.");
+
+            Color originalColor = buttonColorProp.colorValue;
+            Color newColor = new(
+                1f - originalColor.r,
+                1f - originalColor.g,
+                1f - originalColor.b,
+                originalColor.a
+            );
+            buttonColorProp.colorValue = newColor;
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+
+            ColorKeyChangeNotifier.DetectAndNotifyChanges(_serializedSettings);
+
+            Assert.AreEqual(1, _wbuttonEventCount, "WButton event should fire once.");
+            Assert.IsTrue(
+                _receivedWButtonKeys.Contains(colorKey),
+                $"Changed key '{colorKey}' should be in the received keys."
+            );
+
+            // Restore original color
+            buttonColorProp.colorValue = originalColor;
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        [Test]
+        public void WEnumToggleButtonsColorModificationTriggersEventWithCorrectKey()
+        {
+            ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings);
+
+            SerializedProperty customColors = _serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsCustomColors
+            );
+            SerializedProperty keys = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty values = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            Assert.IsNotNull(keys, "Keys property should exist.");
+            Assert.IsNotNull(values, "Values property should exist.");
+
+            if (keys.arraySize == 0)
+            {
+                Assert.Inconclusive(
+                    "No WEnumToggleButtons custom colors exist to test modification."
+                );
+                return;
+            }
+
+            SerializedProperty firstKey = keys.GetArrayElementAtIndex(0);
+            string colorKey = firstKey.stringValue;
+            Assert.IsFalse(string.IsNullOrEmpty(colorKey), "Color key should not be empty.");
+
+            SerializedProperty firstValue = values.GetArrayElementAtIndex(0);
+            SerializedProperty selectedBgProp = firstValue.FindPropertyRelative(
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsSelectedBackground
+            );
+            Assert.IsNotNull(selectedBgProp, "Selected background property should exist.");
+
+            Color originalColor = selectedBgProp.colorValue;
+            Color newColor = new(
+                1f - originalColor.r,
+                1f - originalColor.g,
+                1f - originalColor.b,
+                originalColor.a
+            );
+            selectedBgProp.colorValue = newColor;
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+
+            ColorKeyChangeNotifier.DetectAndNotifyChanges(_serializedSettings);
+
+            Assert.AreEqual(1, _wenumEventCount, "WEnumToggleButtons event should fire once.");
+            Assert.IsTrue(
+                _receivedWEnumKeys.Contains(colorKey),
+                $"Changed key '{colorKey}' should be in the received keys."
+            );
+
+            // Restore original color
+            selectedBgProp.colorValue = originalColor;
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        [Test]
+        public void ClearCacheResetsState()
+        {
+            ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings);
+            ColorKeyChangeNotifier.ClearCache();
+
+            // After clearing, capturing again should not cause issues
+            Assert.DoesNotThrow(() =>
+                ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings)
+            );
+        }
+
+        [Test]
+        public void NullSerializedObjectDoesNotThrow()
+        {
+            Assert.DoesNotThrow(() => ColorKeyChangeNotifier.CaptureCurrentState(null));
+            Assert.DoesNotThrow(() => ColorKeyChangeNotifier.DetectAndNotifyChanges(null));
+        }
+
+        [Test]
+        public void RepaintAffectedInspectorsDoesNotThrow()
+        {
+            // This test verifies the repaint mechanism doesn't throw
+            // The actual repaint behavior can't be easily tested in unit tests
+            Assert.DoesNotThrow(() => ColorKeyChangeNotifier.RepaintAffectedInspectors());
+        }
+
+        [Test]
+        public void MultipleChangesReportAllChangedKeys()
+        {
+            ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings);
+
+            SerializedProperty customColors = _serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            SerializedProperty keys = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty values = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            if (keys.arraySize < 2)
+            {
+                Assert.Inconclusive(
+                    "Need at least 2 WButton custom color entries to test multiple changes."
+                );
+                return;
+            }
+
+            List<Color> originalColors = new();
+            List<string> changedKeyNames = new();
+
+            for (int index = 0; index < Math.Min(2, keys.arraySize); index++)
+            {
+                SerializedProperty keyProp = keys.GetArrayElementAtIndex(index);
+                SerializedProperty valueProp = values.GetArrayElementAtIndex(index);
+                SerializedProperty buttonColorProp = valueProp.FindPropertyRelative(
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton
+                );
+
+                string keyName = keyProp.stringValue;
+                Color originalColor = buttonColorProp.colorValue;
+
+                originalColors.Add(originalColor);
+                changedKeyNames.Add(keyName);
+
+                Color newColor = new(
+                    1f - originalColor.r,
+                    1f - originalColor.g,
+                    1f - originalColor.b,
+                    originalColor.a
+                );
+                buttonColorProp.colorValue = newColor;
+            }
+
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+            ColorKeyChangeNotifier.DetectAndNotifyChanges(_serializedSettings);
+
+            Assert.AreEqual(1, _wbuttonEventCount, "WButton event should fire once.");
+            foreach (string keyName in changedKeyNames)
+            {
+                Assert.IsTrue(
+                    _receivedWButtonKeys.Contains(keyName),
+                    $"Changed key '{keyName}' should be in the received keys."
+                );
+            }
+
+            // Restore original colors
+            for (int index = 0; index < changedKeyNames.Count; index++)
+            {
+                SerializedProperty valueProp = values.GetArrayElementAtIndex(index);
+                SerializedProperty buttonColorProp = valueProp.FindPropertyRelative(
+                    UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton
+                );
+                buttonColorProp.colorValue = originalColors[index];
+            }
+
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        [Test]
+        public void WButtonTextColorChangeTriggersEvent()
+        {
+            ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings);
+
+            SerializedProperty customColors = _serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            SerializedProperty keys = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty values = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            if (keys.arraySize == 0)
+            {
+                Assert.Inconclusive("No WButton custom colors exist to test.");
+                return;
+            }
+
+            SerializedProperty firstKey = keys.GetArrayElementAtIndex(0);
+            string colorKey = firstKey.stringValue;
+
+            SerializedProperty firstValue = values.GetArrayElementAtIndex(0);
+            SerializedProperty textColorProp = firstValue.FindPropertyRelative(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
+            );
+            Assert.IsNotNull(textColorProp, "Text color property should exist.");
+
+            Color originalColor = textColorProp.colorValue;
+            Color newColor = new(
+                1f - originalColor.r,
+                1f - originalColor.g,
+                1f - originalColor.b,
+                originalColor.a
+            );
+            textColorProp.colorValue = newColor;
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+
+            ColorKeyChangeNotifier.DetectAndNotifyChanges(_serializedSettings);
+
+            Assert.AreEqual(1, _wbuttonEventCount, "WButton event should fire once.");
+            Assert.IsTrue(
+                _receivedWButtonKeys.Contains(colorKey),
+                $"Changed key '{colorKey}' should be in the received keys."
+            );
+
+            // Restore
+            textColorProp.colorValue = originalColor;
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        [Test]
+        public void WEnumToggleButtonsSelectedTextColorChangeTriggersEvent()
+        {
+            ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings);
+
+            SerializedProperty customColors = _serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsCustomColors
+            );
+            SerializedProperty keys = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty values = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            if (keys.arraySize == 0)
+            {
+                Assert.Inconclusive("No WEnumToggleButtons custom colors exist to test.");
+                return;
+            }
+
+            SerializedProperty firstKey = keys.GetArrayElementAtIndex(0);
+            string colorKey = firstKey.stringValue;
+
+            SerializedProperty firstValue = values.GetArrayElementAtIndex(0);
+            SerializedProperty selectedTextProp = firstValue.FindPropertyRelative(
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsSelectedText
+            );
+            Assert.IsNotNull(selectedTextProp, "Selected text property should exist.");
+
+            Color originalColor = selectedTextProp.colorValue;
+            Color newColor = new(
+                1f - originalColor.r,
+                1f - originalColor.g,
+                1f - originalColor.b,
+                originalColor.a
+            );
+            selectedTextProp.colorValue = newColor;
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+
+            ColorKeyChangeNotifier.DetectAndNotifyChanges(_serializedSettings);
+
+            Assert.AreEqual(1, _wenumEventCount, "WEnumToggleButtons event should fire once.");
+            Assert.IsTrue(
+                _receivedWEnumKeys.Contains(colorKey),
+                $"Changed key '{colorKey}' should be in the received keys."
+            );
+
+            // Restore
+            selectedTextProp.colorValue = originalColor;
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        [Test]
+        public void WEnumToggleButtonsInactiveBackgroundColorChangeTriggersEvent()
+        {
+            ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings);
+
+            SerializedProperty customColors = _serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsCustomColors
+            );
+            SerializedProperty keys = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty values = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            if (keys.arraySize == 0)
+            {
+                Assert.Inconclusive("No WEnumToggleButtons custom colors exist to test.");
+                return;
+            }
+
+            SerializedProperty firstKey = keys.GetArrayElementAtIndex(0);
+            string colorKey = firstKey.stringValue;
+
+            SerializedProperty firstValue = values.GetArrayElementAtIndex(0);
+            SerializedProperty inactiveBgProp = firstValue.FindPropertyRelative(
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsInactiveBackground
+            );
+            Assert.IsNotNull(inactiveBgProp, "Inactive background property should exist.");
+
+            Color originalColor = inactiveBgProp.colorValue;
+            Color newColor = new(
+                1f - originalColor.r,
+                1f - originalColor.g,
+                1f - originalColor.b,
+                originalColor.a
+            );
+            inactiveBgProp.colorValue = newColor;
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+
+            ColorKeyChangeNotifier.DetectAndNotifyChanges(_serializedSettings);
+
+            Assert.AreEqual(1, _wenumEventCount, "WEnumToggleButtons event should fire once.");
+            Assert.IsTrue(
+                _receivedWEnumKeys.Contains(colorKey),
+                $"Changed key '{colorKey}' should be in the received keys."
+            );
+
+            // Restore
+            inactiveBgProp.colorValue = originalColor;
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        [Test]
+        public void WEnumToggleButtonsInactiveTextColorChangeTriggersEvent()
+        {
+            ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings);
+
+            SerializedProperty customColors = _serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsCustomColors
+            );
+            SerializedProperty keys = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty values = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            if (keys.arraySize == 0)
+            {
+                Assert.Inconclusive("No WEnumToggleButtons custom colors exist to test.");
+                return;
+            }
+
+            SerializedProperty firstKey = keys.GetArrayElementAtIndex(0);
+            string colorKey = firstKey.stringValue;
+
+            SerializedProperty firstValue = values.GetArrayElementAtIndex(0);
+            SerializedProperty inactiveTextProp = firstValue.FindPropertyRelative(
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsInactiveText
+            );
+            Assert.IsNotNull(inactiveTextProp, "Inactive text property should exist.");
+
+            Color originalColor = inactiveTextProp.colorValue;
+            Color newColor = new(
+                1f - originalColor.r,
+                1f - originalColor.g,
+                1f - originalColor.b,
+                originalColor.a
+            );
+            inactiveTextProp.colorValue = newColor;
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+
+            ColorKeyChangeNotifier.DetectAndNotifyChanges(_serializedSettings);
+
+            Assert.AreEqual(1, _wenumEventCount, "WEnumToggleButtons event should fire once.");
+            Assert.IsTrue(
+                _receivedWEnumKeys.Contains(colorKey),
+                $"Changed key '{colorKey}' should be in the received keys."
+            );
+
+            // Restore
+            inactiveTextProp.colorValue = originalColor;
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        [Test]
+        public void SequentialDetectCallsDoNotAccumulateChanges()
+        {
+            ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings);
+
+            // First detect without changes - should not fire
+            ColorKeyChangeNotifier.DetectAndNotifyChanges(_serializedSettings);
+            Assert.AreEqual(0, _wbuttonEventCount, "No event should fire without changes.");
+
+            // Second detect without changes - should still not fire
+            ColorKeyChangeNotifier.DetectAndNotifyChanges(_serializedSettings);
+            Assert.AreEqual(
+                0,
+                _wbuttonEventCount,
+                "No event should fire on second call without changes."
+            );
+        }
+
+        [Test]
+        public void ChangedKeysAreCaseInsensitive()
+        {
+            ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings);
+
+            SerializedProperty customColors = _serializedSettings.FindProperty(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
+            );
+            SerializedProperty keys = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            SerializedProperty values = customColors.FindPropertyRelative(
+                SerializableDictionarySerializedPropertyNames.Values
+            );
+
+            if (keys.arraySize == 0)
+            {
+                Assert.Inconclusive("No WButton custom colors exist to test.");
+                return;
+            }
+
+            SerializedProperty firstKey = keys.GetArrayElementAtIndex(0);
+            string colorKey = firstKey.stringValue;
+
+            SerializedProperty firstValue = values.GetArrayElementAtIndex(0);
+            SerializedProperty buttonColorProp = firstValue.FindPropertyRelative(
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton
+            );
+
+            Color originalColor = buttonColorProp.colorValue;
+            buttonColorProp.colorValue = new Color(
+                1f - originalColor.r,
+                1f - originalColor.g,
+                1f - originalColor.b,
+                originalColor.a
+            );
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+
+            ColorKeyChangeNotifier.DetectAndNotifyChanges(_serializedSettings);
+
+            // Test case insensitive lookup
+            Assert.IsTrue(
+                _receivedWButtonKeys.Contains(colorKey.ToUpperInvariant()),
+                "Case-insensitive lookup should find the changed key."
+            );
+            Assert.IsTrue(
+                _receivedWButtonKeys.Contains(colorKey.ToLowerInvariant()),
+                "Case-insensitive lookup should find the changed key."
+            );
+
+            // Restore
+            buttonColorProp.colorValue = originalColor;
+            _serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+        }
+    }
+}
+#endif

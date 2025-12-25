@@ -21,7 +21,7 @@ Unity Helpers eliminates entire categories of repetitive work with production-re
 
 **What makes this different:**
 
-- 🎨 **Professional inspector tooling** - Grouping, buttons, conditional display, toggle grids (rivals Odin Inspector, FREE)
+- 🎨 **Professional inspector tooling** - Grouping, buttons, conditional display, toggle grids (Odin alternatives, less fully-featured) — [Migration Guide](docs/guides/odin-migration-guide.md)
 - ⚡ **10-15x faster** random generation than Unity.Random
 - 🔌 **Zero boilerplate** component wiring with attributes
 - 🎮 **Designer-friendly** effects system (buffs/debuffs as ScriptableObjects)
@@ -125,7 +125,7 @@ public class CharacterStats : MonoBehaviour
 - **[WEnumToggleButtons](docs/features/inspector/inspector-selection-attributes.md)** - Flag enums as visual toggle grids
 - **[SerializableDictionary](docs/features/serialization/serialization-types.md)**, **[SerializableSet](docs/features/serialization/serialization-types.md)**, **[WGuid](docs/features/serialization/serialization-types.md)**, **[SerializableType](docs/features/serialization/serialization-types.md)** - Collections Unity can't serialize
 
-[📖 Complete Inspector Guide](docs/features/inspector/inspector-overview.md)
+[📖 Complete Inspector Guide](docs/features/inspector/inspector-overview.md) | [🔄 Odin Migration Guide](docs/guides/odin-migration-guide.md)
 
 ---
 
@@ -1203,6 +1203,7 @@ Unity Helpers is built with performance as a top priority:
 
 **Core Guides:**
 
+- Odin Migration Guide — [Migrate from Odin Inspector](docs/guides/odin-migration-guide.md)
 - Serialization Guide — [Serialization](docs/features/serialization/serialization.md)
 - Editor Tools Guide — [Editor Tools](docs/features/editor-tools/editor-tools-guide.md)
 - Math & Extensions — [Core Math & Extensions](docs/features/utilities/math-and-extensions.md)

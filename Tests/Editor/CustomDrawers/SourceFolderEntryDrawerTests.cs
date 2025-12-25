@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 #if UNITY_EDITOR
     using System;
     using System.Collections;
+    using System.Collections.Generic;
     using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
@@ -689,13 +690,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         private void SetFoldoutState(string fieldName, string key, bool value)
         {
-            var field = typeof(SourceFolderEntryDrawer).GetField(
+            FieldInfo field = typeof(SourceFolderEntryDrawer).GetField(
                 fieldName,
                 BindingFlags.NonPublic | BindingFlags.Static
             );
             if (field != null)
             {
-                var dict =
+                Dictionary<string, bool> dict =
                     field.GetValue(null) as System.Collections.Generic.Dictionary<string, bool>;
                 if (dict != null)
                 {
@@ -706,7 +707,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         private string GetRegexFoldoutKey(SerializedProperty property)
         {
-            var method = typeof(SourceFolderEntryDrawer).GetMethod(
+            MethodInfo method = typeof(SourceFolderEntryDrawer).GetMethod(
                 "GetRegexFoldoutKey",
                 BindingFlags.NonPublic | BindingFlags.Static
             );
@@ -715,7 +716,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         private string GetExcludeRegexFoldoutKey(SerializedProperty property)
         {
-            var method = typeof(SourceFolderEntryDrawer).GetMethod(
+            MethodInfo method = typeof(SourceFolderEntryDrawer).GetMethod(
                 "GetExcludeRegexFoldoutKey",
                 BindingFlags.NonPublic | BindingFlags.Static
             );
@@ -724,7 +725,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
         private string GetExcludePathFoldoutKey(SerializedProperty property)
         {
-            var method = typeof(SourceFolderEntryDrawer).GetMethod(
+            MethodInfo method = typeof(SourceFolderEntryDrawer).GetMethod(
                 "GetExcludePathFoldoutKey",
                 BindingFlags.NonPublic | BindingFlags.Static
             );
