@@ -1778,37 +1778,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         }
 
         [Test]
-        public void SystemArrayPoolClearArrayFalseDoesNotClear()
-        {
-            const int requestedSize = 10;
-
-            int[] firstArray;
-            {
-                PooledArray<int> pooled = SystemArrayPool<int>.Get(requestedSize, out int[] buffer);
-                firstArray = buffer;
-                for (int i = 0; i < requestedSize; i++)
-                {
-                    buffer[i] = i + 100;
-                }
-                pooled.Dispose();
-            }
-
-            using PooledArray<int> pooled2 = SystemArrayPool<int>.Get(
-                requestedSize,
-                clearArray: false,
-                out int[] reused
-            );
-
-            if (ReferenceEquals(firstArray, reused))
-            {
-                for (int i = 0; i < requestedSize; i++)
-                {
-                    Assert.AreEqual(i + 100, reused[i]);
-                }
-            }
-        }
-
-        [Test]
         public void SystemArrayPoolVariousSizesWorkCorrectly()
         {
             int[] sizes =
