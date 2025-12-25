@@ -1,23 +1,27 @@
 # Unity Helpers
 
-> **🤖 AI Assistance Disclosure:** Recent versions of this project have utilized AI assistance for bug detection, performance optimization, and documentation. The original codebase was developed entirely by humans over several years.
-
 <p align="center">
   <img src="docs/images/unity-helpers-banner.svg" alt="Unity Helpers Banner" width="800"/>
 </p>
 
+> **🤖 AI Assistance Disclosure:**
+>
+> Recent versions of this project have utilized AI assistance for bug detection, performance optimization, and documentation.
+>
+> The original codebase was developed entirely by humans over several years.
+
 <p align="left">
-  <a href="https://unity.com/releases/2021-lts"><img alt="Unity 2021.3+" src="https://img.shields.io/badge/Unity-2021.3%2B-000000?logo=unity&amp;logoColor=white" /></a><br>
-  <a href="https://openupm.com/packages/com.wallstop-studios.unity-helpers/"><img alt="OpenUPM" src="https://img.shields.io/npm/v/com.wallstop-studios.unity-helpers?label=openupm&amp;registry_uri=https://package.openupm.com" /></a><br>
-  <a href="https://www.npmjs.com/package/com.wallstop-studios.unity-helpers"><img alt="npm version" src="https://img.shields.io/npm/v/com.wallstop-studios.unity-helpers" /></a><br>
-  <a href="https://www.npmjs.com/package/com.wallstop-studios.unity-helpers"><img alt="npm downloads" src="https://img.shields.io/npm/dw/com.wallstop-studios.unity-helpers" /></a><br>
-  <a href="https://github.com/wallstop/unity-helpers/releases"><img alt="GitHub release version" src="https://img.shields.io/github/v/release/wallstop/unity-helpers" /></a><br>
-  <a href="https://github.com/wallstop/unity-helpers/releases"><img alt="GitHub downloads" src="https://img.shields.io/github/downloads/wallstop/unity-helpers/total" /></a><br>
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg" /></a><br>
-  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/csharpier-autofix.yml"><img alt="CSharpier" src="https://github.com/wallstop/unity-helpers/actions/workflows/csharpier-autofix.yml/badge.svg?branch=main" /></a><br>
-  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml"><img alt="Markdown &amp; JSON Lint/Format" src="https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml/badge.svg?branch=main" /></a><br>
-  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml"><img alt="Lint Docs Links" src="https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml/badge.svg?branch=main" /></a><br>
-  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml"><img alt="Npm Publish" src="https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml/badge.svg?branch=main" /></a>
+  <a href="https://unity.com/releases/2021-lts"><img alt="Unity 2021.3+" src="https://img.shields.io/badge/Unity-2021.3%2B-000000?logo=unity&amp;logoColor=white" /></a>
+  <a href="https://openupm.com/packages/com.wallstop-studios.unity-helpers/"><img alt="OpenUPM" src="https://img.shields.io/npm/v/com.wallstop-studios.unity-helpers?label=openupm&amp;registry_uri=https://package.openupm.com" /></a>
+  <a href="https://www.npmjs.com/package/com.wallstop-studios.unity-helpers"><img alt="npm version" src="https://img.shields.io/npm/v/com.wallstop-studios.unity-helpers" /></a>
+  <a href="https://www.npmjs.com/package/com.wallstop-studios.unity-helpers"><img alt="npm downloads" src="https://img.shields.io/npm/dw/com.wallstop-studios.unity-helpers" /></a>
+  <a href="https://github.com/wallstop/unity-helpers/releases"><img alt="GitHub release version" src="https://img.shields.io/github/v/release/wallstop/unity-helpers" /></a>
+  <a href="https://github.com/wallstop/unity-helpers/releases"><img alt="GitHub downloads" src="https://img.shields.io/github/downloads/wallstop/unity-helpers/total" /></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg" /></a>
+  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/csharpier-autofix.yml"><img alt="CSharpier" src="https://github.com/wallstop/unity-helpers/actions/workflows/csharpier-autofix.yml/badge.svg?branch=main" /></a>
+  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml"><img alt="Markdown &amp; JSON Lint/Format" src="https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml/badge.svg?branch=main" /></a>
+  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml"><img alt="Lint Docs Links" src="https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml/badge.svg?branch=main" /></a>
+  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml"><img alt="Npm Publish" src="https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml/badge.svg?branch=main" />
 </p>
 
 **Stop writing boilerplate. Start shipping features.**
