@@ -22,6 +22,8 @@ logs_*zip.meta
 progress/**
 progress.meta
 
+*.rsp.meta
+
 .claude/*
 .codex/*
 
