@@ -1106,6 +1106,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             private readonly bool _previousIncludeTests;
             private readonly bool _previousIgnoreExclusion;
             private readonly bool _previousAllowAssetCreation;
+            private readonly bool _previousIgnoreCompilationState;
             private readonly Func<Type, bool> _previousFilter;
 
             private SingletonCreatorTestScope(Type[] allowedTypes)
@@ -1127,10 +1128,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     ScriptableObjectSingletonCreator.IgnoreExclusionAttribute;
                 _previousAllowAssetCreation =
                     ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression;
+                _previousIgnoreCompilationState =
+                    ScriptableObjectSingletonCreator.IgnoreCompilationState;
                 _previousFilter = ScriptableObjectSingletonCreator.TypeFilter;
                 ScriptableObjectSingletonCreator.IncludeTestAssemblies = true;
                 ScriptableObjectSingletonCreator.IgnoreExclusionAttribute = true;
                 ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = true;
+                // Bypass compilation state check - Unity may report isCompiling/isUpdating
+                // as true during test runs after AssetDatabase operations
+                ScriptableObjectSingletonCreator.IgnoreCompilationState = true;
                 ScriptableObjectSingletonCreator.TypeFilter = type =>
                 {
                     if (!allowed.Contains(type))
@@ -1155,6 +1161,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     _previousIgnoreExclusion;
                 ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression =
                     _previousAllowAssetCreation;
+                ScriptableObjectSingletonCreator.IgnoreCompilationState =
+                    _previousIgnoreCompilationState;
             }
 
             private static void EnsureMetadataFolder()

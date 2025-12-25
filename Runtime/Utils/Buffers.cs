@@ -1515,7 +1515,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             }
             else
             {
-                System.Buffers.ArrayPool<T>.Shared.Return(array);
+                System.Buffers.ArrayPool<T>.Shared.Return(array, clearArray: true);
             }
         }
     }

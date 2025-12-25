@@ -52,6 +52,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         // This is for tests that need to explicitly invoke singleton asset creation.
         internal static bool AllowAssetCreationDuringSuppression { get; set; }
 
+        // When true, bypasses the EditorApplication.isCompiling/isUpdating check.
+        // This is for tests that need to explicitly invoke singleton asset creation
+        // regardless of Unity's compilation state, which can report false positives
+        // during test runs after AssetDatabase operations.
+        internal static bool IgnoreCompilationState { get; set; }
+
         static ScriptableObjectSingletonCreator()
         {
             // Defer singleton asset creation to avoid conflicts during Unity initialization.
@@ -99,7 +105,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             // Defer asset creation during compilation or asset database updates to avoid
             // "Unable to import newly created asset" errors that occur when Unity is in
             // an intermediate state during domain reloads or asset imports.
-            if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+            // Tests can bypass this check by setting IgnoreCompilationState = true.
+            if (
+                !IgnoreCompilationState
+                && (EditorApplication.isCompiling || EditorApplication.isUpdating)
+            )
             {
                 LogVerbose(
                     "ScriptableObjectSingletonCreator: Deferring ensure during compilation/updating."

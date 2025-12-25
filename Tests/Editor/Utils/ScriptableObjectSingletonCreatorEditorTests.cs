@@ -29,6 +29,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         private const string WrongAssetPathCaseVariant =
             WrongFolderCaseVariant + "/CreatorPathSingleton.asset";
         private bool _previousEditorUiSuppress;
+        private bool _previousIgnoreCompilationState;
 
         [UnitySetUp]
         public IEnumerator UnitySetUp()
@@ -38,6 +39,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = true;
             // Allow explicit calls to EnsureSingletonAssets during tests
             ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = true;
+            // Bypass compilation state check - Unity may report isCompiling/isUpdating
+            // as true during test runs after AssetDatabase operations
+            _previousIgnoreCompilationState =
+                ScriptableObjectSingletonCreator.IgnoreCompilationState;
+            ScriptableObjectSingletonCreator.IgnoreCompilationState = true;
             ScriptableObjectSingletonCreator.TypeFilter = static type =>
                 type == typeof(CreatorPathSingleton) || type == typeof(NestedDiskSingleton);
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
@@ -97,6 +103,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.TypeFilter = null;
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
             ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = false;
+            ScriptableObjectSingletonCreator.IgnoreCompilationState =
+                _previousIgnoreCompilationState;
             ScriptableObjectSingletonCreator.ResetRetryStateForTests();
             AssetDatabase.SaveAssets();
             ImportFolderIfExists(ResourcesRoot);

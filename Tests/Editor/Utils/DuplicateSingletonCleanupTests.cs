@@ -22,6 +22,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         private const string DeeplyNestedFolder =
             "Assets/Resources/DuplicateCleanupTests/Nested/Deep";
         private bool _previousEditorUiSuppress;
+        private bool _previousIgnoreCompilationState;
         private bool _cleanedUp;
 
         [OneTimeSetUp]
@@ -42,6 +43,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.VerboseLogging = true;
             ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = true;
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = true;
+            // Bypass compilation state check - Unity may report isCompiling/isUpdating
+            // as true during test runs after AssetDatabase operations
+            _previousIgnoreCompilationState =
+                ScriptableObjectSingletonCreator.IgnoreCompilationState;
+            ScriptableObjectSingletonCreator.IgnoreCompilationState = true;
             ScriptableObjectSingletonCreator.TypeFilter = static type =>
                 type == typeof(CleanupEnabledSingleton)
                 || type == typeof(CleanupDisabledSingleton)
@@ -72,6 +78,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = false;
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
             ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = false;
+            ScriptableObjectSingletonCreator.IgnoreCompilationState =
+                _previousIgnoreCompilationState;
             ScriptableObjectSingletonCreator.ResetRetryStateForTests();
 
             base.TearDown();
@@ -94,6 +102,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = false;
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
             ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = false;
+            ScriptableObjectSingletonCreator.IgnoreCompilationState =
+                _previousIgnoreCompilationState;
             ScriptableObjectSingletonCreator.ResetRetryStateForTests();
 
             // Now run base teardown

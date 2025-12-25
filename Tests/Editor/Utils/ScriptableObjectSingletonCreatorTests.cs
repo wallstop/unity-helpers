@@ -20,6 +20,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     {
         private const string TestRoot = "Assets/Resources/CreatorTests";
         private bool _previousEditorUiSuppress;
+        private bool _previousIgnoreCompilationState;
 
         [OneTimeSetUp]
         public void OneTimeSetUp()
@@ -61,6 +62,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.VerboseLogging = true;
             // Allow explicit calls to EnsureSingletonAssets during tests
             ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = true;
+            // Bypass compilation state check - Unity may report isCompiling/isUpdating
+            // as true during test runs after AssetDatabase operations
+            _previousIgnoreCompilationState =
+                ScriptableObjectSingletonCreator.IgnoreCompilationState;
+            ScriptableObjectSingletonCreator.IgnoreCompilationState = true;
             ScriptableObjectSingletonCreator.TypeFilter = static type =>
                 type == typeof(CaseMismatch)
                 || type == typeof(Duplicate)
@@ -136,6 +142,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = false;
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
             ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = false;
+            ScriptableObjectSingletonCreator.IgnoreCompilationState =
+                _previousIgnoreCompilationState;
             ScriptableObjectSingletonCreator.ResetRetryStateForTests();
             EditorUi.Suppress = _previousEditorUiSuppress;
 
@@ -1088,6 +1096,46 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             // Verify the asset was created (ensure works when not compiling/updating)
             Object asset = AssetDatabase.LoadAssetAtPath<Object>(targetPath);
             Assert.IsNotNull(asset, "Asset should be created when not compiling or updating");
+        }
+
+        /// <summary>
+        /// Verifies that IgnoreCompilationState property allows bypassing the isCompiling/isUpdating check.
+        /// This is essential for tests that need to explicitly call EnsureSingletonAssets.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator IgnoreCompilationStateAllowsBypassingCompilationCheck()
+        {
+            string targetPath = "Assets/Resources/CaseTest/CaseMismatch.asset";
+            AssetDatabase.DeleteAsset(targetPath);
+            yield return null;
+
+            // Capture original state
+            bool previousIgnoreCompilationState =
+                ScriptableObjectSingletonCreator.IgnoreCompilationState;
+
+            try
+            {
+                // Test with IgnoreCompilationState = true (bypasses the check)
+                ScriptableObjectSingletonCreator.IgnoreCompilationState = true;
+                ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+                yield return null;
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+
+                // Verify the asset was created
+                Object asset = AssetDatabase.LoadAssetAtPath<Object>(targetPath);
+                Assert.IsNotNull(
+                    asset,
+                    "Asset should be created when IgnoreCompilationState is true. "
+                        + $"isCompiling={EditorApplication.isCompiling}, "
+                        + $"isUpdating={EditorApplication.isUpdating}"
+                );
+            }
+            finally
+            {
+                // Restore original state
+                ScriptableObjectSingletonCreator.IgnoreCompilationState =
+                    previousIgnoreCompilationState;
+            }
         }
 
         /// <summary>
