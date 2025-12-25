@@ -75,3 +75,11 @@ repos:
         entry: bash -c 'if command -v yamllint >/dev/null 2>&1; then yamllint -c .yamllint.yaml "$@"; else echo "yamllint not installed; skipping"; fi' --
         language: system
         files: '(?i)\.(ya?ml)$'
+      - id: lychee
+        name: Check markdown links (lychee)
+        entry: pwsh -NoProfile -File scripts/lint-staged-links.ps1
+        language: system
+        files: '(?i)\.(md|markdown)$'
+        pass_filenames: false
+        require_serial: true
+        description: Check for broken links in staged markdown files using lychee.

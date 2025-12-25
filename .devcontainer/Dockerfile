@@ -181,6 +181,18 @@ RUN TOKEI_VERSION="12.1.2" \
     | tar -xz -C /usr/local/bin tokei \
     && chmod +x /usr/local/bin/tokei
 
+# Install lychee (fast link checker) from GitHub releases
+# Version should match lychee-action in .github/workflows/lint-doc-links.yml
+RUN LYCHEE_VERSION="0.21.0" \
+    && case "${TARGETARCH}" in \
+        amd64) LYCHEE_ARCH="x86_64-unknown-linux-gnu" ;; \
+        arm64) LYCHEE_ARCH="aarch64-unknown-linux-gnu" ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+    && curl -fsSL "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/lychee-${LYCHEE_ARCH}.tar.gz" \
+    | tar -xz -C /usr/local/bin \
+    && chmod +x /usr/local/bin/lychee
+
 # Install PowerShell
 RUN wget -q https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb \
     && dpkg -i packages-microsoft-prod.deb \

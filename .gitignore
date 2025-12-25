@@ -13,6 +13,9 @@ TestFailures.txt.meta
 PlaceHolderSummary.md
 PlaceHolderSummary.md.meta
 
+logs_*zip
+logs_*zip.meta
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
