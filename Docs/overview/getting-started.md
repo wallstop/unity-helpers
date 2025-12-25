@@ -71,13 +71,13 @@ Jump directly to the solution you need:
 
 **Performance Issues?**
 
-- Slow random number generation → [Random Generators](#random-in-60-seconds)
-- Too many objects to search → [Spatial Queries](#spatial-queries-in-60-seconds)
+- Slow random number generation → [Random Generators](#1-random-in-60-seconds--beginner)
+- Too many objects to search → [Spatial Queries](#3-spatial-queries-in-60-seconds--intermediate)
 - Frame drops from allocations → [Buffering Pattern](../../README.md#buffering-pattern)
 
 **Workflow Issues?**
 
-- Writing too much GetComponent → [Auto Component Wiring](#component-wiring-in-60-seconds)
+- Writing too much GetComponent → [Auto Component Wiring](#2-component-wiring-in-60-seconds--beginner)
 - Manual sprite animation setup → [Editor Tools](../features/editor-tools/editor-tools-guide.md)
 - Prefab validation problems → [Prefab Checker](../features/editor-tools/editor-tools-guide.md#prefab-checker)
 
@@ -120,8 +120,6 @@ After installation, verify the package appears in **Window > Package Manager** u
 
 ## Three Quick Wins (5 Minutes)
 
-<a id="random-in-60-seconds"></a>
-
 ### 1. Random in 60 Seconds 🟢 Beginner
 
 **Problem:** Unity's `UnityEngine.Random` is slow and not seedable.
@@ -158,8 +156,6 @@ public class LootDrop : MonoBehaviour
 **Learn More:** [Random Performance](../performance/random-performance.md)
 
 ---
-
-<a id="component-wiring-in-60-seconds"></a>
 
 ### 2. Component Wiring in 60 Seconds 🟢 Beginner
 
@@ -214,8 +210,6 @@ public class Player : MonoBehaviour
   - Reflex: attach `RelationalComponentsInstaller` alongside your `SceneScope`. The installer binds the assigner, hydrates the active scene, and can listen for additive scenes. Use `ContainerRelationalExtensions` helpers (`InjectWithRelations`, `InstantiateGameObjectWithRelations`, etc.) when spawning objects through the container.
 - Samples: [DI – VContainer](../../Samples~/DI%20-%20VContainer/README.md), [DI – Zenject](../../Samples~/DI%20-%20Zenject/README.md), [DI – Reflex](../../Samples~/DI%20-%20Reflex/README.md)
 - Full guide with scenarios and testing tips: [Dependency Injection Integrations](../features/relational-components/relational-components.md#dependency-injection-integrations)
-
-<a id="spatial-queries-in-60-seconds"></a>
 
 ### 3. Spatial Queries in 60 Seconds 🟡 Intermediate
 

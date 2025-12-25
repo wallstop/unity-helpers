@@ -90,6 +90,39 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
             return durationType == ModifierDurationType.Duration && durationAmount > 0;
         }
 
+        [WShowIf(nameof(boolCondition))]
+        public List<string> conditionalStringList = new();
+
+        [WShowIf(
+            nameof(durationType),
+            expectedValues: new object[] { ModifierDurationType.Duration }
+        )]
+        public List<int> conditionalIntList = new();
+
+        [WShowIf(nameof(intCondition), WShowIfComparison.GreaterThan, 0)]
+        public string[] conditionalStringArray;
+
+        public TestFlags flagsCondition;
+
+        [WShowIf(
+            nameof(flagsCondition),
+            expectedValues: new object[]
+            {
+                TestFlags.OptionA,
+                TestFlags.OptionA | TestFlags.OptionB,
+            }
+        )]
+        public int flagsDependent;
+
+        [Flags]
+        public enum TestFlags
+        {
+            None = 0,
+            OptionA = 1 << 0,
+            OptionB = 1 << 1,
+            OptionC = 1 << 2,
+        }
+
         [Serializable]
         public sealed class NestedData
         {

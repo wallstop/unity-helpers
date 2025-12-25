@@ -20,7 +20,7 @@ Unity Helpers includes a powerful suite of inspector attributes and serializatio
 
 - Designer-friendly interfaces reduce programmer bottlenecks
 - Project-wide settings ensure consistent styling and behavior
-- Pagination, animation, and polish built-in
+- Pagination, animation, and polish - built-in
 
 ---
 
@@ -39,7 +39,20 @@ Control how fields are grouped and organized in the inspector:
 
 ---
 
-### 2. Method Invocation
+### 2. Inline Editing
+
+Edit nested objects without losing context:
+
+- **[WInLineEditor](inspector-inline-editor.md)** - Embed inspectors for ScriptableObjects, Materials, Textures directly below the field
+
+![Image placeholder: WInLineEditor showing embedded ScriptableObject inspector]
+![GIF placeholder: WInLineEditor foldout expand/collapse animation]
+
+**[→ Full Guide: Inspector Inline Editor](inspector-inline-editor.md)**
+
+---
+
+### 3. Method Invocation
 
 Expose methods as clickable buttons in the inspector:
 
@@ -53,7 +66,7 @@ Expose methods as clickable buttons in the inspector:
 
 ---
 
-### 3. Conditional Display
+### 4. Conditional Display
 
 Show or hide fields based on runtime values:
 
@@ -67,7 +80,7 @@ Show or hide fields based on runtime values:
 
 ---
 
-### 4. Selection & Dropdowns
+### 5. Selection & Dropdowns
 
 Provide designer-friendly selection controls:
 
@@ -84,7 +97,7 @@ Provide designer-friendly selection controls:
 
 ---
 
-### 5. Validation & Protection
+### 6. Validation & Protection
 
 Protect data integrity with validation attributes:
 
@@ -95,7 +108,7 @@ Protect data integrity with validation attributes:
 
 ---
 
-### 6. Serialization Types
+### 7. Serialization Types
 
 Unity-friendly wrappers for complex data:
 
@@ -114,7 +127,7 @@ Unity-friendly wrappers for complex data:
 
 ---
 
-### 7. Project Settings
+### 8. Project Settings
 
 Centralized configuration for all inspector features:
 
@@ -247,9 +260,10 @@ For individual feature examples, see the detailed guides linked above.
 ### Inspector Attributes
 
 - **[Inspector Grouping Attributes](inspector-grouping-attributes.md)** - WGroup layout control
+- **[Inspector Inline Editor](inspector-inline-editor.md)** - WInLineEditor for nested object editing
 - **[Inspector Buttons](inspector-button.md)** - WButton for method invocation
 - **[Inspector Conditional Display](inspector-conditional-display.md)** - WShowIf for dynamic visibility
-- **[Inspector Selection Attributes](inspector-selection-attributes.md)** - WEnumToggleButtons, dropdowns
+- **[Inspector Selection Attributes](inspector-selection-attributes.md)** - WEnumToggleButtons, WValueDropDown, IntDropdown, StringInList
 - **[Inspector Validation Attributes](inspector-validation-attributes.md)** - WReadOnly, WNotNull
 
 ### Serialization

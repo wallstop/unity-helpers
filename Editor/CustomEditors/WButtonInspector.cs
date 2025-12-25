@@ -3,7 +3,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 #if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
+    using System.Reflection;
     using UnityEditor;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
+    using WallstopStudios.UnityHelpers.Editor.Extensions;
     using WallstopStudios.UnityHelpers.Editor.Internal;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
@@ -133,6 +137,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                     continue;
                 }
 
+                // Check WShowIf condition - this handles conditional visibility for all properties
+                // including arrays/lists which need editor-level handling since PropertyDrawers
+                // for attributes on arrays only affect elements, not the array itself
+                if (!WShowIfPropertyDrawer.ShouldShowProperty(property))
+                {
+                    continue;
+                }
+
+                // Draw validation HelpBox for arrays/lists with validation attributes
+                // PropertyDrawers for attributes on arrays only affect elements, so we handle
+                // array-level validation warnings/errors here in the custom editor
+                DrawValidationHelpBoxIfNeeded(property);
+
                 EditorGUILayout.PropertyField(property, true);
             }
 
@@ -187,6 +204,43 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
             }
 
             return scriptProperty;
+        }
+
+        /// <summary>
+        /// Draws validation HelpBox for arrays/lists with ValidateAssignment or WNotNull attributes.
+        /// PropertyDrawers for attributes on arrays only affect elements, not the array itself,
+        /// so we handle array-level validation here in the custom editor.
+        /// </summary>
+        private static void DrawValidationHelpBoxIfNeeded(SerializedProperty property)
+        {
+            // Only handle array/list properties - non-array properties are handled by PropertyDrawers
+            if (!property.isArray || property.propertyType == SerializedPropertyType.String)
+            {
+                return;
+            }
+
+            property.GetEnclosingObject(out FieldInfo fieldInfo);
+            if (fieldInfo == null)
+            {
+                return;
+            }
+
+            ValidateAssignmentAttribute validateAttribute =
+                fieldInfo.GetCustomAttribute<ValidateAssignmentAttribute>();
+            if (validateAttribute != null)
+            {
+                ValidateAssignmentPropertyDrawer.DrawValidationHelpBoxIfNeeded(
+                    property,
+                    validateAttribute
+                );
+                return;
+            }
+
+            WNotNullAttribute notNullAttribute = fieldInfo.GetCustomAttribute<WNotNullAttribute>();
+            if (notNullAttribute != null)
+            {
+                WNotNullPropertyDrawer.DrawValidationHelpBoxIfNeeded(property, notNullAttribute);
+            }
         }
     }
 #endif

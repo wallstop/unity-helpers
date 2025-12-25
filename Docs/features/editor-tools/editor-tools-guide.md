@@ -58,10 +58,14 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 
 ### Enhance Inspector Workflows
 
-- Inline inspector for object references → [WInLineEditor](#winlineeditor-property-drawer)
-- Conditional field display → [WShowIf Property Drawer](#wshowif-property-drawer)
-- Dropdown for strings/ints → [StringInList](#stringinlist-property-drawer) | [IntDropdown](#intdropdown-property-drawer)
-- Read-only inspector fields → [WReadOnly Property Drawer](#wreadonly-property-drawer)
+See the **[Inspector Attributes documentation](../inspector/inspector-overview.md)** for:
+
+- `[WInLineEditor]` — Embed nested object inspectors inline
+- `[WShowIf]` — Conditional field visibility
+- `[WEnumToggleButtons]` — Visual toggle buttons for enums
+- `[WValueDropDown]`, `[IntDropDown]`, `[StringInList]` — Selection dropdowns
+- `[WReadOnly]`, `[WNotNull]` — Validation attributes
+- `[WGroup]`, `[WButton]` — Layout and method invocation
 
 ---
 
@@ -1385,25 +1389,34 @@ Foldout animations are controlled via Unity Helpers Settings (`Edit > Project Se
 - `InlineEditorFoldoutSpeed` — Animation speed from 2.0 to 12.0 (default: `2.0`)
 
 ```csharp
-// Animation applies to foldout modes only
-[WInLineEditor(WInLineEditorMode.FoldoutCollapsed)]  // Animated
-public AbilityConfig animatedFoldout;
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
 
-[WInLineEditor(WInLineEditorMode.AlwaysExpanded)]    // No animation (always visible)
-public AbilityConfig alwaysVisible;
+public class AbilityConfig : ScriptableObject
+{
+    public string abilityName;
+    public Sprite icon;
+    public float cooldown;
+}
+
+public class WInLineEditorExample : MonoBehaviour
+{
+    // Animation applies to foldout modes only
+    [WInLineEditor(WInLineEditorMode.FoldoutCollapsed)] // Animated
+    public AbilityConfig animatedFoldout;
+
+    [WInLineEditor(WInLineEditorMode.AlwaysExpanded)] // No animation (always visible)
+    public AbilityConfig alwaysVisible;
+}
 ```
 
 **See also:** [Inspector Settings Reference](../inspector/inspector-settings.md#inline-editor-settings) for complete settings documentation.
 
 > **Visual Reference**
 >
-> ![WInLineEditor showing embedded ScriptableObject inspector](../../images/editor-tools/winlineeditor-expanded.png)
+> ![WInLineEditor showing embedded ScriptableObject inspector and expansion](../../images/editor-tools/winlineeditor-expanded.gif)
 >
-> _WInLineEditor with embedded inspector for a ScriptableObject reference_
->
-> ![WInLineEditor foldout animation](../../images/editor-tools/winlineeditor-foldout.gif)
->
-> _Foldout collapse/expand animation with smooth transitions_
+> _WInLineEditor with embedded inspector for a ScriptableObject reference with foldout and collapse transitions_
 
 ---
 
@@ -1453,13 +1466,50 @@ public int advancedSetting;
 **Multiple Values:**
 
 ```csharp
-public SpriteSelectionMode selectionMode;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Serialization;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+using WallstopStudios.UnityHelpers.Editor.Sprites;
 
-[WShowIf(nameof(selectionMode), expectedValues = new object[] {
-    SpriteSelectionMode.Regex,
-    SpriteSelectionMode.Regex | SpriteSelectionMode.Labels
-})]
-public List<string> regexPatterns;
+public class SelectionModeExample : MonoBehaviour
+{
+    public SpriteSelectionMode selectionMode;
+
+    [WShowIf(
+        nameof(selectionMode),
+        expectedValues = new object[]
+        {
+            SpriteSelectionMode.Regex,
+            SpriteSelectionMode.Regex | SpriteSelectionMode.Labels,
+        }
+    )]
+    public List<string> regexPatterns;
+
+    [FormerlySerializedAs("regexPatterns")]
+    [WShowIf(
+        nameof(selectionMode),
+        expectedValues = new object[]
+        {
+            SpriteSelectionMode.Regex,
+            SpriteSelectionMode.Regex | SpriteSelectionMode.Labels,
+        }
+    )]
+    public SerializableHashSet<string> regexPatterns1;
+
+    [WShowIf(
+        nameof(selectionMode),
+        expectedValues = new object[]
+        {
+            SpriteSelectionMode.Regex,
+            SpriteSelectionMode.Regex | SpriteSelectionMode.Labels,
+        }
+    )]
+    public SerializableDictionary<int, string> regexPatterns2;
+
+    public bool someOtherField;
+}
 ```
 
 **Features:**
@@ -1483,11 +1533,7 @@ public List<string> regexPatterns;
 >
 > ![WShowIf showing field visibility changing based on toggle](../../images/editor-tools/wshowif-boolean.gif)
 >
-> _Field appears/disappears based on boolean toggle state_
->
-> ![WShowIf with enum condition showing different fields](../../images/editor-tools/wshowif-enum.gif)
->
-> _Different fields shown based on enum selection_
+> _Field appears/disappears based on enum toggle state_
 
 ---
 
@@ -1546,11 +1592,53 @@ public class MySettings
 - Dynamic option lists
 - User-friendly enumerations
 
+```csharp
+using System.Collections.Generic;
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public class StringInListExample : MonoBehaviour
+{
+    [StringInList(typeof(StringInListExample), nameof(GetValues))]
+    public string value;
+
+    private IEnumerable<string> GetValues()
+    {
+        yield return "A";
+        yield return "B";
+        yield return "C";
+        yield return "D";
+    }
+}
+```
+
 > **Visual Reference**
 >
 > ![StringInList dropdown with search and pagination](../../images/editor-tools/stringinlist-dropdown.png)
 >
 > _StringInList dropdown showing search filtering and pagination_
+
+```csharp
+using System.Collections.Generic;
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public class StringInListExample : MonoBehaviour
+{
+    [StringInList(typeof(StringInListExample), nameof(GetValues))]
+    public string value;
+
+    private IEnumerable<string> GetValues()
+    {
+        yield return "A";
+        yield return "B";
+        yield return "C";
+        yield return "D";
+    }
+}
+```
+
+> **Visual Reference**
 >
 > ![StringInList with list field showing add/remove/reorder](../../images/editor-tools/stringinlist-list.gif)
 >
@@ -1591,24 +1679,137 @@ public int padding;
 **Common Use Cases:**
 
 ```csharp
-// Texture sizes (power of 2)
-[IntDropdown(32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384)]
-public int maxTextureSize = 2048;
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
 
-// Padding options
-[IntDropdown(0, 2, 4, 8, 16, 32)]
-public int spritePadding = 4;
+public class IntDropDownExample : MonoBehaviour
+{
+    // Texture sizes (power of 2)
+    [IntDropDown(32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384)]
+    public int maxTextureSize = 2048;
 
-// Quality levels
-[IntDropdown(0, 1, 2, 3, 4, 5)]
-public int qualityLevel = 3;
+    // Padding options
+    [IntDropDown(0, 2, 4, 8, 16, 32)]
+    public int spritePadding = 4;
+
+    // Quality levels
+    [IntDropDown(0, 1, 2, 3, 4, 5)]
+    public int qualityLevel = 3;
+}
 ```
 
 > **Visual Reference**
 >
-> ![IntDropdown showing texture size options](../../images/editor-tools/intdropdown-texturesize.png)
+> ![IntDropDown showing texture size options](../../images/editor-tools/intdropdown-texturesize.gif)
 >
-> _IntDropdown for texture sizes showing power-of-two options_
+> _IntDropDown for texture sizes showing power-of-two options_
+
+---
+
+### WValueDropDown Property Drawer
+
+**Attribute:** `[WValueDropDown]`
+
+**Purpose:** Generic dropdown for any type with fixed values or provider methods. More flexible than `StringInList` or `IntDropdown` — supports all primitive types, custom classes, and dynamic providers.
+
+**Syntax:**
+
+```csharp
+// Fixed primitive values
+[WValueDropDown(0, 25, 50, 100)]
+public int staminaThreshold = 50;
+
+[WValueDropDown(0.5f, 1.0f, 1.5f, 2.0f)]
+public float damageMultiplier = 1.0f;
+
+[WValueDropDown("Easy", "Normal", "Hard", "Insane")]
+public string difficulty = "Normal";
+
+// Static provider method
+[WValueDropDown(typeof(PowerUpLibrary), nameof(PowerUpLibrary.GetAvailablePowerUps))]
+public PowerUpDefinition selectedPowerUp;
+
+// Instance provider method (context-aware)
+[WValueDropDown(nameof(GetAvailableOptions), typeof(string))]
+public string selectedOption;
+```
+
+**Features:**
+
+- All primitive types: `bool`, `char`, `byte`, `sbyte`, `short`, `ushort`, `int`, `uint`, `long`, `ulong`, `float`, `double`, `string`
+- Custom types with `ToString()` for labels
+- Static provider methods from any type
+- Instance provider methods for context-aware options
+- Type-safe value selection
+
+**Best For:**
+
+- Type-safe options beyond strings/ints
+- Custom class/struct selection
+- Dynamic options from runtime data
+- Designer-friendly preset selection
+
+**Custom Types Example:**
+
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+using System.Collections.Generic;
+
+[System.Serializable]
+public class Preset
+{
+    public string name;
+    public float value;
+
+    public override string ToString() => name;  // Used for dropdown label
+}
+
+public class Config : MonoBehaviour
+{
+    [WValueDropDown(typeof(Config), nameof(GetPresets))]
+    public Preset selectedPreset;
+
+    public static IEnumerable<Preset> GetPresets()
+    {
+        return new[]
+        {
+            new Preset { name = "Low", value = 0.5f },
+            new Preset { name = "Medium", value = 1.0f },
+            new Preset { name = "High", value = 2.0f },
+        };
+    }
+}
+```
+
+**Instance Provider Example:**
+
+```csharp
+public class DynamicOptions : MonoBehaviour
+{
+    public string prefix = "Option";
+    public int optionCount = 5;
+
+    [WValueDropDown(nameof(GetAvailableOptions), typeof(string))]
+    public string selectedOption;
+
+    private IEnumerable<string> GetAvailableOptions()
+    {
+        for (int i = 1; i <= optionCount; i++)
+        {
+            yield return $"{prefix}_{i}";
+        }
+    }
+}
+```
+
+> **Visual Reference**
+>
+> ![WValueDropDown with predefined values](../../images/inspector/selection/wvalue-dropdown-basic.gif)
+>
+> _WValueDropDown showing predefined integer, float, and string values_
+
+For more detailed documentation, including all constructor forms, see [Inspector Selection Attributes](../inspector/inspector-selection-attributes.md#wvaluedropdown).
 
 ---
 
@@ -1647,7 +1848,10 @@ public string currentState;
 **Example:**
 
 ```csharp
-public class CharacterStats : MonoBehaviour
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public class WReadOnlyExample : MonoBehaviour
 {
     public int baseHealth = 100;
     public int healthBonus = 0;
@@ -1666,7 +1870,7 @@ public class CharacterStats : MonoBehaviour
 >
 > ![WReadOnly showing grayed-out calculated value in inspector](../../images/editor-tools/wreadonly-inspector.png)
 >
-> _WReadOnly field showing totalHealth as non-editable calculated value_
+> _WReadOnly field showing totalHealth as a non-editable calculated value_
 
 For detailed documentation on validation attributes, see [Inspector Validation Attributes](../inspector/inspector-validation-attributes.md).
 
@@ -1901,7 +2105,7 @@ public List<string> selectedLabels;
 **Best For:**
 
 - Tools requiring sprite label selection
-- Dropdown menus for label filtering
+- DropDown menus for label filtering
 - Maintaining label consistency across the project
 - Fast label-based sprite queries
 
@@ -2066,8 +2270,8 @@ else
 **Property Drawers:**
 
 - WShowIf - Conditional field visibility
-- StringInList - Dropdown selection for strings
-- IntDropdown - Dropdown selection for integers
+- StringInList - DropDown selection for strings
+- IntDropDown - DropDown selection for integers
 - WReadOnly - Read-only inspector fields
 
 **Automation:**
@@ -2367,7 +2571,7 @@ This package provides **20+ editor tools** across multiple categories:
 
 **4 Property Drawers:**
 
-- WShowIf, StringInList, IntDropdown, WReadOnly
+- WShowIf, StringInList, IntDropDown, WReadOnly
 
 **3 Automated Systems:**
 

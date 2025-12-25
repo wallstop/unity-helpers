@@ -30,7 +30,7 @@ Immutable version-4 GUID wrapper using two longs for efficient Unity serializati
 **Performance:**
 
 - 2x faster serialization than string-based GUID storage
-- Smaller memory footprint (16 bytes vs 36 bytes for string)
+- Smaller memory footprint (16 bytes vs. 36 bytes for string)
 - Immutable design prevents accidental modification
 
 ---
@@ -521,7 +521,7 @@ public class BehaviorSpawner : MonoBehaviour
 
 - **Search row:** Text field for filtering types
 - **Popup row:** Dropdown showing matched types
-- Clear button to unset type
+- Clear button to unset the type
 - Pagination for large type catalogs
 - Auto-complete suggestions
 
@@ -561,8 +561,8 @@ bool equal = typeRef.Equals(new SerializableType(typeof(PlayerController)));
 
 1. Stores assembly-qualified name (e.g., `Namespace.PlayerController, Assembly-CSharp`)
 2. On deserialization, tries exact match first
-3. If exact match fails, scans assemblies for best partial match
-4. Updates internal name if resolved to new type
+3. If the exact match fails, it scans assemblies for the best partial match
+4. Updates internal name if resolved to the new type
 
 ---
 
@@ -623,7 +623,7 @@ public class BonusConfig : MonoBehaviour
 
 - Checkbox for `HasValue` state
 - Inline value field (enabled when `HasValue == true`)
-- Height adapts based on nullable state
+- Height adapts based on the nullable state
 
 ---
 

@@ -3,7 +3,7 @@
 ## TL;DR — When To Use Which
 
 - Convex hull: fastest, safe outer bound; great for coarse collisions and visibility.
-- Concave hull: follows shape detail; tunable fidelity vs stability via k/alpha parameters.
+- Concave hull: follows shape detail; tunable fidelity vs. stability via k/alpha parameters.
 
 This guide explains convex and concave hulls, when to use each, and how they differ.
 
@@ -44,7 +44,7 @@ Illustration:
 - Postprocess: enforce clockwise/CCW winding and run self-intersection checks for concave hulls.
 - Numerical stability: add small epsilons for collinear checks; include or exclude boundary points consistently.
 
-## API Reference (Grid vs Gridless)
+## API Reference (Grid vs. Gridless)
 
 All hull helpers now offer both grid-aware (`Grid` + `FastVector3Int`) and gridless variants so you can work directly with `Vector2`/`FastVector3Int` data:
 
@@ -61,9 +61,9 @@ All hull helpers now offer both grid-aware (`Grid` + `FastVector3Int`) and gridl
 
 Because the new overloads reuse the pooled implementations under the hood, behaviour (winding, pruning, GC profile) matches the grid versions—pick whichever signature best matches your data source.
 
-## Gridless vs Grid-Aware Quickstart
+## Gridless vs. Grid-Aware Quickstart
 
-- Pick the **gridless** overloads when your points already live in world/local space (`Vector2`, `Vector3`, or `FastVector3Int` without a `Grid`). This keeps the hull math independent from Unity’s tile conversion layer.
+- Pick the **gridless** overloads when your points already live in world/local space (`Vector2`, `Vector3`, or `FastVector3Int` without a `Grid`). This keeps the hull math independent of Unity’s tile conversion layer.
 - Pick the **grid-aware** overloads when you have cell coordinates tied to a `Grid` or `Tilemap` and you want the helper to respect `Grid.CellToWorld` so you can visualize the hull in scene space.
 
 Gridless example — pure `Vector2` data for nav areas or spline fitting:
@@ -105,7 +105,7 @@ See `Samples~/Spatial Structures - 2D and 3D/Scripts/HullUsageDemo.cs` for a run
 ![Image placeholder: Game view showing cyan Vector2 hull and yellow Grid hull drawn simultaneously]
 ![GIF placeholder: Recording of cyan/yellow hull loops updating as the demo toggles between gridless and grid-aware modes]
 
-## Colinear Points & includeColinearPoints
+## Collinear Points & includeColinearPoints
 
 - Convex hull helpers prune collinear points by default so only the true corners remain, even after grid-to-world projections introduce float skew.
 - Opt into boundary retention by passing `includeColinearPoints: true` to `BuildConvexHull` (gridless) or its grid-aware overloads.

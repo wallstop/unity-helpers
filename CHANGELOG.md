@@ -14,13 +14,13 @@ See [the roadmap](docs/overview/roadmap.md) for details
 ### Added
 
 - **llms.txt**: Added `llms.txt` file following the [llmstxt.org](https://llmstxt.org/) specification for LLM-friendly documentation
-  - Provides structured overview of package features, APIs, and documentation links for AI assistants
+  - Provides a structured overview of package features, APIs, and documentation links for AI assistants
   - Enables third-party LLMs to quickly understand and work with the Unity Helpers codebase
 - **Auto-Load Singleton System**: New singleton pattern with configurable lifetimes and thread-safe execution
   - `UnityMainThreadGuard` for ensuring operations run on the main thread
   - `UnityMainThreadDispatcher` with configurable lifecycle management
   - `AutoLoadSingletonAttribute` for automatic singleton instantiation during Unity start-up phases
-  - Reworked auto-load singleton architecture for better scene persistence
+  - Reworked the autoload singleton architecture for better scene persistence
 - **Asset Change Detection**: Monitor asset changes with `DetectAssetChangedAttribute`
   - Annotate methods to automatically execute when specific asset types are created or deleted
   - Support for inheritance with `IncludeAssignableTypes` option
@@ -31,6 +31,16 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - `WEnumToggleButtons` attribute for toggle-based enum selection in inspector
   - `WShowIf` conditional display attribute improvements
   - Enhanced dropdown attributes for better property selection
+- **Inspector Validation Attributes**: Enhanced inspector feedback for null/invalid field detection
+  - `WNotNullAttribute` now displays a warning or error HelpBox in the inspector when the field is null
+  - `WNotNullAttribute` new properties: `MessageType` (Warning/Error enum) and `CustomMessage` (string) for customizable feedback
+  - `WNotNullAttribute` new constructor overloads for easy customization of message type and custom messages
+  - New `WNotNullPropertyDrawer` for rendering validation feedback in the inspector
+  - `ValidateAssignmentAttribute` now displays a warning or error HelpBox in the inspector when the field is invalid (null, empty string, or empty collection)
+  - `ValidateAssignmentAttribute` new properties: `MessageType` (Warning/Error enum) and `CustomMessage` (string) for customizable feedback
+  - `ValidateAssignmentAttribute` new constructor overloads for easy customization of message type and custom messages
+  - New `ValidateAssignmentPropertyDrawer` for rendering validation feedback in the inspector
+  - Both attributes maintain full backward compatibility—existing code works unchanged with default warning messages
   - `StringInListAttribute` now supports `[StringInList(nameof(Method))]` to call parameterless instance or static methods on the decorated object, and the drawer exposes the same experience in both IMGUI and UI Toolkit inspectors
   - `WButton` now supports `groupPriority` and `groupPlacement` parameters for fine-grained control over button group ordering and positioning
 - **Serialization Data Structures**: Production-ready serializable collections
@@ -40,7 +50,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - `SerializableSortedSet<T>` for sorted sets with `IComparable<T>` elements
   - `SerializableNullable<T>` for nullable value types in inspector
   - `SerializableType` for type references in inspector
-  - Pagination support for large collections in editor
+  - Pagination support for large collections in the Editor
   - Inline nested editor support for complex types
   - Undo/Redo support for all serializable collection modifications
   - Confirmation dialog when clearing collections to prevent accidental data loss
@@ -109,7 +119,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Minor relational component performance improvements, specifically for children components
   - Reduced GC allocations across property drawers, editor tools, and various helpers
 - **EnhancedImage Visual Component**:
-  - Improved material instance management with proper cleanup on destroy
+  - Improved material instance management with proper cleanup OnDestroy
   - Better domain reload handling for HDR color and material state persistence
   - Enhanced editor inspector with automatic material fix suggestions
 - **Animation Editor Tools**:

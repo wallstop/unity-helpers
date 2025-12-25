@@ -96,6 +96,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 return;
             }
 
+            // Defer asset creation during compilation or asset database updates to avoid
+            // "Unable to import newly created asset" errors that occur when Unity is in
+            // an intermediate state during domain reloads or asset imports.
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+            {
+                LogVerbose(
+                    "ScriptableObjectSingletonCreator: Deferring ensure during compilation/updating."
+                );
+                ScheduleEnsureSingletonAssets();
+                return;
+            }
+
             _isEnsuring = true;
             AssetDatabase.StartAssetEditing();
             _assetEditingScopeDepth++;
@@ -268,7 +280,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         Debug.LogError(
                             $"ScriptableObjectSingletonCreator: Failed to create singleton for type {derivedType.FullName} at {targetAssetPath}. {ex.Message}"
                         );
-                        Object.DestroyImmediate(instance);
+                        // Use allowDestroyingAssets=true because CreateAsset may have partially succeeded,
+                        // associating the instance with an asset before throwing the exception.
+                        SafeDestroyInstance(instance, targetAssetPath);
                         retryRequested = true;
                         continue;
                     }
@@ -293,7 +307,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                                 $"ScriptableObjectSingletonCreator: CreateAsset appeared to succeed but asset not found at {targetAssetPath}. This may indicate a stale asset database state."
                             );
                         }
-                        Object.DestroyImmediate(instance);
+                        // Use allowDestroyingAssets=true because CreateAsset may have partially succeeded,
+                        // associating the instance with an asset even though LoadAssetAtPath returns null.
+                        SafeDestroyInstance(instance, targetAssetPath);
                         retryRequested = true;
                         continue;
                     }
@@ -1074,6 +1090,104 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
             string metaPath = absolutePath + ".meta";
             return File.Exists(metaPath);
+        }
+
+        /// <summary>
+        /// Safely destroys a ScriptableObject instance after asset creation may have been attempted.
+        /// When <see cref="AssetDatabase.CreateAsset"/> is called, the instance can become associated
+        /// with an asset path in Unity's internal state even if the import fails (e.g., "Unable to import
+        /// newly created asset" errors). In this case, calling <see cref="Object.DestroyImmediate(Object)"/>
+        /// without <c>allowDestroyingAssets=true</c> results in a "Destroying assets is not permitted" error.
+        /// This method also cleans up any partially created files on disk.
+        /// </summary>
+        /// <param name="instance">The ScriptableObject instance to destroy.</param>
+        /// <param name="targetAssetPath">The asset path where creation was attempted (for cleanup).</param>
+        private static void SafeDestroyInstance(ScriptableObject instance, string targetAssetPath)
+        {
+            if (instance == null)
+            {
+                return;
+            }
+
+            // Clean up any partially created files on disk
+            if (!string.IsNullOrWhiteSpace(targetAssetPath))
+            {
+                TryCleanupPartiallyCreatedAsset(targetAssetPath);
+            }
+
+            // Use allowDestroyingAssets=true because CreateAsset may have partially succeeded,
+            // associating the instance with an asset even if the import failed.
+            try
+            {
+                Object.DestroyImmediate(instance, true);
+            }
+            catch (Exception ex)
+            {
+                // If destroy still fails, log but don't rethrow - we've done our best
+                LogVerbose(
+                    $"ScriptableObjectSingletonCreator: Failed to destroy instance after failed asset creation: {ex.Message}"
+                );
+            }
+        }
+
+        /// <summary>
+        /// Attempts to clean up any partially created asset files on disk.
+        /// This handles the case where CreateAsset wrote the file but Unity failed to import it.
+        /// </summary>
+        private static void TryCleanupPartiallyCreatedAsset(string assetsRelativePath)
+        {
+            try
+            {
+                // First try to delete via AssetDatabase
+                if (AssetDatabase.DeleteAsset(assetsRelativePath))
+                {
+                    LogVerbose(
+                        $"ScriptableObjectSingletonCreator: Cleaned up partially created asset at {assetsRelativePath}."
+                    );
+                    return;
+                }
+            }
+            catch (Exception)
+            {
+                // AssetDatabase.DeleteAsset may fail, continue to file system cleanup
+            }
+
+            // If AssetDatabase couldn't delete it, try file system directly
+            string absolutePath = TryGetAbsoluteAssetsPath(assetsRelativePath);
+            if (string.IsNullOrWhiteSpace(absolutePath))
+            {
+                return;
+            }
+
+            bool cleaned = false;
+            try
+            {
+                if (File.Exists(absolutePath))
+                {
+                    File.Delete(absolutePath);
+                    cleaned = true;
+                }
+
+                string metaPath = absolutePath + ".meta";
+                if (File.Exists(metaPath))
+                {
+                    File.Delete(metaPath);
+                    cleaned = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogVerbose(
+                    $"ScriptableObjectSingletonCreator: Failed to clean up partially created asset files at {absolutePath}: {ex.Message}"
+                );
+            }
+
+            if (cleaned)
+            {
+                LogVerbose(
+                    $"ScriptableObjectSingletonCreator: Cleaned up partially created asset files at {absolutePath}."
+                );
+            }
         }
 
         private static bool TryRemoveStaleAssetArtifacts(string assetsRelativePath)

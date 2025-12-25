@@ -179,12 +179,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private static bool IsSupportedProperty(SerializedProperty property)
         {
-            return property.propertyType == SerializedPropertyType.Integer
-                || property.propertyType == SerializedPropertyType.Float
-                || property.propertyType == SerializedPropertyType.String
-                || property.propertyType == SerializedPropertyType.Enum
-                || IsSerializableTypeProperty(property)
-                || IsGenericSerializedProperty(property);
+            // Exclude only property types that cannot be meaningfully assigned from a dropdown
+            return property.propertyType != SerializedPropertyType.ArraySize
+                && property.propertyType != SerializedPropertyType.FixedBufferSize
+                && property.propertyType != SerializedPropertyType.Gradient
+                && !property.isArray;
         }
 
         private static bool IsSerializableTypeProperty(SerializedProperty property)
@@ -389,6 +388,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return MatchesString(property, option);
                 case SerializedPropertyType.Enum:
                     return MatchesEnum(property, option);
+                case SerializedPropertyType.Boolean:
+                    return MatchesBoolean(property, option);
+                case SerializedPropertyType.Character:
+                    return MatchesCharacter(property, option);
+                case SerializedPropertyType.ObjectReference:
+                    return MatchesObjectReference(property, option);
                 case SerializedPropertyType.Generic:
                     if (IsSerializableTypeProperty(property))
                     {
@@ -396,7 +401,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                     return MatchesGenericProperty(property, valueType, option);
                 default:
-                    return false;
+                    // For any other property type (Vector2, Color, Rect, etc.),
+                    // use reflection-based comparison
+                    return MatchesGenericProperty(property, valueType, option);
             }
         }
 
@@ -679,6 +686,63 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return false;
         }
 
+        private static bool MatchesBoolean(SerializedProperty property, object option)
+        {
+            if (option == null)
+            {
+                return false;
+            }
+
+            if (option is bool boolOption)
+            {
+                return property.boolValue == boolOption;
+            }
+
+            return false;
+        }
+
+        private static bool MatchesCharacter(SerializedProperty property, object option)
+        {
+            if (option == null)
+            {
+                return false;
+            }
+
+            if (option is char charOption)
+            {
+                // Unity stores char as intValue in SerializedProperty
+                return property.intValue == charOption;
+            }
+
+            return false;
+        }
+
+        private static bool MatchesObjectReference(SerializedProperty property, object option)
+        {
+            UnityEngine.Object currentValue = property.objectReferenceValue;
+
+            // Both null - match
+            if (currentValue == null && option == null)
+            {
+                return true;
+            }
+
+            // One null, one not - no match
+            if (currentValue == null || option == null)
+            {
+                return false;
+            }
+
+            // Option must be a UnityEngine.Object
+            if (option is not UnityEngine.Object optionObject)
+            {
+                return false;
+            }
+
+            // Compare by reference (Unity objects use reference equality)
+            return ReferenceEquals(currentValue, optionObject);
+        }
+
         private static string[] GetOrCreateDisplayLabels(string cacheKey, object[] options)
         {
             if (
@@ -754,6 +818,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 formatted = serializableType.DisplayName;
             }
+            else if (option is UnityEngine.Object unityObject)
+            {
+                // Handle Unity objects with null-safe name access
+                // Unity objects may be destroyed but not null, so check explicitly
+                if (unityObject == null)
+                {
+                    formatted = "(None)";
+                }
+                else
+                {
+                    string objectName = unityObject.name;
+                    formatted = string.IsNullOrEmpty(objectName)
+                        ? unityObject.GetType().Name
+                        : objectName;
+                }
+            }
             else if (option is IFormattable formattable)
             {
                 formatted = formattable.ToString(null, CultureInfo.InvariantCulture);
@@ -783,6 +863,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 case SerializedPropertyType.Enum:
                     ApplyEnum(property, selectedOption);
                     break;
+                case SerializedPropertyType.Boolean:
+                    ApplyBoolean(property, selectedOption);
+                    break;
+                case SerializedPropertyType.Character:
+                    ApplyCharacter(property, selectedOption);
+                    break;
+                case SerializedPropertyType.ObjectReference:
+                    ApplyObjectReference(property, selectedOption);
+                    break;
                 case SerializedPropertyType.Generic:
                     if (IsSerializableTypeProperty(property))
                     {
@@ -793,6 +882,42 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         ApplyGenericProperty(property, selectedOption);
                     }
                     break;
+                default:
+                    // For any other property type (Vector2, Color, Rect, etc.),
+                    // use reflection-based assignment
+                    ApplyGenericProperty(property, selectedOption);
+                    break;
+            }
+        }
+
+        private static void ApplyBoolean(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption is bool boolValue)
+            {
+                property.boolValue = boolValue;
+            }
+        }
+
+        private static void ApplyCharacter(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption is char charValue)
+            {
+                // Unity stores char as intValue in SerializedProperty
+                property.intValue = charValue;
+            }
+        }
+
+        private static void ApplyObjectReference(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption == null)
+            {
+                property.objectReferenceValue = null;
+                return;
+            }
+
+            if (selectedOption is UnityEngine.Object unityObject)
+            {
+                property.objectReferenceValue = unityObject;
             }
         }
 
@@ -1735,7 +1860,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string fieldName = property.displayName;
             string actualType = GetPropertyTypeName(property);
             string expectedType = GetExpectedTypeName(dropdownAttribute);
-            return $"[WValueDropDown] Type mismatch: '{fieldName}' is {actualType}, but the dropdown provides {expectedType} values. Supported field types: int, float, string, enum, SerializableType, and serializable structs/classes.";
+            return $"[WValueDropDown] Type mismatch: '{fieldName}' is {actualType}, but the dropdown provides {expectedType} values. Most serializable types are supported (primitives, enums, UnityEngine.Object, Vector2/3/4, Color, structs, etc.). Arrays are not supported.";
         }
 
         private static string GetExpectedTypeName(WValueDropDownAttribute dropdownAttribute)

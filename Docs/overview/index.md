@@ -24,7 +24,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Utility Components](../features/inspector/utility-components.md#animatorenumstatemachine)
 
 **Async Extensions** - Await AsyncOperation with Task/ValueTask
-→ [Math & Extensions](../features/utilities/math-and-extensions.md#async-coroutine-interop)
+→ [Math & Extensions](../features/utilities/math-and-extensions.md#asynccoroutine-interop)
 
 **Attribute** - Dynamic numeric value with modifications
 → [Effects System](../features/effects/effects-system.md) | [Glossary](glossary.md#attribute)
@@ -65,7 +65,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Utility Components](../features/inspector/utility-components.md#centerpointoffset)
 
 **ChildComponent** - Auto-wire components from children
-→ [Relational Components](../features/relational-components/relational-components.md) | [README](../../README.md#component-attributes)
+→ [Relational Components](../features/relational-components/relational-components.md) | [README](../../README.md#relational-components)
 
 **ChildSpawner** - Conditional prefab instantiation with environment filtering
 → [Utility Components](../features/inspector/utility-components.md#childspawner)
@@ -108,7 +108,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Math & Extensions](../features/utilities/math-and-extensions.md#geometry) | [Glossary](glossary.md#douglas-peucker-algorithm)
 
 **WReadOnly** - Read-only inspector display attribute
-→ [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#wreadonly-property-drawer) | [README](../../README.md#component-attributes)
+→ [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#wreadonly-property-drawer) | [README](../../README.md#relational-components)
 
 ---
 
@@ -163,7 +163,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Data Structures](../features/utilities/data-structures.md#binary-heap-priority-queue) | [README](../../README.md#data-structures)
 
 **Helpers Class** - General utilities (layers, sprites, components)
-→ [Helper Utilities](../features/utilities/helper-utilities.md#gameplay-helpers) | [README - Helpers & Extensions](../../README.md#helpers--extensions)
+→ [Helper Utilities](../features/utilities/helper-utilities.md#gameplay-helpers) | [README](../../README.md#core-math--extensions)
 
 **Hulls** - Convex vs concave hull algorithms
 → [Hulls Guide](../features/spatial/hulls.md)
@@ -243,7 +243,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [README - Random Generators](../../README.md#random-number-generators)
 
 **WNotNull Attribute** - Inspector validation attribute
-→ [README - Component Attributes](../../README.md#component-attributes)
+→ [README](../../README.md#relational-components)
 
 **Numeric Helpers** - PositiveMod, Clamp, Approximately
 → [Math & Extensions](../features/utilities/math-and-extensions.md#numeric-helpers)
@@ -269,7 +269,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Math & Extensions](../features/utilities/math-and-extensions.md#geometry)
 
 **ParentComponent** - Auto-wire components from parents
-→ [Relational Components](../features/relational-components/relational-components.md) | [README](../../README.md#component-attributes)
+→ [Relational Components](../features/relational-components/relational-components.md) | [README](../../README.md#relational-components)
 
 **PcgRandom** - High-quality PCG random generator
 → [README - Random Generators](../../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
@@ -346,14 +346,14 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [3D Spatial Trees](../features/spatial/spatial-trees-3d-guide.md) | [3D Performance](../performance/spatial-tree-3d-performance.md)
 
 **RuntimeSingleton<T>** - Component singleton pattern
-→ [Singletons Guide](../features/utilities/singletons.md) | [Testing Patterns](../features/utilities/singletons.md#testing-patterns) | [README](../../README.md#singleton-utilities-odin-compatible)
+→ [Singletons Guide](../features/utilities/singletons.md) | [Testing Patterns](../features/utilities/singletons.md#testing-patterns) | [README](../../README.md#singleton-utilities-odincompatible)
 
 ---
 
 ## S
 
 **ScriptableObject Singleton** - Settings/data singleton pattern
-→ [Singletons Guide](../features/utilities/singletons.md) | [Testing Patterns](../features/utilities/singletons.md#testing-patterns) | [README](../../README.md#singleton-utilities-odin-compatible)
+→ [Singletons Guide](../features/utilities/singletons.md) | [Testing Patterns](../features/utilities/singletons.md#testing-patterns) | [README](../../README.md#singleton-utilities-odincompatible)
 
 **ScriptableObject Singleton Creator** - Auto-create singleton assets
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#scriptableobject-singleton-creator)
@@ -362,7 +362,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Serialization Guide](../features/serialization/serialization.md) | [README](../../README.md#serialization)
 
 **SiblingComponent** - Auto-wire components on same GameObject
-→ [Relational Components](../features/relational-components/relational-components.md) | [README](../../README.md#component-attributes)
+→ [Relational Components](../features/relational-components/relational-components.md) | [README](../../README.md#relational-components)
 
 **SerializableDictionary** - Unity-friendly dictionary with key/value serialization
 → [Serialization Types](../features/serialization/serialization-types.md#serializabledictionary)
@@ -377,7 +377,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Serialization Types](../features/serialization/serialization-types.md#serializabletype)
 
 **Singletons** - Runtime and ScriptableObject singleton patterns
-→ [Singletons Guide](../features/utilities/singletons.md) | [README](../../README.md#singleton-utilities-odin-compatible)
+→ [Singletons Guide](../features/utilities/singletons.md) | [README](../../README.md#singleton-utilities-odincompatible)
 
 **StormDropRandom** - Large-buffer ARX generator
 → [README - Random Generators](../../README.md#random-number-generators) | [Random Performance](../performance/random-performance.md)
@@ -419,7 +419,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Utility Components](../features/inspector/utility-components.md#spriterenderermetadata)
 
 **SpriteRendererSync** - Mirror SpriteRenderer properties to another renderer
-→ [Utility Components](../features/inspector/utility-components.md#spriterenderersyncer)
+→ [Utility Components](../features/inspector/utility-components.md#spriterenderersync)
 
 **StartTracker** - Track MonoBehaviour Start() lifecycle event
 → [Utility Components](../features/inspector/utility-components.md#starttracker)
@@ -483,7 +483,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Inspector Buttons](../features/inspector/inspector-button.md) | [Inspector Overview](../features/inspector/inspector-overview.md)
 
 **WEnumToggleButtons** - Enum and flag enum toggle button toolbars
-→ [Inspector Selection Attributes](../features/inspector/inspector-selection-attributes.md#wenumtogglebuttons) | [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#wenum-toggle-buttons)
+→ [Inspector Selection Attributes](../features/inspector/inspector-selection-attributes.md#wenumtogglebuttons)
 
 **WGuid** - Immutable version-4 GUID using two longs for fast Unity serialization
 → [Serialization Types](../features/serialization/serialization-types.md#wguid)

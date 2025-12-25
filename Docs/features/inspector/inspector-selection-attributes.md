@@ -248,6 +248,17 @@ public string difficulty = "Normal";
 ### Provider Methods
 
 ```csharp
+using System.Collections.Generic;
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+[CreateAssetMenu(fileName = "PowerUpDefinition", menuName = "Power-Up Definition")]
+public class PowerUpDefinition : ScriptableObject
+{
+    public string name;
+    public Sprite icon;
+}
+
 public class PowerUpConfig : MonoBehaviour
 {
     [WValueDropDown(typeof(PowerUpLibrary), nameof(PowerUpLibrary.GetAvailablePowerUps))]
@@ -264,35 +275,104 @@ public static class PowerUpLibrary
 }
 ```
 
+> **Visual Reference**
+> ![Powerups in Resources](../../images/inspector/selection/powerup-resources.png)
+>
+> _PowerUp definitions loaded from Resources folder_
+>
+> ![WValueDropDown provider method](../../images/inspector/selection/wvalue-dropdown-provider.gif)
+>
+> _Dropdown populated dynamically from a provider method_
+
 ---
 
 ### Primitive Overloads
 
 ```csharp
-// All primitive types supported:
-[WValueDropDown(true, false)]  // bool
-public bool boolValue;
+using System.Collections.Generic;
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
 
-[WValueDropDown('A', 'B', 'C')]  // char
-public char charValue;
+public class WValueDropDownPrimitives : MonoBehaviour
+{
+    // All primitive types supported:
+    [WValueDropDown(true, false)] // bool
+    public bool boolValue;
 
-[WValueDropDown((byte)1, (byte)2, (byte)3)]  // byte
-public byte byteValue;
+    [WValueDropDown(true, false)] // bool
+    public List<bool> boolValues;
 
-[WValueDropDown((short)10, (short)20, (short)30)]  // short
-public short shortValue;
+    [WValueDropDown('A', 'B', 'C')] // char
+    public char charValue;
 
-[WValueDropDown(100, 200, 300)]  // int
-public int intValue;
+    [WValueDropDown((byte)1, (byte)2, (byte)3)] // byte
+    public byte byteValue;
 
-[WValueDropDown(1000L, 2000L, 3000L)]  // long
-public long longValue;
+    [WValueDropDown((short)10, (short)20, (short)30)] // short
+    public short shortValue;
 
-[WValueDropDown(0.1f, 0.5f, 1.0f)]  // float
-public float floatValue;
+    [WValueDropDown(100, 200, 300)] // int
+    public int intValue;
 
-[WValueDropDown(0.1, 0.5, 1.0)]  // double
-public double doubleValue;
+    [WValueDropDown(1000L, 2000L, 3000L)] // long
+    public long longValue;
+
+    [WValueDropDown(0.1f, 0.5f, 1.0f)] // float
+    public float floatValue;
+
+    [WValueDropDown(0.1, 0.5, 1.0)] // double
+    public double doubleValue;
+}
+```
+
+> **Visual Reference**
+>
+> ![WValueDropDown primitive types](../../images/inspector/selection/wvalue-dropdown-primitives.png)
+>
+> _Multiple dropdowns showing all supported primitive types_
+
+---
+
+### Instance Provider (context-aware)
+
+```csharp
+public class DynamicOptions : MonoBehaviour
+{
+    public string prefix = "Option";
+    public int optionCount = 5;
+
+    // Instance method - uses object state to build options
+    [WValueDropDown(nameof(GetAvailableOptions), typeof(string))]
+    public string selectedOption;
+
+    private IEnumerable<string> GetAvailableOptions()
+    {
+        for (int i = 1; i <= optionCount; i++)
+        {
+            yield return $"{prefix}_{i}";
+        }
+    }
+}
+```
+
+> Passing only a method name instructs the drawer to search the decorated type for a parameterless
+> method. Instance methods run on the serialized object; static methods are also supported.
+> The second parameter specifies the value type for proper dropdown rendering.
+
+**Alternate Constructor Forms:**
+
+```csharp
+// Form 1: Instance method with explicit value type
+[WValueDropDown(nameof(GetOptions), typeof(int))]
+public int selection;
+
+// Form 2: Static provider from external type
+[WValueDropDown(typeof(DataProvider), nameof(DataProvider.GetItems))]
+public Item selected;
+
+// Form 3: Static provider with explicit value type conversion
+[WValueDropDown(typeof(DataProvider), nameof(DataProvider.GetIds), typeof(int))]
+public int selectedId;
 ```
 
 ---
@@ -300,7 +380,12 @@ public double doubleValue;
 ### Custom Types
 
 ```csharp
-[System.Serializable]
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+[Serializable]
 public class Preset
 {
     public string name;
@@ -325,6 +410,34 @@ public class Config : MonoBehaviour
     }
 }
 ```
+
+> **Visual Reference**
+>
+> ![WValueDropDown with custom types](../../images/inspector/selection/wvalue-dropdown-custom-type.png)
+>
+> _Dropdown showing custom serializable class options using ToString() for labels_
+
+---
+
+### Constructor Reference
+
+| Constructor                                                    | Use Case                                                  |
+| -------------------------------------------------------------- | --------------------------------------------------------- |
+| `WValueDropDown(params T[] values)`                            | Fixed list of primitive values (int, float, string, etc.) |
+| `WValueDropDown(Type provider, string method)`                 | Static or instance method on external type                |
+| `WValueDropDown(Type provider, string method, Type valueType)` | Provider with explicit value type conversion              |
+| `WValueDropDown(string method, Type valueType)`                | Instance/static method on the decorated type itself       |
+| `WValueDropDown(Type valueType, params object[] values)`       | Fixed list with explicit type specification               |
+
+---
+
+### Best Practices for WValueDropDown
+
+- Override `ToString()` on custom types to control dropdown labels
+- Use static providers for data shared across objects
+- Use instance providers when options depend on the object state
+- Provider methods are called each render — keep them efficient or cache results
+- Return empty collection instead of null from providers
 
 ---
 

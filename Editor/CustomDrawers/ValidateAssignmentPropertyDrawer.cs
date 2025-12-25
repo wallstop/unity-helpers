@@ -1,0 +1,306 @@
+namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
+{
+#if UNITY_EDITOR
+    using System.Collections;
+    using System.Collections.Generic;
+    using UnityEditor;
+    using UnityEditor.UIElements;
+    using UnityEngine;
+    using UnityEngine.UIElements;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+
+    /// <summary>
+    /// Property drawer for <see cref="ValidateAssignmentAttribute"/> that displays a warning or error
+    /// in the inspector when the decorated field is invalid (null, empty string, or empty collection).
+    /// </summary>
+    [CustomPropertyDrawer(typeof(ValidateAssignmentAttribute))]
+    public sealed class ValidateAssignmentPropertyDrawer : PropertyDrawer
+    {
+        private const float HelpBoxPadding = 2f;
+        private const string DefaultWarningMessageFormat = "{0} is not assigned or is empty";
+        private const string InvalidValueMessage = "Field is not assigned or is empty";
+
+        private static readonly Dictionary<string, float> HelpBoxHeightCache = new(
+            System.StringComparer.Ordinal
+        );
+        private static readonly GUIContent ReusableContent = new();
+
+        /// <summary>
+        /// Gets the total property height including the help box when the field is invalid.
+        /// </summary>
+        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+        {
+            float baseHeight = EditorGUI.GetPropertyHeight(property, label, true);
+
+            if (IsPropertyInvalid(property))
+            {
+                string message = GetMessage(property);
+                float helpBoxHeight = GetHelpBoxHeight(message);
+                return baseHeight + helpBoxHeight + HelpBoxPadding;
+            }
+
+            return baseHeight;
+        }
+
+        /// <summary>
+        /// Draws the property field and displays a help box warning/error when the field is invalid.
+        /// </summary>
+        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+        {
+            EditorGUI.BeginProperty(position, label, property);
+            try
+            {
+                bool isInvalid = IsPropertyInvalid(property);
+                float propertyHeight = EditorGUI.GetPropertyHeight(property, label, true);
+
+                if (isInvalid)
+                {
+                    string message = GetMessage(property);
+                    float helpBoxHeight = GetHelpBoxHeight(message);
+
+                    Rect helpBoxRect = new(position.x, position.y, position.width, helpBoxHeight);
+                    Rect propertyRect = new(
+                        position.x,
+                        position.y + helpBoxHeight + HelpBoxPadding,
+                        position.width,
+                        propertyHeight
+                    );
+
+                    MessageType messageType = GetMessageType();
+                    EditorGUI.HelpBox(helpBoxRect, message, messageType);
+                    EditorGUI.PropertyField(propertyRect, property, label, true);
+                }
+                else
+                {
+                    EditorGUI.PropertyField(position, property, label, true);
+                }
+            }
+            finally
+            {
+                EditorGUI.EndProperty();
+            }
+        }
+
+        /// <summary>
+        /// Creates a UI Toolkit visual element for the property, including help box when invalid.
+        /// </summary>
+        public override VisualElement CreatePropertyGUI(SerializedProperty property)
+        {
+            VisualElement container = new();
+            container.style.flexDirection = FlexDirection.Column;
+
+            HelpBox helpBox = new(GetMessage(property), GetHelpBoxMessageType());
+            helpBox.style.display = IsPropertyInvalid(property)
+                ? DisplayStyle.Flex
+                : DisplayStyle.None;
+
+            PropertyField propertyField = new(property);
+            propertyField.label = property.displayName;
+
+            propertyField.RegisterValueChangeCallback(evt =>
+            {
+                bool isInvalid = IsPropertyInvalid(property);
+                helpBox.text = GetMessage(property);
+                helpBox.style.display = isInvalid ? DisplayStyle.Flex : DisplayStyle.None;
+            });
+
+            container.Add(helpBox);
+            container.Add(propertyField);
+
+            return container;
+        }
+
+        /// <summary>
+        /// Checks if the property value is invalid (null, empty string, or empty collection).
+        /// </summary>
+        internal static bool IsPropertyInvalid(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return true;
+            }
+
+            // Check arrays/lists first - they have isArray = true regardless of propertyType
+            // String has isArray = true but should be checked separately
+            if (property.isArray && property.propertyType != SerializedPropertyType.String)
+            {
+                return property.arraySize <= 0;
+            }
+
+            switch (property.propertyType)
+            {
+                case SerializedPropertyType.ObjectReference:
+                    return property.objectReferenceValue == null;
+                case SerializedPropertyType.ExposedReference:
+                    return property.exposedReferenceValue == null;
+                case SerializedPropertyType.ManagedReference:
+                    return property.managedReferenceValue == null;
+                case SerializedPropertyType.String:
+                    return string.IsNullOrWhiteSpace(property.stringValue);
+                case SerializedPropertyType.Generic:
+                    return IsGenericPropertyInvalid(property);
+                default:
+                    return false;
+            }
+        }
+
+        private static bool IsGenericPropertyInvalid(SerializedProperty property)
+        {
+            // Arrays are handled in IsPropertyInvalid before we get here
+            if (property.isArray)
+            {
+                return property.arraySize <= 0;
+            }
+
+            SerializedProperty arraySizeProperty = property.FindPropertyRelative("Array.size");
+            if (arraySizeProperty != null)
+            {
+                return arraySizeProperty.intValue <= 0;
+            }
+
+            SerializedProperty countProperty = property.FindPropertyRelative("_size");
+            if (countProperty != null)
+            {
+                return countProperty.intValue <= 0;
+            }
+
+            countProperty = property.FindPropertyRelative("m_Size");
+            if (countProperty != null)
+            {
+                return countProperty.intValue <= 0;
+            }
+
+            return false;
+        }
+
+        private string GetMessage(SerializedProperty property)
+        {
+            ValidateAssignmentAttribute validateAttribute =
+                attribute as ValidateAssignmentAttribute;
+            return GetMessage(property, validateAttribute);
+        }
+
+        private MessageType GetMessageType()
+        {
+            ValidateAssignmentAttribute validateAttribute =
+                attribute as ValidateAssignmentAttribute;
+            return GetMessageType(validateAttribute);
+        }
+
+        private HelpBoxMessageType GetHelpBoxMessageType()
+        {
+            ValidateAssignmentAttribute validateAttribute =
+                attribute as ValidateAssignmentAttribute;
+            return GetHelpBoxMessageType(validateAttribute);
+        }
+
+        /// <summary>
+        /// Gets the validation message for a property with the given attribute.
+        /// </summary>
+        internal static string GetMessage(
+            SerializedProperty property,
+            ValidateAssignmentAttribute validateAttribute
+        )
+        {
+            if (validateAttribute != null && !string.IsNullOrEmpty(validateAttribute.CustomMessage))
+            {
+                return validateAttribute.CustomMessage;
+            }
+
+            string fieldName = property?.displayName ?? InvalidValueMessage;
+            return string.Format(DefaultWarningMessageFormat, fieldName);
+        }
+
+        /// <summary>
+        /// Gets the IMGUI MessageType for the given attribute.
+        /// </summary>
+        internal static MessageType GetMessageType(ValidateAssignmentAttribute validateAttribute)
+        {
+            if (validateAttribute == null)
+            {
+                return MessageType.Warning;
+            }
+
+            return validateAttribute.MessageType switch
+            {
+                ValidateAssignmentMessageType.Error => MessageType.Error,
+                _ => MessageType.Warning,
+            };
+        }
+
+        /// <summary>
+        /// Gets the UI Toolkit HelpBoxMessageType for the given attribute.
+        /// </summary>
+        internal static HelpBoxMessageType GetHelpBoxMessageType(
+            ValidateAssignmentAttribute validateAttribute
+        )
+        {
+            if (validateAttribute == null)
+            {
+                return HelpBoxMessageType.Warning;
+            }
+
+            return validateAttribute.MessageType switch
+            {
+                ValidateAssignmentMessageType.Error => HelpBoxMessageType.Error,
+                _ => HelpBoxMessageType.Warning,
+            };
+        }
+
+        /// <summary>
+        /// Draws a validation HelpBox for the property if it is invalid.
+        /// Call this from custom editors for array/list properties that won't have
+        /// their PropertyDrawer invoked at the array level.
+        /// </summary>
+        /// <returns>True if a HelpBox was drawn, false otherwise.</returns>
+        internal static bool DrawValidationHelpBoxIfNeeded(
+            SerializedProperty property,
+            ValidateAssignmentAttribute validateAttribute
+        )
+        {
+            if (!IsPropertyInvalid(property))
+            {
+                return false;
+            }
+
+            string message = GetMessage(property, validateAttribute);
+            MessageType messageType = GetMessageType(validateAttribute);
+            EditorGUILayout.HelpBox(message, messageType);
+            return true;
+        }
+
+        private static float GetHelpBoxHeight(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+            {
+                return EditorGUIUtility.singleLineHeight * 2f;
+            }
+
+            if (HelpBoxHeightCache.TryGetValue(message, out float cachedHeight))
+            {
+                return cachedHeight;
+            }
+
+            ReusableContent.text = message;
+            GUIStyle helpBoxStyle = EditorStyles.helpBox;
+            float minHeight = EditorGUIUtility.singleLineHeight * 2f;
+            float calculatedHeight = helpBoxStyle.CalcHeight(
+                ReusableContent,
+                EditorGUIUtility.currentViewWidth - 40f
+            );
+            float height = Mathf.Max(minHeight, calculatedHeight);
+
+            HelpBoxHeightCache[message] = height;
+            return height;
+        }
+
+        /// <summary>
+        /// Clears the height cache. Useful for tests or when font settings change.
+        /// </summary>
+        internal static void ClearHeightCache()
+        {
+            HelpBoxHeightCache.Clear();
+        }
+    }
+#endif
+}

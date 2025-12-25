@@ -111,7 +111,7 @@ Quick reference for terms used throughout Unity Helpers documentation.
 - Grid-based spatial structure with fixed cell size
 - Excellent for many moving objects uniformly distributed
 - O(1) insertion with fast approximate queries
-- See: [README - Choosing Spatial Structures](../../README.md#choosing-spatial-structures)
+- See: [README - When to Use Spatial Trees](../../README.md#when-to-use-spatial-trees)
 
 ### Trie (Prefix Tree)
 

@@ -18,7 +18,7 @@ This guide covers several foundational data structures used across the library a
 
 ![Cyclic Buffer](../../images/utilities/data-structures/cyclic-buffer.svg)
 
-When to use vs .NET queues
+When to use vs. DotNET queues
 
 - Prefer `CyclicBuffer<T>` over `Queue<T>` when you want bounded memory with O(1) push/pop at both ends and predictable behavior under backpressure (drop/overwrite oldest, or pop proactively).
 - Use `Queue<T>` when you need unbounded growth without wrap semantics.
@@ -47,7 +47,7 @@ rb.Resize(8);
 Tips and pitfalls
 
 - Know your overflow policy. `Add` will wrap and overwrite the oldest only once capacity is reached; use `TryPopFront` periodically to keep buffer from evicting data you still need.
-- Iteration enumerates logical order starting at head, not underlying storage order.
+- Iteration enumerates logical order starting at the head, not the underlying storage order.
 - `Remove`/`RemoveAll` are O(n); keep hot paths to `Add`/`TryPop*` when possible.
 
 ## Deque (Double-Ended Queue)

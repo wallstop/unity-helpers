@@ -16,6 +16,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     [CustomPropertyDrawer(typeof(WShowIfAttribute))]
     public sealed class WShowIfPropertyDrawer : PropertyDrawer
     {
+        private const string ArrayDataMarker = ".Array.data[";
+
         private static readonly Dictionary<
             Type,
             Dictionary<string, Func<object, object>>
@@ -26,6 +28,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             SerializedProperty
         > ConditionPropertyCache = new();
         private static readonly Dictionary<Type, MethodInfo> CompareToMethodCache = new();
+        private static readonly Dictionary<
+            (Type ownerType, string fieldName),
+            FieldInfo
+        > FieldInfoCache = new();
 
         [ThreadStatic]
         private static object[] _singleIndexArgs;
@@ -33,17 +39,121 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static int _lastConditionCacheFrame = -1;
         private WShowIfAttribute _overrideAttribute;
 
+        /// <summary>
+        /// Checks whether a property with [WShowIf] attribute should be visible.
+        /// This method should be called by custom editors before drawing properties
+        /// to properly handle conditional visibility for arrays/lists.
+        /// </summary>
+        /// <param name="property">The serialized property to check.</param>
+        /// <returns>True if the property should be shown, false if it should be hidden.</returns>
+        public static bool ShouldShowProperty(SerializedProperty property)
+        {
+            if (property == null)
+            {
+                return true;
+            }
+
+            WShowIfAttribute showIfAttribute = GetShowIfAttribute(property);
+            if (showIfAttribute == null)
+            {
+                return true;
+            }
+
+            return EvaluateShowCondition(property, showIfAttribute);
+        }
+
+        private static WShowIfAttribute GetShowIfAttribute(SerializedProperty property)
+        {
+            object enclosingObject = property.GetEnclosingObject(out FieldInfo fieldInfo);
+            if (fieldInfo == null)
+            {
+                return null;
+            }
+
+            return fieldInfo.GetCustomAttribute<WShowIfAttribute>();
+        }
+
+        private static bool EvaluateShowCondition(
+            SerializedProperty property,
+            WShowIfAttribute showIf
+        )
+        {
+            if (
+                TryGetConditionProperty(
+                    property,
+                    showIf.conditionField,
+                    out SerializedProperty conditionProperty
+                )
+            )
+            {
+                if (TryEvaluateCondition(conditionProperty, showIf, out bool serializedResult))
+                {
+                    return serializedResult;
+                }
+
+                return true;
+            }
+
+            object enclosingObject = property.GetEnclosingObject(out _);
+            if (enclosingObject == null)
+            {
+                return true;
+            }
+
+            Type ownerType = enclosingObject.GetType();
+            Func<object, object> accessor = GetAccessor(ownerType, showIf.conditionField);
+            object fieldValue = accessor(enclosingObject);
+            return !TryEvaluateCondition(fieldValue, showIf, out bool reflectedResult)
+                || reflectedResult;
+        }
+
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
-            return !ShouldShow(property) ? 0f : EditorGUI.GetPropertyHeight(property, label, true);
+            if (!ShouldShowInternal(property))
+            {
+                return 0f;
+            }
+
+            return EditorGUI.GetPropertyHeight(property, label, true);
         }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            if (ShouldShow(property))
+            if (ShouldShowInternal(property))
             {
                 EditorGUI.PropertyField(position, property, label, true);
             }
+        }
+
+        private bool ShouldShowInternal(SerializedProperty property)
+        {
+            // When WShowIf is applied to an array/list field, Unity's PropertyDrawer system
+            // invokes the drawer for each array *element* (paths like "field.Array.data[0]"),
+            // not for the array field itself. The parent array draws its own container (foldout,
+            // header, etc.) and then asks us for each element's height. If we return 0 for
+            // hidden elements while the array container is still drawn, the layout breaks and
+            // causes visual corruption/overdraw.
+            //
+            // Solution: If this property is an array element, always show it. The visibility
+            // decision should be made at the array level, not the element level. If the drawer
+            // is on the array itself (property.isArray && not an element), we handle it normally.
+            if (IsArrayElement(property))
+            {
+                return true;
+            }
+
+            return ShouldShow(property);
+        }
+
+        private static bool IsArrayElement(SerializedProperty property)
+        {
+            string propertyPath = property?.propertyPath;
+            if (string.IsNullOrEmpty(propertyPath))
+            {
+                return false;
+            }
+
+            return propertyPath.Contains(ArrayDataMarker);
         }
 
         internal void InitializeForTesting(WShowIfAttribute attributeOverride)
@@ -167,6 +277,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     long actualValue = Convert.ToInt64(actual);
                     long expectedValue = Convert.ToInt64(expected);
+
+                    // For [Flags] enums, check if all expected flags are set in actual value.
+                    // This handles Unity's "Everything" selection which sets all bits (-1).
+                    // For non-flags enums, this is equivalent to exact equality when values match.
+                    Type enumType = actualType.IsEnum ? actualType : expectedType;
+                    if (enumType.IsDefined(typeof(FlagsAttribute), false))
+                    {
+                        return (actualValue & expectedValue) == expectedValue;
+                    }
+
                     return actualValue == expectedValue;
                 }
             }

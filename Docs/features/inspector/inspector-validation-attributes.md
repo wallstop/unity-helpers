@@ -10,6 +10,7 @@ Unity Helpers provides validation attributes that help maintain data integrity a
 
 - [WReadOnly](#wreadonly)
 - [WNotNull](#wnotnull)
+- [ValidateAssignment](#validateassignment)
 - [Best Practices](#best-practices)
 
 ---
@@ -24,7 +25,7 @@ Displays a field in the inspector as read-only, preventing accidental modificati
 using UnityEngine;
 using WallstopStudios.UnityHelpers.Core.Attributes;
 
-public class GameManager : MonoBehaviour
+public class GameManagerReadOnly : MonoBehaviour
 {
     [WReadOnly]
     public string sessionId = "abc-123-xyz";
@@ -54,7 +55,10 @@ public class GameManager : MonoBehaviour
 ### Common Use Cases
 
 ```csharp
-public class Entity : MonoBehaviour
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public class EntityReadOnly : MonoBehaviour
 {
     // Auto-generated unique identifier
     [WReadOnly]
@@ -79,7 +83,7 @@ public class Entity : MonoBehaviour
 
 - **Prevent accidents**: Stop designers from accidentally modifying auto-generated values
 - **Debug visibility**: Show internal state without allowing modification
-- **Documentation**: Make it clear which fields are managed by code vs configured in editor
+- **Documentation**: Make it clear which fields are managed by code vs. configured the Editor
 - **Data integrity**: Protect computed or cached values from manual overrides
 
 > **Visual Reference**
@@ -92,7 +96,7 @@ public class Entity : MonoBehaviour
 
 ## WNotNull
 
-Validates that a field is not null at runtime. When `CheckForNulls()` is called on an object, any field marked with `[WNotNull]` that is null will throw an `ArgumentNullException`.
+Validates that a field is not null, providing both **visual inspector feedback** and **runtime validation**. When a field marked with `[WNotNull]` is null, the inspector displays a warning or error HelpBox. Additionally, calling `CheckForNulls()` on an object will throw an `ArgumentNullException` for any null `[WNotNull]` fields.
 
 ### Basic Usage
 
@@ -100,7 +104,7 @@ Validates that a field is not null at runtime. When `CheckForNulls()` is called 
 using UnityEngine;
 using WallstopStudios.UnityHelpers.Core.Attributes;
 
-public class PlayerController : MonoBehaviour
+public class PlayerControllerNotNull : MonoBehaviour
 {
     [WNotNull]
     public Rigidbody2D rb;
@@ -115,7 +119,7 @@ public class PlayerController : MonoBehaviour
     private void Awake()
     {
         // Validates all [WNotNull] fields are assigned
-        // Throws ArgumentNullException if any are null
+        // Throws ArgumentNullException if any are null in Editor ONLY
         this.CheckForNulls();
     }
 }
@@ -123,18 +127,102 @@ public class PlayerController : MonoBehaviour
 
 **Behavior:**
 
-- Call `this.CheckForNulls()` on any object to validate all `[WNotNull]` fields
+- **Inspector feedback**: Displays a HelpBox warning (yellow) or error (red) when the field is null
+- **Runtime validation**: Call `this.CheckForNulls()` to validate all `[WNotNull]` fields
 - Throws `ArgumentNullException` with the field name if any marked field is null
 - Works with both Unity `Object` types and plain C# objects
-- Validation runs **only in the Unity Editor** (stripped in builds for performance)
+- All validation runs **only in the Unity Editor** (stripped in builds for performance)
 
 > **Visual Reference**
 >
 > ![WNotNull fields in inspector with null references highlighted](../../images/inspector/validation/wnotnull-inspector.png)
 >
-> _Fields marked with [WNotNull] in the inspector - null fields will throw on CheckForNulls()_
+> _Fields marked with [WNotNull] display a HelpBox in the inspector when null_
 
-### Validation Example
+### WNotNullMessageType Enum
+
+The `WNotNullMessageType` enum controls how null fields are displayed in the inspector:
+
+| Value     | Description                                 |
+| --------- | ------------------------------------------- |
+| `Warning` | Displays a yellow warning HelpBox (default) |
+| `Error`   | Displays a red error HelpBox                |
+
+### Constructor Overloads
+
+The `[WNotNull]` attribute supports multiple constructor overloads for flexibility:
+
+#### Default Warning
+
+```csharp
+// Default: warning message type with auto-generated message
+[WNotNull]
+public GameObject target;
+// Inspector shows: "target must be assigned"
+```
+
+#### Specify Message Type
+
+```csharp
+// Error message type with auto-generated message
+[WNotNull(WNotNullMessageType.Error)]
+public AudioSource criticalAudioSource;
+// Inspector shows red error: "criticalAudioSource must be assigned"
+```
+
+#### Custom Message
+
+```csharp
+// Warning with custom message
+[WNotNull("Player needs a target to attack")]
+public Transform attackTarget;
+// Inspector shows yellow warning: "Player needs a target to attack"
+```
+
+#### Full Customization
+
+```csharp
+// Error with custom message
+[WNotNull(WNotNullMessageType.Error, "Audio source is required for sound effects")]
+public AudioSource audioSource;
+// Inspector shows red error: "Audio source is required for sound effects"
+```
+
+### Inspector Display Examples
+
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public class EnemyAI : MonoBehaviour
+{
+    // Yellow warning - nice to have
+    [WNotNull]
+    public ParticleSystem hitEffect;
+
+    // Red error - critical reference
+    [WNotNull(WNotNullMessageType.Error)]
+    public Transform patrolPath;
+
+    // Warning with helpful context
+    [WNotNull("Assign the player tag or the enemy won't detect the player")]
+    public string playerTag;
+
+    // Error with specific instructions
+    [WNotNull(WNotNullMessageType.Error, "Drag the NavMeshAgent component here - required for movement")]
+    public UnityEngine.AI.NavMeshAgent agent;
+}
+```
+
+> **Visual Reference**
+>
+> ![WNotNull with different message types](../../images/inspector/validation/wnotnull-message-types.png)
+>
+> _Warning (yellow) and Error (red) HelpBoxes for null fields in the inspector_
+
+### Runtime Validation with CheckForNulls()
+
+The `CheckForNulls()` extension method validates all `[WNotNull]` fields at runtime:
 
 ```csharp
 using UnityEngine;
@@ -148,7 +236,7 @@ public class EnemySpawner : MonoBehaviour
     [WNotNull]
     public Transform spawnPoint;
 
-    [WNotNull]
+    [WNotNull(WNotNullMessageType.Error)]
     public EnemyManager enemyManager;
 
     private void Start()
@@ -171,7 +259,7 @@ public class EnemySpawner : MonoBehaviour
 
 ### Editor-Only Validation
 
-The `CheckForNulls()` extension method is only active in the Unity Editor:
+Both the inspector HelpBox display and the `CheckForNulls()` extension method are only active in the Unity Editor:
 
 ```csharp
 // The validation code only runs in UNITY_EDITOR
@@ -181,22 +269,16 @@ this.CheckForNulls();
 
 This means:
 
-- **Development**: Full null checking with detailed exception messages
-- **Production**: Zero runtime cost (validation code is stripped)
-
-> **Visual Reference**
->
-> ![Console showing ArgumentNullException from CheckForNulls](../../images/inspector/validation/wnotnull-exception.png)
->
-> _Console output when CheckForNulls() detects a null field - shows exact field name_
+- **Development**: Visual feedback in inspector + runtime null checking with detailed exception messages
+- **Production**: Zero runtime cost (all validation code is stripped)
 
 ### Combining with Other Attributes
 
 ```csharp
 public class UIManager : MonoBehaviour
 {
-    // Required reference - validated at runtime
-    [WNotNull]
+    // Required reference with error severity - validated at runtime
+    [WNotNull(WNotNullMessageType.Error)]
     [SerializeField]
     private Canvas mainCanvas;
 
@@ -209,12 +291,12 @@ public class UIManager : MonoBehaviour
     [WNotNull]
     public RectTransform cachedRect;
 
-    // Group with validation
+    // Group with validation and custom message
     [WGroup("UI Elements")]
-    [WNotNull]
+    [WNotNull("Start button required for main menu")]
     public Button startButton;
 
-    [WNotNull]
+    [WNotNull(WNotNullMessageType.Error, "Quit button required for main menu")]
     [WGroupEnd("UI Elements")]
     public Button quitButton;
 }
@@ -222,10 +304,296 @@ public class UIManager : MonoBehaviour
 
 **Why Use WNotNull:**
 
-- **Early failure**: Catch missing references at game start, not when first used
+- **Visual feedback**: See missing references immediately in the inspector without running the game
+- **Severity control**: Use warnings for nice-to-have references, errors for critical ones
+- **Custom messages**: Provide helpful context about why a reference is needed
+- **Early failure**: Catch missing references at game start with `CheckForNulls()`, not when first used
 - **Clear errors**: Get the exact field name in the exception message
 - **Documentation**: Make required references explicit in code
-- **Zero runtime cost**: Validation stripped from builds
+- **Zero runtime cost**: All validation stripped from builds
+
+---
+
+## ValidateAssignment
+
+Validates that a field is properly assigned, providing **visual inspector feedback** when validation fails. Unlike `[WNotNull]` which only checks for null references, `[ValidateAssignment]` validates that fields are "properly assigned" based on their type—including checking for empty strings, empty collections, and null references.
+
+### What ValidateAssignment Validates
+
+| Field Type                | Validation Rule          |
+| ------------------------- | ------------------------ |
+| Unity `Object` references | Not null                 |
+| Strings                   | Not null or whitespace   |
+| `IList` (arrays, List<T>) | Has at least one element |
+| `ICollection`             | Has at least one element |
+| `IEnumerable`             | Has at least one element |
+| Other types               | Not null                 |
+
+### Basic Usage
+
+```csharp
+using System.Collections.Generic;
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public class EnemySpawner : MonoBehaviour
+{
+    [ValidateAssignment]
+    public GameObject enemyPrefab;
+
+    [ValidateAssignment]
+    public string enemyName;
+
+    [ValidateAssignment]
+    public List<Transform> spawnPoints;
+
+    private void Start()
+    {
+        // Logs warnings for any invalid [ValidateAssignment] fields
+        this.ValidateAssignments();
+    }
+}
+```
+
+**Behavior:**
+
+- **Inspector feedback**: Displays a HelpBox warning (yellow) or error (red) when the field is invalid
+- **Runtime validation**: Call `this.ValidateAssignments()` to log warnings for invalid fields
+- **Programmatic checking**: Call `this.AreAnyAssignmentsInvalid()` to check if any fields are invalid
+- Works with Unity `Object` types, strings, collections, and any reference type
+- Inspector validation runs **only in the Unity Editor** (stripped in builds for performance)
+
+> **Visual Reference**
+>
+> ![ValidateAssignment fields in inspector with invalid values highlighted](../../images/inspector/validation/validateassignment-inspector.png)
+>
+> _Fields marked with [ValidateAssignment] display a HelpBox in the inspector when invalid_
+
+### ValidateAssignmentMessageType Enum
+
+The `ValidateAssignmentMessageType` enum controls how invalid fields are displayed in the inspector:
+
+| Value     | Description                                 |
+| --------- | ------------------------------------------- |
+| `Warning` | Displays a yellow warning HelpBox (default) |
+| `Error`   | Displays a red error HelpBox                |
+
+### Constructor Overloads
+
+The `[ValidateAssignment]` attribute supports multiple constructor overloads for flexibility:
+
+#### Default Warning
+
+```csharp
+// Default: warning message type with auto-generated message
+[ValidateAssignment]
+public GameObject target;
+// Inspector shows: "target must be assigned"
+```
+
+#### Specify Message Type
+
+```csharp
+// Error message type with auto-generated message
+[ValidateAssignment(ValidateAssignmentMessageType.Error)]
+public AudioSource criticalAudioSource;
+// Inspector shows red error: "criticalAudioSource must be assigned"
+```
+
+#### Custom Message
+
+```csharp
+// Warning with custom message
+[ValidateAssignment("Enemy name is required for UI display")]
+public string enemyName;
+// Inspector shows yellow warning: "Enemy name is required for UI display"
+```
+
+#### Full Customization
+
+```csharp
+// Error with custom message
+[ValidateAssignment(ValidateAssignmentMessageType.Error, "Spawn points list cannot be empty")]
+public List<Transform> spawnPoints;
+// Inspector shows red error: "Spawn points list cannot be empty"
+```
+
+### Inspector Display Examples
+
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+using System.Collections.Generic;
+
+public class GameConfig : MonoBehaviour
+{
+    // Yellow warning - validates not null
+    [ValidateAssignment]
+    public GameObject playerPrefab;
+
+    // Red error - validates string not empty/whitespace
+    [ValidateAssignment(ValidateAssignmentMessageType.Error)]
+    public string gameTitle;
+
+    // Warning with helpful context - validates list not empty
+    [ValidateAssignment("Add at least one difficulty level")]
+    public List<string> difficultyLevels;
+
+    // Error with specific instructions - validates array not empty
+    [ValidateAssignment(ValidateAssignmentMessageType.Error, "Spawn points are required - add Transform references")]
+    public Transform[] spawnPoints;
+}
+```
+
+> **Visual Reference**
+>
+> ![ValidateAssignment with different field types and message types](../../images/inspector/validation/validateassignment-message-types.png)
+>
+> _Warning (yellow) and Error (red) HelpBoxes for various invalid field types_
+
+### Runtime Validation Methods
+
+Two extension methods are available for runtime validation of `[ValidateAssignment]` fields:
+
+#### ValidateAssignments()
+
+Logs warnings to the console for all invalid fields:
+
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public class LevelManager : MonoBehaviour
+{
+    [ValidateAssignment]
+    public GameObject[] enemyPrefabs;
+
+    [ValidateAssignment]
+    public string levelName;
+
+    private void Start()
+    {
+        // Logs a warning for each invalid [ValidateAssignment] field
+        this.ValidateAssignments();
+    }
+}
+```
+
+#### AreAnyAssignmentsInvalid()
+
+Returns `true` if any `[ValidateAssignment]` field is invalid:
+
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+public class SpawnManager : MonoBehaviour
+{
+    [ValidateAssignment]
+    public GameObject spawnPrefab;
+
+    [ValidateAssignment]
+    public List<Transform> spawnLocations;
+
+    private void Start()
+    {
+        if (this.AreAnyAssignmentsInvalid())
+        {
+            Debug.LogError("SpawnManager has invalid assignments - spawning disabled");
+            enabled = false;
+            return;
+        }
+
+        // Safe to proceed - all assignments are valid
+        SpawnEnemies();
+    }
+}
+```
+
+### ValidateAssignment vs WNotNull
+
+Both attributes validate fields and provide inspector feedback, but they serve different purposes:
+
+| Feature                    | ValidateAssignment             | WNotNull                       |
+| -------------------------- | ------------------------------ | ------------------------------ |
+| **Null object check**      | ✓                              | ✓                              |
+| **Empty string check**     | ✓                              | ✗                              |
+| **Empty collection check** | ✓                              | ✗                              |
+| **Runtime behavior**       | Logs warnings                  | Throws `ArgumentNullException` |
+| **Best for**               | Comprehensive field validation | Strict null reference checking |
+
+**When to use which:**
+
+- Use `[ValidateAssignment]` when you need to validate that strings are non-empty or collections have elements
+- Use `[WNotNull]` when you want strict null checking with an exception thrown at runtime
+- Use `[ValidateAssignment]` when you want softer runtime validation (warnings instead of exceptions)
+- Use `[WNotNull]` for critical references where the game should fail fast if not assigned
+
+```csharp
+public class PlayerSetup : MonoBehaviour
+{
+    // Use WNotNull for critical references - throws if null
+    [WNotNull(WNotNullMessageType.Error)]
+    public Rigidbody2D rb;
+
+    // Use ValidateAssignment for string validation
+    [ValidateAssignment]
+    public string playerName;
+
+    // Use ValidateAssignment for collection validation
+    [ValidateAssignment(ValidateAssignmentMessageType.Error, "Add at least one weapon")]
+    public List<GameObject> startingWeapons;
+
+    private void Awake()
+    {
+        // Throws ArgumentNullException if rb is null
+        this.CheckForNulls();
+
+        // Logs warnings if playerName is empty or startingWeapons is empty
+        this.ValidateAssignments();
+    }
+}
+```
+
+### Combining with Other Attributes
+
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+using System.Collections.Generic;
+
+public class UIManager : MonoBehaviour
+{
+    // Group with validation
+    [WGroup("Required UI Elements")]
+    [ValidateAssignment(ValidateAssignmentMessageType.Error)]
+    public Canvas mainCanvas;
+
+    [ValidateAssignment("Button text cannot be empty")]
+    public string startButtonText;
+
+    [ValidateAssignment(ValidateAssignmentMessageType.Error, "Add menu items to display")]
+    [WGroupEnd("Required UI Elements")]
+    public List<GameObject> menuItems;
+
+    // Conditional validation
+    [ShowIf(nameof(useCustomTheme))]
+    [ValidateAssignment("Custom theme name required when using custom theme")]
+    public string customThemeName;
+
+    public bool useCustomTheme;
+}
+```
+
+**Why Use ValidateAssignment:**
+
+- **Comprehensive validation**: Validates strings, collections, and references—not just null checks
+- **Visual feedback**: See invalid fields immediately in the inspector
+- **Severity control**: Use warnings for nice-to-have fields, errors for critical ones
+- **Custom messages**: Provide helpful context about validation requirements
+- **Non-throwing validation**: Use `ValidateAssignments()` for warnings instead of exceptions
+- **Programmatic checking**: Use `AreAnyAssignmentsInvalid()` for conditional logic
+- **Zero runtime cost**: All validation stripped from builds
 
 ---
 
@@ -233,23 +601,42 @@ public class UIManager : MonoBehaviour
 
 ### 1. Validate Early
 
-Call `CheckForNulls()` in `Awake()` or `Start()` to catch missing references immediately:
+Call `CheckForNulls()` and `ValidateAssignments()` in `Awake()` or `Start()` to catch missing references immediately:
 
 ```csharp
 private void Awake()
 {
+    // Throws for critical null references
     this.CheckForNulls();
+    // Logs warnings for empty strings, collections, etc.
+    this.ValidateAssignments();
 }
 ```
 
-### 2. Use WReadOnly for Computed Values
+### 2. Choose the Right Validation Attribute
+
+```csharp
+// Use WNotNull for critical object references (throws on null)
+[WNotNull(WNotNullMessageType.Error)]
+public Rigidbody2D rb;
+
+// Use ValidateAssignment for strings (validates not empty/whitespace)
+[ValidateAssignment]
+public string playerName;
+
+// Use ValidateAssignment for collections (validates not empty)
+[ValidateAssignment(ValidateAssignmentMessageType.Error)]
+public List<Transform> waypoints;
+```
+
+### 3. Use WReadOnly for Computed Values
 
 ```csharp
 [WReadOnly]
 public float Speed => rb.velocity.magnitude;
 ```
 
-### 3. Combine with Relational Components
+### 4. Combine with Relational Components
 
 ```csharp
 // Auto-wired but protected from manual changes
@@ -258,18 +645,22 @@ public float Speed => rb.velocity.magnitude;
 public Collider2D col;
 ```
 
-### 4. Document Intent
+### 5. Document Intent
 
 ```csharp
 // Required: Must be assigned in inspector
 [WNotNull]
 public AudioClip attackSound;
 
+// Required: Must not be empty
+[ValidateAssignment]
+public string characterName;
+
 // Optional: May be null
 public AudioClip hitSound;
 ```
 
-### 5. Use with ScriptableObjects
+### 6. Use with ScriptableObjects
 
 ```csharp
 [CreateAssetMenu]
@@ -281,9 +672,16 @@ public class GameConfig : ScriptableObject
     [WNotNull]
     public Material defaultMaterial;
 
+    [ValidateAssignment("Game title cannot be empty")]
+    public string gameTitle;
+
+    [ValidateAssignment(ValidateAssignmentMessageType.Error)]
+    public List<string> supportedLanguages;
+
     private void OnEnable()
     {
         this.CheckForNulls();
+        this.ValidateAssignments();
     }
 }
 ```

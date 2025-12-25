@@ -31,6 +31,7 @@ This directory contains images for the inspector selection attributes documentat
 | `wvalue-dropdown-provider.png`    | Dropdown populated from a provider method (e.g., PowerUpDefinition)      |
 | `wvalue-dropdown-custom-type.png` | Dropdown showing custom type selection (e.g., Preset class)              |
 | `wvalue-dropdown-primitives.png`  | Multiple dropdowns showing all primitive type support (bool, char, etc.) |
+| `wvalue-dropdown-instance.png`    | Dropdown using instance provider method for context-aware options        |
 
 ### IntDropdown Images
 
@@ -192,6 +193,32 @@ public class AllPrimitives : MonoBehaviour
 
     [WValueDropDown(0.1, 0.5, 1.0)]
     public double doubleValue;
+}
+```
+
+### wvalue-dropdown-instance.png
+
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+using System.Collections.Generic;
+
+public class DynamicOptions : MonoBehaviour
+{
+    public string prefix = "Option";
+    public int optionCount = 5;
+
+    // Instance method - uses object state to build options
+    [WValueDropDown(nameof(GetAvailableOptions), typeof(string))]
+    public string selectedOption;
+
+    private IEnumerable<string> GetAvailableOptions()
+    {
+        for (int i = 1; i <= optionCount; i++)
+        {
+            yield return $"{prefix}_{i}";
+        }
+    }
 }
 ```
 

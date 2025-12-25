@@ -1196,6 +1196,662 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 
         // ==================== End Width and Layout Tests ====================
 
+        // ==================== Compact Object Field Tests (drawObjectField: false) ====================
+
+        [Test]
+        public void CompactModeShowsObjectPickerInsteadOfFullObjectField()
+        {
+            // Verify that when drawObjectField=false, the drawer still allows object selection
+            // via a compact object picker field instead of just showing a static label.
+            WInLineEditorDrawer.ClearCachedStateForTesting();
+
+            CompactInlineEditorHost host = CreateHiddenInstance<CompactInlineEditorHost>();
+            InlineEditorTarget target = CreateHiddenInstance<InlineEditorTarget>();
+
+            using SerializedObject serializedHost = new(host);
+            serializedHost.Update();
+            SerializedProperty property = serializedHost.FindProperty(
+                nameof(CompactInlineEditorHost.compactTarget)
+            );
+            Assert.That(property, Is.Not.Null, "Property should exist");
+
+            // Test with null reference - should still have a way to assign
+            Assert.That(
+                property.objectReferenceValue,
+                Is.Null,
+                "Property should initially be null"
+            );
+
+            // Assign an object to verify it works
+            property.objectReferenceValue = target;
+            serializedHost.ApplyModifiedPropertiesWithoutUndo();
+            serializedHost.Update();
+            property = serializedHost.FindProperty(nameof(CompactInlineEditorHost.compactTarget));
+            Assert.That(
+                property.objectReferenceValue,
+                Is.EqualTo(target),
+                "Object assignment should work in compact mode"
+            );
+        }
+
+        [Test]
+        public void CompactModeHeightMatchesNonCompactWhenExpanded()
+        {
+            // When expanded, compact mode (drawObjectField=false) should have similar
+            // inline height contribution as non-compact mode (drawObjectField=true)
+            (
+                _,
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) compactDetails
+            ) = MeasurePropertyHeightWithDetails<CompactInlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: true
+            );
+
+            (
+                _,
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) nonCompactDetails
+            ) = MeasurePropertyHeightWithDetails<InlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: true
+            );
+
+            // Both should show body when expanded
+            Assert.That(
+                compactDetails.showBody,
+                Is.True,
+                "Compact mode should show body when expanded"
+            );
+            Assert.That(
+                nonCompactDetails.showBody,
+                Is.True,
+                "Non-compact mode should show body when expanded"
+            );
+
+            // Display heights (inline inspector content) should be similar
+            Assert.That(
+                compactDetails.displayHeight,
+                Is.EqualTo(nonCompactDetails.displayHeight).Within(1f),
+                $"Compact displayHeight={compactDetails.displayHeight} should be similar to "
+                    + $"non-compact displayHeight={nonCompactDetails.displayHeight}"
+            );
+        }
+
+        [Test]
+        public void CompactAlwaysExpandedModeShowsInlineInspector()
+        {
+            // Verify that AlwaysExpanded mode with drawObjectField=false still shows inline inspector
+            (
+                float height,
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) details
+            ) = MeasurePropertyHeightWithDetails<CompactAlwaysExpandedHost>(
+                propertyExpanded: false
+            );
+
+            Assert.That(
+                details.showBody,
+                Is.True,
+                "AlwaysExpanded compact mode should always show body"
+            );
+            Assert.That(
+                details.inlineHeight,
+                Is.GreaterThan(0f),
+                "AlwaysExpanded compact mode should have positive inline height"
+            );
+            Assert.That(
+                height,
+                Is.GreaterThan(details.baseHeight),
+                "Total height should be greater than base height due to inline inspector"
+            );
+        }
+
+        [Test]
+        public void CompactModeWithNullTargetReturnsBaseHeight()
+        {
+            // When target is null, compact mode should return base height (singleLineHeight)
+            WInLineEditorDrawer.ClearCachedStateForTesting();
+
+            CompactInlineEditorHost host = CreateHiddenInstance<CompactInlineEditorHost>();
+            using SerializedObject serializedHost = new(host);
+            serializedHost.Update();
+            SerializedProperty property = serializedHost.FindProperty(
+                nameof(CompactInlineEditorHost.compactTarget)
+            );
+            Assert.That(property, Is.Not.Null);
+            Assert.That(
+                property.objectReferenceValue,
+                Is.Null,
+                "Target should be null for this test"
+            );
+
+            FieldInfo targetField = PropertyDrawerTestHelper.GetFieldInfoOrFail(
+                typeof(CompactInlineEditorHost),
+                nameof(CompactInlineEditorHost.compactTarget)
+            );
+            WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
+                Attribute.GetCustomAttribute(targetField, typeof(WInLineEditorAttribute));
+
+            GUIContent label = new("Target");
+            WInLineEditorDrawer drawer = new();
+            PropertyDrawerTestHelper.AssignAttribute(drawer, inlineAttribute);
+
+            float height = drawer.GetPropertyHeight(property, label);
+
+            // With null target and drawObjectField=false, should return singleLineHeight
+            Assert.That(
+                height,
+                Is.EqualTo(EditorGUIUtility.singleLineHeight).Within(0.01f),
+                $"Compact mode with null target should return singleLineHeight ({EditorGUIUtility.singleLineHeight}), "
+                    + $"but got {height}"
+            );
+        }
+
+        [TestCase(
+            WInLineEditorMode.FoldoutCollapsed,
+            false,
+            TestName = "CompactMode.FoldoutCollapsed.InitiallyCollapsed"
+        )]
+        [TestCase(
+            WInLineEditorMode.FoldoutExpanded,
+            true,
+            TestName = "CompactMode.FoldoutExpanded.InitiallyExpanded"
+        )]
+        [TestCase(
+            WInLineEditorMode.AlwaysExpanded,
+            true,
+            TestName = "CompactMode.AlwaysExpanded.AlwaysShows"
+        )]
+        public void CompactModeRespectsInitialFoldoutState(
+            WInLineEditorMode mode,
+            bool expectExpanded
+        )
+        {
+            WInLineEditorDrawer.ClearCachedStateForTesting();
+
+            CompactModeTestHost host = CreateHiddenInstance<CompactModeTestHost>();
+            InlineEditorTarget target = CreateHiddenInstance<InlineEditorTarget>();
+
+            using SerializedObject serializedHost = new(host);
+            serializedHost.Update();
+
+            string propertyName = mode switch
+            {
+                WInLineEditorMode.FoldoutCollapsed => nameof(
+                    CompactModeTestHost.foldoutCollapsedCompact
+                ),
+                WInLineEditorMode.FoldoutExpanded => nameof(
+                    CompactModeTestHost.foldoutExpandedCompact
+                ),
+                WInLineEditorMode.AlwaysExpanded => nameof(
+                    CompactModeTestHost.alwaysExpandedCompact
+                ),
+                _ => throw new ArgumentException($"Unsupported mode: {mode}"),
+            };
+
+            SerializedProperty property = serializedHost.FindProperty(propertyName);
+            Assert.That(property, Is.Not.Null, $"Property {propertyName} not found");
+
+            property.objectReferenceValue = target;
+            serializedHost.ApplyModifiedPropertiesWithoutUndo();
+            serializedHost.Update();
+            property = serializedHost.FindProperty(propertyName);
+
+            FieldInfo targetField = PropertyDrawerTestHelper.GetFieldInfoOrFail(
+                typeof(CompactModeTestHost),
+                propertyName
+            );
+            WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
+                Attribute.GetCustomAttribute(targetField, typeof(WInLineEditorAttribute));
+
+            (
+                float baseHeight,
+                float inlineHeight,
+                bool showHeader,
+                bool showBody,
+                float displayHeight
+            ) details = WInLineEditorDrawer.GetHeightCalculationDetailsForTesting(
+                property,
+                inlineAttribute,
+                target,
+                500f
+            );
+
+            Assert.That(
+                details.showBody,
+                Is.EqualTo(expectExpanded),
+                $"Compact mode with {mode} expected showBody={expectExpanded} but got {details.showBody}"
+            );
+        }
+
+        [Test]
+        public void CompactModeWithCustomHeightRespectsHeight()
+        {
+            // Verify that custom inspectorHeight is respected in compact mode
+            WInLineEditorDrawer.ClearCachedStateForTesting();
+
+            CompactCustomHeightHost host = CreateHiddenInstance<CompactCustomHeightHost>();
+            InlineEditorTarget target = CreateHiddenInstance<InlineEditorTarget>();
+
+            using SerializedObject serializedHost = new(host);
+            serializedHost.Update();
+            SerializedProperty property = serializedHost.FindProperty(
+                nameof(CompactCustomHeightHost.fixedHeightCompact)
+            );
+            property.objectReferenceValue = target;
+            serializedHost.ApplyModifiedPropertiesWithoutUndo();
+            serializedHost.Update();
+            property = serializedHost.FindProperty(
+                nameof(CompactCustomHeightHost.fixedHeightCompact)
+            );
+
+            FieldInfo targetField = PropertyDrawerTestHelper.GetFieldInfoOrFail(
+                typeof(CompactCustomHeightHost),
+                nameof(CompactCustomHeightHost.fixedHeightCompact)
+            );
+            WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
+                Attribute.GetCustomAttribute(targetField, typeof(WInLineEditorAttribute));
+
+            // Verify the attribute has the expected custom height
+            Assert.That(
+                inlineAttribute.InspectorHeight,
+                Is.EqualTo(180f).Within(0.01f),
+                "Custom inspector height should be 180"
+            );
+            Assert.That(
+                inlineAttribute.DrawObjectField,
+                Is.False,
+                "DrawObjectField should be false for compact mode"
+            );
+        }
+
+        [Test]
+        public void CompactModeShowsStandaloneHeaderWhenDrawHeaderTrue()
+        {
+            // When drawObjectField=false and drawHeader=true, a standalone header should be shown
+            (
+                _,
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) compactWithHeader
+            ) = MeasurePropertyHeightWithDetails<CompactInlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: true
+            );
+
+            Assert.That(
+                compactWithHeader.showHeader,
+                Is.True,
+                "Compact mode with drawHeader=true should show standalone header"
+            );
+        }
+
+        [Test]
+        public void CompactModeHidesHeaderWhenDrawHeaderFalse()
+        {
+            // When drawObjectField=false and drawHeader=false, no header should be shown
+            (
+                _,
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) compactNoHeader
+            ) = MeasurePropertyHeightWithDetails<CompactAlwaysExpandedHost>(
+                propertyExpanded: false
+            );
+
+            Assert.That(
+                compactNoHeader.showHeader,
+                Is.False,
+                "Compact mode with drawHeader=false should not show standalone header"
+            );
+        }
+
+        [Test]
+        public void CompactModeUseSettingsRespectsFoldoutBehavior()
+        {
+            // Verify that UseSettings mode works correctly in compact mode
+            using InlineEditorFoldoutBehaviorScope scope = new(
+                UnityHelpersSettings.InlineEditorFoldoutBehavior.StartExpanded
+            );
+
+            (
+                float expectedExpanded,
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) expectedDetails,
+                _
+            ) = MeasurePropertyHeightWithDetailedDiagnostics<CompactModeTestHost>(
+                propertyExpanded: false,
+                setInlineExpanded: true
+            );
+
+            // The host uses UseSettings mode for one of its fields
+            CompactModeTestHost host = CreateHiddenInstance<CompactModeTestHost>();
+            InlineEditorTarget target = CreateHiddenInstance<InlineEditorTarget>();
+
+            using SerializedObject serializedHost = new(host);
+            serializedHost.Update();
+            SerializedProperty property = serializedHost.FindProperty(
+                nameof(CompactModeTestHost.useSettingsCompact)
+            );
+            property.objectReferenceValue = target;
+            serializedHost.ApplyModifiedPropertiesWithoutUndo();
+            serializedHost.Update();
+            property = serializedHost.FindProperty(nameof(CompactModeTestHost.useSettingsCompact));
+
+            FieldInfo targetField = PropertyDrawerTestHelper.GetFieldInfoOrFail(
+                typeof(CompactModeTestHost),
+                nameof(CompactModeTestHost.useSettingsCompact)
+            );
+            WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
+                Attribute.GetCustomAttribute(targetField, typeof(WInLineEditorAttribute));
+
+            (
+                float baseHeight,
+                float inlineHeight,
+                bool showHeader,
+                bool showBody,
+                float displayHeight
+            ) details = WInLineEditorDrawer.GetHeightCalculationDetailsForTesting(
+                property,
+                inlineAttribute,
+                target,
+                500f
+            );
+
+            // With StartExpanded setting, showBody should be true
+            Assert.That(
+                details.showBody,
+                Is.True,
+                "Compact mode with UseSettings should respect StartExpanded setting"
+            );
+        }
+
+        [Test]
+        public void CompactVsNonCompactBaseHeightDifference()
+        {
+            // Compare base heights between compact and non-compact modes
+            // Non-compact uses ObjectField height, compact uses singleLineHeight
+            (
+                _,
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) compactDetails
+            ) = MeasurePropertyHeightWithDetails<CompactInlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: false
+            );
+
+            (
+                _,
+                (
+                    float baseHeight,
+                    float inlineHeight,
+                    bool showHeader,
+                    bool showBody,
+                    float displayHeight
+                ) nonCompactDetails
+            ) = MeasurePropertyHeightWithDetails<InlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: false
+            );
+
+            // Both should use singleLineHeight as base (since EditorGUI.GetPropertyHeight
+            // for ObjectReference without children returns singleLineHeight)
+            Assert.That(
+                compactDetails.baseHeight,
+                Is.EqualTo(EditorGUIUtility.singleLineHeight).Within(0.01f),
+                $"Compact base height should be singleLineHeight"
+            );
+            Assert.That(
+                nonCompactDetails.baseHeight,
+                Is.EqualTo(EditorGUIUtility.singleLineHeight).Within(0.01f),
+                $"Non-compact base height should be singleLineHeight"
+            );
+        }
+
+        [Test]
+        public void CompactModeWithPreviewShowsPreview()
+        {
+            // Verify preview is shown in compact mode when enabled
+            WInLineEditorDrawer.ClearCachedStateForTesting();
+
+            CompactCustomHeightHost host = CreateHiddenInstance<CompactCustomHeightHost>();
+            InlineEditorTarget target = CreateHiddenInstance<InlineEditorTarget>();
+
+            using SerializedObject serializedHost = new(host);
+            serializedHost.Update();
+            SerializedProperty property = serializedHost.FindProperty(
+                nameof(CompactCustomHeightHost.compactWithPreview)
+            );
+            property.objectReferenceValue = target;
+            serializedHost.ApplyModifiedPropertiesWithoutUndo();
+            serializedHost.Update();
+            property = serializedHost.FindProperty(
+                nameof(CompactCustomHeightHost.compactWithPreview)
+            );
+
+            FieldInfo targetField = PropertyDrawerTestHelper.GetFieldInfoOrFail(
+                typeof(CompactCustomHeightHost),
+                nameof(CompactCustomHeightHost.compactWithPreview)
+            );
+            WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
+                Attribute.GetCustomAttribute(targetField, typeof(WInLineEditorAttribute));
+
+            Assert.That(
+                inlineAttribute.DrawPreview,
+                Is.True,
+                "DrawPreview should be true for this test"
+            );
+            Assert.That(
+                inlineAttribute.PreviewHeight,
+                Is.EqualTo(64f).Within(0.01f),
+                "PreviewHeight should be 64"
+            );
+            Assert.That(
+                inlineAttribute.DrawObjectField,
+                Is.False,
+                "DrawObjectField should be false for compact mode"
+            );
+        }
+
+        [Test]
+        public void CompactModeNoScrollRespectsScrollSetting()
+        {
+            // Verify scrolling disabled works in compact mode
+            WInLineEditorDrawer.ClearCachedStateForTesting();
+
+            CompactCustomHeightHost host = CreateHiddenInstance<CompactCustomHeightHost>();
+            InlineEditorTarget target = CreateHiddenInstance<InlineEditorTarget>();
+
+            using SerializedObject serializedHost = new(host);
+            serializedHost.Update();
+            SerializedProperty property = serializedHost.FindProperty(
+                nameof(CompactCustomHeightHost.compactNoScroll)
+            );
+            property.objectReferenceValue = target;
+            serializedHost.ApplyModifiedPropertiesWithoutUndo();
+            serializedHost.Update();
+            property = serializedHost.FindProperty(nameof(CompactCustomHeightHost.compactNoScroll));
+
+            FieldInfo targetField = PropertyDrawerTestHelper.GetFieldInfoOrFail(
+                typeof(CompactCustomHeightHost),
+                nameof(CompactCustomHeightHost.compactNoScroll)
+            );
+            WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
+                Attribute.GetCustomAttribute(targetField, typeof(WInLineEditorAttribute));
+
+            Assert.That(
+                inlineAttribute.EnableScrolling,
+                Is.False,
+                "EnableScrolling should be false for this test"
+            );
+            Assert.That(
+                inlineAttribute.DrawObjectField,
+                Is.False,
+                "DrawObjectField should be false for compact mode"
+            );
+
+            // Verify no scrollbar is triggered
+            bool usesScrollbar = WInLineEditorDrawer.UsesHorizontalScrollbarForTesting(
+                target,
+                inlineAttribute,
+                availableWidth: 200f // Narrow width that would normally trigger scroll
+            );
+            Assert.That(
+                usesScrollbar,
+                Is.False,
+                "Scrollbar should not be used when EnableScrolling is false"
+            );
+        }
+
+        // Data-driven test for compact mode foldout toggling
+        [TestCase(false, true, TestName = "CompactFoldoutToggle.CollapsedToExpanded")]
+        [TestCase(true, false, TestName = "CompactFoldoutToggle.ExpandedToCollapsed")]
+        public void CompactModeFoldoutToggleChangesHeight(bool initialState, bool finalState)
+        {
+            WInLineEditorDrawer.ClearCachedStateForTesting();
+
+            float initialHeight = MeasurePropertyHeight<CompactInlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: initialState
+            );
+
+            float finalHeight = MeasurePropertyHeight<CompactInlineEditorHost>(
+                propertyExpanded: false,
+                setInlineExpanded: finalState
+            );
+
+            if (finalState)
+            {
+                Assert.That(
+                    finalHeight,
+                    Is.GreaterThan(initialHeight),
+                    $"Expanding compact mode should increase height. Initial: {initialHeight}, Final: {finalHeight}"
+                );
+            }
+            else
+            {
+                Assert.That(
+                    finalHeight,
+                    Is.LessThan(initialHeight),
+                    $"Collapsing compact mode should decrease height. Initial: {initialHeight}, Final: {finalHeight}"
+                );
+            }
+        }
+
+        [Test]
+        public void CompactModeDrawObjectFieldAttributeIsCorrect()
+        {
+            // Verify the DrawObjectField attribute is correctly set on various hosts
+            FieldInfo compactField = PropertyDrawerTestHelper.GetFieldInfoOrFail(
+                typeof(CompactInlineEditorHost),
+                nameof(CompactInlineEditorHost.compactTarget)
+            );
+            WInLineEditorAttribute compactAttr = (WInLineEditorAttribute)
+                Attribute.GetCustomAttribute(compactField, typeof(WInLineEditorAttribute));
+            Assert.That(
+                compactAttr.DrawObjectField,
+                Is.False,
+                "CompactInlineEditorHost should have DrawObjectField=false"
+            );
+
+            FieldInfo nonCompactField = PropertyDrawerTestHelper.GetFieldInfoOrFail(
+                typeof(InlineEditorHost),
+                nameof(InlineEditorHost.collapsedTarget)
+            );
+            WInLineEditorAttribute nonCompactAttr = (WInLineEditorAttribute)
+                Attribute.GetCustomAttribute(nonCompactField, typeof(WInLineEditorAttribute));
+            Assert.That(
+                nonCompactAttr.DrawObjectField,
+                Is.True,
+                "InlineEditorHost should have DrawObjectField=true"
+            );
+        }
+
+        [Test]
+        public void CompactAlwaysExpandedWithHeaderShowsHeaderAndBody()
+        {
+            // Test the combination of AlwaysExpanded with header visible
+            WInLineEditorDrawer.ClearCachedStateForTesting();
+
+            CompactModeTestHost host = CreateHiddenInstance<CompactModeTestHost>();
+            InlineEditorTarget target = CreateHiddenInstance<InlineEditorTarget>();
+
+            using SerializedObject serializedHost = new(host);
+            serializedHost.Update();
+            SerializedProperty property = serializedHost.FindProperty(
+                nameof(CompactModeTestHost.alwaysExpandedWithHeaderCompact)
+            );
+            property.objectReferenceValue = target;
+            serializedHost.ApplyModifiedPropertiesWithoutUndo();
+            serializedHost.Update();
+            property = serializedHost.FindProperty(
+                nameof(CompactModeTestHost.alwaysExpandedWithHeaderCompact)
+            );
+
+            FieldInfo targetField = PropertyDrawerTestHelper.GetFieldInfoOrFail(
+                typeof(CompactModeTestHost),
+                nameof(CompactModeTestHost.alwaysExpandedWithHeaderCompact)
+            );
+            WInLineEditorAttribute inlineAttribute = (WInLineEditorAttribute)
+                Attribute.GetCustomAttribute(targetField, typeof(WInLineEditorAttribute));
+
+            (
+                float baseHeight,
+                float inlineHeight,
+                bool showHeader,
+                bool showBody,
+                float displayHeight
+            ) details = WInLineEditorDrawer.GetHeightCalculationDetailsForTesting(
+                property,
+                inlineAttribute,
+                target,
+                500f
+            );
+
+            Assert.That(details.showBody, Is.True, "AlwaysExpanded should always show body");
+            Assert.That(
+                details.showHeader,
+                Is.True,
+                "AlwaysExpanded with drawHeader=true should show header"
+            );
+        }
+
+        // ==================== End Compact Object Field Tests ====================
+
         [Test]
         public void BaseHeightIsConsistentAcrossDrawerCalls()
         {

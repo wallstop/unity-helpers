@@ -16,7 +16,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
         [WGroup("Explicit Group")]
         [HideInInspector]
         [SerializeField]
+#pragma warning disable CS0169 // Field is never used
         private int _explicitlyGroupedHiddenField;
+#pragma warning restore CS0169 // Field is never used
 
         public int visibleField;
     }

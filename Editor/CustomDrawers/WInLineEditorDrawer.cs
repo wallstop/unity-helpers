@@ -264,7 +264,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
             else
             {
-                EditorGUI.LabelField(currentRect, label);
+                foldoutState = DrawCompactObjectReferenceField(
+                    currentRect,
+                    property,
+                    label,
+                    foldoutState,
+                    foldoutKey,
+                    mode
+                );
             }
 
             currentRect.y += currentRect.height + EditorGUIUtility.standardVerticalSpacing;
@@ -465,6 +472,79 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                 }
             }
+
+            EditorGUI.indentLevel = previousIndent;
+            return foldoutState;
+        }
+
+        private static bool DrawCompactObjectReferenceField(
+            Rect rect,
+            SerializedProperty property,
+            GUIContent label,
+            bool foldoutState,
+            string foldoutKey,
+            WInLineEditorMode mode
+        )
+        {
+            // Compact mode: draw label on left, small object picker on right
+            // This allows object selection while hiding the full object field
+            Rect indentedRect = EditorGUI.IndentedRect(rect);
+            int previousIndent = EditorGUI.indentLevel;
+            EditorGUI.indentLevel = 0;
+
+            // Reserve space for a small object picker on the right
+            const float pickerWidth = 20f;
+            const float pickerSpacing = 2f;
+
+            float availableLabelWidth = Mathf.Max(
+                0f,
+                indentedRect.width - pickerWidth - pickerSpacing
+            );
+            Rect labelRect = new Rect(
+                indentedRect.x,
+                indentedRect.y,
+                availableLabelWidth,
+                indentedRect.height
+            );
+            Rect pickerRect = new Rect(
+                labelRect.xMax + pickerSpacing,
+                indentedRect.y,
+                pickerWidth,
+                indentedRect.height
+            );
+
+            Object currentValue = property.objectReferenceValue;
+            bool showFoldoutToggle =
+                currentValue != null && mode != WInLineEditorMode.AlwaysExpanded;
+
+            GUIContent foldoutLabel = label ?? GUIContent.none;
+            if (showFoldoutToggle)
+            {
+                Rect adjustedFoldoutRect = new Rect(
+                    labelRect.x + FoldoutOffset,
+                    labelRect.y,
+                    Mathf.Max(0f, labelRect.width - FoldoutOffset),
+                    labelRect.height
+                );
+                bool newState = EditorGUI.Foldout(
+                    adjustedFoldoutRect,
+                    foldoutState,
+                    foldoutLabel,
+                    true
+                );
+                if (newState != foldoutState)
+                {
+                    foldoutState = newState;
+                    SetFoldoutState(foldoutKey, foldoutState);
+                }
+            }
+            else
+            {
+                EditorGUI.LabelField(labelRect, foldoutLabel);
+            }
+
+            // Draw a minimal object picker field (just the circle button)
+            EditorGUI.ObjectField(pickerRect, property, GUIContent.none);
 
             EditorGUI.indentLevel = previousIndent;
             return foldoutState;

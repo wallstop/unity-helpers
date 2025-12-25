@@ -147,7 +147,7 @@ void Update()
 
 ## Query Semantics
 
-- Points vs Bounds: KDTree3D/OctTree3D are point‑based; RTree3D is bounds‑based.
+- Points vs. Bounds: KDTree3D/OctTree3D are point‑based; RTree3D is bounds‑based.
 - Boundary inclusion: 3D variants can differ at exact boundaries. Normalize to half‑open or add small epsilons.
 - For details and performance data, see:
   - [3D Performance Benchmarks](../../performance/spatial-tree-3d-performance.md)

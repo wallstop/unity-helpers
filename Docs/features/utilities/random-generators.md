@@ -181,7 +181,7 @@ int index = random.Next(collection.Count);
 
 ## Thread Safety
 
-`PRNG.Instance` provides thread-local instances, making it safe for multi-threaded code without locks:
+`PRNG.Instance` provides thread-local instances, making it safe for multithreaded code without locks:
 
 ```csharp
 // Safe - each thread gets its own instance

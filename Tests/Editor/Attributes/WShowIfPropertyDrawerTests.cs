@@ -950,6 +950,544 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             }
         }
 
+        [Test]
+        public void ListFieldShowsWhenConditionMet()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            using SerializedObjectTracker serializedObject = new();
+            SerializedProperty listProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalStringList)
+            );
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(nameof(TestContainer.boolCondition))
+            );
+
+            container.boolCondition = false;
+            listProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalStringList)
+            );
+            Assert.False(
+                InvokeShouldShow(drawer, listProperty),
+                "List should be hidden when boolCondition=false"
+            );
+
+            container.boolCondition = true;
+            listProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalStringList)
+            );
+            Assert.True(
+                InvokeShouldShow(drawer, listProperty),
+                "List should show when boolCondition=true"
+            );
+        }
+
+        [Test]
+        public void ListElementsAlwaysShowToAvoidLayoutCorruption()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            container.conditionalStringList.Add("item1");
+            container.conditionalStringList.Add("item2");
+            container.boolCondition = false;
+
+            using SerializedObjectTracker serializedObject = new();
+
+            SerializedProperty listProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalStringList)
+            );
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(nameof(TestContainer.boolCondition))
+            );
+
+            SerializedProperty element0 = listProperty.GetArrayElementAtIndex(0);
+            SerializedProperty element1 = listProperty.GetArrayElementAtIndex(1);
+
+            Assert.True(
+                InvokeShouldShow(drawer, element0),
+                "Array elements should always return true for ShouldShow to avoid layout corruption"
+            );
+            Assert.True(
+                InvokeShouldShow(drawer, element1),
+                "Array elements should always return true for ShouldShow to avoid layout corruption"
+            );
+        }
+
+        [Test]
+        public void ArrayFieldShowsWhenConditionMet()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            container.conditionalStringArray = new[] { "a", "b", "c" };
+            using SerializedObjectTracker serializedObject = new();
+
+            SerializedProperty arrayProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalStringArray)
+            );
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(
+                    nameof(TestContainer.intCondition),
+                    WShowIfComparison.GreaterThan,
+                    0
+                )
+            );
+
+            container.intCondition = 0;
+            arrayProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalStringArray)
+            );
+            Assert.False(
+                InvokeShouldShow(drawer, arrayProperty),
+                "Array should be hidden when intCondition <= 0"
+            );
+
+            container.intCondition = 5;
+            arrayProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalStringArray)
+            );
+            Assert.True(
+                InvokeShouldShow(drawer, arrayProperty),
+                "Array should show when intCondition > 0"
+            );
+        }
+
+        [Test]
+        public void ArrayElementsAlwaysShowToAvoidLayoutCorruption()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            container.conditionalStringArray = new[] { "x", "y", "z" };
+            container.intCondition = 0;
+
+            using SerializedObjectTracker serializedObject = new();
+
+            SerializedProperty arrayProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalStringArray)
+            );
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(
+                    nameof(TestContainer.intCondition),
+                    WShowIfComparison.GreaterThan,
+                    0
+                )
+            );
+
+            Assert.False(
+                InvokeShouldShow(drawer, arrayProperty),
+                "Array root should be hidden when condition not met"
+            );
+
+            SerializedProperty element0 = arrayProperty.GetArrayElementAtIndex(0);
+            SerializedProperty element1 = arrayProperty.GetArrayElementAtIndex(1);
+            SerializedProperty element2 = arrayProperty.GetArrayElementAtIndex(2);
+
+            Assert.True(
+                InvokeShouldShow(drawer, element0),
+                "Array element 0 should always return true to avoid layout corruption"
+            );
+            Assert.True(
+                InvokeShouldShow(drawer, element1),
+                "Array element 1 should always return true to avoid layout corruption"
+            );
+            Assert.True(
+                InvokeShouldShow(drawer, element2),
+                "Array element 2 should always return true to avoid layout corruption"
+            );
+        }
+
+        [Test]
+        public void ListWithEnumConditionShowsCorrectly()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            container.conditionalIntList.Add(10);
+            container.conditionalIntList.Add(20);
+            using SerializedObjectTracker serializedObject = new();
+
+            SerializedProperty listProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalIntList)
+            );
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(
+                    nameof(TestContainer.durationType),
+                    expectedValues: new object[] { ModifierDurationType.Duration }
+                )
+            );
+
+            container.durationType = ModifierDurationType.Instant;
+            listProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalIntList)
+            );
+            Assert.False(
+                InvokeShouldShow(drawer, listProperty),
+                "List should be hidden when durationType is Instant"
+            );
+
+            container.durationType = ModifierDurationType.Duration;
+            listProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalIntList)
+            );
+            Assert.True(
+                InvokeShouldShow(drawer, listProperty),
+                "List should show when durationType is Duration"
+            );
+
+            SerializedProperty element0 = listProperty.GetArrayElementAtIndex(0);
+            Assert.True(
+                InvokeShouldShow(drawer, element0),
+                "List elements should always show regardless of condition"
+            );
+        }
+
+        [Test]
+        public void GetPropertyHeightReturnsZeroForHiddenList()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            container.conditionalStringList.Add("test");
+            container.boolCondition = false;
+
+            using SerializedObjectTracker serializedObject = new();
+            SerializedProperty listProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalStringList)
+            );
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(nameof(TestContainer.boolCondition))
+            );
+
+            float height = drawer.GetPropertyHeight(listProperty, GUIContent.none);
+            Assert.AreEqual(0f, height, "GetPropertyHeight should return 0 for hidden list field");
+        }
+
+        [Test]
+        public void GetPropertyHeightReturnsNonZeroForListElements()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            container.conditionalStringList.Add("test");
+            container.boolCondition = false;
+
+            using SerializedObjectTracker serializedObject = new();
+            SerializedProperty listProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalStringList)
+            );
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(nameof(TestContainer.boolCondition))
+            );
+
+            SerializedProperty element = listProperty.GetArrayElementAtIndex(0);
+            float elementHeight = drawer.GetPropertyHeight(element, GUIContent.none);
+            Assert.Greater(
+                elementHeight,
+                0f,
+                "GetPropertyHeight should return non-zero for list elements to avoid layout corruption"
+            );
+        }
+
+        [Test]
+        public void StaticShouldShowPropertyReturnsFalseForHiddenList()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            container.conditionalStringList.Add("test");
+            container.boolCondition = false;
+
+            using SerializedObjectTracker serializedObject = new();
+            SerializedProperty listProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalStringList)
+            );
+
+            bool shouldShow = WShowIfPropertyDrawer.ShouldShowProperty(listProperty);
+            Assert.False(
+                shouldShow,
+                "Static ShouldShowProperty should return false for list when condition is not met"
+            );
+        }
+
+        [Test]
+        public void StaticShouldShowPropertyReturnsTrueForShownList()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            container.conditionalStringList.Add("test");
+            container.boolCondition = true;
+
+            using SerializedObjectTracker serializedObject = new();
+            SerializedProperty listProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalStringList)
+            );
+
+            bool shouldShow = WShowIfPropertyDrawer.ShouldShowProperty(listProperty);
+            Assert.True(
+                shouldShow,
+                "Static ShouldShowProperty should return true for list when condition is met"
+            );
+        }
+
+        [Test]
+        public void StaticShouldShowPropertyReturnsTrueForPropertyWithoutWShowIf()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+
+            using SerializedObjectTracker serializedObject = new();
+            SerializedProperty property = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.boolCondition)
+            );
+
+            bool shouldShow = WShowIfPropertyDrawer.ShouldShowProperty(property);
+            Assert.True(
+                shouldShow,
+                "Static ShouldShowProperty should return true for property without WShowIf attribute"
+            );
+        }
+
+        [Test]
+        public void StaticShouldShowPropertyHandlesArrayWithEnumCondition()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            container.conditionalIntList.Add(42);
+
+            using SerializedObjectTracker serializedObject = new();
+            SerializedProperty listProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalIntList)
+            );
+
+            container.durationType = ModifierDurationType.Instant;
+            listProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalIntList)
+            );
+            Assert.False(
+                WShowIfPropertyDrawer.ShouldShowProperty(listProperty),
+                "List should be hidden when durationType is Instant"
+            );
+
+            container.durationType = ModifierDurationType.Duration;
+            listProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.conditionalIntList)
+            );
+            Assert.True(
+                WShowIfPropertyDrawer.ShouldShowProperty(listProperty),
+                "List should show when durationType is Duration"
+            );
+        }
+
+        [Test]
+        public void FlagsEnumShowsWhenExactFlagMatches()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            using SerializedObjectTracker serializedObject = new();
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(
+                    nameof(TestContainer.flagsCondition),
+                    expectedValues: new object[]
+                    {
+                        TestContainer.TestFlags.OptionA,
+                        TestContainer.TestFlags.OptionA | TestContainer.TestFlags.OptionB,
+                    }
+                )
+            );
+
+            container.flagsCondition = TestContainer.TestFlags.OptionA;
+            SerializedProperty dependentProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.flagsDependent)
+            );
+            Assert.True(
+                InvokeShouldShow(drawer, dependentProperty),
+                "Should show when flagsCondition is exactly OptionA"
+            );
+        }
+
+        [Test]
+        public void FlagsEnumShowsWhenCombinedFlagsMatch()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            using SerializedObjectTracker serializedObject = new();
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(
+                    nameof(TestContainer.flagsCondition),
+                    expectedValues: new object[]
+                    {
+                        TestContainer.TestFlags.OptionA,
+                        TestContainer.TestFlags.OptionA | TestContainer.TestFlags.OptionB,
+                    }
+                )
+            );
+
+            container.flagsCondition =
+                TestContainer.TestFlags.OptionA | TestContainer.TestFlags.OptionB;
+            SerializedProperty dependentProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.flagsDependent)
+            );
+            Assert.True(
+                InvokeShouldShow(drawer, dependentProperty),
+                "Should show when flagsCondition is OptionA | OptionB"
+            );
+        }
+
+        [Test]
+        public void FlagsEnumShowsWhenEverythingSelectedAndExpectedFlagsAreSubset()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            using SerializedObjectTracker serializedObject = new();
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(
+                    nameof(TestContainer.flagsCondition),
+                    expectedValues: new object[]
+                    {
+                        TestContainer.TestFlags.OptionA,
+                        TestContainer.TestFlags.OptionA | TestContainer.TestFlags.OptionB,
+                    }
+                )
+            );
+
+            // Simulate Unity's "Everything" selection which sets all bits
+            container.flagsCondition = (TestContainer.TestFlags)(-1);
+            SerializedProperty dependentProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.flagsDependent)
+            );
+            Assert.True(
+                InvokeShouldShow(drawer, dependentProperty),
+                "Should show when flagsCondition is Everything (-1) because expected flags are a subset"
+            );
+        }
+
+        [Test]
+        public void FlagsEnumShowsWhenAllFlagsSetAndExpectedFlagsAreSubset()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            using SerializedObjectTracker serializedObject = new();
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(
+                    nameof(TestContainer.flagsCondition),
+                    expectedValues: new object[]
+                    {
+                        TestContainer.TestFlags.OptionA,
+                        TestContainer.TestFlags.OptionA | TestContainer.TestFlags.OptionB,
+                    }
+                )
+            );
+
+            // All defined flags set (OptionA | OptionB | OptionC = 7)
+            container.flagsCondition =
+                TestContainer.TestFlags.OptionA
+                | TestContainer.TestFlags.OptionB
+                | TestContainer.TestFlags.OptionC;
+            SerializedProperty dependentProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.flagsDependent)
+            );
+            Assert.True(
+                InvokeShouldShow(drawer, dependentProperty),
+                "Should show when all flags are set because expected flags (OptionA, OptionA|OptionB) are subsets"
+            );
+        }
+
+        [Test]
+        public void FlagsEnumHidesWhenNoExpectedFlagsMatch()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            using SerializedObjectTracker serializedObject = new();
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(
+                    nameof(TestContainer.flagsCondition),
+                    expectedValues: new object[]
+                    {
+                        TestContainer.TestFlags.OptionA,
+                        TestContainer.TestFlags.OptionA | TestContainer.TestFlags.OptionB,
+                    }
+                )
+            );
+
+            // Only OptionB set - doesn't contain OptionA alone or OptionA|OptionB
+            container.flagsCondition = TestContainer.TestFlags.OptionB;
+            SerializedProperty dependentProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.flagsDependent)
+            );
+            Assert.False(
+                InvokeShouldShow(drawer, dependentProperty),
+                "Should hide when flagsCondition is only OptionB (doesn't contain OptionA)"
+            );
+        }
+
+        [Test]
+        public void FlagsEnumHidesWhenNoneSelected()
+        {
+            TestContainer container = CreateScriptableObject<TestContainer>();
+            using SerializedObjectTracker serializedObject = new();
+
+            WShowIfPropertyDrawer drawer = CreateDrawer(
+                new WShowIfAttribute(
+                    nameof(TestContainer.flagsCondition),
+                    expectedValues: new object[]
+                    {
+                        TestContainer.TestFlags.OptionA,
+                        TestContainer.TestFlags.OptionA | TestContainer.TestFlags.OptionB,
+                    }
+                )
+            );
+
+            container.flagsCondition = TestContainer.TestFlags.None;
+            SerializedProperty dependentProperty = RefreshProperty(
+                serializedObject,
+                container,
+                nameof(TestContainer.flagsDependent)
+            );
+            Assert.False(
+                InvokeShouldShow(drawer, dependentProperty),
+                "Should hide when flagsCondition is None"
+            );
+        }
+
         private static WShowIfPropertyDrawer CreateDrawer(WShowIfAttribute attribute)
         {
             WShowIfPropertyDrawer drawer = new();

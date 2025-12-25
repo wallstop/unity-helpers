@@ -8,10 +8,9 @@ This roadmap outlines planned enhancements to Unity Helpers. All "Currently ship
 
 **Next up:**
 
-- Inline editors for nested ScriptableObjects/components with preview and diff affordances
 - Tabbed/section navigation with persistent layout bookmarks
 - Visual instrumentation (progress bars, warning badges, inline state telemetry)
-- Additional attributes: disable-if, layer/sorting-layer selection, cross-field validators, auto-generated help boxes
+- Additional attributes, serializable types
 
 ## 2. Expanded Editor Tooling
 
@@ -19,10 +18,10 @@ This roadmap outlines planned enhancements to Unity Helpers. All "Currently ship
 
 **Next up:**
 
-- Animation Creator enhancements: higher performance, dynamic framerate, enhanced previews
-- Sprite Sheet Animation Creator enhancements: improved slicing workflow, variable frame rates per range
-- Animation Event Editor refinements: timeline scrubbing, copy/paste across clips, presets, validation overlays
-- Additional automation surfaces: import processor builder, prefab validation rulesets, headless texture/animation post-processors
+- Animation Creator enhancements
+- Sprite Sheet Animation Creator enhancements
+- Animation Event Editor refinements
+- Additional automation surfaces
 
 ## 3. Advanced Random & Statistical Testing
 
@@ -33,7 +32,7 @@ This roadmap outlines planned enhancements to Unity Helpers. All "Currently ship
 - CI-friendly statistical harness: PractRand/TestU01 suites with automated pass/fail artifacts
 - Automated quality reports: histograms, percentile deltas, change detection for PR gates
 - Higher-level sampling: Poisson disk, stratified sampling, correlated noise, shuffled streams, deterministic scenario builders
-- Job/Burst-aware stream schedulers: seed pools, jump-ahead APIs, reservoir/permutation helpers with property-based tests
+- Investigation of Job/Burst-aware stream schedulers: seed pools, jump-ahead APIs, reservoir/permutation helpers with property-based tests
 
 ## 4. Enhanced Spatial Trees
 
@@ -44,7 +43,7 @@ This roadmap outlines planned enhancements to Unity Helpers. All "Currently ship
 - Graduate 3D trees to production: profiling data, comprehensive docs, parity with 2D APIs
 - Mutable/incremental updates/variants: localized inserts/removals without full rebuilds
 - Unity Physics parity: ray/capsule/sphere casts, overlap tests, PhysicsScene adapter structs
-- Streaming builders: tile-based loading for large worlds, job-based construction
+- Investigate streaming builders: tile-based loading for large worlds, job-based construction
 
 ## 5. UI Toolkit Enhancements
 
@@ -74,7 +73,7 @@ This roadmap outlines planned enhancements to Unity Helpers. All "Currently ship
 **Next up:**
 
 - Automated benchmark harness: CI integration, baseline storage, regression detection per subsystem
-- Burst/Jobs optimizations: hot loop rewrites for spatial queries, pooling, math helpers with analyzer hints
+- Investigate burst/Jobs optimizations: hot loop rewrites for spatial queries, pooling, math helpers with analyzer hints
 - Allocation/GC audits: Roslyn analyzers and NUnit tests enforcing zero-allocation guarantees for critical APIs
 - Safety analyzers: custom Roslyn rule that flags `SerializableNullable<T>.Value` access without a preceding `HasValue` check (Unity asmdef-friendly package)
 

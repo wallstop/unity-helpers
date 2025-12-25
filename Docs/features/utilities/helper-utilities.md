@@ -11,7 +11,7 @@ Static helper classes and utilities that solve common programming problems witho
 - [Gameplay Helpers](#gameplay-helpers) — Predictive aiming, spatial sampling, rotation
 - [GameObject & Component Helpers](#gameobject--component-helpers) — Component discovery, hierarchy manipulation
 - [Transform Helpers](#transform-helpers) — Hierarchy traversal
-- [Coroutine Wait Pools](#wait-instruction-pools) — Configure `Buffers.GetWaitForSeconds*` caching
+- [Coroutine Wait Pools](#coroutine-wait-pools) — Configure `Buffers.GetWaitForSeconds*` caching
 - [Threading](#threading) — Main thread dispatcher
 - [Path & File Helpers](#path--file-helpers) — Path resolution, file operations
 - [Scene Helpers](#scene-helpers) — Scene queries and loading
@@ -19,8 +19,6 @@ Static helper classes and utilities that solve common programming problems witho
 - [Environment Detection](#environment-detection) — CI, batch mode, and runtime environment
 
 ---
-
-<a id="wait-instruction-pools"></a>
 
 ## Coroutine Wait Pools
 

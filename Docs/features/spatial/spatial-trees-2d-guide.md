@@ -247,12 +247,12 @@ START: Do your objects move frequently?
 - **Nearest neighbors on static points:** KDTree2D (Balanced)
 - **Fast builds with good-enough queries:** KDTree2D (Unbalanced)
 - **Objects with area; bounds queries primary:** RTree2D
-- **Very frequent movement (every frame):** SpatialHash2D (see [README](../../../README.md#choosing-spatial-structures))
+- **Very frequent movement (every frame):** SpatialHash2D (see [README](../../../README.md#when-to-use-spatial-trees))
 
 ## Query Semantics
 
-- Points vs Bounds: QuadTree2D and KDTree2D are point-based; RTree2D is bounds-based.
-- Boundary inclusion: normalize half-open vs closed intervals. Add epsilons for edge cases.
+- Points vs. Bounds: QuadTree2D and KDTree2D are point-based; RTree2D is bounds-based.
+- Boundary inclusion: normalize half-open vs. closed intervals. Add epsilons for edge cases.
 - Numeric stability: prefer consistent ordering for collinear and boundary points.
 
 For deeper details, performance data, and diagrams, see:

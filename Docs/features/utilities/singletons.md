@@ -582,4 +582,4 @@ public void SettingsWithCustomValuesWork()
 
 - Editor tool: [ScriptableObject Singleton Creator](../editor-tools/editor-tools-guide.md#scriptableobject-singleton-creator).
 - Tests: `Tests/Runtime/Utils/RuntimeSingletonTests.cs` and `Tests/Editor/Utils/ScriptableObjectSingletonTests.cs`.
-- Dispatcher testing: [Unity Main Thread Dispatcher Guide](../logging/unity-main-thread-dispatcher.md#testing-patterns).
+- Dispatcher testing: [Unity Main Thread Dispatcher Guide](../logging/unity-main-thread-dispatcher.md#test-bootstrap-workflow).

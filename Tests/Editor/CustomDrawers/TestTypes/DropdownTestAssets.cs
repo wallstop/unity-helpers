@@ -61,5 +61,47 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
             return options;
         }
     }
+
+    /// <summary>
+    /// Static source for object reference dropdown tests.
+    /// </summary>
+    internal static class WValueDropDownObjectReferenceSource
+    {
+        private static WValueDropDownTestScriptableObject[] s_staticObjects;
+        private static UnityEngine.Material[] s_staticMaterials;
+
+        internal static WValueDropDownTestScriptableObject[] GetStaticScriptableObjects()
+        {
+            return s_staticObjects ?? System.Array.Empty<WValueDropDownTestScriptableObject>();
+        }
+
+        internal static WValueDropDownTestScriptableObject[] GetEmptyScriptableObjects()
+        {
+            return System.Array.Empty<WValueDropDownTestScriptableObject>();
+        }
+
+        internal static UnityEngine.Material[] GetStaticMaterials()
+        {
+            return s_staticMaterials ?? System.Array.Empty<UnityEngine.Material>();
+        }
+
+        internal static void SetStaticScriptableObjects(
+            WValueDropDownTestScriptableObject[] objects
+        )
+        {
+            s_staticObjects = objects;
+        }
+
+        internal static void SetStaticMaterials(UnityEngine.Material[] materials)
+        {
+            s_staticMaterials = materials;
+        }
+
+        internal static void Clear()
+        {
+            s_staticObjects = null;
+            s_staticMaterials = null;
+        }
+    }
 #endif
 }

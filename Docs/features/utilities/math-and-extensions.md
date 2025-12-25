@@ -18,7 +18,7 @@ Contents
 - [Direction helpers](#directions) — Enum conversions and operations
 - [Enum helpers](#enum-helpers) — Zero-allocation flag checks, cached names, display names
 - [Random generators](#random-generators) — Weighted selection, vector generation, subset sampling
-- [Async/Coroutine interop](#async-coroutine-interop) — Bridge Unity AsyncOperation with async/await
+- [Async/Coroutine interop](#asynccoroutine-interop) — Bridge Unity AsyncOperation with async/await
 - [Best Practices](#best-practices)
 
 <a id="numeric-helpers"></a>
@@ -944,8 +944,6 @@ bool coinFlip = rng.NextBool();              // 50/50
 bool biasedFlip = rng.NextBool(0.7f);        // 70% true
 int sign = rng.NextSign();                   // Randomly -1 or +1
 ```
-
-<a id="async-coroutine-interop"></a>
 
 ## Async/Coroutine Interop
 

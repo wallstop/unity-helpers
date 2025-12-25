@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
     using UnityEditor.AnimatedValues;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
 
     /// <summary>
@@ -443,6 +444,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WGroup
                         propertyLookup
                     );
                     if (property == null)
+                    {
+                        continue;
+                    }
+
+                    // Check WShowIf condition - this handles conditional visibility for all properties
+                    // including arrays/lists which need editor-level handling since PropertyDrawers
+                    // for attributes on arrays only affect elements, not the array itself
+                    if (!WShowIfPropertyDrawer.ShouldShowProperty(property))
                     {
                         continue;
                     }

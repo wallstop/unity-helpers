@@ -65,7 +65,7 @@ Unity Helpers eliminates entire categories of repetitive work with production-re
 | 🔍 Slow spatial searches             | [**Spatial Trees**](#spatial-trees) - O(log n) queries                                  | 5 minutes     |
 | 🎲 Random is too slow/limited        | [**PRNG.Instance**](#random-number-generators) - 10-15x faster, extensive API           | 1 minute      |
 | 💾 Need save/load system             | [**Serialization**](#4--unity-aware-serialization) - Unity types just work              | 10 minutes    |
-| 🛠️ Manual sprite workflows           | [**Editor Tools**](#6-️-editor-tools-suite) - 20+ automation tools                       | 3 minutes     |
+| 🛠️ Manual sprite workflows           | [**Editor Tools**](#editor-tools) - 20+ automation tools                                | 3 minutes     |
 
 **Not sure where to start?** → [Getting Started Guide](docs/overview/getting-started.md) walks through the top 3 features in 5 minutes.
 
@@ -340,14 +340,14 @@ string apiKey = "user_name".ToPascalCase();  // "UserName"
 
 These powerful utilities solve specific problems that waste hours if you implement them yourself:
 
-| Feature                                                                                      | What It Does                                          | Time Saved                           |
-| -------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------ |
-| **[Predictive Targeting](docs/features/utilities/math-and-extensions.md#predictive-target)** | Perfect ballistics for turrets/missiles in one call   | 2-3 hours per shooting system        |
-| **[Coroutine Jitter](docs/features/utilities/math-and-extensions.md#unity-extensions)**      | Prevents 100 enemies polling on same frame            | Eliminates frame spikes              |
-| **[IL-Emitted Reflection](docs/features/utilities/reflection-helpers.md)**                   | 100x faster than System.Reflection, IL2CPP safe       | Critical for serialization/modding   |
-| **[SmartDestroy()](docs/features/utilities/math-and-extensions.md#lifecycle-helpers)**       | Editor/runtime safe destruction (no scene corruption) | Prevents countless debugging hours   |
-| **[Convex/Concave Hulls](docs/features/spatial/hulls.md)**                                   | Generate territory borders from point clouds          | 4-6 hours per hull algorithm         |
-| **[Logging Extensions](docs/features/logging/logging-extensions.md)**                        | Rich tags, thread-aware logs, per-object toggles      | Keeps consoles readable + actionable |
+| Feature                                                                                   | What It Does                                          | Time Saved                           |
+| ----------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------ |
+| **[Predictive Targeting](docs/features/utilities/helper-utilities.md#predictive-aiming)** | Perfect ballistics for turrets/missiles in one call   | 2-3 hours per shooting system        |
+| **[Coroutine Jitter](docs/features/utilities/math-and-extensions.md#unity-extensions)**   | Prevents 100 enemies polling on same frame            | Eliminates frame spikes              |
+| **[IL-Emitted Reflection](docs/features/utilities/reflection-helpers.md)**                | 100x faster than System.Reflection, IL2CPP safe       | Critical for serialization/modding   |
+| **[SmartDestroy()](docs/features/utilities/helper-utilities.md#smart-destruction)**       | Editor/runtime safe destruction (no scene corruption) | Prevents countless debugging hours   |
+| **[Convex/Concave Hulls](docs/features/spatial/hulls.md)**                                | Generate territory borders from point clouds          | 4-6 hours per hull algorithm         |
+| **[Logging Extensions](docs/features/logging/logging-extensions.md)**                     | Rich tags, thread-aware logs, per-object toggles      | Keeps consoles readable + actionable |
 
 ---
 
@@ -501,8 +501,8 @@ Create a `link.xml` file in your `Assets` folder to prevent stripping:
 
 - [Unity Manual: Managed Code Stripping](https://docs.unity3d.com/Manual/ManagedCodeStripping.html)
 - [Protobuf-net and IL2CPP](https://github.com/protobuf-net/protobuf-net#il2cpp)
-- [Serialization Guide: IL2CPP Warning](docs/features/serialization/serialization.md#️-il2cpp-and-code-stripping-warning)
-- [Reflection Helpers: IL2CPP Warning](docs/features/utilities/reflection-helpers.md#️-il2cpp-code-stripping-considerations)
+- [Serialization Guide: IL2CPP Warning](docs/features/serialization/serialization.md#-il2cpp-and-code-stripping-warning)
+- [Reflection Helpers: IL2CPP Warning](docs/features/utilities/reflection-helpers.md#-il2cpp-code-stripping-considerations)
 
 ---
 
@@ -1035,7 +1035,7 @@ void ProcessLargeDataset(int size)
 
 <a id="pooling-utilities"></a>
 
-**Pooling utilities:**
+## Pooling utilities
 
 - `Buffers<T>` — pooled collections (List/Stack/Queue/HashSet) with `PooledResource` leases.
   - Lists: `using var lease = Buffers<Foo>.List.Get(out List<Foo> list);`
@@ -1225,7 +1225,7 @@ Unity Helpers is built with performance as a top priority:
 
 - Reflection Performance Guide — [Reflection Benchmarks](docs/performance/reflection-performance.md)
 - Reflection AOT/Burst Validation — [IL2CPP & Burst Validation](docs/features/utilities/reflection-helpers.md#il2cppwebgl-notes)
-- Reflection Benchmark Workflow — [Benchmarking & Verification](docs/performance/reflection-performance.md#benchmarking--verification)
+- Reflection Benchmark Workflow — [Benchmarking & Verification](docs/features/utilities/reflection-helpers.md#benchmarking--verification)
 - Random Performance — [Random Performance](docs/performance/random-performance.md)
 - Reflection Helpers — [Reflection Helpers](docs/features/utilities/reflection-helpers.md)
 - IList Sorting Performance — [IList Sorting Performance](docs/performance/ilist-sorting-performance.md)
