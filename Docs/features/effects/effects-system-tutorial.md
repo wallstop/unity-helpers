@@ -171,12 +171,12 @@ public class PlayerController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.H))
         {
             this.ApplyEffect(hasteEffect);
-            Debug.Log($"Speed is now: {stats.Speed.Value}");
+            Debug.Log($"Speed is now: {stats.Speed.CurrentValue}");
         }
 
         // Move with current speed
         float h = Input.GetAxis("Horizontal");
-        transform.position += Vector3.right * h * stats.Speed.Value * Time.deltaTime;
+        transform.position += Vector3.right * h * stats.Speed * Time.deltaTime;
     }
 }
 ```
@@ -243,7 +243,7 @@ public class PlayerController : MonoBehaviour
 
         // Normal movement
         float h = Input.GetAxis("Horizontal");
-        transform.position += Vector3.right * h * stats.Speed.Value * Time.deltaTime;
+        transform.position += Vector3.right * h * stats.Speed * Time.deltaTime;
     }
 }
 ```

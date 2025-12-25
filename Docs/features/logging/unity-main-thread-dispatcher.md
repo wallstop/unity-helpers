@@ -97,6 +97,8 @@ The `UnityMainThreadGuard` is a **guard/assertion** that throws an exception if 
 
 > ⚠️ **Important:** `EnsureMainThread()` does NOT dispatch work to the main thread. It throws `InvalidOperationException` if called from a background thread. To dispatch work, use `UnityMainThreadDispatcher.Instance.RunOnMainThread()`.
 
+> 📦 **Internal API:** `UnityMainThreadGuard` is an `internal` class, accessible only within the Unity Helpers assembly or via `[InternalsVisibleTo]`. For most use cases, prefer using `UnityMainThreadDispatcher` directly which is `public`.
+
 ### Basic Usage
 
 ```csharp

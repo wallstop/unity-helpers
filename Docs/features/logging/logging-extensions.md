@@ -16,9 +16,6 @@ Bring structured, color-coded logs to any Unity project without sprinkling `Debu
 - Press Play to use the on-screen toggles (global logging, component logging, pretty output) and emit Info/Warn/Error logs that showcase the decorators.
 - Review `LoggingDemoBootstrap` (decorator registration) and `LoggingDemoController` (runtime toggles + `this.Log*` usage) to copy the patterns into your project.
 
-![Image placeholder: Logging sample Console output with colored NPC/status tags]
-![GIF placeholder: Logging demo overlay toggling pretty mode and emitting differently colored logs in real time]
-
 ---
 
 ## Quick Start

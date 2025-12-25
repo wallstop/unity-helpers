@@ -759,8 +759,6 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 
 **Purpose:** Advanced visual editor for creating and managing animation events with sprite preview, method auto-discovery, and parameter editing.
 
-> Need the implementation details? See the [architecture notes](../../project/animation-event-editor.md) (helper breakdown, control flow, testing).
-
 **Key Features:**
 
 - **Sprite preview:** See the sprite at each event time
@@ -2120,10 +2118,9 @@ public List<string> selectedLabels;
 
 ### Attribute Metadata Cache Generator
 
-**Type:** Automatic (runs on editor load)
-**Menu:** `Tools > WallstopStudios > Regenerate Attribute Metadata Cache`
+**Type:** Automatic (runs on editor load and domain reload)
 
-**Purpose:** Pre-generate attribute system metadata at edit time to eliminate runtime reflection overhead.
+**Purpose:** Pre-generate attribute system metadata at edit time to eliminate runtime reflection overhead. The cache is automatically regenerated when scripts change. You can manually refresh it via the "Purge & Refresh Cache" button in the `AttributeMetadataCache` asset inspector.
 
 **What Gets Cached:**
 
@@ -2304,10 +2301,6 @@ else
 - Sprite Sheet Animation Creator
 - Texture Resizer
 - Texture Settings Applier
-
-**Tools > WallstopStudios:**
-
-- Regenerate Attribute Metadata Cache
 
 **Assets > Create > Wallstop Studios > Unity Helpers:**
 

@@ -295,9 +295,8 @@ gameObject.SmartDestroy();  // No more #if UNITY_EDITOR everywhere
 Bounds visibleArea = Camera.main.OrthographicBounds();  // Perfect for culling/spawning
 
 // Predictive targeting (intercept moving targets)
-if (Ballistics.TryGetInterceptVelocity(shooter, target, projectileSpeed, out Vector3 velocity)) {
-    Instantiate(projectile, shooter, Quaternion.LookRotation(velocity));
-}
+Vector2 aimPoint = target.PredictCurrentTarget(shooter.position, projectileSpeed, predictiveFiring: true, targetVelocity);
+turret.transform.up = (aimPoint - (Vector2)shooter.position).normalized;
 ```
 
 ### Math That Should Be Built-In

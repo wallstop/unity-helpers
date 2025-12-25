@@ -31,7 +31,7 @@ The `UnityHelpersSettings` asset provides project-wide configuration for paginat
 
 **Note:** The asset is created automatically on first use. If missing, any inspector feature will generate it.
 
-![Image placeholder: Project Settings window showing Unity Helpers settings]
+![Project Settings window showing Unity Helpers settings](../../images/inspector/unity-helper-settings.png)
 
 ---
 

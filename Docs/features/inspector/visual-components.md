@@ -205,11 +205,11 @@ characterImage.Fps = 6f;  // Slow down animation
 
 > **LayeredImage in Action**
 >
-> ![GIF placeholder: LayeredImage showing multi-layer character animation compositing in real-time](../../images/inspector/layered-image-animation.gif)
+> ![LayeredImage showing multi-layer character animation compositing in real-time](../../images/inspector/layered-image-animation.gif)
 >
 > _Character with dynamically composited layers animating at runtime_
 >
-> ![GIF placeholder: LayeredImage layer swapping demo showing layers being changed and animation updating instantly](../../images/inspector/layered-image-layer-swap.gif)
+> ![LayeredImage layer swapping demo showing layers being changed and animation updating instantly](../../images/inspector/layered-image-layer-swap.gif)
 >
 > _Swapping equipment layers at runtime without pre-rendered sprite sheets_
 
@@ -281,7 +281,7 @@ All layers must have the same number of frames. Mixing 4-frame and 8-frame anima
 
 > **Visual Demo**
 >
-> ![GIF placeholder: EnhancedImage HDR color intensity slider being adjusted, showing bloom effect increasing](../../images/inspector/enhanced-image-hdr-bloom.gif)
+> ![EnhancedImage HDR color intensity slider being adjusted, showing bloom effect increasing](../../images/inspector/enhanced-image-hdr-bloom.gif)
 >
 > _HDR color values above 1.0 create bloom effects when post-processing is enabled_
 

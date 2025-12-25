@@ -141,7 +141,7 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const prNumber = Number(core.getInput('pr')) || Number('${{ steps.meta.outputs.pr }}');
+            const prNumber = Number('${{ steps.meta.outputs.pr }}');
             const baseRef = '${{ steps.meta.outputs.base_ref }}';
             const headBranch = `bot/format/pr-${prNumber}`;
             const {owner, repo} = context.repo;
@@ -188,7 +188,7 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const prNumber = Number(core.getInput('pr_number'));
+            const prNumber = Number('${{ inputs.pr_number }}');
             if (!prNumber) core.setFailed('pr_number is required');
             const pr = (await github.rest.pulls.get({ ...context.repo, pull_number: prNumber })).data;
             core.setOutput('pr', String(prNumber));

@@ -219,6 +219,9 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **llms.txt** - LLM-friendly documentation for AI assistants
 → [llms.txt](../../llms.txt)
 
+**LoggingExtensions** - Color-coded, thread-safe logging utilities
+→ [Logging Extensions](../features/logging/logging-extensions.md)
+
 **LZMA Compression** - Compression utilities
 → [README - Serialization](../../README.md#serialization)
 
@@ -454,7 +457,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Math & Extensions](../features/utilities/math-and-extensions.md#unity-extensions)
 
 **UnityMainThreadDispatcher** - Execute work on main thread from background threads
-→ [Helper Utilities](../features/utilities/helper-utilities.md#threading)
+→ [Threading Guide](../features/logging/unity-main-thread-dispatcher.md) | [Helper Utilities](../features/utilities/helper-utilities.md#threading)
 
 ---
 

@@ -577,7 +577,7 @@ public class UIManager : MonoBehaviour
     public List<GameObject> menuItems;
 
     // Conditional validation
-    [ShowIf(nameof(useCustomTheme))]
+    [WShowIf(nameof(useCustomTheme))]
     [ValidateAssignment("Custom theme name required when using custom theme")]
     public string customThemeName;
 

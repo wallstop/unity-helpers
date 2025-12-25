@@ -534,7 +534,7 @@ public class BehaviorSpawner : MonoBehaviour
 SerializableType typeRef = new SerializableType(typeof(PlayerController));
 
 // Resolve
-Type resolvedType = typeRef.GetResolvedType();
+Type resolvedType = typeRef.Value;
 if (resolvedType != null)
 {
     object instance = Activator.CreateInstance(resolvedType);
@@ -884,7 +884,7 @@ public class BehaviorFactory : MonoBehaviour
             return null;
         }
 
-        Type type = typeToSpawn.GetResolvedType();
+        Type type = typeToSpawn.Value;
         if (type == null || !typeof(MonoBehaviour).IsAssignableFrom(type))
         {
             Debug.LogError($"Invalid behavior type: {typeToSpawn.DisplayName}");

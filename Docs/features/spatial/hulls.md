@@ -102,9 +102,6 @@ List<FastVector3Int> gridHull = tileSamples.BuildConcaveHull(grid, tileOptions);
 
 See `Samples~/Spatial Structures - 2D and 3D/Scripts/HullUsageDemo.cs` for a runnable MonoBehaviour that draws both loops (cyan for gridless, yellow for grid-aware) and logs the strategy/neighbor counts so you can copy the pattern directly into your own tooling, or just open `Samples~/Spatial Structures - 2D and 3D/Scenes/HullUsageDemo.unity` and press Play to watch both flows without extra setup.
 
-![Image placeholder: Game view showing cyan Vector2 hull and yellow Grid hull drawn simultaneously]
-![GIF placeholder: Recording of cyan/yellow hull loops updating as the demo toggles between gridless and grid-aware modes]
-
 ## Collinear Points & includeColinearPoints
 
 - Convex hull helpers prune collinear points by default so only the true corners remain, even after grid-to-world projections introduce float skew.
