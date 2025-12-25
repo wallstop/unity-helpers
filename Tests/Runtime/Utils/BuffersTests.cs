@@ -480,12 +480,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             // Re-acquire them and verify LIFO order (last returned is first acquired)
             // Since we returned in order [0, 1, 2, 3, 4], the stack should be [4, 3, 2, 1, 0] (top to bottom)
             // So acquiring should give us: 4, 3, 2, 1, 0
+            // NOTE: We intentionally do NOT use 'using' here - disposing would return arrays to the pool
+            // during verification, corrupting the LIFO order we're trying to test.
+            List<PooledArray<int>> verificationArrays = new();
             for (int i = arrayCount - 1; i >= 0; i--)
             {
-                using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
+                PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
                     arraySize,
                     out int[] array
                 );
+                verificationArrays.Add(pooled);
 
                 Assert.AreSame(
                     allocatedArrays[i],
@@ -496,6 +500,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                         + $"Actual hash: {RuntimeHelpers.GetHashCode(array)}"
                 );
                 Assert.AreEqual(i, array[0], $"Array marker should be {i} to confirm identity.");
+            }
+
+            // Dispose all arrays after verification is complete
+            foreach (PooledArray<int> pooled in verificationArrays)
+            {
+                pooled.Dispose();
             }
         }
 
@@ -539,12 +549,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
 
             // Re-acquire them and verify LIFO order
+            // NOTE: We intentionally do NOT use 'using' here - disposing would return arrays to the pool
+            // during verification, corrupting the LIFO order we're trying to test.
+            List<PooledArray<int>> verificationArrays = new();
             for (int i = arrayCount - 1; i >= 0; i--)
             {
-                using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
+                PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
                     arraySize,
                     out int[] array
                 );
+                verificationArrays.Add(pooled);
 
                 Assert.AreSame(
                     allocatedArrays[i],
@@ -552,6 +566,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     $"LIFO violation at index {i} for size {arraySize}. "
                         + $"Expected marker: {i}, Actual marker: {array[0]}"
                 );
+            }
+
+            // Dispose all arrays after verification is complete
+            foreach (PooledArray<int> pooled in verificationArrays)
+            {
+                pooled.Dispose();
             }
         }
 
@@ -986,9 +1006,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int threadCount = 4;
             const int allocationsPerThread = 64;
 
-            // Clear the pool before running this scenario to ensure test isolation
-            // Each thread uses unique sizes (12+threadId*24), but previous tests may have left arrays
-            WallstopFastArrayPool<int>.ClearForTesting();
+            // NOTE: ClearForTesting is called inside the lambda because this static method runs during
+            // test case data creation (test discovery), not during test execution. Each thread uses
+            // unique sizes (12+threadId*24), ensuring thread isolation without needing a global clear.
+            // The per-thread unique sizes mean threads don't compete for the same pool buckets.
 
             ConcurrentScenario scenario = new(
                 nameof(ConcurrentScenarioName.WallstopFastArrayPoolConcurrentOutOfOrderDispose),
@@ -1023,15 +1044,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                         pooled.Dispose();
                     }
 
+                    // NOTE: We intentionally do NOT use 'using' here - disposing would return arrays to the pool
+                    // during verification, corrupting the LIFO order we're trying to test.
+                    List<PooledArray<int>> verificationArrays = new();
                     foreach (KeyValuePair<int, Stack<int[]>> pair in expectedOrder)
                     {
                         while (pair.Value.Count > 0)
                         {
                             int[] expected = pair.Value.Pop();
-                            using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
+                            PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
                                 pair.Key,
                                 out int[] array
                             );
+                            verificationArrays.Add(pooled);
 
                             Assert.AreSame(
                                 expected,
@@ -1042,6 +1067,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                                     + $"Expected marker[0]: {expected[0]}, Actual marker[0]: {array[0]}"
                             );
                         }
+                    }
+
+                    // Dispose all arrays after verification is complete
+                    foreach (PooledArray<int> pooled in verificationArrays)
+                    {
+                        pooled.Dispose();
                     }
 
                     return Task.CompletedTask;
@@ -1330,23 +1361,37 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 arrays[2] = arr3;
             }
 
-            using PooledArray<int> pooledReuse1 = WallstopFastArrayPool<int>.Get(
-                size,
-                out int[] reuse1
+            // NOTE: We intentionally do NOT use 'using' here - disposing would return arrays to the pool
+            // during verification, corrupting the LIFO order we're trying to test.
+            // Nested using statements dispose in reverse order (arr3, arr2, arr1), so after all dispose:
+            // - arr3 pushed first, arr2 pushed second, arr1 pushed last
+            // - Stack = [arr1 (top), arr2, arr3 (bottom)]
+            // - First Get returns arr1, second returns arr2, third returns arr3
+            PooledArray<int> pooledReuse1 = WallstopFastArrayPool<int>.Get(size, out int[] reuse1);
+            Assert.AreSame(
+                arrays[0],
+                reuse1,
+                $"Expected LIFO: arr1 disposed last should be retrieved first. Got hash {RuntimeHelpers.GetHashCode(reuse1)}, expected hash {RuntimeHelpers.GetHashCode(arrays[0])}"
             );
-            Assert.AreSame(arrays[0], reuse1);
 
-            using PooledArray<int> pooledReuse2 = WallstopFastArrayPool<int>.Get(
-                size,
-                out int[] reuse2
+            PooledArray<int> pooledReuse2 = WallstopFastArrayPool<int>.Get(size, out int[] reuse2);
+            Assert.AreSame(
+                arrays[1],
+                reuse2,
+                $"Expected LIFO: arr2 disposed second should be retrieved second. Got hash {RuntimeHelpers.GetHashCode(reuse2)}, expected hash {RuntimeHelpers.GetHashCode(arrays[1])}"
             );
-            Assert.AreSame(arrays[1], reuse2);
 
-            using PooledArray<int> pooledReuse3 = WallstopFastArrayPool<int>.Get(
-                size,
-                out int[] reuse3
+            PooledArray<int> pooledReuse3 = WallstopFastArrayPool<int>.Get(size, out int[] reuse3);
+            Assert.AreSame(
+                arrays[2],
+                reuse3,
+                $"Expected LIFO: arr3 disposed first should be retrieved last. Got hash {RuntimeHelpers.GetHashCode(reuse3)}, expected hash {RuntimeHelpers.GetHashCode(arrays[2])}"
             );
-            Assert.AreSame(arrays[2], reuse3);
+
+            // Dispose all arrays after verification
+            pooledReuse1.Dispose();
+            pooledReuse2.Dispose();
+            pooledReuse3.Dispose();
         }
 
         [Test]
@@ -2089,6 +2134,226 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     buffer[i] = (byte)(i % 256);
                 }
             }
+        }
+
+        [Test]
+        public void WallstopFastArrayPoolDoubleDisposeIsNoOp()
+        {
+            WallstopFastArrayPool<int>.ClearForTesting();
+
+            const int size = 10;
+            PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(size, out int[] firstArray);
+            firstArray[0] = 42;
+
+            // First dispose returns array to pool
+            pooled.Dispose();
+
+            // Second dispose should be a no-op (already disposed)
+            Assert.DoesNotThrow(() => pooled.Dispose(), "Double dispose should not throw");
+
+            // Get a new array - should get the same one back (LIFO)
+            using PooledArray<int> pooled2 = WallstopFastArrayPool<int>.Get(
+                size,
+                out int[] secondArray
+            );
+            Assert.AreSame(
+                firstArray,
+                secondArray,
+                "After double dispose, pool should still return the same array exactly once"
+            );
+
+            // Get another array - should be a fresh allocation since pool only had one array
+            using PooledArray<int> pooled3 = WallstopFastArrayPool<int>.Get(
+                size,
+                out int[] thirdArray
+            );
+            Assert.AreNotSame(
+                firstArray,
+                thirdArray,
+                "Third allocation should be a new array since pool was emptied"
+            );
+        }
+
+        [Test]
+        public void WallstopFastArrayPoolLifoWithInterleavedSizes()
+        {
+            WallstopFastArrayPool<int>.ClearForTesting();
+
+            const int sizeA = 10;
+            const int sizeB = 20;
+
+            // Allocate interleaved sizes: A, B, A, B
+            PooledArray<int> pooledA1 = WallstopFastArrayPool<int>.Get(sizeA, out int[] arrayA1);
+            PooledArray<int> pooledB1 = WallstopFastArrayPool<int>.Get(sizeB, out int[] arrayB1);
+            PooledArray<int> pooledA2 = WallstopFastArrayPool<int>.Get(sizeA, out int[] arrayA2);
+            PooledArray<int> pooledB2 = WallstopFastArrayPool<int>.Get(sizeB, out int[] arrayB2);
+
+            arrayA1[0] = 1;
+            arrayA2[0] = 2;
+            arrayB1[0] = 10;
+            arrayB2[0] = 20;
+
+            // Dispose in order: A1, B1, A2, B2
+            pooledA1.Dispose();
+            pooledB1.Dispose();
+            pooledA2.Dispose();
+            pooledB2.Dispose();
+
+            // Size A stack should be: [A2 (top), A1]
+            // Size B stack should be: [B2 (top), B1]
+
+            // Get size A - should get A2 (LIFO)
+            PooledArray<int> getA1 = WallstopFastArrayPool<int>.Get(sizeA, out int[] gotA1);
+            Assert.AreSame(
+                arrayA2,
+                gotA1,
+                $"Expected LIFO for size {sizeA}: got marker {gotA1[0]}, expected marker 2"
+            );
+
+            // Get size B - should get B2 (LIFO)
+            PooledArray<int> getB1 = WallstopFastArrayPool<int>.Get(sizeB, out int[] gotB1);
+            Assert.AreSame(
+                arrayB2,
+                gotB1,
+                $"Expected LIFO for size {sizeB}: got marker {gotB1[0]}, expected marker 20"
+            );
+
+            // Get size A again - should get A1 (LIFO)
+            PooledArray<int> getA2 = WallstopFastArrayPool<int>.Get(sizeA, out int[] gotA2);
+            Assert.AreSame(
+                arrayA1,
+                gotA2,
+                $"Expected LIFO for size {sizeA}: got marker {gotA2[0]}, expected marker 1"
+            );
+
+            // Get size B again - should get B1 (LIFO)
+            PooledArray<int> getB2 = WallstopFastArrayPool<int>.Get(sizeB, out int[] gotB2);
+            Assert.AreSame(
+                arrayB1,
+                gotB2,
+                $"Expected LIFO for size {sizeB}: got marker {gotB2[0]}, expected marker 10"
+            );
+
+            // Cleanup
+            getA1.Dispose();
+            getA2.Dispose();
+            getB1.Dispose();
+            getB2.Dispose();
+        }
+
+        [Test]
+        public void WallstopFastArrayPoolClearForTestingDuringActiveRentals()
+        {
+            WallstopFastArrayPool<int>.ClearForTesting();
+
+            const int size = 15;
+
+            // Get an array but don't dispose it yet
+            PooledArray<int> activeRental = WallstopFastArrayPool<int>.Get(
+                size,
+                out int[] activeArray
+            );
+            activeArray[0] = 999;
+
+            // Return some arrays to the pool
+            PooledArray<int> returned1 = WallstopFastArrayPool<int>.Get(size, out int[] arr1);
+            PooledArray<int> returned2 = WallstopFastArrayPool<int>.Get(size, out int[] arr2);
+            returned1.Dispose();
+            returned2.Dispose();
+
+            // Clear the pool while activeRental is still held
+            WallstopFastArrayPool<int>.ClearForTesting();
+
+            // The active rental should still be valid
+            Assert.AreEqual(
+                999,
+                activeArray[0],
+                "Active rental should still be usable after clear"
+            );
+
+            // Getting new arrays should allocate fresh ones (pool was cleared)
+            PooledArray<int> newAlloc = WallstopFastArrayPool<int>.Get(size, out int[] newArray);
+            Assert.AreNotSame(
+                arr1,
+                newArray,
+                "After ClearForTesting, should get fresh array, not previously pooled one"
+            );
+            Assert.AreNotSame(arr2, newArray);
+
+            // Cleanup
+            activeRental.Dispose();
+            newAlloc.Dispose();
+        }
+
+        [TestCase(1, TestName = "WallstopFastArrayPoolLifoSingleElementSize1")]
+        [TestCase(2, TestName = "WallstopFastArrayPoolLifoSingleElementSize2")]
+        [TestCase(100, TestName = "WallstopFastArrayPoolLifoSingleElementSize100")]
+        public void WallstopFastArrayPoolLifoSingleElement(int arraySize)
+        {
+            WallstopFastArrayPool<int>.ClearForTesting();
+
+            // Allocate and return a single array
+            PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(arraySize, out int[] original);
+            original[0] = 12345;
+            pooled.Dispose();
+
+            // Should get the same array back
+            PooledArray<int> reacquired = WallstopFastArrayPool<int>.Get(
+                arraySize,
+                out int[] retrieved
+            );
+            Assert.AreSame(original, retrieved, $"Single element LIFO failed for size {arraySize}");
+
+            reacquired.Dispose();
+        }
+
+        [Test]
+        public void WallstopFastArrayPoolIsolationBetweenTypes()
+        {
+            WallstopFastArrayPool<int>.ClearForTesting();
+            WallstopFastArrayPool<byte>.ClearForTesting();
+
+            const int size = 10;
+
+            // Allocate and return int array
+            PooledArray<int> intPooled = WallstopFastArrayPool<int>.Get(size, out int[] intArray);
+            intArray[0] = 42;
+            intPooled.Dispose();
+
+            // Allocate and return byte array of same size
+            PooledArray<byte> bytePooled = WallstopFastArrayPool<byte>.Get(
+                size,
+                out byte[] byteArray
+            );
+            byteArray[0] = 255;
+            bytePooled.Dispose();
+
+            // Getting int array should get the int array back, not affected by byte pool
+            PooledArray<int> intReacquired = WallstopFastArrayPool<int>.Get(
+                size,
+                out int[] retrievedInt
+            );
+            Assert.AreSame(intArray, retrievedInt, "Int pool should be isolated from byte pool");
+            Assert.AreEqual(
+                42,
+                retrievedInt[0],
+                "Int array should retain its marker (WallstopFastArrayPool doesn't clear)"
+            );
+
+            // Getting byte array should get the byte array back
+            PooledArray<byte> byteReacquired = WallstopFastArrayPool<byte>.Get(
+                size,
+                out byte[] retrievedByte
+            );
+            Assert.AreSame(byteArray, retrievedByte, "Byte pool should be isolated from int pool");
+            Assert.AreEqual(
+                255,
+                retrievedByte[0],
+                "Byte array should retain its marker (WallstopFastArrayPool doesn't clear)"
+            );
+
+            intReacquired.Dispose();
+            byteReacquired.Dispose();
         }
     }
 }
