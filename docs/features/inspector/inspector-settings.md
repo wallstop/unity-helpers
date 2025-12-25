@@ -382,11 +382,11 @@ public AbilityConfig collapsedByDefault;
 
 ## Color Palettes
 
-Palette keys keep WButton and WEnumToggleButtons visuals consistent across the project. Open the **Color Palettes** foldout inside `UnityHelpersSettings` to add or edit entries. Each key is matched at draw time against the `ColorKey`/`priority` parameter on the corresponding attribute; unknown keys fall back to theme-aware defaults.
+Palette keys keep WButton and WEnumToggleButtons visuals consistent across the project. Open the **Color Palettes** foldout inside `UnityHelpersSettings` to add or edit entries. Each key is matched at draw time against the `colorKey` parameter on the corresponding attribute; unknown keys fall back to theme-aware defaults.
 
 ### WButtonCustomColors
 
-**Applies to:** `[WButton]` via the `priority` (alias `ColorKey`) parameter  
+**Applies to:** `[WButton]` via the `colorKey` parameter  
 **Reserved keys:** `Default`, `Default-Light`, `Default-Dark`, `WDefault` (legacy)  
 **Description:** Each entry stores a button color and a readable text color. Reserved keys auto-sync to the current editor skin and cannot be deleted. Custom keys are ideal for highlighting dangerous or primary actions across multiple inspectors.  
 **Usage:**
@@ -396,7 +396,7 @@ Palette keys keep WButton and WEnumToggleButtons visuals consistent across the p
 3. Reference the key from your button:
 
 ```csharp
-[WButton("Submit", priority: "Highlight")]
+[WButton("Submit", colorKey: "Highlight")]
 private void Submit() { }
 ```
 

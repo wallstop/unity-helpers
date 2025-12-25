@@ -68,7 +68,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             string displayName = null,
             int drawOrder = 0,
             int historyCapacity = UseGlobalHistory,
-            string priority = null,
+            string colorKey = null,
             string groupName = null,
             int groupPriority = NoGroupPriority,
             WButtonGroupPlacement groupPlacement = WButtonGroupPlacement.UseGlobalSetting
@@ -77,7 +77,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             DisplayName = string.IsNullOrWhiteSpace(displayName) ? null : displayName.Trim();
             DrawOrder = drawOrder;
             HistoryCapacity = historyCapacity < 0 ? UseGlobalHistory : historyCapacity;
-            ColorKey = string.IsNullOrWhiteSpace(priority) ? null : priority.Trim();
+            ColorKey = string.IsNullOrWhiteSpace(colorKey) ? null : colorKey.Trim();
             GroupName = string.IsNullOrWhiteSpace(groupName) ? null : groupName.Trim();
             GroupPriority = groupPriority;
             GroupPlacement = groupPlacement;

@@ -440,6 +440,270 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
         }
 
+        [Test]
+        public void WallstopFastArrayPoolLifoOrderingSingleThread()
+        {
+            // Clear the pool first to ensure test isolation
+            WallstopFastArrayPool<int>.ClearForTesting();
+
+            const int arraySize = 15;
+            const int arrayCount = 5;
+            int[][] allocatedArrays = new int[arrayCount][];
+
+            // Allocate 5 arrays of the same size
+            List<PooledArray<int>> pooledArrays = new();
+            for (int i = 0; i < arrayCount; i++)
+            {
+                PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
+                    arraySize,
+                    out int[] array
+                );
+                pooledArrays.Add(pooled);
+                allocatedArrays[i] = array;
+                array[0] = i; // Mark each array with its allocation order
+            }
+
+            // Verify all arrays are distinct
+            HashSet<int[]> distinctArrays = allocatedArrays.ToHashSet();
+            Assert.AreEqual(
+                arrayCount,
+                distinctArrays.Count,
+                "All allocated arrays should be distinct instances."
+            );
+
+            // Return them in order (first allocated returned first)
+            foreach (PooledArray<int> pooled in pooledArrays)
+            {
+                pooled.Dispose();
+            }
+
+            // Re-acquire them and verify LIFO order (last returned is first acquired)
+            // Since we returned in order [0, 1, 2, 3, 4], the stack should be [4, 3, 2, 1, 0] (top to bottom)
+            // So acquiring should give us: 4, 3, 2, 1, 0
+            for (int i = arrayCount - 1; i >= 0; i--)
+            {
+                using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
+                    arraySize,
+                    out int[] array
+                );
+
+                Assert.AreSame(
+                    allocatedArrays[i],
+                    array,
+                    $"Expected array {i} (last returned should be first acquired - LIFO order). "
+                        + $"Expected marker: {i}, Actual marker: {array[0]}, "
+                        + $"Expected hash: {RuntimeHelpers.GetHashCode(allocatedArrays[i])}, "
+                        + $"Actual hash: {RuntimeHelpers.GetHashCode(array)}"
+                );
+                Assert.AreEqual(i, array[0], $"Array marker should be {i} to confirm identity.");
+            }
+        }
+
+        [TestCase(1, 3, TestName = "WallstopFastArrayPoolLifoOrderingSize1Count3")]
+        [TestCase(5, 5, TestName = "WallstopFastArrayPoolLifoOrderingSize5Count5")]
+        [TestCase(10, 10, TestName = "WallstopFastArrayPoolLifoOrderingSize10Count10")]
+        [TestCase(100, 3, TestName = "WallstopFastArrayPoolLifoOrderingSize100Count3")]
+        [TestCase(256, 8, TestName = "WallstopFastArrayPoolLifoOrderingSize256Count8")]
+        public void WallstopFastArrayPoolLifoOrderingParameterized(int arraySize, int arrayCount)
+        {
+            // Clear the pool first to ensure test isolation
+            WallstopFastArrayPool<int>.ClearForTesting();
+
+            int[][] allocatedArrays = new int[arrayCount][];
+            List<PooledArray<int>> pooledArrays = new();
+
+            // Allocate arrays of the specified size
+            for (int i = 0; i < arrayCount; i++)
+            {
+                PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
+                    arraySize,
+                    out int[] array
+                );
+                pooledArrays.Add(pooled);
+                allocatedArrays[i] = array;
+                array[0] = i; // Mark each array with its allocation order
+            }
+
+            // Verify all arrays are distinct
+            HashSet<int[]> distinctArrays = allocatedArrays.ToHashSet();
+            Assert.AreEqual(
+                arrayCount,
+                distinctArrays.Count,
+                $"All {arrayCount} allocated arrays of size {arraySize} should be distinct instances."
+            );
+
+            // Return them in order (first allocated returned first)
+            foreach (PooledArray<int> pooled in pooledArrays)
+            {
+                pooled.Dispose();
+            }
+
+            // Re-acquire them and verify LIFO order
+            for (int i = arrayCount - 1; i >= 0; i--)
+            {
+                using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
+                    arraySize,
+                    out int[] array
+                );
+
+                Assert.AreSame(
+                    allocatedArrays[i],
+                    array,
+                    $"LIFO violation at index {i} for size {arraySize}. "
+                        + $"Expected marker: {i}, Actual marker: {array[0]}"
+                );
+            }
+        }
+
+        [Test]
+        public void WallstopFastArrayPoolClearForTestingClearsAllBuckets()
+        {
+            // Pre-populate the pool with various sizes
+            int[] testSizes = { 5, 10, 20, 50, 100 };
+            Dictionary<int, int[]> originalArrays = new();
+
+            foreach (int size in testSizes)
+            {
+                PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(size, out int[] array);
+                array[0] = size; // Mark with size for identification
+                originalArrays[size] = array;
+                pooled.Dispose();
+            }
+
+            // Clear the pool
+            WallstopFastArrayPool<int>.ClearForTesting();
+
+            // Re-acquire - should get NEW arrays, not the original ones
+            foreach (int size in testSizes)
+            {
+                using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
+                    size,
+                    out int[] array
+                );
+
+                Assert.AreNotSame(
+                    originalArrays[size],
+                    array,
+                    $"After ClearForTesting, size {size} should return a new array, not the original. "
+                        + $"Original hash: {RuntimeHelpers.GetHashCode(originalArrays[size])}, "
+                        + $"New hash: {RuntimeHelpers.GetHashCode(array)}"
+                );
+
+                // New array should be zeroed (default for int)
+                Assert.AreEqual(
+                    0,
+                    array[0],
+                    $"New array of size {size} should be zeroed, not contain old marker {array[0]}"
+                );
+            }
+        }
+
+        [Test]
+        public void WallstopFastArrayPoolClearForTestingOnEmptyPoolDoesNotThrow()
+        {
+            // Use a type that hasn't been used before to ensure empty pool
+            Assert.DoesNotThrow(
+                () => WallstopFastArrayPool<double>.ClearForTesting(),
+                "ClearForTesting should not throw on an empty pool"
+            );
+
+            // Clear again to verify idempotency
+            Assert.DoesNotThrow(
+                () => WallstopFastArrayPool<double>.ClearForTesting(),
+                "ClearForTesting should be idempotent"
+            );
+        }
+
+        [Test]
+        public void WallstopFastArrayPoolIsolatesSizes()
+        {
+            const int smallSize = 10;
+            const int mediumSize = 20;
+            const int largeSize = 30;
+
+            // Allocate arrays of different sizes
+            using PooledArray<int> smallPooled = WallstopFastArrayPool<int>.Get(
+                smallSize,
+                out int[] smallArray
+            );
+            using PooledArray<int> mediumPooled = WallstopFastArrayPool<int>.Get(
+                mediumSize,
+                out int[] mediumArray
+            );
+            using PooledArray<int> largePooled = WallstopFastArrayPool<int>.Get(
+                largeSize,
+                out int[] largeArray
+            );
+
+            // Mark each array with a distinctive value
+            smallArray[0] = 111;
+            mediumArray[0] = 222;
+            largeArray[0] = 333;
+
+            // Store references for later comparison
+            int[] originalSmall = smallArray;
+            int[] originalMedium = mediumArray;
+            int[] originalLarge = largeArray;
+
+            // Return all arrays to pool
+            smallPooled.Dispose();
+            mediumPooled.Dispose();
+            largePooled.Dispose();
+
+            // Re-acquire by size and verify each size gets back its own arrays
+            using PooledArray<int> reacquiredSmall = WallstopFastArrayPool<int>.Get(
+                smallSize,
+                out int[] newSmallArray
+            );
+            using PooledArray<int> reacquiredMedium = WallstopFastArrayPool<int>.Get(
+                mediumSize,
+                out int[] newMediumArray
+            );
+            using PooledArray<int> reacquiredLarge = WallstopFastArrayPool<int>.Get(
+                largeSize,
+                out int[] newLargeArray
+            );
+
+            // Verify each size bucket returned the correct array (no cross-contamination)
+            Assert.AreSame(
+                originalSmall,
+                newSmallArray,
+                "Small size bucket should return the small array."
+            );
+            Assert.AreSame(
+                originalMedium,
+                newMediumArray,
+                "Medium size bucket should return the medium array."
+            );
+            Assert.AreSame(
+                originalLarge,
+                newLargeArray,
+                "Large size bucket should return the large array."
+            );
+
+            // Verify markers to confirm no data corruption
+            Assert.AreEqual(111, newSmallArray[0], "Small array marker should be preserved.");
+            Assert.AreEqual(222, newMediumArray[0], "Medium array marker should be preserved.");
+            Assert.AreEqual(333, newLargeArray[0], "Large array marker should be preserved.");
+
+            // Verify lengths are correct
+            Assert.AreEqual(
+                smallSize,
+                newSmallArray.Length,
+                "Small array should have correct length."
+            );
+            Assert.AreEqual(
+                mediumSize,
+                newMediumArray.Length,
+                "Medium array should have correct length."
+            );
+            Assert.AreEqual(
+                largeSize,
+                newLargeArray.Length,
+                "Large array should have correct length."
+            );
+        }
+
 #if !SINGLE_THREADED
         private enum ConcurrentScenarioName
         {
@@ -722,6 +986,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             const int threadCount = 4;
             const int allocationsPerThread = 64;
 
+            // Clear the pool before running this scenario to ensure test isolation
+            // Each thread uses unique sizes (12+threadId*24), but previous tests may have left arrays
+            WallstopFastArrayPool<int>.ClearForTesting();
+
             ConcurrentScenario scenario = new(
                 nameof(ConcurrentScenarioName.WallstopFastArrayPoolConcurrentOutOfOrderDispose),
                 threadCount,
@@ -743,21 +1011,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                         array[size - 1] = threadId;
                     }
 
-                    Dictionary<int, Queue<int[]>> expectedOrder = new();
+                    // Use Stack (LIFO) to match pool behavior - arrays are disposed in reverse order
+                    // and retrieved in the same LIFO order from the pool's internal stack
+                    Dictionary<int, Stack<int[]>> expectedOrder = new();
 
                     for (int i = rentals.Count - 1; i >= 0; i--)
                     {
                         PooledArray<int> pooled = rentals[i];
                         int size = pooled.length;
-                        expectedOrder.GetOrAdd(size).Enqueue(pooled.array);
+                        expectedOrder.GetOrAdd(size).Push(pooled.array);
                         pooled.Dispose();
                     }
 
-                    foreach (KeyValuePair<int, Queue<int[]>> pair in expectedOrder)
+                    foreach (KeyValuePair<int, Stack<int[]>> pair in expectedOrder)
                     {
                         while (pair.Value.Count > 0)
                         {
-                            int[] expected = pair.Value.Dequeue();
+                            int[] expected = pair.Value.Pop();
                             using PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(
                                 pair.Key,
                                 out int[] array
@@ -766,7 +1036,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                             Assert.AreSame(
                                 expected,
                                 array,
-                                $"OutOfOrderDispose thread {threadId} expected LIFO for size {pair.Key}"
+                                $"OutOfOrderDispose thread {threadId} expected LIFO for size {pair.Key}. "
+                                    + $"Expected hash: {RuntimeHelpers.GetHashCode(expected)}, "
+                                    + $"Actual hash: {RuntimeHelpers.GetHashCode(array)}, "
+                                    + $"Expected marker[0]: {expected[0]}, Actual marker[0]: {array[0]}"
                             );
                         }
                     }

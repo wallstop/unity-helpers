@@ -293,7 +293,7 @@ using WallstopStudios.UnityHelpers.Core.Attributes;
 
 public class WButtonSettingsExample : MonoBehaviour
 {
-    [WButton(priority: "Documentation Example")]
+    [WButton(colorKey: "Documentation Example")]
     private void Button() { }
 }
 ```

@@ -10,6 +10,7 @@ The `[WButton]` attribute exposes methods as clickable buttons in the Unity insp
 
 - [Basic Usage](#basic-usage)
 - [Parameters](#parameters)
+  - [colorKey](#colorkey-string-optional)
   - [groupPriority](#grouppriority-int-optional)
   - [groupPlacement](#groupplacement-wbuttongroupplacement-optional)
 - [Execution Types](#execution-types)
@@ -62,7 +63,7 @@ The `[WButton]` attribute accepts several optional parameters to customize butto
     string displayName = null,
     int drawOrder = 0,
     int historyCapacity = WButtonAttribute.UseGlobalHistory,
-    string priority = null,
+    string colorKey = null,
     string groupName = null,
     int groupPriority = WButtonAttribute.NoGroupPriority,
     WButtonGroupPlacement groupPlacement = WButtonGroupPlacement.UseGlobalSetting
@@ -169,7 +170,7 @@ private async Task<string> PingServerAsync(CancellationToken ct)
 
 ---
 
-### priority (string, optional)
+### colorKey (string, optional)
 
 **Applies custom color themes to buttons using predefined color keys.**
 
@@ -183,13 +184,13 @@ private async Task<string> PingServerAsync(CancellationToken ct)
 private void StandardAction() { }
 
 // Custom themed button (requires setup in project settings)
-[WButton("Dangerous Action", priority: "Danger")]
+[WButton("Dangerous Action", colorKey: "Danger")]
 private void DangerousAction() { }
 
-[WButton("Success Action", priority: "Success")]
+[WButton("Success Action", colorKey: "Success")]
 private void SuccessAction() { }
 
-[WButton("Warning Action", priority: "Warning")]
+[WButton("Warning Action", colorKey: "Warning")]
 private void WarningAction() { }
 ```
 
@@ -443,7 +444,7 @@ public class LevelManager : MonoBehaviour
     [WButton("Roll Dice", historyCapacity: 10, groupName: "Debug", groupPriority: 1, groupPlacement: WButtonGroupPlacement.Top)]
     private int RollDice() => Random.Range(1, 7);
 
-    [WButton("🎯 Spawn Test Enemy", priority: "Warning", groupName: "Debug")]
+    [WButton("🎯 Spawn Test Enemy", colorKey: "Warning", groupName: "Debug")]
     private void SpawnTestEnemy()
     {
         // Spawn logic here
@@ -452,7 +453,7 @@ public class LevelManager : MonoBehaviour
     // Properties appear here in the inspector
 
     // Actions group - explicitly placed at bottom, renders first in bottom section due to groupPriority: 0
-    [WButton("▶ Start Level", priority: "Success", groupName: "Actions", groupPriority: 0, groupPlacement: WButtonGroupPlacement.Bottom)]
+    [WButton("▶ Start Level", colorKey: "Success", groupName: "Actions", groupPriority: 0, groupPlacement: WButtonGroupPlacement.Bottom)]
     private void StartLevel()
     {
         Debug.Log($"Starting level {currentLevel}...");
@@ -464,7 +465,7 @@ public class LevelManager : MonoBehaviour
         Time.timeScale = 0f;
     }
 
-    [WButton("🔄 Restart Level", priority: "Danger", groupName: "Actions")]
+    [WButton("🔄 Restart Level", colorKey: "Danger", groupName: "Actions")]
     private void RestartLevel()
     {
         // Restart logic here
@@ -763,10 +764,10 @@ private void LoadGame() => Debug.Log("Game loaded");
 ## Color Theming
 
 ```csharp
-[WButton("Dangerous Action", priority: "Default-Dark")]
+[WButton("Dangerous Action", colorKey: "Default-Dark")]
 private void DangerousAction() => Debug.LogWarning("Dangerous!");
 
-[WButton("Safe Action", priority: "Default-Light")]
+[WButton("Safe Action", colorKey: "Default-Light")]
 private void SafeAction() => Debug.Log("Safe operation");
 ```
 
@@ -925,14 +926,14 @@ private async Task InfiniteLoopAsync()
 
 ```csharp
 // ✅ GOOD: Use colors to indicate risk/importance
-[WButton("Delete All Data", priority: "Default-Dark")]  // Dark = danger
+[WButton("Delete All Data", colorKey: "Default-Dark")]  // Dark = danger
 private void DeleteAllData() { ... }
 
-[WButton("Quick Save", priority: "Default-Light")]  // Light = safe
+[WButton("Quick Save", colorKey: "Default-Light")]  // Light = safe
 private void QuickSave() { ... }
 
 // ❌ BAD: Random colors without meaning
-[WButton("Log Message", priority: "CustomPurple")]  // Why purple?
+[WButton("Log Message", colorKey: "CustomPurple")]  // Why purple?
 private void LogMessage() { ... }
 ```
 
@@ -951,7 +952,7 @@ public class PlayerDebug : MonoBehaviour
     public int health = 100;
     public int gold = 0;
 
-    [WButton("Heal", groupName: "Health", priority: "Default-Light")]
+    [WButton("Heal", groupName: "Health", colorKey: "Default-Light")]
     private void Heal()
     {
         health = 100;
@@ -965,7 +966,7 @@ public class PlayerDebug : MonoBehaviour
         Debug.Log($"Took damage! Health: {health}");
     }
 
-    [WButton("Kill Player", groupName: "Health", priority: "Default-Dark")]
+    [WButton("Kill Player", groupName: "Health", colorKey: "Default-Dark")]
     private void Kill()
     {
         health = 0;
@@ -1060,7 +1061,7 @@ public class LevelGenerator : MonoBehaviour
         // ... generation logic ...
     }
 
-    [WButton("Clear Level", priority: "Default-Dark")]
+    [WButton("Clear Level", colorKey: "Default-Dark")]
     private void ClearLevel()
     {
         // ... cleanup logic ...

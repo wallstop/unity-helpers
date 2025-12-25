@@ -1846,6 +1846,17 @@ namespace WallstopStudios.UnityHelpers.Utils
         {
             Pool[resource.Length].Push(resource);
         }
+
+        /// <summary>
+        /// Clears all pooled arrays for testing purposes. Internal visibility for test assemblies.
+        /// </summary>
+        internal static void ClearForTesting()
+        {
+            for (int i = 0; i < Pool.Count; i++)
+            {
+                Pool[i]?.Clear();
+            }
+        }
     }
 #else
     /// <summary>
@@ -2052,6 +2063,26 @@ namespace WallstopStudios.UnityHelpers.Utils
         private static void Release(T[] resource)
         {
             _pool[resource.Length].Push(resource);
+        }
+
+        /// <summary>
+        /// Clears all pooled arrays for testing purposes. Internal visibility for test assemblies.
+        /// Thread-safe implementation.
+        /// </summary>
+        internal static void ClearForTesting()
+        {
+            _lock.EnterWriteLock();
+            try
+            {
+                for (int i = 0; i < _pool.Count; i++)
+                {
+                    _pool[i]?.Clear();
+                }
+            }
+            finally
+            {
+                _lock.ExitWriteLock();
+            }
         }
     }
 #endif

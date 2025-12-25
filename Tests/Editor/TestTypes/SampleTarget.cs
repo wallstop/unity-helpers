@@ -30,7 +30,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
         [WButton]
         public void MethodWithDefaults(int count = 7, string label = "hello") { }
 
-        [WButton(priority: "Critical")]
+        [WButton(colorKey: "Critical")]
         public void PriorityMethod() { }
 
         [WButton(drawOrder: -3, groupName: "Utilities")]
