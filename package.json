@@ -1,6 +1,6 @@
 {
   "name": "com.wallstop-studios.unity-helpers",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "displayName": "Unity Helpers",
   "description": "Treasure chest of Unity developer tools ",
   "dependencies": {},
@@ -112,8 +112,7 @@
     "validate:tests": "npm run lint:tests",
     "validate:prepush": "npm run validate:content && npm run eol:check && npm run validate:tests && npm run lint:csharp-naming",
     "lint:tests": "pwsh -NoProfile -File scripts/lint-tests.ps1 -VerboseOutput",
-    "lint:csharp-naming": "pwsh -NoProfile -File scripts/lint-csharp-naming.ps1 -VerboseOutput",
-    "prepublishOnly": "npm run validate:content"
+    "lint:csharp-naming": "pwsh -NoProfile -File scripts/lint-csharp-naming.ps1 -VerboseOutput"
   },
   "devDependencies": {
     "markdownlint-cli": "^0.47.0",
