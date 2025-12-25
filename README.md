@@ -2,8 +2,13 @@
 
 > **🤖 AI Assistance Disclosure:** Recent versions of this project have utilized AI assistance for bug detection, performance optimization, and documentation. The original codebase was developed entirely by humans over several years.
 
+<p align="center">
+  <img src="docs/images/unity-helpers-banner.svg" alt="Unity Helpers Banner" width="800"/>
+</p>
+
 <p align="left">
   <a href="https://unity.com/releases/2021-lts"><img alt="Unity 2021.3+" src="https://img.shields.io/badge/Unity-2021.3%2B-000000?logo=unity&amp;logoColor=white" /></a><br>
+  <a href="https://openupm.com/packages/com.wallstop-studios.unity-helpers/"><img alt="OpenUPM" src="https://img.shields.io/npm/v/com.wallstop-studios.unity-helpers?label=openupm&amp;registry_uri=https://package.openupm.com" /></a><br>
   <a href="https://www.npmjs.com/package/com.wallstop-studios.unity-helpers"><img alt="npm version" src="https://img.shields.io/npm/v/com.wallstop-studios.unity-helpers" /></a><br>
   <a href="https://www.npmjs.com/package/com.wallstop-studios.unity-helpers"><img alt="npm downloads" src="https://img.shields.io/npm/dw/com.wallstop-studios.unity-helpers" /></a><br>
   <a href="https://github.com/wallstop/unity-helpers/releases"><img alt="GitHub release version" src="https://img.shields.io/github/v/release/wallstop/unity-helpers" /></a><br>
@@ -19,9 +24,24 @@
 
 Unity Helpers eliminates entire categories of repetitive work with production-ready utilities that are 10-100x faster than writing it yourself. From auto-wiring components to blazing-fast spatial queries, this is the toolkit that pays for itself in the first hour.
 
+---
+
+## 📦 Quick Install
+
+| Source                    | Install Method                                                                                 |
+| ------------------------- | ---------------------------------------------------------------------------------------------- |
+| **OpenUPM** (Recommended) | `openupm add com.wallstop-studios.unity-helpers`                                               |
+| **Git URL**               | Package Manager → Add from git URL → `https://github.com/wallstop/unity-helpers.git`           |
+| **NPM**                   | Add scoped registry `https://registry.npmjs.org` → search `com.wallstop-studios.unity-helpers` |
+| **Source**                | Import [`.unitypackage`](https://github.com/wallstop/unity-helpers/releases) or clone repo     |
+
+👉 [Full installation instructions](#installation) with step-by-step guides for each method.
+
+---
+
 **What makes this different:**
 
-- 🎨 **Professional inspector tooling** - Grouping, buttons, conditional display, toggle grids (Odin alternatives, less fully-featured) — [Migration Guide](docs/guides/odin-migration-guide.md)
+- 🎨 **Professional inspector tooling** - Grouping, buttons, conditional display, toggle grids (consider as an Odin alternative) — [Migration Guide](docs/guides/odin-migration-guide.md)
 - ⚡ **10-15x faster** random generation than Unity.Random
 - 🔌 **Zero boilerplate** component wiring with attributes
 - 🎮 **Designer-friendly** effects system (buffs/debuffs as ScriptableObjects)
@@ -372,14 +392,67 @@ These powerful utilities solve specific problems that waste hours if you impleme
 
 ## Installation
 
-### As Unity Package (Recommended)
+Unity Helpers is available from multiple sources. Choose the one that best fits your workflow:
 
-1. Open Unity Package Manager
-2. _(Optional)_ Enable **Pre-release packages** for cutting-edge builds
-3. Click the **+** dropdown → **Add package from git URL...**
-4. Enter: `https://github.com/wallstop/unity-helpers.git`
+| Source                               | Best For                            | Auto-Updates |
+| ------------------------------------ | ----------------------------------- | ------------ |
+| [OpenUPM](#from-openupm-recommended) | Most users, easy version management | ✅ Yes       |
+| [Git URL](#from-git-url)             | Latest commits, CI/CD pipelines     | ✅ Yes       |
+| [NPM Registry](#from-npm-registry)   | Teams already using NPM             | ✅ Yes       |
+| [Source](#from-source)               | Offline, modifications needed       | ❌ Manual    |
 
-**OR** add to your `manifest.json`:
+### From OpenUPM (Recommended)
+
+[OpenUPM](https://openupm.com/packages/com.wallstop-studios.unity-helpers/) is the recommended installation method for easy version management and updates.
+
+#### Option A: Via Package Manager UI
+
+1. Open **Edit → Project Settings → Package Manager**
+2. Under **Scoped Registries**, click **+** to add a new registry:
+   - **Name**: `OpenUPM`
+   - **URL**: `https://package.openupm.com`
+   - **Scope(s)**: `com.wallstop-studios`
+3. Click **Save**
+4. Open **Window → Package Manager**
+5. Change the dropdown to **My Registries**
+6. Find and install `Unity Helpers`
+
+#### Option B: Via OpenUPM CLI
+
+If you have the [OpenUPM CLI](https://openupm.com/docs/getting-started.html#installing-openupm-cli) installed:
+
+```bash
+openupm add com.wallstop-studios.unity-helpers
+```
+
+#### Option C: Manual manifest.json
+
+Add to your `Packages/manifest.json`:
+
+```json
+{
+  "scopedRegistries": [
+    {
+      "name": "OpenUPM",
+      "url": "https://package.openupm.com",
+      "scopes": ["com.wallstop-studios"]
+    }
+  ],
+  "dependencies": {
+    "com.wallstop-studios.unity-helpers": "2.2.0"
+  }
+}
+```
+
+### From Git URL
+
+Install directly from GitHub for the latest version:
+
+1. Open **Window → Package Manager**
+2. Click **+** → **Add package from git URL...**
+3. Enter: `https://github.com/wallstop/unity-helpers.git`
+
+**OR** add to your `Packages/manifest.json`:
 
 ```json
 {
@@ -389,21 +462,32 @@ These powerful utilities solve specific problems that waste hours if you impleme
 }
 ```
 
+> **Tip:** To lock to a specific version, append `#v2.2.0` to the URL.
+
 ### From NPM Registry
 
-1. Open Unity Package Manager
-2. _(Optional)_ Enable **Pre-release packages**
-3. Open **Advanced Package Settings** (gear icon)
-4. Add a new **Scoped Registry**:
+1. Open **Edit → Project Settings → Package Manager**
+2. Under **Scoped Registries**, click **+** to add a new registry:
    - **Name**: `NPM`
    - **URL**: `https://registry.npmjs.org`
-   - **Scope(s)**: `com.wallstop-studios.unity-helpers`
-5. Search for and install `com.wallstop-studios.unity-helpers`
+   - **Scope(s)**: `com.wallstop-studios`
+3. Click **Save**
+4. Open **Window → Package Manager**
+5. Change the dropdown to **My Registries**
+6. Find and install `com.wallstop-studios.unity-helpers`
 
 ### From Source
 
-1. [Download the latest release](https://github.com/wallstop/unity-helpers/releases) or clone this repository
-2. Copy the contents to your project's `Assets` folder
+#### Option A: Import Unity Package
+
+1. [Download the latest `.unitypackage`](https://github.com/wallstop/unity-helpers/releases) from GitHub Releases
+2. In Unity, go to **Assets → Import Package → Custom Package...**
+3. Select the downloaded `.unitypackage` file and import
+
+#### Option B: Clone or Download Repository
+
+1. Clone or [download](https://github.com/wallstop/unity-helpers/archive/refs/heads/main.zip) the repository
+2. Copy the contents to your project's `Assets/` or `Packages/` folder
 3. Unity will automatically import the package
 
 ---

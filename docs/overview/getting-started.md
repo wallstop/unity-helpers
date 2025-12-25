@@ -111,11 +111,12 @@ See it working first, understand the theory later:
 
 See the [Installation section](../../README.md#installation) in the main README for detailed installation instructions using:
 
-- Unity Package Manager (recommended)
-- Git URL
-- Local package folder
+- **OpenUPM** (Recommended) — Easy version management via Package Manager or CLI
+- **Git URL** — Direct from GitHub, great for CI/CD pipelines
+- **NPM Registry** — For teams already using NPM scoped registries
+- **Source** — Import `.unitypackage` from releases, or clone the repository
 
-After installation, verify the package appears in **Window > Package Manager** under "Custom".
+After installation, verify the package appears in **Window → Package Manager** under "My Registries" or "In Project".
 
 ---
 

@@ -1,6 +1,14 @@
 repos:
   - repo: local
     hooks:
+      - id: sync-banner-version
+        name: Sync banner version from package.json
+        entry: pwsh -NoProfile -File scripts/sync-banner-version.ps1 -StagedOnly
+        language: system
+        files: 'package\.json$'
+        pass_filenames: false
+        require_serial: true
+        description: Updates the version in the SVG banner when package.json version changes.
       - id: dotnet-tool-restore
         name: Install .NET tools
         entry: dotnet tool restore
