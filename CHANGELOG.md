@@ -145,6 +145,7 @@ See [the roadmap](docs/overview/roadmap.md) for details
   - Enforced `IComparable` constraint where appropriate for sorting
   - Better handling of null additions in collections
   - Updated editor tooling for better integration with Unity 2021.3+
+  - Default IList.Sort to Grail sort for stability and improved performance
 
 ---
 

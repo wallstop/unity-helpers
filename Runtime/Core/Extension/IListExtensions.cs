@@ -278,7 +278,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// <param name="comparer">The comparer to use for element comparisons.</param>
         /// <param name="sortAlgorithm">
         /// The sorting algorithm to use (Ghost, Meteor, PatternDefeatingQuickSort, Grail, Power, or Insertion).
-        /// Defaults to Ghost.
+        /// Defaults to Grail.
         /// </param>
         /// <remarks>
         /// <para>Null handling: Throws NullReferenceException if array is null. Comparer behavior depends on implementation.</para>
@@ -297,7 +297,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         public static void Sort<T, TComparer>(
             this IList<T> array,
             TComparer comparer,
-            SortAlgorithm sortAlgorithm = SortAlgorithm.Ghost
+            SortAlgorithm sortAlgorithm = SortAlgorithm.Grail
         )
             where TComparer : IComparer<T>
         {
