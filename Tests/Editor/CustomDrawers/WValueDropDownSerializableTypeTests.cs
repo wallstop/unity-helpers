@@ -595,6 +595,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        [Description(
+            "Verifies type mismatch between bool property and string options shows HelpBox"
+        )]
         public void TypeMismatchShowsHelpBoxForBoolWithStringOptions()
         {
             WValueDropDownTypeMismatchAsset asset =
@@ -606,16 +609,35 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 nameof(WValueDropDownTypeMismatchAsset.boolFieldWithDropDown)
             );
             Assert.IsTrue(property != null, "Failed to locate property.");
+            Assert.That(
+                property.propertyType,
+                Is.EqualTo(SerializedPropertyType.Boolean),
+                $"Expected Boolean property type but got {property.propertyType}"
+            );
 
             WValueDropDownDrawer drawer = new();
             WValueDropDownAttribute attribute = new("A", "B", "C");
             PropertyDrawerTestHelper.AssignAttribute(drawer, attribute);
 
+            Assert.That(
+                attribute.ValueType,
+                Is.EqualTo(typeof(string)),
+                $"Attribute ValueType should be string but was {attribute.ValueType}"
+            );
+
             VisualElement element = drawer.CreatePropertyGUI(property);
-            Assert.IsInstanceOf<HelpBox>(element, "Type mismatch should show HelpBox.");
+            Assert.IsInstanceOf<HelpBox>(
+                element,
+                $"Type mismatch should show HelpBox. "
+                    + $"Property type: {property.propertyType}, Attribute ValueType: {attribute.ValueType}, "
+                    + $"Actual element type: {element?.GetType().Name ?? "null"}"
+            );
         }
 
         [Test]
+        [Description(
+            "Verifies type mismatch between Color property and float options shows HelpBox"
+        )]
         public void TypeMismatchShowsHelpBoxForColorWithFloatOptions()
         {
             WValueDropDownTypeMismatchAsset asset =
@@ -627,13 +649,29 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 nameof(WValueDropDownTypeMismatchAsset.colorFieldWithDropDown)
             );
             Assert.IsTrue(property != null, "Failed to locate property.");
+            Assert.That(
+                property.propertyType,
+                Is.EqualTo(SerializedPropertyType.Color),
+                $"Expected Color property type but got {property.propertyType}"
+            );
 
             WValueDropDownDrawer drawer = new();
             WValueDropDownAttribute attribute = new(1.5f, 2.5f, 3.5f);
             PropertyDrawerTestHelper.AssignAttribute(drawer, attribute);
 
+            Assert.That(
+                attribute.ValueType,
+                Is.EqualTo(typeof(float)),
+                $"Attribute ValueType should be float but was {attribute.ValueType}"
+            );
+
             VisualElement element = drawer.CreatePropertyGUI(property);
-            Assert.IsInstanceOf<HelpBox>(element, "Type mismatch should show HelpBox.");
+            Assert.IsInstanceOf<HelpBox>(
+                element,
+                $"Type mismatch should show HelpBox. "
+                    + $"Property type: {property.propertyType}, Attribute ValueType: {attribute.ValueType}, "
+                    + $"Actual element type: {element?.GetType().Name ?? "null"}"
+            );
         }
 
         [Test]

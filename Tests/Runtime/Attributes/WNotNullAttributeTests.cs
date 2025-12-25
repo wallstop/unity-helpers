@@ -49,7 +49,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
                 holder.CheckForNulls()
             );
-            Assert.That(exception.ParamName, Is.EqualTo(nameof(WNotNullMultipleHolder.firstField)));
+            // Note: Reflection does not guarantee field order, so we validate that the exception
+            // refers to one of the expected null fields rather than a specific one
+            string[] expectedNullFields =
+            {
+                nameof(WNotNullMultipleHolder.firstField),
+                nameof(WNotNullMultipleHolder.secondField),
+                nameof(WNotNullMultipleHolder.thirdField),
+            };
+            Assert.That(
+                expectedNullFields,
+                Does.Contain(exception.ParamName),
+                $"Expected ParamName to be one of [{string.Join(", ", expectedNullFields)}], but was '{exception.ParamName}'"
+            );
         }
 
         [Test]
@@ -149,6 +161,142 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             holder.customMessageField = new object();
             Assert.DoesNotThrow(() => holder.CheckForNulls());
         }
+
+        [Test]
+        public void CheckForNullsWithNoAnnotatedFieldsDoesNotThrow()
+        {
+            WNotNullEmptyHolder holder = new();
+            Assert.DoesNotThrow(() => holder.CheckForNulls());
+
+            holder.regularField = null;
+            Assert.DoesNotThrow(() => holder.CheckForNulls());
+        }
+
+        [Test]
+        public void CheckForNullsOnNullObjectDoesNotThrow()
+        {
+            object nullObject = null;
+            Assert.DoesNotThrow(() => nullObject.CheckForNulls());
+        }
+
+        [Test]
+        public void CheckForNullsWithPrivateAnnotatedFieldThrows()
+        {
+            WNotNullPrivateFieldHolder holder = new();
+            Assert.Throws<ArgumentNullException>(() => holder.CheckForNulls());
+
+            holder.SetPrivateField(new object());
+            Assert.DoesNotThrow(() => holder.CheckForNulls());
+        }
+
+        [Test]
+        public void CheckForNullsExceptionContainsFieldName()
+        {
+            WNotNullHolder holder = new();
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
+                holder.CheckForNulls()
+            );
+
+            Assert.That(
+                exception.ParamName,
+                Is.EqualTo(nameof(WNotNullHolder.reference)),
+                $"Expected ParamName to be '{nameof(WNotNullHolder.reference)}', but was '{exception.ParamName}'"
+            );
+        }
+
+        [TestCase(WNotNullMessageType.Warning, null)]
+        [TestCase(WNotNullMessageType.Warning, "")]
+        [TestCase(WNotNullMessageType.Warning, "Custom message")]
+        [TestCase(WNotNullMessageType.Error, null)]
+        [TestCase(WNotNullMessageType.Error, "")]
+        [TestCase(WNotNullMessageType.Error, "Custom error message")]
+        public void AttributeConstructorPreservesParameters(
+            WNotNullMessageType messageType,
+            string customMessage
+        )
+        {
+            WNotNullAttribute attribute = new(messageType, customMessage);
+            Assert.That(
+                attribute.MessageType,
+                Is.EqualTo(messageType),
+                $"Expected MessageType to be {messageType}, but was {attribute.MessageType}"
+            );
+            Assert.That(
+                attribute.CustomMessage,
+                Is.EqualTo(customMessage),
+                $"Expected CustomMessage to be '{customMessage}', but was '{attribute.CustomMessage}'"
+            );
+        }
+
+        [Test]
+        public void CheckForNullsWithSingleFieldAssignedStillThrowsForOtherNullFields()
+        {
+            WNotNullMultipleHolder holder = new() { firstField = new object() };
+
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
+                holder.CheckForNulls()
+            );
+
+            // Should throw for one of the remaining null fields
+            string[] remainingNullFields =
+            {
+                nameof(WNotNullMultipleHolder.secondField),
+                nameof(WNotNullMultipleHolder.thirdField),
+            };
+            Assert.That(
+                remainingNullFields,
+                Does.Contain(exception.ParamName),
+                $"Expected ParamName to be one of [{string.Join(", ", remainingNullFields)}], but was '{exception.ParamName}'"
+            );
+        }
+
+        [Test]
+        public void CheckForNullsWithTwoFieldsAssignedStillThrowsForLastNullField()
+        {
+            WNotNullMultipleHolder holder = new()
+            {
+                firstField = new object(),
+                secondField = "test",
+            };
+
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
+                holder.CheckForNulls()
+            );
+
+            Assert.That(
+                exception.ParamName,
+                Is.EqualTo(nameof(WNotNullMultipleHolder.thirdField)),
+                $"Expected ParamName to be '{nameof(WNotNullMultipleHolder.thirdField)}', but was '{exception.ParamName}'"
+            );
+        }
+
+        [Test]
+        public void CheckForNullsWithEmptyStringDoesNotThrow()
+        {
+            WNotNullStringHolder holder = new() { stringField = string.Empty };
+            Assert.DoesNotThrow(() => holder.CheckForNulls());
+        }
+
+        [Test]
+        public void CheckForNullsWithWhitespaceStringDoesNotThrow()
+        {
+            WNotNullStringHolder holder = new() { stringField = "   " };
+            Assert.DoesNotThrow(() => holder.CheckForNulls());
+        }
+
+        [Test]
+        public void CheckForNullsWithNullStringThrows()
+        {
+            WNotNullStringHolder holder = new() { stringField = null };
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
+                holder.CheckForNulls()
+            );
+            Assert.That(
+                exception.ParamName,
+                Is.EqualTo(nameof(WNotNullStringHolder.stringField)),
+                $"Expected ParamName to be '{nameof(WNotNullStringHolder.stringField)}', but was '{exception.ParamName}'"
+            );
+        }
     }
 
     internal sealed class WNotNullHolder
@@ -185,5 +333,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
         [WNotNull("Custom error message")]
         public object customMessageField;
+    }
+
+    internal sealed class WNotNullEmptyHolder
+    {
+        public object regularField;
+    }
+
+    internal sealed class WNotNullPrivateFieldHolder
+    {
+        [WNotNull]
+        private object _privateField;
+
+        public void SetPrivateField(object value)
+        {
+            _privateField = value;
+        }
+    }
+
+    internal sealed class WNotNullStringHolder
+    {
+        [WNotNull]
+        public string stringField;
     }
 }

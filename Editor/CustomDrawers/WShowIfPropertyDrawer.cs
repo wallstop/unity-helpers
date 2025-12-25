@@ -127,21 +127,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private bool ShouldShowInternal(SerializedProperty property)
         {
-            // When WShowIf is applied to an array/list field, Unity's PropertyDrawer system
-            // invokes the drawer for each array *element* (paths like "field.Array.data[0]"),
-            // not for the array field itself. The parent array draws its own container (foldout,
-            // header, etc.) and then asks us for each element's height. If we return 0 for
-            // hidden elements while the array container is still drawn, the layout breaks and
-            // causes visual corruption/overdraw.
-            //
-            // Solution: If this property is an array element, always show it. The visibility
-            // decision should be made at the array level, not the element level. If the drawer
-            // is on the array itself (property.isArray && not an element), we handle it normally.
-            if (IsArrayElement(property))
-            {
-                return true;
-            }
-
             return ShouldShow(property);
         }
 
@@ -173,6 +158,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         internal bool ShouldShow(SerializedProperty property)
         {
+            // When WShowIf is applied to an array/list field, Unity's PropertyDrawer system
+            // invokes the drawer for each array *element* (paths like "field.Array.data[0]"),
+            // not for the array field itself. The parent array draws its own container (foldout,
+            // header, etc.) and then asks us for each element's height. If we return 0 for
+            // hidden elements while the array container is still drawn, the layout breaks and
+            // causes visual corruption/overdraw.
+            //
+            // Solution: If this property is an array element, always show it. The visibility
+            // decision should be made at the array level, not the element level. If the drawer
+            // is on the array itself (property.isArray && not an element), we handle it normally.
+            if (IsArrayElement(property))
+            {
+                return true;
+            }
+
             WShowIfAttribute showIf = ResolveAttribute();
             if (showIf == null)
             {

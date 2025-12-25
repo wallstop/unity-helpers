@@ -107,6 +107,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        [Description(
+            "Verifies selector updates string serialized property correctly (tests string property support fix)"
+        )]
         public void SelectorUpdatesStringSerializedProperty()
         {
             WValueDropDownStringOptionsAsset asset =
@@ -119,11 +122,29 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 nameof(WValueDropDownStringOptionsAsset.selection)
             );
             Assert.IsNotNull(property, "Failed to locate string selection property.");
+            Assert.That(
+                property.propertyType,
+                Is.EqualTo(SerializedPropertyType.String),
+                $"Property should be String type but was {property.propertyType}"
+            );
 
             WValueDropDownDrawer drawer = new();
-            AssignAttribute(drawer, new WValueDropDownAttribute("Alpha", "Beta", "Gamma"));
+            WValueDropDownAttribute attribute = new("Alpha", "Beta", "Gamma");
+            AssignAttribute(drawer, attribute);
+
+            Assert.That(
+                attribute.ValueType,
+                Is.EqualTo(typeof(string)),
+                $"Attribute ValueType should be string but was {attribute.ValueType}"
+            );
+
             VisualElement element = drawer.CreatePropertyGUI(property);
-            Assert.IsInstanceOf<BaseField<string>>(element);
+            Assert.IsInstanceOf<BaseField<string>>(
+                element,
+                $"String property with string options should create BaseField<string>. "
+                    + $"isArray: {property.isArray}, propertyType: {property.propertyType}, "
+                    + $"Actual element type: {element?.GetType().Name ?? "null"}"
+            );
 
             BaseField<string> selector = (BaseField<string>)element;
             DropdownField dropdown = selector.Q<DropdownField>();
@@ -452,6 +473,89 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Is.EqualTo(nameof(WValueDropDownInstanceMethodAsset.GetDynamicValues))
             );
             Assert.That(attribute.RequiresInstanceContext, Is.True);
+        }
+
+        [Test]
+        [Description(
+            "Verifies that string properties with string options are supported (fixed production bug)"
+        )]
+        public void StringPropertyWithStringOptionsIsSupported()
+        {
+            // This test verifies the fix for a production bug where string properties
+            // were incorrectly rejected because property.isArray returns true for strings
+            // in Unity's serialization system (strings are stored as char arrays internally).
+            WValueDropDownStringOptionsAsset asset =
+                CreateScriptableObject<WValueDropDownStringOptionsAsset>();
+            asset.selection = "Alpha";
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(WValueDropDownStringOptionsAsset.selection)
+            );
+            Assert.IsNotNull(property, "Failed to locate string selection property.");
+            Assert.That(
+                property.propertyType,
+                Is.EqualTo(SerializedPropertyType.String),
+                $"Property type should be String but was {property.propertyType}"
+            );
+
+            WValueDropDownDrawer drawer = new();
+            WValueDropDownAttribute attribute = new("Alpha", "Beta", "Gamma");
+            AssignAttribute(drawer, attribute);
+
+            Assert.That(
+                attribute.ValueType,
+                Is.EqualTo(typeof(string)),
+                $"Attribute ValueType should be string but was {attribute.ValueType}"
+            );
+
+            VisualElement element = drawer.CreatePropertyGUI(property);
+            Assert.That(
+                element,
+                Is.Not.InstanceOf<HelpBox>(),
+                $"String property with string options should NOT show HelpBox. "
+                    + $"Element type: {element?.GetType().Name ?? "null"}"
+            );
+        }
+
+        [Test]
+        [TestCase(
+            SerializedPropertyType.String,
+            "Alpha",
+            "Beta",
+            TestName = "StringPropertyWithStringOptions"
+        )]
+        [Description("Data-driven test for property type compatibility with dropdown options")]
+        public void PropertyTypeCompatibilityDataDriven(
+            SerializedPropertyType expectedPropertyType,
+            params string[] options
+        )
+        {
+            WValueDropDownStringOptionsAsset asset =
+                CreateScriptableObject<WValueDropDownStringOptionsAsset>();
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(WValueDropDownStringOptionsAsset.selection)
+            );
+
+            Assert.That(
+                property.propertyType,
+                Is.EqualTo(expectedPropertyType),
+                $"Property type mismatch: expected {expectedPropertyType}, got {property.propertyType}"
+            );
+
+            WValueDropDownDrawer drawer = new();
+            AssignAttribute(drawer, new WValueDropDownAttribute(options));
+
+            VisualElement element = drawer.CreatePropertyGUI(property);
+            Assert.That(
+                element,
+                Is.Not.InstanceOf<HelpBox>(),
+                $"Compatible property type {expectedPropertyType} with matching options should NOT show HelpBox"
+            );
         }
 
         private static void InvokeApplyOption(SerializedProperty property, object value)

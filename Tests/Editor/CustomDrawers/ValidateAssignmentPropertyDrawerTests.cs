@@ -432,6 +432,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        [Description(
+            "Verifies property height is larger for invalid fields to accommodate help box"
+        )]
         public void GetPropertyHeightIsGreaterWhenFieldIsInvalid()
         {
             ValidateAssignmentObjectReferenceTestAsset asset =
@@ -448,7 +451,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             PropertyDrawerTestHelper.AssignAttribute(drawer, new ValidateAssignmentAttribute());
             GUIContent label = new("Test");
 
-            float invalidHeight = drawer.GetPropertyHeight(invalidProperty, label);
+            float invalidHeight = 0f;
+            Assert.DoesNotThrow(
+                () => invalidHeight = drawer.GetPropertyHeight(invalidProperty, label),
+                "GetPropertyHeight for invalid field should not throw"
+            );
 
             asset.requiredGameObject = NewGameObject("TestObject");
             serializedObject.Update();
@@ -456,12 +463,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty validProperty = serializedObject.FindProperty(
                 nameof(ValidateAssignmentObjectReferenceTestAsset.requiredGameObject)
             );
-            float validHeight = drawer.GetPropertyHeight(validProperty, label);
+
+            float validHeight = 0f;
+            Assert.DoesNotThrow(
+                () => validHeight = drawer.GetPropertyHeight(validProperty, label),
+                "GetPropertyHeight for valid field should not throw"
+            );
 
             Assert.That(
                 invalidHeight,
                 Is.GreaterThan(validHeight),
-                "Height should be greater when field is invalid to accommodate help box."
+                $"Height should be greater when field is invalid to accommodate help box. "
+                    + $"Invalid height: {invalidHeight}, Valid height: {validHeight}"
             );
         }
 
@@ -640,6 +653,46 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        [Description(
+            "Verifies GetPropertyHeight does not throw when called outside OnGUI context (fixed production bug)"
+        )]
+        public void GetPropertyHeightHandlesNonGuiContext()
+        {
+            // This test verifies the fix for the production bug where GetHelpBoxHeight()
+            // threw ArgumentException when EditorGUIUtility.currentViewWidth was accessed
+            // outside of OnGUI context. The fix adds a try-catch with a fallback value.
+            ValidateAssignmentObjectReferenceTestAsset asset =
+                CreateScriptableObject<ValidateAssignmentObjectReferenceTestAsset>();
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(ValidateAssignmentObjectReferenceTestAsset.requiredGameObject)
+            );
+            Assert.IsNotNull(
+                property,
+                "Failed to locate requiredGameObject property for non-GUI context test."
+            );
+
+            ValidateAssignmentPropertyDrawer drawer = new();
+            PropertyDrawerTestHelper.AssignAttribute(drawer, new ValidateAssignmentAttribute());
+            GUIContent label = new("Test");
+
+            // This should NOT throw ArgumentException even outside OnGUI context
+            float height = 0f;
+            Assert.DoesNotThrow(
+                () => height = drawer.GetPropertyHeight(property, label),
+                "GetPropertyHeight should not throw when called outside OnGUI context"
+            );
+            Assert.That(
+                height,
+                Is.GreaterThan(0f),
+                $"Height should be positive even outside OnGUI context, but was {height}"
+            );
+        }
+
+        [Test]
+        [Description("Verifies ClearHeightCache works and subsequent calls still succeed")]
         public void ClearHeightCacheClearsCache()
         {
             ValidateAssignmentObjectReferenceTestAsset asset =
@@ -650,16 +703,36 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(ValidateAssignmentObjectReferenceTestAsset.requiredGameObject)
             );
+            Assert.IsNotNull(property, "Failed to locate requiredGameObject property.");
 
             ValidateAssignmentPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(drawer, new ValidateAssignmentAttribute());
             GUIContent label = new("Test");
 
-            drawer.GetPropertyHeight(property, label);
+            float height1 = 0f;
+            Assert.DoesNotThrow(
+                () => height1 = drawer.GetPropertyHeight(property, label),
+                "First GetPropertyHeight call should not throw"
+            );
 
             ValidateAssignmentPropertyDrawer.ClearHeightCache();
 
-            drawer.GetPropertyHeight(property, label);
+            float height2 = 0f;
+            Assert.DoesNotThrow(
+                () => height2 = drawer.GetPropertyHeight(property, label),
+                "GetPropertyHeight after ClearHeightCache should not throw"
+            );
+
+            Assert.That(
+                height1,
+                Is.GreaterThan(0f),
+                $"First height should be positive, but was {height1}"
+            );
+            Assert.That(
+                height2,
+                Is.GreaterThan(0f),
+                $"Second height should be positive, but was {height2}"
+            );
         }
 
         [Test]

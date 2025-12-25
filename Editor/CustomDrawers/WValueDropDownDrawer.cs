@@ -111,7 +111,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            if (!IsSupportedProperty(property))
+            if (!IsSupportedProperty(property, dropdownAttribute))
             {
                 string typeMismatchMessage = GetTypeMismatchMessage(property, dropdownAttribute);
                 EditorGUI.HelpBox(position, typeMismatchMessage, MessageType.Error);
@@ -157,7 +157,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
             }
 
-            if (!IsSupportedProperty(property))
+            if (!IsSupportedProperty(property, dropdownAttribute))
             {
                 return new HelpBox(
                     GetTypeMismatchMessage(property, dropdownAttribute),
@@ -177,13 +177,77 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return selector;
         }
 
-        private static bool IsSupportedProperty(SerializedProperty property)
+        private static bool IsSupportedProperty(
+            SerializedProperty property,
+            WValueDropDownAttribute attribute
+        )
         {
-            // Exclude only property types that cannot be meaningfully assigned from a dropdown
-            return property.propertyType != SerializedPropertyType.ArraySize
-                && property.propertyType != SerializedPropertyType.FixedBufferSize
-                && property.propertyType != SerializedPropertyType.Gradient
-                && !property.isArray;
+            // Exclude property types that cannot be meaningfully assigned from a dropdown
+            // Note: String properties have isArray=true in Unity's serialization (stored as char arrays),
+            // so we explicitly exclude strings from the array check.
+            if (
+                property.propertyType == SerializedPropertyType.ArraySize
+                || property.propertyType == SerializedPropertyType.FixedBufferSize
+                || property.propertyType == SerializedPropertyType.Gradient
+                || (property.isArray && property.propertyType != SerializedPropertyType.String)
+            )
+            {
+                return false;
+            }
+
+            // Check type compatibility between property and dropdown options
+            return IsTypeCompatible(property, attribute);
+        }
+
+        private static bool IsTypeCompatible(
+            SerializedProperty property,
+            WValueDropDownAttribute attribute
+        )
+        {
+            Type valueType = attribute?.ValueType;
+            if (valueType == null || valueType == typeof(object))
+            {
+                // No specific type constraint - allow all non-excluded properties
+                return true;
+            }
+
+            return property.propertyType switch
+            {
+                SerializedPropertyType.Integer => valueType == typeof(int)
+                    || valueType == typeof(long)
+                    || valueType == typeof(short)
+                    || valueType == typeof(byte)
+                    || valueType == typeof(sbyte)
+                    || valueType == typeof(uint)
+                    || valueType == typeof(ulong)
+                    || valueType == typeof(ushort)
+                    || valueType.IsEnum,
+                SerializedPropertyType.Float => valueType == typeof(float)
+                    || valueType == typeof(double),
+                SerializedPropertyType.String => valueType == typeof(string),
+                SerializedPropertyType.Boolean => valueType == typeof(bool),
+                SerializedPropertyType.Character => valueType == typeof(char),
+                SerializedPropertyType.Enum => valueType.IsEnum || valueType == typeof(string),
+                SerializedPropertyType.ObjectReference =>
+                    typeof(UnityEngine.Object).IsAssignableFrom(valueType),
+                SerializedPropertyType.Vector2 => valueType == typeof(Vector2),
+                SerializedPropertyType.Vector3 => valueType == typeof(Vector3),
+                SerializedPropertyType.Vector4 => valueType == typeof(Vector4),
+                SerializedPropertyType.Vector2Int => valueType == typeof(Vector2Int),
+                SerializedPropertyType.Vector3Int => valueType == typeof(Vector3Int),
+                SerializedPropertyType.Color => valueType == typeof(Color)
+                    || valueType == typeof(Color32),
+                SerializedPropertyType.Rect => valueType == typeof(Rect),
+                SerializedPropertyType.RectInt => valueType == typeof(RectInt),
+                SerializedPropertyType.Bounds => valueType == typeof(Bounds),
+                SerializedPropertyType.BoundsInt => valueType == typeof(BoundsInt),
+                SerializedPropertyType.Quaternion => valueType == typeof(Quaternion),
+                SerializedPropertyType.AnimationCurve => valueType == typeof(AnimationCurve),
+                SerializedPropertyType.Hash128 => valueType == typeof(Hash128),
+                SerializedPropertyType.Generic => IsSerializableTypeProperty(property)
+                    || IsGenericSerializedProperty(property),
+                _ => false,
+            };
         }
 
         private static bool IsSerializableTypeProperty(SerializedProperty property)

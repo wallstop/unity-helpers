@@ -240,10 +240,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ReusableContent.text = message;
             GUIStyle helpBoxStyle = EditorStyles.helpBox;
             float minHeight = EditorGUIUtility.singleLineHeight * 2f;
-            float calculatedHeight = helpBoxStyle.CalcHeight(
-                ReusableContent,
-                EditorGUIUtility.currentViewWidth - 40f
-            );
+            float viewWidth = 600f;
+            try
+            {
+                viewWidth = Mathf.Max(0f, EditorGUIUtility.currentViewWidth);
+            }
+            catch
+            {
+                // Called outside OnGUI context; use fallback
+                viewWidth = 600f;
+            }
+            float calculatedHeight = helpBoxStyle.CalcHeight(ReusableContent, viewWidth - 40f);
             float height = Mathf.Max(minHeight, calculatedHeight);
 
             HelpBoxHeightCache[message] = height;

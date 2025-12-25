@@ -989,8 +989,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
+        [Description(
+            "Verifies list elements always show to avoid layout corruption (fixed production bug)"
+        )]
         public void ListElementsAlwaysShowToAvoidLayoutCorruption()
         {
+            // This test verifies the fix for a production bug where array/list elements
+            // were not always returning true from ShouldShow, causing layout corruption
+            // when the parent array is visible but individual elements were hidden.
             TestContainer container = CreateScriptableObject<TestContainer>();
             container.conditionalStringList.Add("item1");
             container.conditionalStringList.Add("item2");
@@ -1011,13 +1017,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             SerializedProperty element0 = listProperty.GetArrayElementAtIndex(0);
             SerializedProperty element1 = listProperty.GetArrayElementAtIndex(1);
 
+            bool element0Shows = InvokeShouldShow(drawer, element0);
+            bool element1Shows = InvokeShouldShow(drawer, element1);
+
             Assert.True(
-                InvokeShouldShow(drawer, element0),
-                "Array elements should always return true for ShouldShow to avoid layout corruption"
+                element0Shows,
+                $"List element 0 (path: {element0.propertyPath}) should always return true for ShouldShow to avoid layout corruption"
             );
             Assert.True(
-                InvokeShouldShow(drawer, element1),
-                "Array elements should always return true for ShouldShow to avoid layout corruption"
+                element1Shows,
+                $"List element 1 (path: {element1.propertyPath}) should always return true for ShouldShow to avoid layout corruption"
             );
         }
 
@@ -1066,8 +1075,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
+        [Description(
+            "Verifies array elements always show to avoid layout corruption (fixed production bug)"
+        )]
         public void ArrayElementsAlwaysShowToAvoidLayoutCorruption()
         {
+            // This test verifies the fix for a production bug where array/list elements
+            // were not always returning true from ShouldShow, causing layout corruption
+            // when the parent array is visible but individual elements were hidden.
             TestContainer container = CreateScriptableObject<TestContainer>();
             container.conditionalStringArray = new[] { "x", "y", "z" };
             container.intCondition = 0;
@@ -1088,26 +1103,31 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
                 )
             );
 
+            bool arrayRootShows = InvokeShouldShow(drawer, arrayProperty);
             Assert.False(
-                InvokeShouldShow(drawer, arrayProperty),
-                "Array root should be hidden when condition not met"
+                arrayRootShows,
+                $"Array root (path: {arrayProperty.propertyPath}) should be hidden when condition not met"
             );
 
             SerializedProperty element0 = arrayProperty.GetArrayElementAtIndex(0);
             SerializedProperty element1 = arrayProperty.GetArrayElementAtIndex(1);
             SerializedProperty element2 = arrayProperty.GetArrayElementAtIndex(2);
 
+            bool element0Shows = InvokeShouldShow(drawer, element0);
+            bool element1Shows = InvokeShouldShow(drawer, element1);
+            bool element2Shows = InvokeShouldShow(drawer, element2);
+
             Assert.True(
-                InvokeShouldShow(drawer, element0),
-                "Array element 0 should always return true to avoid layout corruption"
+                element0Shows,
+                $"Array element 0 (path: {element0.propertyPath}) should always return true to avoid layout corruption"
             );
             Assert.True(
-                InvokeShouldShow(drawer, element1),
-                "Array element 1 should always return true to avoid layout corruption"
+                element1Shows,
+                $"Array element 1 (path: {element1.propertyPath}) should always return true to avoid layout corruption"
             );
             Assert.True(
-                InvokeShouldShow(drawer, element2),
-                "Array element 2 should always return true to avoid layout corruption"
+                element2Shows,
+                $"Array element 2 (path: {element2.propertyPath}) should always return true to avoid layout corruption"
             );
         }
 

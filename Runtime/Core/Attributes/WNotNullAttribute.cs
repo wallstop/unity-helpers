@@ -94,6 +94,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         public static void CheckForNulls(this object o)
         {
 #if UNITY_EDITOR
+            if (o == null || (o is UnityEngine.Object unityObj && unityObj == null))
+            {
+                return;
+            }
+
             IEnumerable<FieldInfo> properties =
                 Helper.ReflectionHelpers.GetFieldsWithAttribute<WNotNullAttribute>(o.GetType());
 

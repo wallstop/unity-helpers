@@ -347,6 +347,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        [Description("Verifies property height is larger for null fields to accommodate help box")]
         public void GetPropertyHeightIsGreaterWhenFieldIsNull()
         {
             WNotNullObjectReferenceTestAsset asset =
@@ -363,7 +364,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             PropertyDrawerTestHelper.AssignAttribute(drawer, new WNotNullAttribute());
             GUIContent label = new("Test");
 
-            float nullHeight = drawer.GetPropertyHeight(nullProperty, label);
+            float nullHeight = 0f;
+            Assert.DoesNotThrow(
+                () => nullHeight = drawer.GetPropertyHeight(nullProperty, label),
+                "GetPropertyHeight for null field should not throw"
+            );
 
             asset.requiredGameObject = NewGameObject("TestObject");
             serializedObject.Update();
@@ -371,12 +376,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty assignedProperty = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredGameObject)
             );
-            float assignedHeight = drawer.GetPropertyHeight(assignedProperty, label);
+
+            float assignedHeight = 0f;
+            Assert.DoesNotThrow(
+                () => assignedHeight = drawer.GetPropertyHeight(assignedProperty, label),
+                "GetPropertyHeight for assigned field should not throw"
+            );
 
             Assert.That(
                 nullHeight,
                 Is.GreaterThan(assignedHeight),
-                "Height should be greater when field is null to accommodate help box."
+                $"Height should be greater when field is null to accommodate help box. "
+                    + $"Null height: {nullHeight}, Assigned height: {assignedHeight}"
             );
         }
 
@@ -559,6 +570,46 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        [Description(
+            "Verifies GetPropertyHeight does not throw when called outside OnGUI context (fixed production bug)"
+        )]
+        public void GetPropertyHeightHandlesNonGuiContext()
+        {
+            // This test verifies the fix for the production bug where GetHelpBoxHeight()
+            // threw ArgumentException when EditorGUIUtility.currentViewWidth was accessed
+            // outside of OnGUI context. The fix adds a try-catch with a fallback value.
+            WNotNullObjectReferenceTestAsset asset =
+                CreateScriptableObject<WNotNullObjectReferenceTestAsset>();
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(WNotNullObjectReferenceTestAsset.requiredGameObject)
+            );
+            Assert.IsNotNull(
+                property,
+                "Failed to locate requiredGameObject property for non-GUI context test."
+            );
+
+            WNotNullPropertyDrawer drawer = new();
+            PropertyDrawerTestHelper.AssignAttribute(drawer, new WNotNullAttribute());
+            GUIContent label = new("Test");
+
+            // This should NOT throw ArgumentException even outside OnGUI context
+            float height = 0f;
+            Assert.DoesNotThrow(
+                () => height = drawer.GetPropertyHeight(property, label),
+                "GetPropertyHeight should not throw when called outside OnGUI context"
+            );
+            Assert.That(
+                height,
+                Is.GreaterThan(0f),
+                $"Height should be positive even outside OnGUI context, but was {height}"
+            );
+        }
+
+        [Test]
+        [Description("Verifies ClearHeightCache works and subsequent calls still succeed")]
         public void ClearHeightCacheClearsCache()
         {
             WNotNullObjectReferenceTestAsset asset =
@@ -569,16 +620,36 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredGameObject)
             );
+            Assert.IsNotNull(property, "Failed to locate requiredGameObject property.");
 
             WNotNullPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(drawer, new WNotNullAttribute());
             GUIContent label = new("Test");
 
-            drawer.GetPropertyHeight(property, label);
+            float height1 = 0f;
+            Assert.DoesNotThrow(
+                () => height1 = drawer.GetPropertyHeight(property, label),
+                "First GetPropertyHeight call should not throw"
+            );
 
             WNotNullPropertyDrawer.ClearHeightCache();
 
-            drawer.GetPropertyHeight(property, label);
+            float height2 = 0f;
+            Assert.DoesNotThrow(
+                () => height2 = drawer.GetPropertyHeight(property, label),
+                "GetPropertyHeight after ClearHeightCache should not throw"
+            );
+
+            Assert.That(
+                height1,
+                Is.GreaterThan(0f),
+                $"First height should be positive, but was {height1}"
+            );
+            Assert.That(
+                height2,
+                Is.GreaterThan(0f),
+                $"Second height should be positive, but was {height2}"
+            );
         }
     }
 #endif

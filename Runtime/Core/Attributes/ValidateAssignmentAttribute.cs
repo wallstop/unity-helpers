@@ -133,6 +133,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         public static void ValidateAssignments(this Object o)
         {
 #if UNITY_EDITOR
+            if (o == null)
+            {
+                return;
+            }
+
             Type objectType = o.GetType();
             FieldInfo[] fields = GetOrAdd(objectType);
 
