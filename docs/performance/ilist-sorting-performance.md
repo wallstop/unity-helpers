@@ -7,7 +7,7 @@ Unity Helpers ships several custom sorting algorithms for `IList<T>` that cover 
 | Algorithm                   | Stable? | Best For                                                                   | Reference                                                                                                 |
 | --------------------------- | ------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | Ghost Sort                  | No      | Mixed workloads that benefit from adaptive gap sorting and few allocations | Upstream project by Will Stafford Parsons (public repository currently offline)                           |
-| Meteor Sort                 | No      | Almost-sorted data where gap shrinking beats plain insertion sort          | [meteorsort by Wiley Looper](https://github.com/wileylooper/meteorsort)                                   |
+| Meteor Sort                 | No      | Almost-sorted data where gap shrinking beats plain insertion sort          | Upstream project by Will Stafford Parsons (public repository currently offline)                           |
 | Pattern-Defeating QuickSort | No      | General-purpose quicksort with protections against worst-case inputs       | [pdqsort by Orson Peters](https://github.com/orlp/pdqsort)                                                |
 | Grail Sort                  | Yes     | Large datasets where stability + low allocations matter                    | [GrailSort](https://github.com/Mrrl/GrailSort)                                                            |
 | Power Sort                  | Yes     | Partially ordered data that benefits from adaptive run detection           | [PowerSort (Munro & Wild)](https://arxiv.org/abs/1805.04154)                                              |
@@ -20,8 +20,8 @@ Unity Helpers ships several custom sorting algorithms for `IList<T>` that cover 
 | Block Merge Sort            | Yes     | Stable merges with √n buffer (WikiSort style)                              | [WikiSort](https://github.com/BonzaiThePenguin/WikiSort)                                                  |
 | IPS⁴o Sort                  | No      | Cache-aware samplesort with multiway partitioning                          | [IPS⁴o paper](https://arxiv.org/abs/1705.02257)                                                           |
 | Power Sort Plus             | Yes     | Enhanced run-priority merges inspired by Wild & Nebel                      | [PowerSort paper](https://arxiv.org/abs/1805.04154)                                                       |
-| Glide Sort                  | Yes     | Stable galloping merges from the Rust glidesort research                   | [Glidesort write-up](https://github.com/Voultapher/sort-research-rs/tree/main/writeup/glidesort)          |
-| Flux Sort                   | No      | Dual-pivot quicksort tuned for modern CPUs                                 | [Fluxsort write-up](https://github.com/Voultapher/sort-research-rs/tree/main/writeup/fluxsort)            |
+| Glide Sort                  | Yes     | Stable galloping merges from the Rust glidesort research                   | [sort-research-rs](https://github.com/Voultapher/sort-research-rs)                                        |
+| Flux Sort                   | No      | Dual-pivot quicksort tuned for modern CPUs                                 | [sort-research-rs](https://github.com/Voultapher/sort-research-rs)                                        |
 | Insertion Sort              | Yes     | Tiny or nearly sorted collections where O(n²) is acceptable                | [Wikipedia - Insertion sort](https://en.wikipedia.org/wiki/Insertion_sort)                                |
 
 > **What does “stable” mean?** Stable sorting algorithms preserve the relative order of elements that compare as equal. This matters when items carry secondary keys (e.g., sorting people by last name but keeping first-name order deterministic). Unstable algorithms can reshuffle equal entries, which is usually fine for numeric keys but can break deterministic pipelines.
@@ -42,7 +42,7 @@ Run the `IListSortingPerformanceTests.Benchmark` test inside Unity’s Test Runn
 
 <!-- ILIST_SORT_WINDOWS_START -->
 
-_Last updated 2025-12-09 01:23 UTC on Windows 11 (10.0.26200) 64bit_
+_Last updated 2025-12-25 07:07 UTC on Windows 11 (10.0.26200) 64bit_
 
 Times are single-pass measurements in milliseconds (lower is better). `n/a` indicates the algorithm was skipped for the dataset size.
 
@@ -50,31 +50,31 @@ Times are single-pass measurements in milliseconds (lower is better). `n/a` indi
 
 | List Size | Ghost    | Meteor   | Pattern-Defeating QuickSort | Grail    | Power    | Insertion | Tim      | Jesse    | Green    | Ska      | Ipn      | Smooth   | Block    | IPS4o    | Power+   | Glide    | Flux     |
 | --------- | -------- | -------- | --------------------------- | -------- | -------- | --------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- |
-| 100       | 0.031 ms | 0.002 ms | 0.001 ms                    | 0.001 ms | 0.001 ms | 0.001 ms  | 0.001 ms | 0.054 ms | 0.001 ms | 0.007 ms | 0.001 ms | 0.002 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.002 ms |
-| 1,000     | 0.043 ms | 0.033 ms | 0.010 ms                    | 0.008 ms | 0.006 ms | 0.007 ms  | 0.006 ms | 0.795 ms | 0.008 ms | 0.115 ms | 0.009 ms | 0.019 ms | 0.006 ms | 0.039 ms | 0.006 ms | 0.006 ms | 0.032 ms |
-| 10,000    | 0.324 ms | 0.444 ms | 0.088 ms                    | 0.072 ms | 0.054 ms | 0.071 ms  | 0.053 ms | 10.5 ms  | 0.072 ms | 1.63 ms  | 0.090 ms | 0.190 ms | 0.059 ms | 0.612 ms | 0.054 ms | 0.053 ms | 0.439 ms |
-| 100,000   | 3.99 ms  | 5.86 ms  | 0.899 ms                    | 0.712 ms | 0.554 ms | n/a       | 0.529 ms | 176 ms   | 0.709 ms | 21.4 ms  | 0.900 ms | 1.96 ms  | 0.606 ms | 7.59 ms  | 0.541 ms | 0.531 ms | 5.62 ms  |
-| 1,000,000 | 47.8 ms  | 73.6 ms  | 8.78 ms                     | 7.26 ms  | 5.42 ms  | n/a       | 5.42 ms  | 2.11 s   | 7.30 ms  | 256 ms   | 8.88 ms  | 19.2 ms  | 6.38 ms  | 101 ms   | 5.41 ms  | 5.38 ms  | 65.9 ms  |
+| 100       | 0.029 ms | 0.002 ms | 0.001 ms                    | 0.001 ms | 0.001 ms | 0.001 ms  | 0.001 ms | 0.052 ms | 0.001 ms | 0.006 ms | 0.001 ms | 0.002 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.002 ms |
+| 1,000     | 0.021 ms | 0.030 ms | 0.007 ms                    | 0.007 ms | 0.004 ms | 0.005 ms  | 0.004 ms | 0.780 ms | 0.006 ms | 0.096 ms | 0.007 ms | 0.016 ms | 0.005 ms | 0.033 ms | 0.004 ms | 0.005 ms | 0.027 ms |
+| 10,000    | 0.263 ms | 0.353 ms | 0.067 ms                    | 0.058 ms | 0.041 ms | 0.054 ms  | 0.040 ms | 10.4 ms  | 0.058 ms | 1.37 ms  | 0.067 ms | 0.167 ms | 0.047 ms | 0.528 ms | 0.041 ms | 0.041 ms | 0.365 ms |
+| 100,000   | 3.28 ms  | 4.71 ms  | 0.668 ms                    | 0.590 ms | 0.411 ms | n/a       | 0.396 ms | 160 ms   | 0.582 ms | 17.9 ms  | 0.672 ms | 1.61 ms  | 0.465 ms | 6.60 ms  | 0.410 ms | 0.398 ms | 4.54 ms  |
+| 1,000,000 | 37.8 ms  | 57.6 ms  | 6.79 ms                     | 6.04 ms  | 4.13 ms  | n/a       | 4.07 ms  | 2.05 s   | 6.00 ms  | 221 ms   | 6.73 ms  | 16.9 ms  | 4.83 ms  | 90.7 ms  | 4.17 ms  | 4.18 ms  | 54.8 ms  |
 
 ### Nearly Sorted (2% swaps)
 
 | List Size | Ghost    | Meteor   | Pattern-Defeating QuickSort | Grail    | Power    | Insertion | Tim      | Jesse    | Green    | Ska      | Ipn      | Smooth   | Block    | IPS4o    | Power+   | Glide    | Flux     |
 | --------- | -------- | -------- | --------------------------- | -------- | -------- | --------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- |
-| 100       | 0.002 ms | 0.002 ms | 0.003 ms                    | 0.001 ms | 0.002 ms | 0.001 ms  | 0.001 ms | 0.054 ms | 0.001 ms | 0.007 ms | 0.002 ms | 0.002 ms | 0.001 ms | 0.002 ms | 0.002 ms | 0.001 ms | 0.002 ms |
-| 1,000     | 0.026 ms | 0.031 ms | 0.037 ms                    | 0.008 ms | 0.017 ms | 0.007 ms  | 0.015 ms | 0.785 ms | 0.008 ms | 0.114 ms | 0.033 ms | 0.022 ms | 0.007 ms | 0.047 ms | 0.024 ms | 0.015 ms | 0.033 ms |
-| 10,000    | 0.332 ms | 0.447 ms | 0.485 ms                    | 0.081 ms | 0.271 ms | 0.072 ms  | 0.195 ms | 10.3 ms  | 0.079 ms | 1.61 ms  | 0.456 ms | 0.197 ms | 0.078 ms | 0.702 ms | 0.411 ms | 0.174 ms | 0.438 ms |
-| 100,000   | 4.00 ms  | 5.88 ms  | 6.02 ms                     | 0.848 ms | 3.81 ms  | n/a       | 2.66 ms  | 180 ms   | 0.815 ms | 21.3 ms  | 5.72 ms  | 2.01 ms  | 0.734 ms | 8.84 ms  | 5.94 ms  | 2.42 ms  | 5.74 ms  |
-| 1,000,000 | 48.1 ms  | 75.2 ms  | 70.7 ms                     | 9.28 ms  | 52.2 ms  | n/a       | 28.3 ms  | 2.05 s   | 8.74 ms  | 258 ms   | 66.5 ms  | 20.0 ms  | 8.74 ms  | 113 ms   | 78.1 ms  | 20.0 ms  | 68.0 ms  |
+| 100       | 0.001 ms | 0.002 ms | 0.002 ms                    | 0.001 ms | 0.001 ms | 0.001 ms  | 0.001 ms | 0.051 ms | 0.001 ms | 0.006 ms | 0.001 ms | 0.002 ms | 0.001 ms | 0.002 ms | 0.002 ms | 0.001 ms | 0.002 ms |
+| 1,000     | 0.023 ms | 0.025 ms | 0.029 ms                    | 0.007 ms | 0.015 ms | 0.006 ms  | 0.013 ms | 0.759 ms | 0.006 ms | 0.096 ms | 0.028 ms | 0.017 ms | 0.006 ms | 0.040 ms | 0.022 ms | 0.013 ms | 0.028 ms |
+| 10,000    | 0.277 ms | 0.367 ms | 0.385 ms                    | 0.069 ms | 0.223 ms | 0.057 ms  | 0.164 ms | 10.9 ms  | 0.066 ms | 1.37 ms  | 0.358 ms | 0.170 ms | 0.064 ms | 0.609 ms | 0.371 ms | 0.163 ms | 0.364 ms |
+| 100,000   | 3.25 ms  | 4.76 ms  | 4.63 ms                     | 0.679 ms | 3.42 ms  | n/a       | 2.34 ms  | 172 ms   | 0.681 ms | 17.8 ms  | 4.37 ms  | 1.71 ms  | 0.576 ms | 7.61 ms  | 5.35 ms  | 2.33 ms  | 4.57 ms  |
+| 1,000,000 | 38.5 ms  | 58.3 ms  | 54.8 ms                     | 7.46 ms  | 48.6 ms  | n/a       | 26.2 ms  | 1.95 s   | 7.03 ms  | 218 ms   | 51.2 ms  | 17.3 ms  | 7.19 ms  | 97.4 ms  | 75.7 ms  | 18.5 ms  | 55.3 ms  |
 
 ### Shuffled (deterministic)
 
 | List Size | Ghost    | Meteor   | Pattern-Defeating QuickSort | Grail    | Power    | Insertion | Tim      | Jesse    | Green    | Ska      | Ipn      | Smooth   | Block    | IPS4o    | Power+   | Glide    | Flux     |
 | --------- | -------- | -------- | --------------------------- | -------- | -------- | --------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- |
-| 100       | 0.009 ms | 0.008 ms | 0.006 ms                    | 0.007 ms | 0.007 ms | 0.019 ms  | 0.011 ms | 0.029 ms | 0.008 ms | 0.009 ms | 0.015 ms | 0.012 ms | 0.006 ms | 0.006 ms | 0.023 ms | 0.012 ms | 0.007 ms |
-| 1,000     | 0.168 ms | 0.141 ms | 0.097 ms                    | 0.113 ms | 0.162 ms | 1.72 ms   | 0.158 ms | 0.402 ms | 0.118 ms | 0.144 ms | 0.105 ms | 0.209 ms | 0.093 ms | 0.116 ms | 0.437 ms | 0.175 ms | 0.106 ms |
-| 10,000    | 2.36 ms  | 2.10 ms  | 1.34 ms                     | 1.58 ms  | 1.62 ms  | 170 ms    | 1.80 ms  | 5.52 ms  | 1.52 ms  | 2.06 ms  | 1.44 ms  | 3.04 ms  | 1.26 ms  | 1.77 ms  | 6.17 ms  | 2.10 ms  | 1.60 ms  |
-| 100,000   | 34.9 ms  | 27.8 ms  | 16.6 ms                     | 19.1 ms  | 19.2 ms  | n/a       | 22.2 ms  | 68.8 ms  | 19.3 ms  | 25.8 ms  | 17.8 ms  | 39.9 ms  | 16.2 ms  | 21.9 ms  | 79.0 ms  | 27.4 ms  | 19.8 ms  |
-| 1,000,000 | 499 ms   | 350 ms   | 198 ms                      | 231 ms   | 231 ms   | n/a       | 279 ms   | 899 ms   | 245 ms   | 322 ms   | 207 ms   | 492 ms   | 189 ms   | 258 ms   | 1.06 s   | 338 ms   | 234 ms   |
+| 100       | 0.007 ms | 0.006 ms | 0.005 ms                    | 0.006 ms | 0.006 ms | 0.015 ms  | 0.009 ms | 0.028 ms | 0.007 ms | 0.008 ms | 0.007 ms | 0.010 ms | 0.004 ms | 0.005 ms | 0.022 ms | 0.010 ms | 0.006 ms |
+| 1,000     | 0.144 ms | 0.122 ms | 0.086 ms                    | 0.100 ms | 0.104 ms | 1.34 ms   | 0.134 ms | 0.391 ms | 0.102 ms | 0.127 ms | 0.091 ms | 0.179 ms | 0.084 ms | 0.101 ms | 0.417 ms | 0.146 ms | 0.105 ms |
+| 10,000    | 1.98 ms  | 1.80 ms  | 1.17 ms                     | 1.36 ms  | 1.44 ms  | 133 ms    | 1.57 ms  | 5.18 ms  | 1.40 ms  | 1.80 ms  | 1.24 ms  | 2.58 ms  | 1.17 ms  | 1.47 ms  | 5.90 ms  | 1.76 ms  | 1.37 ms  |
+| 100,000   | 28.7 ms  | 24.1 ms  | 14.6 ms                     | 17.7 ms  | 17.9 ms  | n/a       | 19.6 ms  | 67.2 ms  | 17.4 ms  | 21.9 ms  | 15.4 ms  | 32.8 ms  | 14.7 ms  | 19.0 ms  | 76.3 ms  | 22.1 ms  | 17.1 ms  |
+| 1,000,000 | 409 ms   | 300 ms   | 175 ms                      | 212 ms   | 214 ms   | n/a       | 246 ms   | 880 ms   | 214 ms   | 278 ms   | 181 ms   | 410 ms   | 176 ms   | 232 ms   | 1.06 s   | 286 ms   | 208 ms   |
 
 <!-- ILIST_SORT_WINDOWS_END -->
 

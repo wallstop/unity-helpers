@@ -13,7 +13,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Reference: https://github.com/wileylooper/blastcircuit. The generator keeps four 64-bit state words, mixes them
+    /// Reference: Will Stafford Parsons (wileylooper/blastcircuit, repository offline). The generator keeps four 64-bit state words, mixes them
     /// using xor, rotation, and Weyl-style increments, and produces a 64-bit <c>mix</c> value each round (we emit the
     /// lower 32 bits in <see cref="NextUint"/> to match the framework API).
     /// </para>
@@ -48,8 +48,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [RandomGeneratorMetadata(
         RandomQuality.Good,
         "Empirical PractRand testing to 32GB shows strong diffusion; designed as a chaotic ARX mixer rather than a proven statistically optimal generator.",
-        "wileylooper/blastcircuit",
-        "https://github.com/wileylooper/blastcircuit"
+        "Will Stafford Parsons",
+        "" // Original repository wileylooper/blastcircuit is offline
     )]
     [Serializable]
     [DataContract]

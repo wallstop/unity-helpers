@@ -10,7 +10,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Reference: https://github.com/wileylooper/wavesplat. The generator maintains a single 64-bit state, adds a
+    /// Reference: Will Stafford Parsons (wileylooper/wavesplat, repository offline). The generator maintains a single 64-bit state, adds a
     /// Weyl-style increment of <c>11,111,111,111,111,111</c> each step, and returns bits shifted by a dynamic amount
     /// derived from the low nibble of the state.
     /// </para>
@@ -45,8 +45,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [RandomGeneratorMetadata(
         RandomQuality.Experimental,
         "Single-word chaotic generator; author notes period 2^64 but provides no formal test results—treat as experimental.",
-        "wileylooper/wavesplat",
-        "https://github.com/wileylooper/wavesplat"
+        "Will Stafford Parsons",
+        "" // Original repository wileylooper/wavesplat is offline
     )]
     [Serializable]
     [DataContract]

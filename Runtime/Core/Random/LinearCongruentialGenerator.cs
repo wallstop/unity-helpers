@@ -44,7 +44,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         RandomQuality.Poor,
         "Minimal standard LCG; fails spectral tests and exhibits lattice artifacts beyond small dimensions.",
         "Park & Miller 1988",
-        "https://doi.org/10.1145/63039.63042"
+        "" // Communications of the ACM 31(10):1192-1201
     )]
     [Serializable]
     [DataContract]

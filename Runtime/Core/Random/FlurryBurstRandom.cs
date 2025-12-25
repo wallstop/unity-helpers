@@ -15,7 +15,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// </summary>
     /// <remarks>
     /// <para>
-    /// https://github.com/wileylooper/flurryburst
+    /// Reference: Will Stafford Parsons (wileylooper/flurryburst, repository offline).
     /// Based on <c>wileylooper/flurryburst</c>, this implementation captures the 32-bit variant that balances
     /// speed, period (~2<sup>128</sup>) and state size for gameplay workloads. It is suitable as a drop-in
     /// alternative to Xoshiro128** and similar families, while retaining deterministic serialization support.

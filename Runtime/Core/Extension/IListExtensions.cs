@@ -429,7 +429,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Sorts the elements in the list using the Meteor Sort algorithm, a gap-sequence-based hybrid sort.
         /// </summary>
         /// <remarks>
-        /// Implementation reference: Meteor Sort by Wiley Looper, https://github.com/wileylooper/meteorsort.
+        /// Implementation reference: Meteor Sort by Will Stafford Parsons (wileylooper/meteorsort, repository offline).
         /// Note: Meteor Sort is currently not stable.
         /// </remarks>
         /// <typeparam name="T">The type of elements in the list.</typeparam>
@@ -1425,7 +1425,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </summary>
         /// <remarks>
         /// Implementation reference: Glidesort (Rust std::sort write-up by Orson Peters & Sebastian W.),
-        /// https://github.com/Voultapher/sort-research-rs/tree/main/writeup/glidesort.
+        /// https://github.com/Voultapher/sort-research-rs.
         /// </remarks>
         public static void GlideSort<T, TComparer>(this IList<T> array, TComparer comparer)
             where TComparer : IComparer<T>
@@ -1503,7 +1503,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Sorts the list using FluxSort, an unstable dual-pivot quicksort with adaptive pair partitioning.
         /// </summary>
         /// <remarks>
-        /// Implementation reference: Fluxsort / Fluxsort2 (Voultapher), https://github.com/Voultapher/sort-research-rs/tree/main/writeup/fluxsort.
+        /// Implementation reference: Fluxsort / Fluxsort2 (Voultapher), https://github.com/Voultapher/sort-research-rs.
         /// </remarks>
         public static void FluxSort<T, TComparer>(this IList<T> array, TComparer comparer)
             where TComparer : IComparer<T>

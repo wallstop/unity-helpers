@@ -112,7 +112,7 @@ The following PRNG implementations in `Runtime/Core/Random/` are adapted from or
 
 - Description: Rotate-multiply PRNG family optimized for modern CPUs.
 - Authors: Mark A. Overton
-- Upstream: [ROMU website](https://romu-random.org/)
+- Upstream: [ROMU website (archived)](https://web.archive.org/web/20240101000000*/https://romu-random.org/)
 - License: CC0 1.0 Universal (Public Domain)
 - Notes: Implements the RomuDuo variant with two 64-bit state words.
 
@@ -127,18 +127,18 @@ The following PRNG implementations in `Runtime/Core/Random/` are adapted from or
 
 ### Will Stafford Parsons Algorithms
 
-The following algorithms are by Will Stafford Parsons (wileylooper):
+The following algorithms are by Will Stafford Parsons (wileylooper). Note: The original GitHub repositories are currently offline.
 
-- **IllusionFlow**: Hybridized PCG + xorshift design. [GitHub](https://github.com/wileylooper/illusionflow)
-- **FlurryBurst**: Six-word ARX-style generator. [GitHub](https://github.com/wileylooper/flurryburst)
-- **StormDrop**: Large-state ARX generator inspired by SHISHUA. [GitHub](https://github.com/wileylooper/stormdrop)
-- **PhotonSpin**: 20-word ring-buffer generator. [GitHub](https://github.com/wileylooper/photonspin)
-- **BlastCircuit**: Four-word ARX-style generator. [GitHub](https://github.com/wileylooper/blastcircuit)
-- **WaveSplat**: One-word chaotic generator. [GitHub](https://github.com/wileylooper/wavesplat)
-- **Meteor Sort**: Gap-sequence-based hybrid sorting algorithm. [GitHub](https://github.com/wileylooper/meteorsort)
-- **Ghost Sort**: Hybrid gap-based sorting algorithm (repository currently offline).
+- **IllusionFlow**: Hybridized PCG + xorshift design.
+- **FlurryBurst**: Six-word ARX-style generator.
+- **StormDrop**: Large-state ARX generator inspired by SHISHUA.
+- **PhotonSpin**: 20-word ring-buffer generator.
+- **BlastCircuit**: Four-word ARX-style generator.
+- **WaveSplat**: One-word chaotic generator.
+- **Meteor Sort**: Gap-sequence-based hybrid sorting algorithm.
+- **Ghost Sort**: Hybrid gap-based sorting algorithm.
 
-License: These implementations are used with attribution to the original author. Please refer to the individual repositories for specific licensing terms.
+License: These implementations are used with attribution to the original author. Please refer to the individual repositories for specific licensing terms if they become available again.
 
 ## Academic & Historical Acknowledgments
 
@@ -156,7 +156,7 @@ The following algorithms are based on well-known academic work and are implement
 ### Random Number Generators
 
 - **XorShift**: Classic PRNG by George Marsaglia (2003). [Paper](https://www.jstatsoft.org/article/view/v008i14)
-- **Linear Congruential Generator**: Park-Miller variant (1988). [Paper](https://doi.org/10.1145/63039.63042)
+- **Linear Congruential Generator**: Park-Miller variant (1988). "Random Number Generators: Good Ones Are Hard to Find" Communications of the ACM 31(10):1192-1201
 - **Squirrel Noise**: Hash-based noise function by Squirrel Eiserloh. [GDC Talk](https://youtu.be/LWFzPP8ZbdU?t=2673)
 
 ## Additional Notes

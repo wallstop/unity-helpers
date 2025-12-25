@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using System.Runtime.CompilerServices;
     using NUnit.Framework;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Utils;
 #if !SINGLE_THREADED
@@ -747,8 +748,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     for (int i = rentals.Count - 1; i >= 0; i--)
                     {
                         PooledArray<int> pooled = rentals[i];
-                        int size = pooled.Array.Length;
-                        expectedOrder.GetOrAdd(size).Enqueue(pooled.Array);
+                        int size = pooled.length;
+                        expectedOrder.GetOrAdd(size).Enqueue(pooled.array);
                         pooled.Dispose();
                     }
 

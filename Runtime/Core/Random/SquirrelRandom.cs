@@ -51,8 +51,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [RandomGeneratorMetadata(
         RandomQuality.Good,
         "Hash-based generator built on Squirrel3; good equidistribution for table lookups but not extensively tested beyond moderate ranges.",
-        "Squirrel3",
-        "https://github.com/squirrel-org/squirrel3"
+        "Squirrel Eiserloh",
+        "https://youtu.be/LWFzPP8ZbdU?t=2673" // GDC talk on Squirrel noise
     )]
     [Serializable]
     [DataContract]

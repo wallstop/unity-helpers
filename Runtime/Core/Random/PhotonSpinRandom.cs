@@ -13,7 +13,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// </summary>
     /// <remarks>
     /// <para>
-    /// https://github.com/wileylooper/photonspin
+    /// Reference: Will Stafford Parsons (wileylooper/photonspin, repository offline).
     /// Ported from <c>wileylooper/photonspin</c>, this generator produces batches of 20 new 32-bit values per round,
     /// offering a huge period (~2<sup>512</sup>) and robust statistical performance. It shines when large streams are
     /// required, while still supporting deterministic state capture and serialization.
@@ -50,8 +50,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [RandomGeneratorMetadata(
         RandomQuality.Excellent,
         "SHISHUA-inspired generator; independent testing (PractRand 128GB) by author indicates excellent distribution properties.",
-        "wileylooper/photonspin",
-        "https://github.com/wileylooper/photonspin"
+        "Will Stafford Parsons",
+        "" // Original repository wileylooper/photonspin is offline
     )]
     [Serializable]
     [DataContract]

@@ -7,7 +7,7 @@ This document provides guidelines for AI assistants working with this repository
 ## Repository Overview
 
 **Package**: `com.wallstop-studios.unity-helpers`
-**Version**: 2.2.0
+**Version**: 3.0.0
 **Unity Version**: 2021.3+ (LTS)
 **License**: MIT
 **Repository**: <https://github.com/wallstop/unity-helpers>

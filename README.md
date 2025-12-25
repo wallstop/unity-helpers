@@ -419,7 +419,7 @@ Unity Helpers is available from multiple sources. Choose the one that best fits 
 
 #### Option B: Via OpenUPM CLI
 
-If you have the [OpenUPM CLI](https://openupm.com/docs/getting-started.html#installing-openupm-cli) installed:
+If you have the [OpenUPM CLI](https://openupm.com/docs/) installed:
 
 ```bash
 openupm add com.wallstop-studios.unity-helpers

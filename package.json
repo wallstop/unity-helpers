@@ -2,7 +2,7 @@
   "name": "com.wallstop-studios.unity-helpers",
   "version": "3.0.0",
   "displayName": "Unity Helpers",
-  "description": "Various Unity Helper Library",
+  "description": "Treasure chest of Unity developer tools ",
   "dependencies": {},
   "unity": "2021.3",
   "keywords": [

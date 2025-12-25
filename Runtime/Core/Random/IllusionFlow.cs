@@ -62,8 +62,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [RandomGeneratorMetadata(
         RandomQuality.Excellent,
         "Hybridized PCG + xorshift design; upstream PractRand 64GB passes with no anomalies per author.",
-        "wileylooper/illusionflow",
-        "https://github.com/wileylooper/illusionflow"
+        "Will Stafford Parsons",
+        "" // Original repository wileylooper/illusionflow is offline
     )]
     [Serializable]
     [DataContract]
