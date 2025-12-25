@@ -32,14 +32,14 @@ repos:
         require_serial: true
         description: Enforce PascalCase method names without underscores. Auto-renames when run locally.
       - id: csharp-no-regions
-        name: Lint C# files for #region directives
+        name: "Lint C# files for #region directives"
         entry: pwsh -NoProfile -File scripts/lint-no-regions.ps1 -StagedOnly -Fix
         language: system
         types:
           - c#
         pass_filenames: false
         require_serial: true
-        description: Prevent #region directives from being checked in. Auto-removes when run locally.
+        description: "Prevent #region directives from being checked in. Auto-removes when run locally."
       - id: unity-file-naming
         name: Lint Unity Object file naming
         entry: pwsh -NoProfile -File scripts/lint-unity-file-naming.ps1 -StagedOnly

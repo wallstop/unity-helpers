@@ -24,6 +24,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Lint C# files for #region directives
+      - name: "Lint C# files for #region directives"
         shell: pwsh
         run: ./scripts/lint-no-regions.ps1 -VerboseOutput
